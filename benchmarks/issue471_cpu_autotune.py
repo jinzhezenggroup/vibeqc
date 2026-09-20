@@ -7,9 +7,15 @@ import json
 import os
 import shutil
 import tempfile
+import typing
 from pathlib import Path
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Primitive, Shell
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
@@ -27,7 +33,7 @@ from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def _fixture():
+def _fixture() -> typing.Any:
     coordinates = np.array(
         [
             [0.13, -0.31, 0.24],
@@ -67,7 +73,9 @@ def _fixture():
     return angular, coordinates, specs, primitives, shells
 
 
-def _independent_reference(angular, coordinates, shells):
+def _independent_reference(
+    angular: typing.Any, coordinates: typing.Any, shells: typing.Any
+) -> typing.Any:
     ir = build_weighted_eri_ir(angular)
     factors = np.array(
         [
@@ -97,10 +105,10 @@ def _independent_reference(angular, coordinates, shells):
     return normalized / factors[:, None]
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cache", type=Path)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     parser.add_argument("--repeats", type=int, default=7)
     parser.add_argument("--maximum-candidates", type=int, default=16)
     args = parser.parse_args()

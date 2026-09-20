@@ -15,9 +15,9 @@ different.
 from __future__ import annotations
 
 import math
+import typing
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
 
 from .fused_schedule import FusedShellResult
 from .ir import (
@@ -73,7 +73,7 @@ from .rys5_data import (
 )
 from .shell_spec import AXES, FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 
@@ -431,7 +431,7 @@ def rys2_table_roots_weights(
     )
 
 
-def _fixed_root_coefficients(nroots: int, high_accuracy: bool) -> object:
+def _fixed_root_coefficients(nroots: int, high_accuracy: bool) -> typing.Any:
     """Select interpolation precision without changing the fixed-root algorithm.
 
     The degree-17 tables are regenerated from 90-digit moments for consumers

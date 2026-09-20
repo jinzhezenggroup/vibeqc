@@ -94,3 +94,45 @@ The 4096-atom cap applies to each system, not the fleet total. Aggregate CUDA
 workspace uses checked total-atom byte extents; skipped, failed and energy-only
 gradient slots are zeroed before publication with successful peers.
 See the [workspace decision](../.agents/notes/implemented/architecture/2026-09-19-d3-ragged-workspace.md).
+
+## NVIDIA ALCHEMI performance reference
+
+`tools/benchmark_d3_alchemi.py` compares the production D3 owner with NVIDIA
+ALCHEMI Toolkit-Ops on exactly the same generated nonperiodic geometries, D3(BJ)
+damping parameters, and hard pair/CN cutoff. It is an optional benchmark tool;
+ALCHEMI, PyTorch, and its parameter cache are not VibeQC runtime dependencies.
+
+The comparison deliberately reports three ALCHEMI timings separately:
+
+- neighbor-list construction;
+- D3 with the neighbor list already built, matching NVIDIA's canonical D3
+  benchmark convention;
+- neighbor-list plus D3 pipeline latency.
+
+VibeQC currently performs pair traversal inside its D3 owner and therefore has no
+separate neighbor-list stage to subtract. Its warm synchronous `execute()` latency
+includes coordinate upload, the D3 kernel, and requested result download. The
+benchmark records candidate-pair counts, ALCHEMI neighbor-edge counts, throughput,
+resource diagnostics, package/CUDA metadata, raw timing samples, and the numerical
+delta after converting ALCHEMI forces back to `dE/dR`.
+
+A precision caveat is mandatory when interpreting performance: VibeQC production
+D3 is FP64, while ALCHEMI Toolkit-Ops 0.4.x uses FP32 reference tables and FP32
+energy/force/CN outputs even when positions are FP64. The benchmark records this
+explicitly and does not declare an equal-precision winner.
+
+Example:
+
+```sh
+PYTHONPATH=python:. VIBEQC_LIBRARY=/path/to/cuda/libvibeqc.so \
+  python tools/benchmark_d3_alchemi.py \
+  --device cuda --method 'PBE-D3(BJ)' --cutoff-angstrom 15 \
+  --workload 32x1 --workload 128x1 --workload 32x64 \
+  --alchemi-params ~/.cache/nvalchemiops/dftd3_parameters.pt \
+  --output benchmark-results/d3-alchemi.json
+```
+
+For retained performance evidence, pin the exact `nvalchemi-toolkit-ops` wheel,
+PyTorch/CUDA versions, GPU, VibeQC commit/library, cutoff, workload, and timing
+samples. Do not compare published H100 numbers directly with a local RTX 5090 run;
+run both implementations on the same allocated device.

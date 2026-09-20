@@ -11,12 +11,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import typing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from .cuda_schedule import schedule_candidates
-from .cuda_target import DEFAULT_CUDA_TARGET, CudaTargetInfo, cuda_target_info
+from .cuda_target import CudaTargetInfo, cuda_target_info
 from .fused_schedule import build_fused_shell_plan
 from .ir import (
     FOUR_CENTER_ERI_OPERATOR,
@@ -28,7 +28,7 @@ from .ir import (
 )
 from .shell_spec import FUSED_SHELL_SPECS, ShellClassSpec
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
 CAPABILITY_STREAMING_FOCK = "streaming_fock"
@@ -90,8 +90,8 @@ def query_integral_capability(
     integral: IntegralIR,
     *,
     backend: str = "cuda",
-    component_indices: object | None = None,
-    output_indices: object | None = None,
+    component_indices: typing.Any = None,
+    output_indices: typing.Any = None,
 ) -> CapabilityCheck:
     """Query the existing backend's semantic input boundary without emitting code.
 
@@ -476,7 +476,7 @@ def _production_index(
 
 def build_capability_report(
     *,
-    target: CudaTargetInfo = DEFAULT_CUDA_TARGET,
+    target: CudaTargetInfo | None = None,
     manifest: Path | None = None,
     architecture: str | None = None,
     profile: str = "auto",
@@ -484,9 +484,17 @@ def build_capability_report(
 ) -> dict[str, object]:
     """Build a deterministic report for every requested shell specification."""
 
-    selected_architecture = architecture or target.architecture
-    if architecture is not None:
+    if target is None:
+        if architecture is None:
+            raise ValueError(
+                "capability reporting requires an explicit CUDA target or architecture"
+            )
         target = cuda_target_info(architecture)
+    elif architecture is not None:
+        selected = cuda_target_info(architecture)
+        if selected.architecture != target.architecture:
+            raise ValueError("capability target and architecture disagree")
+    selected_architecture = target.architecture
     production = _production_index(manifest, selected_architecture, profile)
     rows = []
     for spec in specifications:

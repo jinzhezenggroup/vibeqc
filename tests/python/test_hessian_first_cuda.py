@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -28,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module", params=("h2", "water"))
-def case(request):
+def case(request: typing.Any) -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     nvcc = shutil.which("nvcc")
     assert nvcc
@@ -75,7 +76,7 @@ def case(request):
                 tuple((a - b) / (2 * step) for a, b in zip(*pair, strict=True))
             )
 
-        def forbidden(*args, **kwargs):
+        def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
             raise AssertionError(
                 "CUDA first-source/response delegated scientific work to CPU/oracle"
             )
@@ -98,7 +99,9 @@ def case(request):
         yield state, v, actual, (h, overlap), finite, compiler
 
 
-def test_device_first_sources_match_independent_analytic_integrals(case):
+def test_device_first_sources_match_independent_analytic_integrals(
+    case: typing.Any,
+) -> None:
     _, _, actual, expected, _, _ = case
     np.testing.assert_allclose(
         actual.frozen_fock_derivative, expected[0], atol=2e-10, rtol=2e-10
@@ -110,7 +113,9 @@ def test_device_first_sources_match_independent_analytic_integrals(case):
         np.testing.assert_allclose(m, m.T, atol=2e-10, rtol=0)
 
 
-def test_three_step_native_differences_check_entire_directional_response(case):
+def test_three_step_native_differences_check_entire_directional_response(
+    case: typing.Any,
+) -> None:
     _, _, actual, _, finite, _ = case
     targets = (
         actual.frozen_fock_derivative,
@@ -130,7 +135,9 @@ def test_three_step_native_differences_check_entire_directional_response(case):
     assert actual.response.solve_result.residual_norm < 1e-9
 
 
-def test_no_raw_derivative_download_and_explicit_residency(case):
+def test_no_raw_derivative_download_and_explicit_residency(
+    case: typing.Any,
+) -> None:
     s, _, actual, _, _, _ = case
     diag = actual.diagnostics
     provider = diag["first_derivative_provider"]
@@ -146,7 +153,7 @@ def test_no_raw_derivative_download_and_explicit_residency(case):
 
 
 @pytest.mark.parametrize("case", ["h2"], indirect=True)
-def test_zero_translation_and_signed_scaling(case):
+def test_zero_translation_and_signed_scaling(case: typing.Any) -> None:
     state, v, actual, _, _, compiler = case
     for scale in (0.0, -0.7):
         r = directional_rhf_response(
@@ -182,7 +189,9 @@ def test_zero_translation_and_signed_scaling(case):
 
 
 @pytest.mark.parametrize("case", ["h2"], indirect=True)
-def test_tiny_first_source_budget_fails_without_disabling_later_calls(case):
+def test_tiny_first_source_budget_fails_without_disabling_later_calls(
+    case: typing.Any,
+) -> None:
     state, v, expected, _, _, compiler = case
     with pytest.raises(MemoryError):
         directional_rhf_response(

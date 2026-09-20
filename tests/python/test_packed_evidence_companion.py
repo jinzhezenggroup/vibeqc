@@ -4,13 +4,14 @@ import copy
 import hashlib
 import importlib.util
 import json
+import typing
 from pathlib import Path
 
 import pytest
 
 
 @pytest.fixture
-def evidence(tmp_path):
+def evidence(tmp_path: typing.Any) -> typing.Any:
     """A complete original series and a distinct diagnostics-only process."""
     source = (
         Path(__file__).resolve().parents[2]
@@ -69,7 +70,7 @@ def evidence(tmp_path):
     directory = tmp_path / "companion"
     directory.mkdir()
 
-    def save():
+    def save() -> None:
         clean_path.write_text(json.dumps(clean) + "\n")
         campaign["predecessor_sha256"] = hashlib.sha256(
             clean_path.read_bytes()
@@ -89,7 +90,9 @@ def evidence(tmp_path):
     )
 
 
-def test_binding_keeps_original_samples_and_distinct_process_identity(evidence):
+def test_binding_keeps_original_samples_and_distinct_process_identity(
+    evidence: typing.Any,
+) -> None:
     bind, path, directory, clean, companion, _, _ = evidence
     original = path.read_bytes()
     joined = bind(path, directory)
@@ -111,7 +114,9 @@ def test_binding_keeps_original_samples_and_distinct_process_identity(evidence):
         "controls",
     ],
 )
-def test_changed_input_or_binary_cannot_supply_diagnostics(evidence, field):
+def test_changed_input_or_binary_cannot_supply_diagnostics(
+    evidence: typing.Any, field: typing.Any
+) -> None:
     bind, path, directory, _, companion, _, save = evidence
     companion[field] = "different"
     save()
@@ -119,14 +124,14 @@ def test_changed_input_or_binary_cannot_supply_diagnostics(evidence, field):
         bind(path, directory)
 
 
-def test_an_old_predecessor_hash_is_rejected(evidence):
+def test_an_old_predecessor_hash_is_rejected(evidence: typing.Any) -> None:
     bind, path, directory, _, _, _, _ = evidence
     path.write_bytes(path.read_bytes() + b" ")
     with pytest.raises(ValueError, match="clean file hash"):
         bind(path, directory)
 
 
-def test_new_clean_samples_cannot_be_pooled(evidence):
+def test_new_clean_samples_cannot_be_pooled(evidence: typing.Any) -> None:
     bind, path, directory, clean, companion, _, save = evidence
     companion["samples"] = [clean["samples"][0]]
     save()
@@ -134,7 +139,9 @@ def test_new_clean_samples_cannot_be_pooled(evidence):
         bind(path, directory)
 
 
-def test_diagnostics_cannot_complete_an_unfinished_clean_series(evidence):
+def test_diagnostics_cannot_complete_an_unfinished_clean_series(
+    evidence: typing.Any,
+) -> None:
     bind, path, directory, clean, _, _, save = evidence
     clean["samples"].pop()
     save()
@@ -143,7 +150,9 @@ def test_diagnostics_cannot_complete_an_unfinished_clean_series(evidence):
 
 
 @pytest.mark.parametrize("error", [1.01e-8, float("nan")])
-def test_failed_or_nonfinite_diagnostic_gate_is_rejected(evidence, error):
+def test_failed_or_nonfinite_diagnostic_gate_is_rejected(
+    evidence: typing.Any, error: typing.Any
+) -> None:
     bind, path, directory, _, companion, _, save = evidence
     companion["diagnostics"][0]["maximum_force_error"] = error
     save()
@@ -151,7 +160,9 @@ def test_failed_or_nonfinite_diagnostic_gate_is_rejected(evidence, error):
         bind(path, directory)
 
 
-def test_different_scf_branch_is_retained_and_labeled(evidence):
+def test_different_scf_branch_is_retained_and_labeled(
+    evidence: typing.Any,
+) -> None:
     bind, path, directory, _, companion, _, save = evidence
     companion["diagnostics"][0]["iterations"] = 10
     save()

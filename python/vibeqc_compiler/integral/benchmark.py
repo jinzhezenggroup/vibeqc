@@ -34,6 +34,7 @@ from .cuda_emitter import (
 )
 from .cuda_lowering import emit_ppps_resident_bra_rys3_cuda
 from .cuda_schedule import ScheduleIR, ScheduleKind
+from .cuda_target import CudaTargetInfo, cuda_target_info
 from .dppp_specialization import _specialize_dppp_identifiers
 from .fused_schedule import FusedShellPlan, build_fused_shell_plan
 from .ir import KernelConsumer
@@ -1343,6 +1344,7 @@ def emit_shell_class_benchmark_cuda(
     benchmark_kernel_only: bool = False,
     persistent_kernel: bool = False,
     oracle_symbol_prefix: str | None = None,
+    target: CudaTargetInfo | None = None,
 ) -> str:
     """Return a self-contained benchmark for one explicit schedule.
 
@@ -1367,6 +1369,7 @@ def emit_shell_class_benchmark_cuda(
         spec,
         consumers=consumers,
         schedule=schedule,
+        target=target,
     )
     if selected_plan.spec != spec:
         raise ValueError("benchmark plan and shell specification do not match")
@@ -1437,6 +1440,8 @@ def emit_ppps_resident_bra_benchmark_cuda(
     warmups: int,
     iterations: int,
     samples: int,
+    *,
+    target: CudaTargetInfo | None = None,
 ) -> str:
     """Return a self-contained correctness/timing gate for resident ppps.
 
@@ -1457,7 +1462,9 @@ def emit_ppps_resident_bra_benchmark_cuda(
         tasks_per_warp=32,
         shared_coulomb=False,
     )
-    plan = build_fused_shell_plan(spec, schedule=schedule, recurrence="rys3")
+    plan = build_fused_shell_plan(
+        spec, schedule=schedule, recurrence="rys3", target=target
+    )
 
     component_counts = tuple(map(len, spec.center_components))
     offsets = tuple(sum(component_counts[:center]) for center in range(4))
@@ -1503,6 +1510,7 @@ def emit_dppp_benchmark_cuda(
     *,
     schedule: ScheduleIR | None = None,
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
+    target: CudaTargetInfo | None = None,
 ) -> str:
     """Return the production-golden dppp standalone benchmark."""
 
@@ -1515,6 +1523,7 @@ def emit_dppp_benchmark_cuda(
         samples,
         schedule=schedule,
         consumer=consumer,
+        target=target,
     )
 
 
@@ -1606,6 +1615,7 @@ def main() -> None:
         arguments.iterations,
         arguments.samples,
         consumer=arguments.consumer,
+        target=cuda_target_info(arguments.architecture),
     )
     if arguments.keep_source is not None:
         arguments.keep_source.parent.mkdir(parents=True, exist_ok=True)

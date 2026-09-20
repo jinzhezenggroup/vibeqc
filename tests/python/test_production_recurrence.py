@@ -16,6 +16,7 @@ from vibeqc_compiler.integral import (
     build_fused_shell_plan,
     build_integral_ir,
 )
+from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.production import (
     KernelSelection,
     emit_multi_registry_header,
@@ -27,6 +28,8 @@ from vibeqc_compiler.integral.production import (
     load_production_kernel_selections,
     resolve_production_profile,
 )
+
+TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
 
 def _rys3_manifest(path: Path, consumers: list[str]) -> None:
@@ -130,7 +133,7 @@ def _structural_rys_manifest(
     )
 
 
-def test_production_selection_preserves_explicit_integral_ir():
+def test_production_selection_preserves_explicit_integral_ir() -> None:
     """Carry non-final translation recovery through production emission."""
 
     spec = DPDS_SPEC
@@ -154,7 +157,9 @@ def test_production_selection_preserves_explicit_integral_ir():
         architecture="sm_120",
         spec=spec,
         consumers=(KernelConsumer.FORCE,),
-        schedule=build_fused_shell_plan(spec, integral=integral).schedule,
+        schedule=build_fused_shell_plan(
+            spec, integral=integral, target=TEST_CUDA_TARGET
+        ).schedule,
         integral=integral,
     )
 
@@ -183,7 +188,9 @@ def test_force_only_rys3_manifest_reaches_every_production_emitter(
     assert "generated_sm120_ppps_rys3_force_task" in profile_shard
 
 
-def test_rys3_rejects_a_fock_consumer_at_manifest_boundary(tmp_path: Path) -> None:
+def test_rys3_rejects_a_fock_consumer_at_manifest_boundary(
+    tmp_path: Path,
+) -> None:
     """Reject unsupported mixed Rys/Fock rows before CUDA source generation."""
 
     manifest = tmp_path / "rys3_fock.json"
@@ -262,7 +269,9 @@ def test_scalar_rys3_accepts_structurally_legal_f_shell(tmp_path: Path) -> None:
     assert "generated_sm120_fsss_rys3_force_task" in shard
 
 
-def test_uniform_warp_rys4_accepts_structurally_legal_f_shell(tmp_path: Path) -> None:
+def test_uniform_warp_rys4_accepts_structurally_legal_f_shell(
+    tmp_path: Path,
+) -> None:
     """Allow an f-shell Rys4 program when its mapping needs no d-only decoder."""
 
     manifest = tmp_path / "fpps_uniform_rys4.json"
@@ -331,7 +340,7 @@ def test_manifest_rys_root_count_comes_from_integral_ir(tmp_path: Path) -> None:
         load_production_kernel_selections(manifest, "sm_120")
 
 
-def test_existing_production_rows_default_to_subset_wick():
+def test_existing_production_rows_default_to_subset_wick() -> None:
     """Keep only explicitly promoted force rows on fixed-root Rys."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -444,7 +453,7 @@ def test_three_root_classes_accept_shared_scalar_thread_backend(
     assert f"generated_sm120_{shell_class}_shell_class_fock_rhf_kernel" in shard
 
 
-def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
+def test_production_dsps_promotes_scalar_force_but_retains_component_fock() -> None:
     """Keep the measured force promotion independent of the value consumer."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -465,7 +474,9 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
 
 
 @pytest.mark.parametrize("shell_class", ("dsds", "ddss"))
-def test_production_rys3_component_force_uses_subgroup_fock(shell_class: str) -> None:
+def test_production_rys3_component_force_uses_subgroup_fock(
+    shell_class: str,
+) -> None:
     """Keep the shared Rys3 value schedule explicit for d-shell pairs."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -594,7 +605,7 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
     )
 
 
-def test_production_dddp_rys5_retains_explicit_fock_schedule():
+def test_production_dddp_rys5_retains_explicit_fock_schedule() -> None:
     """Keep the measured DDDP value worker independent of Rys5 force."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -620,7 +631,7 @@ def test_production_dddp_rys5_retains_explicit_fock_schedule():
     assert "kGeneratedSm120DddpFockBlockThreads = 128U" in shard
 
 
-def test_production_dddd_rys5_retains_native_fock_schedule():
+def test_production_dddd_rys5_retains_native_fock_schedule() -> None:
     """Promote only DDDD force while preserving its accepted value worker."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -692,7 +703,7 @@ def test_production_packed_streaming_fock_uses_profiled_lane_local_state(
         assert "stream_tasks, primitive_pairs" in streaming_worker
 
 
-def test_production_mixed_fock_uses_compact_fp32_geometry():
+def test_production_mixed_fock_uses_compact_fp32_geometry() -> None:
     """Keep mixed Coulomb evaluation off the FP64 geometry conversion path."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -776,7 +787,9 @@ def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(
     assert "return cudaErrorNotSupported;" not in registry_source
 
 
-def test_ppps_resident_registry_falls_back_when_not_selected(tmp_path: Path) -> None:
+def test_ppps_resident_registry_falls_back_when_not_selected(
+    tmp_path: Path,
+) -> None:
     """Keep the API safe for profiles that do not compile a resident route."""
 
     manifest = tmp_path / "ordinary.json"
@@ -787,7 +800,9 @@ def test_ppps_resident_registry_falls_back_when_not_selected(tmp_path: Path) -> 
     assert "return cudaErrorNotSupported;" in registry_source
 
 
-def test_multi_profile_resident_registry_tracks_each_profile(tmp_path: Path) -> None:
+def test_multi_profile_resident_registry_tracks_each_profile(
+    tmp_path: Path,
+) -> None:
     """Select the resident function pointer together with the CUDA profile."""
 
     schedule = {
@@ -836,7 +851,9 @@ def test_multi_profile_resident_registry_tracks_each_profile(tmp_path: Path) -> 
     assert "vibeqc_launch_sm120_ppps_resident" in source
 
 
-def test_multi_profile_registry_dispatches_dpps_mixed_fock(tmp_path: Path) -> None:
+def test_multi_profile_registry_dispatches_dpps_mixed_fock(
+    tmp_path: Path,
+) -> None:
     """Carry the mixed capability and wrapper through profile namespacing."""
 
     manifest = tmp_path / "mixed.json"

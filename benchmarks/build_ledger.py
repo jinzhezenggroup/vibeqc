@@ -28,6 +28,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 
 @dataclass(frozen=True, slots=True)
 class NinjaLogEntry:
@@ -376,7 +381,9 @@ def main() -> None:
     parser.add_argument("--build-dir", type=Path, default=Path("build"))
     parser.add_argument("--repository", type=Path, default=Path("."))
     parser.add_argument(
-        "--output", type=Path, default=Path(".artifacts/benchmarks/build_ledger.json")
+        "--output",
+        type=raw_output_path,
+        default=str(Path(".artifacts/benchmarks/build_ledger.json")),
     )
     parser.add_argument(
         "--build", action="store_true", help="time one cmake --build invocation"

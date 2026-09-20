@@ -40,7 +40,7 @@ from tools.vibeqc_validation.one_electron_values import one_electron_value_matri
 from tools.vibeqc_validation.schema import block_error, file_hash
 
 
-def main():
+def main() -> None:
     """Archive complete inputs, exact source/binary identity and every block error."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)

@@ -15,7 +15,11 @@ import argparse
 import json
 import os
 import time
-from pathlib import Path
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 
 def main() -> None:
@@ -38,7 +42,7 @@ def main() -> None:
             "normally leave this disabled for class timing"
         ),
     )
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     args = parser.parse_args()
     if args.max_iterations < 1 or args.repeats < 1:
         parser.error("--max-iterations and --repeats must be positive")

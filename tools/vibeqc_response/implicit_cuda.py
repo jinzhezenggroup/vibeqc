@@ -8,6 +8,7 @@ there is no CPU scientific fallback and no provider allowance is waived.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import replace
 
 from vibeqc_compiler.common.provenance import canonical_hash
@@ -33,7 +34,16 @@ class PreparedImplicitCuda:
 
     backend = "cuda-fp64-ordinary-stream"
 
-    def __init__(self, plan, solver, compiler, cache, *, budget, device=0):
+    def __init__(
+        self,
+        plan: typing.Any,
+        solver: typing.Any,
+        compiler: typing.Any,
+        cache: typing.Any,
+        *,
+        budget: typing.Any,
+        device: typing.Any = 0,
+    ) -> None:
         if not isinstance(plan, ImplicitVJPPlan) or not isinstance(
             solver, ResponseGMRES
         ):
@@ -109,13 +119,13 @@ class PreparedImplicitCuda:
 
     def bind(
         self,
-        feeds,
+        feeds: typing.Any,
         *,
-        reference_identity,
-        response_operator=None,
-        current_reference=None,
-        primal_atol=1e-10,
-    ):
+        reference_identity: typing.Any,
+        response_operator: typing.Any = None,
+        current_reference: typing.Any = None,
+        primal_atol: typing.Any = 1e-10,
+    ) -> typing.Any:
         """Bind a fresh host snapshot to these already-admitted CUDA programs."""
         if self._closed:
             raise RuntimeError("implicit CUDA executor is closed")
@@ -134,7 +144,7 @@ class PreparedImplicitCuda:
             ),
         )
 
-    def execute(self, stage, feeds):
+    def execute(self, stage: typing.Any, feeds: typing.Any) -> typing.Any:
         """Execute the generated native program; never call a CPU interpreter."""
         if self._closed:
             raise RuntimeError("implicit CUDA executor is closed")
@@ -144,16 +154,16 @@ class PreparedImplicitCuda:
         self.last_metrics[stage] = result.metrics
         return result
 
-    def close(self):
+    def close(self) -> None:
         """Release every prepared provider, including after an execution failure."""
         if self._session is not None:
             self._session.close()
         self._closed = True
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         if self._closed:
             raise RuntimeError("implicit CUDA executor is closed")
         return self
 
-    def __exit__(self, *unused):
+    def __exit__(self, *unused: object) -> None:
         self.close()

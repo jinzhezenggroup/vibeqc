@@ -1,6 +1,7 @@
 """Native compact XC parity, bounded tile execution and fixed-mask contracts."""
 
 import shutil
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -20,14 +21,16 @@ from vibeqc_compiler.xc.prepared import PreparedXCContractions
 
 
 @pytest.fixture(scope="module")
-def native_factory(tmp_path_factory):
+def native_factory(tmp_path_factory: typing.Any) -> typing.Any:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("native XC requires a C++ compiler")
     cache = tmp_path_factory.mktemp("xc-native")
     programs = {}
 
-    def build(name, observable, spin="polarized"):
+    def build(
+        name: typing.Any, observable: typing.Any, spin: typing.Any = "polarized"
+    ) -> typing.Any:
         key = name, observable, spin
         if key not in programs:
             programs[key] = NativeContractionProgram(
@@ -41,7 +44,7 @@ def native_factory(tmp_path_factory):
     return build
 
 
-def compare(actual, expected):
+def compare(actual: typing.Any, expected: typing.Any) -> None:
     assert set(actual) == set(expected)
     for name in actual:
         if name == "geometry":
@@ -58,7 +61,9 @@ def compare(actual, expected):
             )
 
 
-def test_native_r2scan_generated_point_program_matches_interpreter(native_factory):
+def test_native_r2scan_generated_point_program_matches_interpreter(
+    native_factory: typing.Any,
+) -> None:
     rho = np.array([[0.4, 0.2, 0.7], [0.3, 0.5, 0.4]])
     gradient = np.array(
         [
@@ -96,8 +101,11 @@ def test_native_r2scan_generated_point_program_matches_interpreter(native_factor
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
 @pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])
 def test_native_complete_endpoint_tiles_and_two_budgets(
-    native_factory, case, name, observable
-):
+    native_factory: typing.Any,
+    case: typing.Any,
+    name: typing.Any,
+    observable: typing.Any,
+) -> None:
     meta, data, grid = fixture(case)
     native = native_factory(name, observable)
     diagnostic = ContractionProgram(functional(name), observable)
@@ -155,7 +163,9 @@ def test_native_complete_endpoint_tiles_and_two_budgets(
                 prepared.execute(density, **options)
 
 
-def test_native_budget_preflight_precedes_collocation(native_factory, monkeypatch):
+def test_native_budget_preflight_precedes_collocation(
+    native_factory: typing.Any, monkeypatch: typing.Any
+) -> None:
     meta, _, grid = fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         monkeypatch.setattr(
@@ -172,7 +182,9 @@ def test_native_budget_preflight_precedes_collocation(native_factory, monkeypatc
             )
 
 
-def test_native_spatial_mask_matches_independent_zeroed_collocation(native_factory):
+def test_native_spatial_mask_matches_independent_zeroed_collocation(
+    native_factory: typing.Any,
+) -> None:
     meta, data, grid = fixture("h2")
     program = native_factory("PBE", "potential")
     density = data["density_spin"]
@@ -217,8 +229,8 @@ def test_native_spatial_mask_matches_independent_zeroed_collocation(native_facto
 
 @pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])
 def test_empty_native_spatial_masks_have_zero_native_calls(
-    native_factory, monkeypatch, observable
-):
+    native_factory: typing.Any, monkeypatch: typing.Any, observable: typing.Any
+) -> None:
     from vibeqc_compiler.dft.ao import jet_indices
 
     meta, data, grid = fixture("h2")
@@ -271,7 +283,9 @@ def test_empty_native_spatial_masks_have_zero_native_calls(
                 assert np.count_nonzero(value) == 0
 
 
-def test_native_full_spin_solver_adapter_and_source_staleness(native_factory):
+def test_native_full_spin_solver_adapter_and_source_staleness(
+    native_factory: typing.Any,
+) -> None:
     from tools.vibeqc_response.xc import FixedDensityXCDerivativeKernel
 
     meta, data, grid = fixture("h2")
@@ -311,7 +325,9 @@ def test_native_full_spin_solver_adapter_and_source_staleness(native_factory):
 
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
 @pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])
-def test_unpolarized_native_endpoints(native_factory, name, observable):
+def test_unpolarized_native_endpoints(
+    native_factory: typing.Any, name: typing.Any, observable: typing.Any
+) -> None:
     meta, data, grid = fixture("f_cartesian")
     density = data["density_total"]
     program = native_factory(name, observable, "unpolarized")
@@ -344,7 +360,9 @@ def test_unpolarized_native_endpoints(native_factory, name, observable):
         )
 
 
-def test_native_energy_rejects_quadrature_overflow(native_factory):
+def test_native_energy_rejects_quadrature_overflow(
+    native_factory: typing.Any,
+) -> None:
     jets, density, weights = np.ones((1, 1, 1)), np.array([[1e9]]), np.array([1e298])
     for consumer in (
         native_factory("LDA_XC_PW", "energy"),
@@ -356,8 +374,8 @@ def test_native_energy_rejects_quadrature_overflow(native_factory):
 
 @pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])
 def test_nonempty_strict_spatial_subsets_preserve_all_observables(
-    native_factory, observable
-):
+    native_factory: typing.Any, observable: typing.Any
+) -> None:
     from vibeqc_compiler.dft import ExplicitGrid
     from vibeqc_compiler.dft.ao import jet_indices
 
@@ -409,8 +427,8 @@ def test_nonempty_strict_spatial_subsets_preserve_all_observables(
 
 
 def test_concurrent_native_source_publication_and_matching_cache_hits(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     from vibeqc_compiler.common.provenance import canonical_hash
@@ -420,7 +438,9 @@ def test_concurrent_native_source_publication_and_matching_cache_hits(
         pytest.skip("native XC requires a C++ compiler")
     original_write = Path.write_text
 
-    def no_live_source_rewrite(path, *args, **kwargs):
+    def no_live_source_rewrite(
+        path: typing.Any, *args: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
         # Direct writes expose a truncated compiler input to concurrent readers.
         # Logs and unrelated files still use their normal writers.
         if path.name == "xc.cpp":
@@ -429,7 +449,7 @@ def test_concurrent_native_source_publication_and_matching_cache_hits(
 
     monkeypatch.setattr(Path, "write_text", no_live_source_rewrite)
 
-    def build(_):
+    def build(_: typing.Any) -> typing.Any:
         return NativeContractionProgram(
             functional("PBE"),
             "potential",

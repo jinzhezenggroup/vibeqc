@@ -5,12 +5,12 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-from typing import TYPE_CHECKING
+import typing
 
 import pytest
 from vibeqc_compiler.integral import emit_ppps_resident_bra_rys3_cuda
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from pathlib import Path
 
 
@@ -30,7 +30,7 @@ __device__ __forceinline__ void boys_values(
     return boys_stub + emit_ppps_resident_bra_rys3_cuda()
 
 
-def test_ppps_resident_bra_source_shape_is_complete():
+def test_ppps_resident_bra_source_shape_is_complete() -> None:
     """Keep the 1110 mapping and force invariants visible in generated CUDA."""
 
     source = emit_ppps_resident_bra_rys3_cuda()

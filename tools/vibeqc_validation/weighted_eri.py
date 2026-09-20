@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import typing
 from math import exp, pi, sqrt
 
 import numpy as np
 
 
 def primitive_variables(
-    exponents: object, centers: object, maximum_order: int
+    exponents: typing.Any, centers: typing.Any, maximum_order: int
 ) -> dict[str, float]:
     """Bind raw and geometry-factored DAGs to the same unnormalized primitive.
 

@@ -1,6 +1,7 @@
 """Force budgets bound complete CUDA response across public layouts and spins."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -17,7 +18,13 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("pairs", ["full", "symmetric", "packed"])
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 @pytest.mark.parametrize("method", ["rhf", "uhf"])
-def test_screening_force_budget(pairs, representation, method, monkeypatch, tmp_path):
+def test_screening_force_budget(
+    pairs: typing.Any,
+    representation: typing.Any,
+    method: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """Charge skipped work to one observable budget, retaining exact other classes."""
     from pyscf import gto, scf
 
@@ -94,7 +101,9 @@ def test_screening_force_budget(pairs, representation, method, monkeypatch, tmp_
         assert counts[3]["screening_000_primitives_skipped"] > 0
 
 
-def test_screened_force_matches_energy_finite_differences(monkeypatch):
+def test_screened_force_matches_energy_finite_differences(
+    monkeypatch: typing.Any,
+) -> None:
     """Screening changes force work only; compare two independent energy steps."""
     assert os.environ.get("SLURM_JOB_ID")
     atoms = [("O", (0, 0, 0)), ("H", (0, 0, 1.8)), ("H", (1.7, 0, -0.6))]
@@ -120,7 +129,9 @@ def test_screened_force_matches_energy_finite_differences(monkeypatch):
         )
 
 
-def test_invalid_screening_budget_is_rejected_on_strict_fallback(monkeypatch):
+def test_invalid_screening_budget_is_rejected_on_strict_fallback(
+    monkeypatch: typing.Any,
+) -> None:
     """A generic path cannot silently ignore an invalid requested force policy."""
     assert os.environ.get("SLURM_JOB_ID")
     monkeypatch.setenv("VIBEQC_DF_WEIGHTED_EXECUTION", "generic")

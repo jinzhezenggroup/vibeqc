@@ -5,6 +5,7 @@ This tools endpoint is deliberately limited to 12 Cartesian AOs and four atoms;
 no CUDA, DF, ECP, open-shell or production-size Hessian capability is inferred.
 """
 
+import typing
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -18,7 +19,7 @@ from tools.vibeqc_posthf.sources import NativeSource
 from tools.vibeqc_response.backends import NativeJKBackend
 
 
-def _validate_source(source):
+def _validate_source(source: typing.Any) -> None:
     if not isinstance(source, NativeSource):
         raise TypeError("analytic Hessian requires a VibeQC NativeSource")
     source._check_open()
@@ -48,19 +49,26 @@ class NativeRHFState:
     reference: ReferenceSnapshot
     cache: Path = Path(".artifacts")
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.validate()
         object.__setattr__(self, "cache", Path(self.cache))
 
     @classmethod
-    def from_source(cls, source, *, cache=None, tolerance=1e-12, max_iterations=400):
+    def from_source(
+        cls,
+        source: typing.Any,
+        *,
+        cache: typing.Any = None,
+        tolerance: typing.Any = 1e-12,
+        max_iterations: typing.Any = 400,
+    ) -> typing.Any:
         _validate_source(source)
         reference, _ = export_rhf(
             source, backend="cpu", tolerance=tolerance, max_iterations=max_iterations
         )
         return cls(source, reference, Path(cache) if cache is not None else cls.cache)
 
-    def validate(self):
+    def validate(self) -> typing.Any:
         _validate_source(self.source)
         if not isinstance(self.reference, ReferenceSnapshot):
             raise TypeError("native Hessian requires a validated ReferenceSnapshot")
@@ -83,59 +91,59 @@ class NativeRHFState:
         return self
 
     @property
-    def nbf(self):
+    def nbf(self) -> typing.Any:
         return self.source.nbf
 
     @property
-    def nmo(self):
+    def nmo(self) -> typing.Any:
         return self.reference.nmo
 
     @property
-    def nocc(self):
+    def nocc(self) -> typing.Any:
         return self.reference.nocc
 
     @property
-    def nat(self):
+    def nat(self) -> typing.Any:
         return len(self.source.atoms)
 
     @property
-    def C(self):
+    def C(self) -> typing.Any:
         return self.reference.coefficients
 
     @property
-    def eps(self):
+    def eps(self) -> typing.Any:
         return self.reference.orbital_energies
 
     @property
-    def S0(self):
+    def S0(self) -> typing.Any:
         return self.reference.overlap
 
     @property
-    def P0(self):
+    def P0(self) -> typing.Any:
         return immutable((self.C * self.reference.occupations) @ self.C.T)
 
     @property
-    def coords(self):
+    def coords(self) -> typing.Any:
         return np.array([atom.position for atom in self.source.atoms])
 
     @property
-    def Z(self):
+    def Z(self) -> typing.Any:
         return np.array([atom.atomic_number for atom in self.source.atoms])
 
     @property
-    def occ(self):
+    def occ(self) -> typing.Any:
         return np.arange(self.nocc)
 
     @property
-    def virt(self):
+    def virt(self) -> typing.Any:
         return np.arange(self.nocc, self.nmo)
 
     @property
-    def offsets(self):
+    def offsets(self) -> typing.Any:
         return np.cumsum((0, *self.source.shell_sizes))
 
     @property
-    def primitives(self):
+    def primitives(self) -> typing.Any:
         return tuple(
             normalized_radial_primitives(
                 shell.angular_momentum,
@@ -145,7 +153,7 @@ class NativeRHFState:
         )
 
     @cached_property
-    def first_order_inputs(self):
+    def first_order_inputs(self) -> typing.Any:
         """State-bound, immutable H1/S1; geometry/state changes require a new owner."""
         from .first_order import generated_first_order
 

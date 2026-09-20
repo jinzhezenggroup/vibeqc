@@ -12,7 +12,7 @@ H2 = [
 ]
 
 
-def test_mp2_advertises_batches_and_rejects_unsupported_flags():
+def test_mp2_advertises_batches_and_rejects_unsupported_flags() -> None:
     assert method_capabilities("mp2").supports_batch
     calculator = Calculator(method="mp2", device="cpu")
     with pytest.raises(RuntimeError, match="MP2 batch does not support warm starts"):
@@ -21,7 +21,7 @@ def test_mp2_advertises_batches_and_rejects_unsupported_flags():
         calculator.prepare_batch(H2, warm_start=False, shell_class_profiling=True)
 
 
-def test_mp2_batch_energy_force_replay_geometry_and_order_independence():
+def test_mp2_batch_energy_force_replay_geometry_and_order_independence() -> None:
     calculator = Calculator(method="mp2", device="cpu")
     expected = [calculator.singlepoint(system) for system in H2]
     with calculator.prepare_batch(H2, warm_start=False) as batch:
@@ -61,7 +61,7 @@ def test_mp2_batch_energy_force_replay_geometry_and_order_independence():
     )
 
 
-def test_mp2_batch_failure_is_item_local_and_later_replay_is_clean():
+def test_mp2_batch_failure_is_item_local_and_later_replay_is_clean() -> None:
     calculator = Calculator(method="mp2", device="cpu")
     with calculator.prepare_batch(H2, warm_start=False) as batch:
         baseline = batch.execute(strict=True)
@@ -87,7 +87,7 @@ def test_mp2_batch_failure_is_item_local_and_later_replay_is_clean():
     os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1",
     reason="requires explicitly allocated CUDA device and native library",
 )
-def test_mp2_cuda_batch_matches_cpu_and_isolates_failed_items():
+def test_mp2_cuda_batch_matches_cpu_and_isolates_failed_items() -> None:
     cpu = Calculator(method="mp2", device="cpu").batch_singlepoint(H2, strict=True)
     calculator = Calculator(method="mp2", device="cuda")
     with calculator.prepare_batch(H2, warm_start=False) as batch:

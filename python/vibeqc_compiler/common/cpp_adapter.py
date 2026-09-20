@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import shutil
 import subprocess
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,7 +20,7 @@ class CppCompilerAdapter:
     cxx: Path
     compile_timeout: float = 300.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         executable = shutil.which(str(self.cxx))
         if executable is None:
             raise ValueError("the requested C++ compiler is unavailable")
@@ -46,9 +47,9 @@ class CppCompilerAdapter:
         source: Path,
         output: Path,
         *,
-        includes: tuple[object, ...] = (),
-        libraries: tuple[object, ...] = (),
-        options: tuple[object, ...] = (),
+        includes: typing.Any = (),
+        libraries: typing.Any = (),
+        options: typing.Any = (),
     ) -> CompileResult:
         """Compile explicit argv options and terminate the whole process tree on timeout."""
         return run_compiler(

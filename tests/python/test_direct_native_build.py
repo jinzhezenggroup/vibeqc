@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
@@ -18,8 +19,12 @@ import pytest
     ],
 )
 def test_direct_device_link_preserves_architecture_request(
-    tmp_path, architectures, enabled, linked, global_link
-):
+    tmp_path: typing.Any,
+    architectures: typing.Any,
+    enabled: typing.Any,
+    linked: typing.Any,
+    global_link: typing.Any,
+) -> None:
     """Keep architecture intent and the angular-force compilation boundary."""
     nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:
@@ -47,7 +52,7 @@ def test_direct_device_link_preserves_architecture_request(
         text=True,
     )
 
-    def command(target):
+    def command(target: typing.Any) -> typing.Any:
         return subprocess.check_output(
             ["ninja", "-C", str(tmp_path), "-t", "commands", target], text=True
         ).splitlines()[-1]

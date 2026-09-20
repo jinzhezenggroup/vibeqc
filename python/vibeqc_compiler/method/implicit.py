@@ -9,10 +9,11 @@ not a differentiated iteration graph. No solver or native runtime is imported.
 from __future__ import annotations
 
 import math
+import typing
 from dataclasses import dataclass, replace
 from fractions import Fraction
 from types import MappingProxyType
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor import (
@@ -27,7 +28,7 @@ from vibeqc_compiler.tensor import (
 )
 from vibeqc_compiler.tensor.ad_program import _rebuild
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from collections.abc import Mapping
 
 SCHEMA = "vibeqc.method.implicit_solve"
@@ -43,7 +44,7 @@ def _inputs(program: Program) -> dict:
     }
 
 
-def _metric(values: object, size: int, name: str) -> tuple[float, ...]:
+def _metric(values: typing.Any, size: int, name: str) -> tuple[float, ...]:
     if not isinstance(values, tuple):
         raise TypeError(f"{name} must be an immutable tuple")
     if values and len(values) != size:
@@ -56,7 +57,9 @@ def _metric(values: object, size: int, name: str) -> tuple[float, ...]:
     return tuple(float(value) for value in values)
 
 
-def _scaled(node, weights, *, inverse=False):
+def _scaled(
+    node: typing.Any, weights: typing.Any, *, inverse: typing.Any = False
+) -> typing.Any:
     """Emit square-root metric scaling, never a dense metric/Jacobian."""
     if not weights:
         return node
@@ -70,13 +73,13 @@ def _scaled(node, weights, *, inverse=False):
     return multiply(node, factor)
 
 
-def _seed(name: str, spec: TensorSpec) -> object:
+def _seed(name: str, spec: TensorSpec) -> typing.Any:
     return input_tensor(
         PREFIX + name, replace(spec, role="input", differentiable=False)
     )
 
 
-def _substitute(program: Program, name: str, replacement: object) -> Program:
+def _substitute(program: Program, name: str, replacement: typing.Any) -> Program:
     # Reuse the AD frontend's primitive reconstruction, including its legality
     # checks. Multiple definitions of one named input must all be replaced.
     substitutions = {
@@ -111,7 +114,7 @@ class ImplicitSolveSpec:
     residual_metric: tuple[float, ...] = ()
     kind: ClassVar[str] = "implicit_solve"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.program, Program):
             raise TypeError("implicit residual must be a TensorIR Program")
         if set(self.program.outputs) != {self.residual_name}:

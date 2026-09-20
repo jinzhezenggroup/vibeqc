@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import struct
+import typing
 from dataclasses import dataclass
 from itertools import product
 
@@ -65,7 +66,14 @@ class WeightedEriPrimitiveStream:
             else PRIMITIVE_RECORD.size
         )
 
-    def _record(self, kind, angular, exponents, positions, weights):
+    def _record(
+        self,
+        kind: typing.Any,
+        angular: typing.Any,
+        exponents: typing.Any,
+        positions: typing.Any,
+        weights: typing.Any,
+    ) -> typing.Any:
         """Pack the same normalized primitive with explicit radial ABI identity."""
         radial = self.request.integral.operator.coulomb_kernel
         fields = (self.output_tile, *angular, *exponents, *positions, *weights)
@@ -74,7 +82,7 @@ class WeightedEriPrimitiveStream:
         tag = 1 if radial.family == CoulombKernelFamily.LONG_RANGE else 2
         return PRIMITIVE_RANGE_RECORD.pack(kind | (tag << 8), *fields, radial.omega, 2)
 
-    def records(self):
+    def records(self) -> typing.Any:
         """Yield fixed little-endian native POD records without a product array."""
         if not self.components:
             return
@@ -99,13 +107,13 @@ class WeightedEriPrimitiveStream:
 
 def prepare_weighted_eri_stream(
     request: BlockRequest,
-    primitives: object,
-    centers: object,
-    provider: object,
+    primitives: typing.Any,
+    centers: typing.Any,
+    provider: typing.Any,
     *,
-    projections: object | None = None,
-    generated: bool = True,
-    output_tile: int = 0,
+    projections: typing.Any = None,
+    generated: typing.Any = True,
+    output_tile: typing.Any = 0,
 ) -> WeightedEriPrimitiveStream:
     """Freeze one full/padded/partial weight tile, then stream normalized records.
 
@@ -241,7 +249,7 @@ def prepare_weighted_eri_stream(
 
 
 def weighted_eri_response(
-    request: BlockRequest, native_result: object
+    request: BlockRequest, native_result: typing.Any
 ) -> BlockResponse:
     """Map the native four-center result to requested center or physical-atom rows."""
     if (

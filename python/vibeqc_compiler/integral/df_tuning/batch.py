@@ -1,5 +1,6 @@
 """Finite parallel candidate compilation through the shared direct CUDA adapter."""
 
+import typing
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 
@@ -8,19 +9,19 @@ from ..tuning.resources import _resource_rejections, estimate_kernel_occupancy
 
 
 def compile_batch(
-    trials,
-    emit,
+    trials: typing.Any,
+    emit: typing.Any,
     *,
-    directory,
-    compiler,
-    includes,
-    generator_sha256,
-    toolchain,
-    consumer,
-    kernel_name,
-    jobs=2,
-    maximum_stack_bytes=0,
-):
+    directory: typing.Any,
+    compiler: typing.Any,
+    includes: typing.Any,
+    generator_sha256: typing.Any,
+    toolchain: typing.Any,
+    consumer: typing.Any,
+    kernel_name: typing.Any,
+    jobs: typing.Any = 2,
+    maximum_stack_bytes: typing.Any = 0,
+) -> typing.Any:
     """Retain every compile/resource rejection without cancelling other candidates.
 
     Mathematical trial identity and emission are supplied by the consumer. The
@@ -30,7 +31,7 @@ def compile_batch(
     if type(jobs) is not int or not 1 <= jobs <= 64:
         raise ValueError("compile jobs must be in [1,64]")
 
-    def compile_trial(trial):
+    def compile_trial(trial: typing.Any) -> typing.Any:
         source = directory / f"{trial.symbol}.cu"
         obj = directory / f"{trial.symbol}.o"
         source.write_text(emit(trial))

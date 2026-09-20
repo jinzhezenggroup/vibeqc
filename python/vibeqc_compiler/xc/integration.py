@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from hashlib import sha256
 
@@ -40,7 +41,7 @@ class XCIntegral:
     approximation_identity: str | None = None
 
 
-def _tiles(grid, tile_points):
+def _tiles(grid: typing.Any, tile_points: typing.Any) -> typing.Any:
     if isinstance(grid, MolecularGrid):
         yield from grid.tiles(tile_points)
     else:
@@ -63,7 +64,7 @@ class FixedDensityXC:
     neither zero weights nor grid tails authorize clipping unsupported inputs.
     """
 
-    def __init__(self, spec):
+    def __init__(self, spec: typing.Any) -> None:
         if not isinstance(spec, FunctionalSpec):
             raise TypeError("expected FunctionalSpec")
         if any((spec.exact_exchange, spec.long_range_exchange)):
@@ -74,10 +75,18 @@ class FixedDensityXC:
         self._program = self._contraction.program
 
     @property
-    def spec(self):
+    def spec(self) -> typing.Any:
         return self._program.spec
 
-    def integrate(self, basis, grid, density, *, tile_points=256, spatial=None):
+    def integrate(
+        self,
+        basis: typing.Any,
+        grid: typing.Any,
+        density: typing.Any,
+        *,
+        tile_points: typing.Any = 256,
+        spatial: typing.Any = None,
+    ) -> typing.Any:
         """Return E_xc and V_xc with delta E = sum_s Tr(V_s delta D_s).
 
         Total [AO,AO] input means Da=Db=D/2. Separate [2,AO,AO] input
@@ -131,7 +140,7 @@ class FixedDensityXC:
         electrons = np.zeros(2)
         points = tiles = 0
 
-        def collocation():
+        def collocation() -> typing.Any:
             if spatial is not None:
                 family = self._contraction.contract.ingredients.family
                 ingredients = {

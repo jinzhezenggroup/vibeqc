@@ -22,10 +22,15 @@ import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 _T = TypeVar("_T")
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -99,11 +104,11 @@ def _capture_native_stderr(function: Callable[[], _T]) -> tuple[_T, str]:
     return result, diagnostic
 
 
-def _parse_fock_profile(diagnostic: str) -> dict[str, object]:
+def _parse_fock_profile(diagnostic: str) -> dict[str, Any]:
     """Convert each native operator evaluation into typed JSON fields."""
 
-    evaluations: list[dict[str, object]] = []
-    current: dict[str, object] | None = None
+    evaluations: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
     for line in diagnostic.splitlines():
         match = _CLASS_HEADER_PATTERN.match(line)
         if match:
@@ -162,7 +167,7 @@ def _parse_fock_profile(diagnostic: str) -> dict[str, object]:
     }
 
 
-def _calculator(case: object, arguments: argparse.Namespace) -> object:
+def _calculator(case: Any, arguments: argparse.Namespace) -> Any:
     """Construct one calculator with controls shared by every measurement."""
 
     from vibeqc import Calculator
@@ -193,7 +198,7 @@ def _mode_environment(
     return environment
 
 
-def _validate_fixed_density_sample(item: object, diagnostic: str) -> dict[str, object]:
+def _validate_fixed_density_sample(item: Any, diagnostic: str) -> dict[str, Any]:
     """Reject a cold retry or stale plan instead of labeling it fixed-density work."""
 
     if (
@@ -213,15 +218,15 @@ def _validate_fixed_density_sample(item: object, diagnostic: str) -> dict[str, o
 
 
 def _fixed_density_profiles(
-    case: object,
+    case: Any,
     arguments: argparse.Namespace,
     modes: tuple[tuple[str, str | None], ...],
-    cupy: object,
-) -> dict[str, object]:
+    cupy: Any,
+) -> dict[str, Any]:
     """Replay one frozen FP64 density through all isolated Fock variants."""
 
     calculator = _calculator(case, arguments)
-    records: dict[str, object] = {}
+    records: dict[str, Any] = {}
     with calculator.prepare_batch(
         [case.atoms],
         charges=[case.charge],
@@ -235,7 +240,7 @@ def _fixed_density_profiles(
         fixed = cold.items[0]
 
         for name, selection in modes:
-            samples: list[dict[str, object]] = []
+            samples: list[dict[str, Any]] = []
             with _environment(_mode_environment(selection, profiling=True)):
                 # Changing arithmetic invalidates the device plan. Exclude one
                 # setup replay so every reported sample is the same steady
@@ -275,23 +280,23 @@ def _fixed_density_profiles(
 
 
 def _complete_endpoints(
-    case: object,
+    case: Any,
     arguments: argparse.Namespace,
     modes: tuple[tuple[str, str | None], ...],
-    cupy: object,
-) -> dict[str, object]:
+    cupy: Any,
+) -> dict[str, Any]:
     """Measure clean complete calls rather than subtracting a force estimate."""
 
-    endpoints: dict[str, object] = {}
+    endpoints: dict[str, Any] = {}
     for name, selection in modes:
         calculator = _calculator(case, arguments)
-        mode_record: dict[str, object] = {"requested_threshold": selection}
+        mode_record: dict[str, Any] = {"requested_threshold": selection}
         with _environment(_mode_environment(selection, profiling=False)):
             for endpoint, properties in (
                 ("energy_only", ("energy",)),
                 ("energy_plus_forces", ("energy", "forces")),
             ):
-                samples: list[dict[str, object]] = []
+                samples: list[dict[str, Any]] = []
                 for _ in range(arguments.repeats):
                     cupy.cuda.Stream.null.synchronize()
                     started = time.perf_counter()
@@ -332,7 +337,7 @@ def main() -> None:
     parser.add_argument("--density-tolerance", type=float, default=1.0e-8)
     parser.add_argument("--screening-tolerance", type=float, default=1.0e-12)
     parser.add_argument("--experimental-fp32-threshold", type=float, default=1.0e300)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     arguments = parser.parse_args()
     if arguments.repeats < 1 or arguments.max_iterations < 1:
         parser.error("--repeats and --max-iterations must be positive")

@@ -18,6 +18,11 @@ from pathlib import Path
 
 import numpy as np
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 from benchmarks._cases import benchmark_cases
 from benchmarks.df_progress_ledger import read_progress, summarize_progress
 from benchmarks.issue206_df_force_probe import _source_metadata
@@ -239,7 +244,7 @@ def run(args: argparse.Namespace) -> None:
     patch = subprocess.check_output(["git", "diff", "--binary", "HEAD"])
     (output / "measured-source.patch").write_bytes(patch)
 
-    def save():
+    def save() -> None:
         (output / "result.json").write_text(json.dumps(record, indent=2) + "\n")
 
     save()
@@ -370,7 +375,7 @@ def main() -> None:
     parser.add_argument("--case", default="water-tetramer-def2-svp-spherical")
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--input", type=Path)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--library", type=Path)
     parser.add_argument("--probe", type=Path)
     parser.add_argument("--scf-mode", choices=("cold", "seeded"))

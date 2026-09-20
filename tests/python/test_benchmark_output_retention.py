@@ -1,7 +1,10 @@
 """Execution and deliberate evidence publication have different output paths."""
 
+from __future__ import annotations
+
 import argparse
 import ast
+import typing
 from pathlib import Path
 
 import pytest
@@ -9,20 +12,50 @@ import pytest
 from benchmarks import _support
 
 ROOT = Path(__file__).resolve().parents[2]
-RUNNERS = (
-    "h2_latency.py",
-    "batch_throughput.py",
-    "compare_gpu4pyscf.py",
-    "compare_gpu4pyscf_batch.py",
-    "compare_df_exchange.py",
-    "inactive_eigensolver_profile.py",
-)
+
+
+def active_runner_output_arguments() -> typing.Any:
+    """Yield every live benchmark CLI output path, excluding frozen evidence scripts."""
+
+    benchmark_root = ROOT / "benchmarks"
+    for path in sorted(benchmark_root.rglob("*.py")):
+        relative = path.relative_to(benchmark_root)
+        if "results" in relative.parts or path.name == "_support.py":
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if (
+                not isinstance(node, ast.Call)
+                or not isinstance(node.func, ast.Attribute)
+                or node.func.attr != "add_argument"
+            ):
+                continue
+            options = [
+                arg.value
+                for arg in node.args
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str)
+            ]
+            if not any(
+                option == "--output"
+                or option.endswith(
+                    (
+                        "-output",
+                        "-output-dir",
+                        "-output-directory",
+                        "-output-file",
+                        "-output-path",
+                    )
+                )
+                for option in options
+            ):
+                continue
+            yield path, node, options
 
 
 @pytest.mark.parametrize("alias", [False, True])
 def test_raw_writer_rejects_retained_tree_and_symlink_alias(
-    tmp_path, monkeypatch, alias
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any, alias: typing.Any
+) -> None:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     retained = tmp_path / "benchmarks/results"
     retained.mkdir(parents=True)
@@ -41,8 +74,8 @@ def test_raw_writer_rejects_retained_tree_and_symlink_alias(
 
 
 def test_guard_rejects_relative_traversal_before_creating_anything(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match="raw benchmark output"):
@@ -50,7 +83,9 @@ def test_guard_rejects_relative_traversal_before_creating_anything(
     assert not (tmp_path / "benchmarks").exists()
 
 
-def test_scratch_paths_and_neighbour_names_remain_supported(tmp_path, monkeypatch):
+def test_scratch_paths_and_neighbour_names_remain_supported(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     for name in (
         ".artifacts/benchmarks/run.json",
@@ -62,7 +97,9 @@ def test_scratch_paths_and_neighbour_names_remain_supported(tmp_path, monkeypatc
         assert path.is_file()
 
 
-def test_argparse_reports_bad_output_without_starting_work(tmp_path, monkeypatch):
+def test_argparse_reports_bad_output_without_starting_work(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     monkeypatch.setattr(_support, "_REPOSITORY_ROOT", tmp_path)
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=_support.raw_output_path)
@@ -72,24 +109,27 @@ def test_argparse_reports_bad_output_without_starting_work(tmp_path, monkeypatch
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.parametrize("name", RUNNERS)
-def test_shared_runner_outputs_are_guarded_during_argument_parsing(name):
-    tree = ast.parse((ROOT / "benchmarks" / name).read_text())
-    found = set()
-    for node in ast.walk(tree):
-        if (
-            not isinstance(node, ast.Call)
-            or not isinstance(node.func, ast.Attribute)
-            or node.func.attr != "add_argument"
-        ):
-            continue
-        options = [arg.value for arg in node.args if isinstance(arg, ast.Constant)]
-        if "--output" not in options and "--progress-output" not in options:
-            continue
-        found.update(options)
+def test_all_active_runner_outputs_are_guarded_during_argument_parsing() -> None:
+    seen = []
+    for path, node, options in active_runner_output_arguments():
+        seen.append((path.relative_to(ROOT), tuple(options)))
         keywords = {kw.arg: kw.value for kw in node.keywords}
-        assert isinstance(keywords.get("type"), ast.Name)
-        assert keywords["type"].id == "raw_output_path"
-        if "default" in keywords:
-            assert keywords["default"].value.startswith(".artifacts/")
-    assert "--output" in found
+        assert isinstance(keywords.get("type"), ast.Name), (path, options)
+        assert keywords["type"].id == "raw_output_path", (path, options)
+        default = keywords.get("default")
+        if isinstance(default, ast.Constant) and isinstance(default.value, str):
+            assert default.value.startswith(".artifacts/"), (
+                path,
+                options,
+                default.value,
+            )
+    assert seen
+    assert (Path("benchmarks/h2_latency.py"), ("--output",)) in seen
+    assert (
+        Path("benchmarks/compare_gpu4pyscf_batch.py"),
+        ("--progress-output",),
+    ) in seen
+    assert (
+        Path("benchmarks/experiments/issue409-packed-values/run_endpoints.py"),
+        ("--output",),
+    ) in seen

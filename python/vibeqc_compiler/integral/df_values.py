@@ -10,6 +10,7 @@ coefficients are supplied by the existing basis layer.
 from __future__ import annotations
 
 import math
+import typing
 from dataclasses import dataclass
 from functools import cache
 from itertools import product
@@ -38,7 +39,7 @@ def build_df_value_ir(
     family: OperatorFamily | str,
     angular: tuple[int, ...],
     *,
-    recurrence: str = "subset_wick",
+    recurrence: typing.Any = "subset_wick",
 ) -> IntegralIR:
     """Declare a Cartesian s/p/d/f/g raw metric or three-center shell block.
 
@@ -199,7 +200,7 @@ def _reference_boys(argument: float, count: int) -> tuple[float, ...]:
 
 
 def evaluate_df_primitive(
-    kernel: DFComponentKernel, exponents: object, centers: object
+    kernel: DFComponentKernel, exponents: typing.Any, centers: typing.Any
 ) -> float:
     """Interpret one unnormalized primitive integral in Bohr (test/reference use)."""
     exponents = tuple(float(a) for a in exponents)
@@ -290,7 +291,7 @@ def build_df_axis_moment(
     )
 
     @cache
-    def moment(i, j, k):
+    def moment(i: typing.Any, j: typing.Any, k: typing.Any) -> typing.Any:
         if i + j + k == 0:
             return graph.constant(1)
         if states is not None:

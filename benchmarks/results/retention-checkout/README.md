@@ -6,7 +6,7 @@ cleanup. **No GitHub Release, new tag, release asset, external archive or
 publishing workflow is required or authorized.** Nothing is uploaded by the
 restoration helper; Git history is not rewritten.
 
-Only 205 bulky reports/archives (43,163,752 bytes; 41.16 MiB) are removed from
+Only 209 bulky reports/archives (43,485,989 bytes; 41.47 MiB) are removed from
 the current checkout. [`snapshot.manifest.json`](snapshot.manifest.json)
 inventories all 955 original members (61,722,168 bytes), including summaries,
 source patches, manifests and failed/incomplete runs, by original path, size
@@ -123,7 +123,7 @@ separate, explicit authorization, not an implicit extension of cleanup work.
 
 | Campaign | Files removed from checkout | MiB removed |
 | --- | ---: | ---: |
-| `issue206-aot-and-stock` | 6 | 0.99 |
+| `issue206-aot-and-stock` | 10 | 1.30 |
 | `issue206-current-df` | 13 | 2.81 |
 | `issue206-stable-response` | 4 | 1.24 |
 | `issue308-shell-schedules` | 23 | 4.30 |

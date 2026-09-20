@@ -1,5 +1,7 @@
 """Pinned larger SCF states and independent AO/feature/XC workload gates."""
 
+import typing
+
 # Reuse the established native program fixture.
 # ruff: noqa: F811
 from copy import deepcopy
@@ -35,7 +37,7 @@ NAMES = (
 
 
 @pytest.fixture(scope="module")
-def workloads():
+def workloads() -> typing.Any:
     result = {
         name: (meta, data, grid) for name, meta, data, grid in load_workloads(DIRECTORY)
     }
@@ -44,7 +46,9 @@ def workloads():
 
 
 @pytest.mark.parametrize("name", NAMES)
-def test_independent_current_state_and_all_sampled_features(workloads, name):
+def test_independent_current_state_and_all_sampled_features(
+    workloads: typing.Any, name: typing.Any
+) -> None:
     meta, data, grid = workloads[name]
     assert meta["reference"]["converged"]
     assert meta["reference"]["gradient_norm"] < 1e-6
@@ -70,8 +74,8 @@ def test_independent_current_state_and_all_sampled_features(workloads, name):
 
 
 def test_producer_runtime_is_not_an_executable_workload_identity(
-    workloads, native_factory
-):
+    workloads: typing.Any, native_factory: typing.Any
+) -> None:
     meta, data, grid = workloads["water_svp"]
     changed = deepcopy(meta)
     changed["reference"]["seconds"] += 100
@@ -102,8 +106,11 @@ def test_producer_runtime_is_not_an_executable_workload_identity(
 @pytest.mark.parametrize("name", ["water_svp", "oh_diffuse"])
 @pytest.mark.parametrize("functional", ["LDA_XC_PW", "PBE"])
 def test_full_independent_ev_and_replica_resource_composition(
-    workloads, native_factory, name, functional
-):
+    workloads: typing.Any,
+    native_factory: typing.Any,
+    name: typing.Any,
+    functional: typing.Any,
+) -> None:
     meta, data, grid = workloads[name]
     spin = "unpolarized" if meta["layout"] == "total" else "polarized"
     with (

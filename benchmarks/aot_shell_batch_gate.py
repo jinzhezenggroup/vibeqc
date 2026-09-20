@@ -29,9 +29,14 @@ import os
 import time
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from pathlib import Path
+from typing import Any
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc_compiler.common.timing import (
     interleaved_selection_order as interleaved_selection_order,
 )
@@ -190,13 +195,13 @@ def _aot_selection(
                 os.environ[name] = value
 
 
-def _synchronize(cupy_module: object) -> None:
+def _synchronize(cupy_module: Any) -> None:
     """Synchronize the stream used by the native VibeQC CUDA plan."""
 
     cupy_module.cuda.Stream.null.synchronize()
 
 
-def _result_payload(result: object) -> dict[str, object]:
+def _result_payload(result: Any) -> dict[str, Any]:
     """Serialize all diagnostics needed to identify an SCF branch."""
 
     items = []
@@ -230,13 +235,13 @@ def _result_payload(result: object) -> dict[str, object]:
 
 
 def _execute_once(
-    batch: object,
-    cupy_module: object,
+    batch: Any,
+    cupy_module: Any,
     shell_classes: Sequence[str],
     *,
     fock_classes: Sequence[str] | None = None,
     environment_overrides: Mapping[str, str] | None = None,
-) -> tuple[object, float]:
+) -> tuple[Any, float]:
     """Execute one synchronized replay under an exact registry selection."""
 
     with _aot_selection(
@@ -253,13 +258,13 @@ def _execute_once(
 
 
 def _execute(
-    batch: object,
-    cupy_module: object,
+    batch: Any,
+    cupy_module: Any,
     selection: tuple[str, ...],
     repeats: int,
     *,
     environment_overrides: Mapping[str, str] | None = None,
-) -> tuple[object, list[float]]:
+) -> tuple[Any, list[float]]:
     """Compatibility helper for a contiguous selection replay.
 
     New measurements use :func:`_alternating_replays`; this helper remains
@@ -282,7 +287,7 @@ def _execute(
     return result, timings
 
 
-def _accuracy(reference: object, candidate: object) -> tuple[float, float]:
+def _accuracy(reference: Any, candidate: Any) -> tuple[float, float]:
     """Return maximum energy and Cartesian force differences."""
 
     reference_forces = [item.forces for item in reference.items]
@@ -309,16 +314,16 @@ def _accuracy(reference: object, candidate: object) -> tuple[float, float]:
     )
 
 
-def iteration_branch(sample: dict[str, object]) -> tuple[int, ...]:
+def iteration_branch(sample: dict[str, Any]) -> tuple[int, ...]:
     """Return the per-system iteration tuple for one serialized sample."""
 
     return tuple(int(value) for value in sample["iteration_branches"])
 
 
 def pairwise_accuracy(
-    baseline_samples: Sequence[dict[str, object]],
-    candidate_samples: Sequence[dict[str, object]],
-) -> list[dict[str, object]]:
+    baseline_samples: Sequence[dict[str, Any]],
+    candidate_samples: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
     """Pair ordinal A/B replays and retain both accuracy and branch parity."""
 
     if len(baseline_samples) != len(candidate_samples):
@@ -358,15 +363,15 @@ def pairwise_accuracy(
 
 
 def _sample(
-    batch: object,
-    cupy_module: object,
+    batch: Any,
+    cupy_module: Any,
     label: str,
     shell_classes: Sequence[str],
     sequence_index: int,
     *,
     fock_classes: Sequence[str] | None = None,
     environment_overrides: Mapping[str, str] | None = None,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Run and serialize one replay while keeping the result for A/B pairing."""
 
     result, seconds = _execute_once(
@@ -389,8 +394,8 @@ def _sample(
 
 
 def _alternating_replays(
-    batch: object,
-    cupy_module: object,
+    batch: Any,
+    cupy_module: Any,
     baseline_classes: tuple[str, ...],
     candidate_classes: tuple[str, ...],
     repeats: int,
@@ -400,7 +405,7 @@ def _alternating_replays(
     candidate_fock_classes: tuple[str, ...] | None = None,
     baseline_environment_overrides: Mapping[str, str] | None = None,
     candidate_environment_overrides: Mapping[str, str] | None = None,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Collect fixed-dm0 A/B samples in a deterministic interleaved order."""
 
     order = interleaved_selection_order(repeats, order_style)
@@ -456,12 +461,12 @@ def _alternating_replays(
 
 
 def _gate_measurement(
-    measurement: dict[str, object],
+    measurement: dict[str, Any],
     *,
     maximum_energy_error: float,
     maximum_force_error: float,
     minimum_speedup: float,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Attach explicit accuracy, convergence, and performance gate fields."""
 
     pairs = measurement["pairwise_accuracy"]
@@ -534,13 +539,13 @@ def _gate_measurement(
 
 
 def _cold_baseline_and_freeze(
-    batch: object,
-    cupy_module: object,
+    batch: Any,
+    cupy_module: Any,
     baseline_classes: tuple[str, ...],
     *,
     baseline_fock_classes: tuple[str, ...] | None = None,
     baseline_environment_overrides: Mapping[str, str] | None = None,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Execute exactly one measured cold baseline and freeze its post-cold dm0."""
 
     result, seconds = _execute_once(
@@ -565,8 +570,8 @@ def _cold_baseline_and_freeze(
 
 
 def _fixed_dm0_measurement(
-    batch: object,
-    cupy_module: object,
+    batch: Any,
+    cupy_module: Any,
     baseline_classes: tuple[str, ...],
     candidate_classes: tuple[str, ...],
     repeats: int,
@@ -580,7 +585,7 @@ def _fixed_dm0_measurement(
     maximum_energy_error: float,
     maximum_force_error: float,
     minimum_speedup: float,
-) -> tuple[dict[str, object], list[dict[str, object]]]:
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Freeze one cold dm0, then return warmups and a gated A/B measurement."""
 
     cold = _cold_baseline_and_freeze(
@@ -632,8 +637,8 @@ def _fixed_dm0_measurement(
 
 
 def _measurement(
-    batch: object,
-    cupy_module: object,
+    batch: Any,
+    cupy_module: Any,
     baseline_classes: tuple[str, ...],
     candidate_classes: tuple[str, ...],
     repeats: int,
@@ -664,8 +669,8 @@ def _measurement(
 
 
 def _bisect_regression(
-    batch: object,
-    cupy_module: object,
+    batch: Any,
+    cupy_module: Any,
     baseline: tuple[str, ...],
     extras: tuple[str, ...],
     arguments: argparse.Namespace,
@@ -725,7 +730,7 @@ def _selection_payload(
     shell_classes: tuple[str, ...],
     fock_classes: tuple[str, ...] | None,
     environment_overrides: Mapping[str, str] | None = None,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Return a stable JSON representation of a runtime registry selection."""
 
     return {
@@ -752,7 +757,7 @@ def _capacity_fock_selection(
     return _ordered_union(baseline, candidate)
 
 
-def _dry_run_payload(arguments: argparse.Namespace) -> dict[str, object]:
+def _dry_run_payload(arguments: argparse.Namespace) -> dict[str, Any]:
     """Build a no-import plan description for login-node inspection."""
 
     batches = tuple(arguments.batch or (1, 4))
@@ -841,7 +846,7 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="collect the final screened shell-class profile after each batch",
     )
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -917,7 +922,7 @@ def main() -> None:
         )
     case = cases[arguments.case]
     batches = tuple(arguments.batch or (1, 4))
-    payload: dict[str, object] = {
+    payload: dict[str, Any] = {
         "schema_version": 2,
         "benchmark": "aot_shell_batch_gate",
         "protocol": "fixed_dm0_interleaved_ab",
@@ -971,7 +976,7 @@ def main() -> None:
             density_tolerance=arguments.density_tolerance,
             screening_tolerance=arguments.screening_tolerance,
         )
-        measurements: list[dict[str, object]] = []
+        measurements: list[dict[str, Any]] = []
         with calculator.prepare_batch(
             systems,
             charges=[case.charge] * batch_size,

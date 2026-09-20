@@ -6,6 +6,7 @@ import math
 import re
 import statistics
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,7 +28,9 @@ FUNCTIONALS = ("LDA_XC_PW", "PBE")
 OBSERVABLES = ("energy", "potential", "response", "geometry")
 
 
-def checked_error(error, *, atol=1e-11, rtol=1e-10):
+def checked_error(
+    error: typing.Any, *, atol: typing.Any = 1e-11, rtol: typing.Any = 1e-10
+) -> None:
     """Require the unchanged quantitative gate, not a standalone success flag."""
     if (
         error["passed"] is not True
@@ -40,7 +43,7 @@ def checked_error(error, *, atol=1e-11, rtol=1e-10):
         raise ValueError("failed or altered numerical gate")
 
 
-def validate_run(run):
+def validate_run(run: typing.Any) -> typing.Any:
     """Bind complete timing, source, derivative and resource inventories."""
     canonical_hash(run)  # Reject nonfinite values anywhere in retained evidence.
     if (
@@ -210,7 +213,7 @@ def validate_run(run):
     return run
 
 
-def summarize(run):
+def summarize(run: typing.Any) -> typing.Any:
     """Reconstruct medians from retained samples without a speedup decision."""
     validate_run(run)
     return {
@@ -237,7 +240,7 @@ def summarize(run):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--stage", type=Path, required=True)

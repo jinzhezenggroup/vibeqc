@@ -5,6 +5,7 @@ import math
 import os
 import shutil
 import subprocess
+import typing
 from copy import deepcopy
 from pathlib import Path
 
@@ -34,7 +35,9 @@ special = pytest.importorskip("scipy.special")
 gammainc, gammaln = special.gammainc, special.gammaln
 
 
-def native_weighted_evaluator(kernel, folder, backend):
+def native_weighted_evaluator(
+    kernel: typing.Any, folder: typing.Any, backend: typing.Any
+) -> typing.Any:
     """Compile the real emitted callable; independent references stay in Python."""
     cuda = backend == "cuda"
     if cuda and os.environ.get("VIBEQC_TEST_RANGE_CUDA") != "1":
@@ -111,7 +114,9 @@ extern "C" int evaluate(const double* inputs, double* output) {
     owner.evaluate.argtypes = [pointer, pointer]
     owner.evaluate.restype = ctypes.c_int
 
-    def evaluate(exponents, centers, weights):
+    def evaluate(
+        exponents: typing.Any, centers: typing.Any, weights: typing.Any
+    ) -> typing.Any:
         inputs = np.r_[exponents, centers.flat, weights]
         assert inputs.shape == (count,)
         output = np.full(14, 123.0)
@@ -121,7 +126,7 @@ extern "C" int evaluate(const double* inputs, double* output) {
     return evaluate
 
 
-def full_moments(maximum_order, argument):
+def full_moments(maximum_order: typing.Any, argument: typing.Any) -> typing.Any:
     """Independent complete-interval incomplete-gamma reference."""
     return np.array(
         [
@@ -138,7 +143,9 @@ def full_moments(maximum_order, argument):
 
 @pytest.mark.parametrize("argument", [0.0, 1e-12, 0.1, 10.0, 100.0, 1e6])
 @pytest.mark.parametrize("omega", [0.0, 1e-12, 0.2, 1.0, 1e6, 1e150])
-def test_independent_radial_limits_and_sum(argument, omega):
+def test_independent_radial_limits_and_sum(
+    argument: typing.Any, omega: typing.Any
+) -> None:
     rho = 0.73
     reference = full_moments(13, argument)
     full = reference_moments(13, argument, rho, CoulombKernel())
@@ -160,7 +167,9 @@ def test_independent_radial_limits_and_sum(argument, omega):
         np.testing.assert_allclose(sr, rho / (2 * omega) / omega, atol=0, rtol=4e-15)
 
 
-def primitive_ssss(exponents, centers, kernel):
+def primitive_ssss(
+    exponents: typing.Any, centers: typing.Any, kernel: typing.Any
+) -> typing.Any:
     """Normalized primitive Gaussian formula, separate from any native code."""
     a, b, c, d = exponents
     centers = np.asarray(centers, dtype=float)
@@ -187,7 +196,9 @@ def primitive_ssss(exponents, centers, kernel):
 
 @pytest.mark.parametrize("omega", [0.03, 0.7, 4.0, 1e4])
 @pytest.mark.parametrize("family", ["long_range", "short_range"])
-def test_primitive_parts_against_independent_libcint(family, omega):
+def test_primitive_parts_against_independent_libcint(
+    family: typing.Any, omega: typing.Any
+) -> None:
     pyscf = pytest.importorskip("pyscf")
     exponents = [0.13, 0.7, 2.3, 12.0]
     centers = [(0.1, 0.2, -0.1), (0.4, -0.3, 0.2), (-0.2, 0.6, 0.3), (0.3, 0.2, 0.8)]
@@ -209,7 +220,9 @@ def test_primitive_parts_against_independent_libcint(family, omega):
 
 
 @pytest.mark.parametrize("family", ["long_range", "short_range"])
-def test_nuclear_moment_chain_rule_holds_at_fixed_omega(family):
+def test_nuclear_moment_chain_rule_holds_at_fixed_omega(
+    family: typing.Any,
+) -> None:
     kernel = CoulombKernel(family, 0.8)
     argument, rho = 1.3, 0.71
     target = -np.array(reference_moments(5, argument, rho, kernel))[1:]
@@ -223,7 +236,9 @@ def test_nuclear_moment_chain_rule_holds_at_fixed_omega(family):
 
 
 @pytest.mark.parametrize("family", ["long_range", "short_range"])
-def test_range_ir_identity_and_legacy_executor_rejection(family):
+def test_range_ir_identity_and_legacy_executor_rejection(
+    family: typing.Any,
+) -> None:
     """New radial semantics cannot alias v1 IR or enter a full-Coulomb executor."""
     operator = four_center_eri_operator(CoulombKernel(family, np.float32(0.7)))
     integral = build_weighted_eri_ir((1, 0, 0, 0), operator=operator)
@@ -251,7 +266,7 @@ def test_range_ir_identity_and_legacy_executor_rejection(family):
         integral_from_payload(missing)
 
 
-def test_ordinary_coulomb_payload_preserves_v1_contract():
+def test_ordinary_coulomb_payload_preserves_v1_contract() -> None:
     integral = build_weighted_eri_ir((1, 0, 0, 0))
     payload = integral_to_payload(integral)
     assert payload["schema_version"] == 1
@@ -265,8 +280,8 @@ def test_ordinary_coulomb_payload_preserves_v1_contract():
     "angular", [(1, 0, 0, 0), (2, 1, 0, 1), (3, 0, 0, 0), (3, 3, 3, 3)]
 )
 def test_generated_range_values_and_all_center_derivatives_against_libcint(
-    family, angular, backend, tmp_path
-):
+    family: typing.Any, angular: typing.Any, backend: typing.Any, tmp_path: typing.Any
+) -> None:
     """Compare each radial part independently, with arbitrary signed weights.
 
     Libcint Cartesian normalization is removed using its overlap diagonal and
@@ -293,7 +308,7 @@ def test_generated_range_values_and_all_center_derivatives_against_libcint(
         size=len(kernel.component_indices)
     )
 
-    def variables(positions):
+    def variables(positions: typing.Any) -> typing.Any:
         values = primitive_variables(
             exponents, positions, integral.maximum_coulomb_order
         )
@@ -317,7 +332,7 @@ def test_generated_range_values_and_all_center_derivatives_against_libcint(
 
     if backend == "graph":
 
-        def evaluate(positions):
+        def evaluate(positions: typing.Any) -> typing.Any:
             inputs = variables(positions)
             return kernel.graph.evaluate(kernel.value, inputs), np.array(
                 [
@@ -328,7 +343,7 @@ def test_generated_range_values_and_all_center_derivatives_against_libcint(
     else:
         native = native_weighted_evaluator(kernel, tmp_path, backend)
 
-        def evaluate(positions):
+        def evaluate(positions: typing.Any) -> typing.Any:
             return native(exponents, positions, weights[list(kernel.component_indices)])
 
     actual, derivative = evaluate(centers)
@@ -410,8 +425,8 @@ def test_generated_range_values_and_all_center_derivatives_against_libcint(
 @pytest.mark.parametrize("family", ["long_range", "short_range"])
 @pytest.mark.parametrize("name", ["psss", "dpsp", "fsss"])
 def test_contracted_range_stream_and_public_basis_against_libcint(
-    backend, family, name, tmp_path
-):
+    backend: typing.Any, family: typing.Any, name: typing.Any, tmp_path: typing.Any
+) -> None:
     """Use the established primitive normalization and public cotangent pullback."""
     pytest.importorskip("pyscf")
     from vibeqc_compiler.integral.blocks import WeightTile
@@ -449,7 +464,9 @@ def test_contracted_range_stream_and_public_basis_against_libcint(
         packed = np.zeros(len(kernel.component_indices))
         previous = None
 
-        def accumulate(key, packed=packed, result=result):
+        def accumulate(
+            key: typing.Any, packed: typing.Any = packed, result: typing.Any = result
+        ) -> None:
             value, gradient = native(key[:4], np.array(key[4:]).reshape(4, 3), packed)
             result[:] += np.r_[value, gradient.ravel()]
 

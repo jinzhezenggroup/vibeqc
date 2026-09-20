@@ -10,7 +10,7 @@ import argparse
 from vibeqc_compiler.integral.ecp_projector import emit_ecp_quadrature_cpp
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()

@@ -1,6 +1,7 @@
 """The real #162 producer, source binding and lifetime gates (Slurm on CUDA)."""
 
 import os
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -43,7 +44,9 @@ GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
         ),
     ],
 )
-def test_native_snapshot_rejects_relabeling_and_replay(method, device):
+def test_native_snapshot_rejects_relabeling_and_replay(
+    method: typing.Any, device: typing.Any
+) -> None:
     unrestricted = method.endswith("uks")
     charge, multiplicity = (-1, 2) if unrestricted else (0, 1)
     calculator = Calculator(

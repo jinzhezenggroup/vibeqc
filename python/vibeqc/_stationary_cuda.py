@@ -1,13 +1,16 @@
-"""All-seven-source CUDA RKS/UKS gradient diagnostic with explicit host export.
+"""Complete CUDA RKS/UKS gradient diagnostic with explicit host export.
 
-This is a small-domain diagnostic, not public Calculator force support. Native
+This bounded consumer also supplies qualified public Calculator CUDA forces. Native
 CUDA SCF exports its verified D/W frame to the host. Python enumerates primitive
 records and gathers TensorIR inputs; all derivative/normalization/contraction,
 AO/features/XC work, atom scatter and final source reduction execute on CUDA.
 No CPU derivative or interpreter fallback is available.
 """
 
+from __future__ import annotations
+
 import ctypes as ct
+import typing
 from contextlib import ExitStack
 from itertools import islice, product
 from pathlib import Path
@@ -57,11 +60,13 @@ _SOURCE_NAMES = (
 )
 
 
-def _ptr(array):
+def _ptr(array: typing.Any) -> typing.Any:
     return array.ctypes.data_as(_INT if array.dtype == np.int64 else _DOUBLE)
 
 
-def _checked(array, shape, dtype=np.float64):
+def _checked(
+    array: typing.Any, shape: typing.Any, dtype: typing.Any = np.float64
+) -> typing.Any:
     """Reject lossy/coercive admission before ctypes or device access."""
     value = np.asarray(array)
     if value.shape != shape or value.dtype != dtype or not np.isfinite(value).all():
@@ -69,7 +74,7 @@ def _checked(array, shape, dtype=np.float64):
     return np.ascontiguousarray(value)
 
 
-def _layout(basis):
+def _layout(basis: typing.Any) -> typing.Any:
     """Read the native normalized basis records without evaluating integrals."""
     if any(s.angular_momentum > 1 for s in basis.shells):
         raise NotImplementedError("CUDA gradient diagnostic admits s/p bases only")
@@ -95,7 +100,16 @@ def _layout(basis):
 class _CudaSources:
     """Serialized finite owner; device accumulators publish only after success."""
 
-    def __init__(self, basis, artifact, compiler, device, points, records, budget):
+    def __init__(
+        self,
+        basis: typing.Any,
+        artifact: typing.Any,
+        compiler: typing.Any,
+        device: typing.Any,
+        points: typing.Any,
+        records: typing.Any,
+        budget: typing.Any,
+    ) -> None:
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
             raise ValueError("stationary CUDA binary hash mismatch")
         self.artifact = artifact
@@ -157,12 +171,12 @@ class _CudaSources:
             ct.byref(self.handle),
         )
 
-    def _call(self, name, *args):
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self.library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def reset(self, tolerance):
+    def reset(self, tolerance: typing.Any) -> None:
         self.used, self.pending = 0, None
         self._call(
             "stationary_reset",
@@ -172,7 +186,7 @@ class _CudaSources:
             tolerance,
         )
 
-    def flush(self):
+    def flush(self) -> None:
         if self.used:
             self._call(
                 "stationary_records",
@@ -184,7 +198,15 @@ class _CudaSources:
             )
             self.used = 0
 
-    def integral(self, source, operator, indices, weight, nucleus=None, charge=1.0):
+    def integral(
+        self,
+        source: typing.Any,
+        operator: typing.Any,
+        indices: typing.Any,
+        weight: typing.Any,
+        nucleus: typing.Any = None,
+        charge: typing.Any = 1.0,
+    ) -> None:
         """Pack exponents, raw normalization factors and plan weights separately.
 
         Host work is discrete record enumeration. CUDA multiplies every
@@ -214,7 +236,7 @@ class _CudaSources:
             if self.used == len(self.buffer):
                 self.flush()
 
-    def nuclear(self, a, b, charges):
+    def nuclear(self, a: typing.Any, b: typing.Any, charges: typing.Any) -> None:
         self.flush()
         self.pending = self.kinds["nuclear", ()], 6
         r, m = self.buffer[0], self.maps[0]
@@ -225,7 +247,15 @@ class _CudaSources:
         m[:2] = a, b
         self.used = 1
 
-    def geometry(self, task, owners, weights, raw, *, pbe):
+    def geometry(
+        self,
+        task: typing.Any,
+        owners: typing.Any,
+        weights: typing.Any,
+        raw: typing.Any,
+        *,
+        pbe: typing.Any,
+    ) -> None:
         view = task.view
         if task._owner.device_id != self.device:
             raise ValueError("stationary/grid current owner device mismatch")
@@ -244,13 +274,13 @@ class _CudaSources:
             _ptr(raw),
         )
 
-    def finish(self):
+    def finish(self) -> typing.Any:
         self.flush()
         out = np.empty((7, self.natom, 3))
         self._call("stationary_finish", self.handle, _ptr(out), out.size)
         return {name: out[i] for i, name in enumerate(_SOURCE_NAMES)}
 
-    def metrics(self):
+    def metrics(self) -> typing.Any:
         values = (ct.c_uint64 * 8)()
         if self.library.stationary_metrics(self.handle, values, 8):
             raise RuntimeError("stationary metrics unavailable")
@@ -270,38 +300,39 @@ class _CudaSources:
             )
         )
 
-    def close(self):
+    def close(self) -> None:
         if self.handle:
             self.library.stationary_destroy(self.handle)
             self.handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "handle"):
             self.close()
 
 
 def complete_rks_cuda_gradient_diagnostic(
-    state,
-    basis,
+    state: typing.Any,
+    basis: typing.Any,
     *,
-    compiler,
-    cache,
-    tile_points=256,
-    integral_terms=32,
-    primitive_tile=128,
-    max_device_bytes=512 << 20,
-    max_host_bytes=256 << 20,
-    max_grid_points=1_000_000,
-    max_primitive_records=2_000_000,
-    max_grid_pair_visits=100_000_000,
-):
-    """Consume a current native CUDA RKS/UKS snapshot with all seven plan sources.
+    compiler: typing.Any,
+    cache: typing.Any,
+    tile_points: typing.Any = 256,
+    integral_terms: typing.Any = 32,
+    primitive_tile: typing.Any = 128,
+    max_device_bytes: typing.Any = 512 << 20,
+    max_host_bytes: typing.Any = 256 << 20,
+    max_grid_points: typing.Any = 1_000_000,
+    max_primitive_records: typing.Any = 2_000_000,
+    max_grid_pair_visits: typing.Any = 100_000_000,
+    max_ecp_pair_samples: int = 100_000_000,
+) -> typing.Any:
+    """Consume a current native CUDA RKS/UKS snapshot with every plan source.
 
     Domain: real FP64 direct all-electron s/p LDA/PBE RKS/UKS, native version-three
     unpruned grid and distinct noncolliding centers. No CPKS is required.
@@ -309,31 +340,33 @@ def complete_rks_cuda_gradient_diagnostic(
     accumulators, grid owner and one TensorIR consumer coexist under the stated
     additional-device budget; the pre-existing SCF owner/export and Python
     objects are reported separately. No claim of full device residency is made.
-    Compilation is explicit; GPU preparation/execution must run inside Slurm.
-    Public forces remain disabled until broader production qualification.
+    Compilation and the selected GPU allocation are explicit.
+    Scalar-ECP v5 adds generated CUDA local/nonlocal derivatives and effective
+    charges (nine sources). Its small dense export is separately budgeted and
+    preserves the checked native two-grid gate. The public wrapper restricts ECP
+    force capability to Cartesian/real-spherical s/p records.
     """
     started = perf_counter()
     contract = StationaryDerivativeContract(state.identity)
     contract.validate(state)
     if state._source.backend != "cuda":
         raise NotImplementedError("CUDA diagnostic requires a native CUDA KS state")
-    if state._source.metadata[0] != 3 or state._source.grid_spec is None:
+    if state._source.metadata[0] not in (3, 5) or state._source.grid_spec is None:
         raise NotImplementedError("CUDA diagnostic requires snapshot v3 raw measures")
     if (
         basis.identity != state.identity.basis_identity
         or native_ao_geometry_identity(basis) != state.identity.geometry_identity
     ):
         raise ValueError("stationary CUDA basis/geometry mismatch")
-    # The snapshot can also represent an ECP energy state, but this consumer
-    # supplies all-electron nuclear/attraction derivatives only. Occupations
-    # from the verified native frame must agree with the all-electron count.
+    ecp = state._source.hamiltonian == "scalar-semilocal-ecp"
+    # Legacy v3 has no Hamiltonian records. Core-adjusted v3 remains rejected.
     if (
         float(np.sum(state.occupations))
-        != sum(a.atomic_number for a in basis.atoms) - basis.charge
+        != sum(a.atomic_number for a in basis.atoms)
+        - sum(state._source.ecp_cores)
+        - basis.charge
     ):
-        raise NotImplementedError(
-            "CUDA gradient diagnostic does not support ECP states"
-        )
+        raise NotImplementedError("CUDA gradient diagnostic requires bound ECP states")
     if not isinstance(compiler, CudaCompilerAdapter):
         raise TypeError("an explicit CUDA compiler adapter is required")
     for value, name, cap in (
@@ -345,6 +378,7 @@ def complete_rks_cuda_gradient_diagnostic(
         (max_grid_points, "max_grid_points", 1 << 40),
         (max_primitive_records, "max_primitive_records", 1 << 40),
         (max_grid_pair_visits, "max_grid_pair_visits", 1 << 40),
+        (max_ecp_pair_samples, "max_ecp_pair_samples", 1 << 40),
     ):
         if type(value) is not int or not 1 <= value <= cap:
             raise ValueError(f"{name} must be an integer in [1,{cap}]")
@@ -362,9 +396,18 @@ def complete_rks_cuda_gradient_diagnostic(
     if pair_visits > max_grid_pair_visits:
         raise ValueError("grid work budget exceeded")
     method, _ = resolve_ks_method(state.identity.method)
-    plan = StationaryGradientPlan(method, StationaryMeanField(SCF_POINT_MODEL))
+    plan = StationaryGradientPlan(
+        method,
+        StationaryMeanField(
+            SCF_POINT_MODEL,
+            hamiltonian="scalar-semilocal-ecp" if ecp else "all-electron",
+        ),
+    )
     density = state.density if contract.spin == "polarized" else state.density[0]
-    if plan.source_names != _SOURCE_NAMES:
+    if (
+        tuple(s for s in plan.source_names if s not in ("ecp_local", "ecp_nonlocal"))
+        != _SOURCE_NAMES
+    ):
         raise ValueError(
             "CUDA runtime source coverage differs from StationaryGradientPlan"
         )
@@ -415,6 +458,63 @@ def complete_rks_cuda_gradient_diagnostic(
     )
     if host_bound > max_host_bytes:
         raise ValueError("stationary additional-host byte budget exceeded")
+    ecp_workspace = ecp_pair_samples = 0
+    if ecp:
+        from vibeqc_compiler.integral.ecp_policy import (
+            COARSE_POLAR_POINTS,
+            COARSE_RADIAL_POINTS,
+            REFINED_POLAR_POINTS,
+            REFINED_RADIAL_POINTS,
+        )
+
+        from .resources_hf import _ecp_workspace
+
+        # Dense export/contraction is a deliberately small diagnostic domain.
+        if (
+            n > 16
+            or na > 8
+            or basis.nprimitive > 128
+            or len(state._source.ecp_terms) > 128
+        ):
+            raise ValueError("ECP diagnostic dense-export domain exceeded")
+        ecp_pair_samples = (
+            sum(core > 0 for core in state._source.ecp_cores)
+            * (n * (n + 1) // 2)
+            * 2
+            * (
+                COARSE_RADIAL_POINTS * COARSE_POLAR_POINTS**2
+                + REFINED_RADIAL_POINTS * REFINED_POLAR_POINTS**2
+            )
+        )
+        if ecp_pair_samples > max_ecp_pair_samples:
+            raise ValueError("ECP quadrature pair-sample work budget exceeded")
+        ecp_workspace = _ecp_workspace(
+            {
+                "atoms": na,
+                "orbital": {
+                    "nbf": n,
+                    "cartesian_nbf": n,
+                    "primitives": basis.nprimitive,
+                    "ecp_terms": len(state._source.ecp_terms),
+                },
+            },
+            cuda=True,
+        )
+        for name in ("ecp_local", "ecp_nonlocal"):
+            tensor_plans[name] = plan_cuda(
+                plan.integral_block(name, terms=n * n, coordinates=3 * na).contraction,
+                compiler.target,
+                max_bytes=available,
+            )
+        # Provider export occurs before the grid/source/TensorIR owners exist.
+        # Account both native snapshots, dense derivatives and immutable copies;
+        # include the existing conservative two-grid provider workspace.
+        host_bound += ecp_workspace + 4 * state._source.values.nbytes + 144 * na * n * n
+        host_bound += max(t.host_bytes for t in tensor_plans.values())
+        if host_bound > max_host_bytes:
+            raise ValueError("ECP additional-host byte budget exceeded")
+        if ecp_workspace > max_device_bytes:
+            raise ValueError("ECP additional-device budget exceeded")
     cache = Path(cache)
     spec = state._source.grid_spec
     artifact = compile_stationary_cuda(
@@ -435,7 +535,7 @@ def complete_rks_cuda_gradient_diagnostic(
         "device_ms": 0.0,
     }
 
-    def record_tensor(result, feeds):
+    def record_tensor(result: typing.Any, feeds: typing.Any) -> None:
         # Aggregate in constant storage; retaining one metrics dictionary per
         # AO quartet block would defeat the bounded diagnostic orchestration.
         tensor_work["executions"] += 1
@@ -447,7 +547,12 @@ def complete_rks_cuda_gradient_diagnostic(
         for name in ("endpoint_ms", "device_ms"):
             tensor_work[name] += result.metrics[name]
 
-    peak = grid_plan.peak_bytes + source_bytes
+    # Run the checked CUDA provider only after all admission checks pass.
+    derivatives = state._source.ecp_derivatives() if ecp else None
+    peak = max(ecp_workspace, grid_plan.peak_bytes + source_bytes)
+    charges = np.asarray([a.atomic_number for a in basis.atoms]) - np.asarray(
+        state._source.ecp_cores
+    )
     with ExitStack() as stack:
         sources = stack.enter_context(
             _CudaSources(
@@ -508,17 +613,16 @@ def complete_rks_cuda_gradient_diagnostic(
                             _SOURCE_NAMES.index(source), operator, indices, weight
                         )
                         if source == "one_electron":
-                            for a, atom in enumerate(basis.atoms):
+                            for a in range(na):
                                 sources.integral(
                                     0,
                                     "nuclear_attraction",
                                     indices,
                                     weight,
                                     a,
-                                    atom.atomic_number,
+                                    charges[a],
                                 )
             sources.flush()
-        charges = np.asarray([a.atomic_number for a in basis.atoms])
         for a in range(na):
             for b in range(a):
                 sources.nuclear(a, b, charges)
@@ -539,6 +643,26 @@ def complete_rks_cuda_gradient_diagnostic(
                     pbe=pbe,
                 )
         components = sources.finish()
+        if ecp:
+            # Full ordered AO-pair contraction; the existing TensorIR supplies
+            # spin summation and every scientific weight/reduction on CUDA.
+            for k, name in enumerate(("ecp_local", "ecp_nonlocal")):
+                tp = tensor_plans[name]
+                ta = compile_cuda(tp, compiler, cache)
+                artifacts.append(ta)
+                peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
+                feeds = {
+                    "density_left": np.ascontiguousarray(
+                        state.density.reshape(plan.spin_blocks, n * n)
+                    ),
+                    "integral_derivatives": np.ascontiguousarray(
+                        derivatives[k].reshape(3 * na, n * n).T
+                    ),
+                }
+                with PreparedCuda(tp, ta, device=device) as contraction:
+                    result = contraction.execute(feeds)
+                    record_tensor(result, feeds)
+                    components[name] = result.outputs["gradient"].reshape(na, 3)
         # Validate actual coverage before the pre-admitted complete reduction.
         plan.reduction_program(atoms=na, sources=components)
         tp = tensor_plans["reduction"]
@@ -558,6 +682,17 @@ def complete_rks_cuda_gradient_diagnostic(
     if work["primitive_records"] != records or work["grid_pair_visits"] != pair_visits:
         raise RuntimeError("CUDA executed work disagrees with admitted source coverage")
     work.update(
+        ecp_provider="generated-cuda/two-grid/dense-host-export" if ecp else None,
+        ecp_provider_workspace_bound=ecp_workspace,
+        ecp_state_export=(
+            "one additional live final-state read/validation before CUDA ECP export"
+            if ecp
+            else None
+        ),
+        ecp_derivative_export_bytes=derivatives.nbytes if ecp else 0,
+        ecp_ordered_pairs=2 * n * n if ecp else 0,
+        ecp_quadrature_pair_samples=ecp_pair_samples,
+        ecp_pair_sample_budget=max_ecp_pair_samples,
         ordered_pairs=n * n,
         ordered_quartets=n**4,
         additional_device_peak_bound=peak,
@@ -587,5 +722,6 @@ def complete_rks_cuda_gradient_diagnostic(
         plan.identity,
         state.identity,
         MappingProxyType(work),
-        execution="cuda-seven-source/explicit-host-snapshot-and-orchestration-v1",
+        execution=("cuda-nine-source" if ecp else "cuda-seven-source")
+        + "/explicit-host-snapshot-and-orchestration-v1",
     )

@@ -14,6 +14,7 @@ class KernelResources:
     spill_store_bytes: int
     spill_load_bytes: int
     shared_bytes: int
+    local_bytes: int | None = None
 
 
 def parse_resources(diagnostics: str) -> tuple[KernelResources, ...]:
@@ -26,6 +27,7 @@ def parse_resources(diagnostics: str) -> tuple[KernelResources, ...]:
     result = []
     for match in pattern.finditer(diagnostics):
         shared = re.search(r"(\d+) bytes smem", match["rest"])
+        local = re.search(r"(\d+) bytes lmem", match["rest"])
         result.append(
             KernelResources(
                 function=match["function"],
@@ -34,6 +36,7 @@ def parse_resources(diagnostics: str) -> tuple[KernelResources, ...]:
                 spill_store_bytes=int(match["stores"]),
                 spill_load_bytes=int(match["loads"]),
                 shared_bytes=int(shared[1]) if shared else 0,
+                local_bytes=int(local[1]) if local else None,
             )
         )
     return tuple(result)

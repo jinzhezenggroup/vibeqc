@@ -42,10 +42,16 @@ import os
 import sys
 import time
 import types
+import typing
 from contextlib import ExitStack
 from pathlib import Path
 from statistics import median
 from typing import Any
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPOSITORY_ROOT) not in sys.path:
@@ -208,7 +214,7 @@ class _CudaFacade:
         )
 
 
-def _device_backend():
+def _device_backend() -> typing.Any:
     """Return ``(module, name)`` for device metadata and synchronization."""
 
     try:
@@ -219,13 +225,13 @@ def _device_backend():
         return _CudaFacade(), "ctypes-cuda-runtime"
 
 
-def _synchronize(backend: object) -> None:
+def _synchronize(backend: typing.Any) -> None:
     """Block on the default stream of the active device backend."""
 
     backend.cuda.Stream.null.synchronize()
 
 
-def _displaced_atoms(atoms: object, displacement_bohr: float) -> object:
+def _displaced_atoms(atoms: typing.Any, displacement_bohr: float) -> typing.Any:
     """Move the last nucleus along +x to build a changed-geometry warm start.
 
     A single deterministic displacement keeps the model identity difference
@@ -240,15 +246,15 @@ def _displaced_atoms(atoms: object, displacement_bohr: float) -> object:
 
 
 def _calculator(
-    case: object,
-    arguments: object,
+    case: typing.Any,
+    arguments: typing.Any,
     *,
     precision: str,
     energy_tolerance: float,
     density_tolerance: float | None = None,
     screening_tolerance: float | None = None,
     max_iterations: int | None = None,
-) -> object:
+) -> typing.Any:
     """Construct one calculator with the controls fixed for this matrix."""
 
     from vibeqc import Calculator
@@ -276,7 +282,7 @@ def _calculator(
     )
 
 
-def _force_max_abs(result: object) -> float | None:
+def _force_max_abs(result: typing.Any) -> float | None:
     """Return the maximum absolute Cartesian force component, if evaluated."""
 
     if result.forces is None:
@@ -285,7 +291,11 @@ def _force_max_abs(result: object) -> float | None:
 
 
 def _strict_reference(
-    case: object, arguments: object, atoms: object, properties: object, backend: object
+    case: typing.Any,
+    arguments: typing.Any,
+    atoms: typing.Any,
+    properties: typing.Any,
+    backend: typing.Any,
 ) -> dict[str, Any]:
     """Compute the tighter FP64 reference the relaxed runs are compared to."""
 
@@ -334,7 +344,7 @@ def _strict_reference(
     return {"result": result, "model": model, "record": record}
 
 
-def _accuracy_target(arguments: object, tolerance: float) -> object:
+def _accuracy_target(arguments: typing.Any, tolerance: float) -> typing.Any:
     """Build the observable requirements for the requested properties."""
 
     from vibeqc import ObservableTarget, TargetAccuracy
@@ -349,7 +359,13 @@ def _accuracy_target(arguments: object, tolerance: float) -> object:
     return TargetAccuracy(tuple(observables))
 
 
-def _evidence(model, values, reference_values, target, converged):
+def _evidence(
+    model: typing.Any,
+    values: typing.Any,
+    reference_values: typing.Any,
+    target: typing.Any,
+    converged: typing.Any,
+) -> typing.Any:
     """Build the repository's own observable-error verdict for one run.
 
     The full assessment document repeats the model identity, its hashes and the
@@ -377,7 +393,7 @@ def _evidence(model, values, reference_values, target, converged):
     return {"status": assessment.status, "outcomes": list(assessment.outcomes)}
 
 
-def _error_columns(result: object, reference: object) -> dict[str, Any]:
+def _error_columns(result: typing.Any, reference: typing.Any) -> dict[str, Any]:
     """Report raw observable differences next to the typed evidence record."""
 
     columns: dict[str, Any] = {
@@ -399,7 +415,14 @@ def _error_columns(result: object, reference: object) -> dict[str, Any]:
     return columns
 
 
-def _tolerance_matrix(case_name, case, atoms_base, atoms_moved, arguments, backend):
+def _tolerance_matrix(
+    case_name: typing.Any,
+    case: typing.Any,
+    atoms_base: typing.Any,
+    atoms_moved: typing.Any,
+    arguments: typing.Any,
+    backend: typing.Any,
+) -> typing.Any:
     """Run the tolerance sweep for both policies over one case."""
 
     references = {
@@ -487,8 +510,14 @@ def _tolerance_matrix(case_name, case, atoms_base, atoms_moved, arguments, backe
 
 
 def _batch_matrix(
-    case_name, case, atoms_base, atoms_moved, references, arguments, backend
-):
+    case_name: typing.Any,
+    case: typing.Any,
+    atoms_base: typing.Any,
+    atoms_moved: typing.Any,
+    references: typing.Any,
+    arguments: typing.Any,
+    backend: typing.Any,
+) -> typing.Any:
     """Measure complete ragged batch solves, including per-item provenance."""
 
     records: list[dict[str, Any]] = []
@@ -592,7 +621,7 @@ def _batch_matrix(
     return records
 
 
-def _synchronized_seconds(started: float, backend: object) -> float:
+def _synchronized_seconds(started: float, backend: typing.Any) -> float:
     """Finish all outstanding device work before reporting a wall time."""
 
     _synchronize(backend)
@@ -600,7 +629,7 @@ def _synchronized_seconds(started: float, backend: object) -> float:
 
 
 def _batch_items(
-    result: object, expected: object, target: object
+    result: typing.Any, expected: typing.Any, target: typing.Any
 ) -> list[dict[str, Any]]:
     """Describe each input-ordered item, keeping failures in their slot."""
 
@@ -790,7 +819,7 @@ def main() -> None:
     parser.add_argument("--properties", default="energy,forces")
     parser.add_argument("--skip-batch", action="store_true")
     parser.add_argument("--batch-sizes", default="1,4")
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     arguments = parser.parse_args()
     if (
         arguments.repeats < 1

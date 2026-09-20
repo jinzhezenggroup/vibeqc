@@ -1,5 +1,7 @@
 """Basis transport is tested against independent Euclidean least squares."""
 
+import typing
+
 import numpy as np
 import pytest
 from vibeqc.projection import (
@@ -10,7 +12,7 @@ from vibeqc.projection import (
 )
 
 
-def spaces():
+def spaces() -> typing.Any:
     """Two non-nested bases embedded in a common orthonormal ambient space."""
     rng = np.random.default_rng(42)
     source = rng.normal(size=(9, 6))
@@ -21,7 +23,7 @@ def spaces():
     return source, target, coefficients
 
 
-def test_nonnested_projection_matches_independent_least_squares_and_rotations():
+def test_nonnested_projection_matches_independent_least_squares_and_rotations() -> None:
     source, target, coefficients = spaces()
     source_metric, target_metric = source.T @ source, target.T @ target
     cross = target.T @ source
@@ -56,8 +58,8 @@ def test_nonnested_projection_matches_independent_least_squares_and_rotations():
 
 @pytest.mark.parametrize("occupation", [1, 2])
 def test_same_basis_and_density_reconstruction_preserve_metric_electron_properties(
-    occupation,
-):
+    occupation: typing.Any,
+) -> None:
     source, _, coefficients = spaces()
     metric = source.T @ source
     density = occupation * coefficients @ coefficients.T
@@ -73,7 +75,9 @@ def test_same_basis_and_density_reconstruction_preserve_metric_electron_properti
     assert np.trace(result.density @ metric) == pytest.approx(2 * occupation)
 
 
-def test_conditioning_discards_small_metric_modes_but_does_not_invent_missing_orbitals():
+def test_conditioning_discards_small_metric_modes_but_does_not_invent_missing_orbitals() -> (
+    None
+):
     source_metric = np.eye(2)
     target_metric = np.diag([1, 1, 1e-14])
     cross = np.array([[1, 0], [0, 1], [0, 0]])
@@ -86,7 +90,7 @@ def test_conditioning_discards_small_metric_modes_but_does_not_invent_missing_or
         project_occupied(source_metric, np.eye(2), np.diag([1, 0]), np.eye(2))
 
 
-def test_poor_projection_inconsistent_overlap_and_source_states_are_rejected():
+def test_poor_projection_inconsistent_overlap_and_source_states_are_rejected() -> None:
     metric = np.eye(2)
     occupied = np.eye(2)[:, :1]
     with pytest.raises(ProjectionRejected, match="projection residual"):
@@ -104,7 +108,7 @@ def test_poor_projection_inconsistent_overlap_and_source_states_are_rejected():
         project_occupied(metric, metric, metric, occupied.astype(complex))
 
 
-def test_empty_spin_channel_preserves_zero_electrons():
+def test_empty_spin_channel_preserves_zero_electrons() -> None:
     result = project_density(
         np.eye(2),
         np.eye(3),

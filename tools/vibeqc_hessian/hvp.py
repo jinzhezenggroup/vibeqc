@@ -6,7 +6,10 @@ relaxation contractions. It intentionally does not expose a Calculator Hessian
 API and does not claim an all-device response path.
 """
 
+from __future__ import annotations
+
 import time
+import typing
 from copy import deepcopy
 from dataclasses import dataclass, field
 from hashlib import sha256
@@ -38,11 +41,11 @@ class RHFHVPResult:
     _diagnostics: dict = field(repr=False)
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         return deepcopy(self._diagnostics)
 
     @property
-    def components(self):
+    def components(self) -> typing.Any:
         return {
             "nuclear": self.nuclear,
             "core": self.core,
@@ -53,19 +56,22 @@ class RHFHVPResult:
 
 
 def rhf_hvp(
-    state,
-    direction,
+    state: typing.Any,
+    direction: typing.Any,
     *,
-    jk_backend="cpu",
-    device_id=0,
-    device_budget_bytes=64 << 20,
-    response_execution="host",
-    response_device_budget_bytes=128 << 20,
-    solver_options=None,
-    first_backend="cpu",
-    first_compiler=None,
-    first_budget_bytes=64 << 20,
-):
+    jk_backend: typing.Any = "cpu",
+    device_id: typing.Any = 0,
+    device_budget_bytes: typing.Any = 64 << 20,
+    response_execution: typing.Any = "host",
+    response_device_budget_bytes: typing.Any = 128 << 20,
+    solver_options: typing.Any = None,
+    first_backend: typing.Any = "cpu",
+    first_compiler: typing.Any = None,
+    first_budget_bytes: typing.Any = 64 << 20,
+    relaxation_backend: str = "cpu",
+    relaxation_compiler: typing.Any = None,
+    relaxation_budget_bytes: int = 64 << 20,
+) -> typing.Any:
     """Apply the complete conventional RHF molecular Hessian to one direction.
 
     The second-integral skeleton is generated directly as weighted HVPs. One
@@ -74,15 +80,40 @@ def rhf_hvp(
     output coordinate. No molecular Hessian, all-coordinate H1/S1 tensor, or
     coordinate-by-coordinate ERI derivative tensor is allocated.
 
-    CPU is the qualified second-integral and relaxation-contraction backend in
-    this slice. CUDA may be selected independently for directional H1/S1 and
-    direct J/K response, but AO/MO transforms, Krylov, second-integral HVPs and
-    relaxation contractions remain host-side and are reported as such.
+    CPU remains the qualified second-integral HVP backend. CUDA may be selected
+    independently for directional H1/S1, direct J/K/response residency and the
+    first-integral relaxation contraction. The CUDA relaxation path uploads the
+    solved D1/W1/P0 AO weights, keeps primitive derivatives and AO-weight
+    products on device, and downloads only the final Cartesian contraction.
+    Second-integral HVPs and final molecular assembly remain host-side.
     """
     if not isinstance(state, NativeRHFState):
         raise TypeError("RHF HVP requires NativeRHFState")
     state.validate()
     vector = checked_direction(direction, state.nat)
+    if relaxation_backend not in ("cpu", "cuda"):
+        raise ValueError("relaxation_backend must be cpu or cuda")
+    if relaxation_backend == "cuda":
+        from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+
+        if not isinstance(relaxation_compiler, CudaCompilerAdapter):
+            raise TypeError("CUDA relaxation requires an explicit CudaCompilerAdapter")
+        if (
+            type(relaxation_budget_bytes) is not int
+            or not 0 < relaxation_budget_bytes < 2**63
+        ):
+            raise ValueError("relaxation_budget_bytes must be a positive int64")
+        from vibeqc_compiler.integral.first_gradient_execute import (
+            first_gradient_storage,
+        )
+
+        storage = first_gradient_storage(state.nbf, state.nat, 3, 128)
+        if storage["numeric_peak_bytes"] > relaxation_budget_bytes:
+            raise MemoryError(
+                "CUDA relaxation numeric storage exceeds relaxation_budget_bytes"
+            )
+    elif relaxation_compiler is not None:
+        raise ValueError("relaxation_compiler is only meaningful for CUDA relaxation")
 
     total_started = time.perf_counter()
 
@@ -103,11 +134,27 @@ def rhf_hvp(
     response_seconds = time.perf_counter() - response_started
 
     relaxation_started = time.perf_counter()
-    relaxation = generated_rhf_relaxation_contraction(
-        state,
-        response.response.density_derivative,
-        response.response.energy_weighted_density_derivative,
-    )
+    if relaxation_backend == "cuda":
+        from .first_order_cuda import generated_rhf_relaxation_contraction_cuda
+
+        relaxation, relaxation_provider = generated_rhf_relaxation_contraction_cuda(
+            state,
+            response.response.density_derivative,
+            response.response.energy_weighted_density_derivative,
+            relaxation_compiler,
+            device_id=device_id,
+            budget_bytes=relaxation_budget_bytes,
+        )
+    else:
+        relaxation = generated_rhf_relaxation_contraction(
+            state,
+            response.response.density_derivative,
+            response.response.energy_weighted_density_derivative,
+        )
+        relaxation_provider = {
+            "backend": "cpu-generated-weighted-contraction",
+            "device_transfers": 0,
+        }
     relaxation_seconds = time.perf_counter() - relaxation_started
 
     second_started = time.perf_counter()
@@ -137,7 +184,8 @@ def rhf_hvp(
             "directional_response": response.identity,
             "direction": sha256(vector.astype("<f8", copy=False).tobytes()).hexdigest(),
             "second_integrals": "cpu-generated-weighted-hvp",
-            "relaxation_first_integrals": "cpu-generated-weighted-contraction",
+            "relaxation_first_integrals": relaxation_provider["backend"],
+            "relaxation_programs": relaxation_provider.get("program_identities"),
         }
     )
 
@@ -146,7 +194,9 @@ def rhf_hvp(
         "mixed-host-device-resident-response"
         if response_execution == "cuda-resident"
         else "mixed-host-device"
-        if first_backend == "cuda" or jk_backend == "cuda"
+        if first_backend == "cuda"
+        or jk_backend == "cuda"
+        or relaxation_backend == "cuda"
         else "host"
     )
     first_transfer = response_diag.get("first_derivative_provider")
@@ -172,7 +222,8 @@ def rhf_hvp(
         "full_molecular_hessian_allocated": False,
         "all_coordinate_first_integrals_allocated": False,
         "second_integral_backend": "cpu-generated-weighted-hvp",
-        "relaxation_first_integral_backend": "cpu-generated-weighted-contraction",
+        "relaxation_first_integral_backend": relaxation_provider["backend"],
+        "relaxation_provider": deepcopy(relaxation_provider),
         "response_first_backend": first_backend,
         "response_jk_backend": jk_backend,
         "response_execution": response_execution,
@@ -205,7 +256,7 @@ def rhf_hvp(
             "response_jk": deepcopy(jk_transfer),
             "resident_response": deepcopy(resident_transfer),
             "second_integral_hvp": "host-only; no device transfers",
-            "relaxation_first_integrals": "host-only; no device transfers",
+            "relaxation_first_integrals": deepcopy(relaxation_provider),
             "nuclear": "host-only; no device transfers",
         },
         "solver_workspace_bytes": response_diag["solver_workspace_bytes"],

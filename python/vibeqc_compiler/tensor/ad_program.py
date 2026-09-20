@@ -25,11 +25,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import typing
 from dataclasses import dataclass, replace
 from fractions import Fraction
 from itertools import pairwise
 from types import MappingProxyType
-from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -60,7 +60,7 @@ from .packing import PackedLayout
 from .program import Program
 from .types import Index, IndexSpace, TensorSpec
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from collections.abc import Mapping
 
 GENERATION_SCHEMA = "vibeqc.tensor.ad_program"
@@ -71,7 +71,7 @@ DEFAULT_MAX_ELEMENTS = 1_000_000
 ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
-def _select_names(mapping: Mapping, names: object, label: str) -> dict:
+def _select_names(mapping: Mapping, names: typing.Any, label: str) -> dict:
     if names is None:
         return dict(mapping)
     if isinstance(names, str):
@@ -88,16 +88,16 @@ def _select_names(mapping: Mapping, names: object, label: str) -> dict:
     return selected
 
 
-def _coefficient(pair: object) -> Fraction:
+def _coefficient(pair: typing.Any) -> Fraction:
     return Fraction(*pair)
 
 
-def _scale(node: Node, pair: object) -> Node:
+def _scale(node: Node, pair: typing.Any) -> Node:
     """Exact scalar multiple through a one-operand add node."""
     return add(node, coefficients=(_coefficient(pair),))
 
 
-def _combine(terms: object) -> Node | None:
+def _combine(terms: typing.Any) -> Node | None:
     """Exact ordered sum of non-None terms; None means identically zero."""
     terms = [term for term in terms if term is not None]
     if not terms:
@@ -133,7 +133,7 @@ def _scaled_partial(node: Node, weight: Node, index: int) -> Node:
     return scaled_bilinear(*terms, den1, den2)
 
 
-def _equation(labels: object, output: object) -> str:
+def _equation(labels: typing.Any, output: typing.Any) -> str:
     """Reconstruct an alphabetic equation from canonical integer labels."""
     unique = []
     for operand_labels in labels:
@@ -160,7 +160,7 @@ def _derivative_input(node: Node, name: str) -> Node:
 
 
 def _constant_ones_for_axes(
-    operand: Node, axes: object, *, max_elements: int
+    operand: Node, axes: typing.Any, *, max_elements: int
 ) -> Node | None:
     """Create a minimal all-ones operand carrying only missing output labels."""
     axes = tuple(axes)
@@ -205,7 +205,7 @@ def _identity_constant(
 def _incidence_constant(
     axis: Index,
     bar_axis: Index,
-    positions: object,
+    positions: typing.Any,
     dtype: str,
     representation: str,
     *,
@@ -264,7 +264,7 @@ def _transcendental_partial(node: Node, weight: Node) -> Node:
     return add(guard, partial)
 
 
-def _jvp_graph(node: Node, operand_tangents: object) -> Node | None:
+def _jvp_graph(node: Node, operand_tangents: typing.Any) -> Node | None:
     """Generate one forward tangent expression, or None for exact zero."""
     if node.op == "add":
         return _combine(
@@ -430,7 +430,7 @@ def _embed_axis(
     bar: Node,
     axis: int,
     input_axis: Index,
-    positions: object,
+    positions: typing.Any,
     dtype: str,
     *,
     max_elements: int,
@@ -625,7 +625,7 @@ class VJPProgram:
         }
 
 
-def _ancestors(roots: object) -> set[Node]:
+def _ancestors(roots: typing.Any) -> set[Node]:
     needed, pending = set(), list(roots)
     while pending:
         node = pending.pop()
@@ -635,7 +635,7 @@ def _ancestors(roots: object) -> set[Node]:
     return needed
 
 
-def _descendants_of(program: Program, roots: object) -> set[Node]:
+def _descendants_of(program: Program, roots: typing.Any) -> set[Node]:
     """Nodes that can reach one of ``roots`` through primal edges."""
     roots = set(roots)
     users = {}
@@ -651,7 +651,7 @@ def _descendants_of(program: Program, roots: object) -> set[Node]:
     return reachable
 
 
-def _rebuild_node(node: Node, inputs: object) -> Node:
+def _rebuild_node(node: Node, inputs: typing.Any) -> Node:
     """Recreate one primal primitive through its public constructor."""
     if node.op == "add":
         return add(
@@ -695,8 +695,8 @@ def _rebuild(
     program: Program,
     replacements: Mapping[Node, Node],
     *,
-    extra_definitions: tuple[object, ...] = (),
-    provenance: object | None = None,
+    extra_definitions: typing.Any = (),
+    provenance: typing.Any = None,
 ) -> Program:
     """Rebuild a primal DAG with selected input definitions substituted."""
     mapping = {}
@@ -722,7 +722,7 @@ def _layout_hash(layout: PackedLayout) -> str:
     return hashlib.sha256(encoded.encode()).hexdigest()
 
 
-def _unpack_dag(original: Node, layout: PackedLayout) -> object:
+def _unpack_dag(original: Node, layout: PackedLayout) -> typing.Any:
     """Create packed input -> dense unpack DAG and its definitions."""
     dense_size = original.spec.size
     packed_space = IndexSpace(f"packed_{original.attrs['name']}", "batch", layout.size)
@@ -849,10 +849,10 @@ def _dense_symmetry_adjoint(bar: Node, spec: TensorSpec) -> Node:
 
 def linearize(
     program: Program,
-    tangent_inputs: object,
+    tangent_inputs: typing.Any,
     *,
-    outputs: object | None = None,
-    packed: object | None = None,
+    outputs: typing.Any = None,
+    packed: typing.Any = None,
     max_elements: int = DEFAULT_MAX_ELEMENTS,
 ) -> JVPProgram:
     """Generate a demand-driven forward derivative :class:`Program`.
@@ -938,10 +938,10 @@ def linearize(
 
 def transpose_program(
     program: Program,
-    cotangent_outputs: object,
+    cotangent_outputs: typing.Any,
     *,
-    inputs: object | None = None,
-    packed: object | None = None,
+    inputs: typing.Any = None,
+    packed: typing.Any = None,
     max_elements: int = DEFAULT_MAX_ELEMENTS,
 ) -> VJPProgram:
     """Generate a demand-driven reverse derivative :class:`Program`.

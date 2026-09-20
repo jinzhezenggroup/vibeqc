@@ -8,6 +8,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -52,7 +53,7 @@ from tools.vibeqc_validation.schema import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run(args):
+def run(args: typing.Any) -> typing.Any:
     """Retain full tuning ledgers and one shared-schema record per input scale."""
     nvcc = args.nvcc or find_nvcc()
     if nvcc is None:
@@ -306,7 +307,7 @@ def run(args):
     return records
 
 
-def _shape(value):
+def _shape(value: typing.Any) -> typing.Any:
     try:
         result = tuple(int(n) for n in value.split(","))
         if len(result) != 2 or min(result) < 1:
@@ -316,7 +317,7 @@ def _shape(value):
         raise argparse.ArgumentTypeError("shape must be positive nocc,nvir") from error
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--mode", choices=("compile", "numerical", "tune"), default="numerical"

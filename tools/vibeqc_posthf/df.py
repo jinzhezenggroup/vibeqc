@@ -10,6 +10,7 @@ from __future__ import annotations
 import ctypes as ct
 import threading
 import time
+import typing
 from dataclasses import dataclass
 from math import prod
 
@@ -45,7 +46,13 @@ class MetricFactor:
     convention: str = "square-symmetric-thresholded-inverse-square-root"
 
     @classmethod
-    def from_source(cls, source, *, relative_threshold=1e-10, budget_bytes=128 << 20):
+    def from_source(
+        cls,
+        source: typing.Any,
+        *,
+        relative_threshold: typing.Any = 1e-10,
+        budget_bytes: typing.Any = 128 << 20,
+    ) -> typing.Any:
         if not 0 < relative_threshold < 1 or not source.naux:
             raise ValueError(
                 "DF requires an auxiliary basis and relative cutoff in (0,1)"
@@ -108,7 +115,7 @@ class MetricFactor:
         )
 
     @property
-    def hamiltonian_id(self):
+    def hamiltonian_id(self) -> typing.Any:
         return "density-fitting:" + self.identity
 
 
@@ -123,14 +130,14 @@ class DFProvider:
 
     def __init__(
         self,
-        snapshot,
-        source,
-        metric,
+        snapshot: typing.Any,
+        source: typing.Any,
+        metric: typing.Any,
         *,
-        budget_bytes=256 << 20,
-        axis_tile=2,
-        auxiliary_tile=3,
-    ):
+        budget_bytes: typing.Any = 256 << 20,
+        axis_tile: typing.Any = 2,
+        auxiliary_tile: typing.Any = 3,
+    ) -> None:
         if (
             type(budget_bytes) is not int
             or budget_bytes < 1
@@ -169,14 +176,17 @@ class DFProvider:
             "source_tiles": 0,
             "source_seconds": 0.0,
             "transformation_seconds": 0.0,
+            "host_transform_calls": 0,
+            "subsequent_h2d_bytes": 0,
+            "endpoint_seconds": 0.0,
         }
 
-    def _check(self):
+    def _check(self) -> None:
         if self._closed:
             raise RuntimeError("DF provider is closed")
         self.source._check_open()
 
-    def _capacity(self, p, q, count):
+    def _capacity(self, p: typing.Any, q: typing.Any, count: typing.Any) -> typing.Any:
         n = self.source.nbf
         tile = min(
             self.axis_tile,
@@ -196,7 +206,14 @@ class DFProvider:
             + 8 * (6 * stage + 3 * count * len(p) * len(q) + 2 * n * (len(p) + len(q)))
         )
 
-    def three_index(self, p, q, *, auxiliary_begin=0, auxiliary_count=None):
+    def three_index(
+        self,
+        p: typing.Any,
+        q: typing.Any,
+        *,
+        auxiliary_begin: typing.Any = 0,
+        auxiliary_count: typing.Any = None,
+    ) -> typing.Any:
         """Return B[Q,p,q]=sum_(mu,nu,P) C[mu,p]C[nu,q]A[mu,nu,P]M^-1/2[P,Q]."""
         with self._lock:
             self._check()
@@ -256,12 +273,13 @@ class DFProvider:
                         ]
                     ).reshape(result.shape)
                     self.statistics["source_tiles"] += 1
+                    self.statistics["host_transform_calls"] += 3
                     self.statistics["transformation_seconds"] += (
                         time.perf_counter() - started
                     )
             return immutable(result.transpose(2, 0, 1))
 
-    def get(self, block):
+    def get(self, block: typing.Any) -> typing.Any:
         """Reconstruct only requested g[p,q,r,s]=sum_Q B[Q,p,q]B[Q,r,s]."""
         with self._lock:
             self._check()
@@ -312,12 +330,21 @@ class DFProvider:
                         values += (
                             left.reshape(size, -1).T @ right.reshape(size, -1)
                         ).reshape(block.shape)
+                        self.statistics["host_transform_calls"] += 1
                         self.statistics["transformation_seconds"] += (
                             time.perf_counter() - started
                         )
                 values = immutable(values)
             finally:
                 self._retained -= persistent
+            endpoint_seconds = time.perf_counter() - start
+            self.statistics["endpoint_seconds"] += endpoint_seconds
+            source_metrics = (
+                self.source.source_metrics()
+                if hasattr(self.source, "source_metrics")
+                else None
+            )
+            host_staged = self.source.backend.startswith("cuda")
             result = BlockResult(
                 block,
                 values,
@@ -325,10 +352,14 @@ class DFProvider:
                 self.snapshot.hamiltonian_id,
                 {
                     "backend": "cpu-reference-df-staged-fp64",
+                    "execution_path": (
+                        "host-staged-compatibility" if host_staged else "cpu-source"
+                    ),
+                    "performance_claim_eligible": not host_staged,
                     "source_backend": self.source.backend,
-                    "source_host_staging": self.source.backend.startswith("cuda"),
+                    "source_host_staging": host_staged,
                     "cache_hit": False,
-                    "endpoint_seconds": time.perf_counter() - start,
+                    "endpoint_seconds": endpoint_seconds,
                     "peak_bytes": peak,
                     "host_peak_bytes": peak
                     - getattr(self.source, "source_device_bytes", 0),
@@ -343,9 +374,18 @@ class DFProvider:
                     "cumulative_transformation_seconds": self.statistics[
                         "transformation_seconds"
                     ],
-                    "cuda_source": self.source.source_metrics()
-                    if hasattr(self.source, "source_metrics")
-                    else None,
+                    "host_transform_calls": self.statistics["host_transform_calls"],
+                    "subsequent_h2d_bytes": self.statistics["subsequent_h2d_bytes"],
+                    "generated_bytes": (
+                        source_metrics["generated_bytes"] if source_metrics else 0
+                    ),
+                    "d2h_bytes": source_metrics["d2h_bytes"] if source_metrics else 0,
+                    "source_tile_count": (
+                        source_metrics["tile_count"]
+                        if source_metrics
+                        else self.statistics["source_tiles"]
+                    ),
+                    "cuda_source": source_metrics,
                 },
             )
             self._cache[block.slots] = result
@@ -353,20 +393,20 @@ class DFProvider:
             self.statistics["transformations"] += 1
             return result
 
-    def clear(self):
+    def clear(self) -> None:
         """Release retained transformed MO blocks while keeping the source usable."""
 
         with self._lock:
             self._cache.clear()
             self._retained = 0
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             self.clear()
             self._closed = True
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()

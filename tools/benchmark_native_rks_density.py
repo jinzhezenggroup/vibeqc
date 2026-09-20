@@ -12,6 +12,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -119,7 +120,7 @@ extern "C" int measure(const char* destination, unsigned repeats) {
 """
 
 
-def bridge_source(workloads):
+def bridge_source(workloads: typing.Any) -> typing.Any:
     """Lower only validated finite molecular input tables into C++ literals."""
     blocks = []
     for name, meta, _, _ in workloads:
@@ -150,7 +151,7 @@ def bridge_source(workloads):
     return BRIDGE.replace("@INPUTS@", "\n".join(blocks))
 
 
-def run(args):
+def run(args: typing.Any) -> None:
     """Compile via the standard CPU adapter and retain every native timing row."""
     if (
         args.samples < 5

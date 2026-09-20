@@ -12,6 +12,7 @@ import ctypes as ct
 import math
 import os
 import time
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -37,7 +38,7 @@ class ProbeControls:
     max_iterations: int = 200
     diis_history: int = 8
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in ("energy_tolerance", "density_tolerance", "screening_tolerance"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, (float, int)):
@@ -75,7 +76,7 @@ class HFProbe:
     solve_seconds: float
     requested_mixed_fock_threshold: float | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.model, ResolvedModel) or not isinstance(
             self.controls, ProbeControls
         ):
@@ -130,7 +131,7 @@ class HFProbe:
         elif self.density is not None or self.forces is not None:
             raise ValueError("an unconverged probe cannot publish reference state")
 
-    def scalars(self):
+    def scalars(self) -> typing.Any:
         """Serialize diagnostics without silently exporting molecular matrices."""
         return {
             "model_id": self.model.identity,
@@ -153,7 +154,7 @@ class HFProbe:
         }
 
 
-def _validate_source_model(source, model):
+def _validate_source_model(source: typing.Any, model: typing.Any) -> None:
     """Reuse the public resolver so all audits validate the same scientific inputs."""
     from vibeqc import Calculator
 
@@ -183,14 +184,14 @@ def _validate_source_model(source, model):
 
 
 def probe_hf(
-    source,
-    model,
-    controls=None,
+    source: typing.Any,
+    model: typing.Any,
+    controls: typing.Any = None,
     *,
-    backend="cpu",
-    device_id=0,
-    experimental_mixed_fock_threshold=None,
-):
+    backend: typing.Any = "cpu",
+    device_id: typing.Any = 0,
+    experimental_mixed_fock_threshold: typing.Any = None,
+) -> typing.Any:
     """Execute a native HF solve and disclose the small-system host export.
 
     Model construction must use the same source nuclei/basis through the
@@ -309,7 +310,7 @@ class StrictHFAudit:
     require a separate native solve; this object never declares convergence.
     """
 
-    def __init__(self, source, model):
+    def __init__(self, source: typing.Any, model: typing.Any) -> None:
         start = time.perf_counter()
         _validate_source_model(source, model)
         self.model = model
@@ -424,7 +425,9 @@ class StrictHFAudit:
         }
 
 
-def error_features(source, probe, audit):
+def error_features(
+    source: typing.Any, probe: typing.Any, audit: typing.Any
+) -> typing.Any:
     """Extract verified basis identity and physical diagnostics for calibration.
 
     A name such as STO-3G is assigned only after comparing actual expanded

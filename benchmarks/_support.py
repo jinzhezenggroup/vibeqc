@@ -11,7 +11,7 @@ import sys
 from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -74,10 +74,10 @@ def _cuda_tool_path(name: str) -> str | None:
     return shutil.which(name)
 
 
-def _toolchain_metadata() -> dict[str, object]:
+def _toolchain_metadata() -> dict[str, Any]:
     """Record the compilers that make a GPU benchmark reproducible."""
 
-    tools: dict[str, object] = {}
+    tools: dict[str, Any] = {}
     for name in ("nvcc", "ptxas", "cuobjdump"):
         path = _cuda_tool_path(name)
         tools[name] = {
@@ -103,7 +103,7 @@ def _visible_nvidia_device(device_id: int) -> str:
     return str(device_id)
 
 
-def _nvidia_smi_state(device_id: int) -> dict[str, object] | None:
+def _nvidia_smi_state(device_id: int) -> dict[str, Any] | None:
     """Capture post-benchmark clocks, power, temperature, and performance state."""
 
     nvidia_smi = shutil.which("nvidia-smi")
@@ -151,7 +151,7 @@ def _nvidia_smi_state(device_id: int) -> dict[str, object] | None:
 def _source_status_payload(
     tracked_status: str | None,
     untracked_paths: str | None,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Separate source dirtiness from newly generated result artifacts.
 
     A benchmark matrix commonly writes several new JSON files before they are
@@ -182,8 +182,8 @@ def _source_status_payload(
 def environment_metadata(
     *,
     distributions: dict[str, tuple[str, ...]] | None = None,
-    accelerator: dict[str, object] | None = None,
-) -> dict[str, object]:
+    accelerator: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Describe the source and runtime that produced a benchmark result.
 
     Benchmark numbers are useful only when they can be tied to exact source,
@@ -225,7 +225,7 @@ def environment_metadata(
     }
 
 
-def cuda_accelerator_metadata(cupy_module: object) -> dict[str, object]:
+def cuda_accelerator_metadata(cupy_module: Any) -> dict[str, Any]:
     """Return stable JSON fields for the CUDA device used by a benchmark."""
 
     device_id = cupy_module.cuda.Device().id
@@ -302,25 +302,16 @@ def benchmark_gate_failures(
 
 
 def raw_output_path(path: str | Path) -> Path:
-    """Keep execution output out of this checkout's reviewed evidence tree.
+    """Compatibility wrapper around the stdlib-only retention guard."""
+    try:
+        from benchmarks._retention import raw_output_path as guard
+    except ModuleNotFoundError:
+        from _retention import raw_output_path as guard
 
-    Accept explicit scratch paths, but reject symlink aliases into the retained
-    tree as well as direct paths. Publication is a separate, deliberate step.
-    This function is also an argparse type, so runners fail before calculation.
-    """
-    destination = Path(path)
-    retained = _REPOSITORY_ROOT / "benchmarks" / "results"
-    if destination.absolute().is_relative_to(retained.absolute()) or (
-        destination.resolve().is_relative_to(retained.resolve())
-    ):
-        raise ValueError(
-            "raw benchmark output cannot target benchmarks/results/; use "
-            ".artifacts/benchmarks/ and tools/evidence.py publish for reviewed evidence"
-        )
-    return destination
+    return guard(path, repository_root=_REPOSITORY_ROOT)
 
 
-def write_result(path: str | Path, payload: dict[str, object]) -> Path:
+def write_result(path: str | Path, payload: dict[str, Any]) -> Path:
     """Write a stable, human-readable JSON benchmark artifact."""
 
     destination = raw_output_path(path)

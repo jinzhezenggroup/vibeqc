@@ -8,9 +8,9 @@ lane; recurrence arithmetic uses scalar, AVX2, or AVX-512 FP64 values.
 
 from __future__ import annotations
 
+import typing
 from fractions import Fraction
 from itertools import product
-from typing import TYPE_CHECKING
 
 from vibeqc_compiler.common.provenance import canonical_hash
 
@@ -21,7 +21,7 @@ from .scalar_c import format_constant
 from .shell_class import build_shell_class_component_kernel
 from .shell_spec import cartesian_components
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     from vibeqc_compiler.common.cpu_target import CpuTargetInfo
@@ -244,7 +244,7 @@ static inline Vec v_fma(Vec a, Vec b, Vec c) {{ return {fma}(a, b, c); }}
 
 
 def cpu_lane_component_identity(
-    integral: object, indices: object, target: object, schedule: object
+    integral: typing.Any, indices: typing.Any, target: typing.Any, schedule: typing.Any
 ) -> str:
     return canonical_hash(
         {
@@ -257,7 +257,9 @@ def cpu_lane_component_identity(
     )
 
 
-def _optimized(graph, roots, schedule):
+def _optimized(
+    graph: typing.Any, roots: typing.Any, schedule: typing.Any
+) -> typing.Any:
     optimized, roots = graph.apply_algebra_form(
         roots,
         schedule.algebra_form,
@@ -272,7 +274,13 @@ def _optimized(graph, roots, schedule):
     return optimized, roots, plan
 
 
-def _emit_component(integral, components, target, schedule, name):
+def _emit_component(
+    integral: typing.Any,
+    components: typing.Any,
+    target: typing.Any,
+    schedule: typing.Any,
+    name: typing.Any,
+) -> typing.Any:
     if integral.operator.family != OperatorFamily.FOUR_CENTER_ERI:
         raise ValueError("CPU lane lowering currently supports four-center ERIs")
     if integral.operator.range_separated:
@@ -347,7 +355,9 @@ def _emit_component(integral, components, target, schedule, name):
     return "\n".join(lines)
 
 
-def emit_first_components_cpu_lanes(integral, indices, target, schedule):
+def emit_first_components_cpu_lanes(
+    integral: typing.Any, indices: typing.Any, target: typing.Any, schedule: typing.Any
+) -> typing.Any:
     """Emit one component tile for generic, AVX2, or AVX-512 CPU execution."""
 
     indices = tuple(indices)

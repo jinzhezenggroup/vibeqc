@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
 from hashlib import sha256
@@ -46,7 +47,13 @@ class FixedDensityNonlocalCorrelation:
     large-grid execution belongs to issue 491 slice D.
     """
 
-    def __init__(self, spec, *, coefficient=Fraction(1), max_points=4096):
+    def __init__(
+        self,
+        spec: typing.Any,
+        *,
+        coefficient: typing.Any = Fraction(1),
+        max_points: typing.Any = 4096,
+    ) -> None:
         if not isinstance(spec, NonlocalCorrelationSpec):
             raise TypeError("expected NonlocalCorrelationSpec")
         if not isinstance(coefficient, Fraction) or coefficient <= 0:
@@ -56,7 +63,7 @@ class FixedDensityNonlocalCorrelation:
         self.coefficient = coefficient
         self.max_points = max_points
 
-    def _validate_grid(self, basis, grid):
+    def _validate_grid(self, basis: typing.Any, grid: typing.Any) -> None:
         if not isinstance(basis, NativeAO):
             raise TypeError("expected NativeAO")
         if not isinstance(grid, (MolecularGrid, ExplicitGrid)):
@@ -75,7 +82,7 @@ class FixedDensityNonlocalCorrelation:
             )
 
     @staticmethod
-    def _total_features(jets, total_density):
+    def _total_features(jets: typing.Any, total_density: typing.Any) -> typing.Any:
         phi = jets[0]
         weighted = phi @ total_density
         rho = np.sum(phi * weighted, axis=1)
@@ -85,7 +92,14 @@ class FixedDensityNonlocalCorrelation:
         )
         return rho, gradient
 
-    def integrate(self, basis, grid, density, *, tile_points=256):
+    def integrate(
+        self,
+        basis: typing.Any,
+        grid: typing.Any,
+        density: typing.Any,
+        *,
+        tile_points: typing.Any = 256,
+    ) -> typing.Any:
         """Return E_nlc and V_nlc with delta E = Tr(V delta D)."""
         checked_int(tile_points, "nonlocal AO tile points")
         self._validate_grid(basis, grid)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes as ct
 import hashlib
 import time
+import typing
 
 import numpy as np
 from vibeqc.profiles import canonical_hash
@@ -14,7 +15,7 @@ from tools.vibeqc_posthf.reference import immutable
 from tools.vibeqc_posthf.sources import _DOUBLE, pointer
 
 
-def _checked_density(density, nbf):
+def _checked_density(density: typing.Any, nbf: typing.Any) -> typing.Any:
     value = np.asarray(density)
     if value.shape != (nbf, nbf):
         raise ValueError(f"density response must have shape ({nbf},{nbf})")
@@ -33,7 +34,7 @@ class DenseAOResponseBackend:
     never used by a production response path.
     """
 
-    def __init__(self, eri, *, maximum_n=12):
+    def __init__(self, eri: typing.Any, *, maximum_n: typing.Any = 12) -> None:
         value = np.asarray(eri)
         if (
             value.ndim != 4
@@ -65,7 +66,7 @@ class DenseAOResponseBackend:
             "peak_bytes": self.host_workspace_bytes,
         }
 
-    def coulomb_exchange(self, density):
+    def coulomb_exchange(self, density: typing.Any) -> typing.Any:
         """Return ``J[D]`` and ``K[D]`` for one AO density response."""
         started = time.perf_counter()
         d = _checked_density(density, self.nbf)
@@ -88,12 +89,12 @@ class NativeJKBackend:
 
     def __init__(
         self,
-        source,
+        source: typing.Any,
         *,
-        axis_tile=2,
-        budget_bytes=64 << 20,
-        backend="cpu",
-    ):
+        axis_tile: typing.Any = 2,
+        budget_bytes: typing.Any = 64 << 20,
+        backend: typing.Any = "cpu",
+    ) -> None:
         if backend != "cpu":
             raise NotImplementedError(
                 "native direct J/K response is currently CPU-streamed; "
@@ -135,7 +136,7 @@ class NativeJKBackend:
             "peak_bytes": 0,
         }
 
-    def coulomb_exchange(self, density):
+    def coulomb_exchange(self, density: typing.Any) -> typing.Any:
         """Stream ``(pq|rs) D_rs`` and ``(pr|qs) D_rs`` without an AO N^4 cache."""
         started = time.perf_counter()
         d = _checked_density(density, self.nbf)
@@ -168,7 +169,7 @@ class NativeJKBackend:
         )
         return immutable(coulomb), immutable(exchange)
 
-    def validate_reference(self, reference):
+    def validate_reference(self, reference: typing.Any) -> typing.Any:
         """Reject a same-sized but scientifically unrelated reference."""
         if reference.geometry_hash != self.source.geometry_hash:
             raise ValueError("native backend/reference geometry mismatch")
@@ -192,15 +193,18 @@ class CudaDFJKBackend:
 
     def __init__(
         self,
-        source,
+        source: typing.Any,
         *,
-        device_id=0,
-        metric_threshold=1e-10,
-        hamiltonian_id=None,
-        metric=None,
-    ):
+        device_id: typing.Any = 0,
+        metric_threshold: typing.Any = 1e-10,
+        hamiltonian_id: typing.Any = None,
+        metric: typing.Any = None,
+        reuse_generated_source: bool = True,
+    ) -> None:
         if type(device_id) is not int or device_id < 0:
             raise ValueError("device_id must be a nonnegative integer")
+        if type(reuse_generated_source) is not bool:
+            raise ValueError("reuse_generated_source must be a boolean")
         if not np.isfinite(metric_threshold) or not 0 < metric_threshold < 1:
             raise ValueError("metric_threshold must be finite and in (0,1)")
         if not hasattr(source, "_handle") or not getattr(source, "naux", 0):
@@ -228,36 +232,58 @@ class CudaDFJKBackend:
             raise ValueError("CUDA DF backend/metric Hamiltonian identity mismatch")
         self.hamiltonian_id = metric.hamiltonian_id
         self._handle = ct.c_void_p()
+        setup_started = time.perf_counter()
         library = source._library
-        library.vibeqc_posthf_rhf_jk_plan_create_v1.argtypes = [
-            ct.c_void_p,
-            ct.c_int,
-            ct.c_double,
-            ct.POINTER(ct.c_void_p),
-            _DOUBLE,
-            ct.c_char_p,
-            ct.c_size_t,
-        ]
-        library.vibeqc_posthf_rhf_jk_plan_execute_v1.argtypes = [
-            ct.c_void_p,
-            _DOUBLE,
-            ct.c_size_t,
-            _DOUBLE,
-            _DOUBLE,
-            ct.c_char_p,
-            ct.c_size_t,
-        ]
-        library.vibeqc_posthf_rhf_jk_plan_destroy_v1.argtypes = [ct.c_void_p]
-        library.vibeqc_posthf_rhf_jk_plan_destroy_v1.restype = None
-        diagnostics = np.empty(6)
-        source._call(
-            "vibeqc_posthf_rhf_jk_plan_create_v1",
-            source._handle,
-            device_id,
-            self.metric_threshold,
-            ct.byref(self._handle),
-            pointer(diagnostics),
+        self._resident_source_handoff = reuse_generated_source and hasattr(
+            source, "_create_device_rhf_jk_plan"
         )
+        if self._resident_source_handoff:
+            if source.device_id != device_id:
+                raise ValueError(
+                    "CUDA DF backend device must match the prepared generated source"
+                )
+            self._handle, diagnostics = source._create_device_rhf_jk_plan(
+                self.metric_threshold
+            )
+        else:
+            library.vibeqc_posthf_rhf_jk_plan_create_v1.argtypes = [
+                ct.c_void_p,
+                ct.c_int,
+                ct.c_double,
+                ct.POINTER(ct.c_void_p),
+                _DOUBLE,
+                ct.c_char_p,
+                ct.c_size_t,
+            ]
+            library.vibeqc_posthf_rhf_jk_plan_execute_v1.argtypes = [
+                ct.c_void_p,
+                _DOUBLE,
+                ct.c_size_t,
+                _DOUBLE,
+                _DOUBLE,
+                ct.c_char_p,
+                ct.c_size_t,
+            ]
+            library.vibeqc_posthf_rhf_jk_plan_metrics_v1.argtypes = [
+                ct.c_void_p,
+                ct.POINTER(ct.c_uint64),
+                ct.c_size_t,
+                _DOUBLE,
+                ct.c_size_t,
+                ct.c_char_p,
+                ct.c_size_t,
+            ]
+            library.vibeqc_posthf_rhf_jk_plan_destroy_v1.argtypes = [ct.c_void_p]
+            library.vibeqc_posthf_rhf_jk_plan_destroy_v1.restype = None
+            diagnostics = np.empty(6)
+            source._call(
+                "vibeqc_posthf_rhf_jk_plan_create_v1",
+                source._handle,
+                device_id,
+                self.metric_threshold,
+                ct.byref(self._handle),
+                pointer(diagnostics),
+            )
         self.nbf = int(diagnostics[0])
         self.naux = int(diagnostics[1])
         if self.nbf != source.nbf or self.naux != source.naux:
@@ -272,9 +298,15 @@ class CudaDFJKBackend:
             self.host_resident_bytes + 3 * self.nbf * self.nbf * 8
         )
         self.device_workspace_bytes = self.peak_device_bytes
+        self.setup_seconds = time.perf_counter() - setup_started
+        self.execution_path = (
+            "device-resident-generated-df-reused"
+            if self._resident_source_handoff
+            else "device-resident-generated-df-reprepared"
+        )
         self.identity = canonical_hash(
             {
-                "backend": "cuda-df-streamed-jk",
+                "backend": self.execution_path,
                 "source_identity": source.identity,
                 "device_id": device_id,
                 "metric_threshold": self.metric_threshold,
@@ -286,20 +318,69 @@ class CudaDFJKBackend:
         self.statistics = {
             "actions": 0,
             "seconds": 0.0,
+            "setup_seconds": self.setup_seconds,
+            "complete_endpoint_seconds": self.setup_seconds,
             "peak_bytes": self.peak_device_bytes,
             "device_resident_bytes": self.device_resident_bytes,
             "host_resident_bytes": self.host_resident_bytes,
+            "execution_path": self.execution_path,
+            "source_reused": self._resident_source_handoff,
+            "source_reuse_requested": reuse_generated_source,
+            "generated_bytes": 0,
+            "generated_tiles": 0,
+            "raw_d2h_bytes": 0,
+            "raw_h2d_bytes": 0,
+            "density_h2d_bytes": 0,
+            "result_d2h_bytes": 0,
+            "endpoint_ms": 0.0,
         }
+        self._refresh_resident_statistics()
 
-    def coulomb_exchange(self, density):
+    def _refresh_resident_statistics(self) -> None:
+        if not self._handle:
+            return
+        counters = (ct.c_uint64 * 7)()
+        timings = np.empty(1)
+        metrics_name = (
+            "vibeqc_posthf_df_rhf_jk_plan_metrics_v1"
+            if self._resident_source_handoff
+            else "vibeqc_posthf_rhf_jk_plan_metrics_v1"
+        )
+        self.source._call(
+            metrics_name,
+            self._handle,
+            counters,
+            len(counters),
+            pointer(timings),
+            timings.size,
+        )
+        self.statistics.update(
+            {
+                "generated_bytes": int(counters[0]),
+                "generated_tiles": int(counters[1]),
+                "raw_d2h_bytes": int(counters[2]),
+                "raw_h2d_bytes": int(counters[3]),
+                "density_h2d_bytes": int(counters[4]),
+                "result_d2h_bytes": int(counters[5]),
+                "device_executions": int(counters[6]),
+                "endpoint_ms": float(timings[0]),
+            }
+        )
+
+    def coulomb_exchange(self, density: typing.Any) -> typing.Any:
         """Apply one device-resident RHF DF J/K contraction."""
         started = time.perf_counter()
         d = _checked_density(density, self.nbf)
         density_buffer = np.ascontiguousarray(d)
         coulomb = np.empty((self.nbf, self.nbf))
         exchange = np.empty((self.nbf, self.nbf))
+        execute_name = (
+            "vibeqc_posthf_df_rhf_jk_plan_execute_v1"
+            if self._resident_source_handoff
+            else "vibeqc_posthf_rhf_jk_plan_execute_v1"
+        )
         self.source._call(
-            "vibeqc_posthf_rhf_jk_plan_execute_v1",
+            execute_name,
             self._handle,
             pointer(density_buffer),
             d.size,
@@ -308,9 +389,13 @@ class CudaDFJKBackend:
         )
         self.statistics["actions"] += 1
         self.statistics["seconds"] += time.perf_counter() - started
+        self.statistics["complete_endpoint_seconds"] = (
+            self.setup_seconds + self.statistics["seconds"]
+        )
+        self._refresh_resident_statistics()
         return immutable(coulomb), immutable(exchange)
 
-    def validate_reference(self, reference):
+    def validate_reference(self, reference: typing.Any) -> typing.Any:
         """Require the exact source geometry/basis and declared DF Hamiltonian."""
         if reference.geometry_hash != self.source.geometry_hash:
             raise ValueError("CUDA DF backend/reference geometry mismatch")
@@ -322,18 +407,23 @@ class CudaDFJKBackend:
             raise ValueError("CUDA DF backend/reference Hamiltonian identity mismatch")
         return self
 
-    def close(self):
+    def close(self) -> None:
         """Release the prepared plan; repeated close is safe."""
         if self._handle:
-            self.source._library.vibeqc_posthf_rhf_jk_plan_destroy_v1(self._handle)
+            if self._resident_source_handoff:
+                self.source._library.vibeqc_posthf_df_rhf_jk_plan_destroy_v1(
+                    self._handle
+                )
+            else:
+                self.source._library.vibeqc_posthf_rhf_jk_plan_destroy_v1(self._handle)
             self._handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if getattr(self, "_handle", None):
             self.close()

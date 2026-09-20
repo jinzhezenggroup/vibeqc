@@ -2,6 +2,7 @@
 
 import json
 import math
+import typing
 from dataclasses import asdict
 
 from .basis import BasisSet
@@ -42,15 +43,15 @@ for _operator in (
 
 
 def basis_capability(
-    basis,
-    atoms,
+    basis: typing.Any,
+    atoms: typing.Any,
     *,
-    backend="cpu",
-    operator="eri",
-    derivative_order=0,
-    role="orbital",
-    representation=None,
-):
+    backend: typing.Any = "cpu",
+    operator: typing.Any = "eri",
+    derivative_order: typing.Any = 0,
+    role: typing.Any = "orbital",
+    representation: typing.Any = None,
+) -> typing.Any:
     """Inspect every supplied orbital/auxiliary shell without device execution.
 
     ``eligible`` means an implemented generic mathematical route exists. It
@@ -157,7 +158,9 @@ def basis_capability(
     }
 
 
-def require_basis(basis, atoms, **request):
+def require_basis(
+    basis: typing.Any, atoms: typing.Any, **request: typing.Any
+) -> typing.Any:
     """Fail before native expansion/execution with the exact missing shell route."""
     report = basis_capability(basis, atoms, **request)
     if not report["eligible"]:
@@ -166,8 +169,15 @@ def require_basis(basis, atoms, **request):
 
 
 def resolved_basis_metadata(
-    basis, shells, atoms, *, representation, charge, multiplicity, role="orbital"
-):
+    basis: typing.Any,
+    shells: typing.Any,
+    atoms: typing.Any,
+    *,
+    representation: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+    role: typing.Any = "orbital",
+) -> typing.Any:
     """Hash complete native mathematical inputs separately from source provenance.
 
     Coordinates enter the prepared model identity separately. Decimal spelling

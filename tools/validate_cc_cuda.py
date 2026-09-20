@@ -6,6 +6,7 @@ interpreter and saved independent #148 references use exactly the same feeds.
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -33,7 +34,13 @@ from tools.vibeqc_validation.schema import block_error, canonical_hash, file_has
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run(output, compiler, cache, *, compile_only=False):
+def run(
+    output: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
+    *,
+    compile_only: typing.Any = False,
+) -> typing.Any:
     output.mkdir(parents=True, exist_ok=True)
     reference_path = ROOT / "tests/reference_data/cc/rccsd-b.json"
     references = load_references(reference_path)

@@ -1,6 +1,7 @@
 """Hash-checked pinned Libxc fixtures with explicit boundary-oracle selection."""
 
 import json
+import typing
 from itertools import combinations_with_replacement
 
 import numpy as np
@@ -11,7 +12,9 @@ from vibeqc_compiler.common.provenance import file_hash
 from .reference import exchange_reference
 
 
-def load_fixture(name, *, spin="polarized", domain="typical"):
+def load_fixture(
+    name: typing.Any, *, spin: typing.Any = "polarized", domain: typing.Any = "typical"
+) -> typing.Any:
     """Return metadata, physical features, checked oracle and raw Libxc output.
 
     Boundary exchange uses closed-form spin scaling because Libxc's internal
@@ -57,7 +60,7 @@ def load_fixture(name, *, spin="polarized", domain="typical"):
                 correlation = "GGA_C_PBE" if name == "PBE" else "LDA_C_PW"
                 expected += arrays[f"{tag}_{correlation}"]
                 oracle += " + Libxc 7.0.0 correlation"
-        if name == "MGGA_X_R2SCAN" and spin == "polarized":
+        if name in ("MGGA_X_SCAN", "MGGA_X_R2SCAN") and spin == "polarized":
             # Exchange is exactly spin separable: a-channel variables are
             # (rho_a, sigma_aa, tau_a), b-channel variables are
             # (rho_b, sigma_bb, tau_b), and sigma_ab is absent. Libxc's

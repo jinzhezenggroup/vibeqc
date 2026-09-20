@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -20,14 +21,16 @@ from tools.vibeqc_validation.hessian_fixtures import fixture_inputs, oracle_syst
 
 
 @pytest.fixture(scope="module", params=("h2", "water"))
-def case(request):
+def case(request: typing.Any) -> typing.Any:
     with NativeSource(**fixture_inputs(request.param)) as source:
         state = NativeRHFState.from_source(source)
         # One complete native Hessian per immutable state for all checks.
         yield request.param, state, analytic_hessian(state)
 
 
-def test_first_order_sources_match_independent_native_derivatives(case):
+def test_first_order_sources_match_independent_native_derivatives(
+    case: typing.Any,
+) -> None:
     _, state, _ = case
     h1, s1 = state.first_order_inputs
     reference = state.source.integral_derivatives()  # oracle, never the live path
@@ -44,10 +47,12 @@ def test_first_order_sources_match_independent_native_derivatives(case):
     assert not h1.flags.writeable and not s1.flags.writeable
 
 
-def test_reference_is_the_native_converged_state(case, monkeypatch):
+def test_reference_is_the_native_converged_state(
+    case: typing.Any, monkeypatch: typing.Any
+) -> None:
     _, state, _ = case
 
-    def unexpected_scf(*args, **kwargs):
+    def unexpected_scf(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("Hessian must not rerun SCF")
 
     monkeypatch.setattr(state.source, "rhf_density", unexpected_scf)
@@ -58,7 +63,7 @@ def test_reference_is_the_native_converged_state(case, monkeypatch):
     np.testing.assert_allclose(raw, raw.transpose(1, 0, 3, 2), atol=2e-10, rtol=0)
 
 
-def test_total_matches_independent_pyscf_hessian(case):
+def test_total_matches_independent_pyscf_hessian(case: typing.Any) -> None:
     pytest.importorskip("pyscf")
     from pyscf import scf
 
@@ -68,7 +73,9 @@ def test_total_matches_independent_pyscf_hessian(case):
     np.testing.assert_allclose(comp["total"], mf.Hessian().kernel(), atol=5e-7, rtol=0)
 
 
-def test_components_match_independent_finite_difference_oracle(case):
+def test_components_match_independent_finite_difference_oracle(
+    case: typing.Any,
+) -> None:
     pytest.importorskip("pyscf")
     from tools.vibeqc_hessian.reference import hessian_components
 
@@ -80,7 +87,7 @@ def test_components_match_independent_finite_difference_oracle(case):
         np.testing.assert_allclose(comp[key], expected[key], atol=5e-5, rtol=0)
 
 
-def test_raw_total_invariants(case):
+def test_raw_total_invariants(case: typing.Any) -> None:
     _, _, comp = case
     raw = comp["total"]
     assert np.isfinite(raw).all()
@@ -104,11 +111,13 @@ def test_raw_total_invariants(case):
         np.full((2, 2, 3, 3), np.datetime64("2026-09-19")),
     ],
 )
-def test_invalid_relaxation_rejected_before_provider_work(relax, monkeypatch):
+def test_invalid_relaxation_rejected_before_provider_work(
+    relax: typing.Any, monkeypatch: typing.Any
+) -> None:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
 
-        def unexpected(*args, **kwargs):
+        def unexpected(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
             raise AssertionError("invalid input reached the derivative provider")
 
         monkeypatch.setattr(
@@ -118,7 +127,7 @@ def test_invalid_relaxation_rejected_before_provider_work(relax, monkeypatch):
             analytic_hessian(state, relax=relax)
 
 
-def test_source_lifetime_and_reference_identity_fail_closed():
+def test_source_lifetime_and_reference_identity_fail_closed() -> None:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
         with pytest.raises(ValueError, match="geometry"):
@@ -135,7 +144,7 @@ def test_source_lifetime_and_reference_identity_fail_closed():
         analytic_hessian(object())
 
 
-def test_native_hessian_does_not_import_or_call_an_oracle():
+def test_native_hessian_does_not_import_or_call_an_oracle() -> None:
     # Fresh process is essential: collection by other tests may import PySCF.
     code = r"""
 import importlib.abc
@@ -181,7 +190,7 @@ with NativeSource([(1, [0, 0, 0]), (1, [0, 0, 1.4])]) as source:
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "water_sdf"])
-def test_reduced_response_matches_full_space(name):
+def test_reduced_response_matches_full_space(name: typing.Any) -> None:
     pytest.importorskip("pyscf")
     from tools.vibeqc_hessian.reference import (
         _first_order_mo1_e1,
@@ -209,7 +218,7 @@ def test_reduced_response_matches_full_space(name):
     os.environ.get("VIBEQC_HESSIAN_SLOW") != "1",
     reason="explicit 12-AO d-shell generated Hessian qualification",
 )
-def test_native_d_shell_hessian_matches_external_oracle():
+def test_native_d_shell_hessian_matches_external_oracle() -> None:
     pytest.importorskip("pyscf")
     from pyscf import scf
 
@@ -222,7 +231,9 @@ def test_native_d_shell_hessian_matches_external_oracle():
         )
 
 
-def test_three_step_directional_differences_of_native_forces(case):
+def test_three_step_directional_differences_of_native_forces(
+    case: typing.Any,
+) -> None:
     from vibeqc import Calculator
 
     _, state, comp = case
@@ -258,7 +269,9 @@ def test_three_step_directional_differences_of_native_forces(case):
     assert errors[-1] < max(errors[0] * 0.2, 1e-7), errors
 
 
-def test_large_domain_is_rejected_before_native_scf(monkeypatch):
+def test_large_domain_is_rejected_before_native_scf(
+    monkeypatch: typing.Any,
+) -> None:
     from vibeqc import Primitive, Shell
 
     shells = tuple(
@@ -266,7 +279,7 @@ def test_large_domain_is_rejected_before_native_scf(monkeypatch):
     )
     with NativeSource([(1, (0, 0, 0)), (1, (0, 0, 1.4))], basis=shells) as source:
 
-        def unexpected(*args, **kwargs):
+        def unexpected(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
             raise AssertionError("out-of-domain state reached SCF")
 
         monkeypatch.setattr(source, "rhf_density", unexpected)

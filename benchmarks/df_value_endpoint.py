@@ -16,6 +16,11 @@ import time
 from pathlib import Path
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Calculator
 
 from benchmarks._cases import benchmark_cases
@@ -24,10 +29,10 @@ from benchmarks.df_component_ledger import aggregate, read_host_trace, read_trac
 from benchmarks.df_policy_endpoint import CASES, independent_reference
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--aos", type=int, choices=CASES, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--reference", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--budget", type=int, default=0)

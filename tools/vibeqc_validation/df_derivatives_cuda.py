@@ -1,9 +1,11 @@
 """Raw DF derivative probe using the common finite-Slurm resource protocol."""
 
+import typing
+
 from .raw_values_cuda import emit_raw_value_driver
 
 
-def emit_df_derivative_driver(architecture):
+def emit_df_derivative_driver(architecture: typing.Any) -> typing.Any:
     """Keep the existing 144-byte positive-exponent primitive input contract."""
     kernel = r"""
 namespace df=vibeqc::scf::generated_df_derivatives;

@@ -52,7 +52,12 @@ FockExecutionVariant execution_variant(const ResolvedFockBuild& strategy) {
 #if VIBEQC_HAS_CUDA
   if (strategy.backend == FockBackend::Cpu) return {};
   FockExecutionVariant result;
-  result.one_electron_value_mapping = cuda_policy::one_electron_value_mapping_requested();
+  const auto& cuda_provider = runtime::active_cuda_provider();
+  const auto one_electron_policy = cuda_policy::resolve_one_electron_value_policy(cuda_provider);
+  result.cuda_provider = cuda_provider.kind;
+  result.one_electron_value_mapping = one_electron_policy.mapping;
+  result.one_electron_value_override = one_electron_policy.diagnostic_override;
+  result.one_electron_value_capability_fallback = one_electron_policy.capability_fallback;
   if (needs(strategy.spec, FockApproximation::DensityFitted)) {
     result.df_pair_storage = requested_df_pair_storage();
     result.df_value_mapping = cuda_policy::df_value_mapping_requested();

@@ -1,6 +1,7 @@
 """Real-device tier; opt in only inside an allocated GPU job."""
 
 import os
+import typing
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -28,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def artifact():
+def artifact() -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm on this host"
     compiler = CudaCompilerAdapter(
         Path(os.environ.get("VIBEQC_NVCC", "/group/software/cuda-12.9.1/bin/nvcc")),
@@ -39,7 +40,9 @@ def artifact():
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
 @pytest.mark.parametrize("tile", [1, 2, 4])
-def test_cuda_mo_blocks_mp2_and_owned_memory(artifact, name, tile):
+def test_cuda_mo_blocks_mp2_and_owned_memory(
+    artifact: typing.Any, name: typing.Any, tile: typing.Any
+) -> None:
     meta, a = load_fixture(name)
     snapshot = fixture_snapshot(meta, a)
     with NativeSource(**source_arguments(meta)) as source:
@@ -79,7 +82,7 @@ def test_cuda_mo_blocks_mp2_and_owned_memory(artifact, name, tile):
             provider.get(block)
 
 
-def test_independent_cuda_items_and_closed_exports(artifact):
+def test_independent_cuda_items_and_closed_exports(artifact: typing.Any) -> None:
     meta, a = load_fixture("h2")
     snapshot = fixture_snapshot(meta, a)
     with NativeSource(**source_arguments(meta)) as source:
@@ -103,7 +106,9 @@ def test_independent_cuda_items_and_closed_exports(artifact):
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
-def test_generated_df_source_staging_and_same_hamiltonian(name):
+def test_generated_df_source_staging_and_same_hamiltonian(
+    name: typing.Any,
+) -> None:
     assert os.environ.get("SLURM_JOB_ID")
     meta, a = load_fixture(name)
     with CudaDFSource(**source_arguments(meta), tile_capacity=64) as source:
@@ -133,6 +138,14 @@ def test_generated_df_source_staging_and_same_hamiltonian(name):
         np.testing.assert_allclose(
             tile, a["raw_three_center"][slices], atol=1e-11, rtol=1e-10
         )
+        staged = source.source_metrics()
+        assert staged["execution_path"] == "host-staged-compatibility"
+        assert staged["generated_bytes"] >= tile.nbytes
+        assert staged["d2h_bytes"] >= tile.nbytes
+        assert staged["tile_count"] >= 1
+        assert staged["host_staged_tiles"] >= 1
+        assert staged["device_handoffs"] == 0
+        assert staged["subsequent_h2d_bytes"] == 0
         with DFProvider(snapshot, source, factor, auxiliary_tile=3) as provider:
             result = restricted_mp2(snapshot, provider)
             np.testing.assert_allclose(
@@ -145,4 +158,11 @@ def test_generated_df_source_staging_and_same_hamiltonian(name):
                 )
                 < 1e-9
             )
+            cached = provider.get(MOBlock.from_spaces(snapshot, "ovov"))
+            assert cached.diagnostics["execution_path"] == "host-staged-compatibility"
+            assert not cached.diagnostics["performance_claim_eligible"]
+            assert cached.diagnostics["generated_bytes"] > 0
+            assert cached.diagnostics["d2h_bytes"] > 0
+            assert cached.diagnostics["host_transform_calls"] > 0
+            assert cached.diagnostics["subsequent_h2d_bytes"] == 0
         assert source.source_device_bytes > 0

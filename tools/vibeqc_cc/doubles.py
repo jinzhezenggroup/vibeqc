@@ -5,6 +5,7 @@ Copyright 2014-2021 The PySCF Developers). See NOTICE/source_manifest.json.
 All Fock diagonals are retained; no denominator or level shift occurs here.
 """
 
+import typing
 from fractions import Fraction
 from itertools import product
 from string import ascii_letters
@@ -114,7 +115,9 @@ DEFINITIONS = {
 }
 
 
-def _expand(equation, children, coefficient):
+def _expand(
+    equation: typing.Any, children: typing.Any, coefficient: typing.Any
+) -> typing.Any:
     """Distribute products of sums and alpha-rename every captured dummy index.
 
     A polynomial term is (factor, output labels, ((input name, labels),...)).
@@ -140,7 +143,13 @@ def _expand(equation, children, coefficient):
     return result
 
 
-def build_ccsd_program(nocc, nvir, *, form="shared", diagnostics=True):
+def build_ccsd_program(
+    nocc: typing.Any,
+    nvir: typing.Any,
+    *,
+    form: typing.Any = "shared",
+    diagnostics: typing.Any = True,
+) -> typing.Any:
     """Complete energy/R1/R2; expanded oracle DAG or shared/CSE CPU DAG.
 
     R2 is the opposite-spin alpha-beta double determinant projection. This

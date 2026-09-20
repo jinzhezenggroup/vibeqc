@@ -7,6 +7,7 @@ including general einsums and denominators, executes on the allocated GPU.
 
 from __future__ import annotations
 
+import typing
 from math import prod
 
 from .cuda_dtype import scalar_type
@@ -16,17 +17,17 @@ from .ir import TRANSCENDENTALS
 from .scaled_arithmetic import emit_scaled_bilinear
 
 
-def _integer(value):
+def _integer(value: typing.Any) -> typing.Any:
     return f"{value}LL"
 
 
-def _coordinate(linear, shape, axis):
+def _coordinate(linear: typing.Any, shape: typing.Any, axis: typing.Any) -> typing.Any:
     # Empty kernels/accessors are never executed, but CUDA still compiles
     # their bodies. Avoid constant division by zero even in unreachable code.
     return f"(({linear}) / {_integer(max(1, prod(shape[axis + 1 :])))} % {_integer(max(1, shape[axis]))})"
 
 
-def _flat(coordinates, shape):
+def _flat(coordinates: typing.Any, shape: typing.Any) -> typing.Any:
     return (
         " + ".join(
             f"({coord}) * {_integer(stride)}"
@@ -36,7 +37,7 @@ def _flat(coordinates, shape):
     )
 
 
-def _physical_index(layout, logical="z"):
+def _physical_index(layout: typing.Any, logical: typing.Any = "z") -> typing.Any:
     if layout.is_c_contiguous:
         return logical
     return (
@@ -48,7 +49,7 @@ def _physical_index(layout, logical="z"):
     )
 
 
-def _logical_index(layout, physical="z"):
+def _logical_index(layout: typing.Any, physical: typing.Any = "z") -> typing.Any:
     if layout.is_c_contiguous:
         return physical
     shape = tuple(layout.shape[axis] for axis in layout.order)
@@ -58,15 +59,17 @@ def _logical_index(layout, physical="z"):
     return _flat(coordinates, layout.shape)
 
 
-def _name(prefix, base):
+def _name(prefix: typing.Any, base: typing.Any) -> typing.Any:
     return f"{prefix}{base}"
 
 
-def _read(operand, index, prefix=""):
+def _read(
+    operand: typing.Any, index: typing.Any, prefix: typing.Any = ""
+) -> typing.Any:
     return f"{_name(prefix, f'read_{operand}')}(p, {index}, error)"
 
 
-def _value(plan, i, prefix=""):
+def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.Any:
     """Emit scalar evaluation with each original arithmetic error boundary."""
     step = plan.steps[i]
     node, a, args = step.node, step.node.attrs, step.inputs
@@ -74,6 +77,11 @@ def _value(plan, i, prefix=""):
     ty, add, mul = scalar.ctype, scalar.intrinsic("add"), scalar.intrinsic("mul")
     shape = node.spec.shape
     c = [_coordinate("z", shape, axis) for axis in range(len(shape))]
+    reduction_pragma = (
+        ""
+        if plan.schedule.reduction_unroll == 1
+        else f"#pragma unroll {plan.schedule.reduction_unroll}\n"
+    )
     if node.op == "add":
         lines = [f"{ty} value = {scalar.zero};"]
         for child, factor in zip(args, a["coefficients"], strict=True):
@@ -127,7 +135,7 @@ def _value(plan, i, prefix=""):
         for value in values[1:]:
             term = f"{mul}({term}, {value})"
         return f"""{ty} value = {scalar.zero};
-for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
+{reduction_pragma}for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
     value = {add}(value, {term});
 return finite({mul}(finite(value, error, {i}), {scalar.literal(a["coefficient"])}), error, {i});"""
     child = args[0]
@@ -161,7 +169,7 @@ return finite({mul}(finite(value, error, {i}), {scalar.literal(a["coefficient"])
                 source.append(c[cursor])
                 cursor += 1
         return f"""{ty} value = {scalar.zero};
-for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
+{reduction_pragma}for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
     value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
 return finite(value, error, {i});"""
     else:
@@ -169,7 +177,7 @@ return finite(value, error, {i});"""
     return f"return {_read(child, index, prefix)};"
 
 
-def _arithmetic_error_expression(plan, legacy):
+def _arithmetic_error_expression(plan: typing.Any, legacy: typing.Any) -> typing.Any:
     """Extend diagnostics only for new graphs; keep legacy emitted bytes intact.
 
     Zero is success, +[1,n] is nonfinite, -[1,n] is division by zero,
@@ -185,7 +193,7 @@ def _arithmetic_error_expression(plan, legacy):
     )
 
 
-def _group_map(g, labels):
+def _group_map(g: typing.Any, labels: typing.Any) -> typing.Any:
     coordinates = {}
     for group, value in (
         (g.batch_labels, "batch"),
@@ -203,12 +211,16 @@ def _group_map(g, labels):
     )
 
 
-def _packing_kernels(plan, i, prefix=""):
+def _packing_kernels(
+    plan: typing.Any, i: typing.Any, prefix: typing.Any = ""
+) -> typing.Any:
     step = plan.steps[i]
     g = gemm_contract(step.node)
     scalar = scalar_type(step.node.spec.dtype)
     ty, mul = scalar.ctype, scalar.intrinsic("mul")
-    return f"""
+    width = plan.schedule.staging_width
+    if width == 1:
+        return f"""
 __global__ void {_name(prefix, f"pack_{i}")}(const unsigned char* p, {ty}* a, {ty}* b, int* error,
                         I batch, I m0, I n0, I k0, I tm, I tn, I tk) {{
     for (I z = I(blockIdx.x) * blockDim.x + threadIdx.x; z < tm*tk + tk*tn;
@@ -233,9 +245,46 @@ __global__ void {_name(prefix, f"scatter_{i}")}(unsigned char* p, const {ty}* c,
     }}
 }}
 """
+    return f"""
+__global__ void {_name(prefix, f"pack_{i}")}(const unsigned char* p, {ty}* a, {ty}* b, int* error,
+                        I batch, I m0, I n0, I k0, I tm, I tn, I tk) {{
+    const I total = tm*tk + tk*tn;
+    for (I base = (I(blockIdx.x) * blockDim.x + threadIdx.x) * {width}LL;
+         base < total; base += I(blockDim.x) * gridDim.x * {width}LL) {{
+#pragma unroll {width}
+        for (int lane = 0; lane < {width}; ++lane) {{
+            I z = base + lane;
+            if (z >= total) break;
+            if (z < tm*tk) {{
+                I row = m0 + z/tk, reduction = k0 + z%tk;
+                a[z] = {_read(step.inputs[0], _group_map(g, g.a_labels), prefix)};
+            }} else {{
+                I q = z - tm*tk;
+                I column = n0 + q%tn, reduction = k0 + q/tn;
+                b[q] = {_read(step.inputs[1], _group_map(g, g.b_labels), prefix)};
+            }}
+        }}
+    }}
+}}
+__global__ void {_name(prefix, f"scatter_{i}")}(unsigned char* p, const {ty}* c, int* error,
+                           I batch, I m0, I n0, I tm, I tn) {{
+    const I total = tm*tn;
+    for (I base = (I(blockIdx.x) * blockDim.x + threadIdx.x) * {width}LL;
+         base < total; base += I(blockDim.x) * gridDim.x * {width}LL) {{
+#pragma unroll {width}
+        for (int lane = 0; lane < {width}; ++lane) {{
+            I z = base + lane;
+            if (z >= total) break;
+            I row = m0 + z/tn, column = n0 + z%tn;
+            reinterpret_cast<{ty}*>(p + {step.offset})[{_physical_index(step.layout, _group_map(g, g.output_labels))}] =
+                finite({mul}(finite(c[z], error, {i}), {scalar.literal(step.node.attrs["coefficient"])}), error, {i});
+        }}
+    }}
+}}
+"""
 
 
-def _launch(plan, i, prefix=""):
+def _launch(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.Any:
     step, threads = plan.steps[i], plan.schedule.threads
     node = step.node
     scalar = scalar_type(node.spec.dtype)
@@ -244,7 +293,9 @@ def _launch(plan, i, prefix=""):
         return ""
     pointer = f"reinterpret_cast<{ty}*>(p + {step.offset})"
     if step.gemm == "none":
-        return f"ctx.section(profile, metrics.kernel_ms, [&] {{ {prefix}kernel_{i}<<<blocks({node.spec.size}LL, {threads}), {threads}, 0, ctx.stream>>>(p, ctx.error); cuda_check(cudaGetLastError()); }});"
+        width = plan.schedule.elements_per_thread
+        work_items = (node.spec.size + width - 1) // width
+        return f"ctx.section(profile, metrics.kernel_ms, [&] {{ {prefix}kernel_{i}<<<blocks({work_items}LL, {threads}), {threads}, 0, ctx.stream>>>(p, ctx.error); cuda_check(cudaGetLastError()); }});"
     g = gemm_contract(node)
     if not g.k:
         return f"ctx.section(profile, metrics.kernel_ms, [&] {{ cuda_check(cudaMemsetAsync({pointer}, 0, {node.spec.size * node.spec.itemsize}ULL, ctx.stream)); }});"
@@ -271,6 +322,17 @@ ctx.section(profile, metrics.kernel_ms, [&] {{
             strict=True,
         )
     ]
+    staging_width = plan.schedule.staging_width
+    pack_work = (
+        "tm*tk+tk*tn"
+        if staging_width == 1
+        else f"(tm*tk+tk*tn+{staging_width - 1}LL)/{staging_width}LL"
+    )
+    scatter_work = (
+        "tm*tn"
+        if staging_width == 1
+        else f"(tm*tn+{staging_width - 1}LL)/{staging_width}LL"
+    )
     return f"""{{
 {ty}* a = reinterpret_cast<{ty}*>(p + {plan.arena_bytes});
 {ty}* b = a + {mt * kt}LL;
@@ -282,13 +344,13 @@ for (I n0 = 0; n0 < {g.n}LL; n0 += {nt}LL) {{
     for (I k0 = 0; k0 < {g.k}LL; k0 += {kt}LL) {{
         I tk = std::min<I>({kt}, {g.k}LL-k0);
         ctx.section(profile, metrics.packing_ms, [&] {{
-            {_name(prefix, f"pack_{i}")}<<<blocks(tm*tk+tk*tn, {threads}), {threads}, 0, ctx.stream>>>(p, a, b, ctx.error, batch, m0, n0, k0, tm, tn, tk);
+            {_name(prefix, f"pack_{i}")}<<<blocks({pack_work}, {threads}), {threads}, 0, ctx.stream>>>(p, a, b, ctx.error, batch, m0, n0, k0, tm, tn, tk);
             cuda_check(cudaGetLastError());
         }});
         ctx.section(profile, metrics.library_ms, [&] {{ gemm(ctx, 'N', 'N', int(tm), int(tn), int(tk), a, b, c, 0, 0, 0, 1, k0 == 0 ? {scalar.zero} : {scalar.one}); }});
     }}
     ctx.section(profile, metrics.packing_ms, [&] {{
-        {_name(prefix, f"scatter_{i}")}<<<blocks(tm*tn, {threads}), {threads}, 0, ctx.stream>>>(p, c, ctx.error, batch, m0, n0, tm, tn);
+        {_name(prefix, f"scatter_{i}")}<<<blocks({scatter_work}, {threads}), {threads}, 0, ctx.stream>>>(p, c, ctx.error, batch, m0, n0, tm, tn);
         cuda_check(cudaGetLastError());
     }});
 }}
@@ -362,11 +424,26 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
         )
         if not step.virtual and node.op not in ("input", "constant"):
             if step.gemm == "none":
-                parts.append(f"""__device__ inline {ty} {prefix}evaluate_{i}(const unsigned char* p, I z, int* error) {{ {_value(plan, i, prefix)} }}
+                width = plan.schedule.elements_per_thread
+                if width == 1:
+                    parts.append(f"""__device__ inline {ty} {prefix}evaluate_{i}(const unsigned char* p, I z, int* error) {{ {_value(plan, i, prefix)} }}
 __global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
     for (I z = I(blockIdx.x) * blockDim.x + threadIdx.x; z < {node.spec.size}LL;
          z += I(blockDim.x) * gridDim.x)
         reinterpret_cast<{ty}*>(p + {step.offset})[z] = {prefix}evaluate_{i}(p, {_logical_index(step.layout)}, error);
+}}""")
+                else:
+                    parts.append(f"""__device__ inline {ty} {prefix}evaluate_{i}(const unsigned char* p, I z, int* error) {{ {_value(plan, i, prefix)} }}
+__global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
+    for (I base = (I(blockIdx.x) * blockDim.x + threadIdx.x) * {width}LL;
+         base < {node.spec.size}LL; base += I(blockDim.x) * gridDim.x * {width}LL) {{
+#pragma unroll {width}
+        for (int lane = 0; lane < {width}; ++lane) {{
+            I z = base + lane;
+            if (z >= {node.spec.size}LL) break;
+            reinterpret_cast<{ty}*>(p + {step.offset})[z] = {prefix}evaluate_{i}(p, {_logical_index(step.layout)}, error);
+        }}
+    }}
 }}""")
             elif step.gemm == "packed":
                 parts.append(_packing_kernels(plan, i, prefix))

@@ -587,6 +587,13 @@
       "subsystem": "runtime"
     },
     {
+      "path": "src/integrals/first_gradient_runtime.cuh",
+      "reason": "Shared bounded device storage, AO-weight staging, generated-program dispatch, atomic Cartesian output lifetime and failure-atomic publication. Integral derivatives and one/two-matrix weight contractions are emitted by the common compiler; no HF/Hessian equation is implemented here.",
+      "regions": [],
+      "role": "runtime",
+      "subsystem": "runtime"
+    },
+    {
       "path": "src/integrals/range_moments.hpp",
       "reason": "Shared bounded stable moment numerical library called by generated operators; not a second shell/operator lowering.",
       "regions": [],

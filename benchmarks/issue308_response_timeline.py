@@ -19,6 +19,11 @@ import time
 from pathlib import Path
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Calculator, _native
 from vibeqc.autotune import source_identity
 
@@ -57,14 +62,14 @@ CANDIDATE_CONTROLS = (
 )
 
 
-def main():
+def main() -> None:
     """Require source/binary agreement and fresh artifacts before any GPU work."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--aos", type=int, choices=CASES, default=384)
     parser.add_argument("--batch", type=int, choices=(1, 4), default=1)
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--library", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument(
         "--reference",
         type=Path,
@@ -219,7 +224,7 @@ def main():
     payload["source_patch_sha256"] = hashlib.sha256(patch).hexdigest()
     cudart = ctypes.CDLL("libcudart.so.12") if args.nsys else None
 
-    def save():
+    def save() -> None:
         (args.output / "result.json").write_text(json.dumps(payload, indent=2) + "\n")
 
     save()

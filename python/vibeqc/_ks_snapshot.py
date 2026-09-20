@@ -6,6 +6,7 @@ snapshots. Export is explicit and may transfer the final CUDA matrices.
 """
 
 import ctypes as ct
+import typing
 from hashlib import sha256
 from types import MappingProxyType
 
@@ -18,7 +19,9 @@ from .batch import PreparedBatch
 from .ks import SCF_DOMAIN, resolve_ks_method
 
 
-def _scf_xc_points(library, pbe, rho, gradient):
+def _scf_xc_points(
+    library: typing.Any, pbe: typing.Any, rho: typing.Any, gradient: typing.Any
+) -> typing.Any:
     """Evaluate the exact native SCF point model without an AO contraction."""
     if type(pbe) is not bool:
         raise TypeError("SCF point evaluator requires a boolean PBE flag")
@@ -91,17 +94,17 @@ class NativeKsSnapshot:
     )
     _fixed = frozenset(__slots__)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed and hasattr(self, name):
             raise AttributeError("native KS snapshot provenance is immutable")
         super().__setattr__(name, value)
 
-    def __delattr__(self, name):
+    def __delattr__(self, name: typing.Any) -> None:
         if name in self._fixed:
             raise AttributeError("native KS snapshot provenance is immutable")
         super().__delattr__(name)
 
-    def __init__(self, batch, index):
+    def __init__(self, batch: typing.Any, index: typing.Any) -> None:
         if not isinstance(batch, PreparedBatch):
             raise TypeError("stationary snapshot requires a native PreparedBatch")
         if type(index) is not int or not 0 <= index < batch.system_count:
@@ -142,7 +145,7 @@ class NativeKsSnapshot:
             )
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
-            if metadata[0] not in (1, 2, 3, 4) or metadata[7] != 1:
+            if metadata[0] not in (1, 2, 3, 4, 5) or metadata[7] != 1:
                 raise NotImplementedError(
                     "unsupported native KS snapshot/domain version"
                 )
@@ -165,7 +168,7 @@ class NativeKsSnapshot:
             self.close()
             raise
 
-    def check_current(self):
+    def check_current(self) -> None:
         """Host-only exact token check; numerical equality cannot renew a lease."""
         self._batch._ensure_open()
         if not self._handle or self._library.vibeqc_ks_snapshot_check_v1(
@@ -175,7 +178,7 @@ class NativeKsSnapshot:
                 "stationary KS snapshot is stale or has no current native owner"
             )
 
-    def decode(self, basis, grid):
+    def decode(self, basis: typing.Any, grid: typing.Any) -> typing.Any:
         """Verify actual AO/grid sources before deriving any Python identities."""
         from vibeqc_compiler.dft.grid import ExplicitGrid
 
@@ -207,7 +210,7 @@ class NativeKsSnapshot:
         ) = self.metadata
         offset = 0
 
-        def take(shape):
+        def take(shape: typing.Any) -> typing.Any:
             nonlocal offset
             count = int(np.prod(shape))
             value = self.values[offset : offset + count].reshape(shape)
@@ -238,7 +241,7 @@ class NativeKsSnapshot:
             take((npoint,)),
             take((npoint,)),
         )
-        if self.metadata[0] in (2, 3, 4):
+        if self.metadata[0] in (2, 3, 4, 5):
             from vibeqc_compiler.dft.grid import GridSpec
 
             version, radial, polar, azimuth, iterations, tolerance = take((6,))
@@ -260,10 +263,10 @@ class NativeKsSnapshot:
             self.atomic_weights = None
         self.export_work = MappingProxyType(
             dict(zip(("d2h_bytes", "reads", "synchronizations"), map(int, take((3,)))))
-            if self.metadata[0] == 3
+            if self.metadata[0] in (3, 5)
             else {}
         )
-        if self.metadata[0] == 4:
+        if self.metadata[0] in (4, 5):
             cores = take((natom,))
             count = float(take((1,))[0])
             if not np.isfinite(count) or count < 1 or not count.is_integer():
@@ -290,7 +293,7 @@ class NativeKsSnapshot:
             self.hamiltonian = "all-electron" if self.backend == "cpu" else "unbound"
         if offset != len(self.values):
             raise ValueError("native KS snapshot wire length mismatch")
-        if self.backend == "cpu" and not np.isclose(
+        if self.hamiltonian != "unbound" and not np.isclose(
             arrays["occupations"].sum(),
             atoms[:, 0].sum() - sum(self.ecp_cores) - charge,
             atol=1e-10,
@@ -342,7 +345,7 @@ class NativeKsSnapshot:
                             "ecp_cores": self.ecp_cores,
                             "ecp_terms": self.ecp_terms,
                         }
-                        if self.metadata[0] == 4
+                        if self.metadata[0] in (4, 5)
                         else {}
                     ),
                 }
@@ -389,22 +392,27 @@ class NativeKsSnapshot:
             _source=self,
         )
 
-    def evaluate_xc_points(self, pbe, rho, gradient):
+    def evaluate_xc_points(
+        self, pbe: typing.Any, rho: typing.Any, gradient: typing.Any
+    ) -> typing.Any:
         """Return SCF-domain point energy and Cartesian first derivatives."""
         self.check_current()
         values = _scf_xc_points(self._library, pbe, rho, gradient)
         self.check_current()
         return values
 
-    def ecp_derivatives(self):
-        """Independent CPU provider bound to this live owner's exact ECP model.
+    def ecp_derivatives(self) -> typing.Any:
+        """Backend-specific provider bound to this live owner's exact ECP model.
 
         This explicit diagnostic materializes two atom/xyz/AO-pair arrays.
-        It is not a CUDA fallback or a bounded production force endpoint.
+        CUDA uses only generated CUDA ECP derivatives; CPU keeps its oracle.
+        This dense host export is not a production force endpoint.
         """
         self.check_current()
-        if self.backend != "cpu" or self.hamiltonian != "scalar-semilocal-ecp":
-            raise NotImplementedError("ECP derivative snapshot requires CPU ECP state")
+        if self.hamiltonian != "scalar-semilocal-ecp":
+            raise NotImplementedError(
+                "ECP derivative snapshot requires a bound ECP state"
+            )
         evaluate = self._library.vibeqc_ks_snapshot_ecp_derivatives_v1
         evaluate.argtypes = [
             ct.c_void_p,
@@ -429,7 +437,7 @@ class NativeKsSnapshot:
             raise ArithmeticError("nonfinite native ECP derivatives")
         return immutable(output)
 
-    def validate(self, state):
+    def validate(self, state: typing.Any) -> None:
         """Reject copied labels and even self-consistent replacement matrices."""
         self.check_current()
         if state.identity != self._identity:
@@ -440,7 +448,7 @@ class NativeKsSnapshot:
         ):
             raise ValueError("native stationary snapshot content mismatch")
 
-    def close(self):
+    def close(self) -> None:
         if self._handle:
             handle = self._handle
             # Revocation may clear the binding internally; public assignment
@@ -448,6 +456,6 @@ class NativeKsSnapshot:
             object.__setattr__(self, "_handle", 0)
             self._library.vibeqc_ks_snapshot_destroy_v1(handle)
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_handle"):
             self.close()

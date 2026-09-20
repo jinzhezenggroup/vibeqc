@@ -12,6 +12,11 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 
 def read_progress(path: Path) -> dict:
     """Validate scope lifetimes and preserve partial tails as incomplete evidence.
@@ -123,7 +128,7 @@ def summarize_progress(journal: dict) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("trace", type=Path)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     args = parser.parse_args()
     result = summarize_progress(read_progress(args.trace))
     with args.output.open("x") as output:

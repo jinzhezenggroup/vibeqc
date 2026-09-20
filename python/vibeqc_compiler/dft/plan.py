@@ -1,6 +1,7 @@
 """Checked numeric-buffer capacities for unscreened point/AO/derivative tiles."""
 
 import json
+import typing
 from dataclasses import dataclass
 
 from vibeqc_compiler.common.resources import (
@@ -39,11 +40,11 @@ class TilePlan:
     orbital_tile: int = 0
 
     @property
-    def peak_bytes(self):
+    def peak_bytes(self) -> typing.Any:
         return self.host_bytes + self.device_bytes
 
     @property
-    def orbital_buffers(self):
+    def orbital_buffers(self) -> typing.Any:
         """Disjoint device regions; Psi depends on the tile, never all orbitals."""
         if self.orbital_capacity is None:
             return {}
@@ -56,7 +57,9 @@ class TilePlan:
             "orbital_psi": 8 * 4 * self.tile_points * self.orbital_tile,
         }
 
-    def resource_request(self, ingredients, device_id=0):
+    def resource_request(
+        self, ingredients: typing.Any, device_id: typing.Any = 0
+    ) -> typing.Any:
         """Compose this owner's numeric capacity with XC/other owners under #203."""
         buffers = self.orbital_buffers
         estimates = [ResourceEstimate("grid_host", self.host_bytes, "pageable", 0, 1)]
@@ -108,17 +111,17 @@ class TilePlan:
 
 
 def plan_tiles(
-    basis,
+    basis: typing.Any,
     *,
-    backend="cpu",
-    order=1,
-    tile_points=256,
-    budget_bytes=256 << 20,
-    grid=None,
-    active_ao_capacity=None,
-    orbital_capacity=None,
-    orbital_tile=32,
-):
+    backend: typing.Any = "cpu",
+    order: typing.Any = 1,
+    tile_points: typing.Any = 256,
+    budget_bytes: typing.Any = 256 << 20,
+    grid: typing.Any = None,
+    active_ao_capacity: typing.Any = None,
+    orbital_capacity: typing.Any = None,
+    orbital_tile: typing.Any = 32,
+) -> typing.Any:
     """Fail before evaluation/allocation; no silent point count/backend changes."""
     jets = len(jet_indices(order))
     checked_int(tile_points, "tile points")

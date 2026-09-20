@@ -56,9 +56,11 @@ struct EspIntegralData {
 /**
  * Evaluate normalized, contracted Cartesian or real-spherical integrals.
  *
- * This implementation is the independent CPU oracle. Production CUDA
- * execution evaluates the same formulas on device and does not call this
- * routine or copy these integral tensors to the GPU.
+ * The production CPU s/p/d/f overlap/kinetic family is emitted at build time
+ * from the compiler-owned one-electron DAG shared with CUDA.  RawSource keeps
+ * a structurally independent host recurrence for reference validation; g+ S/T
+ * explicitly falls back to that reference until its generated domain expands.
+ * Other host integral families retain their existing implementation here.
  */
 IntegralData build_integrals(const core::System& system, bool include_derivatives = true,
                              bool include_eri = true);

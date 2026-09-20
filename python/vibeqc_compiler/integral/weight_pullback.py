@@ -6,13 +6,14 @@ HF density factors nor implicit permutation multiplicities.
 """
 
 import math
+import typing
 
 import numpy as np
 
 from .shell_spec import cartesian_components
 
 
-def pullback_public_weights(weights, projections):
+def pullback_public_weights(weights: typing.Any, projections: typing.Any) -> typing.Any:
     """Pull a shell-local public cotangent through fixed per-slot AO transforms."""
     if projections is not None:
         if any(np.iscomplexobj(p) for p in projections):
@@ -27,7 +28,9 @@ def pullback_public_weights(weights, projections):
     return weights
 
 
-def normalized_cartesian_components(angular, weights, scale=1.0):
+def normalized_cartesian_components(
+    angular: typing.Any, weights: typing.Any, scale: typing.Any = 1.0
+) -> typing.Any:
     """Apply angular normalization once to weights for radially normalized inputs.
 
     The returned sparse inventory retains original shell-slot xyz powers.
@@ -53,7 +56,9 @@ def normalized_cartesian_components(angular, weights, scale=1.0):
     return tuple(components)
 
 
-def normalized_radial_primitives(angular, primitives):
+def normalized_radial_primitives(
+    angular: typing.Any, primitives: typing.Any
+) -> typing.Any:
     """Match the native contracted-shell radial normalization exactly once.
 
     Cartesian angular double-factorial factors remain the public-weight

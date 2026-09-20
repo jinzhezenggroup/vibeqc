@@ -6,6 +6,7 @@ no runtime automatic-differentiation objects. Mathematical A/B/C centers stay
 distinct until a contraction maps them to physical atoms.
 """
 
+import typing
 from dataclasses import dataclass, replace
 
 from .blocks import RawBlock, TensorLayout, WeightDescriptor, WeightedDerivative
@@ -19,7 +20,13 @@ from .one_electron_values import (
 from .shell_spec import AXES
 
 
-def build_one_electron_derivative_ir(family, angular, *, charge=1.0, weighted=False):
+def build_one_electron_derivative_ir(
+    family: typing.Any,
+    angular: typing.Any,
+    *,
+    charge: typing.Any = 1.0,
+    weighted: typing.Any = False,
+) -> typing.Any:
     """Declare raw center/axis/AO blocks or a scalar external-weight gradient.
 
     Weights have the full unsymmetrized AO layout and are held fixed by this
@@ -64,7 +71,9 @@ class OneElectronDerivativeKernel:
     hermite_states: tuple[tuple[int, int, int, int], ...]
 
 
-def build_one_electron_derivative_kernel(integral, components, *, graph=None):
+def build_one_electron_derivative_kernel(
+    integral: typing.Any, components: typing.Any, *, graph: typing.Any = None
+) -> typing.Any:
     """Differentiate before cutting the nucleus-independent geometry boundary.
 
     Graph interning shares Hermite terms, Gaussian decay and prefactors among
@@ -128,7 +137,9 @@ def build_one_electron_derivative_kernel(integral, components, *, graph=None):
     )
 
 
-def evaluate_one_electron_derivative_primitive(kernel, exponents, centers):
+def evaluate_one_electron_derivative_primitive(
+    kernel: typing.Any, exponents: typing.Any, centers: typing.Any
+) -> typing.Any:
     """Interpret raw first derivatives for generator diagnostics in atomic units."""
     return tuple(
         tuple(

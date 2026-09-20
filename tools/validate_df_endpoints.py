@@ -9,6 +9,7 @@ Reproducing that historical A/B requires its exact older source checkout.
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -34,7 +35,13 @@ from tools.vibeqc_validation.f_shell_numerics import numerical_error
 from tools.vibeqc_validation.schema import file_hash
 
 
-def run_endpoint(method, batch, budget, route, repeats):
+def run_endpoint(
+    method: typing.Any,
+    batch: typing.Any,
+    budget: typing.Any,
+    route: typing.Any,
+    repeats: typing.Any,
+) -> typing.Any:
     """Use public prepared batches, including changed coordinates and forces."""
     os.environ["VIBEQC_DF_VALUE_MAPPING"] = route
     geometry = [("O", [0.0, 0.0, 0.0]), ("H", [0.0, 1.43, 1.11])]
@@ -64,7 +71,7 @@ def run_endpoint(method, batch, budget, route, repeats):
     ) as prepared:
         phases["prepare_ms"] = (time.perf_counter() - start) * 1000
 
-        def execute(coordinates=None):
+        def execute(coordinates: typing.Any = None) -> typing.Any:
             begin = time.perf_counter()
             result = prepared.execute(coordinates, strict=True)
             elapsed = (time.perf_counter() - begin) * 1000
@@ -121,7 +128,7 @@ def run_endpoint(method, batch, budget, route, repeats):
     return phases
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=3)

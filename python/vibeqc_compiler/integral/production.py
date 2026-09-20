@@ -717,6 +717,7 @@ def _selections_from_rows(
                 spec,
                 consumers=consumers,
                 recurrence=recurrence,
+                target=target,
             ).schedule
         else:
             schedule = _schedule_from_payload(schedule_payload)
@@ -1945,9 +1946,12 @@ def _as_selection(item: ShellClassSpec | KernelSelection) -> KernelSelection:
 
     if isinstance(item, KernelSelection):
         return item
-    plan = build_fused_shell_plan(item)
+    # Historical bare-spec compatibility is intentionally isolated here.
+    # New production paths resolve an explicit profile/architecture first.
+    legacy_target = cuda_target_info("sm_120")
+    plan = build_fused_shell_plan(item, target=legacy_target)
     return KernelSelection(
-        architecture="sm_120",
+        architecture=legacy_target.architecture,
         spec=item,
         consumers=(KernelConsumer.FORCE,),
         schedule=plan.schedule,
@@ -2005,6 +2009,7 @@ def emit_production_shard(
             selection.spec,
             integral=integral,
             schedule=selection.schedule,
+            target=cuda_target_info(selection.architecture),
         )
         body.append(
             emit_shell_class_fused_cuda(
@@ -2046,6 +2051,7 @@ def emit_registry_header(
             spec,
             integral=integral,
             schedule=selection.schedule,
+            target=cuda_target_info(selection.architecture),
         )
         consumer_mask = sum(
             1 << list(KernelConsumer).index(consumer)

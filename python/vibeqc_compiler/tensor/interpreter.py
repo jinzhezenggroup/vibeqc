@@ -7,10 +7,10 @@ Python object overhead. GPU planning and AD belong to subsequent issues.
 
 from __future__ import annotations
 
+import typing
 from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -18,7 +18,7 @@ from .program import Program
 from .scaled_arithmetic import scaled_bilinear_value
 from .types import checked_size
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from .ir import Node
 
 
@@ -32,7 +32,7 @@ class Execution:
     backend: str = "numpy-cpu-interpreter"
 
 
-def _coefficient(pair, dtype):
+def _coefficient(pair: typing.Any, dtype: typing.Any) -> typing.Any:
     # Fraction conversion avoids overflowing large integer numerator and
     # denominator separately when their ratio is small and representable.
     return np.dtype(dtype).type(float(Fraction(*pair)))

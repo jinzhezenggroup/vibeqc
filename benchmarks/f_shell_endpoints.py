@@ -12,9 +12,15 @@ import argparse
 import hashlib
 import json
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = (
@@ -45,7 +51,7 @@ def release_library_identity() -> dict:
             "endpoint acceptance requires the actual sm_120 release target"
         )
 
-    def digest(path):
+    def digest(path: typing.Any) -> typing.Any:
         value = hashlib.sha256()
         with path.open("rb") as stream:
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -75,7 +81,7 @@ def release_library_identity() -> dict:
 
 
 def inspected_basis(
-    case: object, calculator: object, atoms: object
+    case: typing.Any, calculator: typing.Any, atoms: typing.Any
 ) -> tuple[dict, object]:
     """Inspect the loaded native and oracle shells, including contraction sizes."""
     from pyscf import gto
@@ -113,7 +119,7 @@ def inspected_basis(
     }, mol
 
 
-def independent_result(mol: object, method: str) -> dict:
+def independent_result(mol: typing.Any, method: str) -> dict:
     """Use CPU libcint SCF and all analytic force terms without density fitting."""
     from pyscf import scf
 
@@ -138,12 +144,12 @@ def independent_result(mol: object, method: str) -> dict:
 
 
 def run_endpoint(
-    name: str,
-    batch_size: int,
+    name: typing.Any,
+    batch_size: typing.Any,
     *,
-    repeats: int = 6,
-    profile: bool = False,
-    profile_side: str = "candidate",
+    repeats: typing.Any = 6,
+    profile: typing.Any = False,
+    profile_side: typing.Any = "candidate",
 ) -> dict:
     """Measure current FPPS force selection against identical non-f dispatch."""
     import cupy as cp
@@ -317,8 +323,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        type=Path,
-        default=Path(".artifacts/benchmarks/f_shell_endpoints.json"),
+        type=raw_output_path,
+        default=str(Path(".artifacts/benchmarks/f_shell_endpoints.json")),
     )
     args = parser.parse_args()
     if args.batch < 1 or args.repeats < 2:

@@ -8,6 +8,7 @@ contractions and matrix reductions execute in the generated device program.
 import ctypes as ct
 import math
 import threading
+import typing
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
@@ -50,7 +51,7 @@ class CompiledDirectionalFirst:
     runtime_identity: str
     target: tuple
 
-    def validate(self, *, check_binary=True):
+    def validate(self, *, check_binary: typing.Any = True) -> None:
         if (
             directional_identity(self.integral, self.component_indices, self.terms)
             != self.program_identity
@@ -69,7 +70,14 @@ class CompiledDirectionalFirst:
             raise ValueError("directional artifact native identity mismatch")
 
 
-def compile_directional_first(integral, compiler, cache, *, component_indices, terms):
+def compile_directional_first(
+    integral: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
+    *,
+    component_indices: typing.Any,
+    terms: typing.Any,
+) -> typing.Any:
     if not isinstance(compiler, CudaCompilerAdapter):
         raise TypeError(
             "directional device lowering requires an explicit CUDA compiler"
@@ -136,11 +144,11 @@ class _Mapping(ct.Structure):
     _fields_ = [("offsets", ct.c_size_t * 4), ("atoms", ct.c_size_t * 4)]
 
 
-def _pointer(a):
+def _pointer(a: typing.Any) -> typing.Any:
     return a.ctypes.data_as(_DOUBLE)
 
 
-def _bind(artifact):
+def _bind(artifact: typing.Any) -> typing.Any:
     artifact.validate()
     lib = ct.CDLL(str(artifact.native.library))
     for name, expected in (
@@ -178,7 +186,9 @@ def _bind(artifact):
     return lib
 
 
-def directional_storage(nbf, natoms, outputs, capacity):
+def directional_storage(
+    nbf: typing.Any, natoms: typing.Any, outputs: typing.Any, capacity: typing.Any
+) -> typing.Any:
     for x in (nbf, natoms, outputs, capacity):
         if type(x) is not int or x < 1:
             raise ValueError("directional dimensions must be positive integers")
@@ -203,7 +213,7 @@ def directional_storage(nbf, natoms, outputs, capacity):
     }
 
 
-def _array(value, shape, name):
+def _array(value: typing.Any, shape: typing.Any, name: typing.Any) -> typing.Any:
     a = np.asarray(value)
     if a.shape != shape or a.dtype.kind not in "iuf" or not np.isfinite(a).all():
         raise ValueError(f"{name} must be a finite real array with shape {shape}")
@@ -224,15 +234,15 @@ class DirectionalFirstAccumulator:
 
     def __init__(
         self,
-        artifact,
+        artifact: typing.Any,
         *,
-        nbf,
-        natoms,
-        outputs=2,
-        capacity=128,
-        device_id=0,
-        budget_bytes=64 << 20,
-    ):
+        nbf: typing.Any,
+        natoms: typing.Any,
+        outputs: typing.Any = 2,
+        capacity: typing.Any = 128,
+        device_id: typing.Any = 0,
+        budget_bytes: typing.Any = 64 << 20,
+    ) -> None:
         self._lock = threading.RLock()
         self._handle = ct.c_void_p()
         self._failed = True
@@ -273,7 +283,7 @@ class DirectionalFirstAccumulator:
             )
         self.statistics = {"chunks": 0, "primitive_records": 0, "matrix_downloads": 0}
 
-    def _call(self, library, name, *args):
+    def _call(self, library: typing.Any, name: typing.Any, *args: typing.Any) -> None:
         detail = ct.create_string_buffer(2048)
         status = getattr(library, f"vibeqc_directional_{name}_v1")(
             *args, detail, len(detail)
@@ -283,11 +293,11 @@ class DirectionalFirstAccumulator:
                 status, RuntimeError
             )(detail.value.decode())
 
-    def _ensure_open(self):
+    def _ensure_open(self) -> None:
         if not self._handle:
             raise RuntimeError("directional accumulator is closed")
 
-    def reset(self, weights, direction):
+    def reset(self, weights: typing.Any, direction: typing.Any) -> None:
         with self._lock:
             self._ensure_open()
             self._failed = True
@@ -304,7 +314,15 @@ class DirectionalFirstAccumulator:
             )
             self._failed = False
 
-    def append_shell(self, artifact, primitives, centers, *, offsets, atoms):
+    def append_shell(
+        self,
+        artifact: typing.Any,
+        primitives: typing.Any,
+        centers: typing.Any,
+        *,
+        offsets: typing.Any,
+        atoms: typing.Any,
+    ) -> None:
         with self._lock:
             self._ensure_open()
             if self._failed:
@@ -360,7 +378,7 @@ class DirectionalFirstAccumulator:
             self.records[:, 4 : 4 + nc * 3] = coords.ravel()
             count = 0
 
-            def flush():
+            def flush() -> None:
                 self._call(
                     lib,
                     "append",
@@ -384,7 +402,7 @@ class DirectionalFirstAccumulator:
                 flush()
             self._failed = False
 
-    def finish(self):
+    def finish(self) -> typing.Any:
         with self._lock:
             self._ensure_open()
             if self._failed:
@@ -398,20 +416,20 @@ class DirectionalFirstAccumulator:
             self._failed = False
             return immutable(output)
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             if self._handle:
                 with _PREPARATION_LOCK:
                     self._library.vibeqc_directional_destroy_v1(self._handle)
                 self._handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         self._ensure_open()
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()

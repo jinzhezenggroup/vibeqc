@@ -1,0 +1,109 @@
+{
+  "base_commit": "d32caac5fc14810188e5fa33586f1b6cb51078b5",
+  "build": {
+    "baseline": {
+      "library_bytes": 1734912,
+      "max_rss_kb": 317692,
+      "wall_s": 42.96
+    },
+    "candidate": {
+      "generated_st_header_bytes": 2596536,
+      "generated_st_header_sha256": "fc8a620ccc53c320ae64d248fea32f6433bb3c204ff44a8654445ca9e136fed5",
+      "library_bytes": 2334496,
+      "max_rss_kb": 413564,
+      "wall_s": 52.74
+    },
+    "configuration": "Release, VIBEQC_ENABLE_CUDA=OFF, Ninja -j2"
+  },
+  "endpoint": {
+    "baseline": {
+      "library": "master:d32caac5fc14810188e5fa33586f1b6cb51078b5",
+      "median_s": 10.884367924649268,
+      "output": {
+        "density_rms": 1.2363758968684611e-11,
+        "energy": -2.644619635687911,
+        "forces": [
+          [
+            -0.0,
+            -0.0,
+            -0.025113094749601717
+          ],
+          [
+            -0.0,
+            -0.0,
+            0.025113094749601772
+          ]
+        ],
+        "iterations": 8
+      },
+      "samples_s": [
+        10.855584878940135,
+        10.86463836627081,
+        10.889416994992644,
+        10.87601106474176,
+        10.893929707817733,
+        10.870867825113237,
+        10.864982827566564,
+        10.879318854305893,
+        10.890852337703109,
+        10.727209769189358,
+        10.916486736852676,
+        10.912442517001182
+      ]
+    },
+    "candidate": {
+      "library": "chatgpt/issue-351-closure",
+      "median_s": 11.150224637938663,
+      "output": {
+        "density_rms": 1.2363988908924038e-11,
+        "energy": -2.6446196356879135,
+        "forces": [
+          [
+            -0.0,
+            -0.0,
+            -0.02511309474960144
+          ],
+          [
+            -0.0,
+            -0.0,
+            0.02511309474960144
+          ]
+        ],
+        "iterations": 8
+      },
+      "samples_s": [
+        11.20041055092588,
+        11.176083414815366,
+        11.155423464253545,
+        11.149139425251633,
+        11.189356642309576,
+        11.149433667771518,
+        11.183198388200253,
+        11.137910428922623,
+        11.151015608105808,
+        11.120793451089412,
+        11.119442503899336,
+        11.15729429712519
+      ]
+    },
+    "energy_abs_difference_hartree": 2.6645352591003757e-15,
+    "max_force_abs_difference_hartree_per_bohr": 3.3306690738754696e-16,
+    "median_change_percent": 2.442555370508215,
+    "samples": 12,
+    "system": "He-H+, 18 Cartesian AOs, custom s/d/f basis, complete CPU RHF energy+forces",
+    "warmup_discarded": 2
+  },
+  "machine": {
+    "architecture": "x86_64",
+    "cpu": "AMD EPYC 7K62 48-Core Processor",
+    "threads_per_core": 1
+  },
+  "ownership": {
+    "generated_family": "overlap+kinetic s/p/d/f values and first derivatives",
+    "new_handwritten_scientific_recurrence_loc": 0,
+    "retained_duplicate_reason": "structurally independent RawSource oracle; g+ compatibility fallback",
+    "supported_production_fallback_to_reference": false
+  },
+  "runtime_workspace": "No new persistent runtime workspace; generated S/T consumes PairGeometry and returns scalar value/gradient records.",
+  "schema": "vibeqc.issue351.cpu-st-retirement.v1"
+}

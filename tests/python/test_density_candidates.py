@@ -2,6 +2,7 @@
 """Executable registrations preserve current D and prepared consumer identity."""
 
 import os
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -20,7 +21,7 @@ from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture
 from vibeqc_compiler.xc.prepared import PreparedXCContractions
 
 
-def source_for(basis, data):
+def source_for(basis: typing.Any, data: typing.Any) -> typing.Any:
     """Reuse the independent fixed-density fixture; no production factorization."""
     source = DensitySource(data["density_spin"], basis_identity=basis.identity)
     factors = tuple(np.linalg.cholesky(d) for d in source.density)
@@ -28,7 +29,9 @@ def source_for(basis, data):
 
 
 @pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])
-def test_cpu_registration_keeps_existing_d_consumer(native_factory, observable):
+def test_cpu_registration_keeps_existing_d_consumer(
+    native_factory: typing.Any, observable: typing.Any
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = source_for(basis, data)
@@ -80,7 +83,9 @@ def test_cpu_registration_keeps_existing_d_consumer(native_factory, observable):
             d.execute(stamp=source.stamp)
 
 
-def test_response_candidate_binds_immutable_direction(native_factory):
+def test_response_candidate_binds_immutable_direction(
+    native_factory: typing.Any,
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = source_for(basis, data)
@@ -116,7 +121,9 @@ def test_response_candidate_binds_immutable_direction(native_factory):
                 original._delta_density.setflags(write=True)
 
 
-def test_registration_rejects_changed_resources_and_wrong_basis(native_factory):
+def test_registration_rejects_changed_resources_and_wrong_basis(
+    native_factory: typing.Any,
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = source_for(basis, data)
@@ -146,8 +153,8 @@ GPU = pytest.mark.skipif(
 @GPU
 @pytest.mark.parametrize("capacity", [None, (1, 1), (2, 2)])
 def test_gpu_registered_execution_and_capacity_fallback(
-    artifact, native_factory, capacity
-):
+    artifact: typing.Any, native_factory: typing.Any, capacity: typing.Any
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = source_for(basis, data)
@@ -206,7 +213,9 @@ def test_gpu_registered_execution_and_capacity_fallback(
 
 
 @GPU
-def test_gpu_candidate_propagates_failed_upload(artifact, native_factory, monkeypatch):
+def test_gpu_candidate_propagates_failed_upload(
+    artifact: typing.Any, native_factory: typing.Any, monkeypatch: typing.Any
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = source_for(basis, data)
@@ -225,7 +234,7 @@ def test_gpu_candidate_propagates_failed_upload(artifact, native_factory, monkey
         ):
             candidate = dft_density_candidates(endpoint, source, stamp=source.stamp)[1]
 
-            def failed(*args, **kwargs):
+            def failed(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
                 raise RuntimeError("injected source upload failure")
 
             monkeypatch.setattr(cuda, "set_source", failed)
@@ -235,8 +244,8 @@ def test_gpu_candidate_propagates_failed_upload(artifact, native_factory, monkey
 
 @GPU
 def test_local_candidate_counts_leases_and_same_mask_replacement(
-    artifact, native_factory, local_case
-):
+    artifact: typing.Any, native_factory: typing.Any, local_case: typing.Any
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (5, 3))
     with (

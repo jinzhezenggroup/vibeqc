@@ -473,11 +473,12 @@ struct CudaKsPlan::Impl : KsStateStorage {
                            physical.density_change < options.density_tolerance &&
                            physical.residual < std::min(1e-9, options.density_tolerance);
     constexpr unsigned maximum_final_corrections = 4;
-    if (spins == 2 && converged && !final_closure) {
+    const bool strict_final_closure = spins == 2 || !provider.system().ecp_terms.empty();
+    if (strict_final_closure && converged && !final_closure) {
       // A DIIS proposal can satisfy the ordinary SCF density-change gate while
       // the canonical density of the unshifted physical Fock is microscopically
-      // outside the derivative-state tolerance. Mirror CPU UKS B3: enter a
-      // bounded physical fixed-point closure without relaxing any tolerance.
+      // outside the derivative-state tolerance. UKS already requires this closure;
+      // ECP RKS needs the same physical fixed point for strict derivative snapshots.
       final_closure = true;
       final_corrections = 0;
       stabilize_occupations = false;

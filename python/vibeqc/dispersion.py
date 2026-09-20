@@ -8,8 +8,9 @@ module evaluates only the additive geometry-dependent D3 energy and dE/dR.
 from __future__ import annotations
 
 import ctypes
+import typing
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Self
+from typing import Self
 
 import numpy as np
 from vibeqc_compiler.method import (
@@ -21,9 +22,8 @@ from vibeqc_compiler.method import (
 
 from . import _native
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from collections.abc import Sequence
-    from types import TracebackType
 
 
 @dataclass(frozen=True)
@@ -89,9 +89,7 @@ def _correction(graph: MethodIR) -> DispersionCorrectionPrimitive:
     return nodes[0]
 
 
-def _normalize_system(
-    value: tuple[Sequence[int] | np.ndarray, Sequence[Sequence[float]] | np.ndarray],
-) -> tuple[np.ndarray, np.ndarray]:
+def _normalize_system(value: typing.Any) -> tuple[np.ndarray, np.ndarray]:
     try:
         atomic_numbers, coordinates = value
     except (TypeError, ValueError) as error:
@@ -124,9 +122,7 @@ class D3CorrectionBatch:
     def __init__(
         self,
         method: str | MethodSpec | MethodIR,
-        systems: Sequence[
-            tuple[Sequence[int] | np.ndarray, Sequence[Sequence[float]] | np.ndarray]
-        ],
+        systems: Sequence,
         *,
         device: str = "cpu",
         device_id: int = 0,
@@ -240,12 +236,7 @@ class D3CorrectionBatch:
     def __enter__(self) -> Self:
         return self
 
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        tb: TracebackType | None,
-    ) -> None:
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         self.close()
 
     def _require_open(self) -> None:
@@ -388,8 +379,8 @@ class D3CorrectionBatch:
 
 def evaluate_d3_correction(
     method: str | MethodSpec | MethodIR,
-    atomic_numbers: Sequence[int] | np.ndarray,
-    coordinates: Sequence[Sequence[float]] | np.ndarray,
+    atomic_numbers: typing.Any,
+    coordinates: typing.Any,
     *,
     device: str = "cpu",
     device_id: int = 0,

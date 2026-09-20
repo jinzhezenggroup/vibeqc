@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import asdict, dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -18,15 +19,30 @@ PUBLIC_COMPONENTS = (
     "LDA_C_PW_MOD",
     "GGA_X_PBE",
     "GGA_C_PBE",
+    "MGGA_X_SCAN",
+    "MGGA_C_SCAN",
     "MGGA_X_R2SCAN",
     "MGGA_C_R2SCAN",
 )
-RSH_COMPONENTS = ("GGA_X_B88", "GGA_X_ITYH", "LDA_C_VWN", "GGA_C_LYP")
-COMPONENTS = PUBLIC_COMPONENTS + RSH_COMPONENTS
+RSH_COMPONENTS = (
+    "GGA_X_B88",
+    "GGA_X_ITYH",
+    "LDA_C_VWN",
+    "LDA_C_VWN_RPA",
+    "GGA_C_LYP",
+)
+PW91_COMPONENTS = ("GGA_X_PW91", "GGA_C_PW91")
+P86_COMPONENTS = ("LDA_C_PZ", "GGA_C_P86")
+SPECIAL_EXPRESSION_COMPONENTS = RSH_COMPONENTS + PW91_COMPONENTS + P86_COMPONENTS
+COMPONENTS = PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS
 CATALOG = {
     **{name: ((name, Fraction(1)),) for name in PUBLIC_COMPONENTS},
     "LDA_XC_PW": (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
     "PBE": (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+    "SCAN": (
+        ("MGGA_X_SCAN", Fraction(1)),
+        ("MGGA_C_SCAN", Fraction(1)),
+    ),
     "R2SCAN": (
         ("MGGA_X_R2SCAN", Fraction(1)),
         ("MGGA_C_R2SCAN", Fraction(1)),
@@ -57,7 +73,7 @@ class FunctionalSpec:
     range_omega: Fraction = Fraction(0)
     long_range_exchange: Fraction = Fraction(0)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (
             not isinstance(self.identifier, str)
             or not self.identifier.strip()
@@ -99,12 +115,12 @@ class FunctionalSpec:
             )
 
     @property
-    def features(self):
+    def features(self) -> typing.Any:
         """Feature-major arrays; sigma_ab has no factor two, tau has one-half."""
         return POLARIZED if self.spin == "polarized" else UNPOLARIZED
 
     @property
-    def ingredients(self):
+    def ingredients(self) -> typing.Any:
         if any(
             name.startswith("MGGA") and coefficient
             for name, coefficient in self.components
@@ -117,18 +133,18 @@ class FunctionalSpec:
             return ("rho", "sigma")
         return ("rho",)
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         """Complete identity including parameter/license provenance and units."""
         payload = asdict(self)
         payload["components"] = [[n, str(c)] for n, c in self.components]
         for name in ("exact_exchange", "range_omega", "long_range_exchange"):
             payload[name] = str(getattr(self, name))
-        rsh = any(
-            name in RSH_COMPONENTS and coefficient
+        special = any(
+            name in SPECIAL_EXPRESSION_COMPONENTS and coefficient
             for name, coefficient in self.components
         )
-        manifest = "rsh-manifest.json" if rsh else "manifest.json"
-        expression_source = "rsh_expressions.py" if rsh else "expressions.py"
+        manifest = "rsh-manifest.json" if special else "manifest.json"
+        expression_source = "rsh_expressions.py" if special else "expressions.py"
         return {
             **payload,
             "ingredients": self.ingredients,
@@ -151,11 +167,11 @@ class FunctionalSpec:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
 
 
-def functional(identifier, *, spin="polarized"):
+def functional(identifier: typing.Any, *, spin: typing.Any = "polarized") -> typing.Any:
     """Resolve only explicit audited catalog names; unknown aliases fail closed."""
     if identifier not in CATALOG:
         raise UnsupportedXC(f"unknown functional {identifier!r}")

@@ -1,5 +1,6 @@
 """Native proposal safeguards, immutable ownership and independent target checks."""
 
+import typing
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 
@@ -28,7 +29,7 @@ from tools.vibeqc_scf.state import metric_root
 ATOMS = [(2, (0.0, 0.0, -0.7)), (1, (0.0, 0.0, 0.7))]
 
 
-def setup(method="rhf", fitted=False):
+def setup(method: typing.Any = "rhf", fitted: typing.Any = False) -> typing.Any:
     charge, multiplicity = (1, 1) if method == "rhf" else (0, 2)
     calc = Calculator(
         method=method,
@@ -42,7 +43,9 @@ def setup(method="rhf", fitted=False):
 
 @pytest.mark.parametrize("method", ["rhf", "uhf"])
 @pytest.mark.parametrize("fitted", [False, True])
-def test_disabled_and_observed_paths_match_legacy_and_physical_fock(method, fitted):
+def test_disabled_and_observed_paths_match_legacy_and_physical_fock(
+    method: typing.Any, fitted: typing.Any
+) -> None:
     source, model = setup(method, fitted)
     with source:
         legacy = probe_hf(source, model)
@@ -85,10 +88,12 @@ def test_disabled_and_observed_paths_match_legacy_and_physical_fock(method, fitt
         ("negative", "occupation_bounds"),
     ],
 )
-def test_malformed_outputs_are_rejected_by_native_guard(method, fault, reason):
+def test_malformed_outputs_are_rejected_by_native_guard(
+    method: typing.Any, fault: typing.Any, reason: typing.Any
+) -> None:
     source, model = setup(method)
 
-    def propose(state):
+    def propose(state: typing.Any) -> typing.Any:
         if state.iteration != 1:
             return None
         density = state.density.copy()
@@ -120,11 +125,11 @@ def test_malformed_outputs_are_rejected_by_native_guard(method, fault, reason):
         assert result.fock_builds == result.iterations + 2
 
 
-def test_ensemble_and_determinant_domains_and_wrong_spin_counts():
+def test_ensemble_and_determinant_domains_and_wrong_spin_counts() -> None:
     source, model = setup()
     with source:
 
-        def fractional(s):
+        def fractional(s: typing.Any) -> typing.Any:
             return (
                 DensityProposal(
                     s.identity, 0.5 * (s.density + s.baseline), "determinant_density"
@@ -139,7 +144,7 @@ def test_ensemble_and_determinant_domains_and_wrong_spin_counts():
     source, model = setup("uhf")
     with source:
 
-        def swapped(s):
+        def swapped(s: typing.Any) -> typing.Any:
             return (
                 DensityProposal(s.identity, s.density[::-1])
                 if s.iteration == 1
@@ -150,7 +155,7 @@ def test_ensemble_and_determinant_domains_and_wrong_spin_counts():
         assert result.decisions[0]["reason"] == "electron_count"
 
 
-def test_returning_current_density_cannot_manufacture_convergence():
+def test_returning_current_density_cannot_manufacture_convergence() -> None:
     source, model = setup()
     with source:
         result = solve(
@@ -174,10 +179,10 @@ def test_returning_current_density_cannot_manufacture_convergence():
 
 
 @pytest.mark.parametrize("fault", ["shape", "exception", "type"])
-def test_callback_errors_reset_without_escaping_ctypes(fault):
+def test_callback_errors_reset_without_escaping_ctypes(fault: typing.Any) -> None:
     source, model = setup()
 
-    def bad(state):
+    def bad(state: typing.Any) -> typing.Any:
         if state.iteration != 1:
             return None
         if fault == "exception":
@@ -193,7 +198,7 @@ def test_callback_errors_reset_without_escaping_ctypes(fault):
         assert result.decisions[0]["adapter_error"]
 
 
-def test_occupied_and_rotation_invariants_and_timed_projection():
+def test_occupied_and_rotation_invariants_and_timed_projection() -> None:
     source, model = setup()
     with source:
         state = solve(source, model, capture=True).snapshots[0]
@@ -215,7 +220,9 @@ def test_occupied_and_rotation_invariants_and_timed_projection():
 
 
 @pytest.mark.parametrize("fitted", [False, True])
-def test_native_safeguard_matches_independent_counterfactual(fitted):
+def test_native_safeguard_matches_independent_counterfactual(
+    fitted: typing.Any,
+) -> None:
     source, model = setup(fitted=fitted)
     with source:
         result = solve(source, model, proposer=diis_density, capture=True)
@@ -234,7 +241,7 @@ def test_native_safeguard_matches_independent_counterfactual(fitted):
             assert not replay["complete_solve_measurement"]
 
 
-def test_failed_solve_trace_and_lifetime_roundtrip(tmp_path):
+def test_failed_solve_trace_and_lifetime_roundtrip(tmp_path: typing.Any) -> None:
     source, model = setup()
     with source:
         failed = solve(source, model, ProbeControls(max_iterations=2), capture=True)
@@ -259,7 +266,7 @@ def test_failed_solve_trace_and_lifetime_roundtrip(tmp_path):
         export_trace(failed, source, path)
 
 
-def test_trace_tampering_and_truncation_are_visible(tmp_path):
+def test_trace_tampering_and_truncation_are_visible(tmp_path: typing.Any) -> None:
     source, model = setup()
     with source:
         result = solve(source, model, capture=True, max_trace_iterations=1)
@@ -270,7 +277,7 @@ def test_trace_tampering_and_truncation_are_visible(tmp_path):
         load_trace(path)
 
 
-def test_batch_ownership_rebinding_and_concurrent_results():
+def test_batch_ownership_rebinding_and_concurrent_results() -> None:
     source, model = setup()
     with source:
         items = [ScfItem(source, model), ScfItem(source, model)]
@@ -289,7 +296,7 @@ def test_batch_ownership_rebinding_and_concurrent_results():
         assert items[0].last_result is None
         assert items[0].solve(capture=True).owner != results[0].owner
 
-        def recursive(s):
+        def recursive(s: typing.Any) -> None:
             items[0].rebind(source, model)
 
         result = items[0].solve(proposer=recursive, capture=True)
@@ -299,7 +306,7 @@ def test_batch_ownership_rebinding_and_concurrent_results():
             items[0].rebind(source, replace(model, geometry_hash="stale"))
 
 
-def test_invalid_initial_guess_is_not_silently_rescaled():
+def test_invalid_initial_guess_is_not_silently_rescaled() -> None:
     source, model = setup()
     with source:
         result = solve(source, model)
@@ -311,11 +318,13 @@ def test_invalid_initial_guess_is_not_silently_rescaled():
 
 
 @pytest.mark.parametrize("gauge_seed", [None, 7, 19])
-def test_real_operator_damps_a_valid_but_overlarge_orbital_rotation(gauge_seed):
+def test_real_operator_damps_a_valid_but_overlarge_orbital_rotation(
+    gauge_seed: typing.Any,
+) -> None:
     atoms = [(8, (0.0, 0.0, 0.0)), (1, (0.0, -1.43, 1.1)), (1, (0.0, 1.43, 1.1))]
     model = Calculator().resolved_model(atoms)
 
-    def proposal(state):
+    def proposal(state: typing.Any) -> typing.Any:
         if state.iteration != 1:
             return None
         root = metric_root(state.overlap)
@@ -346,7 +355,7 @@ def test_real_operator_damps_a_valid_but_overlarge_orbital_rotation(gauge_seed):
         assert replay["action"] == "damped" and replay["fraction"] == 0.25
 
 
-def test_spin_change_invalidates_previous_proposals_and_supports_empty_beta():
+def test_spin_change_invalidates_previous_proposals_and_supports_empty_beta() -> None:
     source, singlet = setup()
     triplet = Calculator(method="uhf").resolved_model(ATOMS, charge=1, multiplicity=3)
     with source:
@@ -367,11 +376,11 @@ def test_spin_change_invalidates_previous_proposals_and_supports_empty_beta():
             probe_hf(source, triplet)
 
 
-def test_repeated_bad_model_is_disabled_so_traditional_diis_can_recover():
+def test_repeated_bad_model_is_disabled_so_traditional_diis_can_recover() -> None:
     source, model = setup()
     calls = []
 
-    def broken(state):
+    def broken(state: typing.Any) -> typing.Any:
         calls.append(state.iteration)
         return DensityProposal(state.identity, 2 * state.density)
 
@@ -383,7 +392,7 @@ def test_repeated_bad_model_is_disabled_so_traditional_diis_can_recover():
         assert result.fock_builds == result.iterations + 2
 
 
-def test_transport_and_extrapolation_are_explicit_new_validated_states():
+def test_transport_and_extrapolation_are_explicit_new_validated_states() -> None:
     from tools.vibeqc_scf.baselines import transported_density
 
     source, model = setup()
@@ -408,7 +417,9 @@ def test_transport_and_extrapolation_are_explicit_new_validated_states():
             )
 
 
-def test_dataset_split_rejects_adjacent_geometry_leakage(tmp_path):
+def test_dataset_split_rejects_adjacent_geometry_leakage(
+    tmp_path: typing.Any,
+) -> None:
     import json
 
     from vibeqc.profiles import canonical_hash
@@ -425,7 +436,7 @@ def test_dataset_split_rejects_adjacent_geometry_leakage(tmp_path):
         load_references(path)
 
 
-def test_snapshot_altered_operator_is_rejected_before_counterfactual():
+def test_snapshot_altered_operator_is_rejected_before_counterfactual() -> None:
     source, model = setup()
     with source:
         state = solve(source, model, capture=True).snapshots[0]
@@ -437,14 +448,14 @@ def test_snapshot_altered_operator_is_rejected_before_counterfactual():
             counterfactual(shifted, None, TargetOperator(source, model))
 
 
-def test_malformed_model_output_is_bounded_before_ownership_copy():
+def test_malformed_model_output_is_bounded_before_ownership_copy() -> None:
     with pytest.raises(ValueError, match="output budget"):
         DensityProposal("parent", np.zeros((2, 13, 13)))
     with pytest.raises(ValueError, match="output budget"):
         OccupiedProposal("parent", (np.zeros((13, 13)),))
 
 
-def test_failed_batch_item_preserves_its_trace_without_poisoning_neighbor():
+def test_failed_batch_item_preserves_its_trace_without_poisoning_neighbor() -> None:
     source, model = setup()
     with source:
         items = (ScfItem(source, model), ScfItem(source, model))

@@ -1,5 +1,7 @@
 """Radial batch tails, bounded fallback grids and strict workspace accounting."""
 
+import typing
+
 import numpy as np
 import pytest
 from test_ecp import fixture, reference
@@ -9,7 +11,7 @@ from vibeqc.resources_hf import _ecp_workspace
 from vibeqc_compiler.integral.ecp_schedule import cuda_radial_tile
 
 
-def test_radial_workspace_public_vs_cartesian_counts():
+def test_radial_workspace_public_vs_cartesian_counts() -> None:
     # A spherical f-shell case has 16 public AOs and 19 Cartesian components.
     # Native schedule selection uses the former; storage bounds use the latter.
     item = {
@@ -28,7 +30,9 @@ def test_radial_workspace_public_vs_cartesian_counts():
 @pytest.mark.parametrize("f_projector", [False, True])
 @pytest.mark.parametrize("polar", [32, 44, 45])
 @pytest.mark.parametrize("derivatives", [False, True])
-def test_cuda_radial_tail_and_grid_fallback(polar, derivatives, f_projector):
+def test_cuda_radial_tail_and_grid_fallback(
+    polar: typing.Any, derivatives: typing.Any, f_projector: typing.Any
+) -> None:
     require_device("cuda")
     atoms, basis, mol = fixture(f_projector=f_projector)
     # 161 leaves a one-layer tail in the four-layer schedule; 45 polar points

@@ -1,6 +1,7 @@
 """Setup-provider substitution preserves seeds, caches and full molecular endpoints."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -22,8 +23,13 @@ pytestmark = pytest.mark.skipif(
 # Batch-four rejection of the former 8-MiB request has its own resource test.
 @pytest.mark.parametrize("budget", (0, 32 << 20))
 def test_setup_provider_matches_reference_across_replans(
-    method, representation, batch_size, budget, monkeypatch, tmp_path
-):
+    method: typing.Any,
+    representation: typing.Any,
+    batch_size: typing.Any,
+    budget: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """Two prepared owners compare only the setup eigensolver, including forces.
 
     Oxygen's d shell distinguishes Cartesian and spherical layouts. Full
@@ -133,7 +139,9 @@ def test_setup_provider_matches_reference_across_replans(
                 )
 
 
-def test_setup_empty_beta_channel(monkeypatch, tmp_path):
+def test_setup_empty_beta_channel(
+    monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     """The empty UHF spin stays empty while its shared cold frame is replaced."""
     assert os.environ.get("SLURM_JOB_ID")
     # Provider substitution must hold final work fixed after candidate reuse.

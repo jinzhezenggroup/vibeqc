@@ -5,6 +5,7 @@ Native SCF has its own audited tail/spin domain, distinct from the compiler's
 interior-only reference contract. Unsupported compositions fail before prepare.
 """
 
+import typing
 from dataclasses import asdict, dataclass, field, replace
 
 from vibeqc_compiler.common.provenance import canonical_hash
@@ -38,7 +39,7 @@ class KsOptions:
     scf_domain: str = SCF_DOMAIN
     _method_ir: MethodIR | None = field(default=None, init=False, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.functional is not None and not isinstance(
             self.functional, FunctionalSpec
         ):
@@ -50,20 +51,20 @@ class KsOptions:
             raise NotImplementedError("unsupported native KS tail/spin domain policy")
 
     @property
-    def method_ir(self):
+    def method_ir(self) -> typing.Any:
         """Resolved method graph consumed by this native KS option set."""
         if self._method_ir is None:
             raise ValueError("resolve KS options against a method first")
         return self._method_ir
 
     @property
-    def ao_order(self):
+    def ao_order(self) -> typing.Any:
         """SCF needs the potential; only GGA composition needs first AO jets."""
         if self.functional is None:
             raise ValueError("resolve KS options against a method first")
         return int("sigma" in self.functional.ingredients)
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         """Keep composition provenance and the effective SCF domain explicit."""
         if self.functional is None:
             raise ValueError("resolve KS options against a method first")
@@ -83,11 +84,11 @@ class KsOptions:
         return payload
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
 
 
-def resolve_ks_method(method):
+def resolve_ks_method(method: typing.Any) -> typing.Any:
     """Resolve one native KS name through MethodIR and project its semilocal node."""
     if method not in _NATIVE_KS_METHODS:
         raise ValueError("KS options require a native LDA/PBE RKS/UKS method")
@@ -116,7 +117,7 @@ def resolve_ks_method(method):
     return method_ir, runtime_functional
 
 
-def resolve_ks_options(method, options=None):
+def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing.Any:
     """Validate a MethodIR-resolved model before resource/native allocation."""
     method_ir, expected = resolve_ks_method(method)
     options = KsOptions() if options is None else options
@@ -141,7 +142,7 @@ def resolve_ks_options(method, options=None):
     return result
 
 
-def native_ks_options(options):
+def native_ks_options(options: typing.Any) -> typing.Any:
     """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
     import ctypes
 

@@ -1,6 +1,7 @@
 """Timeline evidence must distinguish overlapping API, compute and DMA clocks."""
 
 import sqlite3
+import typing
 
 import pytest
 
@@ -12,7 +13,7 @@ from benchmarks.df_response_timeline import (
 )
 
 
-def test_gpu_coverage_unions_overlaps_and_includes_memsets():
+def test_gpu_coverage_unions_overlaps_and_includes_memsets() -> None:
     result = execution_coverage(
         (0, 30),
         [{"start": 2, "end": 12}, {"start": 8, "end": 18}],
@@ -23,7 +24,9 @@ def test_gpu_coverage_unions_overlaps_and_includes_memsets():
     assert result["no_recorded_gpu_work_ms"] == 9 / 1e6
 
 
-def test_panel_attribution_retains_kernels_after_host_range_exit(tmp_path):
+def test_panel_attribution_retains_kernels_after_host_range_exit(
+    tmp_path: typing.Any,
+) -> None:
     """Asynchronous kernels belong to the panel that submitted their API."""
     path = tmp_path / "panels.sqlite"
     with sqlite3.connect(path) as c:
@@ -64,7 +67,7 @@ def test_panel_attribution_retains_kernels_after_host_range_exit(tmp_path):
         assert component == {"kernel_calls": 1, "device_ms": 7 / 1e6}
 
 
-def test_intersections_do_not_double_count_concurrent_activity():
+def test_intersections_do_not_double_count_concurrent_activity() -> None:
     assert interval_union([(8, 12), (0, 5), (4, 9), (15, 18)]) == [(0, 12), (15, 18)]
     assert intersect_duration([(0, 10), (5, 15)], [(8, 12), (10, 20)]) == 7
     assert intersect_duration([(0, 10)], [(12, 20)]) == 0
@@ -74,7 +77,9 @@ def test_intersections_do_not_double_count_concurrent_activity():
 
 @pytest.mark.parametrize("traced", (False, True))
 @pytest.mark.parametrize("extra_copy", (False, True))
-def test_copy_wait_overlap_and_unassigned_host_residual(tmp_path, traced, extra_copy):
+def test_copy_wait_overlap_and_unassigned_host_residual(
+    tmp_path: typing.Any, traced: typing.Any, extra_copy: typing.Any
+) -> None:
     """A copy API spans a prior kernel, DMA and host-only staging/control.
 
     Nested NVTX and the untraced original route must identify the same raw
@@ -138,7 +143,9 @@ def test_copy_wait_overlap_and_unassigned_host_residual(tmp_path, traced, extra_
 
 
 @pytest.mark.parametrize("identify_generation", (False, True))
-def test_source_response_requires_executed_generation(tmp_path, identify_generation):
+def test_source_response_requires_executed_generation(
+    tmp_path: typing.Any, identify_generation: typing.Any
+) -> None:
     """A density upload alone cannot substantiate a zero-raw-transfer claim."""
     path = tmp_path / "source.sqlite"
     with sqlite3.connect(path) as c:

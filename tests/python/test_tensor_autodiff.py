@@ -1,5 +1,6 @@
 """Primitive JVP/VJP rules and adjoint dot-product checks for #151 slice A."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -39,11 +40,19 @@ from vibeqc_compiler.tensor.ir import PRIMITIVES
 RNG = np.random.default_rng(151)
 
 
-def _axis(name, size, kind="occupied"):
+def _axis(
+    name: typing.Any, size: typing.Any, kind: typing.Any = "occupied"
+) -> typing.Any:
     return Index(name, IndexSpace(name, kind, size))
 
 
-def _parameter(name, indices, *, dtype="float64", representation="general"):
+def _parameter(
+    name: typing.Any,
+    indices: typing.Any,
+    *,
+    dtype: typing.Any = "float64",
+    representation: typing.Any = "general",
+) -> typing.Any:
     return input_tensor(
         name,
         TensorSpec(
@@ -56,7 +65,13 @@ def _parameter(name, indices, *, dtype="float64", representation="general"):
     )
 
 
-def _directional_fd(program, feeds, tangents, output, step):
+def _directional_fd(
+    program: typing.Any,
+    feeds: typing.Any,
+    tangents: typing.Any,
+    output: typing.Any,
+    step: typing.Any,
+) -> typing.Any:
     """Central difference of one output along the supplied tangent direction."""
     plus, minus = dict(feeds), dict(feeds)
     for name, tangent in tangents.items():
@@ -67,7 +82,14 @@ def _directional_fd(program, feeds, tangents, output, step):
     ) / (2 * step)
 
 
-def _check_case(program, feeds, tangents, cotangents, *, rtol=1e-10):
+def _check_case(
+    program: typing.Any,
+    feeds: typing.Any,
+    tangents: typing.Any,
+    cotangents: typing.Any,
+    *,
+    rtol: typing.Any = 1e-10,
+) -> typing.Any:
     """Require the dot identity and a finite-difference convergence region."""
     forward = jvp(program, feeds, tangents)
     reverse = vjp(program, feeds, cotangents)
@@ -94,7 +116,7 @@ def _check_case(program, feeds, tangents, cotangents, *, rtol=1e-10):
     return forward, reverse, result
 
 
-def test_primitive_rules_and_dot_products():
+def test_primitive_rules_and_dot_products() -> None:
     i = _axis("i", 4)
     x, y = _parameter("x", (i,)), _parameter("y", (i,))
     xv, yv = RNG.normal(size=4), RNG.normal(size=4)
@@ -242,7 +264,7 @@ def test_primitive_rules_and_dot_products():
                 )
 
 
-def test_einsum_matrix_product_matches_analytic_adjoints():
+def test_einsum_matrix_product_matches_analytic_adjoints() -> None:
     p, auxiliary, q = _axis("p", 3), _axis("P", 4, kind="auxiliary"), _axis("q", 2)
     left = _parameter("left", (p, auxiliary))
     right = _parameter("right", (auxiliary, q))
@@ -268,7 +290,7 @@ def test_einsum_matrix_product_matches_analytic_adjoints():
     )
 
 
-def test_repeated_einsum_labels_project_onto_the_diagonal():
+def test_repeated_einsum_labels_project_onto_the_diagonal() -> None:
     i = _axis("i", 2)
     virtual = IndexSpace("v", "virtual", 3)
     a, b = Index("a", virtual), Index("b", virtual)
@@ -298,7 +320,7 @@ def test_repeated_einsum_labels_project_onto_the_diagonal():
     np.testing.assert_allclose(forward.output_tangents["out"], expected_forward)
 
 
-def test_random_dag_with_multiple_consumers_and_views():
+def test_random_dag_with_multiple_consumers_and_views() -> None:
     i, j = _axis("i", 2), _axis("j", 3)
     x, y, z = (
         _parameter("x", (i, j)),
@@ -335,7 +357,7 @@ def test_random_dag_with_multiple_consumers_and_views():
     _check_case(program, feeds, tangents, cotangents)
 
 
-def test_vjp_accumulates_cotangents_from_the_same_output_node():
+def test_vjp_accumulates_cotangents_from_the_same_output_node() -> None:
     i = _axis("i", 5)
     x = _parameter("x", (i,))
     value = RNG.normal(size=5)
@@ -347,7 +369,9 @@ def test_vjp_accumulates_cotangents_from_the_same_output_node():
 
 
 @pytest.mark.parametrize("scalar", [False, True])
-def test_distinct_inputs_with_one_name_accumulate_before_and_after_cse(scalar):
+def test_distinct_inputs_with_one_name_accumulate_before_and_after_cse(
+    scalar: typing.Any,
+) -> None:
     indices = () if scalar else (_axis("i", 3),)
     first = _parameter("x", indices)
     second = _parameter("x", indices)
@@ -367,7 +391,7 @@ def test_distinct_inputs_with_one_name_accumulate_before_and_after_cse(scalar):
         )
 
 
-def test_matrix_free_vjp_fits_a_budget_far_below_the_dense_jacobian():
+def test_matrix_free_vjp_fits_a_budget_far_below_the_dense_jacobian() -> None:
     i = _axis("i", 2000)
     x = _parameter("x", (i,))
     value = RNG.normal(size=2000)
@@ -385,7 +409,7 @@ def test_matrix_free_vjp_fits_a_budget_far_below_the_dense_jacobian():
         jvp(program, {"x": value}, {"x": np.ones(2000)}, max_bytes=100)
 
 
-def test_packed_symmetric_tangent_spaces_fail_closed():
+def test_packed_symmetric_tangent_spaces_fail_closed() -> None:
     space = IndexSpace("o", "occupied", 2)
     spec = TensorSpec(
         (Index("i", space), Index("j", space)),
@@ -403,7 +427,7 @@ def test_packed_symmetric_tangent_spaces_fail_closed():
         vjp(program, {"x": value}, {"out": np.ones((2, 2))})
 
 
-def test_packed_layout_transposes_follow_the_weighted_metric():
+def test_packed_layout_transposes_follow_the_weighted_metric() -> None:
     occupied = IndexSpace("o", "occupied", 2)
     virtual = IndexSpace("v", "virtual", 3)
     indices = (
@@ -452,7 +476,7 @@ def test_packed_layout_transposes_follow_the_weighted_metric():
         )
 
 
-def test_nondifferentiable_inputs_and_outputs_are_rejected():
+def test_nondifferentiable_inputs_and_outputs_are_rejected() -> None:
     i = _axis("i", 3)
     x = input_tensor("x", TensorSpec((i,), role="input"))
     program = Program({"out": x})
@@ -466,7 +490,7 @@ def test_nondifferentiable_inputs_and_outputs_are_rejected():
         vjp(program, {"x": np.ones(3)}, {"missing": np.ones(3)})
 
 
-def test_provenance_links_the_derivative_to_the_primal_equation():
+def test_provenance_links_the_derivative_to_the_primal_equation() -> None:
     i = _axis("i", 3)
     x = _parameter("x", (i,))
     program = Program({"out": multiply(x, x)})
@@ -492,7 +516,7 @@ def test_provenance_links_the_derivative_to_the_primal_equation():
     )
 
 
-def test_requested_outputs_and_inputs_are_isolated_and_hashed():
+def test_requested_outputs_and_inputs_are_isolated_and_hashed() -> None:
     i = _axis("i", 3)
     x, y = _parameter("x", (i,)), _parameter("y", (i,))
     program = Program({"sum": add(x, y), "product": multiply(x, y)})
@@ -515,7 +539,7 @@ def test_requested_outputs_and_inputs_are_isolated_and_hashed():
         jvp(program, feeds, tangents, outputs="sum")
 
 
-def test_capabilities_cover_every_primitive_and_claim_only_slice_a():
+def test_capabilities_cover_every_primitive_and_claim_only_slice_a() -> None:
     report = capabilities()
     assert set(report["primitives"]) == set(PRIMITIVES) == set(AD_PRIMITIVES)
     assert set(AD_RULES) == set(_JVP_RULES) == set(_VJP_RULES) == set(PRIMITIVES)
@@ -526,7 +550,7 @@ def test_capabilities_cover_every_primitive_and_claim_only_slice_a():
     assert report["cuda"] is False
 
 
-def test_float32_dot_test_uses_a_scale_aware_absolute_guard():
+def test_float32_dot_test_uses_a_scale_aware_absolute_guard() -> None:
     i = _axis("i", 4)
     x = _parameter("x", (i,), dtype="float32")
     program = Program({"out": multiply(x, x)})
@@ -538,7 +562,7 @@ def test_float32_dot_test_uses_a_scale_aware_absolute_guard():
     assert result.atol == pytest.approx(1e-6)
 
 
-def test_zero_and_singleton_shapes_keep_the_adjoint_identity():
+def test_zero_and_singleton_shapes_keep_the_adjoint_identity() -> None:
     empty = _axis("empty", 0)
     single = _axis("single", 1)
     x0 = _parameter("x0", (empty,))

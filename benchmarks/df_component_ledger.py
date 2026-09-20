@@ -10,10 +10,10 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import typing
 from collections import defaultdict
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from pathlib import Path
 
 ONE_ELECTRON_OPERATIONS = frozenset(
@@ -25,13 +25,13 @@ FORCE_OPERATIONS = ONE_ELECTRON_OPERATIONS | {
 }
 
 
-def _integer(value: object, name: str, minimum: int = 0) -> int:
+def _integer(value: typing.Any, name: str, minimum: int = 0) -> int:
     if type(value) is not int or value < minimum:
         raise ValueError(f"{name} must be an integer >= {minimum}")
     return value
 
 
-def _milliseconds(value: object, name: str) -> float:
+def _milliseconds(value: typing.Any, name: str) -> float:
     if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
         raise ValueError(f"{name} must be finite nonnegative milliseconds")
     return float(value)

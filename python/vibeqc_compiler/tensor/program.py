@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import typing
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -28,15 +29,15 @@ CONVENTIONS = {
 }
 
 
-def _json(value: object) -> str:
+def _json(value: typing.Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
-def _hash(value: object) -> str:
+def _hash(value: typing.Any) -> str:
     return hashlib.sha256(_json(value).encode()).hexdigest()
 
 
-def _topological(roots: object) -> tuple[Node, ...]:
+def _topological(roots: typing.Any) -> tuple[Node, ...]:
     """Iterative DFS handles deep equations without recursive hashing."""
     order, states = [], {}
     for root in roots:
@@ -55,7 +56,7 @@ def _topological(roots: object) -> tuple[Node, ...]:
     return tuple(order)
 
 
-def node_hashes(nodes: object) -> dict[Node, str]:
+def node_hashes(nodes: typing.Any) -> dict[Node, str]:
     """Content addresses include full spin/symmetry semantics, not storage."""
     hashes = {}
     for node in nodes:
@@ -92,8 +93,8 @@ class Program:
     def __init__(
         self,
         outputs: Mapping[str, Node],
-        definitions: tuple[object, ...] = (),
-        provenance: object | None = None,
+        definitions: typing.Any = (),
+        provenance: typing.Any = None,
     ) -> None:
         if not isinstance(outputs, Mapping) or not outputs:
             raise ValueError("program requires named outputs")
@@ -261,7 +262,7 @@ class Program:
     def loads(cls, source: str) -> Program:
         """Load JSON data, never executable expressions or pickled objects."""
 
-        def reject_duplicates(pairs):
+        def reject_duplicates(pairs: typing.Any) -> typing.Any:
             result = {}
             for key, value in pairs:
                 if key in result:

@@ -5,6 +5,8 @@
 #include <cuda_runtime.h>
 
 #include <algorithm>
+#include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
@@ -26,7 +28,10 @@ struct DFSource {
   vibeqc::runtime::OwnedCudaStream stream;
   vibeqc::runtime::OwnedCudaEvent begin, end;
   vibeqc::runtime::OwnedCudaBuffer<double> tile;
-  double generation_ms = 0, transfer_ms = 0;
+  double generation_ms = 0, transfer_ms = 0, endpoint_ms = 0;
+  std::uint64_t d2h_bytes = 0, host_staged_tiles = 0;
+  std::uint64_t generated_bytes_snapshot = 0, generated_tiles_snapshot = 0;
+  bool device_handoff = false;
   int device = 0;
   size_t nbf = 0, naux = 0, capacity = 0;
   std::vector<double> metric;
@@ -45,6 +50,19 @@ struct DFSource {
     cudaSetDevice(previous);
   }
 };
+
+struct DFJkPlan {
+  CudaDensityFittingJkPlan* plan = nullptr;
+  std::uint64_t generated_bytes_begin = 0, generated_tiles_begin = 0;
+  std::uint64_t density_h2d_bytes = 0, result_d2h_bytes = 0, executions = 0;
+  double endpoint_ms = 0;
+  size_t nbf = 0, naux = 0;
+
+  ~DFJkPlan() {
+    if (plan) destroy_cuda_density_fitting_jk_plan(plan);
+  }
+};
+
 template <class F>
 int guarded(char* error, size_t size, F f) noexcept {
   try {
@@ -117,6 +135,9 @@ int vibeqc_posthf_df_read_v1(void* pointer, int kind, const size_t* b, const siz
     if (kind != 4 || b[0] > p.nbf || n[0] > p.nbf - b[0] || b[1] > p.nbf || n[1] > p.nbf - b[1] ||
         b[2] > p.naux || n[2] > p.naux - b[2])
       throw std::invalid_argument("invalid generated DF tile");
+    if (!p.source || p.device_handoff)
+      throw std::runtime_error(
+          "generated DF source has been handed off to a device-resident consumer");
     size_t product = 1;
     for (unsigned i = 0; i < 3; ++i) {
       if (n[i] && product > SIZE_MAX / n[i]) throw std::overflow_error("DF tile overflow");
@@ -126,6 +147,7 @@ int vibeqc_posthf_df_read_v1(void* pointer, int kind, const size_t* b, const siz
       throw std::invalid_argument("DF tile exceeds prepared capacity");
     if (!elements) return;
     std::string detail;
+    const auto endpoint_begin = std::chrono::steady_clock::now();
     p.begin.record(p.stream.get());
     for (size_t i = 0; i < n[0]; ++i) {
       if (generate_cuda_density_fitting_raw_tile(
@@ -143,6 +165,11 @@ int vibeqc_posthf_df_read_v1(void* pointer, int kind, const size_t* b, const siz
     p.end.synchronize();
     milliseconds = p.end.elapsed_since(p.begin);
     p.transfer_ms += milliseconds;
+    p.d2h_bytes += elements * sizeof(double);
+    ++p.host_staged_tiles;
+    p.endpoint_ms +=
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - endpoint_begin)
+            .count();
   });
 }
 int vibeqc_posthf_df_metrics_v1(void* pointer, double* values, char* error, size_t size) {
@@ -153,5 +180,128 @@ int vibeqc_posthf_df_metrics_v1(void* pointer, double* values, char* error, size
     values[0] = p.generation_ms;
     values[1] = p.transfer_ms;
   });
+}
+
+int vibeqc_posthf_df_metrics_v2(void* pointer, std::uint64_t* counters, size_t counter_count,
+                                double* values, size_t value_count, char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer || !counters || counter_count < 5 || !values || value_count < 3)
+      throw std::invalid_argument("invalid DF source metrics");
+    auto& p = *static_cast<DFSource*>(pointer);
+    std::lock_guard<std::mutex> lock(p.mutex);
+    auto generated = CudaDensityFittingSourceCounters{};
+    if (p.source) {
+      generated = cuda_density_fitting_integral_source_counters(p.source);
+      p.generated_bytes_snapshot = generated.generated_value_bytes;
+      p.generated_tiles_snapshot = generated.generated_value_tiles;
+    }
+    counters[0] = p.generated_bytes_snapshot;
+    counters[1] = p.d2h_bytes;
+    counters[2] = p.generated_tiles_snapshot;
+    counters[3] = p.host_staged_tiles;
+    counters[4] = p.device_handoff ? 1U : 0U;
+    values[0] = p.generation_ms;
+    values[1] = p.transfer_ms;
+    values[2] = p.endpoint_ms;
+  });
+}
+
+int vibeqc_posthf_df_rhf_jk_plan_create_v1(void* pointer, double threshold, void** out,
+                                           double* diagnostics, char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer || !out || !diagnostics || !(threshold > 0.0) || !(threshold < 1.0))
+      throw std::invalid_argument("invalid device-resident DF J/K plan request");
+    *out = nullptr;
+    auto& p = *static_cast<DFSource*>(pointer);
+    std::lock_guard<std::mutex> lock(p.mutex);
+    if (!p.source || p.device_handoff)
+      throw std::runtime_error("generated DF source is not available for device handoff");
+    check(cudaSetDevice(p.device));
+    if (p.stream) check(cudaStreamSynchronize(p.stream.get()));
+    const auto before = cuda_density_fitting_integral_source_counters(p.source);
+    p.generated_bytes_snapshot = before.generated_value_bytes;
+    p.generated_tiles_snapshot = before.generated_value_tiles;
+    auto candidate = std::make_unique<DFJkPlan>();
+    candidate->generated_bytes_begin = before.generated_value_bytes;
+    candidate->generated_tiles_begin = before.generated_value_tiles;
+    std::vector<CudaDensityFittingMetricDiagnostic> plan_diagnostics;
+    std::string detail;
+    const auto status = create_cuda_density_fitting_jk_plan_from_source(
+        p.device, &p.source, 1U, p.nbf, p.naux, p.metric, threshold, 0U, 0U, &candidate->plan,
+        plan_diagnostics, detail);
+    p.device_handoff = true;
+    if (status != VIBEQC_STATUS_SUCCESS)
+      throw std::runtime_error(detail.empty() ? "device-resident DF J/K preparation failed"
+                                              : detail);
+    candidate->nbf = p.nbf;
+    candidate->naux = p.naux;
+    if (plan_diagnostics.empty())
+      throw std::runtime_error("device-resident DF J/K preparation returned no diagnostics");
+    const auto& d = plan_diagnostics.front();
+    diagnostics[0] = static_cast<double>(p.nbf);
+    diagnostics[1] = static_cast<double>(p.naux);
+    diagnostics[2] = static_cast<double>(d.device_resident_bytes);
+    diagnostics[3] = static_cast<double>(d.peak_device_bytes);
+    diagnostics[4] = static_cast<double>(d.host_resident_bytes);
+    diagnostics[5] = threshold;
+    // The compatibility staging buffer is no longer reachable after ownership
+    // transfer. Release it so it cannot inflate the production path footprint.
+    p.tile.reset();
+    p.begin.reset();
+    p.end.reset();
+    p.stream.reset();
+    *out = candidate.release();
+  });
+}
+
+int vibeqc_posthf_df_rhf_jk_plan_execute_v1(void* pointer, const double* density, size_t elements,
+                                            double* coulomb, double* exchange, char* error,
+                                            size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer) throw std::invalid_argument("null device-resident DF J/K plan");
+    auto& p = *static_cast<DFJkPlan*>(pointer);
+    if (!p.plan || !density || !coulomb || !exchange || elements != p.nbf * p.nbf)
+      throw std::invalid_argument("invalid device-resident DF J/K execution request");
+    const auto begin = std::chrono::steady_clock::now();
+    std::vector<double> density_vector(density, density + elements);
+    std::vector<double> coulomb_vector, exchange_vector;
+    std::string detail;
+    const auto status = execute_cuda_density_fitting_rhf_jk(p.plan, density_vector, coulomb_vector,
+                                                            exchange_vector, detail);
+    if (status != VIBEQC_STATUS_SUCCESS)
+      throw std::runtime_error(detail.empty() ? "device-resident DF J/K execution failed" : detail);
+    if (coulomb_vector.size() != elements || exchange_vector.size() != elements)
+      throw std::runtime_error("device-resident DF J/K output size mismatch");
+    std::copy(coulomb_vector.begin(), coulomb_vector.end(), coulomb);
+    std::copy(exchange_vector.begin(), exchange_vector.end(), exchange);
+    p.density_h2d_bytes += elements * sizeof(double);
+    p.result_d2h_bytes += 2U * elements * sizeof(double);
+    ++p.executions;
+    p.endpoint_ms +=
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count();
+  });
+}
+
+int vibeqc_posthf_df_rhf_jk_plan_metrics_v1(void* pointer, std::uint64_t* counters,
+                                            size_t counter_count, double* values,
+                                            size_t value_count, char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer || !counters || counter_count < 7 || !values || value_count < 1)
+      throw std::invalid_argument("invalid device-resident DF J/K metrics");
+    auto& p = *static_cast<DFJkPlan*>(pointer);
+    const auto now = cuda_density_fitting_jk_plan_source_counters(p.plan);
+    counters[0] = now.generated_value_bytes - p.generated_bytes_begin;
+    counters[1] = now.generated_value_tiles - p.generated_tiles_begin;
+    counters[2] = 0U;  // raw DF D2H
+    counters[3] = 0U;  // raw/derived DF H2D
+    counters[4] = p.density_h2d_bytes;
+    counters[5] = p.result_d2h_bytes;
+    counters[6] = p.executions;
+    values[0] = p.endpoint_ms;
+  });
+}
+
+void vibeqc_posthf_df_rhf_jk_plan_destroy_v1(void* pointer) {
+  delete static_cast<DFJkPlan*>(pointer);
 }
 }

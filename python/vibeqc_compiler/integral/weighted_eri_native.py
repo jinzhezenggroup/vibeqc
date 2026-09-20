@@ -7,7 +7,7 @@ consumer/runtime owners. Explicit radial inputs are frozen in every callable.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import typing
 
 from vibeqc_compiler.common.provenance import canonical_hash
 
@@ -15,13 +15,15 @@ from .ir_serialization import integral_to_payload
 from .range_separation import CoulombKernelFamily
 from .weighted_eri_cuda import emit_weighted_eri_header
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from .ir import IntegralIR
     from .weighted_eri import WeightedEriKernel
 
 
 def emit_weighted_eri_primitive_header(
-    functions: tuple[tuple[WeightedEriKernel, str], ...], *, backend: str = "cuda"
+    functions: tuple[tuple[WeightedEriKernel, str], ...],
+    *,
+    backend: typing.Any = "cuda",
 ) -> str:
     """Emit CPU/CUDA values and all twelve derivatives for packed weight subsets.
 
@@ -84,7 +86,7 @@ def weighted_eri_program_identity(kernel: WeightedEriKernel, backend: str) -> st
 
 
 def weighted_eri_metadata_identity(
-    integral: IntegralIR, component_indices: object, backend: str
+    integral: IntegralIR, component_indices: typing.Any, backend: str
 ) -> str:
     """Revalidate exported program metadata without rebuilding the arithmetic DAG."""
     if backend not in ("cpu", "cuda"):
@@ -100,7 +102,7 @@ def weighted_eri_metadata_identity(
 
 
 def emit_weighted_eri_runtime(
-    kernel: WeightedEriKernel, *, backend: str = "cuda"
+    kernel: WeightedEriKernel, *, backend: typing.Any = "cuda"
 ) -> str:
     """Bind tagged weighted records to the shared bounded native runtime.
 

@@ -5,6 +5,7 @@ lowering, #147 owns reference compatibility; this module keeps those boundaries
 while defining CC iteration controls separately from the physical equations.
 """
 
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -20,7 +21,9 @@ from .equations import amplitude_specs
 from .solver import SolverOptions
 
 
-def iteration_program(nocc, nvir, *, damping=0.0):
+def iteration_program(
+    nocc: typing.Any, nvir: typing.Any, *, damping: typing.Any = 0.0
+) -> typing.Any:
     """Original physical R plus T + (1-damping)*R/D, as typed TensorIR.
 
     D is a resident preconditioner input, not part of R. The final acceptance
@@ -51,7 +54,7 @@ def iteration_program(nocc, nvir, *, damping=0.0):
     )
 
 
-def denominators(snapshot, options):
+def denominators(snapshot: typing.Any, options: typing.Any) -> typing.Any:
     """Preflight physical gaps once, before any integral or device allocation."""
     if not isinstance(snapshot, ReferenceSnapshot):
         raise TypeError("GPU RCCSD requires a validated ReferenceSnapshot")
@@ -75,7 +78,9 @@ def denominators(snapshot, options):
     )
 
 
-def state_reservation(nocc, nvir, diis_size):
+def state_reservation(
+    nocc: typing.Any, nvir: typing.Any, diis_size: typing.Any
+) -> typing.Any:
     """CC offsets inside a #146 reservation, with no allocation or global policy.
 
     Main-plan inputs/outputs already own current T/R, denominators and next T.
@@ -109,7 +114,14 @@ def state_reservation(nocc, nvir, diis_size):
     return Reservations(diis=offset), segments
 
 
-def solver_plans(nocc, nvir, target, options, *, provider_peak_bytes=0):
+def solver_plans(
+    nocc: typing.Any,
+    nvir: typing.Any,
+    target: typing.Any,
+    options: typing.Any,
+    *,
+    provider_peak_bytes: typing.Any = 0,
+) -> typing.Any:
     """Compose CC plans under #146's numeric-buffer budget, before AO work.
 
     The independent expanded replay is always retained and charged, even
@@ -168,7 +180,7 @@ class AmplitudeSnapshot:
     t1: np.ndarray
     t2: np.ndarray
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.reference_id, str) or not self.reference_id:
             raise ValueError("warm start requires a reference identity")
         for name in ("t1", "t2"):
@@ -185,7 +197,7 @@ class AmplitudeSnapshot:
         object.__setattr__(self, "t1", immutable(self.t1))
         object.__setattr__(self, "t2", immutable(self.t2))
 
-    def for_reference(self, snapshot):
+    def for_reference(self, snapshot: typing.Any) -> typing.Any:
         if not isinstance(snapshot, ReferenceSnapshot):
             raise TypeError("warm start requires a validated ReferenceSnapshot")
         if snapshot.algorithm != "RHF":

@@ -3,6 +3,7 @@
 import argparse
 import json
 import sys
+import typing
 from collections import defaultdict
 from pathlib import Path
 from statistics import median, stdev
@@ -15,7 +16,7 @@ from vibeqc_compiler.common.evidence import validate_evidence
 from tools.vibeqc_validation.record import load_record
 
 
-def summarize(report):
+def summarize(report: typing.Any) -> typing.Any:
     """Keep all cases and raw repeats; report ratios only as descriptive statistics.
 
     The existing publication validator owns numerical acceptance. This summary

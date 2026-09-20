@@ -7,15 +7,20 @@ import json
 import os
 import re
 import sqlite3
+import typing
 from collections import defaultdict
 from dataclasses import dataclass
-from pathlib import Path
-from typing import TYPE_CHECKING
 
 from _support import cuda_accelerator_metadata, environment_metadata
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 ANGULAR_LABELS = "spdfgh"
 
@@ -332,7 +337,7 @@ def summarize_ppps_queue_profile(profile: object) -> dict[str, object]:
     block_threads = (32, 64, 128, 256)
     orientations = ("1110", "1011")
 
-    def primitive_groups(tasks, work):
+    def primitive_groups(tasks: typing.Any, work: typing.Any) -> typing.Any:
         return [
             {
                 "primitive_pairs": index if index < 64 else "64+",
@@ -444,7 +449,7 @@ def main() -> None:
         default=1.0e-14,
         help="VIBEQC direct-screening threshold; default matches the formal gate",
     )
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     arguments = parser.parse_args()
     if arguments.batch < 1 or arguments.warm_repeats < 0:
         raise ValueError("--batch must be positive and --warm-repeats non-negative")

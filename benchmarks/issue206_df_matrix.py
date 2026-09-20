@@ -18,10 +18,16 @@ import json
 import os
 import subprocess
 import sys
+import typing
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -187,7 +193,7 @@ def run_matrix(
         result_path = output_dir / f"{stem}.json"
         log_path = output_dir / f"{stem}.log"
 
-        def result_identity(path=result_path):
+        def result_identity(path: typing.Any = result_path) -> typing.Any:
             """Distinguish a new endpoint artifact from an earlier attempt."""
             try:
                 stat = path.stat()
@@ -324,7 +330,9 @@ def main() -> None:
         default=ROOT / "build" / "cuda-dev-fast" / "libvibeqc.so",
     )
     parser.add_argument(
-        "--output-dir", type=Path, default=ROOT / ".artifacts" / "issue206-df"
+        "--output-dir",
+        type=raw_output_path,
+        default=str(ROOT / ".artifacts" / "issue206-df"),
     )
     parser.add_argument("--manifest", type=Path)
     args = parser.parse_args()

@@ -1,6 +1,7 @@
 """Qualification gates tested without compiling or executing CUDA code."""
 
 import json
+import typing
 from types import SimpleNamespace
 
 import numpy as np
@@ -10,7 +11,7 @@ from tools import validate_cc_triples_tiles as validator
 
 
 @pytest.fixture
-def qualification_args(tmp_path, monkeypatch):
+def qualification_args(tmp_path: typing.Any, monkeypatch: typing.Any) -> typing.Any:
     """Keep provenance/compiler setup local while exercising the real driver."""
     monkeypatch.setattr(
         validator,
@@ -37,18 +38,18 @@ def qualification_args(tmp_path, monkeypatch):
     )
 
 
-def _manifest(args):
+def _manifest(args: typing.Any) -> typing.Any:
     return json.loads((args.output / "manifest.json").read_text())
 
 
 @pytest.mark.parametrize("compile_only", [False, True])
 def test_all_infeasible_budgets_fail_qualification(
-    qualification_args, monkeypatch, compile_only
-):
+    qualification_args: typing.Any, monkeypatch: typing.Any, compile_only: typing.Any
+) -> None:
     """An empty set of executed plans cannot satisfy the requested gates."""
     from vibeqc_compiler.tensor import cuda_plan
 
-    def reject(*args, **kwargs):
+    def reject(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise ValueError("infeasible: test budget is below the plan peak")
 
     qualification_args.compile_only = compile_only
@@ -64,7 +65,9 @@ def test_all_infeasible_budgets_fail_qualification(
     assert all(not r["compiled"] and r["gpu_run"] is None for r in results)
 
 
-def _mock_gpu_result(owner, arrays, **kwargs):
+def _mock_gpu_result(
+    owner: typing.Any, arrays: typing.Any, **kwargs: typing.Any
+) -> typing.Any:
     """Return a CPU scalar only inside these driver tests, never qualification."""
     if owner.config.max_bytes < 256 * (1 << 20):
         raise ValueError("infeasible: test budget is below the plan peak")
@@ -84,7 +87,9 @@ def _mock_gpu_result(owner, arrays, **kwargs):
     )
 
 
-def test_partial_budget_failure_fails_qualification(qualification_args, monkeypatch):
+def test_partial_budget_failure_fails_qualification(
+    qualification_args: typing.Any, monkeypatch: typing.Any
+) -> None:
     """A passing large budget must not hide a failed constrained budget."""
     qualification_args.budget = "1,256"
     monkeypatch.setattr(validator.CudaTriplesTiles, "run_tiles", _mock_gpu_result)
@@ -95,7 +100,9 @@ def test_partial_budget_failure_fails_qualification(qualification_args, monkeypa
     assert [r["compiled"] for r in results] == [False, True]
 
 
-def test_successful_gates_are_json_booleans(qualification_args, monkeypatch):
+def test_successful_gates_are_json_booleans(
+    qualification_args: typing.Any, monkeypatch: typing.Any
+) -> None:
     """NumPy comparisons must serialize as booleans, not the string 'True'."""
     monkeypatch.setattr(validator.CudaTriplesTiles, "run_tiles", _mock_gpu_result)
     validator.run(qualification_args)
@@ -116,7 +123,9 @@ def test_successful_gates_are_json_booleans(qualification_args, monkeypatch):
 
 
 @pytest.mark.parametrize("molecules", ["", "h2,typo"])
-def test_invalid_endpoint_selection_fails(qualification_args, molecules):
+def test_invalid_endpoint_selection_fails(
+    qualification_args: typing.Any, molecules: typing.Any
+) -> None:
     qualification_args.molecules = molecules
     with pytest.raises(ValueError, match="molecules must be"):
         validator.run(qualification_args)

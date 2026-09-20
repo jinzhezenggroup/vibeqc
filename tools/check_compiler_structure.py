@@ -3,6 +3,7 @@
 import argparse
 import json
 import sys
+import typing
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
@@ -10,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
 from vibeqc_compiler.common.structure import audit_structure
 
 
-def main():
+def main() -> typing.Any:
     """Exit unsuccessfully on an ownership violation; optionally print inventory."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true")

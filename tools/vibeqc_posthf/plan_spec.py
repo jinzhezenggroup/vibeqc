@@ -7,6 +7,7 @@ respective provider boundary.
 """
 
 import ast
+import typing
 
 FORMULAS = (
     ("output_elements", "m0*m1*m2*m3"),
@@ -33,13 +34,13 @@ FORMULAS = (
 LIMIT = (1 << 63) - 1
 
 
-def _checked(value):
+def _checked(value: typing.Any) -> typing.Any:
     if type(value) is not int or not 0 <= value <= LIMIT:
         raise ValueError("CG10 capacity must fit nonnegative signed 64-bit bytes")
     return value
 
 
-def _evaluate(node, values):
+def _evaluate(node: typing.Any, values: typing.Any) -> typing.Any:
     if isinstance(node, ast.Constant) and type(node.value) is int:
         return _checked(node.value)
     if isinstance(node, ast.Name):
@@ -67,7 +68,15 @@ def _evaluate(node, values):
     raise ValueError("unsupported capacity expression")
 
 
-def numeric_capacity(*, nbf, reference_bytes, source_bytes, shape, tile, cuda):
+def numeric_capacity(
+    *,
+    nbf: typing.Any,
+    reference_bytes: typing.Any,
+    source_bytes: typing.Any,
+    shape: typing.Any,
+    tile: typing.Any,
+    cuda: typing.Any,
+) -> typing.Any:
     values = {
         "nbf": _checked(nbf),
         "reference_bytes": _checked(reference_bytes),
@@ -81,7 +90,7 @@ def numeric_capacity(*, nbf, reference_bytes, source_bytes, shape, tile, cuda):
     return {name: values[name] for name, _ in FORMULAS}
 
 
-def _cpp(node):
+def _cpp(node: typing.Any) -> typing.Any:
     if isinstance(node, ast.Constant):
         return f"{_checked(node.value)}ULL"
     if isinstance(node, ast.Name):
@@ -103,7 +112,7 @@ def _cpp(node):
     raise ValueError("unsupported native capacity expression")
 
 
-def native_header():
+def native_header() -> typing.Any:
     names = [name for name, _ in FORMULAS]
     lines = [
         "// Generated from tools/vibeqc_posthf/plan_spec.py; do not change formulas here.",

@@ -1,5 +1,6 @@
 """Local columns, complete D[I,I], scatter, and prepared lifetime regressions."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -14,7 +15,7 @@ from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
 
 
 @pytest.fixture(params=["cartesian", "spherical"])
-def local_case(request):
+def local_case(request: typing.Any) -> typing.Any:
     shells = tuple(
         Shell(atom, angular, (Primitive(1.0, 1.0), Primitive(2.0, -0.1)))
         for atom in (0, 1)
@@ -38,7 +39,9 @@ def local_case(request):
         yield basis, grid, density
 
 
-def test_empty_fixed_mask_has_zero_xc_without_evaluating_vacuum_derivatives(local_case):
+def test_empty_fixed_mask_has_zero_xc_without_evaluating_vacuum_derivatives(
+    local_case: typing.Any,
+) -> None:
     from vibeqc_compiler.xc import FixedDensityXC, UnsupportedXC, functional
 
     basis, grid, density = local_case
@@ -65,7 +68,9 @@ def test_empty_fixed_mask_has_zero_xc_without_evaluating_vacuum_derivatives(loca
         FixedDensityXC(functional("PBE")).integrate(basis, grid, np.zeros_like(density))
 
 
-def test_selected_native_jets_match_dense_including_empty_and_noncontiguous(local_case):
+def test_selected_native_jets_match_dense_including_empty_and_noncontiguous(
+    local_case: typing.Any,
+) -> None:
     basis, grid, _ = local_case
     full = basis.evaluate(grid.points, order=3)
     for ids in (
@@ -82,8 +87,8 @@ def test_selected_native_jets_match_dense_including_empty_and_noncontiguous(loca
 
 @pytest.mark.parametrize("screening", ["off", "absolute_ao_jet"])
 def test_local_features_preserve_all_cross_ao_terms_and_fixed_masks(
-    local_case, screening
-):
+    local_case: typing.Any, screening: typing.Any
+) -> None:
     basis, grid, density = local_case
     policy = SpatialPolicy(
         region_points=4, screening=screening, cutoff=0 if screening == "off" else 1e-8
@@ -123,7 +128,9 @@ def test_local_features_preserve_all_cross_ao_terms_and_fixed_masks(
                 )
 
 
-def test_prepared_replacement_density_and_iterator_lifetimes(local_case):
+def test_prepared_replacement_density_and_iterator_lifetimes(
+    local_case: typing.Any,
+) -> None:
     basis, grid, density = local_case
     with PreparedSpatialGrid(basis, grid, tile_points=2) as owner:
         stale = owner.iter_features(density)
@@ -151,7 +158,7 @@ def test_prepared_replacement_density_and_iterator_lifetimes(local_case):
     assert np.isfinite(basis.evaluate(grid.points[:1])).all()
 
 
-def test_prepared_rejects_domain_and_forged_map(local_case):
+def test_prepared_rejects_domain_and_forged_map(local_case: typing.Any) -> None:
     basis, grid, _ = local_case
     with pytest.raises(ValueError, match="all first"):
         PreparedSpatialGrid(basis, grid, policy=SpatialPolicy(derivatives=((0, 0, 0),)))
@@ -165,7 +172,9 @@ def test_prepared_rejects_domain_and_forged_map(local_case):
 
 
 @pytest.mark.parametrize("screening", ["off", "absolute_ao_jet"])
-def test_fixed_density_xc_scatter_and_trace_variation(local_case, screening):
+def test_fixed_density_xc_scatter_and_trace_variation(
+    local_case: typing.Any, screening: typing.Any
+) -> None:
     from vibeqc_compiler.xc import FixedDensityXC, functional
 
     basis, grid, density = local_case
@@ -203,7 +212,7 @@ def test_fixed_density_xc_scatter_and_trace_variation(local_case, screening):
         )
 
 
-def test_spatial_xc_preserves_independent_fixtures():
+def test_spatial_xc_preserves_independent_fixtures() -> None:
     from vibeqc_compiler.dft.fixtures import basis_arguments
     from vibeqc_compiler.xc import FixedDensityXC, functional
     from vibeqc_compiler.xc.integration_fixtures import CASES, load_integration_fixture
@@ -228,7 +237,7 @@ def test_spatial_xc_preserves_independent_fixtures():
             )
 
 
-def test_molecular_grid_materialization_and_stale_geometry():
+def test_molecular_grid_materialization_and_stale_geometry() -> None:
     from vibeqc_compiler.dft import GridSpec, MolecularGrid
 
     with NativeAO([("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]) as basis:
