@@ -278,3 +278,55 @@ def test_comparison_rejects_changed_orbital_shell_pair_domain() -> None:
     practical = summarize_cell("practical", "practical", changed, _trace(1))
     with pytest.raises(ValueError, match="orbital shell-pair domain changed"):
         compare_cells(equal, practical)
+
+
+def _minimal_cell(role: str) -> tuple[dict, dict]:
+    work = _work_ledger(
+        [[0, 1, 0, 1]],
+        [
+            _class(
+                [0, 0, 0],
+                tasks=1,
+                active=1,
+                primitives=4,
+                loads=1,
+                nonzero=1,
+                gpu_ms=0.2,
+            )
+        ],
+        [{"signature": [0, 0, 0, 2, 2, 1], "tasks": 1}],
+    )
+    return work, _trace(1)
+
+
+@pytest.mark.parametrize("change", ["disjoint", "primitive_count", "pair_mode"])
+def test_comparison_rejects_changed_complete_orbital_domain(change: str) -> None:
+    work, trace = _minimal_cell("equal")
+    equal = summarize_cell("equal", "equal", work, trace)
+    other, other_trace = copy.deepcopy(work), copy.deepcopy(trace)
+    if change == "disjoint":
+        other["host_reconstruction"]["shells"] = [[1, 2, 0, 3], [0, 1, 3, 1]]
+        other["classes"][0]["angular"] = [1, 1, 0]
+        other["host_reconstruction"]["signature_tasks"][0]["signature"] = [
+            1,
+            1,
+            0,
+            2,
+            2,
+            1,
+        ]
+    elif change == "primitive_count":
+        other["host_reconstruction"]["shells"][0][1] = 3
+    else:
+        other_trace["counters"]["shell_work_pair_mode"] = 0
+    practical = summarize_cell("practical", "practical", other, other_trace)
+    with pytest.raises(ValueError, match="orbital shell-pair domain"):
+        compare_cells(equal, practical)
+
+
+@pytest.mark.parametrize("value", [True, 1.5, "1"])
+def test_work_counters_are_not_silently_coerced(value: object) -> None:
+    work, trace = _minimal_cell("equal")
+    work["classes"][0]["work"]["active_shell_tasks"] = value
+    with pytest.raises(ValueError, match="integer"):
+        summarize_cell("cell", "equal", work, trace)

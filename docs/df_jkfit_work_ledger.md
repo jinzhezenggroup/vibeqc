@@ -94,8 +94,8 @@ python -m benchmarks.issue437_practical_jkfit_work_ledger \
   --output .artifacts/issue437/work-matrix.json
 ```
 
-`--pair` rejects an AO mismatch and verifies that common angular classes retain
-the same orbital shell-pair domain before reporting Naux/work ratios. Auxiliary
+`--pair` rejects an AO mismatch and verifies that the complete orbital shell metadata and
+pair-enumeration mode match before reporting Naux/work ratios. Auxiliary
 classes that exist only in JKFIT (for example auxiliary-f classes) are reported
 as new classes instead of receiving a manufactured finite ratio.
 

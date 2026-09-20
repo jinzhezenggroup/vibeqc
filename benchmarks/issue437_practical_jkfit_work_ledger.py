@@ -68,6 +68,12 @@ def _positive_integer(value: typing.Any, name: str) -> int:
     return value
 
 
+def _nonnegative_integer(value: typing.Any, name: str) -> int:
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{name} must be a nonnegative integer")
+    return value
+
+
 def _ratio(numerator: float, denominator: float) -> float | None:
     return None if denominator == 0 else float(numerator) / float(denominator)
 
@@ -105,7 +111,7 @@ def _considered_primitive_products(work_ledger: dict) -> Counter:
     rows = work_ledger["host_reconstruction"]["signature_tasks"]
     for row in rows:
         signature = tuple(int(value) for value in row["signature"])
-        tasks = int(row["tasks"])
+        tasks = _nonnegative_integer(row["tasks"], "signature tasks")
         if len(signature) != 6 or tasks < 0:
             raise ValueError("invalid host signature-task reconstruction")
         primitives = math.prod(signature[3:])
@@ -172,12 +178,20 @@ def summarize_cell(
         work = source.get("work")
         if not isinstance(work, dict):
             raise TypeError("class is missing detailed work")
-        shell_considered = int(work["shell_tasks"])
-        shell_executed = int(work["active_shell_tasks"])
-        primitive_executed = int(work["primitive_products"])
+        shell_considered = _nonnegative_integer(work["shell_tasks"], "shell_tasks")
+        shell_executed = _nonnegative_integer(
+            work["active_shell_tasks"], "active_shell_tasks"
+        )
+        primitive_executed = _nonnegative_integer(
+            work["primitive_products"], "primitive_products"
+        )
         primitive_considered = int(considered_primitives[angular])
-        public_weight_loads = int(work["public_weight_loads"])
-        public_nonzero = int(work["public_nonzero_weights"])
+        public_weight_loads = _nonnegative_integer(
+            work["public_weight_loads"], "public_weight_loads"
+        )
+        public_nonzero = _nonnegative_integer(
+            work["public_nonzero_weights"], "public_nonzero_weights"
+        )
         if not (
             0 <= shell_executed <= shell_considered
             and 0 <= primitive_executed <= primitive_considered
@@ -240,6 +254,7 @@ def summarize_cell(
         "nao": nao,
         "naux": naux,
         "pair_mode": pair_mode,
+        "orbital_shell_domain": sorted([list(row) for row in orbital_shells]),
         "force_response_gpu_ms": root_ms,
         "classes_gpu_ms": class_gpu_ms,
         "classes_force_response_gpu_fraction": _ratio(class_gpu_ms, root_ms),
@@ -265,19 +280,14 @@ def compare_cells(equal: dict, practical: dict) -> dict:
         raise ValueError("comparison requires equal then practical roles")
     if equal["nao"] != practical["nao"]:
         raise ValueError("comparison requires the same orbital AO count")
-    equal_pairs = {
-        tuple(row["angular"][:2]): row["orbital_shell_pairs"]
-        for row in equal["classes"]
-    }
-    practical_pairs = {
-        tuple(row["angular"][:2]): row["orbital_shell_pairs"]
-        for row in practical["classes"]
-    }
-    for key in set(equal_pairs) & set(practical_pairs):
-        if equal_pairs[key] != practical_pairs[key]:
-            raise ValueError(
-                "orbital shell-pair domain changed between comparison cells"
-            )
+    # Compare the complete host domain, not only the intersection of measured
+    # angular classes. Otherwise a changed/missing orbital class or primitive
+    # population can be mislabeled as auxiliary-basis scaling.
+    if (
+        equal["pair_mode"] != practical["pair_mode"]
+        or equal["orbital_shell_domain"] != practical["orbital_shell_domain"]
+    ):
+        raise ValueError("orbital shell-pair domain changed between comparison cells")
 
     fields = (
         "shell_triples_considered",
