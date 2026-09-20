@@ -51,7 +51,8 @@ scf::ResolvedFockBuild strategy(bool restricted, scf::FockBackend backend) {
 /** Independently rebuild the retained density with CPU integrals/XC. This
  * catches a converged flag or energy belonging to the preceding generation. */
 void physical_check(const scf::PreparedFockPlan& cpu, const dft::AoBasis& basis,
-                    const dft::MolecularGrid& grid, bool pbe, const scf::ScfResult& result) {
+                    const dft::MolecularGrid& grid, std::uint32_t functional,
+                    const scf::ScfResult& result) {
   using namespace scf::reference;
   const auto n = basis.nao, elements = n * n;
   const bool uks = cpu.strategy().spec.spin == scf::FockSpin::Unrestricted;
@@ -61,16 +62,20 @@ void physical_check(const scf::PreparedFockPlan& cpu, const dft::AoBasis& basis,
   auto fock = scf::assemble_fock(cpu.strategy(), cpu.one_electron().hcore, jk);
   double xc_energy;
   if (uks) {
-    const auto xc = pbe ? dft::integrate_pbe_uks(basis, grid, a, b)
-                        : dft::integrate_lda_xc_pw_uks(basis, grid, a, b);
+    const auto xc =
+        functional == 2U ? dft::integrate_r2scan_uks(basis, grid, a, b)
+        : functional == 1U ? dft::integrate_pbe_uks(basis, grid, a, b)
+                           : dft::integrate_lda_xc_pw_uks(basis, grid, a, b);
     xc_energy = xc.energy;
     for (std::size_t i = 0; i < elements; ++i) {
       fock.alpha[i] += xc.potential[0][i];
       fock.beta[i] += xc.potential[1][i];
     }
   } else {
-    const auto xc = pbe ? dft::integrate_pbe_rks_with_tail(basis, grid, a)
-                        : dft::integrate_lda_xc_pw_rks(basis, grid, a);
+    const auto xc =
+        functional == 2U ? dft::integrate_r2scan_rks(basis, grid, a)
+        : functional == 1U ? dft::integrate_pbe_rks_with_tail(basis, grid, a)
+                           : dft::integrate_lda_xc_pw_rks(basis, grid, a);
     xc_energy = xc.energy;
     for (std::size_t i = 0; i < elements; ++i) fock.alpha[i] += xc.potential[i];
   }
@@ -162,7 +167,7 @@ void run_hydroxyl(bool pbe) {
   std::cout << "KS OH pbe=" << pbe << " iterations=" << cold.iterations << '\n';
 }
 
-void run_case(unsigned atoms, bool restricted, bool pbe) {
+void run_case(unsigned atoms, bool restricted, bool functional) {
   const auto system = hydrogens(atoms, restricted);
   const dft::AoBasis basis(system);
   const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
@@ -174,7 +179,7 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
   options.energy_tolerance = 1e-12;
   options.density_tolerance = 1e-10;
   options.max_iterations = 150;
-  dft::CudaKsPlan plan(gpu, basis, grid, options, pbe, 257);
+  dft::CudaKsPlan plan(gpu, basis, grid, options, functional, 257);
   dft::CudaKsFinalStateToken unavailable;
   std::string snapshot_detail;
   require(plan.final_state_token(unavailable, snapshot_detail) == VIBEQC_STATUS_INVALID_ARGUMENT,
@@ -188,18 +193,23 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
   require(plan.transfers().matrix_d2h_bytes == 0, "CUDA SCF staged an iteration matrix");
   const auto result = plan.result();
   if (!result.converged || plan.failed()) {
-    std::cerr << "failed atoms=" << atoms << " restricted=" << restricted << " pbe=" << pbe
+    std::cerr << "failed atoms=" << atoms << " restricted=" << restricted << " functional=" << functional
               << " iter=" << result.iterations
               << " residual=" << result.dft_diagnostic.physical_residual
               << " density=" << result.density_rms << '\n';
     throw std::runtime_error("native CUDA KS did not converge");
   }
-  const auto reference = !restricted ? scf::run_uks(cpu, basis, grid, options, pbe)
-                         : pbe       ? scf::run_pbe_rks(cpu, basis, grid, options)
-                                     : scf::run_lda_rks(cpu, basis, grid, options);
+  const auto reference = [&] {
+    if (!restricted)
+      return functional == 2U ? scf::run_r2scan_uks(cpu, basis, grid, options)
+                              : scf::run_uks(cpu, basis, grid, options, functional == 1U);
+    if (functional == 2U) return scf::run_r2scan_rks(cpu, basis, grid, options);
+    return functional == 1U ? scf::run_pbe_rks(cpu, basis, grid, options)
+                            : scf::run_lda_rks(cpu, basis, grid, options);
+  }();
   require(reference.converged && std::abs(reference.energy - result.energy) < 1e-10,
           "CPU/CUDA SCF endpoints disagree");
-  physical_check(cpu, basis, grid, pbe, result);
+  physical_check(cpu, basis, grid, functional, result);
   const auto before_snapshot = plan.transfers();
   dft::CudaKsFinalStateToken token;
   require(plan.final_state_token(token, snapshot_detail) == VIBEQC_STATUS_SUCCESS, snapshot_detail);
@@ -215,7 +225,7 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
   require(snapshot.weighted_density.empty() && snapshot.density.size() == spins &&
               snapshot.fock.size() == spins && snapshot.orbitals.size() == spins &&
               snapshot.identity.model.grid == grid_spec &&
-              snapshot.identity.model.functional == (pbe ? 1U : 0U) &&
+              snapshot.identity.model.functional == functional &&
               snapshot.identity.model.spins == spins &&
               snapshot.identity.determinant.model == gpu.strategy() &&
               snapshot.identity.determinant.factor.orbital_generation ==
@@ -324,12 +334,12 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
     const dft::MolecularGrid new_grid(moved, grid_spec);
     bool stale = false;
     try {
-      dft::CudaKsPlan wrong(new_gpu, new_basis, grid, options, pbe);
+      dft::CudaKsPlan wrong(new_gpu, new_basis, grid, options, functional);
     } catch (const std::invalid_argument&) {
       stale = true;
     }
     require(stale, "CUDA SCF accepted a same-shape old grid");
-    dft::CudaKsPlan changed(new_gpu, new_basis, new_grid, options, pbe);
+    dft::CudaKsPlan changed(new_gpu, new_basis, new_grid, options, functional);
     auto seed = plan.warm_density();
     for (auto& value : seed) value *= 1.3;
     const auto moved_warm = changed.run(&seed), moved_cold = changed.run(nullptr, false);
@@ -338,14 +348,14 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
             "changed-geometry warm normalization changed the endpoint");
   }
   options.max_iterations = 1;
-  dft::CudaKsPlan unfinished(gpu, basis, grid, options, pbe);
+  dft::CudaKsPlan unfinished(gpu, basis, grid, options, functional);
   const auto limited = unfinished.run();
   require(!limited.converged && !unfinished.failed(), "iteration limit misreported its status");
   require(unfinished.warm_density().empty(), "unfinished solve published a good warm state");
   require(
       unfinished.final_state_token(unavailable, snapshot_detail) == VIBEQC_STATUS_INVALID_ARGUMENT,
       "unfinished CUDA KS solve published a final-state token");
-  physical_check(cpu, basis, grid, pbe, limited);
+  physical_check(cpu, basis, grid, functional, limited);
 
   // Exact arena request is charged through the existing #203 device ledger.
   auto ledger = std::make_shared<runtime::DeviceResourceLedger>();
@@ -355,7 +365,7 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
   runtime::active_device_resource_ledger = ledger;
   try {
     {
-      dft::CudaKsPlan measured(gpu, basis, grid, options, pbe, 257);
+      dft::CudaKsPlan measured(gpu, basis, grid, options, functional, 257);
       require(ledger->live ==
                   measured.resources().state_device_bytes + measured.resources().xc_device_bytes,
               "CUDA KS resource request omits explicit allocations");
@@ -366,7 +376,7 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
     throw;
   }
   runtime::active_device_resource_ledger = previous;
-  std::cout << "KS atoms=" << atoms << " restricted=" << restricted << " pbe=" << pbe
+  std::cout << "KS atoms=" << atoms << " restricted=" << restricted << " functional=" << functional
             << " iterations=" << result.iterations
             << " residual=" << result.dft_diagnostic.physical_residual << '\n';
 }
@@ -486,7 +496,9 @@ int main() {
       run_hydroxyl(pbe);
       for (unsigned atoms : {1U, 2U, 3U}) run_case(atoms, false, pbe);
     }
-    std::cout << "Native CUDA KS SCF, physical-state, warm/failure/resource gates passed\n";
+    run_case(2, true, 2U);
+    run_case(2, false, 2U);
+    std::cout << "Native CUDA LDA/PBE/r2SCAN KS SCF, physical-state, warm/failure/resource gates passed\n";
     return 0;
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
