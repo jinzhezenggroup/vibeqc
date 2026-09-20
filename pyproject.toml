@@ -1,5 +1,6 @@
 [build-system]
-requires = ["scikit-build-core>=1.0.3", "numpy>=1.24"]
+# GFN2 wheel CMake resolves this reviewed provider inside PEP 517 isolation.
+requires = ["scikit-build-core>=1.0.3", "numpy>=1.24", "scipy-openblas32==0.3.34.0.0"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -103,7 +104,8 @@ test-command = "python -c 'import ctypes; from vibeqc import _native; from vibeq
 # libraries are not build inputs: VibeQC's wheel-mode Implib.so trampolines
 # compile from nvcc headers and resolve the separately installed providers only
 # at runtime, matching xTBloom's provider-free build boundary.
-before-build = "bash {package}/python/ci/install-ccache.sh"
+# Keep a second provider environment alive for the later auditwheel repair.
+before-build = "bash {package}/python/ci/prepare-wheel-build.sh"
 repair-wheel-command = "bash {package}/python/ci/repair-wheel.sh {dest_dir} {wheel}"
 
 [tool.coverage.run]
