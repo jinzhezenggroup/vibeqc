@@ -8,6 +8,7 @@ import io
 import json
 import platform
 import sys
+import typing
 from datetime import datetime, timezone
 from importlib import import_module, metadata
 from pathlib import Path
@@ -27,7 +28,7 @@ from tools.vibeqc_validation.fixtures import (
 from tools.vibeqc_validation.schema import block_error, canonical_hash, file_hash
 
 
-def pyscf_molecule(inputs):
+def pyscf_molecule(inputs: typing.Any) -> typing.Any:
     """Preserve per-atom shells and convert libcint Cartesian normalization."""
     from pyscf import gto
 
@@ -57,7 +58,7 @@ def pyscf_molecule(inputs):
     return mol, scale, actual
 
 
-def quartet_data(mol, scale):
+def quartet_data(mol: typing.Any, scale: typing.Any) -> typing.Any:
     """Store (ij|kl) and four independent shell-center nuclear derivatives.
 
     libcint ip1 differentiates the electronic coordinate on the first AO:
@@ -81,7 +82,9 @@ def quartet_data(mol, scale):
     }
 
 
-def molecular_data(inputs, mol, scale):
+def molecular_data(
+    inputs: typing.Any, mol: typing.Any, scale: typing.Any
+) -> typing.Any:
     """Save canonical occupied/virtual orbitals and converged independent HF/CC."""
     from pyscf import cc, scf
 
@@ -253,7 +256,12 @@ def _generate(destination: Path, compare: Path | None = None) -> dict:
                 )
             errors = {}
 
-            def compare_data(a, b, key, errors=errors):
+            def compare_data(
+                a: typing.Any,
+                b: typing.Any,
+                key: typing.Any,
+                errors: typing.Any = errors,
+            ) -> typing.Any:
                 if isinstance(a, dict):
                     if a.keys() != b.keys():
                         raise ValueError("reference data structure changed")
@@ -304,7 +312,7 @@ def generate(destination: Path, compare: Path | None = None) -> dict:
         return _generate(destination, compare)
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",
