@@ -1630,3 +1630,22 @@ def test_shell_histogram_runtime_switch_matches_native_opt_out() -> None:
     assert histogram.ppps_block_threads("128") == 128
     assert histogram.ppps_block_threads("256") == 256
     assert histogram.ppps_block_threads("96") == 0
+
+
+def test_packed_response_qualification_cases_bracket_policy_threshold() -> None:
+    """Synthetic #444/#459 endpoints cover the intended general work region."""
+    from benchmarks._cases import benchmark_cases
+
+    cases = benchmark_cases()
+    expected = {
+        "water-27mer-water27-derived-def2-svp-spherical": (27, 648),
+        "water-36mer-water27-derived-def2-svp-spherical": (36, 864),
+    }
+    for name, (waters, aos) in expected.items():
+        case = cases[name]
+        assert len(case.atoms) == waters * 3
+        assert case.expected_ao_count == aos
+        assert case.basis_representation == "spherical"
+        assert case.vibeqc_basis == case.pyscf_basis == "def2-svp"
+
+    assert 384**3 < 1 << 28 < 648**3 < 768**3 < 864**3

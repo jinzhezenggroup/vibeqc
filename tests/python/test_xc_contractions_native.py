@@ -182,6 +182,73 @@ def test_native_budget_preflight_precedes_collocation(
             )
 
 
+def test_prepared_xc_builds_profile_workload_from_actual_scientific_state(
+    native_factory: typing.Any,
+) -> None:
+    meta, _, grid = fixture("h2")
+    with (
+        NativeAO(**basis_arguments(meta)) as basis,
+        PreparedXCContractions(
+            native_factory("PBE", "potential"), basis, grid, tile_points=7
+        ) as prepared,
+    ):
+        density = prepared.tuning_workload(
+            architecture="sm_120",
+            source_identity="a" * 64,
+            density_route="density_matrix",
+        )
+        orbitals = prepared.tuning_workload(
+            architecture="sm_120",
+            source_identity="a" * 64,
+            density_route="orbitals",
+        )
+        assert density.functional == "PBE"
+        assert density.functional_identity == prepared.program.spec.identity
+        assert density.ingredients == ("rho", "gradient", "sigma")
+        # Preserve the compiler's canonical value/x/y/z jet ordering in the
+        # profile identity rather than normalizing the same domain differently.
+        assert density.jet_outputs == ((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1))
+        assert density.grid_identity == grid.identity
+        assert density.screening_identity is None
+        assert density.observable == "potential"
+        assert density.identity != orbitals.identity
+        assert "schedule" not in density.to_payload()
+        with pytest.raises(ValueError, match="explicit D"):
+            prepared.tuning_workload(
+                architecture="sm_120",
+                source_identity="a" * 64,
+                density_route="auto",
+            )
+
+
+@pytest.mark.parametrize("invalid", [False, True])
+def test_prepared_xc_rejects_schedule_replacement(
+    native_factory: typing.Any, invalid: bool
+) -> None:
+    meta, data, grid = fixture("h2")
+    with (
+        NativeAO(**basis_arguments(meta)) as basis,
+        PreparedXCContractions(
+            native_factory("PBE", "potential"), basis, grid, tile_points=7
+        ) as prepared,
+    ):
+        original = prepared.schedule
+        expected = prepared.execute(data["density_spin"])
+        prepared.schedule = None if invalid else replace(original, point_tile=8)
+        try:
+            with pytest.raises(ValueError, match="schedule"):
+                prepared.tuning_workload(
+                    architecture="sm_120",
+                    source_identity="a" * 64,
+                    density_route="density_matrix",
+                )
+            with pytest.raises(ValueError, match="schedule"):
+                prepared.execute(data["density_spin"])
+        finally:
+            prepared.schedule = original
+        compare(prepared.execute(data["density_spin"]), expected)
+
+
 def test_native_spatial_mask_matches_independent_zeroed_collocation(
     native_factory: typing.Any,
 ) -> None:

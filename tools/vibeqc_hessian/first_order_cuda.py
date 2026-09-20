@@ -165,6 +165,7 @@ def generated_rhf_relaxation_contraction_cuda(
     energy_weighted_density_response: typing.Any,
     compiler: typing.Any,
     *,
+    resident_weights: typing.Any = None,
     device_id: int = 0,
     budget_bytes: int = 64 << 20,
     record_capacity: int = 128,
@@ -189,13 +190,24 @@ def generated_rhf_relaxation_contraction_cuda(
     storage = first_gradient_storage(state.nbf, state.nat, 3, record_capacity)
     if storage["numeric_peak_bytes"] > budget_bytes:
         raise MemoryError("CUDA relaxation numeric storage exceeds budget_bytes")
-    d1 = _checked_ao_weight(density_response, state.nbf, "density response")
-    w1 = _checked_ao_weight(
-        energy_weighted_density_response,
-        state.nbf,
-        "energy-weighted density response",
-    )
-    weights = np.stack((d1, w1, state.P0))
+    if resident_weights is None:
+        d1 = _checked_ao_weight(density_response, state.nbf, "density response")
+        w1 = _checked_ao_weight(
+            energy_weighted_density_response,
+            state.nbf,
+            "energy-weighted density response",
+        )
+        weights = np.stack((d1, w1, state.P0))
+    else:
+        from tools.vibeqc_response.resident_cuda import ResidentRHFReconstruction
+
+        if density_response is not None or energy_weighted_density_response is not None:
+            raise ValueError("resident relaxation forbids duplicate host D1/W1 weights")
+        if not isinstance(resident_weights, ResidentRHFReconstruction):
+            raise TypeError("resident relaxation requires ResidentRHFReconstruction")
+        if resident_weights.nbf != state.nbf or resident_weights.device_id != device_id:
+            raise ValueError("resident relaxation response/device identity mismatch")
+        weights = None
     shells, offsets, prims = state.source.shells, state.offsets, state.primitives
     coords = state.coords
     programs = {}
@@ -233,7 +245,14 @@ def generated_rhf_relaxation_contraction_cuda(
         device_id=device_id,
         budget_bytes=budget_bytes,
     ) as owner:
-        owner.reset(weights)
+        if resident_weights is None:
+            owner.reset(weights)
+        else:
+            owner.reset_device_prefix(
+                resident_weights.device_pointer,
+                2 * state.nbf * state.nbf,
+                state.P0,
+            )
 
         def append(
             ir: typing.Any, slots: typing.Any, atoms: typing.Any, terms: typing.Any
@@ -290,6 +309,18 @@ def generated_rhf_relaxation_contraction_cuda(
             "matrix_weight_products": "cuda-generated",
             "gradient_accumulation": "cuda",
             "weight_uploads": owner.statistics["weight_uploads"],
+            "resident_weight_imports": owner.statistics["resident_weight_imports"],
+            "response_weight_source": (
+                "resident-d2d" if resident_weights is not None else "host-h2d"
+            ),
+            "resident_weight_d2d_bytes": (
+                2 * state.nbf * state.nbf * 8 if resident_weights is not None else 0
+            ),
+            "host_weight_h2d_bytes": (
+                state.nbf * state.nbf * 8
+                if resident_weights is not None
+                else 3 * state.nbf * state.nbf * 8
+            ),
             "gradient_downloads": owner.statistics["gradient_downloads"],
             "primitive_records": owner.statistics["primitive_records"],
             "chunks": owner.statistics["chunks"],

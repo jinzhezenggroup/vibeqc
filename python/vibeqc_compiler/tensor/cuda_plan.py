@@ -32,7 +32,7 @@ from .cuda_gemm import gemm_contract
 from .cuda_layout import LayoutDecision, conversion_bytes, select_layouts
 from .ir import TRANSCENDENTALS, Node
 from .layout import DenseLayout
-from .precision import PrecisionSchedule, describe_precision
+from .precision import PrecisionSchedule, ValuePrecision, describe_precision
 from .program import Program, _hash
 from .types import checked_size
 
@@ -177,6 +177,13 @@ class TensorPlan:
     def precision_schedule(self) -> PrecisionSchedule:
         return describe_precision(self.program)
 
+    @cached_property
+    def precision_by_node(self) -> dict[Node, ValuePrecision]:
+        """Resolve execution precision once for every live logical node."""
+        names = self.program.debug_names
+        values = {value.name: value for value in self.precision_schedule.values}
+        return {node: values[names[node]] for node in self.program.live_nodes}
+
     @property
     def batch_schedule(self) -> BatchScheduleIR:
         """Derive exact homogeneous/ragged scheduling facts for this plan."""
@@ -312,7 +319,7 @@ class TensorPlan:
             "precision": self.precision,
             "precision_schedule": self.precision_schedule.to_payload(),
             "precision_schedule_identity": self.precision_schedule.identity,
-            "arithmetic": "explicit casts only; per-node dtype; RN; fp32 SGEMM pedantic; no TF32 or implicit casts",
+            "arithmetic": "explicit casts; per-value storage/compute/accumulation; RN; fp32 SGEMM pedantic; qualified FP64 reduction accumulation; no TF32 or implicit casts",
             "fp32_flush_to_zero": False,
             "target": self.target.to_payload(),
             "schedule": asdict(self.schedule),
@@ -445,6 +452,18 @@ def plan_cuda(
         target.target_info
     )
     nodes, inputs, outputs = _occurrences(program, schedule.recompute)
+    mixed_accumulation_steps: frozenset[int] = frozenset()
+    if program.provenance.get("precision_execution") is not None:
+        program_names = program.debug_names
+        precision_values = {
+            value.name: value for value in describe_precision(program).values
+        }
+        mixed_accumulation_steps = frozenset(
+            i
+            for i, (node, _) in enumerate(nodes)
+            if precision_values[program_names[node]].compute_dtype
+            != precision_values[program_names[node]].accumulation_dtype
+        )
     if schedule.layouts and any(n.spec.dtype != "float64" for n, _ in nodes):
         raise ValueError("producer layout optimization is qualified only for float64")
     if any(n.op in TRANSCENDENTALS for n, _ in nodes) and len(nodes) > INT_MAX // 2:
@@ -566,7 +585,11 @@ def plan_cuda(
         g = gemm_contract(node)
         # Library admission depends on GEMM eligibility, not physical order.
         # The bounded layout pass assigns the final packed/direct kind below.
-        kind = "packed" if g is not None and not virtual[i] else "none"
+        kind = (
+            "packed"
+            if g is not None and not virtual[i] and i not in mixed_accumulation_steps
+            else "none"
+        )
         if g:
             flops += g.flops
         elif node.op == "einsum":
@@ -637,7 +660,12 @@ def plan_cuda(
             schedule, **dict(zip(("tile_m", "tile_n", "tile_k"), tile, strict=True))
         )
         layouts, kinds, layout_decision = select_layouts(
-            nodes, virtual, pinned, selected, alignment=ALIGNMENT
+            nodes,
+            virtual,
+            pinned,
+            selected,
+            alignment=ALIGNMENT,
+            disabled_gemm=mixed_accumulation_steps,
         )
         steps = [
             replace(s, layout=layouts[i], gemm=kinds[i]) for i, s in enumerate(steps)

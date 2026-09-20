@@ -158,6 +158,21 @@
         "energy"
       ],
       "supports_batch": true
+    },
+    {
+      "name": "gfn2-xtb",
+      "symbol": "GFN2_XTB",
+      "abi_id": 15,
+      "family": "semiempirical",
+      "provider": "xtb",
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "supports_batch": false,
+      "aliases": [
+        "gfn2"
+      ]
     }
   ]
 }

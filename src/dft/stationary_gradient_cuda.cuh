@@ -10,23 +10,24 @@
 
 namespace vibeqc_stationary_cuda {
 using namespace vibeqc_tensor;
-constexpr size_t workers = 32, record_stride = 26;
+constexpr size_t workers = 32, record_stride = 26, map_stride = 8;
 struct Owner {
   Context context;
-  size_t atoms{}, aos{}, points{}, records{}, bytes{};
+  size_t atoms{}, aos{}, points{}, records{}, spin_blocks{}, bytes{};
   bool failed = true;  // An owner must be reset before its first source or read.
   double *record{}, *primitive{}, *centers{}, *weights{}, *raw{}, *partial{}, *scratch{},
-      *sources{};
+      *sources{}, *density{}, *weighted_density{};
   int64_t *maps{}, *ao_atoms{}, *point_atoms{};
   uint64_t uploads{}, downloads{}, launches{}, primitive_count{}, point_count{}, pair_visits{};
 };
 // Caps make all products below representable before any allocation or pointer
 // dereference. The fixed worker count bounds O(worker*natom) adjoint scratch.
-size_t allocation(size_t na, size_t n, size_t np, size_t nr) {
-  if (!na || na > 32 || !n || n > 128 || !np || np > 4096 || !nr || nr > 4096)
+size_t allocation(size_t na, size_t n, size_t np, size_t nr, size_t ns) {
+  if (!na || na > 32 || !n || n > 128 || !np || np > 4096 || !nr || nr > 4096 ||
+      (ns != 1 && ns != 2) || ns != stationary_spin_blocks)
     throw std::invalid_argument("stationary CUDA shape exceeds small-domain caps");
   return 8 * (record_stride * nr + 12 * nr + 3 * na + 2 * np + workers * 9 * na + workers * 9 * na +
-              21 * na + 4 * nr + n + np) +
+              21 * na + map_stride * nr + n + np + 2 * ns * n * n) +
          256;
 }
 template <class F>
@@ -63,7 +64,9 @@ void upload(Owner& p, T* out, const T* in, size_t n, cudaStream_t stream) {
   cuda_check(cudaMemcpyAsync(out, in, n * sizeof(T), cudaMemcpyHostToDevice, stream));
   p.uploads += n * sizeof(T);
 }
-__global__ void primitive_kernel(unsigned kind, const double* records, size_t count, double* output,
+__global__ void primitive_kernel(unsigned kind, unsigned source, const double* records,
+                                 const int64_t* maps, size_t count, const double* density,
+                                 const double* weighted_density, size_t n, double* output,
                                  int* error);
 __global__ void primitive_reduce(const double* input, const int64_t* maps, size_t count, size_t na,
                                  double* output, int* error);
@@ -77,12 +80,12 @@ __global__ void geometry_reduce(const double* partial, size_t na, double* output
 
 extern "C" {
 int stationary_create(int device, int major, int minor, size_t na, size_t n, size_t np, size_t nr,
-                      size_t budget, void** output, char* error, size_t size) {
+                      size_t ns, size_t budget, void** output, char* error, size_t size) {
   using namespace vibeqc_stationary_cuda;
   if (output) *output = nullptr;
   return guarded(nullptr, error, size, [&] {
     if (!output) throw std::invalid_argument("null stationary owner output");
-    const size_t bytes = allocation(na, n, np, nr);
+    const size_t bytes = allocation(na, n, np, nr, ns);
     if (bytes > budget) throw std::invalid_argument("stationary CUDA byte budget exceeded");
     // Reject invalid visible ordinals before Context stores/switches the device.
     // A failed cudaSetDevice otherwise leaves a latched runtime error that can
@@ -96,6 +99,7 @@ int stationary_create(int device, int major, int minor, size_t na, size_t n, siz
     p->aos = n;
     p->points = np;
     p->records = nr;
+    p->spin_blocks = ns;
     p->bytes = bytes;
     p->context.prepare(device, major, minor, bytes, bytes - 256, 0, 0, 0, false);
     auto* next = reinterpret_cast<double*>(p->context.arena);
@@ -112,14 +116,17 @@ int stationary_create(int device, int major, int minor, size_t na, size_t n, siz
     p->partial = take(workers * 9 * na);
     p->scratch = take(workers * 9 * na);
     p->sources = take(21 * na);
-    p->maps = reinterpret_cast<int64_t*>(take(4 * nr));
+    p->maps = reinterpret_cast<int64_t*>(take(map_stride * nr));
     p->ao_atoms = reinterpret_cast<int64_t*>(take(n));
     p->point_atoms = reinterpret_cast<int64_t*>(take(np));
+    p->density = take(ns * n * n);
+    p->weighted_density = take(ns * n * n);
     *output = p.release();
   });
 }
 int stationary_reset(void* pointer, const double* centers, const int64_t* ao_atoms,
-                     double tolerance, char* error, size_t size) {
+                     const double* density, const double* weighted_density, double tolerance,
+                     char* error, size_t size) {
   using namespace vibeqc_stationary_cuda;
   auto* p = static_cast<Owner*>(pointer);
   return guarded(p, error, size, [&] {
@@ -132,6 +139,8 @@ int stationary_reset(void* pointer, const double* centers, const int64_t* ao_ato
     cuda_check(cudaMemsetAsync(p->sources, 0, 21 * p->atoms * 8, stream));
     upload(*p, p->centers, centers, 3 * p->atoms, stream);
     upload(*p, p->ao_atoms, ao_atoms, p->aos, stream);
+    upload(*p, p->density, density, p->spin_blocks * p->aos * p->aos, stream);
+    upload(*p, p->weighted_density, weighted_density, p->spin_blocks * p->aos * p->aos, stream);
     validate_centers<<<1, 1, 0, stream>>>(p->centers, p->atoms, tolerance, p->context.error);
     ++p->launches;
     p->pair_visits += p->atoms * (p->atoms - 1) / 2;
@@ -149,9 +158,10 @@ int stationary_records(void* pointer, unsigned kind, unsigned source, const doub
     check(*p);
     auto stream = p->context.stream;
     upload(*p, p->record, records, count * record_stride, stream);
-    upload(*p, p->maps, maps, count * 4, stream);
-    primitive_kernel<<<blocks(count, 64), 64, 0, stream>>>(kind, p->record, count, p->primitive,
-                                                           p->context.error);
+    upload(*p, p->maps, maps, count * map_stride, stream);
+    primitive_kernel<<<blocks(count, 64), 64, 0, stream>>>(kind, source, p->record, p->maps, count,
+                                                           p->density, p->weighted_density, p->aos,
+                                                           p->primitive, p->context.error);
     primitive_reduce<<<blocks(3 * p->atoms, 64), 64, 0, stream>>>(
         p->primitive, p->maps, count, p->atoms, p->sources + source * 3 * p->atoms,
         p->context.error);

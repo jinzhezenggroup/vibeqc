@@ -12,6 +12,7 @@ from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
+    PrecisionDirective,
     Program,
     Symmetry,
     TensorSpec,
@@ -24,6 +25,7 @@ from vibeqc_compiler.tensor import (
     execute,
     gather,
     input_tensor,
+    lower_precision,
     multiply,
     reduce_sum,
     reshape,
@@ -290,6 +292,57 @@ def test_explicit_precision_casts_execute_on_cuda(gpu: typing.Any) -> None:
         assert actual.metrics["precision"] == "typed-fp32-fp64"
         assert actual.outputs["out"].dtype == np.float64
         np.testing.assert_array_equal(actual.outputs["out"], expected)
+
+
+@DEVICE
+def test_qualified_fp32_compute_fp64_reduction_accumulation_on_cuda(
+    gpu: typing.Any,
+) -> None:
+    values = np.array([1.0e8, 1.0, -1.0e8, 1.0], dtype=np.float64)
+
+    x = tensor("x", (4,), "float64")
+    reduced = reduce_sum(x, (0,))
+    reduction_program = Program({"out": reduced})
+    reduction_program = lower_precision(
+        reduction_program,
+        {
+            reduction_program.debug_names[reduced]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="cuda-sm120/fp32-compute-fp64-accum",
+            )
+        },
+    )
+    with prepare(reduction_program, gpu) as prepared:
+        actual = prepared.execute({"x": values})
+        assert actual.outputs["out"] == 2.0
+        assert actual.metrics["precision"] == "typed-fp32-fp64"
+
+    left = tensor("left", (4,), "float64")
+    right = tensor("right", (4,), "float64")
+    dot = einsum("i,i->", left, right)
+    dot_program = Program({"out": dot})
+    dot_program = lower_precision(
+        dot_program,
+        {
+            dot_program.debug_names[dot]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="cuda-sm120/fp32-dot-fp64-accum",
+            )
+        },
+    )
+    dot_plan = plan_cuda(dot_program, gpu[0].target)
+    assert (
+        next(step for step in dot_plan.steps if step.node.op == "einsum").gemm == "none"
+    )
+    with prepare(dot_program, gpu) as prepared:
+        actual = prepared.execute(
+            {"left": values, "right": np.ones(4, dtype=np.float64)}
+        )
+        assert actual.outputs["out"] == 2.0
 
 
 @DEVICE

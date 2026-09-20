@@ -363,6 +363,9 @@ class PreparedBatch:
         if not systems:
             raise ValueError("a batch requires at least one system")
         self._last_statuses = None
+        # The KS ResourcePlan reserves one serialized generated-force staging cap.
+        # Keep one retained execution per PreparedBatch and reprepare on topology drift.
+        self._stationary_cuda_execution: typing.Any = None
         self._restart_indices = set()
         self._projection_indices = set()
         self.projection_diagnostics = None
@@ -601,9 +604,17 @@ class PreparedBatch:
         from vibeqc_compiler.dft import NativeAO
 
         from ._dft_gradient import StationaryKsState
-        from ._stationary_cuda import complete_rks_cuda_gradient_diagnostic
+        from ._stationary_cuda import (
+            PreparedStationaryCudaExecution,
+            PreparedStationaryCudaTopologyMismatch,
+            complete_rks_cuda_gradient_diagnostic,
+        )
 
         calculator = self._calculator
+        prepared = self._stationary_cuda_execution
+        if prepared is None:
+            prepared = PreparedStationaryCudaExecution()
+            self._stationary_cuda_execution = prepared
         with NativeAO(
             atoms,
             basis=calculator._basis,
@@ -619,16 +630,25 @@ class PreparedBatch:
                     raise NotImplementedError(
                         "public CUDA DFT forces require a qualified CUDA owner"
                     )
-                result = complete_rks_cuda_gradient_diagnostic(
-                    state,
-                    basis,
-                    compiler=self._stationary_cuda_compiler(),
-                    cache=Path(
+                kwargs = {
+                    "compiler": self._stationary_cuda_compiler(),
+                    "cache": Path(
                         os.environ.get(
                             "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cuda"
                         )
                     ),
-                )
+                }
+                try:
+                    result = complete_rks_cuda_gradient_diagnostic(
+                        state, basis, prepared=prepared, **kwargs
+                    )
+                except PreparedStationaryCudaTopologyMismatch:
+                    prepared.close()
+                    prepared = PreparedStationaryCudaExecution()
+                    self._stationary_cuda_execution = prepared
+                    result = complete_rks_cuda_gradient_diagnostic(
+                        state, basis, prepared=prepared, **kwargs
+                    )
                 # StationaryGradientPlan publishes +dE/dR. Public API is force.
                 return -np.asarray(result.gradient).copy(), dict(result.work)
             finally:
@@ -1414,6 +1434,10 @@ class PreparedBatch:
         )
 
     def close(self) -> None:
+        if self._stationary_cuda_execution is not None:
+            with suppress(Exception):
+                self._stationary_cuda_execution.close()
+            self._stationary_cuda_execution = None
         if self._batch.value:
             self._library.vibeqc_batch_destroy(self._batch)
             self._batch = ctypes.c_void_p()

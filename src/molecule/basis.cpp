@@ -183,8 +183,8 @@ double cartesian_component_normalization(const CartesianComponent& component) no
 }
 
 vibeqc_status validate_and_normalize(core::System& system, std::string& detail) {
-  if (system.atoms.empty() || system.shells.empty()) {
-    detail = "a system requires at least one atom and one basis shell";
+  if (system.atoms.empty()) {
+    detail = "a system requires at least one atom";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   std::int64_t nuclear_charge = 0;

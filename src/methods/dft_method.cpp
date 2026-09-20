@@ -968,6 +968,10 @@ vibeqc_status validate_dft_system(vibeqc_method method, const core::System& syst
     detail = "requested DFT method is reserved but not implemented";
     return VIBEQC_STATUS_NOT_IMPLEMENTED;
   }
+  if (system.shells.empty()) {
+    detail = "DFT requires an explicit Gaussian orbital basis";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   const char* functional = display_method_name(method);
   if (!is_uks(method)) {
     if (system.electron_count > 0 && system.electron_count % 2 == 0 && system.multiplicity == 1)

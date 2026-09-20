@@ -84,21 +84,31 @@ SpinXcIntegral integrate_pbe_uks_scaled(const AoBasis& basis, const MolecularGri
                                         const std::vector<double>& beta_density,
                                         std::size_t tile_points, double exchange_scale,
                                         double correlation_scale);
-/** CAM-B3LYP semilocal MethodIR primitive on its audited interior-v1 domain.
- * SR/LR exact exchange is owned by the common Fock providers, not this object.
+/** Generated B3-family GGA point result on the audited interior-v1 domain.
+ * Full-/range-separated exact exchange remains owned by common Fock providers.
  */
-struct CamB3lypPointValue {
+struct B3GgaPointValue {
   double energy{};
   double rho[2]{};
   double gradient[2][3]{};
 };
+using B3lypPointValue = B3GgaPointValue;
+using CamB3lypPointValue = B3GgaPointValue;
 
+B3lypPointValue evaluate_b3lyp_point(const double rho[2], const double (&gradient)[2][3]);
 CamB3lypPointValue evaluate_cam_b3lyp_point(const double rho[2], const double (&gradient)[2][3]);
+
+XcIntegral integrate_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
+                               const std::vector<double>& density, std::size_t tile_points = 256,
+                               XcDensitySource source = {});
+SpinXcIntegral integrate_b3lyp_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& alpha_density,
+                                   const std::vector<double>& beta_density,
+                                   std::size_t tile_points = 256);
 
 XcIntegral integrate_cam_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
                                    const std::vector<double>& density,
                                    std::size_t tile_points = 256, XcDensitySource source = {});
-
 SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid& grid,
                                        const std::vector<double>& alpha_density,
                                        const std::vector<double>& beta_density,

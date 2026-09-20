@@ -55,6 +55,10 @@ from .triples import (
     triples_energy_tensorir,
     triples_fullsum,
 )
+from .triples_complete_gradient import (
+    BoundCCSDTGradient,
+    complete_ccsdt_gradient_validation,
+)
 from .triples_cuda import (
     CudaTriplesResult,
     CudaTriplesTiles,
@@ -98,6 +102,7 @@ __all__ = [
     "BoundCCSDGradient",
     "BoundCCSDLambda",
     "BoundCCSDResponse",
+    "BoundCCSDTGradient",
     "BoundCCSDTOrbitalResponse",
     "BoundCCSDTResponse",
     "CCSDGradientCapabilities",
@@ -138,6 +143,7 @@ __all__ = [
     "build_tile_triples_program",
     "build_tile_triples_vjp",
     "build_triples_program",
+    "complete_ccsdt_gradient_validation",
     "complete_gradient_validation",
     "cpu_triples_tiles",
     "energy",

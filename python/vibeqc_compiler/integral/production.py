@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from . import production_cost as _production_cost
 from .capabilities import (
     CAPABILITY_LOCAL_PACKED_STREAMING_FOCK,
     CAPABILITY_MIXED_FOCK,
@@ -16,10 +17,7 @@ from .capabilities import (
     normalize_capabilities,
 )
 from .cuda_emitter import emit_shell_class_fused_cuda
-from .cuda_lowering import (
-    emit_ppps_resident_bra_rys3_cuda,
-    supports_component_lane_rys,
-)
+from .cuda_lowering import emit_ppps_resident_bra_rys3_cuda
 from .cuda_schedule import (
     AlgebraForm,
     AlgebraFusion,
@@ -36,62 +34,27 @@ from .cuda_target import (
     normalize_cuda_architecture,
 )
 from .fused_schedule import build_fused_shell_plan
-from .ir import IntegralIR, KernelConsumer, build_integral_ir
+from .ir import KernelConsumer, build_integral_ir
+from .production_selection import (
+    _SUPPORTED_RECURRENCES,
+    KernelSelection,
+    _selection_integral,
+)
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
 from .signature import GeneratedKernelArgument, GeneratedKernelSignature
-from .specialize import specialize_integral_ir
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
     from pathlib import Path
 
-_SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys2", "rys3", "rys4", "rys5"))
-
-
-def _supports_scalar_rys(
-    spec: ShellClassSpec,
-    schedule: ScheduleIR,
-) -> bool:
-    """Return whether the lane-local fixed-root backend can lower ``spec``.
-
-    Each lane owns one complete shell task, so the schedule must expose one
-    task per hardware lane and enough component storage for the full quartet.
-    Root-count legality is a mathematical-IR concern and is checked separately.
-    """
-
-    return (
-        schedule.kind == ScheduleKind.THREAD_TASKS
-        and schedule.warp_size == 32
-        and schedule.block_threads == 32
-        and schedule.tasks_per_warp == 32
-        and not schedule.shared_coulomb
-        and schedule.component_tile >= spec.component_count
-    )
-
-
-def _supports_component_lane_rys(
-    spec: ShellClassSpec,
-    schedule: ScheduleIR,
-) -> bool:
-    """Return whether the backend decoder can lower ``spec`` component-wise."""
-
-    return supports_component_lane_rys(spec, schedule)
-
-
-def _supports_uniform_warp_rys(
-    spec: ShellClassSpec,
-    schedule: ScheduleIR,
-) -> bool:
-    """Return whether uniform component warps can lower 32 shell tasks."""
-
-    return (
-        schedule.kind == ScheduleKind.SUBGROUP_TASKS
-        and schedule.warp_size == 32
-        and schedule.block_threads in (128, 256)
-        and schedule.tasks_per_block == 32
-        and schedule.subgroup_lanes == schedule.warp_count
-        and schedule.component_tile >= spec.component_count
-    )
+# Compatibility re-exports while #487 moves production responsibilities behind
+# narrower leaf modules.  Keep the canonical objects identical for downstream
+# callers that still import these names from ``integral.production``.
+_STABLE_AOT_SHARD_MAP_VERSION = _production_cost._STABLE_AOT_SHARD_MAP_VERSION
+_partition_production_selections = _production_cost._partition_production_selections
+production_compile_cost = _production_cost.production_compile_cost
+shell_class_index = _production_cost.shell_class_index
+stable_aot_shard_slot = _production_cost.stable_aot_shard_slot
 
 
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"
@@ -142,186 +105,6 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
 }
 
 """
-
-
-@dataclass(frozen=True, slots=True)
-class KernelSelection:
-    """One architecture-tuned shell kernel selected for production."""
-
-    architecture: str
-    spec: ShellClassSpec
-    consumers: tuple[KernelConsumer, ...]
-    schedule: ScheduleIR
-    profile: str = ""
-    tuned: bool = True
-    recurrence: str = "subset_wick"
-    resident_force_recurrence: str | None = None
-    fock_schedule: ScheduleIR | None = None
-    # Optional production code-shape capabilities are measured per profile
-    # and persisted in the manifest.  An omitted list intentionally disables
-    # optional wrappers for legacy/custom manifests.
-    capabilities: frozenset[str] = frozenset()
-    # Keep the mathematical request attached to a production selection.  The
-    # manifest compatibility path leaves this unset and receives the
-    # historical default IR, while compiler stages may supply a fully
-    # explicit operator/derivative/contraction definition.
-    integral: IntegralIR | None = None
-    # Optional compiler provenance carried by newer manifests.  These values
-    # are advisory and fall back to the structural cost model when absent.
-    runtime_seconds: float | None = None
-    compile_seconds: float | None = None
-    source_bytes: int | None = None
-    object_bytes: int | None = None
-
-    def has_capability(self, capability: str) -> bool:
-        """Return whether this profile explicitly enables one optional path."""
-
-        return capability in self.capabilities
-
-    def __post_init__(self) -> None:
-        if not self.architecture.startswith("sm_"):
-            raise ValueError("production architecture must use CUDA sm_ notation")
-        if not self.profile:
-            object.__setattr__(self, "profile", self.architecture)
-        if not self.consumers:
-            raise ValueError("production kernel requires at least one consumer")
-        object.__setattr__(
-            self,
-            "capabilities",
-            normalize_capabilities(self.spec.name, list(self.capabilities)),
-        )
-        if (
-            not isinstance(self.recurrence, str)
-            or self.recurrence not in _SUPPORTED_RECURRENCES
-        ):
-            raise ValueError(f"unsupported production recurrence {self.recurrence!r}")
-        # IntegralIR owns scientific recurrence legality, including the exact
-        # root count implied by angular momentum and derivative order. The
-        # production layer only validates whether an implemented CUDA mapping
-        # can execute that already-legal recurrence.  Preserve an explicit IR
-        # instead of silently rebuilding the historical default.
-        selected_integral = self.integral or build_integral_ir(
-            self.spec,
-            self.consumers,
-            recurrence=self.recurrence,
-        )
-        if selected_integral.spec != self.spec:
-            raise ValueError("production integral spec does not match selection")
-        if selected_integral.recurrence != self.recurrence:
-            raise ValueError(
-                "production recurrence does not match the selection integral"
-            )
-        if selected_integral.consumers != frozenset(self.consumers):
-            raise ValueError("production consumers do not match the selection integral")
-        for field_name in (
-            "runtime_seconds",
-            "compile_seconds",
-            "source_bytes",
-            "object_bytes",
-        ):
-            value = getattr(self, field_name)
-            if value is not None and (
-                isinstance(value, bool)
-                or not isinstance(value, (int, float))
-                or not math.isfinite(float(value))
-                or value < 0
-            ):
-                raise ValueError(f"{field_name} must be a non-negative number")
-        scalar_thread_tasks = _supports_scalar_rys(self.spec, self.schedule)
-        if self.recurrence == "rys2" and not scalar_thread_tasks:
-            raise ValueError(
-                "production rys2 requires one complete scalar task per lane "
-                "in a single warp"
-            )
-        if self.recurrence == "rys3":
-            if (
-                self.spec.name == "ppps"
-                and KernelConsumer.FOCK in self.consumers
-                and self.fock_schedule is None
-            ):
-                raise ValueError(
-                    "production ppps rys3 with a Fock consumer requires an "
-                    "independent fock_schedule"
-                )
-            component_lanes = _supports_component_lane_rys(self.spec, self.schedule)
-            uniform_warps = _supports_uniform_warp_rys(self.spec, self.schedule)
-            if not (scalar_thread_tasks or component_lanes or uniform_warps):
-                raise ValueError(
-                    "production rys3 requires scalar thread tasks, supported "
-                    "runtime-indexed component lanes, or 32 uniform-warp tasks"
-                )
-        high_root_component_lanes = _supports_component_lane_rys(
-            self.spec, self.schedule
-        )
-        high_root_uniform_warps = _supports_uniform_warp_rys(self.spec, self.schedule)
-        if self.recurrence in ("rys4", "rys5") and not (
-            high_root_component_lanes or high_root_uniform_warps
-        ):
-            raise ValueError(
-                f"production {self.recurrence} requires supported "
-                "runtime-indexed component lanes or 32 uniform-warp tasks"
-            )
-        if self.fock_schedule is not None and KernelConsumer.FOCK not in self.consumers:
-            raise ValueError("a separate Fock schedule requires a Fock consumer")
-        if self.resident_force_recurrence is not None:
-            if self.spec.name != "ppps":
-                raise ValueError(
-                    "resident force recurrence is currently available only "
-                    "for the ppps shell class"
-                )
-            if KernelConsumer.FORCE not in self.consumers:
-                raise ValueError(
-                    "resident force recurrence requires the force consumer"
-                )
-            if self.resident_force_recurrence != "rys3":
-                raise ValueError("resident ppps force recurrence must be rys3")
-        # The shared emitter still defines the canonical task ABI and dormant
-        # force symbols for Fock-only rows.  Consumer metadata keeps those
-        # symbols out of the force registry while allowing low-order bounded
-        # Fock classes to avoid the generic AO-quartet fallback.
-
-
-def _selection_integral(
-    selection: KernelSelection,
-    *,
-    consumers: tuple[KernelConsumer | str, ...] | None = None,
-    recurrence: str | None = None,
-) -> IntegralIR:
-    """Return the mathematical IR owned by a production selection.
-
-    Production manifests predate explicit operator metadata and therefore
-    continue to synthesize the canonical four-center IR when ``integral`` is
-    absent.  When a compiler stage supplies an IR, preserve its operator,
-    derivative, and contraction records; only rebuild when a companion path
-    intentionally changes consumers or recurrence (for example a Fock value
-    plan beside a force Rys plan).
-    """
-
-    selected_recurrence = selection.recurrence if recurrence is None else recurrence
-    base = selection.integral
-    if base is None:
-        selected_consumers = selection.consumers if consumers is None else consumers
-        return build_integral_ir(
-            selection.spec,
-            selected_consumers,
-            recurrence=selected_recurrence,
-        )
-    if consumers is None:
-        selected_consumers = selection.consumers
-    else:
-        selected_consumers = tuple(KernelConsumer(item) for item in consumers)
-    if (
-        frozenset(selected_consumers) == base.consumers
-        and selected_recurrence == base.recurrence
-    ):
-        return base
-    if frozenset(selected_consumers) == base.consumers:
-        return specialize_integral_ir(base, recurrence=selected_recurrence)
-    return specialize_integral_ir(
-        base,
-        consumers=selected_consumers,
-        recurrence=recurrence,
-    )
 
 
 class ProfileMatch(str, Enum):
@@ -873,16 +656,6 @@ def load_production_kernel_selections(
     """Load safe production selections for one concrete CUDA target."""
 
     return resolve_production_profile(path, architecture, profile).selections
-
-
-def shell_class_index(spec: ShellClassSpec) -> int:
-    """Return the production triangular quartet-class index."""
-
-    first = shell_pair_class(*spec.angular[:2])
-    second = shell_pair_class(*spec.angular[2:])
-    high = max(first, second)
-    low = min(first, second)
-    return high * (high + 1) // 2 + low
 
 
 def load_production_manifest(
@@ -3252,115 +3025,6 @@ def _write_if_changed(path: Path, content: str) -> None:
     if path.exists() and path.read_text(encoding="utf-8") == content:
         return
     path.write_text(content, encoding="utf-8")
-
-
-_STABLE_AOT_SHARD_MAP_VERSION = 1
-
-# The map is intentionally keyed by shell name rather than manifest position.
-# Its slots were chosen from the measured component/recurrence/consumer cost
-# of the sm_120 production profile.  Keeping this small, versioned table in
-# source means adding or removing a manifest row cannot move an unrelated class
-# to another translation unit (the failure mode of both manifest-order and
-# whole-profile greedy partitioners).  A future measurement refresh should
-# increment the version and deliberately invalidate the affected cache keys.
-_STABLE_AOT_SHARD_SLOTS: dict[str, int] = {
-    "ssss": 0,
-    "psss": 1,
-    "psps": 2,
-    "ppss": 2,
-    "ppps": 4,
-    "pppp": 7,
-    "dsss": 6,
-    "dsps": 5,
-    "dspp": 7,
-    "dpss": 2,
-    "dpps": 5,
-    "dppp": 4,
-    "dpds": 5,
-    "dpdp": 3,
-    "dsds": 3,
-    "ddss": 6,
-    "ddps": 6,
-    "ddpp": 2,
-    "ddds": 7,
-    "dddp": 1,
-    "dddd": 0,
-    "fpps": 7,
-}
-
-
-def production_compile_cost(selection: KernelSelection) -> float:
-    """Estimate the relative cold-compile cost of one production selection.
-
-    Real compiler timings, when attached to a manifest row, are preferred.
-    Older manifests have no such measurements, so this deterministic estimate
-    uses the generated component count, recurrence root count, and number of
-    emitted consumers.  It is a partitioning signal only; it must never be
-    used as a runtime or scientific quality metric.
-    """
-
-    if selection.compile_seconds is not None:
-        return float(selection.compile_seconds)
-    recurrence_factor = {
-        "subset_wick": 1.0,
-        "rys2": 1.15,
-        "rys3": 1.35,
-        "rys4": 1.7,
-        "rys5": 2.0,
-    }[selection.recurrence]
-    consumer_factor = 1.0 + 0.65 * max(len(selection.consumers) - 1, 0)
-    schedule_factor = max(selection.schedule.block_threads / 32.0, 1.0)
-    structural = (
-        selection.spec.component_count
-        * (selection.spec.maximum_force_coulomb_order + 1)
-        * recurrence_factor
-        * consumer_factor
-    )
-    # Keep measured source/object sizes useful without allowing a stale size
-    # estimate to dominate the mathematical structure of a new class.
-    artifact_factor = 1.0
-    if selection.source_bytes is not None:
-        artifact_factor += min(selection.source_bytes / 1.0e6, 4.0) * 0.05
-    if selection.object_bytes is not None:
-        artifact_factor += min(selection.object_bytes / 1.0e6, 4.0) * 0.05
-    return float(structural * artifact_factor * schedule_factor)
-
-
-def stable_aot_shard_slot(selection: KernelSelection) -> int:
-    """Return the versioned, manifest-order-independent virtual shard slot."""
-
-    slot = _STABLE_AOT_SHARD_SLOTS.get(selection.spec.name)
-    if slot is not None:
-        return slot
-    # Unknown classes remain stable across manifest edits.  The triangular
-    # index is part of the canonical shell ABI, unlike list ordering.
-    return shell_class_index(selection.spec)
-
-
-def _partition_production_selections(
-    selections: Iterable[KernelSelection], shard_count: int
-) -> tuple[tuple[KernelSelection, ...], ...]:
-    """Assign classes to versioned, compile-cost-aware stable translation units.
-
-    Slots are deliberately not recomputed from the current manifest.  A
-    weighted greedy pass would balance a clean build but would also move every
-    class after an insertion/removal, destroying the cache identity this layer
-    is meant to preserve.  The checked-in slot map is therefore the stable
-    result of that pass over the current measured profile; unknown classes use
-    their canonical shell-class index as a deterministic fallback.
-    """
-
-    if isinstance(shard_count, bool) or not isinstance(shard_count, int):
-        raise TypeError("shard_count must be an integer")
-    if shard_count < 1:
-        raise ValueError("shard_count must be positive")
-    shards: list[list[KernelSelection]] = [[] for _ in range(shard_count)]
-    for selection in sorted(
-        selections,
-        key=lambda item: (stable_aot_shard_slot(item) % shard_count, item.spec.name),
-    ):
-        shards[stable_aot_shard_slot(selection) % shard_count].append(selection)
-    return tuple(tuple(shard) for shard in shards)
 
 
 def write_production_bundle(

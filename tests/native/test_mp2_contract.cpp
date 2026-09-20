@@ -131,6 +131,62 @@ void provider_and_reference() {
   const auto plan = provider.plan({2, 2, 2, 2});
   require(plan.allocation_bytes == 0 && plan.device_bytes == 0,
           "CPU provider must not claim GPU allocations");
+
+  const vibeqc::posthf::MOSlots second_slots{{{0, 1}, {1, 0}, {0, 1}, {1, 0}}};
+  vibeqc::posthf::ProviderWork sequential_work, batched_work;
+  const auto sequential_first = provider.get(slots, false, 0, nullptr, &sequential_work);
+  const auto sequential_second = provider.get(second_slots, false, 0, nullptr, &sequential_work);
+  const auto batched = provider.get_many({slots, second_slots}, false, 0, nullptr, &batched_work);
+  require(batched.size() == 2, "native MO batch output count");
+  for (std::size_t q = 0; q < sequential_first.size(); ++q)
+    require(std::abs(batched[0][q] - sequential_first[q]) < 1e-12,
+            "native MO batch first block changed values");
+  for (std::size_t q = 0; q < sequential_second.size(); ++q)
+    require(std::abs(batched[1][q] - sequential_second[q]) < 1e-12,
+            "native MO batch second block changed values");
+  require(batched_work.mo_blocks == sequential_work.mo_blocks && batched_work.mo_blocks == 2,
+          "native MO batch work did not count transformed blocks");
+  require(2 * batched_work.source_reads == sequential_work.source_reads,
+          "native MO batch did not reuse AO source reads");
+  require(2 * batched_work.source_values == sequential_work.source_values,
+          "native MO batch did not reuse AO source values");
+  require(batched_work.transform_fmas == sequential_work.transform_fmas,
+          "native MO batch changed AO-to-MO transform work");
+
+  const std::array<std::size_t, 4> batch_shape{2, 2, 2, 2};
+  require(provider.batch_capacity(batch_shape) >= 2,
+          "native MO batch capacity is unexpectedly one");
+  const auto single_request_bytes = provider.batch_bytes(batch_shape, 1);
+  vibeqc::posthf::NativeBlockProvider tight_provider(source, ref, single_request_bytes, 1);
+  require(tight_provider.batch_capacity(batch_shape) == 1,
+          "native MO batch capacity ignored the memory budget");
+  bool batch_rejected = false;
+  try {
+    (void)tight_provider.get_many({slots, second_slots});
+  } catch (const std::length_error&) {
+    batch_rejected = true;
+  }
+  require(batch_rejected, "native MO batch exceeded the memory budget");
+  // Heterogeneous shapes and zero-padded tail columns must keep request order.
+  const vibeqc::posthf::MOSlots padded{{{0}, {1, vibeqc::posthf::padded_mo}, {1}, {0}}};
+  const std::vector<vibeqc::posthf::MOSlots> mixed{slots, padded, second_slots};
+  const auto mixed_values = provider.get_many(mixed);
+  for (std::size_t request = 0; request < mixed.size(); ++request) {
+    const auto single = provider.get(mixed[request]);
+    require(single == mixed_values[request], "heterogeneous MO batch changed values or order");
+  }
+  auto invalid = slots;
+  invalid[3][0] = ref.nbf;
+  vibeqc::posthf::ProviderWork rejected_work;
+  bool invalid_rejected = false;
+  try {
+    (void)provider.get_many({slots, invalid}, false, 0, nullptr, &rejected_work);
+  } catch (const std::invalid_argument&) {
+    invalid_rejected = true;
+  }
+  require(invalid_rejected && rejected_work.source_reads == 0 && rejected_work.mo_blocks == 0,
+          "invalid later MO request reached AO traversal or published work");
+
   bool overflow = false;
   try {
     vibeqc::posthf::numeric_block_plan(1, 0, 0, {SIZE_MAX, 2, 2, 2}, {1, 1, 1, 1}, false);
@@ -148,6 +204,71 @@ void provider_and_reference() {
   const auto with_eri = vibeqc::posthf::rhf_reference_capacity(spherical, 8, true);
   require(with_eri - without_eri >= 8 * (2 * cart * cart * cart * cart + n * n * n * n),
           "CPU reference budget omitted simultaneous Cartesian/spherical tensors");
+}
+
+void conventional_energy_batch_fallback_matches() {
+  auto system = h2();
+  system.shells.push_back({0, 1, {{0.7, 1.0}}});
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
+          "p-shell MP2 fixture normalization");
+  vibeqc::scf::ScfOptions options;
+  options.export_physical_reference = true;
+  options.compute_forces = false;
+  options.screening_tolerance = 0;
+  options.energy_tolerance = options.density_tolerance = 1e-11;
+  options.reference_memory_budget_bytes = 256ULL << 20;
+  const auto hf = vibeqc::scf::run_rhf(system, options);
+  require(hf.converged && hf.reference, "p-shell MP2 reference");
+  const auto& ref = *hf.reference;
+  vibeqc::posthf::RawSource source(system);
+  vibeqc::posthf::NativeBlockProvider provider(source, ref, 256ULL << 20);
+  constexpr unsigned tile = 2;
+  const auto kernel = vibeqc::mp2::generated::cpu_plan(tile);
+  const auto reserve = kernel.numeric_bytes + 32ULL * tile * tile + 16ULL * tile + 64;
+  const auto tight_budget = provider.batch_bytes({1, tile, 1, tile}, 1) + reserve;
+  const auto roomy =
+      vibeqc::mp2::conventional_energy(ref, source, 256ULL << 20, 1e-10, tile, false, 0);
+  const auto tight =
+      vibeqc::mp2::conventional_energy(ref, source, tight_budget, 1e-10, tile, false, 0);
+  require(roomy.tiles > 1 && roomy.tiles == tight.tiles, "complete MP2 tile sequence changed");
+  require(std::abs(roomy.opposite_spin - tight.opposite_spin) < 1e-13 &&
+              std::abs(roomy.same_spin - tight.same_spin) < 1e-13,
+          "memory-bounded fallback changed MP2 energy");
+  require(roomy.provider_work.source_reads < tight.provider_work.source_reads &&
+              roomy.provider_work.transform_fmas == tight.provider_work.transform_fmas,
+          "batching did not reduce source work while retaining transforms");
+  require(tight.numeric_capacity_bytes <= tight_budget, "tight numeric budget exceeded");
+  bool rejected = false;
+  try {
+    (void)vibeqc::mp2::conventional_energy(ref, source, tight_budget - 1, 1e-10, tile, false, 0);
+  } catch (const std::length_error&) {
+    rejected = true;
+  }
+  require(rejected, "one-byte-below the single-request budget was accepted");
+}
+
+void conventional_energy_reuses_ao_scans() {
+  const auto system = h2();
+  vibeqc::scf::ScfOptions options;
+  options.export_physical_reference = true;
+  options.compute_forces = false;
+  options.screening_tolerance = 0;
+  options.energy_tolerance = options.density_tolerance = 1e-11;
+  options.reference_memory_budget_bytes = 256ULL << 20;
+  const auto hf = vibeqc::scf::run_rhf(system, options);
+  require(hf.converged && hf.reference, "batched MP2 energy reference");
+  vibeqc::posthf::RawSource source(system);
+  const auto energy =
+      vibeqc::mp2::conventional_energy(*hf.reference, source, 256ULL << 20, 1e-10, 1, false, 0);
+  require(energy.tiles == 1 && energy.provider_work.mo_blocks == 2,
+          "batched MP2 energy request count");
+  std::size_t full_ao_values = 1;
+  for (unsigned k = 0; k < 4; ++k) full_ao_values *= hf.reference->nbf;
+  require(energy.provider_work.source_values == full_ao_values,
+          "batched MP2 energy rescanned the AO tensor");
+  require(energy.provider_work.source_reads == full_ao_values,
+          "batched MP2 energy source-read count changed unexpectedly");
 }
 
 void shell_local_weighted_eri_derivative() {
@@ -337,6 +458,8 @@ int main() {
   try {
     generated_equations();
     provider_and_reference();
+    conventional_energy_reuses_ao_scans();
+    conventional_energy_batch_fallback_matches();
     shell_local_weighted_eri_derivative();
     cuda_shell_derivative_stub_is_transactional();
     streamed_one_electron_derivative();

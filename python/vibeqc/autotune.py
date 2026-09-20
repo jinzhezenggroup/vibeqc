@@ -244,6 +244,112 @@ def endpoint_gate(
     }
 
 
+def dft_endpoint_gate(
+    baseline: list[dict], candidate: list[dict], *, minimum_speedup: typing.Any = 1.02
+) -> dict:
+    """Promote DFT schedules only from matched synchronized energy+force endpoints."""
+    if len(baseline) != len(candidate) or len(baseline) < 5:
+        raise ValueError("DFT endpoint gate requires at least five paired repeats")
+    # NumPy broadcasting must not turn a different system/atom/Cartesian
+    # layout into apparently zero-error complete-endpoint evidence.
+    expected_layout = None
+    for sample in baseline + candidate:
+        energies = np.asarray(sample.get("energies"))
+        forces = np.asarray(sample.get("forces"))
+        layout = energies.shape, forces.shape
+        if (
+            energies.ndim != 1
+            or energies.size == 0
+            or forces.ndim != 3
+            or forces.shape[0] != energies.size
+            or forces.shape[1] == 0
+            or forces.shape[2] != 3
+            or (expected_layout is not None and layout != expected_layout)
+        ):
+            raise ValueError(
+                "DFT endpoint energy/force layouts must match nonempty "
+                "system, atom, and Cartesian dimensions across all samples"
+            )
+        expected_layout = layout
+    result = endpoint_gate(baseline, candidate, minimum_speedup=minimum_speedup)
+    failures = list(result["failures"])
+    identities = {sample.get("scientific_identity") for sample in baseline + candidate}
+    if None in identities or len(identities) != 1:
+        failures.append("scientific workload identities differ or are missing")
+    complete_energy_force = all(
+        sample.get("endpoint_kind") == "energy_force"
+        and "energies" in sample
+        and "forces" in sample
+        for sample in baseline + candidate
+    )
+    if not complete_energy_force:
+        failures.append("complete energy-plus-force endpoint evidence is missing")
+    synchronized = all(
+        sample.get("synchronized") is True for sample in baseline + candidate
+    )
+    if not synchronized:
+        failures.append("endpoint samples are not explicitly synchronized")
+    interleaved = True
+    pair_ids = []
+    for index, (left, right) in enumerate(zip(baseline, candidate)):
+        left_pair, right_pair = left.get("pair_id"), right.get("pair_id")
+        if (
+            left_pair is None
+            or right_pair is None
+            or left_pair != right_pair
+            or left.get("interleaved") is not True
+            or right.get("interleaved") is not True
+        ):
+            interleaved = False
+            break
+        pair_ids.append(left_pair)
+    if len(set(pair_ids)) != len(pair_ids):
+        interleaved = False
+    if not interleaved:
+        failures.append("paired samples are not explicitly interleaved")
+    baseline_schedules = {sample.get("schedule_identity") for sample in baseline}
+    candidate_schedules = {sample.get("schedule_identity") for sample in candidate}
+    if (
+        None in baseline_schedules
+        or None in candidate_schedules
+        or len(baseline_schedules) != 1
+        or len(candidate_schedules) != 1
+    ):
+        failures.append("endpoint schedule identities differ or are missing")
+    elif baseline_schedules == candidate_schedules:
+        failures.append("candidate schedule is not distinct from the baseline")
+    baseline_sources = {sample.get("source_hash") for sample in baseline}
+    candidate_sources = {sample.get("source_hash") for sample in candidate}
+    if (
+        None in baseline_sources
+        or None in candidate_sources
+        or len(baseline_sources) != 1
+        or len(candidate_sources) != 1
+    ):
+        failures.append("endpoint generated-source identities differ or are missing")
+    result.update(
+        passed=not failures,
+        failures=failures,
+        complete_energy_force=complete_energy_force,
+        scientific_identity=next(iter(identities)) if len(identities) == 1 else None,
+        synchronized=synchronized,
+        interleaved=interleaved,
+        baseline_schedule_hash=(
+            next(iter(baseline_schedules)) if len(baseline_schedules) == 1 else None
+        ),
+        candidate_schedule_hash=(
+            next(iter(candidate_schedules)) if len(candidate_schedules) == 1 else None
+        ),
+        baseline_source_hash=(
+            next(iter(baseline_sources)) if len(baseline_sources) == 1 else None
+        ),
+        candidate_source_hash=(
+            next(iter(candidate_sources)) if len(candidate_sources) == 1 else None
+        ),
+    )
+    return result
+
+
 def _worker(
     library: Path,
     workload: Path,

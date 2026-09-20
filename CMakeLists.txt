@@ -11,6 +11,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSources.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCuda.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCudaImplib.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCpuLinalg.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGfn2Runtime.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCTests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSourceIdentity.cmake")
 
@@ -20,6 +21,9 @@ option(VIBEQC_ENABLE_AOT_SHELLS
 option(VIBEQC_BUILD_TESTS "Build native tests" ON)
 option(VIBEQC_PYTHON_WHEEL
        "Install one unversioned shared library for a Python wheel" OFF)
+option(VIBEQC_BUNDLE_XTB_OPENBLAS
+       "Bundle the reviewed private LP64 OpenBLAS provider for GFN2 wheels"
+       ${VIBEQC_PYTHON_WHEEL})
 option(VIBEQC_CUDA_SEPARABLE_COMPILATION
        "Enable CUDA relocatable device code and the device-link stage" OFF)
 option(VIBEQC_CUDA_DIRECT_DEVICE_LINK
@@ -186,9 +190,11 @@ if(VIBEQC_ENABLE_CUDA)
   endif()
 endif()
 
+# Scoped VibeQC-owned GFN2 CPU runtime is registered below.
 add_library(vibeqc SHARED)
 target_link_libraries(vibeqc PRIVATE Threads::Threads)
 vibeqc_configure_cpu_linalg(vibeqc)
+vibeqc_add_gfn2_runtime(vibeqc)
 vibeqc_add_component_sources(vibeqc)
 vibeqc_register_host_generated_sources(vibeqc)
 

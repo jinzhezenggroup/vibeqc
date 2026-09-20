@@ -38,9 +38,10 @@ def render() -> str:
     refs = source["coordination_numbers"]
     c6 = source["c6"]
     r4r2 = source["r4r2"]
+    vdw = source["vdw_radii"]
     if len(elements) != 86 or len(radii) != 86 or len(r4r2) != 86:
         raise RuntimeError("production D3 table must cover exactly H through Rn")
-    if len(pairs) != 86 * 87 // 2:
+    if len(pairs) != 86 * 87 // 2 or len(vdw) != len(pairs):
         raise RuntimeError("unexpected packed element-pair count")
     if any(e["reference_count"] > 7 for e in elements):
         raise RuntimeError(
@@ -70,6 +71,7 @@ def render() -> str:
         "  std::uint32_t c6_offset;",
         "  std::uint8_t first_reference_count;",
         "  std::uint8_t second_reference_count;",
+        "  double vdw_radius;",
         "};",
         "",
         f"inline constexpr std::array<ElementData, {len(elements)}> kElements{{{{",
@@ -93,11 +95,11 @@ def render() -> str:
     out.extend(
         ["}};", "", f"inline constexpr std::array<PairData, {len(pairs)}> kPairs{{{{"]
     )
-    for p in pairs:
+    for p, radius in zip(pairs, vdw):
         out.append(
             "    PairData{"
             f"{int(p['c6_offset'])}u, {int(p['first_reference_count'])}u, "
-            f"{int(p['second_reference_count'])}u"
+            f"{int(p['second_reference_count'])}u, {_real(radius)}"
             "},"
         )
     out.extend(

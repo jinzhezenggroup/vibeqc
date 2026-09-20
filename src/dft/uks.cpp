@@ -56,6 +56,14 @@ dft::SpinXcIntegral evaluate_r2scan_xc_uks(const dft::AoBasis& basis,
   return dft::integrate_r2scan_uks(basis, grid, alpha, beta, tile);
 }
 
+dft::SpinXcIntegral evaluate_b3lyp_xc_uks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                                          const Matrix& alpha, const Matrix& beta, std::size_t tile,
+                                          double exchange_scale, double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled B3LYP UKS is not qualified");
+  return dft::integrate_b3lyp_uks(basis, grid, alpha, beta, tile);
+}
+
 dft::SpinXcIntegral evaluate_cam_b3lyp_xc_uks(const dft::AoBasis& basis,
                                               const dft::MolecularGrid& grid, const Matrix& alpha,
                                               const Matrix& beta, std::size_t tile,
@@ -390,6 +398,18 @@ ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis
   return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_r2scan_xc_uks, "R2SCAN",
                       initial_density);
 }
+ScfResult run_b3lyp_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                        const dft::MolecularGrid& grid, const ScfOptions& options,
+                        const std::vector<double>* initial_density) {
+  const auto expected = resolve_fock_build(
+      make_global_hybrid_fock_spec(FockSpin::Unrestricted, dft::generated::kB3lypExactExchange),
+      FockBackend::Cpu);
+  if (plan.strategy() != expected)
+    throw std::invalid_argument("B3LYP plan does not match the generated MethodIR composition");
+  return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_b3lyp_xc_uks, "B3LYP",
+                      initial_density);
+}
+
 ScfResult run_cam_b3lyp_uks(const PreparedFockPlan& primary,
                             const PreparedFockPlan& long_range_correction,
                             const dft::AoBasis& basis, const dft::MolecularGrid& grid,

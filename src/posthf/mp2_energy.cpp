@@ -62,14 +62,25 @@ Energy conventional_energy(const scf::PhysicalReference& ref, const posthf::RawS
     throw std::runtime_error("CUDA MP2 kernels are not compiled");
 #endif
   }
-  posthf::NativeBlockProvider provider(source, ref, budget);
-  const auto plan = provider.plan({1, tile, 1, tile}, cuda);
-  // Native scalar fold, two detached MO blocks, reordered exchange, orbital
-  // panels and all generated CPU tensor temporaries coexist conservatively.
-  auto peak = posthf::checked_add(posthf::checked_add(plan.host_bytes, plan.device_bytes),
-                                  cuda ? gpu.numeric_bytes : cpu.numeric_bytes);
-  peak = posthf::checked_add(peak, 32ULL * tile * tile + 16ULL * tile + 64);
+
+  const auto kernel_reserve = posthf::checked_add(cuda ? gpu.numeric_bytes : cpu.numeric_bytes,
+                                                  32ULL * tile * tile + 16ULL * tile + 64);
+  if (kernel_reserve >= budget)
+    throw std::length_error("MP2 energy phase exceeds numeric memory budget");
+  posthf::NativeBlockProvider provider(source, ref, budget - kernel_reserve);
+  const std::array<std::size_t, 4> block_shape{1, tile, 1, tile};
+  const auto request_capacity = provider.batch_capacity(block_shape, cuda);
+  const auto virtual_tiles = (nv + tile - 1) / tile;
+  const auto total_jobs = posthf::checked_mul(posthf::checked_mul(ref.nocc, ref.nocc),
+                                              posthf::checked_mul(virtual_tiles, virtual_tiles));
+  const bool shared_scan = request_capacity >= 2;
+  const auto jobs_per_batch =
+      shared_scan ? std::min(request_capacity / 2, total_jobs) : std::size_t{1};
+  const auto provider_requests = shared_scan ? 2 * jobs_per_batch : std::size_t{1};
+  const auto peak = posthf::checked_add(provider.batch_bytes(block_shape, provider_requests, cuda),
+                                        kernel_reserve);
   if (peak > budget) throw std::length_error("MP2 energy phase exceeds numeric memory budget");
+
   Energy result;
   result.minimum_denominator = minimum_denominator;
   result.numeric_capacity_bytes = peak;
@@ -88,61 +99,105 @@ Energy conventional_energy(const scf::PhysicalReference& ref, const posthf::RawS
     if (status == 2 || status == 3) throw std::bad_alloc();
     if (status) throw std::runtime_error(error);
   }
+
+  struct Job {
+    std::size_t i{}, j{};
+    std::vector<std::size_t> va, vb;
+    std::vector<double> ea, eb;
+  };
+  std::vector<Job> jobs;
+  jobs.reserve(jobs_per_batch);
   double sum[2]{}, correction[2]{};
+
+  auto consume = [&](const Job& job, const std::vector<double>& g,
+                     const std::vector<double>& exchanged) {
+    const auto tile_elements = static_cast<std::size_t>(tile) * tile;
+    std::vector<double> x(tile_elements);
+    for (unsigned u = 0; u < tile; ++u)
+      for (unsigned v = 0; v < tile; ++v) x[u * tile + v] = exchanged[v * tile + u];
+    double out[2]{};
+    if (cuda) {
+      char error[2048]{};
+      vibeqc_tensor::Metrics measured;
+      const auto status =
+          gpu.run(kernel.pointer, g.data(), x.data(), eps[job.i], eps[job.j], job.ea.data(),
+                  job.eb.data(), out, &measured, error, sizeof(error));
+      if (status == 2 || status == 3) throw std::bad_alloc();
+      if (status) throw std::runtime_error(error);
+      if (measured.owned_device_bytes != gpu.device_bytes)
+        throw std::runtime_error("MP2 tensor allocation disagrees with plan");
+      result.metrics.input_ms += measured.input_ms;
+      result.metrics.output_ms += measured.output_ms;
+      result.metrics.kernel_ms += measured.kernel_ms;
+      result.metrics.library_ms += measured.library_ms;
+      result.mo_transfer_bytes = posthf::checked_add(result.mo_transfer_bytes, 32ULL * tile * tile);
+    } else {
+      cpu.run(g.data(), x.data(), eps[job.i], eps[job.j], job.ea.data(), job.eb.data(), out);
+    }
+    for (unsigned k = 0; k < 2; ++k) {
+      const double adjusted = out[k] - correction[k], next = sum[k] + adjusted;
+      correction[k] = (next - sum[k]) - adjusted;
+      sum[k] = next;
+      if (!std::isfinite(sum[k])) throw std::runtime_error("nonfinite MP2 energy accumulation");
+    }
+    ++result.tiles;
+  };
+
+  auto flush = [&]() {
+    if (jobs.empty()) return;
+    if (shared_scan) {
+      std::vector<posthf::MOSlots> requests;
+      requests.reserve(2 * jobs.size());
+      for (const auto& job : jobs) {
+        requests.push_back(
+            {std::vector<std::size_t>{job.i}, job.va, std::vector<std::size_t>{job.j}, job.vb});
+        requests.push_back(
+            {std::vector<std::size_t>{job.i}, job.vb, std::vector<std::size_t>{job.j}, job.va});
+      }
+      auto blocks =
+          provider.get_many(requests, cuda, device, &result.metrics, &result.provider_work);
+      for (std::size_t q = 0; q < jobs.size(); ++q)
+        consume(jobs[q], blocks[2 * q], blocks[2 * q + 1]);
+    } else {
+      for (const auto& job : jobs) {
+        const auto g = provider.get(
+            {std::vector<std::size_t>{job.i}, job.va, std::vector<std::size_t>{job.j}, job.vb},
+            cuda, device, &result.metrics, &result.provider_work);
+        const auto exchanged = provider.get(
+            {std::vector<std::size_t>{job.i}, job.vb, std::vector<std::size_t>{job.j}, job.va},
+            cuda, device, &result.metrics, &result.provider_work);
+        consume(job, g, exchanged);
+      }
+    }
+    jobs.clear();
+  };
+
   for (std::size_t i = 0; i < ref.nocc; ++i)
     for (std::size_t j = 0; j < ref.nocc; ++j)
       for (std::size_t a = ref.nocc; a < ref.nbf; a += tile)
         for (std::size_t b = ref.nocc; b < ref.nbf; b += tile) {
-          std::vector<std::size_t> va(tile, posthf::padded_mo), vb(tile, posthf::padded_mo);
-          std::vector<double> ea(tile, eps[ref.nocc]), eb(tile, eps[ref.nocc]);
+          Job job;
+          job.i = i;
+          job.j = j;
+          job.va.assign(tile, posthf::padded_mo);
+          job.vb.assign(tile, posthf::padded_mo);
+          job.ea.assign(tile, eps[ref.nocc]);
+          job.eb.assign(tile, eps[ref.nocc]);
           for (unsigned k = 0; k < tile; ++k) {
             if (a + k < ref.nbf) {
-              va[k] = a + k;
-              ea[k] = eps[a + k];
+              job.va[k] = a + k;
+              job.ea[k] = eps[a + k];
             }
             if (b + k < ref.nbf) {
-              vb[k] = b + k;
-              eb[k] = eps[b + k];
+              job.vb[k] = b + k;
+              job.eb[k] = eps[b + k];
             }
           }
-          const auto g =
-              provider.get({std::vector<std::size_t>{i}, va, std::vector<std::size_t>{j}, vb}, cuda,
-                           device, &result.metrics);
-          const auto exchanged =
-              provider.get({std::vector<std::size_t>{i}, vb, std::vector<std::size_t>{j}, va}, cuda,
-                           device, &result.metrics);
-          const auto tile_elements = static_cast<std::size_t>(tile) * tile;
-          std::vector<double> x(tile_elements);
-          for (unsigned u = 0; u < tile; ++u)
-            for (unsigned v = 0; v < tile; ++v) x[u * tile + v] = exchanged[v * tile + u];
-          double out[2]{};
-          if (cuda) {
-            char error[2048]{};
-            vibeqc_tensor::Metrics measured;
-            const auto status = gpu.run(kernel.pointer, g.data(), x.data(), eps[i], eps[j],
-                                        ea.data(), eb.data(), out, &measured, error, sizeof(error));
-            if (status == 2 || status == 3) throw std::bad_alloc();
-            if (status) throw std::runtime_error(error);
-            if (measured.owned_device_bytes != gpu.device_bytes)
-              throw std::runtime_error("MP2 tensor allocation disagrees with plan");
-            result.metrics.input_ms += measured.input_ms;
-            result.metrics.output_ms += measured.output_ms;
-            result.metrics.kernel_ms += measured.kernel_ms;
-            result.metrics.library_ms += measured.library_ms;
-            result.mo_transfer_bytes =
-                posthf::checked_add(result.mo_transfer_bytes, 32ULL * tile * tile);
-          } else {
-            cpu.run(g.data(), x.data(), eps[i], eps[j], ea.data(), eb.data(), out);
-          }
-          for (unsigned k = 0; k < 2; ++k) {
-            const double adjusted = out[k] - correction[k], next = sum[k] + adjusted;
-            correction[k] = (next - sum[k]) - adjusted;
-            sum[k] = next;
-            if (!std::isfinite(sum[k]))
-              throw std::runtime_error("nonfinite MP2 energy accumulation");
-          }
-          ++result.tiles;
+          jobs.push_back(std::move(job));
+          if (jobs.size() == jobs_per_batch) flush();
         }
+  flush();
+
   result.opposite_spin = sum[0];
   result.same_spin = sum[1];
   if (cuda)

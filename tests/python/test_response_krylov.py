@@ -555,6 +555,7 @@ def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver() -> Non
             self.matrix = matrix
             self.dimension = matrix.shape[0]
             self.applies = 0
+            self.consumer_seen = False
 
         def reset(self) -> typing.Any:
             pass
@@ -625,6 +626,8 @@ def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver() -> Non
             return Wrapped(out)
 
         def to_host(self, value: typing.Any) -> typing.Any:
+            assert self.consumer_seen
+            self.consumer_seen = False
             return value.values.copy()
 
         def stack_host(self, values: typing.Any) -> typing.Any:
@@ -643,13 +646,23 @@ def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver() -> Non
 
     operator.apply = forbidden
     rhs = np.linspace(-1.0, 1.0, operator.dimension)
+    consumed = []
+
+    def consume(bound_engine: typing.Any, value: typing.Any) -> None:
+        assert bound_engine is engine
+        consumed.append(value.values.copy())
+        engine.consumer_seen = True
+
     result = solve(
         operator,
         rhs,
         options=GMRESOptions(rtol=1e-12, restart=6, max_iterations=20),
         collect_basis=False,
+        solution_consumer=consume,
     )
     assert result.converged
+    assert len(consumed) == 1
+    np.testing.assert_allclose(consumed[0], result.solution)
     np.testing.assert_allclose(
         operator.matrix @ result.solution, rhs, atol=2e-11, rtol=2e-11
     )
@@ -657,14 +670,28 @@ def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver() -> Non
     assert result.basis.shape == (operator.dimension, 0)
 
     before = engine.applies
+    block_consumed = []
+
+    def block_consumer(column: int) -> typing.Any:
+        def consume(bound_engine: typing.Any, value: typing.Any) -> None:
+            assert bound_engine is engine
+            block_consumed.append((column, value.values.copy()))
+            engine.consumer_seen = True
+
+        return consume
+
     blocked = solve_many(
         operator,
         np.column_stack((rhs, rhs)),
         strategy="blocked",
         options=GMRESOptions(rtol=1e-12, restart=6, max_iterations=20),
         collect_basis=False,
+        solution_consumers=(block_consumer(0), block_consumer(1)),
     )
     assert blocked.converged and blocked.rank_deficient_rhs
+    assert [column for column, _ in block_consumed] == [0, 1]
+    for column, values in block_consumed:
+        np.testing.assert_allclose(values, blocked.results[column].solution)
     assert engine.applies - before == blocked.operator_actions
     np.testing.assert_allclose(
         operator.matrix @ blocked.solution, np.column_stack((rhs, rhs)), atol=2e-11

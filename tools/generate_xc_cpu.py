@@ -28,6 +28,7 @@ from vibeqc_compiler.dft.feature_policy import emit_feature_policy
 from vibeqc_compiler.integral.expr import AlgebraForm
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.method.spec import (
+    ExactExchangePrimitive,
     RangeSeparatedExchangePrimitive,
     SemilocalXCPrimitive,
     resolve_method,
@@ -184,6 +185,51 @@ def emit_r2scan_polarized() -> str:
     return "\n".join(lines)
 
 
+def emit_b3lyp_polarized() -> str:
+    """Emit canonical B3LYP semilocal E/vxc and its full-range exchange fraction."""
+
+    method = resolve_method("B3LYP", spin="polarized")
+    semilocal = next(
+        primitive.functional
+        for primitive in method.primitives
+        if isinstance(primitive, SemilocalXCPrimitive)
+    )
+    exchange = [
+        primitive
+        for primitive in method.primitives
+        if isinstance(primitive, ExactExchangePrimitive)
+    ]
+    if len(exchange) != 1 or exchange[0].operator != "full-range":
+        raise RuntimeError(
+            "B3LYP MethodIR lost its canonical full-range exchange primitive"
+        )
+
+    outputs = ((), *((i,) for i in range(5)))
+    graph, roots, expression_hash = build_roots(semilocal, outputs)
+    emitter = ScalarCEmitter(graph, {name: name for name in semilocal.features})
+    emitter.emit(roots)
+    references = [emitter.reference(root) for root in roots]
+    return "\n".join(
+        [
+            "struct B3lypPolarizedValue {",
+            "  double energy_density;",
+            "  double feature_derivative[5];",
+            "};",
+            f'inline constexpr const char* kB3lypSemilocalExpressionIdentity = "{expression_hash}";',
+            f'inline constexpr const char* kB3lypMethodIdentity = "{method.identity}";',
+            f"inline constexpr double kB3lypExactExchange = {float(exchange[0].coefficient).hex()};",
+            "inline B3lypPolarizedValue b3lyp_polarized(",
+            "    double rho_a, double rho_b, double sigma_aa, double sigma_ab, double sigma_bb) {",
+            "  const double tau_a = 0.0;",
+            "  const double tau_b = 0.0;",
+            *emitter.lines,
+            "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};",
+            "}",
+            "",
+        ]
+    )
+
+
 def emit_cam_b3lyp_polarized() -> str:
     """Emit the semilocal CAM-B3LYP primitive and its MethodIR-owned RSH constants."""
 
@@ -276,6 +322,7 @@ def main() -> None:
         emit_lda_xc_pw()
         + emit_lda_xc_pw_polarized()
         + emit_pbe_polarized()
+        + emit_b3lyp_polarized()
         + emit_cam_b3lyp_polarized()
         + emit_r2scan_polarized()
         + emit_feature_policy()

@@ -9,6 +9,7 @@
 #include "methods/method.hpp"
 #include "methods/mp2_method.hpp"
 #include "methods/rccsd_method.hpp"
+#include "methods/xtb_method.hpp"
 #include "runtime/provider_registry.hpp"
 
 namespace vibeqc::methods {
@@ -55,6 +56,11 @@ constexpr MethodDefinition register_method(const generated::MethodManifestEntry&
       validate = detail::validate_dft_system;
       prepare = detail::prepare_dft_calculation;
       batch = detail::prepare_dft_batch;
+      break;
+    case generated::PublicProvider::Xtb:
+      validate = detail::validate_xtb_system;
+      prepare = detail::prepare_xtb_calculation;
+      batch = nullptr;
       break;
     case generated::PublicProvider::Reserved:
       break;

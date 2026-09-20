@@ -170,6 +170,13 @@ def _bind(artifact: CompiledFirstGradient) -> ct.CDLL:
         _DOUBLE,
         ct.c_size_t,
     ] + tail
+    lib.vibeqc_first_gradient_reset_mixed_v1.argtypes = [
+        ct.c_void_p,
+        _DOUBLE,
+        ct.c_size_t,
+        _DOUBLE,
+        ct.c_size_t,
+    ] + tail
     lib.vibeqc_first_gradient_append_v1.argtypes = [
         ct.c_void_p,
         _DOUBLE,
@@ -283,6 +290,7 @@ class FirstGradientAccumulator:
             "chunks": 0,
             "primitive_records": 0,
             "weight_uploads": 0,
+            "resident_weight_imports": 0,
             "gradient_downloads": 0,
         }
 
@@ -317,6 +325,48 @@ class FirstGradientAccumulator:
                 array.size,
             )
             self.statistics["weight_uploads"] += 1
+            self._failed = False
+
+    def reset_device_prefix(
+        self,
+        device_pointer: int,
+        device_count: int,
+        host_suffix: ArrayLike,
+    ) -> None:
+        """Import a validated device prefix and append host-owned weight matrices."""
+        with self._lock:
+            self._ensure_open()
+            self._failed = True
+            if type(device_pointer) is not int or device_pointer <= 0:
+                raise ValueError(
+                    "first-gradient device weight pointer must be positive"
+                )
+            if type(device_count) is not int or not 0 < device_count < (
+                self.weight_slots * self.nbf * self.nbf
+            ):
+                raise ValueError("first-gradient device weight count is invalid")
+            expected = self.weight_slots * self.nbf * self.nbf - device_count
+            suffix = np.asarray(host_suffix)
+            if (
+                suffix.size != expected
+                or suffix.dtype.kind not in "iuf"
+                or not np.isfinite(suffix).all()
+            ):
+                raise ValueError(
+                    "first-gradient host suffix has invalid shape or values"
+                )
+            suffix = np.ascontiguousarray(suffix, dtype=np.float64).reshape(-1)
+            self._call(
+                self._library,
+                "reset_mixed",
+                self._handle,
+                ct.cast(ct.c_void_p(device_pointer), _DOUBLE),
+                device_count,
+                _pointer(suffix),
+                suffix.size,
+            )
+            self.statistics["weight_uploads"] += 1
+            self.statistics["resident_weight_imports"] += 1
             self._failed = False
 
     def append_shell(
