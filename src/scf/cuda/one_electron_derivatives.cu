@@ -173,8 +173,8 @@ __device__ void contract_pair_nucleus_cooperative(const OneElectronDeviceView& b
           // center. Materialize it once per warp/tile instead of repeating the
           // exp/pow-heavy setup in every active lane.
           if (lane == 0U)
-            generated::make_pair(*shared_pair, batch.primitive_exponents[a], batch.primitive_exponents[b],
-                                 A[0], A[1], A[2], B[0], B[1], B[2]);
+            generated::make_pair(*shared_pair, batch.primitive_exponents[a],
+                                 batch.primitive_exponents[b], A[0], A[1], A[2], B[0], B[1], B[2]);
           __syncwarp(kWarpMask);
           const double radial = batch.primitive_coefficients[a] * batch.primitive_coefficients[b];
           for (unsigned ti = 0; ti < batch.ao_term_counts[i]; ++ti) {
