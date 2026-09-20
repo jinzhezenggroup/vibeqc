@@ -18,13 +18,12 @@
 namespace vibeqc::scf::cuda_execution {
 
 /**
- * Consume one paged exact class through the handwritten low-order force path.
+ * Consume one paged exact class through the qualified low-order force scheduler.
  *
- * The production AOT bundle deliberately does not advertise generated
- * ``ssss``/``psss`` force consumers; their validated implementations are the
- * scalar handwritten contractions below.  Bounded streaming still needs to
- * avoid the topology-wide fallback, so enumerate only the page's exact
- * shell-pair rectangle and contract each surviving low-order quartet in place.
+ * ssss mathematics is compiler-owned; psss retains its current selected math.
+ * Both reuse this bounded scheduler instead of materializing a second task queue,
+ * so enumerate only the page's exact shell-pair rectangle and contract each
+ * surviving low-order quartet in place.
  */
 template <bool Unrestricted, DirectScreeningPurpose Purpose>
 __global__ void contract_bounded_exact_low_order_force_page_kernel(
@@ -124,7 +123,7 @@ __global__ void contract_bounded_exact_low_order_force_page_kernel(
       const ActiveShellQuartetTile task{bra_pair, ket_pair, 0U};
       if (shell_class == kSsssShellClass) {
         contract_two_electron_force_ssss_task<Unrestricted>(
-            batch, task, screening_tolerance, schwarz_bounds, density, topology.active, forces, 0U);
+            batch, task, screening_tolerance, schwarz_bounds, density, topology.active, forces);
       } else {
         contract_two_electron_force_psss_task<Unrestricted>(
             batch, task, screening_tolerance, schwarz_bounds, density, topology.active, forces, 0U);
