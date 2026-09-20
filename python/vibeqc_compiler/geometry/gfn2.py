@@ -43,7 +43,9 @@ from .ir import (
 
 GFN2_SHORT_RANGE_VERSION = "gfn2-short-range-ir-v1"
 GFN2_XTBLOOM_REVISION = "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
-GFN2_PARAMETER_JSON_SHA256 = "de0f20e90b592b7b92f107eb672bd3dd29c1096f904d7a472b05693f9238ed1a"
+GFN2_PARAMETER_JSON_SHA256 = (
+    "de0f20e90b592b7b92f107eb672bd3dd29c1096f904d7a472b05693f9238ed1a"
+)
 GFN2_TBLITE_REVISION = "fa8a4416e8fe093d0075bc10ac875494c2a449a9"
 GFN2_CUTOFF_BOHR = 25.0
 GFN2_MINIMUM_CN_DISTANCE_SQUARED = 1.0e-12
@@ -176,9 +178,7 @@ GFN2_SHORT_RANGE_PARAMETER_IDENTITY = canonical_hash(
             "radius_scale": float(GFN2_CN_RADIUS_SCALE).hex(),
             "first_steepness": float(GFN2_CN_FIRST_STEEPNESS).hex(),
             "second_steepness": float(GFN2_CN_SECOND_STEEPNESS).hex(),
-            "second_radius_shift_bohr": float(
-                GFN2_CN_SECOND_RADIUS_SHIFT_BOHR
-            ).hex(),
+            "second_radius_shift_bohr": float(GFN2_CN_SECOND_RADIUS_SHIFT_BOHR).hex(),
             "cutoff_bohr": float(GFN2_CUTOFF_BOHR).hex(),
         },
         "repulsion": {
@@ -262,9 +262,7 @@ def _require_gfn2_topology(geometry: GeometryIR, topology: PairTopology) -> None
         or topology.cutoff.radius != GFN2_CUTOFF_BOHR
         or topology.cutoff.switch_start is not None
     ):
-        raise ValueError(
-            "GFN2 short-range topology requires the sharp 25-bohr cutoff"
-        )
+        raise ValueError("GFN2 short-range topology requires the sharp 25-bohr cutoff")
 
 
 def _pair_constant(context: PairTensorContext, values):
@@ -296,9 +294,7 @@ class Gfn2GeometryProgram:
 
     def __post_init__(self) -> None:
         if self.method.model_flavor != "gfn2":
-            raise ValueError(
-                "GFN2 geometry program requires the GFN2 method graph"
-            )
+            raise ValueError("GFN2 geometry program requires the GFN2 method graph")
         if self.method.parameter_set.identity != GFN2_PARAMETER_SET.identity:
             raise ValueError(
                 "GFN2 geometry program requires the audited parameter manifest"
@@ -362,9 +358,7 @@ def build_gfn2_geometry_program(
         raise TypeError("method must be a GFN2 catalog name or XtbMethodIR")
 
     if method.model_flavor != "gfn2":
-        raise ValueError(
-            "GFN2 short-range lowering requires model_flavor='gfn2'"
-        )
+        raise ValueError("GFN2 short-range lowering requires model_flavor='gfn2'")
     if method.parameter_set.identity != GFN2_PARAMETER_SET.identity:
         raise ValueError(
             "GFN2 short-range lowering requires the audited parameter manifest"
@@ -447,17 +441,11 @@ def build_gfn2_geometry_program(
     )
     pair_alpha = _pair_constant(
         context,
-        (
-            (first.arep * second.arep) ** 0.5
-            for first, second in parameters
-        ),
+        ((first.arep * second.arep) ** 0.5 for first, second in parameters),
     )
     pair_charge = _pair_constant(
         context,
-        (
-            first.zeff * second.zeff
-            for first, second in parameters
-        ),
+        (first.zeff * second.zeff for first, second in parameters),
     )
     decay_argument = multiply(
         minus_one,
