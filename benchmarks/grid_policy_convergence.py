@@ -113,9 +113,13 @@ def _endpoint(spec: GridSpec, xc: str) -> dict[str, typing.Any]:
     }
 
 
-def _error(candidate: dict[str, typing.Any], reference: dict[str, typing.Any]) -> dict[str, float]:
+def _error(
+    candidate: dict[str, typing.Any], reference: dict[str, typing.Any]
+) -> dict[str, float]:
     return {
-        "energy_hartree": abs(candidate["energy_hartree"] - reference["energy_hartree"]),
+        "energy_hartree": abs(
+            candidate["energy_hartree"] - reference["energy_hartree"]
+        ),
         "force_hartree_per_bohr": float(
             np.max(
                 np.abs(
@@ -127,7 +131,9 @@ def _error(candidate: dict[str, typing.Any], reference: dict[str, typing.Any]) -
     }
 
 
-def _spec(shape: tuple[int, int, int], radii: tuple[tuple[int, float], ...]) -> GridSpec:
+def _spec(
+    shape: tuple[int, int, int], radii: tuple[tuple[int, float], ...]
+) -> GridSpec:
     radial, polar, azimuth = shape
     return GridSpec(
         version=2,
@@ -168,7 +174,8 @@ def qualify() -> dict[str, typing.Any]:
             "error": stability,
             "passed": (
                 stability["energy_hartree"] <= GATES["dense_reference"]["energy"]
-                and stability["force_hartree_per_bohr"] <= GATES["dense_reference"]["force"]
+                and stability["force_hartree_per_bohr"]
+                <= GATES["dense_reference"]["force"]
             ),
         }
         references[family] = dense
@@ -189,7 +196,8 @@ def qualify() -> dict[str, typing.Any]:
             "spec": asdict(spec),
             "endpoint": endpoint,
             "error_vs_dense": error,
-            "point_fraction_of_dense": endpoint["npoint"] / references[family]["npoint"],
+            "point_fraction_of_dense": endpoint["npoint"]
+            / references[family]["npoint"],
         }
         gate = GATES.get(name)
         if gate is not None:
@@ -213,7 +221,9 @@ def qualify() -> dict[str, typing.Any]:
         ),
         "lda_tight_improves_standard_force": (
             result["profiles"]["lda-tight"]["error_vs_dense"]["force_hartree_per_bohr"]
-            < result["profiles"]["lda-standard"]["error_vs_dense"]["force_hartree_per_bohr"]
+            < result["profiles"]["lda-standard"]["error_vs_dense"][
+                "force_hartree_per_bohr"
+            ]
         ),
         "pbe_tight_improves_standard_force": (
             result["profiles"]["pbe-tight"]["error_vs_dense"]["force_hartree_per_bohr"]

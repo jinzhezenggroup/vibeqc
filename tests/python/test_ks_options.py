@@ -141,7 +141,9 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned() -> Non
         assert resolved_custom.identity != pbe.identity
 
 
-def test_production_grid_radii_match_pinned_provenance_and_unknowns_fail_closed() -> None:
+def test_production_grid_radii_match_pinned_provenance_and_unknowns_fail_closed() -> (
+    None
+):
     root = Path(__file__).resolve().parents[2]
     source = json.loads((root / "external/xtbloom-d3/covalent_radii.json").read_text())
     policy = GridPolicy()

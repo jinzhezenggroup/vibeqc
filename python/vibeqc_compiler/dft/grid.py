@@ -299,7 +299,6 @@ def grid_policy_provenance(spec: GridSpec) -> dict[str, typing.Any]:
     return {"policy_version": 2, "contract": "explicit-grid-v2"}
 
 
-
 def partition_weights(
     points: typing.Any,
     centers: typing.Any,

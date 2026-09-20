@@ -58,6 +58,8 @@ def transition_metal_grid_basis() -> BasisSet:
             canonical_hash(TRANSITION_METAL_GRID_BASIS_PAYLOAD),
         ),
     )
+
+
 GRID_CONVERGENCE_GATES = {
     "standard": {
         "energy_hartree": 2e-6,
@@ -90,9 +92,7 @@ def assert_production_grid_convergence(
     record_property("energy_error_hartree", energy_error)
     record_property("gradient_error_hartree_per_bohr", gradient_error)
     record_property("energy_gate_hartree", gate["energy_hartree"])
-    record_property(
-        "gradient_gate_hartree_per_bohr", gate["gradient_hartree_per_bohr"]
-    )
+    record_property("gradient_gate_hartree_per_bohr", gate["gradient_hartree_per_bohr"])
     assert point_fraction < gate["maximum_dense_point_fraction"]
     assert energy_error < gate["energy_hartree"]
     assert gradient_error < gate["gradient_hartree_per_bohr"]
@@ -253,7 +253,9 @@ def test_production_grid_converges_against_independent_dense_quadrature(
     method: typing.Any, accuracy: typing.Any, record_property: typing.Any
 ) -> None:
     """Promoted production profiles stay accurate against an independent dense grid."""
-    pytest.importorskip("pyscf", reason="independent dense-grid reference requires PySCF")
+    pytest.importorskip(
+        "pyscf", reason="independent dense-grid reference requires PySCF"
+    )
     calc = production_calculator(method, grid_accuracy=accuracy, max_iterations=200)
     with calc.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
         energy = batch.execute(strict=True).items[0].energy
@@ -291,7 +293,9 @@ def test_production_grid_open_shell_converges_against_independent_dense_quadratu
     method: typing.Any, accuracy: typing.Any, record_property: typing.Any
 ) -> None:
     """Production v2 unrestricted profiles converge against an independent dense grid."""
-    pytest.importorskip("pyscf", reason="independent dense-grid reference requires PySCF")
+    pytest.importorskip(
+        "pyscf", reason="independent dense-grid reference requires PySCF"
+    )
     charge, multiplicity = 1, 2
     calc = production_calculator(method, grid_accuracy=accuracy, max_iterations=200)
     with (
