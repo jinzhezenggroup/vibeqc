@@ -267,6 +267,10 @@ def test_response_state_is_immutable_and_does_not_claim_forces(
     assert state.response.corrected.provenance["orbital_response"] == "excluded"
     assert not hasattr(state, "gradient")
     assert not hasattr(state, "forces")
+    assert not hasattr(state.baseline, "gradient")
+    assert not hasattr(state.baseline, "ao_program")
+    assert not hasattr(state.baseline, "z_result")
+    assert not hasattr(state.baseline, "logical_reserved_host_bytes")
     for value in (
         state.orbital_rhs,
         state.weights["hcore"],
