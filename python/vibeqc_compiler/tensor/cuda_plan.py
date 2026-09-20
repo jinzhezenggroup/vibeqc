@@ -19,6 +19,7 @@ from math import prod
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
+from .batch_schedule import BatchScheduleIR, analyze_batch_schedule, index_table_values
 from .cuda_dtype import program_precision, scalar_type
 from .cuda_gemm import gemm_contract
 from .cuda_layout import LayoutDecision, conversion_bytes, select_layouts
@@ -158,6 +159,11 @@ class TensorPlan:
         return describe_precision(self.program)
 
     @property
+    def batch_schedule(self) -> BatchScheduleIR:
+        """Derive exact homogeneous/ragged scheduling facts for this plan."""
+        return analyze_batch_schedule(self.steps)
+
+    @property
     def allocation_bytes(self) -> int:
         # Error flag has a full alignment unit to keep every segment aligned.
         return (
@@ -174,12 +180,7 @@ class TensorPlan:
         total = 0
         for step_index, _ in self.index_tables:
             node = self.steps[step_index].node
-            if node.op in ("gather", "indexed_gather", "scatter_add"):
-                values = node.attrs["positions"]
-            elif node.op == "segment_sum":
-                values = node.attrs["offsets"]
-            else:  # pragma: no cover - planner constructs the table list
-                raise AssertionError(f"unexpected index-table owner: {node.op}")
+            values = index_table_values(node)
             total = checked_size(
                 total + aligned(len(values) * 8),
                 "index table bytes",
@@ -469,12 +470,8 @@ def plan_cuda(
     offsets, active, free, capacity = {}, {}, [], 0
     tables = []
     for i, (node, _) in enumerate(nodes):
-        values = None
-        if node.op in ("gather", "indexed_gather", "scatter_add"):
-            values = node.attrs["positions"]
-        elif node.op == "segment_sum":
-            values = node.attrs["offsets"]
-        if values is not None:
+        if node.op in ("gather", "indexed_gather", "scatter_add", "segment_sum"):
+            values = index_table_values(node)
             tables.append((i, capacity))
             capacity = checked_size(
                 capacity + aligned(len(values) * 8),
