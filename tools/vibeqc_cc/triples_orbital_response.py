@@ -100,7 +100,9 @@ class BoundCCSDTOrbitalResponse:
             raise TypeError("RCCSD(T) orbital response requires BoundCCSDTResponse")
         options = CCSDGradientOptions() if options is None else options
         if not isinstance(options, CCSDGradientOptions):
-            raise TypeError("RCCSD(T) orbital response options must be CCSDGradientOptions")
+            raise TypeError(
+                "RCCSD(T) orbital response options must be CCSDGradientOptions"
+            )
 
         # Reuse the already-qualified #153 raw Hamiltonian, RHF operator,
         # curvature checks and lifetime gates.  Constructing this validation
@@ -121,14 +123,13 @@ class BoundCCSDTOrbitalResponse:
         primal = baseline._run(baseline.programs.primal, baseline.raw_inputs)
         fock = np.asarray(primal["fock"])
         off_diagonal = fock - np.diag(np.diag(fock))
-        if (
-            float(np.max(np.abs(off_diagonal))) > _CANONICAL_FOCK_TOLERANCE
-            or not np.allclose(
-                np.diag(fock),
-                reference.orbital_energies,
-                atol=_CANONICAL_FOCK_TOLERANCE,
-                rtol=0,
-            )
+        if float(
+            np.max(np.abs(off_diagonal))
+        ) > _CANONICAL_FOCK_TOLERANCE or not np.allclose(
+            np.diag(fock),
+            reference.orbital_energies,
+            atol=_CANONICAL_FOCK_TOLERANCE,
+            rtol=0,
         ):
             raise ResponseCompatibilityError(
                 "standard (T) denominator response requires a canonical RHF Fock basis"

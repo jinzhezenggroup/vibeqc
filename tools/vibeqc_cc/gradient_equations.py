@@ -169,9 +169,7 @@ def build_fock_weight_program(nocc: int, nvir: int) -> Program:
         inputs=("h", "g", "rotation"),
     )
     gradient = reverse.program.outputs["bar_rotation"]
-    stationarity = add(
-        gradient, transpose(gradient, (1, 0)), coefficients=(1, -1)
-    )
+    stationarity = add(gradient, transpose(gradient, (1, 0)), coefficients=(1, -1))
     overlap = add(
         gradient,
         transpose(gradient, (1, 0)),

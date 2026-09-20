@@ -6,9 +6,9 @@ from dataclasses import FrozenInstanceError
 
 import numpy as np
 import pytest
+from test_cc_complete_gradient import _direct_fields, _source
 from vibeqc_compiler.tensor import Program, execute
 
-from test_cc_complete_gradient import _direct_fields, _source
 from tools.cc_gradient_fixtures import inputs
 from tools.vibeqc_cc import (
     BoundCCSDLambda,
@@ -168,10 +168,7 @@ def test_total_ccsdt_orbital_rhs_and_raw_weights_decompose(
         state.orbital_rhs,
         state.correlation_weights["orbital_rhs"].reshape(-1),
     )
-    assert (
-        np.linalg.norm(state.orbital_rhs - state.baseline.orbital_rhs)
-        > 1.0e-8
-    )
+    assert np.linalg.norm(state.orbital_rhs - state.baseline.orbital_rhs) > 1.0e-8
     assert state.same_space_stationarity <= state.options.stationarity_tolerance
     assert state.orbital_stationarity <= state.options.stationarity_tolerance
     assert state.z_residual <= state.options.orbital_residual_tolerance
@@ -193,7 +190,9 @@ def test_denominator_source_changes_orbital_and_overlap_response(
         state.correlation_weights["overlap"] - denominator["overlap"]
     )
     assert (
-        np.linalg.norm(state.correlation_weights["overlap"] - without_denominator_overlap)
+        np.linalg.norm(
+            state.correlation_weights["overlap"] - without_denominator_overlap
+        )
         > 1.0e-10
     )
 
@@ -211,7 +210,9 @@ def test_response_state_is_immutable_and_does_not_claim_forces(
 ) -> None:
     state = water_state
     assert state.response.corrected.provenance["orbital_response"] == "excluded"
-    assert "no nuclear derivatives" in state.response_identity or state.response_identity
+    assert (
+        "no nuclear derivatives" in state.response_identity or state.response_identity
+    )
     for value in (
         state.orbital_rhs,
         state.weights["hcore"],
