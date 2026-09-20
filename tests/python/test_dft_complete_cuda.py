@@ -627,7 +627,14 @@ def test_cuda_late_owner_replay_and_geometry_replacement(
 
 @pytest.mark.parametrize(
     ("method", "charge", "multiplicity"),
-    [("lda-rks", 0, 1), ("pbe-rks", 0, 1), ("lda-uks", 1, 2), ("pbe-uks", 1, 2)],
+    [
+        ("lda-rks", 0, 1),
+        ("pbe-rks", 0, 1),
+        ("r2scan-rks", 0, 1),
+        ("lda-uks", 1, 2),
+        ("pbe-uks", 1, 2),
+        ("r2scan-uks", 1, 2),
+    ],
 )
 def test_public_cuda_calculator_forces_match_independent_gradient(
     method: typing.Any, charge: typing.Any, multiplicity: typing.Any
@@ -636,6 +643,7 @@ def test_public_cuda_calculator_forces_match_independent_gradient(
     from test_dft_complete_cpu import (
         ATOMS,
         independent_gradient,
+        independent_semilocal_total_gradient,
         independent_uks_gradient,
     )
     from vibeqc._dft_gradient import StationaryKsState
@@ -656,7 +664,11 @@ def test_public_cuda_calculator_forces_match_independent_gradient(
     ):
         energy = batch.execute(strict=True, properties=("energy",)).items[0].energy
         state = StationaryKsState.from_native(batch, basis)
-        if method.endswith("uks"):
+        if method.startswith("r2scan-"):
+            ref_energy, gradient = independent_semilocal_total_gradient(
+                basis, state, method
+            )
+        elif method.endswith("uks"):
             ref_energy, gradient = independent_uks_gradient(basis, state, method)
         else:
             ref_energy, gradient, _ = independent_gradient(basis, state, method)
