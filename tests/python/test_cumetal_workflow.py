@@ -59,6 +59,13 @@ def test_real_endpoint_benchmarks_do_not_enable_per_launch_logging() -> None:
     assert "--codspeed" not in diagnostics
 
 
+def test_real_endpoint_build_disables_ptx_jump_tables() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    build = workflow.split("- name: Build VibeQC CuMetal endpoint library", 1)[1]
+    build = build.split("\n      - name:", 1)[0]
+    assert "-DCMAKE_CUDA_FLAGS=-fno-jump-tables" in build
+
+
 @pytest.mark.parametrize(
     "step_name",
     (

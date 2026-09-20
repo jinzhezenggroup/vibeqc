@@ -373,6 +373,7 @@ jobs:
             -DCMAKE_CUDA_COMPILER_LIBRARY_ROOT="$FAKE_CUDA" \
             -DCUDAToolkit_ROOT="$FAKE_CUDA" \
             -DCMAKE_CUDA_ARCHITECTURES=80 \
+            -DCMAKE_CUDA_FLAGS=-fno-jump-tables \
             -DPython3_EXECUTABLE="${GITHUB_WORKSPACE}/.venv/bin/python" \
             -DVIBEQC_CUDA_ARCHITECTURES=80 \
             -DVIBEQC_CUDA_COMPILE_ARCHITECTURES=80 \

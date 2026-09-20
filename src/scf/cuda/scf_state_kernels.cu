@@ -1,5 +1,3 @@
-#include <math_constants.h>
-
 #include <cmath>
 
 #include "scf/cuda/matrix_index.cuh"
@@ -20,9 +18,10 @@ __global__ void initialize_state_kernel(std::int32_t batch_size, bool reuse_prev
   converged[system] = 0;
   failed[system] = 0;
   iterations[system] = 0;
-  previous_energy[system] = reuse_previous_energy ? energy[system] : CUDART_INF;
-  energy_change[system] = CUDART_INF;
-  density_rms[system] = CUDART_INF;
+  const double infinity = __builtin_huge_val();
+  previous_energy[system] = reuse_previous_energy ? energy[system] : infinity;
+  energy_change[system] = infinity;
+  density_rms[system] = infinity;
   diis_count[system] = 0;
   diis_head[system] = 0;
 }
