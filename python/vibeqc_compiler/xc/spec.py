@@ -28,7 +28,9 @@ RSH_COMPONENTS = (
     "LDA_C_VWN_RPA",
     "GGA_C_LYP",
 )
-COMPONENTS = PUBLIC_COMPONENTS + RSH_COMPONENTS
+PW91_COMPONENTS = ("GGA_X_PW91", "GGA_C_PW91")
+SPECIAL_EXPRESSION_COMPONENTS = RSH_COMPONENTS + PW91_COMPONENTS
+COMPONENTS = PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS
 CATALOG = {
     **{name: ((name, Fraction(1)),) for name in PUBLIC_COMPONENTS},
     "LDA_XC_PW": (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
@@ -129,12 +131,12 @@ class FunctionalSpec:
         payload["components"] = [[n, str(c)] for n, c in self.components]
         for name in ("exact_exchange", "range_omega", "long_range_exchange"):
             payload[name] = str(getattr(self, name))
-        rsh = any(
-            name in RSH_COMPONENTS and coefficient
+        special = any(
+            name in SPECIAL_EXPRESSION_COMPONENTS and coefficient
             for name, coefficient in self.components
         )
-        manifest = "rsh-manifest.json" if rsh else "manifest.json"
-        expression_source = "rsh_expressions.py" if rsh else "expressions.py"
+        manifest = "rsh-manifest.json" if special else "manifest.json"
+        expression_source = "rsh_expressions.py" if special else "expressions.py"
         return {
             **payload,
             "ingredients": self.ingredients,
