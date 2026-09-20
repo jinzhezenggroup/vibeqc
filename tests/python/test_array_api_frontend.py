@@ -107,7 +107,6 @@ def test_preview_does_not_advertise_array_namespace_conformance() -> None:
     assert not hasattr(value, "__array_namespace__")
 
 
-
 def test_declared_preview_surfaces_execute_through_tensorir() -> None:
     ao = IndexSpace("ao", "ao", 2)
     spec = _matrix_spec(ao)
@@ -161,6 +160,7 @@ def test_preview_unsupported_conveniences_fail_closed() -> None:
         xp.matmul(vector, vector)
     with pytest.raises(TypeError, match="add left operand"):
         xp.add(1, matrix)
+
 
 def test_scf_density_expression_has_same_tensorir_identity() -> None:
     batch = IndexSpace("batch", "batch", 2)
