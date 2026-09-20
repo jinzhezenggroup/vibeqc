@@ -31,6 +31,7 @@ from .ir import (
     Node,
     add,
     broadcast,
+    cast,
     constant,
     divide,
     einsum,
@@ -50,6 +51,7 @@ from .ir import (
 from .layout import DenseLayout
 from .optimize import PASSES, optimize, rewrite
 from .packing import PackedLayout
+from .precision import CastBoundary, PrecisionSchedule, ValuePrecision, describe_precision
 from .program import Program
 from .types import Index, IndexSpace, Symmetry, TensorSpec
 
@@ -57,6 +59,7 @@ __all__ = [
     "AD_PRIMITIVES",
     "AD_RULES",
     "AD_RULE_VERSION",
+    "CastBoundary",
     "GENERATION_VERSION",
     "PASSES",
     "PRIMITIVES",
@@ -69,15 +72,19 @@ __all__ = [
     "JVPResult",
     "Node",
     "PackedLayout",
+    "PrecisionSchedule",
     "Program",
     "Symmetry",
     "TensorSpec",
+    "ValuePrecision",
     "VJPProgram",
     "VJPResult",
     "add",
     "broadcast",
+    "cast",
     "capabilities",
     "constant",
+    "describe_precision",
     "divide",
     "dot_test",
     "einsum",

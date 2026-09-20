@@ -82,6 +82,19 @@ def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.A
         if plan.schedule.reduction_unroll == 1
         else f"#pragma unroll {plan.schedule.reduction_unroll}\n"
     )
+    if node.op == "cast":
+        child = args[0]
+        source = scalar_type(plan.steps[child].node.spec.dtype)
+        value = _read(child, "z", prefix)
+        if source.dtype == "float64" and scalar.dtype == "float32":
+            converted = f"__double2float_rn({value})"
+        elif source.dtype == "float32" and scalar.dtype == "float64":
+            # FP32 -> FP64 is exact. Keep the boundary explicit instead of
+            # relying on arithmetic promotion in a neighboring primitive.
+            converted = f"static_cast<double>({value})"
+        else:
+            converted = value
+        return f"return finite({converted}, error, {i});"
     if node.op == "add":
         lines = [f"{ty} value = {scalar.zero};"]
         for child, factor in zip(args, a["coefficients"], strict=True):

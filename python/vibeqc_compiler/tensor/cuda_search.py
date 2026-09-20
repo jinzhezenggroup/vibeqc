@@ -222,7 +222,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     resident = _resident_blocks(plan, registers, 0)
     traffic = plan.semantic_traffic
     return {
-        "schema": "vibeqc.tensor.cuda.static-cost.v2",
+        "schema": "vibeqc.tensor.cuda.static-cost.v3",
         "peak_numeric_bytes": plan.peak_bytes,
         "device_bytes": plan.device_bytes,
         "host_bytes": plan.host_bytes,
@@ -230,6 +230,12 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "materialization_bytes": materialized,
         "estimated_logical_traffic_bytes": traffic["logical_tensor_bytes"],
         "estimated_layout_conversion_bytes": traffic["layout_conversion_bytes"],
+        "estimated_precision_cast_read_bytes": traffic["precision_cast_read_bytes"],
+        "estimated_precision_cast_write_bytes": traffic["precision_cast_write_bytes"],
+        "estimated_precision_cast_simultaneous_bytes": traffic[
+            "precision_cast_simultaneous_bytes"
+        ],
+        "precision_schedule_identity": plan.precision_schedule.identity,
         "estimated_host_to_device_bytes": traffic["host_to_device_bytes"],
         "estimated_device_to_host_bytes": traffic["device_to_host_bytes"],
         "estimated_endpoint_semantic_traffic_bytes": traffic["total_bytes"],
