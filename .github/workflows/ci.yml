@@ -388,6 +388,7 @@ jobs:
             tests/python/test_cc_complete_gradient.py
             tests/python/test_dft_complete_cpu.py
             tests/python/test_ecp_stationary_cpu.py
+            tests/python/test_ecp_public_cpu.py
             tests/python/test_ecp_f.py
             tests/python/test_ecp_f_projector.py
             tests/python/test_ecp_heavy.py
@@ -414,6 +415,7 @@ jobs:
                 tests/python/test_cc_complete_gradient.py
                 tests/python/test_dft_complete_cpu.py
                 tests/python/test_ecp_stationary_cpu.py
+                tests/python/test_ecp_public_cpu.py
                 tests/python/test_ecp_f.py
                 tests/python/test_ecp_f_projector.py
                 tests/python/test_ecp_heavy.py

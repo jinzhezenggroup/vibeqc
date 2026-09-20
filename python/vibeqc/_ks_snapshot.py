@@ -404,9 +404,9 @@ class NativeKsSnapshot:
     def ecp_derivatives(self) -> typing.Any:
         """Backend-specific provider bound to this live owner's exact ECP model.
 
-        This explicit diagnostic materializes two atom/xyz/AO-pair arrays.
-        CPU and CUDA use compiler-generated ECP derivatives on their own backend.
-        This dense host export is not a production force endpoint.
+        Materializes two atom/xyz/AO-pair arrays. CPU and CUDA execute shared
+        generated ECP mathematics with checked two-grid admission.
+        Public wrappers admit and reserve this dense export before execution.
         """
         self.check_current()
         if self.hamiltonian != "scalar-semilocal-ecp":

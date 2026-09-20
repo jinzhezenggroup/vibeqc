@@ -33,9 +33,10 @@ EcpData ecp_integrals(const core::System& system, unsigned radial, unsigned angu
                       bool derivatives) {
   if (radial < 16 || radial > 512 || angular < 8 || angular > 96)
     throw std::invalid_argument("ECP quadrature requires 16..512 radial and 8..96 polar points");
-  const auto n = molecule::ao_count(system), size = n * n;
+  const auto n = molecule::ao_count(system);
   if (n > 256 || system.atoms.size() > 128)
     throw std::invalid_argument("ECP baseline supports at most 256 AOs and 128 atoms");
+  const auto size = n * n;
   std::vector<AO> aos;
   for (const auto& shell : system.shells) {
     const auto& position = system.atoms[shell.atom_index].position;

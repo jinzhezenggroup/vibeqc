@@ -83,8 +83,10 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     if (descriptor.precision_mode != VIBEQC_PRECISION_FP64 &&
         descriptor.precision_mode != VIBEQC_PRECISION_AUTO)
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
-    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT supports explicit FP64 precision only");
+    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && backend != VIBEQC_BACKEND_CUDA)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "DFT automatic precision currently requires CUDA");
+    options.precision_mode = descriptor.precision_mode;
   }
 
   scf::FockBuildSpec fock;
@@ -149,6 +151,7 @@ Result adapt_result(scf::ScfResult native, vibeqc_backend backend) {
   result.convergence.converged = native.converged;
   result.executed_backend = backend;
   result.fock_builds = native.fock_builds;
+  result.precision = native.precision;
   native.dft_diagnostic.fock_builds = native.fock_builds;
   native.dft_diagnostic.initial_density_used = native.initial_density_used;
   // Move the snapshot instead of retaining another max-iteration history.
