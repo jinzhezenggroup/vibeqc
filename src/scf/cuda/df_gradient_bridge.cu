@@ -711,7 +711,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     // Work-based schedule selection is independent of correctness eligibility.
     // Preserve source/metric/diagnostic gates; small or unknown targets retain
     // the generic route. Packed response has a separate qualification boundary.
-    bool promoted_default = false, packed_default = false;
+    bool promoted_default = false;
     unsigned derivative_architecture = 0;
     const char* upload_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
     const char* scatter_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
@@ -722,12 +722,9 @@ vibeqc_status execute_cuda_df_hf_gradient(
         !(serial_diagnostic && std::string_view(serial_diagnostic) == "1")) {
       check(runtime::cuda_architecture(device, derivative_architecture));
       promoted_default = df_shell_execution_preferred(n, a, derivative_architecture);
-      // Performance selection belongs to the shared derivative workload profile.
-      // Correctness, provenance, resident-storage and single-term eligibility stay
-      // explicit here; benchmark endpoint identities and GPU marketing names do not.
-      if (promoted_default && borrowed && borrowed->occupied_response && terms.size() == 1)
-        packed_default = df_packed_response_preferred(n, a, borrowed->occupied_factors[0].rank,
-                                                      derivative_architecture);
+      // The generalized packed preference is a candidate, not measured promotion
+      // evidence. Keep automatic response on the established symmetric/full
+      // routes; explicit packed selection remains available for qualification.
     }
     const char* execution_control = std::getenv("VIBEQC_DF_WEIGHTED_EXECUTION");
     const std::string_view execution =
@@ -746,7 +743,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     // Unsupported/corrected states retain the dense response, folding its two
     // ordered adjoints when a generated shell consumer is available.
     const bool packed_pairs =
-        (pair_policy == "packed" || (pair_policy == "auto" && packed_default)) && shell_execution &&
+        pair_policy == "packed" && shell_execution &&
         full_shell_domain && borrowed && borrowed->occupied_response;
     const auto derivative_pairs = packed_pairs ? DfDerivativePairs::packed
                                   : pair_policy == "symmetric" || pair_policy == "packed" ||
