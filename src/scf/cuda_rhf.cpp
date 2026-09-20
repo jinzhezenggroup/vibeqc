@@ -3458,7 +3458,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   // route as the production default until #356's endpoint gate passes.
   const std::uint64_t explicit_generated_force_shell_class_mask =
       generated::enabled_shell_class_mask() & host_present_shell_class_mask &
-      ~(cuda_policy::generated_ssss_force_requested() ? 0U : (std::uint64_t{1} << kSsssShellClass));
+      ~(plan.generated_ssss_force ? 0U : (std::uint64_t{1} << kSsssShellClass));
   // Fock-only AOT entries (currently psss) are deliberately not added to the
   // force queue. The force dispatcher is a separate registry and returns
   // ``cudaErrorNotSupported`` for classes without a validated force consumer.
