@@ -1,14 +1,7 @@
 {
   "path": "src/dft/cuda_xc_kernels.cuh",
-  "reason": "Allocation-free native semilocal XC launch adapters. AO traversal plus dense D*AO, feature, potential and scalar-total contractions are compiler-emitted; native code retains validation, point-domain adaptation and runtime scheduling.",
-  "regions": [
-    {
-      "reason": "Point-layout adaptation and resident point/XC coefficient evaluation remain maintained scientific glue. Dense D*AO, feature formation, symmetric Vxc assembly and E/N reductions are emitted by vibeqc_compiler.dft.ao_cuda.",
-      "role": "scientific",
-      "start": "struct DevicePointValue",
-      "stop": "void enqueue(const CudaXcLayout& l"
-    }
-  ],
+  "reason": "Allocation-free native semilocal XC launch adapter. AO traversal, D*AO/features, point-domain XC coefficient algebra, symmetric potential assembly and scalar-total reductions are compiler-emitted; native code retains density validation and runtime scheduling.",
+  "regions": [],
   "role": "runtime",
   "subsystem": "xc"
 }
