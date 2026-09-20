@@ -31,7 +31,7 @@ CODES = {
 }
 
 
-def reference(code, rho, spin):
+def reference(code: str, rho: np.ndarray, spin: int) -> np.ndarray:
     """Convert documented Libxc vxc/fxc order to full feature Hessians."""
     family = libxc.xc_type(code)
     lda = family == "LDA"
@@ -87,7 +87,7 @@ def reference(code, rho, spin):
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()

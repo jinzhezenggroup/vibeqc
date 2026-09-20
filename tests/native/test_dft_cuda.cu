@@ -56,15 +56,16 @@ struct Fixture {
   CudaXcLayout layout;
   std::unique_ptr<CudaXcPlan> plan;
   std::uint64_t generation{};
-  Fixture(const AoBasis& basis, const MolecularGrid& grid, bool pbe, bool uks, std::size_t tile)
-      : layout(cuda_xc_layout(basis, grid, pbe, uks, tile)) {
+  Fixture(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional, bool uks,
+          std::size_t tile)
+      : layout(cuda_xc_layout(basis, grid, functional, uks, tile)) {
     try {
       check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
       check(cudaMalloc(&arena, layout.device_bytes + 64));
       check(cudaMemset(static_cast<char*>(arena) + layout.device_bytes, 0x5a, 64));
       check(cudaMalloc(&density, layout.spins * layout.nao * layout.nao * sizeof(double)));
-      plan = std::make_unique<CudaXcPlan>(basis, grid, pbe, uks, tile, arena, layout.device_bytes,
-                                          stream);
+      plan = std::make_unique<CudaXcPlan>(basis, grid, functional, uks, tile, arena,
+                                          layout.device_bytes, stream);
     } catch (...) {
       cleanup();
       throw;
@@ -121,8 +122,9 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
   const auto v = fixture.potential();
   const auto& l = fixture.layout;
   if (l.spins == 1) {
-    const auto ref = l.pbe ? integrate_pbe_rks_with_tail(basis, grid, d, 17)
-                           : integrate_lda_xc_pw_rks(basis, grid, d, 17);
+    const auto ref = l.functional == 2U   ? integrate_r2scan_rks(basis, grid, d, 17)
+                     : l.functional == 1U ? integrate_pbe_rks_with_tail(basis, grid, d, 17)
+                                          : integrate_lda_xc_pw_rks(basis, grid, d, 17);
     close(result.energy, ref.energy, "RKS CPU/CUDA XC energy");
     close(result.electrons[0] + result.electrons[1], ref.electrons, "RKS electrons");
     for (std::size_t i = 0; i < v.size(); ++i)
@@ -130,8 +132,9 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
   } else {
     const auto elements = l.nao * l.nao;
     const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
-    const auto ref = l.pbe ? integrate_pbe_uks(basis, grid, a, b, 17)
-                           : integrate_lda_xc_pw_uks(basis, grid, a, b, 17);
+    const auto ref = l.functional == 2U   ? integrate_r2scan_uks(basis, grid, a, b, 17)
+                     : l.functional == 1U ? integrate_pbe_uks(basis, grid, a, b, 17)
+                                          : integrate_lda_xc_pw_uks(basis, grid, a, b, 17);
     close(result.energy, ref.energy, "UKS CPU/CUDA XC energy");
     for (unsigned s = 0; s < 2; ++s) {
       close(result.electrons[s], ref.electrons[s], "UKS electrons");
@@ -150,8 +153,9 @@ __global__ void halve_density(double* d, std::size_t n) {
   for (std::size_t i = threadIdx.x; i < n; i += blockDim.x) d[i] *= 0.5;
 }
 
-void variational_and_state(const AoBasis& basis, const MolecularGrid& grid, bool pbe) {
-  Fixture good(basis, grid, pbe, true, 7), bad(basis, grid, pbe, true, 11);
+void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
+                           std::uint32_t functional) {
+  Fixture good(basis, grid, functional, true, 7), bad(basis, grid, functional, true, 11);
   auto d = density(basis.nao, 2);
   good.submit(d);
   auto invalid = d;
@@ -190,8 +194,9 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid, bool
   require(bad.scalars().error == 0, "device-produced density was rejected");
   for (auto& x : d) x *= 0.5;
   const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
-  const auto ref =
-      pbe ? integrate_pbe_uks(basis, grid, a, b) : integrate_lda_xc_pw_uks(basis, grid, a, b);
+  const auto ref = functional == 2U   ? integrate_r2scan_uks(basis, grid, a, b)
+                   : functional == 1U ? integrate_pbe_uks(basis, grid, a, b)
+                                      : integrate_lda_xc_pw_uks(basis, grid, a, b);
   close(bad.scalars().energy, ref.energy, "XC ignored the current device density");
   bool stale = false;
   try {
@@ -212,7 +217,7 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid, bool
 }
 
 void graph_capture(const AoBasis& basis, const MolecularGrid& grid) {
-  Fixture captured(basis, grid, true, false, 9);
+  Fixture captured(basis, grid, 1U, false, 9);
   const auto d = density(basis.nao, 1);
   check(cudaMemcpyAsync(captured.density, d.data(), d.size() * sizeof(double),
                         cudaMemcpyHostToDevice, captured.stream));
@@ -247,17 +252,23 @@ int main() {
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
     graph_capture(basis, grid);
-    for (bool pbe : {false, true}) {
+    for (std::uint32_t functional : {0U, 1U, 2U}) {
       for (bool uks : {false, true}) {
         for (std::size_t tile : {1U, 7U, 64U}) {
-          Fixture test(basis, grid, pbe, uks, tile);
-          require(test.layout.jets == (pbe ? 4U : 1U), "unused AO jets were allocated");
+          Fixture test(basis, grid, functional, uks, tile);
+          require(test.layout.jets == (functional == 0U ? 1U : 4U),
+                  "unused AO jets were allocated");
+          require(test.layout.work_jets == (functional == 2U ? 4U : 1U),
+                  "unused density-work jets were allocated");
+          require(
+              test.layout.feature_terms == (functional == 0U ? 1U : (functional == 1U ? 4U : 5U)),
+              "CUDA XC feature layout does not match the functional");
           compare(test, basis, grid, density(basis.nao, uks ? 2 : 1));
         }
       }
-      variational_and_state(basis, grid, pbe);
+      variational_and_state(basis, grid, functional);
       const MolecularGrid tail_grid(molecule);
-      Fixture tail(basis, tail_grid, pbe, true, 257);
+      Fixture tail(basis, tail_grid, functional, true, 257);
       auto fully = density(basis.nao, 2);
       std::fill(fully.begin() + basis.nao * basis.nao, fully.end(), 0.0);
       compare(tail, basis, tail_grid, fully);
@@ -267,11 +278,11 @@ int main() {
       const auto f = system(3, spherical);
       const AoBasis f_basis(f);
       const MolecularGrid f_grid(f, {1, 3, 3, 4, 3, 1e-12});
-      Fixture f_test(f_basis, f_grid, true, true, 13);
+      Fixture f_test(f_basis, f_grid, 1U, true, 13);
       compare(f_test, f_basis, f_grid, density(f_basis.nao, 2));
     }
     // Independent PR #214 same-grid PySCF/Libxc fixture, not just CPU parity.
-    Fixture independent(basis, grid, true, false, 9);
+    Fixture independent(basis, grid, 1U, false, 9);
     independent.submit(
         {1.2007575959127958, 0.011302590336886256, 0.011302590336886256, 0.462144452714005});
     require(independent.scalars().error == 0, "independent reference density was rejected");
@@ -309,12 +320,12 @@ int main() {
     changed.atoms[1].position[2] += 0.1;
     bool stale = false;
     try {
-      (void)cuda_xc_layout(basis, MolecularGrid(changed), true, false);
+      (void)cuda_xc_layout(basis, MolecularGrid(changed), 1U, false);
     } catch (const std::invalid_argument&) {
       stale = true;
     }
     require(stale, "same-shape stale grid identity was accepted");
-    std::cout << "Native device-buffer LDA/PBE RKS/UKS E/V and state gates passed\n";
+    std::cout << "Native device-buffer LDA/PBE/r2SCAN RKS/UKS E/V and state gates passed\n";
     return 0;
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

@@ -40,7 +40,7 @@ std::uint64_t next_cpu_ks_owner() {
 
 bool is_uks(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_LDA_UKS || method == VIBEQC_METHOD_PBE_UKS ||
-         method == VIBEQC_METHOD_PBE0_UKS;
+         method == VIBEQC_METHOD_PBE0_UKS || method == VIBEQC_METHOD_R2SCAN_UKS;
 }
 
 bool is_pbe_family(vibeqc_method method) noexcept {
@@ -52,14 +52,26 @@ bool is_pbe0(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_PBE0_UKS;
 }
 
-const char* display_method_name(vibeqc_method method) noexcept {
-  if (is_pbe0(method)) return "PBE0";
-  return is_pbe_family(method) ? "PBE" : "LDA";
+bool is_r2scan(vibeqc_method method) noexcept {
+  return method == VIBEQC_METHOD_R2SCAN_RKS || method == VIBEQC_METHOD_R2SCAN_UKS;
 }
 
 bool is_supported_dft(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_PBE_RKS ||
-         method == VIBEQC_METHOD_PBE0_RKS || is_uks(method);
+         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_R2SCAN_RKS || is_uks(method);
+}
+
+std::uint32_t functional_code(vibeqc_method method) {
+  if (is_r2scan(method)) return 2U;
+  if (is_pbe_family(method)) return 1U;
+  if (method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_LDA_UKS) return 0U;
+  throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unknown semilocal functional family");
+}
+
+const char* display_method_name(vibeqc_method method) noexcept {
+  if (is_pbe0(method)) return "PBE0";
+  if (is_r2scan(method)) return "R2SCAN";
+  return is_pbe_family(method) ? "PBE" : "LDA";
 }
 
 bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offset,
@@ -102,6 +114,8 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && backend != VIBEQC_BACKEND_CUDA)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "DFT automatic precision currently requires CUDA");
+    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && is_r2scan(descriptor.method))
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "r2SCAN currently requires strict FP64");
     options.precision_mode = descriptor.precision_mode;
   }
 
@@ -279,7 +293,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
 #if VIBEQC_HAS_CUDA
     if (backend_ == VIBEQC_BACKEND_CUDA)
       cuda_ = std::make_unique<dft::CudaKsPlan>(fock_, basis_, grid_, options_,
-                                                is_pbe_family(method_), options_.xc_tile_points);
+                                                functional_code(method_), options_.xc_tile_points);
 #endif
     runtime::sample_cpu_capacity(host_numeric_capacity());
   }
@@ -422,9 +436,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
     invalidate_final_state();
     const char* method_name = display_method_name(method_);
     if (compute_forces) {
-      throw MethodError(
-          VIBEQC_STATUS_NOT_IMPLEMENTED,
-          std::string(method_name) + " KS nuclear gradients are tracked separately in issue #163");
+      const char* issue = is_r2scan(method_) ? "#164" : "#163";
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        std::string(method_name) +
+                            " KS nuclear gradients are tracked separately in issue " + issue);
     }
     return adapt_result(run(nullptr, true, true), backend_);
   }
@@ -453,7 +468,11 @@ class KsPreparedCalculation final : public PreparedCalculation {
     // last-good density, which coexists with its current/proposed densities.
     runtime::CpuRetainedCapacity retained_warm(runtime::vector_bytes(warm_));
     scf::ScfResult native;
-    if (is_uks(method_))
+    if (method_ == VIBEQC_METHOD_R2SCAN_UKS)
+      native = scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed);
+    else if (method_ == VIBEQC_METHOD_R2SCAN_RKS)
+      native = scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
+    else if (is_uks(method_))
       native = scf::run_uks(fock_, basis_, grid_, options_, is_pbe_family(method_), seed);
     else if (is_pbe_family(method_))
       native = scf::run_pbe_rks(fock_, basis_, grid_, options_, seed);
@@ -491,7 +510,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
                         1,
                         grid_.spec(),
                         options_.xc_tile_points,
-                        is_pbe_family(method_),
+                        functional_code(method_),
                         spins,
                         -1,
                         cpu_owner_,
@@ -946,7 +965,7 @@ vibeqc_status validate_dft_system(vibeqc_method method, const core::System& syst
     detail = "requested DFT method is reserved but not implemented";
     return VIBEQC_STATUS_NOT_IMPLEMENTED;
   }
-  const char* functional = is_pbe_family(method) ? "PBE" : "LDA";
+  const char* functional = display_method_name(method);
   if (!is_uks(method)) {
     if (system.electron_count > 0 && system.electron_count % 2 == 0 && system.multiplicity == 1)
       return VIBEQC_STATUS_SUCCESS;

@@ -17,8 +17,8 @@ bool finite(const auto& values) {
 bool valid_model(const KsFinalStateIdentity& identity) {
   const auto& model = identity.model;
   const auto& fock = identity.determinant.model;
-  if (model.version != 1 || model.scf_domain_version != 1 || !model.tile_points || !model.owner ||
-      (model.spins != 1 && model.spins != 2) ||
+  if (model.version != 1 || model.scf_domain_version != 1 || model.functional > 2U ||
+      !model.tile_points || !model.owner || (model.spins != 1 && model.spins != 2) ||
       !((fock.backend == scf::FockBackend::Cpu && model.device == -1) ||
         (fock.backend == scf::FockBackend::Cuda && model.device >= 0)) ||
       identity.determinant.occupied.size() != model.spins ||
@@ -33,7 +33,7 @@ bool valid_model(const KsFinalStateIdentity& identity) {
        (fock.spec.exchange.op != scf::FockOperator::FullRange ||
         fock.spec.exchange.approximation != scf::FockApproximation::Exact ||
         fock.spec.exchange.coefficient >= 0)) ||
-      ((!model.pbe || fock.backend == scf::FockBackend::Cuda) &&
+      ((model.functional != 1 || fock.backend == scf::FockBackend::Cuda) &&
        (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
         fock.spec.exchange.present)))
     return false;

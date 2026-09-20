@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -8,7 +9,9 @@
 #include "api/error.hpp"
 #include "api/handles.hpp"
 #include "api/ks_snapshot.hpp"
+#include "dft/xc.hpp"
 #include "dft/xc_point.hpp"
+#include "dft/xc_point_response.hpp"
 #include "integrals/ecp.hpp"
 #include "integrals/ecp_cuda.hpp"
 #include "methods/dft_method.hpp"
@@ -17,6 +20,7 @@ struct vibeqc_ks_snapshot {
   std::size_t index{};
   vibeqc::dft::CudaKsFinalStateToken token;
   std::vector<double> values;
+  double energy{};
 };
 
 namespace {
@@ -52,6 +56,7 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
       return status;
     }
     const auto& state = source.state;
+    result->energy = state.components.total();
     const auto& identity = state.identity;
     const auto n = state.orbitals.at(0).values.size();
     auto& values = result->values;
@@ -127,7 +132,7 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
         source.system.atoms.size(),
         source.packed_basis.size(),
         source.weights.size(),
-        identity.model.pbe,
+        identity.model.functional,
         identity.model.scf_domain_version,
         identity.model.owner,
         identity.determinant.solve_epoch,
@@ -222,10 +227,39 @@ vibeqc_status vibeqc_ks_snapshot_ecp_derivatives_v1(vibeqc_batch* batch,
   }
 }
 
-vibeqc_status vibeqc_xc_point_batch_v2(std::uint32_t pbe, double exchange_scale,
-                                       double correlation_scale, const double* rho,
-                                       const double* gradient, std::size_t point_count,
-                                       double* values, std::size_t value_count) {
+vibeqc_status vibeqc_ks_snapshot_energy_v1(const vibeqc_batch* batch,
+                                           const vibeqc_ks_snapshot* snapshot, double* energy) {
+  if (!batch || !snapshot || !energy) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  std::lock_guard<std::recursive_mutex> lock(batch->context->mutex);
+  const auto status = check_current(*batch, *snapshot);
+  if (status == VIBEQC_STATUS_SUCCESS) *energy = snapshot->energy;
+  return status;
+}
+
+/** Private restricted SCF-domain response bridge. Rows contain the directional
+ * derivative of (v_rho, v_grad[3]) for total density, before AO assembly. */
+vibeqc_status vibeqc_xc_rks_response_batch_v1(std::uint32_t pbe, const double* rho,
+                                              const double* gradient, const double* delta_rho,
+                                              const double* delta_gradient, std::size_t point_count,
+                                              double* values, std::size_t value_count) {
+  constexpr std::size_t stride = 4;
+  if (pbe > 1 || !rho || !gradient || !delta_rho || !delta_gradient || !values ||
+      point_count == 0 || point_count > std::numeric_limits<std::size_t>::max() / stride ||
+      value_count != stride * point_count)
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  for (std::size_t point = 0; point < point_count; ++point) {
+    const auto xc = vibeqc::dft::point::restricted_response(
+        pbe != 0, rho[point], gradient + 3 * point, delta_rho[point], delta_gradient + 3 * point);
+    if (!xc.valid) return VIBEQC_STATUS_NUMERICAL_FAILURE;
+    values[stride * point] = xc.rho[0];
+    for (unsigned k = 0; k < 3; ++k) values[stride * point + 1 + k] = xc.gradient[0][k];
+  }
+  return VIBEQC_STATUS_SUCCESS;
+}
+
+vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, const double* gradient,
+                                       std::size_t point_count, double* values,
+                                       std::size_t value_count) {
   constexpr std::size_t stride = 9;
   if (pbe > 1 || !rho || !gradient || !values || point_count == 0 ||
       point_count > std::numeric_limits<std::size_t>::max() / stride ||
@@ -237,8 +271,7 @@ vibeqc_status vibeqc_xc_point_batch_v2(std::uint32_t pbe, double exchange_scale,
     for (std::size_t spin = 0; spin < 2; ++spin)
       for (std::size_t axis = 0; axis < 3; ++axis)
         local_gradient[spin][axis] = gradient[(spin * point_count + point) * 3 + axis];
-    const auto xc = vibeqc::dft::point::evaluate(pbe != 0, local_rho, local_gradient,
-                                                 exchange_scale, correlation_scale);
+    const auto xc = vibeqc::dft::point::evaluate(pbe != 0, local_rho, local_gradient);
     if (!xc.valid) return VIBEQC_STATUS_NUMERICAL_FAILURE;
     double* output = values + stride * point;
     output[0] = xc.energy;
@@ -251,10 +284,63 @@ vibeqc_status vibeqc_xc_point_batch_v2(std::uint32_t pbe, double exchange_scale,
   return VIBEQC_STATUS_SUCCESS;
 }
 
-vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, const double* gradient,
+vibeqc_status vibeqc_xc_point_batch_v3(std::uint32_t functional, double exchange_scale,
+                                       double correlation_scale, const double* rho,
+                                       const double* gradient, const double* tau,
                                        std::size_t point_count, double* values,
                                        std::size_t value_count) {
-  return vibeqc_xc_point_batch_v2(pbe, 1.0, 1.0, rho, gradient, point_count, values, value_count);
+  constexpr std::size_t stride = 11;
+  if (!std::isfinite(exchange_scale) || !std::isfinite(correlation_scale) || exchange_scale < 0 ||
+      correlation_scale < 0 ||
+      (functional != 1 && (exchange_scale != 1.0 || correlation_scale != 1.0)) || functional > 2 ||
+      !rho || !gradient || !tau || !values || point_count == 0 ||
+      point_count > std::numeric_limits<std::size_t>::max() / stride ||
+      value_count != stride * point_count)
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  try {
+    for (std::size_t point = 0; point < point_count; ++point) {
+      double local_rho[2]{rho[point], rho[point_count + point]};
+      double local_gradient[2][3]{};
+      double local_tau[2]{tau[point], tau[point_count + point]};
+      for (std::size_t spin = 0; spin < 2; ++spin)
+        for (std::size_t axis = 0; axis < 3; ++axis)
+          local_gradient[spin][axis] = gradient[(spin * point_count + point) * 3 + axis];
+      double* output = values + stride * point;
+      if (functional < 2) {
+        const auto xc = vibeqc::dft::point::evaluate(functional == 1, local_rho, local_gradient,
+                                                     exchange_scale, correlation_scale);
+        if (!xc.valid) return VIBEQC_STATUS_NUMERICAL_FAILURE;
+        output[0] = xc.energy;
+        output[1] = xc.rho[0];
+        output[2] = xc.rho[1];
+        for (std::size_t spin = 0; spin < 2; ++spin)
+          for (std::size_t axis = 0; axis < 3; ++axis)
+            output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
+        output[9] = output[10] = 0.0;
+      } else {
+        const auto xc = vibeqc::dft::evaluate_r2scan_point(local_rho, local_gradient, local_tau);
+        output[0] = xc.energy;
+        output[1] = xc.rho[0];
+        output[2] = xc.rho[1];
+        for (std::size_t spin = 0; spin < 2; ++spin)
+          for (std::size_t axis = 0; axis < 3; ++axis)
+            output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
+        output[9] = xc.kinetic[0];
+        output[10] = xc.kinetic[1];
+      }
+    }
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return VIBEQC_STATUS_NUMERICAL_FAILURE;
+  }
+}
+
+vibeqc_status vibeqc_xc_point_batch_v2(std::uint32_t functional, const double* rho,
+                                       const double* gradient, const double* tau,
+                                       std::size_t point_count, double* values,
+                                       std::size_t value_count) {
+  return vibeqc_xc_point_batch_v3(functional, 1.0, 1.0, rho, gradient, tau, point_count, values,
+                                  value_count);
 }
 
 void vibeqc_ks_snapshot_destroy_v1(vibeqc_ks_snapshot* snapshot) { delete snapshot; }

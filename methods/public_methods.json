@@ -105,9 +105,31 @@
       "supports_batch": true
     },
     {
+      "name": "r2scan-rks",
+      "symbol": "R2SCAN_RKS",
+      "abi_id": 10,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "r2scan-uks",
+      "symbol": "R2SCAN_UKS",
+      "abi_id": 11,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
       "name": "pbe0-rks",
       "symbol": "PBE0_RKS",
-      "abi_id": 10,
+      "abi_id": 12,
       "family": "density_functional",
       "provider": "dft",
       "properties": [
@@ -118,7 +140,7 @@
     {
       "name": "pbe0-uks",
       "symbol": "PBE0_UKS",
-      "abi_id": 11,
+      "abi_id": 13,
       "family": "density_functional",
       "provider": "dft",
       "properties": [

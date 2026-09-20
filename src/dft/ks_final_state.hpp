@@ -18,7 +18,8 @@ struct KsModelIdentity {
   std::uint32_t scf_domain_version{1};
   GridSpec grid;
   std::size_t tile_points{};
-  bool pbe{};
+  /** 0=LDA, 1=PBE, 2=r2SCAN; part of immutable model provenance. */
+  std::uint32_t functional{};
   unsigned spins{};
   // CPU is exactly -1; CUDA is a nonnegative visible device ordinal. The
   // determinant's resolved Fock backend is authoritative, never inferred here.

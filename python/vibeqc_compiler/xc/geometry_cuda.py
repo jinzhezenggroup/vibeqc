@@ -308,7 +308,10 @@ void enqueue_gradient(
     unsigned iterations) {
   cuda_check(cudaMemsetAsync(error, 0, sizeof(int), stream));
   cuda_check(cudaMemsetAsync(output, 0, 9 * l.natom * sizeof(double), stream));
-  const I sjets = l.pbe ? 4 : 1, ajets = l.pbe ? 10 : 4;
+  if (l.functional > 1U)
+    throw std::invalid_argument("CUDA XC geometry gradient supports only LDA/PBE");
+  const bool pbe = l.functional == 1U;
+  const I sjets = pbe ? 4 : 1, ajets = pbe ? 10 : 4;
   for (size_t begin = 0; begin < l.npoint; begin += l.tile_points) {
     const I count = std::min(l.tile_points, l.npoint - begin);
     const I stride = count * l.nao;
@@ -320,7 +323,7 @@ void enqueue_gradient(
         density, ao, l.nao, count, l.spins, sjets, work, error);
     cuda_check(cudaGetLastError());
     geometry_kernel<<<1, workers, 0, stream>>>(
-        l.pbe, iterations, basis, points + 3 * begin, weights + begin,
+        pbe, iterations, basis, points + 3 * begin, weights + begin,
         raw + begin, owners + begin, ao, work, l.natom, l.nprimitive, l.nao,
         count, l.spins, partial, scratch, error);
     cuda_check(cudaGetLastError());
@@ -335,6 +338,7 @@ void enqueue_gradient(
             "#include <algorithm>",
             "#include <array>",
             "#include <cstdint>",
+            "#include <stdexcept>",
             '#include "dft/cuda_xc.hpp"',
             emit_grid_adjoint(),
             '#include "dft/xc_point.hpp"',

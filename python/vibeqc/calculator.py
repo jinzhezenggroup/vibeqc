@@ -427,12 +427,14 @@ class Calculator:
             "pbe-uks",
             "pbe0-rks",
             "pbe0-uks",
+            "r2scan-rks",
+            "r2scan-uks",
         ):
             from .ks import resolve_ks_options
 
             self._ks_options = resolve_ks_options(self._method_name, ks_options)
         elif ks_options is not None:
-            raise ValueError("ks_options requires an LDA/PBE/PBE0 RKS/UKS method")
+            raise ValueError("ks_options requires a supported RKS/UKS method")
         if self._method == _native.METHOD_MP2:
             if target_accuracy is not None:
                 raise NotImplementedError(
@@ -501,6 +503,11 @@ class Calculator:
             and self._precision_mode != _native.PRECISION_FP64
         ):
             raise ValueError("canonical MP2 requires precision='fp64'")
+        if (
+            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
+            and self._precision_mode != _native.PRECISION_FP64
+        ):
+            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._library = _native.load_library(device=device, device_id=self._device_id)
         self._ks_options_version = 0
         if self._ks_options is not None:

@@ -29,18 +29,20 @@ _NATIVE_KS_METHODS = {
     "pbe-uks": ("PBE", "polarized"),
     "pbe0-rks": ("PBE0", "unpolarized"),
     "pbe0-uks": ("PBE0", "polarized"),
+    "r2scan-rks": ("R2SCAN", "unpolarized"),
+    "r2scan-uks": ("R2SCAN", "polarized"),
 }
 
 
 @dataclass(frozen=True)
 class KsOptions:
-    """A snapshotted LDA/PBE-family composition, quadrature, and bounded XC tile.
+    """A snapshotted native KS composition, quadrature, and bounded XC tile.
 
-    An absent model resolves from the method name. RKS requires unpolarized
-    MethodIR semantics; UKS requires polarized. Native CPU execution accepts the
-    audited LDA/PBE semilocal family plus optional full-range exact exchange with
-    explicit MethodIR-owned coefficients. CUDA and unsupported primitive families
-    fail closed. A different model requires a new prepared owner.
+    RKS requires unpolarized MethodIR semantics; UKS requires polarized. Native
+    execution accepts audited LDA/PBE/r2SCAN semilocal families. CPU PBE-family
+    compositions also accept explicit MethodIR-owned full-range exact exchange.
+    CUDA hybrids and unsupported primitive families fail closed. A different
+    model requires a new prepared owner.
     """
 
     functional: FunctionalSpec | None = None
@@ -83,7 +85,7 @@ class KsOptions:
 
     @property
     def ao_order(self) -> typing.Any:
-        """SCF needs the potential; only GGA composition needs first AO jets."""
+        """SCF needs the potential; GGA/meta-GGA compositions need first AO jets."""
         if self.functional is None:
             raise ValueError("resolve KS options against a method first")
         return int("sigma" in self.functional.ingredients)
@@ -149,7 +151,11 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
         exchange_scale = components.get("GGA_X_PBE", Fraction(0))
         correlation_scale = components.get("GGA_C_PBE", Fraction(0))
     elif (
-        components == {"LDA_X": Fraction(1), "LDA_C_PW": Fraction(1)}
+        components
+        in (
+            {"LDA_X": Fraction(1), "LDA_C_PW": Fraction(1)},
+            {"MGGA_X_R2SCAN": Fraction(1), "MGGA_C_R2SCAN": Fraction(1)},
+        )
         and len(method_ir.primitives) == 1
     ):
         exchange_scale = correlation_scale = Fraction(1)
@@ -175,7 +181,7 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
 def resolve_ks_method(method: typing.Any) -> typing.Any:
     """Resolve a named native KS selector through canonical MethodIR."""
     if method not in _NATIVE_KS_METHODS:
-        raise ValueError("KS options require a native LDA/PBE/PBE0 RKS/UKS method")
+        raise ValueError("KS options require a supported native RKS/UKS method")
     identifier, spin = _NATIVE_KS_METHODS[method]
     method_ir = resolve_method(identifier, spin=spin)
     semilocal = _native_semilocal(method_ir)

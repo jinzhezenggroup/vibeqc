@@ -4,6 +4,20 @@ include_guard(GLOBAL)
 # live in VibeQCGenerated.cmake; this file owns generator inputs/outputs and the
 # target(s) that consume each generated family.
 macro(vibeqc_register_host_generated_sources target)
+  set(VIBEQC_METHOD_PARAMETERS_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_method_parameters.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_method_parameters_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_method_parameters.py"
+    OUTPUTS "${VIBEQC_METHOD_PARAMETERS_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/method_parameters.json"
+    ARGS
+      --source "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/method_parameters.json"
+      --cpp-output "${VIBEQC_METHOD_PARAMETERS_HEADER}"
+    COMMENT "Generating audited method parameter constants")
+
   set(VIBEQC_D3_DATA_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/d3_data.hpp")
   vibeqc_register_generated_sources(
@@ -204,6 +218,16 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_WEIGHTED_ERI_HEADER}")
 
+  set(VIBEQC_R2SCAN_CUDA_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_r2scan_device.cuh")
+  vibeqc_register_generated_sources(
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_r2scan_cuda.py"
+    OUTPUTS "${VIBEQC_R2SCAN_CUDA_HEADER}"
+    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    ARGS --output "${VIBEQC_R2SCAN_CUDA_HEADER}")
+
   set(VIBEQC_GRID_SOURCE
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_grid_policy.cu")
   vibeqc_register_generated_sources(
@@ -213,6 +237,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     OUTPUTS "${VIBEQC_GRID_SOURCE}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/cuda_xc_kernels.cuh"
+      "${VIBEQC_R2SCAN_CUDA_HEADER}"
       ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_GRID_SOURCE}")
 

@@ -12,6 +12,7 @@
 #include <cstdint>
 
 #include "dft/dispersion/d4_data.hpp"
+#include "generated_method_parameters.hpp"
 
 #if defined(__CUDACC__)
 #define VIBEQC_D4_HD __host__ __device__
@@ -38,7 +39,9 @@ struct D4Parameters {
 
 // No generic/default DFT parameter alias is exposed.
 VIBEQC_D4_HD inline D4Parameters gfn2_d4_parameters() {
-  return {D4ReferenceModel::gfn2, 1.0, 2.7, 5.0, 0.52, 5.0, 30.0, 50.0, 25.0};
+  const auto p = ::vibeqc::generated::method_parameters::gfn2D4();
+  return {D4ReferenceModel::gfn2, p.s6,         p.s8, p.s9, p.a1, p.a2, p.cn_cutoff,
+          p.pair_cutoff,          p.atm_cutoff, p.ga, p.gc};
 }
 
 struct D4Tables {

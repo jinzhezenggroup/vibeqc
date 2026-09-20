@@ -85,8 +85,12 @@ def lda_xc_pw_unpolarized_tail_expression() -> typing.Any:
     )
 
 
-def energy_expression(spec: typing.Any) -> typing.Any:
-    """Return the uninterpreted energy DAG and its ordered feature variables."""
+def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.Any:
+    """Return the energy DAG and ordered feature variables.
+
+    Production mode adds only versioned endpoint continuations used by native
+    SCF; the canonical audited expression remains the default.
+    """
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
     if spec.spin == "polarized":
@@ -117,6 +121,27 @@ def energy_expression(spec: typing.Any) -> typing.Any:
     x2s2 = x2s**2
     k_factor = 3 / 10 * (6 * math.pi**2) ** (2 / 3)
     fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
+
+    def spin_two_thirds(value: typing.Any) -> typing.Any:
+        if not production:
+            return value.pow(2 / 3)
+        cutoff = F("1e-18")
+        t = value / cutoff
+        extension = F("1e-12") * t * (F(14, 9) + t * (F(-7, 9) + t * F(2, 9)))
+        return graph.select_le(value, cutoff, extension, value.pow(2 / 3))
+
+    def production_channel(term: typing.Any, density: typing.Any) -> typing.Any:
+        if not production:
+            return term
+        low, high = F("1e-56"), F("1e-52")
+        x = (density - low) / (high - low)
+        scale = x.pow(3) * (10 - 15 * x + 6 * x.pow(2))
+        return graph.select_le(
+            density,
+            low,
+            0,
+            graph.select_le(density, high, scale * term, term),
+        )
 
     def pw(
         modified: typing.Any, *, with_rs_derivative: typing.Any = False
@@ -177,7 +202,7 @@ def energy_expression(spec: typing.Any) -> typing.Any:
     def correlation(gga: typing.Any, modified: typing.Any) -> typing.Any:
         eps = pw(modified)
         if gga:
-            phi = (up.pow(2 / 3) + down.pow(2 / 3)) / 2
+            phi = (spin_two_thirds(up) + spin_two_thirds(down)) / 2
             phi3 = phi.pow(3)
             # Use squared reduced gradient directly: derivatives remain finite
             # at sigma=0, unlike differentiating an intermediate sqrt(sigma).
@@ -297,7 +322,8 @@ def energy_expression(spec: typing.Any) -> typing.Any:
                 1 - graph.exponential(-a1 / (math.sqrt(x2s) * x2.pow(0.25))),
             )
             enhancement = (h1 + f_alpha * (h0 - h1)) * gx
-            terms.append(-cx * density.pow(4 / 3) * enhancement)
+            term = -cx * density.pow(4 / 3) * enhancement
+            terms.append(production_channel(term, density))
         return graph.sum(terms)
 
     def scan_correlation() -> typing.Any:

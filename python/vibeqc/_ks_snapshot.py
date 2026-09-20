@@ -21,15 +21,18 @@ from .ks import SCF_DOMAIN
 
 def _scf_xc_points(
     library: typing.Any,
-    pbe: typing.Any,
+    functional: typing.Any,
     rho: typing.Any,
     gradient: typing.Any,
+    tau: typing.Any = None,
     *,
     scales: typing.Any = (1.0, 1.0),
 ) -> typing.Any:
-    """Evaluate the exact native SCF point model without an AO contraction."""
-    if type(pbe) is not bool:
-        raise TypeError("SCF point evaluator requires a boolean PBE flag")
+    """Evaluate the exact native semilocal SCF point model."""
+    if type(functional) is bool:
+        functional = int(functional)
+    if type(functional) is not int or functional not in (0, 1, 2):
+        raise TypeError("SCF point evaluator requires functional code 0, 1, or 2")
     raw_rho, raw_gradient = np.asarray(rho), np.asarray(gradient)
     if (
         np.iscomplexobj(raw_rho)
@@ -42,25 +45,34 @@ def _scf_xc_points(
         raise ValueError("SCF point evaluator requires rho[2,n] and gradient[2,n,3]")
     rho = np.ascontiguousarray(raw_rho, dtype=np.float64)
     gradient = np.ascontiguousarray(raw_gradient, dtype=np.float64)
-    output = np.empty((rho.shape[1], 9), dtype=np.float64)
+    if tau is None:
+        if functional == 2:
+            raise ValueError("r2SCAN point evaluation requires tau[2,n]")
+        tau = np.zeros_like(rho)
+    raw_tau = np.asarray(tau)
+    if np.iscomplexobj(raw_tau) or raw_tau.shape != rho.shape:
+        raise ValueError("SCF point evaluator requires real tau[2,n]")
+    tau = np.ascontiguousarray(raw_tau, dtype=np.float64)
+    output = np.empty((rho.shape[1], 11), dtype=np.float64)
     try:
         evaluate = (
-            library.vibeqc_xc_point_batch_v1
+            library.vibeqc_xc_point_batch_v2
             if scales == (1.0, 1.0)
-            else library.vibeqc_xc_point_batch_v2
+            else library.vibeqc_xc_point_batch_v3
         )
     except AttributeError as error:
         raise NotImplementedError(
-            "native library lacks the #163-A XC point bridge"
+            "native library lacks the required semilocal XC point bridge"
         ) from error
     prefix_types = (
         [ct.c_uint32]
         if scales == (1.0, 1.0)
         else [ct.c_uint32, ct.c_double, ct.c_double]
     )
-    prefix_values = [int(pbe)] if scales == (1.0, 1.0) else [int(pbe), *scales]
+    prefix_values = [functional] if scales == (1.0, 1.0) else [functional, *scales]
     evaluate.argtypes = [
         *prefix_types,
+        ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
         ct.c_size_t,
@@ -74,6 +86,7 @@ def _scf_xc_points(
             *prefix_values,
             rho.ctypes.data_as(ct.POINTER(ct.c_double)),
             gradient.ctypes.data_as(ct.POINTER(ct.c_double)),
+            tau.ctypes.data_as(ct.POINTER(ct.c_double)),
             rho.shape[1],
             output.ctypes.data_as(ct.POINTER(ct.c_double)),
             output.size,
@@ -82,7 +95,8 @@ def _scf_xc_points(
     return {
         "energy": immutable(output[:, 0]),
         "rho": immutable(output[:, 1:3].T),
-        "gradient": immutable(output[:, 3:].reshape(-1, 2, 3).transpose(1, 0, 2)),
+        "gradient": immutable(output[:, 3:9].reshape(-1, 2, 3).transpose(1, 0, 2)),
+        "tau": immutable(output[:, 9:11].T),
     }
 
 
@@ -215,7 +229,7 @@ class NativeKsSnapshot:
             natom,
             packed_count,
             npoint,
-            pbe,
+            functional,
             _,
             owner,
             epoch,
@@ -313,7 +327,8 @@ class NativeKsSnapshot:
         if (
             options is None
             or options.coefficients != self.coefficients
-            or bool(options.ao_order) != bool(pbe)
+            or functional
+            != (2 if "tau" in options.functional.ingredients else options.ao_order)
             or (options.method_ir.spin == "polarized") != (spins == 2)
         ):
             raise ValueError("native stationary composition mismatch")
@@ -427,23 +442,103 @@ class NativeKsSnapshot:
         )
 
     def evaluate_xc_points(
-        self, pbe: typing.Any, rho: typing.Any, gradient: typing.Any
+        self,
+        functional: typing.Any,
+        rho: typing.Any,
+        gradient: typing.Any,
+        tau: typing.Any = None,
     ) -> typing.Any:
         """Return SCF-domain point energy and Cartesian first derivatives."""
         self.check_current()
-        if pbe != ("sigma" in self.functional.ingredients):
+        expected = (
+            2
+            if "tau" in self.functional.ingredients
+            else int("sigma" in self.functional.ingredients)
+        )
+        if functional != expected:
             raise ValueError("XC point family disagrees with native composition")
         values = _scf_xc_points(
-            self._library, pbe, rho, gradient, scales=self.coefficients[:2]
+            self._library, functional, rho, gradient, tau, scales=self.coefficients[:2]
         )
         self.check_current()
         return values
 
+    def energy(self) -> float:
+        """Read the verified energy under this snapshot's current-owner lease."""
+        self.check_current()
+        read = self._library.vibeqc_ks_snapshot_energy_v1
+        read.argtypes = [ct.c_void_p, ct.c_void_p, ct.POINTER(ct.c_double)]
+        read.restype = ct.c_int
+        value = ct.c_double()
+        _native.check(
+            self._library, read(self._batch._batch, self._handle, ct.byref(value))
+        )
+        self.check_current()
+        return value.value
+
+    def evaluate_rks_response_points(
+        self,
+        pbe: bool,
+        rho: typing.Any,
+        gradient: typing.Any,
+        delta_rho: typing.Any,
+        delta_gradient: typing.Any,
+    ) -> typing.Any:
+        """Differentiate the exact SCF point potential in a restricted direction.
+
+        Inputs use total density and Cartesian gradient, with no sigma division
+        or low-density clipping. This CPU bridge does not qualify UKS or CUDA.
+        """
+        self.check_current()
+        if self.backend != "cpu" or self.metadata[2] != 1:
+            raise NotImplementedError("native point response requires CPU RKS")
+        if self.metadata[6] not in (0, 1) or self.coefficients != (1.0, 1.0, 0.0):
+            raise NotImplementedError("native point response requires unscaled LDA/PBE")
+        if type(pbe) is not bool or pbe != bool(self.metadata[6]):
+            raise ValueError("native response functional mismatch")
+        values = [np.asarray(x) for x in (rho, gradient, delta_rho, delta_gradient)]
+        n = values[0].size
+        if n == 0 or any(
+            x.shape != shape or np.iscomplexobj(x) or not np.isfinite(x).all()
+            for x, shape in zip(values, ((n,), (n, 3), (n,), (n, 3)), strict=True)
+        ):
+            raise ValueError("RKS point response requires finite rho[n], gradient[n,3]")
+        values = [np.ascontiguousarray(x, dtype=np.float64) for x in values]
+        output = np.empty((n, 4), dtype=np.float64)
+        evaluate = self._library.vibeqc_xc_rks_response_batch_v1
+        pointer = ct.POINTER(ct.c_double)
+        evaluate.argtypes = [
+            ct.c_uint32,
+            pointer,
+            pointer,
+            pointer,
+            pointer,
+            ct.c_size_t,
+            pointer,
+            ct.c_size_t,
+        ]
+        evaluate.restype = ct.c_int
+        _native.check(
+            self._library,
+            evaluate(
+                int(pbe),
+                *(x.ctypes.data_as(pointer) for x in values),
+                n,
+                output.ctypes.data_as(pointer),
+                output.size,
+            ),
+        )
+        self.check_current()
+        return {
+            "rho": immutable(output[:, 0][None, :]),
+            "gradient": immutable(output[:, 1:][None, :, :]),
+        }
+
     def ecp_derivatives(self) -> typing.Any:
         """Backend-specific provider bound to this live owner's exact ECP model.
 
-        Materializes two atom/xyz/AO-pair arrays. CUDA uses only generated CUDA
-        ECP derivatives; CPU explicitly uses checked native two-grid ECP.
+        Materializes two atom/xyz/AO-pair arrays. CPU and CUDA execute shared
+        generated ECP mathematics with checked two-grid admission.
         Public wrappers admit and reserve this dense export before execution.
         """
         self.check_current()

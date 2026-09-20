@@ -32,6 +32,7 @@ inline D4Tables eeq_d4_host_tables(D4EEQProfile profile) {
   const double* c6 = profile == D4EEQProfile::r2scan3c ? eeq_data::kReferenceC6R2SCAN3C.data()
                                                        : eeq_data::kReferenceC6Standard.data();
   const bool r2scan = profile == D4EEQProfile::r2scan3c;
+  const auto r2scan_parameters = ::vibeqc::generated::method_parameters::r2scan3cD4();
   return {D4ReferenceModel::eeq,
           eeq_data::kElements.data(),
           eeq_data::kReferences.data(),
@@ -39,18 +40,19 @@ inline D4Tables eeq_d4_host_tables(D4EEQProfile profile) {
           eeq_data::kElementCount,
           eeq_data::kReferenceCount,
           eeq_data::kReferenceC6Standard.size(),
-          r2scan ? 2.0 : 3.0,
-          r2scan ? 1.0 : 2.0};
+          r2scan ? r2scan_parameters.ga : 3.0,
+          r2scan ? r2scan_parameters.gc : 2.0};
 }
 
 inline D4Parameters r2scan3c_d4_parameters() {
-  // Pinned DFT-D4 4.2.0: s6=1, s8=0, s9=2, a1=.42, a2=5.65,
-  // plus the method-specific zeta profile ga=2/gc=1.
-  return {D4ReferenceModel::eeq, 1.0, 0.0, 2.0, 0.42, 5.65, 30.0, 60.0, 40.0, 2.0, 1.0};
+  const auto p = ::vibeqc::generated::method_parameters::r2scan3cD4();
+  return {D4ReferenceModel::eeq, p.s6,          p.s8,         p.s9, p.a1, p.a2,
+          p.cn_cutoff,           p.pair_cutoff, p.atm_cutoff, p.ga, p.gc};
 }
 
 inline constexpr int kEEQMaximumAtoms = kD4MaximumAtoms;
-inline constexpr double kEEQCutoff = 25.0;
+inline constexpr double kEEQCutoff =
+    ::vibeqc::generated::method_parameters::r2scan3cD4ChargeCnCutoff();
 inline constexpr double kEEQKcn = 7.5;
 inline constexpr double kEEQMaximumCN = 8.0;
 inline constexpr double kEEQRegularizer = 1.0e-14;

@@ -19,8 +19,10 @@ EXPECTED_ABI_IDS = {
     "pbe-rks": 7,
     "lda-uks": 8,
     "pbe-uks": 9,
-    "pbe0-rks": 10,
-    "pbe0-uks": 11,
+    "r2scan-rks": 10,
+    "r2scan-uks": 11,
+    "pbe0-rks": 12,
+    "pbe0-uks": 13,
 }
 
 
@@ -50,7 +52,9 @@ def test_public_method_abi_ids_are_explicit_and_stable() -> None:
 
 def test_public_method_provider_sets_are_generated() -> None:
     assert _generated_methods.HF_METHOD_IDS == frozenset({1, 2})
-    assert _generated_methods.NATIVE_DFT_METHOD_IDS == frozenset({6, 7, 8, 9, 10, 11})
+    assert _generated_methods.NATIVE_DFT_METHOD_IDS == frozenset(
+        {6, 7, 8, 9, 10, 11, 12, 13}
+    )
 
 
 def test_native_binding_reexports_generated_method_constants() -> None:

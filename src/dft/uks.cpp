@@ -3,6 +3,7 @@
 #include <limits>
 #include <optional>
 #include <stdexcept>
+#include <string_view>
 #include <tuple>
 
 #include "dft/ao_grid.hpp"
@@ -26,20 +27,46 @@ struct SpinEvaluation {
   dft::EnergyComponents components;
 };
 
+using SpinXcEvaluator = dft::SpinXcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
+                                                const Matrix&, const Matrix&, std::size_t, double,
+                                                double);
+
+dft::SpinXcIntegral evaluate_lda_xc_uks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                                        const Matrix& alpha, const Matrix& beta, std::size_t tile,
+                                        double exchange_scale, double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled LDA UKS is not qualified");
+  return dft::integrate_lda_xc_pw_uks(basis, grid, alpha, beta, tile);
+}
+
+dft::SpinXcIntegral evaluate_pbe_xc_uks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                                        const Matrix& alpha, const Matrix& beta, std::size_t tile,
+                                        double exchange_scale, double correlation_scale) {
+  return dft::integrate_pbe_uks_scaled(basis, grid, alpha, beta, tile, exchange_scale,
+                                       correlation_scale);
+}
+
+dft::SpinXcIntegral evaluate_r2scan_xc_uks(const dft::AoBasis& basis,
+                                           const dft::MolecularGrid& grid, const Matrix& alpha,
+                                           const Matrix& beta, std::size_t tile,
+                                           double exchange_scale, double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled r2SCAN UKS is not qualified");
+  return dft::integrate_r2scan_uks(basis, grid, alpha, beta, tile);
+}
+
 /** The physical operator is independent of extrapolation and occupations.
  * The common strategy owns J/K dispatch and all exact-exchange coefficients. */
 SpinEvaluation evaluate(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                         const dft::MolecularGrid& grid, const Matrix& alpha, const Matrix& beta,
-                        bool pbe, const ScfOptions& options) {
-  const auto tile = options.xc_tile_points;
+                        SpinXcEvaluator evaluate_xc, const ScfOptions& options) {
   const auto& ints = plan.one_electron();
   const auto jk = plan.build(alpha, beta);
   SpinEvaluation out;
   out.fock = assemble_fock(plan.strategy(), ints.hcore, jk);
-  const auto xc = pbe ? dft::integrate_pbe_uks_scaled(basis, grid, alpha, beta, tile,
-                                                      options.semilocal_exchange_scale,
-                                                      options.semilocal_correlation_scale)
-                      : dft::integrate_lda_xc_pw_uks(basis, grid, alpha, beta, tile);
+  const auto xc =
+      evaluate_xc(basis, grid, alpha, beta, options.xc_tile_points,
+                  options.semilocal_exchange_scale, options.semilocal_correlation_scale);
   for (std::size_t i = 0; i < alpha.size(); ++i) {
     out.fock.alpha[i] += xc.potential[0][i];
     out.fock.beta[i] += xc.potential[1][i];
@@ -63,9 +90,10 @@ EigenResult stabilized_uks_orbitals(Matrix fock, const Matrix& density, const Ma
 
 }  // namespace
 
-ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
-                  const dft::MolecularGrid& grid, const ScfOptions& options, bool pbe,
-                  const std::vector<double>* initial_density) {
+ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                       const dft::MolecularGrid& grid, const ScfOptions& options,
+                       SpinXcEvaluator evaluate_xc, const char* method_name,
+                       const std::vector<double>* initial_density) {
   using namespace reference;
   const auto& strategy = plan.strategy();
   validate_resolved_fock_build(strategy);
@@ -110,7 +138,7 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   diagnostic.occupations = {na, nb};
   diagnostic.grid_points = grid.point_count();
   diagnostic.tile_points = std::min(options.xc_tile_points, grid.point_count());
-  diagnostic.ao_order = pbe ? 1 : 0;
+  diagnostic.ao_order = std::string_view(method_name) == "LDA" ? 0 : 1;
   const double residual_gate = std::min(1.0e-9, options.density_tolerance);
   bool stabilize_occupations = false;
 
@@ -143,7 +171,7 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
       UksState{std::move(alpha), std::move(beta)}, policy,
       [&](const UksState& state, unsigned) {
         const bool stabilized = stabilize_occupations;
-        auto physical = evaluate(plan, basis, grid, state.alpha, state.beta, pbe, options);
+        auto physical = evaluate(plan, basis, grid, state.alpha, state.beta, evaluate_xc, options);
         ++result.fock_builds;
         Matrix ra = commutator_residual(physical.fock.alpha, state.alpha, ints.overlap, n);
         Matrix rb = commutator_residual(physical.fock.beta, state.beta, ints.overlap, n);
@@ -229,7 +257,7 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   // DIIS/stabilized proposal orbitals are only a convergence device and must
   // never become the derivative-state proof. A small bounded fixed-point
   // correction mirrors the shared final-state policy without another SCF loop.
-  auto final = evaluate(plan, basis, grid, alpha, beta, pbe, options);
+  auto final = evaluate(plan, basis, grid, alpha, beta, evaluate_xc, options);
   ++result.fock_builds;
   double previous_physical_energy = result.energy;
   result.converged = false;
@@ -251,7 +279,7 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     alpha = std::move(projected_a);
     beta = std::move(projected_b);
 
-    auto next = evaluate(plan, basis, grid, alpha, beta, pbe, options);
+    auto next = evaluate(plan, basis, grid, alpha, beta, evaluate_xc, options);
     ++result.fock_builds;
     const Matrix ra = commutator_residual(next.fock.alpha, alpha, ints.overlap, n);
     const Matrix rb = commutator_residual(next.fock.beta, beta, ints.overlap, n);
@@ -279,14 +307,26 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 }
 // The registered CPU slice and the extended CPU/CUDA adapter share one UKS
 // driver; compatibility entry points do not retain a second iteration loop.
+ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                  const dft::MolecularGrid& grid, const ScfOptions& options, bool pbe,
+                  const std::vector<double>* initial_density) {
+  return run_uks_impl(plan, basis, grid, options, pbe ? evaluate_pbe_xc_uks : evaluate_lda_xc_uks,
+                      pbe ? "PBE" : "LDA", initial_density);
+}
 ScfResult run_lda_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {
-  return run_uks(plan, basis, grid, options, false, initial_density);
+  return run_uks_impl(plan, basis, grid, options, evaluate_lda_xc_uks, "LDA", initial_density);
 }
 ScfResult run_pbe_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {
-  return run_uks(plan, basis, grid, options, true, initial_density);
+  return run_uks_impl(plan, basis, grid, options, evaluate_pbe_xc_uks, "PBE", initial_density);
+}
+ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                         const dft::MolecularGrid& grid, const ScfOptions& options,
+                         const std::vector<double>* initial_density) {
+  return run_uks_impl(plan, basis, grid, options, evaluate_r2scan_xc_uks, "R2SCAN",
+                      initial_density);
 }
 }  // namespace vibeqc::scf
