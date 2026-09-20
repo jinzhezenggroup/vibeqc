@@ -92,6 +92,12 @@
       "scope": "JIT families are catalogued here but not counted by the CMake-build report. Their per-artifact provenance distinguishes generated source from copies of native runtime; report those through the existing artifact tools."
     },
     {
+      "name": "jit_method",
+      "outputs": [],
+      "owner": "python/vibeqc_compiler/method",
+      "scope": "JIT method-level composition, including bounded stationary-gradient primitive and XC geometry contractions. Per-artifact provenance distinguishes generated source from native runtime assets."
+    },
+    {
       "name": "jit_integral",
       "outputs": [],
       "owner": "python/vibeqc_compiler/integral",
@@ -542,15 +548,8 @@
       "path": "src/dft/stationary_gradient_cuda.cuh",
       "role": "runtime",
       "subsystem": "xc",
-      "reason": "Finite diagnostic owner, explicit stream leases, transfers and failure-before-publication boundaries.",
-      "regions": [
-        {
-          "start": "__global__ void primitive_kernel",
-          "stop": "}  // namespace vibeqc_stationary_cuda",
-          "role": "scientific",
-          "reason": "Primitive normalization, generated derivative contraction, XC coefficient/jet layout and deterministic atom/source reductions are maintained scientific glue. Shared compiler graphs and SCF point model own the differentiated mathematics."
-        }
-      ]
+      "reason": "Finite stationary-gradient owner for resource state, validation, stream leases, transfers, launch orchestration and failure-before-publication boundaries. Primitive and XC geometry contraction bodies are compiler-emitted by method/stationary_cuda.py.",
+      "regions": []
     },
     {
       "path": "src/dft/xc_point.hpp",

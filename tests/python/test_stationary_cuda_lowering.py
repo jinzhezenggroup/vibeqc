@@ -40,7 +40,14 @@ for pbe in (False,True):
     assert 'local_becke' in s
     assert 'namespace vibeqc_grid_adjoint {' in s
     assert 'grid_response_adjoint.hpp' not in s
+    include = s.index('#include "dft/stationary_gradient_cuda.cuh"')
+    for scientific in ('__global__ void primitive_kernel', '__global__ void geometry_kernel'):
+        assert scientific in s
+        assert s.index(scientific) > include
     assert s == emit_stationary_cuda(primitive,pbe=pbe)
+template=open('src/dft/stationary_gradient_cuda.cuh').read()
+assert '__global__ void primitive_kernel' in template
+assert 'for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count' not in template
 """
     subprocess.run(
         [sys.executable, "-c", script],
