@@ -3,7 +3,6 @@
 import os
 import typing
 from pathlib import Path
-from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -210,10 +209,7 @@ def test_cuda_corrected_lambda_matches_cpu_corrected_equations(
             atol=1e-12,
             rtol=1e-12,
         )
-        assert (
-            actual.triples_source_identity
-            == expected.triples_source_identity
-        )
+        assert actual.triples_source_identity == expected.triples_source_identity
         assert actual.provenance["cpu_fallback"] is False
         assert "resident-triples-vjp" in actual.provenance["tensor_backend"]
         assert actual.independent_lambda_residual_norm <= 1e-9
@@ -240,9 +236,7 @@ def test_cuda_corrected_lambda_rejects_response_for_other_shape(
             compiler,
             tmp_path / "triples",
         )
-        result = owner.run_tiles(
-            _triples_arrays(prepared.bound), inputs=("t1", "t2")
-        )
+        result = owner.run_tiles(_triples_arrays(prepared.bound), inputs=("t1", "t2"))
         forged = type(result)(
             sources=result.sources,
             inputs=result.inputs,

@@ -67,7 +67,10 @@ class CudaTriplesResponseResult:
             self,
             "sources",
             MappingProxyType(
-                {name: _immutable(np.asarray(value)) for name, value in self.sources.items()}
+                {
+                    name: _immutable(np.asarray(value))
+                    for name, value in self.sources.items()
+                }
             ),
         )
         object.__setattr__(
@@ -78,9 +81,7 @@ class CudaTriplesResponseResult:
             else MappingProxyType(dict(self.runtime_device)),
         )
         object.__setattr__(self, "timing", MappingProxyType(dict(self.timing)))
-        object.__setattr__(
-            self, "provenance", MappingProxyType(dict(self.provenance))
-        )
+        object.__setattr__(self, "provenance", MappingProxyType(dict(self.provenance)))
 
 
 class CudaTriplesResponseTiles:
@@ -160,9 +161,7 @@ class CudaTriplesResponseTiles:
             for name in selected
         }
         tiles = list(
-            TriplesTileEnumerator(
-                nocc, nvir, vir_chunk_size=self.config.vir_chunk_size
-            )
+            TriplesTileEnumerator(nocc, nvir, vir_chunk_size=self.config.vir_chunk_size)
         )
         timing = {
             "extract_s": 0.0,
@@ -286,10 +285,7 @@ def solve_corrected_lambda_cuda(
     prepared._assert_current(reference_identity)
     baseline_response = BoundCCSDResponse(bound, baseline)
     nvir = bound.reference.nmo - bound.reference.nocc
-    if (
-        triples_response.nocc != bound.reference.nocc
-        or triples_response.nvir != nvir
-    ):
+    if triples_response.nocc != bound.reference.nocc or triples_response.nvir != nvir:
         raise ResponseCompatibilityError(
             "CUDA triples response shape belongs to another CC state"
         )
@@ -299,9 +295,7 @@ def solve_corrected_lambda_cuda(
         "t2": np.asarray(triples_response.sources["t2"]),
     }
     t2_layout = bound.layouts[1]
-    projected_t2 = t2_layout.unpack(
-        t2_layout.unpack_transpose(dense_sources["t2"])
-    )
+    projected_t2 = t2_layout.unpack(t2_layout.unpack_transpose(dense_sources["t2"]))
     projected_sources = {"t1": dense_sources["t1"], "t2": projected_t2}
     source = bound.sqrt_weights * bound._pack(
         (projected_sources["t1"], projected_sources["t2"])
@@ -363,8 +357,7 @@ def solve_corrected_lambda_cuda(
             "equation_identity": bound.equation_identity,
             "vir_chunk_size": triples_response.vir_chunk_size,
             "tensor_backend": (
-                "cuda-fp64-resident-triples-vjp+"
-                "cuda-fp64-resident-lambda-actions"
+                "cuda-fp64-resident-triples-vjp+cuda-fp64-resident-lambda-actions"
             ),
             "lambda_execution_owner_identity": prepared.identity,
             "orbital_response": "excluded",
