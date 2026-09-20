@@ -78,7 +78,7 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned() -> Non
         lda.grid.angular_polar,
         lda.grid.angular_azimuth,
     ) == (
-        48,
+        54,
         16,
         32,
     )
@@ -87,9 +87,9 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned() -> Non
         pbe.grid.angular_polar,
         pbe.grid.angular_azimuth,
     ) == (
-        56,
-        18,
-        36,
+        54,
+        16,
+        32,
     )
     assert tight.grid == derivative
     assert derivative_profile.pruning == "none"

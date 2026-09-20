@@ -249,9 +249,12 @@ class GridPolicy:
             )
         tight = self.accuracy == "tight" or derivative_order == 1
         if family == "lda":
-            shape = (64, 20, 40) if tight else (48, 16, 32)
+            shape = (64, 20, 40) if tight else (54, 16, 32)
         else:
-            shape = (72, 24, 48) if tight else (56, 18, 36)
+            # Keep the qualified standard angular workload at the legacy
+            # 16x32 topology while using the 54-point radial rule that meets
+            # the retained independent energy/force convergence gate.
+            shape = (72, 24, 48) if tight else (54, 16, 32)
         return GridProfile(f"{family}-{'tight' if tight else 'standard'}-v2", *shape)
 
     @property

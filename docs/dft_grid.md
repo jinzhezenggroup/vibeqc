@@ -33,8 +33,8 @@ participate in the identity; an opaque accuracy level is insufficient.
 
 `GridSpec(version=1)` remains the exact reference/fixture contract above. Production
 KS defaults are resolved separately by the compiler-side `GridPolicy` into a
-fully explicit `GridSpec(version=2)` before native execution. Modern LDA uses a
-48×16×32 standard profile; PBE/GGA uses 56×18×36. `grid_accuracy="tight"`, and
+fully explicit `GridSpec(version=2)` before native execution. Modern LDA and
+PBE/GGA use a 54×16×32 standard profile. `grid_accuracy="tight"`, and
 the fixed-topology first-derivative profile, use 64×20×40 for LDA and 72×24×48
 for GGA. Partition iterations remain three; pruning and screening remain
 explicitly disabled so derivative topology does not change under response.
@@ -61,7 +61,8 @@ independent PySCF SCF plus analytic grid-response gradients first verify that a
 96×32×64 v2 reference is stable against 120×40×80, then bound standard/tight
 energy and force error together with their deterministic point-count cost. The
 PBE gate also retains the historical 48×16×32 candidate as a negative cost/accuracy
-control. See the [#596 grid-policy decision](../.agents/notes/implemented/architecture/2026-09-20-production-grid-policy.md).
+control; the promoted 54×16×32 profile adds radial resolution without the prior
+18×36 angular-work expansion. See the [#596 grid-policy decision](../.agents/notes/implemented/architecture/2026-09-20-production-grid-policy.md).
 
 `MolecularGrid` retains radial/angular topology and streams bounded tiles. It
 computes normalized ownership using log products. Coincident atoms share
