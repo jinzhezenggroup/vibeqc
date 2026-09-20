@@ -722,13 +722,15 @@ vibeqc_status execute_cuda_df_hf_gradient(
         !(serial_diagnostic && std::string_view(serial_diagnostic) == "1")) {
       check(runtime::cuda_architecture(device, derivative_architecture));
       promoted_default = df_shell_execution_preferred(n, a, derivative_architecture);
-      // Packed occupied response has its own conservative performance
-      // promotion profile.  Correctness/provenance and borrowed-factor gates
-      // remain independent; the profile uses architecture, work and occupied
-      // fraction rather than benchmark dimensions or a device marketing name.
-      if (promoted_default && borrowed && borrowed->occupied_response && terms.size() == 1)
-        packed_default = df_packed_response_preferred(n, a, borrowed->occupied_factors[0].rank,
-                                                      derivative_architecture);
+      // Packed production is qualified on the same trusted 768-AO occupied
+      // response as #381. Smaller defaults keep the faster dense response
+      // producer and consume its shell pairs symmetrically.
+      if (promoted_default && borrowed && borrowed->occupied_response && n == 768 && a == 768 &&
+          terms.size() == 1 && borrowed->occupied_factors[0].rank == 160) {
+        cudaDeviceProp properties{};
+        check(cudaGetDeviceProperties(&properties, device));
+        packed_default = std::string_view(properties.name) == "NVIDIA GeForce RTX 5090";
+      }
     }
     const char* execution_control = std::getenv("VIBEQC_DF_WEIGHTED_EXECUTION");
     const std::string_view execution =
