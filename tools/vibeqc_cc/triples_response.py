@@ -219,9 +219,7 @@ def accumulate_tile_triples_vjp(
         name: np.zeros_like(np.asarray(arrays[name]), dtype=np.float64)
         for name in selected
     }
-    enumerator = TriplesTileEnumerator(
-        nocc, nvir, vir_chunk_size=vir_chunk_size
-    )
+    enumerator = TriplesTileEnumerator(nocc, nvir, vir_chunk_size=vir_chunk_size)
     for tile in enumerator:
         local = tile_triples_vjp(
             nocc,
