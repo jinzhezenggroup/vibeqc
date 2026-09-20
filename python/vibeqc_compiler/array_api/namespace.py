@@ -113,9 +113,10 @@ def sum(
     if axis is None:
         axes = tuple(range(value.ndim))
     elif type(axis) is int:
-        axes = (typing.cast("int", axis),)
+        axes = (axis,)
     else:
-        axes = tuple(axis)
+        assert isinstance(axis, tuple)
+        axes = axis
     return VibeArray(tensor_ir.reduce_sum(value.node, axes=axes))
 
 
