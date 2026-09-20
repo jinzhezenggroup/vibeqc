@@ -2601,7 +2601,7 @@ def emit_profile_shard(
                 streaming_symbol = f"{force_symbol}_streaming_fock"
                 streaming_wrapper = _scope_profile_identifiers(
                     _streaming_fock_launch_wrapper(
-                        selection.spec,
+                        selection,
                         streaming_symbol,
                     ),
                     selection,
