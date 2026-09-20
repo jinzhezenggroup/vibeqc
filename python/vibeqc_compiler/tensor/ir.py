@@ -133,6 +133,7 @@ PRIMITIVES = {
         "segment_sum",
         "reduce",
         "broadcast",
+        "cast",
     )
 }
 
@@ -202,7 +203,14 @@ def _einsum_domains(
 def _infer(
     op: str, inputs: tuple[Node, ...], a: dict, declared: TensorSpec
 ) -> TensorSpec:
-    """Infer safe result metadata; explicit view types are checked here too."""
+    """Infer safe result metadata; explicit view/cast types are checked here too."""
+    if op == "cast":
+        if len(inputs) != 1:
+            raise ValueError("cast requires exactly one operand")
+        dtype = a["dtype"]
+        if dtype not in ("float32", "float64"):
+            raise ValueError("cast target must be float32 or float64")
+        return replace(inputs[0].spec, dtype=dtype, role="intermediate")
     base = _common(inputs)
     if op in TRANSCENDENTALS:
         if len(inputs) != 1:
@@ -375,6 +383,7 @@ _ATTRS = {
     "segment_sum": {"axis", "offsets"},
     "reduce": {"axes"},
     "broadcast": {"axes"},
+    "cast": {"dtype"},
 }
 
 
@@ -435,6 +444,19 @@ def constant(values: typing.Any, spec: TensorSpec | None = None) -> Node:
     if type(values) in (int, str, Fraction):
         values = (values,)
     return Node("constant", (), spec, (("values", tuple(rational(x) for x in values)),))
+
+
+def cast(value: Node, dtype: str) -> Node:
+    """Explicit real precision conversion with round-to-nearest semantics.
+
+    Casts are first-class SSA values. They preserve logical axes, symmetry,
+    representation, and differentiability while changing only dtype. No
+    arithmetic primitive performs implicit dtype conversion.
+    """
+    if dtype not in ("float32", "float64"):
+        raise ValueError("cast target must be float32 or float64")
+    spec = replace(value.spec, dtype=dtype, role="intermediate")
+    return Node("cast", (value,), spec, (("dtype", dtype),))
 
 
 def add(*inputs: Node, coefficients: typing.Any = None) -> Node:

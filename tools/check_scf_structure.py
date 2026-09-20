@@ -517,6 +517,7 @@ CUDA_ALLOWED["cuda_hf_driver"] = (
     "scf/direct_task_layout.hpp",
     "scf/generated_shell_task.hpp",
     "scf/rhf.hpp",
+    "scf/solver/iteration_control.hpp",
 )
 # Upstream physical-reference export is a host bridge for post-HF clients.
 CUDA_ALLOWED["cuda_hf_driver"] += (

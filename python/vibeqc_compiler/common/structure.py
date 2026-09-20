@@ -8,12 +8,15 @@ from pathlib import Path
 from .paths import PACKAGE
 
 # Generic backend services never reach into a scientific subsystem. TensorIR
-# and IntegralIR stay independent; XC reuses scalar algebra and DFT ingredients.
-# Method composition sits above XC/TensorIR; custom derivative rules emit tensor graphs.
+# and IntegralIR stay independent; the bounded Array API frontend may depend on
+# TensorIR but TensorIR never depends on that frontend. XC reuses scalar algebra
+# and DFT ingredients. Method composition sits above XC/TensorIR; custom
+# derivative rules emit tensor graphs.
 ALLOWED = {
     "common": {"common"},
     "integral": {"integral", "common"},
     "tensor": {"tensor", "common"},
+    "array_api": {"array_api", "tensor"},
     "geometry": {"geometry", "tensor", "common"},
     "dft": {"dft", "common"},
     "xc": {"xc", "integral", "dft", "common"},
