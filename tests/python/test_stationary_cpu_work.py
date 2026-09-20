@@ -34,7 +34,12 @@ def inputs(*, ecp: bool = True) -> tuple[typing.Any, typing.Any, tuple[int, ...]
 
 
 def admit(
-    state: typing.Any, basis: typing.Any, execution: str = "native", **kwargs: int
+    state: typing.Any,
+    basis: typing.Any,
+    execution: str = "native",
+    *,
+    has_exact_exchange: bool = False,
+    **kwargs: int,
 ) -> dict[str, int]:
     limits = {
         "max_primitive_records": 2_000_000,
@@ -43,7 +48,14 @@ def admit(
         "max_ecp_pair_samples": 100_000_000,
     }
     limits.update(kwargs)
-    return _admit_work(state, basis, execution, 4, **limits)
+    return _admit_work(
+        state,
+        basis,
+        execution,
+        4,
+        **limits,
+        has_exact_exchange=has_exact_exchange,
+    )
 
 
 @pytest.mark.parametrize("execution", ["native", "reference"])
@@ -76,6 +88,23 @@ def test_work_counts_follow_contractions_and_both_provider_grids(
     }
     with pytest.raises(ValueError, match="ECP.*work budget"):
         admit(state, basis, execution, max_ecp_pair_samples=expected - 1)
+
+
+def test_hybrid_work_admission_counts_second_eri_derivative_traversal() -> None:
+    state, basis, counts = inputs(ecp=False)
+    semilocal = admit(state, basis)
+    hybrid = admit(state, basis, has_exact_exchange=True)
+    extra_exchange_records = sum(counts) ** 4
+    assert hybrid["primitive_record_bound"] == (
+        semilocal["primitive_record_bound"] + extra_exchange_records
+    )
+    with pytest.raises(ValueError, match="primitive work budget"):
+        admit(
+            state,
+            basis,
+            has_exact_exchange=True,
+            max_primitive_records=hybrid["primitive_record_bound"] - 1,
+        )
 
 
 def test_all_electron_has_no_ecp_work_or_dense_provider_limit() -> None:
