@@ -143,6 +143,8 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
 
   if (!workload.forces) {
     result.value_bytes = result.total_bytes;
+    // A resolved zero is exhaustion, never a feasible implementation default.
+    result.feasible = result.total_bytes != 0U;
     return result;
   }
   if (result.total_bytes < 2U) {
