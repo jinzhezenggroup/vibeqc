@@ -143,7 +143,15 @@ struct PreparedFockPlan::Impl {
       auto ints = integrals::build_integrals(system, derivatives, has_exact);
       if (has_df) {
         fitted->one_electron = std::move(ints);
-        fitted->raw = integrals::build_density_fitting_integrals(system, *auxiliary, derivatives);
+        const bool materialize_df_derivatives =
+            derivatives && cpu_materialized_df_derivatives_requested();
+        fitted->raw = integrals::build_density_fitting_integrals(
+            system, *auxiliary, materialize_df_derivatives);
+        if (derivatives && !materialize_df_derivatives) {
+          fitted->raw.ncoord = system.atoms.size() * 3U;
+          fitted->df_gradient_orbital = system;
+          fitted->df_gradient_auxiliary = *auxiliary;
+        }
         fitted->metric_relative_threshold = strategy.metric_relative_threshold;
         fitted->three_center = orthonormalize_density_fitting_three_center(
             fitted->raw.three_center, fitted->raw.nbf,
