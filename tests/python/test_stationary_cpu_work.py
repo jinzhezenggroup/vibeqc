@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from vibeqc._cpu_force_resources import CPU_FORCE_HOST_CAP, cpu_force_inventory
 from vibeqc._stationary_cpu import _admit_work
 from vibeqc_compiler.common.paths import asset_path
 
@@ -103,3 +104,20 @@ def test_ecp_dense_provider_domain_is_explicit(field: str, value: typing.Any) ->
     )
     with pytest.raises(ValueError, match="dense-export domain"):
         admit(state, basis)
+
+
+def test_cpu_numeric_inventory_covers_provider_arrays_and_export_copies() -> None:
+    _, basis, _ = inputs()
+    inventory = cpu_force_inventory(basis, grid_points=11, ecp_terms=2)
+    # Independently enumerate CPU's peak refined-grid storage, retaining both
+    # coarse and fine derivatives plus sphere vector growth, AO and projections.
+    n, a, q = basis.nao, basis.natom, 2 * 44**2
+    provider = 2 * (2 * n**2 + 2 * 3 * a * n**2) * 8
+    provider += 2 * q * (3 + 1 + 16) * 8 + n * q * 4 * 8 + n * 16 * 4 * 8
+    assert inventory["ecp_provider"] >= provider
+    assert inventory["ecp_export_and_contraction"] >= 4 * 6 * a * n**2 * 8
+    assert sum(inventory.values()) < CPU_FORCE_HOST_CAP
+    huge = cpu_force_inventory(basis, grid_points=1_000_000, ecp_terms=2)
+    assert sum(huge.values()) > CPU_FORCE_HOST_CAP
+    with pytest.raises(ValueError, match="grid point work"):
+        cpu_force_inventory(basis, grid_points=1_000_001, ecp_terms=2)

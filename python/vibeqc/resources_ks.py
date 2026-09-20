@@ -16,6 +16,7 @@ import os
 import typing
 from dataclasses import asdict, replace
 
+from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
 from .basis import BasisSet
 from .basis_capabilities import require_basis
 from .calculator import Atom, _snapshot_basis
@@ -216,6 +217,7 @@ def ks_resource_request(
         if not math.isfinite(value) or value <= 0:
             raise ValueError("KS numerical tolerances must be positive finite")
     selected = _snapshot_basis(basis, basis_representation)
+    cpu_forces = backend == "cpu" and qualified_basis(selected)
     pbe, unrestricted = bool(model.ao_order), method.endswith("uks")
     items = []
     for atoms, charge, multiplicity in zip(
@@ -278,7 +280,7 @@ def ks_resource_request(
         "density_tolerance": density_tolerance,
         "screening_tolerance": screening_tolerance,
         "ks_options": model.to_payload(),
-        "outputs": "energy+forces" if backend == "cuda" else "energy",
+        "outputs": "energy+forces" if backend == "cuda" or cpu_forces else "energy",
         "inventory_version": 1,
         "schedule": "ordinary-stream-round-robin"
         if backend == "cuda"
@@ -295,7 +297,7 @@ def ks_resource_request(
         backend,
         "fp64",
         json.dumps({"items": items}),
-        ("energy", "forces") if backend == "cuda" else ("energy",),
+        ("energy", "forces") if backend == "cuda" or cpu_forces else ("energy",),
         json.dumps(controls, sort_keys=True),
     )
     exclusions = (
@@ -346,6 +348,19 @@ def ks_resource_request(
         )
     )
     device = []
+    if cpu_forces:
+        estimates.append(
+            ResourceEstimate(
+                "serialized generated KS CPU force host staging cap",
+                CPU_FORCE_HOST_CAP,
+                "pageable",
+                first_phase,
+                last_phase,
+            )
+        )
+        exclusions += (
+            "force JIT/compiler processes, loaded code, BLAS/runtime internal storage",
+        )
     try:
         if backend == "cuda" and library is None:
             from . import _native

@@ -92,7 +92,7 @@ def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(
             multiplicity=spin + 1,
         ) as basis,
     ):
-        energy = batch.execute(strict=True).items[0].energy
+        energy = batch.execute(strict=True, properties=("energy",)).items[0].energy
         state = StationaryKsState.from_native(batch, basis)
         assert state._source.metadata[0] == 4
         assert state._source.ecp_cores == (10, 0)
@@ -157,7 +157,7 @@ def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(
             )
             StationaryDerivativeContract(forged.identity).validate(forged)
         # A fresh ECP owner must never authorize the old derivative proof.
-        batch.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
         with pytest.raises(ValueError, match="stale"):
             state._source.ecp_derivatives()
         current = StationaryKsState.from_native(batch, basis)
@@ -197,7 +197,7 @@ def test_same_core_count_different_ecp_is_bound_to_actual_energy_owner() -> None
         Calculator(basis=other_record, **options).prepare_batch([atoms]) as other,
         NativeAO(atoms, basis=record) as basis,
     ):
-        batch.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
         other.execute(strict=True)
         state = StationaryKsState.from_native(batch, basis)
         changed_state = StationaryKsState.from_native(other, basis)
@@ -232,7 +232,7 @@ def test_cpu_ecp_work_rejects_before_compilation_and_recovers(
     atoms, record, _ = fixture(representation="cartesian")
     calc = Calculator(basis=record, method="pbe-rks", ks_options=KsOptions(grid=GRID))
     with calc.prepare_batch([atoms]) as batch, NativeAO(atoms, basis=record) as basis:
-        batch.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
         state = StationaryKsState.from_native(batch, basis)
         kwargs = {
             "cache": ".cache/ecp-stationary-tests",
@@ -267,6 +267,6 @@ def test_cpu_ecp_work_rejects_before_compilation_and_recovers(
         boundary = complete_rks_gradient_diagnostic(state, basis, **kwargs, **limits)
         np.testing.assert_array_equal(boundary.gradient, result.gradient)
         # Rejection did not revoke the energy owner or authorize stale replay.
-        batch.execute(strict=True)
+        batch.execute(strict=True, properties=("energy",))
         with pytest.raises(ValueError, match="stale"):
             complete_rks_gradient_diagnostic(state, basis, **kwargs, **limits)

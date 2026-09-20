@@ -531,9 +531,14 @@ class Calculator:
                 f"method {method!r} is reserved but not implemented"
             )
         self._capabilities = method_capabilities(self._method_name)
+        from ._cpu_force_resources import qualified_basis
+
         if (
             self._capabilities.family == "density_functional"
-            and self._device_name == "cuda"
+            and (
+                self._device_name == "cuda"
+                or (self._device_name == "cpu" and qualified_basis(self._basis))
+            )
             and not (
                 isinstance(self._basis, BasisSet)
                 and any(element.ecp_core_electrons for element in self._basis.elements)
@@ -551,10 +556,9 @@ class Calculator:
                 _native.METHOD_PBE_UKS,
             )
         ):
-            # #163 C2 is a Python public capability layered on the native KS
-            # prepared owner plus the compiler-owned CUDA gradient consumer.
-            # Keep the backend-neutral C registry conservative: CPU/native-C
-            # callers do not inherit a force capability they cannot execute.
+            # Python public capability layered on the native KS prepared owner
+            # plus the backend's compiled stationary gradient consumer.
+            # Keep the backend-neutral C registry conservative.
             # ECP promotion is bounded to Cartesian/real-spherical s/p records. The shared
             # nine-source consumer also enforces shape, byte and work caps;
             # higher-angular ECP domains remain energy-only.
@@ -1261,11 +1265,7 @@ class Calculator:
             resource_plan = self.estimate_resources(
                 [native_atoms], charges=[charge], multiplicities=[multiplicity]
             ).require_feasible()
-        if (
-            compute_forces
-            and self._capabilities.family == "density_functional"
-            and self._device_name == "cuda"
-        ):
+        if compute_forces and self._capabilities.family == "density_functional":
             # Reuse the prepared-batch owner because the stationary snapshot ABI
             # is intentionally tied to a live native owner.  This avoids a second
             # scientific implementation in the single-system path.
