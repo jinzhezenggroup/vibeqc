@@ -405,8 +405,7 @@ def benchmark_cases() -> dict[str, BenchmarkCase]:
             "synthetic WATER27-derived 32-mer plus translated tetramer, "
             "864 real spherical AOs, def2-SVP DF qualification"
         ),
-        atoms=cases["water-32mer-4s4-def2-svp-spherical"].atoms
-        + translated_tetramer,
+        atoms=cases["water-32mer-4s4-def2-svp-spherical"].atoms + translated_tetramer,
         vibeqc_basis="def2-svp",
         pyscf_basis="def2-svp",
         basis_representation="spherical",
