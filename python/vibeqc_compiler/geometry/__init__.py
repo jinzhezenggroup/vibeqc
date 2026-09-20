@@ -12,6 +12,7 @@ from .d3 import (
     compile_d3_bj,
     d3_geometry,
 )
+from .d3_execution import execute_d3_bj
 from .ir import (
     LOWERING_VERSION,
     PAIR_OWNERSHIP,
@@ -46,6 +47,7 @@ __all__ = [
     "build_pair_program",
     "compile_d3_bj",
     "d3_geometry",
+    "execute_d3_bj",
     "inverse_power_program",
     "lower_geometry",
     "pair_to_atom",
