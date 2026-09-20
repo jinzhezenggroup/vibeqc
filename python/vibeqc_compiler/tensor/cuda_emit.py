@@ -10,6 +10,7 @@ from __future__ import annotations
 import typing
 from math import prod
 
+from .batch_schedule import index_table_values
 from .cuda_dtype import scalar_type
 from .cuda_gemm import gemm_contract
 from .cuda_plan import ALIGNMENT, TensorPlan, aligned, strides
@@ -176,12 +177,17 @@ return finite({mul}(finite(value, error, {i}), {scalar.literal(a["coefficient"])
         table = dict(plan.index_tables)[i]
         axis = a["axis"]
         target = c[axis]
+        member_base = node.spec.shape[axis] + 1
         source = list(c)
         source[axis] = "r"
         return f"""{ty} value = {scalar.zero};
-{reduction_pragma}for (I r = 0; r < {_integer(source_shape[axis])}; ++r)
-    if (reinterpret_cast<const I*>(p + {table})[r] == {target})
-        value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
+const I* topology = reinterpret_cast<const I*>(p + {table});
+const I begin = topology[{target}];
+const I end = topology[{target} + 1];
+{reduction_pragma}for (I q = begin; q < end; ++q) {{
+    const I r = topology[{_integer(member_base)} + q];
+    value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
+}}
 return finite(value, error, {i});"""
     elif node.op == "segment_sum":
         table = dict(plan.index_tables)[i]
@@ -444,11 +450,11 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
             initialize.append(
                 f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, {prefix}constant_{i}, {node.spec.size * node.spec.itemsize}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
-        table_values = None
-        if node.op in ("gather", "indexed_gather", "scatter_add"):
-            table_values = node.attrs["positions"]
-        elif node.op == "segment_sum":
-            table_values = node.attrs["offsets"]
+        table_values = (
+            index_table_values(node)
+            if node.op in ("gather", "indexed_gather", "scatter_add", "segment_sum")
+            else ()
+        )
         if table_values:
             values = ", ".join(_integer(v) for v in table_values)
             parts.append(f"static const I {prefix}index_data_{i}[] = {{{values}}};")
