@@ -64,8 +64,8 @@ void launch_build_shell_primitive_pair_cache_kernel(dim3 grid, dim3 block, std::
   build_shell_primitive_pair_cache_kernel<<<grid, block, shared_bytes, stream>>>(
       batch.total_shell_pairs, batch.shell_pair_first, batch.shell_pair_second,
       batch.shell_primitive_offsets, batch.shell_atoms, batch.positions,
-      batch.shell_pair_primitive_offsets, batch.primitive_exponents,
-      batch.primitive_coefficients, shell_primitive_pairs);
+      batch.shell_pair_primitive_offsets, batch.primitive_exponents, batch.primitive_coefficients,
+      shell_primitive_pairs);
 }
 
 }  // namespace vibeqc::scf::cuda_execution
