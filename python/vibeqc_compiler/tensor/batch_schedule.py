@@ -9,6 +9,7 @@ without changing mathematical or reduction-order semantics.
 from __future__ import annotations
 
 import typing
+from collections import Counter
 from dataclasses import dataclass
 from itertools import pairwise
 
@@ -149,22 +150,21 @@ def _ragged_step(step_index: int, node: typing.Any) -> RaggedStepSchedule:
     output_elements = node.spec.size
     outer_count = output_elements // target_extent if target_extent else 0
     if node.op == "scatter_add":
-        degrees = [0] * target_extent
-        for target in node.attrs["positions"]:
-            degrees[target] += 1
+        degrees = tuple(Counter(node.attrs["positions"]).values())
+        groups = target_extent
         scan_work = output_elements * source_extent
         scheduled_work = outer_count * source_extent
         lowering = "inverted-segments"
     elif node.op == "segment_sum":
         offsets = tuple(node.attrs["offsets"])
         degrees = [stop - start for start, stop in pairwise(offsets)]
+        groups = len(degrees)
         scan_work = outer_count * source_extent
         scheduled_work = scan_work
         lowering = "contiguous-segments"
     elif node.op == "indexed_gather":
-        degrees = [0] * source_extent
-        for source in node.attrs["positions"]:
-            degrees[source] += 1
+        degrees = tuple(Counter(node.attrs["positions"]).values())
+        groups = source_extent
         scan_work = output_elements
         scheduled_work = output_elements
         lowering = "direct-index"
@@ -172,6 +172,11 @@ def _ragged_step(step_index: int, node: typing.Any) -> RaggedStepSchedule:
         raise ValueError(f"unsupported ragged scheduling primitive: {node.op}")
 
     nonempty = sum(degree != 0 for degree in degrees)
+    # Unmapped groups are an arithmetic complement, not a target-sized list.
+    # Zero-element tensors can have huge valid index domains under tiny budgets.
+    histogram = dict(_degree_histogram(degrees))
+    if missing := groups - len(degrees):
+        histogram[0] = histogram.get(0, 0) + missing
     return RaggedStepSchedule(
         step_index=step_index,
         op=node.op,
@@ -180,12 +185,12 @@ def _ragged_step(step_index: int, node: typing.Any) -> RaggedStepSchedule:
         target_extent=target_extent,
         edge_count=sum(degrees),
         nonempty_groups=nonempty,
-        empty_groups=len(degrees) - nonempty,
+        empty_groups=groups - nonempty,
         max_degree=max(degrees, default=0),
         scan_work=scan_work,
         scheduled_work=scheduled_work,
         lowering=lowering,
-        degree_histogram=_degree_histogram(degrees),
+        degree_histogram=tuple(sorted(histogram.items())),
     )
 
 
