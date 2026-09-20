@@ -13,14 +13,14 @@ import typing
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 
-from .ir import Node, cast
+from .ir import TRANSCENDENTALS, Node, cast
 from .program import Program, _hash
 from .types import checked_size
 
 DTYPES = frozenset(("float32", "float64"))
 STRICT_MATH_MODE = "ieee-rn-no-tf32"
-REDUCTION_OPS = frozenset(("reduce", "einsum"))
-SENSITIVE_OPS = frozenset(("divide", "scaled_bilinear", "log", "sqrt", "power"))
+REDUCTION_OPS = frozenset(("reduce", "einsum", "scatter_add", "segment_sum"))
+SENSITIVE_OPS = frozenset(("divide", "scaled_bilinear")) | TRANSCENDENTALS
 AUTO_FP32_OPS = frozenset(
     ("add", "multiply", "transpose", "reshape", "slice", "gather", "broadcast")
 )
@@ -157,6 +157,7 @@ class PrecisionSchedule:
     math_mode: str = STRICT_MATH_MODE
     request_identity: str | None = None
     qualification_scope: tuple[tuple[str, str], ...] = ()
+    parent_schedule_identity: str | None = None
 
     def __post_init__(self) -> None:
         _dtype(self.strict_audit_dtype, "strict audit dtype")
@@ -166,6 +167,12 @@ class PrecisionSchedule:
             or any(c not in "0123456789abcdef" for c in self.request_identity)
         ):
             raise ValueError("invalid precision request identity")
+        if self.parent_schedule_identity is not None and (
+            not isinstance(self.parent_schedule_identity, str)
+            or len(self.parent_schedule_identity) != 64
+            or any(c not in "0123456789abcdef" for c in self.parent_schedule_identity)
+        ):
+            raise ValueError("invalid parent precision schedule identity")
         if self.qualification_scope and self.request_identity is None:
             raise ValueError(
                 "precision qualification scope requires a request identity"
@@ -199,6 +206,7 @@ class PrecisionSchedule:
         return {
             "schema": "vibeqc.tensor.precision-schedule.v2",
             "precision_request_identity": self.request_identity,
+            "parent_precision_schedule_identity": self.parent_schedule_identity,
             "qualification_scope": [
                 {"source_value": name, "qualification": qualification}
                 for name, qualification in self.qualification_scope
@@ -478,4 +486,28 @@ def describe_precision(
         strict_audit_dtype,
         request_identity=request_identity,
         qualification_scope=scope,
+        parent_schedule_identity=provenance.get("precision_parent_schedule_identity"),
     )
+
+
+def derivative_precision_provenance(program: Program) -> dict[str, str]:
+    """Retain a parent's precision/evidence identity without qualifying its AD.
+
+    Strict programs without explicit precision provenance stay unchanged. A
+    qualified primal or derived program carries a stable schedule fingerprint
+    into generated AD and subsequent precision lowering. This is identity
+    partitioning, not a claim that primal evidence qualifies a derivative.
+    """
+    provenance = program.provenance
+    if any(
+        provenance.get(key) is not None
+        for key in (
+            "precision_request",
+            "precision_request_identity",
+            "precision_parent_schedule_identity",
+        )
+    ):
+        return {
+            "precision_parent_schedule_identity": describe_precision(program).identity
+        }
+    return {}
