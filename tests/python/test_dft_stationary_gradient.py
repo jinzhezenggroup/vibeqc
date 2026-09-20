@@ -159,12 +159,9 @@ def test_cartesian_point_coefficient_pullback_matches_generated_interior(
         compact = program.coefficients.evaluate(functional_gradient, v)
         rho = compact["rho"]
         cartesian_gradient = compact.get("gradient")
-        # The compact meta-GGA coefficient already contains tau's AO-bilinear
-        # factor 1/2. Convert it back to the physical per-spin vtau ABI before
-        # exercising geometry_from_cartesian_coefficients, which owns that factor.
+        # The compact meta-GGA coefficient and native point ABI both expose
+        # the AO kinetic coefficient vtau/2 directly.
         cartesian_tau = compact.get("tau")
-        if cartesian_tau is not None:
-            cartesian_tau = 2.0 * cartesian_tau
         if spec.spin == "unpolarized":
             rho = np.repeat(rho, 2, axis=0)
             if cartesian_gradient is not None:
@@ -244,7 +241,7 @@ def test_scf_domain_pullback_matches_independent_displaced_energy(
             point["energy"],
             point["rho"],
             point["gradient"] if family != "lda" else None,
-            point["tau"] if family == "mgga" else None,
+            point["kinetic"] if family == "mgga" else None,
             ao_atoms=_native_ao_atoms(basis),
             natom=basis.natom,
         )
