@@ -1,7 +1,6 @@
 """Do not advertise hybrid dry runs before the CLI exposes explicit grids."""
 
 import pytest
-
 from vibeqc.__main__ import parser
 
 
