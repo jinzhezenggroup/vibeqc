@@ -1,6 +1,7 @@
 """Final-provider substitution preserves complete molecular endpoints and counts."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -18,8 +19,11 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 @pytest.mark.parametrize("budget", (512 << 10, 1 << 20, 2 << 20))
 def test_tiny_final_provider_budget_rejects_without_reference_retry(
-    method, budget, monkeypatch, tmp_path
-):
+    method: typing.Any,
+    budget: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """The fixed library scratch cannot be hidden behind an old smaller budget."""
     from vibeqc import _native
 
@@ -53,8 +57,13 @@ def test_tiny_final_provider_budget_rejects_without_reference_retry(
 # the rejected former batch-four 8-MiB request remains covered separately.
 @pytest.mark.parametrize("budget", (0, 32 << 20))
 def test_final_provider_matches_reference_across_replans(
-    method, representation, batch_size, budget, monkeypatch, tmp_path
-):
+    method: typing.Any,
+    representation: typing.Any,
+    batch_size: typing.Any,
+    budget: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """Two prepared owners compare only the final eigensolver, including forces.
 
     Oxygen's d shell distinguishes Cartesian and spherical layouts. Full

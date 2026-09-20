@@ -1,5 +1,6 @@
 import hashlib
 import json
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -21,11 +22,11 @@ from vibeqc_compiler.method import (
 )
 
 
-def _root():
+def _root() -> typing.Any:
     return Path(__file__).resolve().parents[2]
 
 
-def test_r2scan3c_resolves_one_inspectable_method_graph():
+def test_r2scan3c_resolves_one_inspectable_method_graph() -> None:
     graph = resolve_method("R2SCAN-3c")
     assert graph.identifier == "R2SCAN-3c"
     assert graph.basis.name == "def2-mTZVPP"
@@ -43,7 +44,7 @@ def test_r2scan3c_resolves_one_inspectable_method_graph():
     assert graph.primitives[2].specification.profile == "r2scan3c"
 
 
-def test_plain_r2scan_cannot_be_reported_as_r2scan3c():
+def test_plain_r2scan_cannot_be_reported_as_r2scan3c() -> None:
     plain = resolve_method("R2SCAN")
     composite = resolve_method("R2SCAN-3c")
     assert plain.basis is None
@@ -52,7 +53,7 @@ def test_plain_r2scan_cannot_be_reported_as_r2scan3c():
     assert plain.manifest_identity != composite.manifest_identity
 
 
-def test_canonical_label_rejects_component_override():
+def test_canonical_label_rejects_component_override() -> None:
     canonical = METHOD_CATALOG["R2SCAN-3c"]
     wrong_gcp = replace(canonical.gcp, alpha=canonical.gcp.alpha + 0.01)
     with pytest.raises(UnsupportedMethod, match="different explicit identifier"):
@@ -67,7 +68,7 @@ def test_canonical_label_rejects_component_override():
     assert resolve_method(custom).identity != resolve_method("R2SCAN-3c").identity
 
 
-def test_canonical_basis_snapshot_is_exact_and_preflighted():
+def test_canonical_basis_snapshot_is_exact_and_preflighted() -> None:
     basis = load_r2scan3c_basis()
     binding = METHOD_CATALOG["R2SCAN-3c"].basis
     assert (
@@ -82,7 +83,7 @@ def test_canonical_basis_snapshot_is_exact_and_preflighted():
         validate_basis_snapshot(binding, wrong, atomic_numbers=(1,))
 
 
-def test_r2scan3c_correction_parameters_are_method_defining():
+def test_r2scan3c_correction_parameters_are_method_defining() -> None:
     spec = METHOD_CATALOG["R2SCAN-3c"]
     d4 = spec.dispersion
     assert (d4.s6, d4.s8, d4.s9, d4.a1, d4.a2, d4.ga, d4.gc) == (
@@ -105,7 +106,7 @@ def test_r2scan3c_correction_parameters_are_method_defining():
     assert (gcp.damping_scale, gcp.damping_exponent) == (4.0, 6.0)
 
 
-def test_method_ir_rejects_double_gcp_application():
+def test_method_ir_rejects_double_gcp_application() -> None:
     graph = resolve_method("R2SCAN-3c")
     with pytest.raises(UnsupportedMethod, match="unique by operator family"):
         MethodIR(
@@ -116,7 +117,7 @@ def test_method_ir_rejects_double_gcp_application():
         )
 
 
-def test_r2scan3c_backend_must_acknowledge_both_corrections():
+def test_r2scan3c_backend_must_acknowledge_both_corrections() -> None:
     graph = resolve_method("R2SCAN-3c")
     capability = BackendCapability(
         backend="qualified-r2scan3c",
@@ -140,7 +141,7 @@ def test_r2scan3c_backend_must_acknowledge_both_corrections():
         )
 
 
-def test_r2scan3c_audit_manifest_hashes_match_catalog():
+def test_r2scan3c_audit_manifest_hashes_match_catalog() -> None:
     root = _root()
     manifest = json.loads((root / "external/r2scan3c/manifest.json").read_text())
     spec = METHOD_CATALOG["R2SCAN-3c"]
@@ -156,7 +157,7 @@ def test_r2scan3c_audit_manifest_hashes_match_catalog():
     )
 
 
-def test_custom_r2scan3c_keeps_nonlocal_dispersion_and_gcp_distinct():
+def test_custom_r2scan3c_keeps_nonlocal_dispersion_and_gcp_distinct() -> None:
     from vibeqc_compiler.method import VV10, original_nonlocal_correlation
 
     spec = replace(
@@ -175,14 +176,18 @@ def test_custom_r2scan3c_keeps_nonlocal_dispersion_and_gcp_distinct():
 
 
 @pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
-def test_direct_method_ir_cannot_relabel_plain_r2scan_as_canonical_3c(spin):
+def test_direct_method_ir_cannot_relabel_plain_r2scan_as_canonical_3c(
+    spin: typing.Any,
+) -> None:
     plain = resolve_method("R2SCAN", spin=spin)
     with pytest.raises(UnsupportedMethod, match="canonical manifest"):
         replace(plain, identifier="R2SCAN-3c")
 
 
 @pytest.mark.parametrize("component", ["basis", "gcp", "dispersion"])
-def test_direct_canonical_method_ir_rejects_changed_components(component):
+def test_direct_canonical_method_ir_rejects_changed_components(
+    component: typing.Any,
+) -> None:
     graph = resolve_method("R2SCAN-3c")
     if component == "basis":
         changes = {"basis": replace(graph.basis, representation="cartesian")}

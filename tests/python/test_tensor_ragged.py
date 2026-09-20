@@ -31,11 +31,11 @@ from vibeqc_compiler.tensor.interpreter import execute
 TARGET = cuda_target_info("sm_120")
 
 
-def _index(name, kind, size):
+def _index(name: str, kind: str, size: int) -> Index:
     return Index(name, IndexSpace(name, kind, size))
 
 
-def _program():
+def _program() -> Program:
     shell = _index("shell", "shell", 3)
     orbital = _index("orbital", "orbital", 5)
     atom = _index("atom", "atom", 3)
@@ -55,14 +55,14 @@ def _program():
     )
 
 
-def _feeds():
+def _feeds() -> dict[str, np.ndarray]:
     return {
         "shell_values": np.array([2.0, 3.0, 5.0]),
         "orbital_values": np.array([1.0, 2.0, 4.0, 8.0, 16.0]),
     }
 
 
-def test_ragged_interpreter_roundtrip_and_empty_segment():
+def test_ragged_interpreter_roundtrip_and_empty_segment() -> None:
     program = _program()
     result = execute(program, _feeds()).outputs
     np.testing.assert_array_equal(result["gathered"], [2.0, 2.0, 3.0, 5.0, 5.0])
@@ -75,7 +75,7 @@ def test_ragged_interpreter_roundtrip_and_empty_segment():
         np.testing.assert_array_equal(value, result[name])
 
 
-def test_ragged_maps_fail_closed():
+def test_ragged_maps_fail_closed() -> None:
     shell = _index("shell", "shell", 3)
     orbital = _index("orbital", "orbital", 5)
     x = input_tensor("x", TensorSpec((shell,), role="input"))
@@ -92,7 +92,7 @@ def test_ragged_maps_fail_closed():
         segment_sum(y, 0, (0, 2, 1, 5), shell)
 
 
-def test_ragged_reference_and_generated_adjoint_agree():
+def test_ragged_reference_and_generated_adjoint_agree() -> None:
     source = _index("source", "orbital", 5)
     segment = _index("segment", "atom", 3)
     x = input_tensor("x", TensorSpec((source,), role="input", differentiable=True))
@@ -121,7 +121,7 @@ def test_ragged_reference_and_generated_adjoint_agree():
     assert any(node.op == "scatter_add" for node in reverse.program.live_nodes)
 
 
-def test_ragged_cuda_plan_emits_device_side_maps_and_reductions():
+def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     plan = plan_cuda(_program(), TARGET, schedule=TensorSchedule())
     source = emit_cuda(plan)
     assert len(plan.index_tables) == 3
@@ -134,7 +134,7 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions():
     os.environ.get("VIBEQC_TENSOR_CUDA_TEST") != "1",
     reason="requires explicit allocated-GPU opt-in",
 )
-def test_ragged_cuda_matches_interpreter(tmp_path):
+def test_ragged_cuda_matches_interpreter(tmp_path: Path) -> None:
     nvcc = find_nvcc()
     if nvcc is None:
         pytest.fail("VIBEQC_TENSOR_CUDA_TEST requires a CUDA compiler")

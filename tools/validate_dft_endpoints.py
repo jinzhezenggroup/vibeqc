@@ -14,6 +14,7 @@ import json
 import os
 import subprocess
 import sys
+import typing
 from pathlib import Path
 from time import perf_counter
 
@@ -33,13 +34,13 @@ def capture(argv: list[str]) -> str:
     return subprocess.check_output(argv, text=True).strip()
 
 
-def timed(call):
+def timed(call: typing.Any) -> typing.Any:
     start = perf_counter()
     value = call()
     return value, (perf_counter() - start) * 1000.0
 
 
-def systems_for(method: str, batch: int):
+def systems_for(method: str, batch: int) -> typing.Any:
     h2 = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
     if method in UKS_METHODS:
         inventory = ((h2, -1, 2), ([("H", (0.0, 0.0, 0.0))], 0, 2))
@@ -61,7 +62,7 @@ def systems_for(method: str, batch: int):
     return systems, charges, multiplicities
 
 
-def changed_coordinates(systems):
+def changed_coordinates(systems: typing.Any) -> typing.Any:
     changed = [
         np.asarray([xyz for _, xyz in system], dtype=np.float64) for system in systems
     ]
@@ -70,13 +71,13 @@ def changed_coordinates(systems):
     return changed
 
 
-def transport_payload(value):
+def transport_payload(value: typing.Any) -> typing.Any:
     if value is None:
         return None
     return value.to_payload()
 
 
-def transport_delta(previous, current):
+def transport_delta(previous: typing.Any, current: typing.Any) -> typing.Any:
     if previous is None or current is None:
         return None
     return {
@@ -85,7 +86,12 @@ def transport_delta(previous, current):
     }
 
 
-def result_record(result, milliseconds: float, transport_before, transport_after):
+def result_record(
+    result: typing.Any,
+    milliseconds: float,
+    transport_before: typing.Any,
+    transport_after: typing.Any,
+) -> typing.Any:
     """Keep physical convergence and actual prepared grids with every phase."""
     return {
         "milliseconds": milliseconds,
@@ -106,7 +112,13 @@ def result_record(result, milliseconds: float, transport_before, transport_after
     }
 
 
-def independent_energies(method, systems, charges, multiplicities, coordinates=None):
+def independent_energies(
+    method: typing.Any,
+    systems: typing.Any,
+    charges: typing.Any,
+    multiplicities: typing.Any,
+    coordinates: typing.Any = None,
+) -> typing.Any:
     calculator = Calculator(
         method=method,
         basis="sto-3g",
@@ -135,7 +147,7 @@ def independent_energies(method, systems, charges, multiplicities, coordinates=N
     return np.asarray(values)
 
 
-def validate_phase(record, expected):
+def validate_phase(record: typing.Any, expected: typing.Any) -> None:
     actual = np.asarray(record["energies"])
     if not np.allclose(actual, expected, rtol=0.0, atol=1.0e-8):
         raise RuntimeError(
@@ -149,7 +161,7 @@ def validate_phase(record, expected):
         raise RuntimeError("DFT endpoint did not pass the physical convergence gate")
 
 
-def run_case(method: str, batch: int):
+def run_case(method: str, batch: int) -> typing.Any:
     systems, charges, multiplicities = systems_for(method, batch)
     changed = changed_coordinates(systems)
     expected_initial = independent_energies(method, systems, charges, multiplicities)
@@ -231,7 +243,7 @@ def run_case(method: str, batch: int):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--methods", nargs="+", choices=METHODS, default=list(METHODS))

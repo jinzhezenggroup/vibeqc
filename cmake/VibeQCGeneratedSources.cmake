@@ -223,9 +223,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_gradient_cuda.py"
     OUTPUTS "${VIBEQC_XC_GRADIENT_SOURCE}"
-    DEPENDS
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/grid_response_adjoint.hpp"
-      ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_XC_GRADIENT_SOURCE}")
 
   set(VIBEQC_MP2_GENERATED_DIRECTORY

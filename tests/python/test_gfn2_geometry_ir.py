@@ -1,5 +1,9 @@
 """GFN2 CN/repulsion compiler vertical slice qualification (#504)."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 from vibeqc_compiler.geometry import (
@@ -11,6 +15,12 @@ from vibeqc_compiler.geometry import (
     gfn2_geometry,
 )
 from vibeqc_compiler.tensor import execute
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from numpy.typing import ArrayLike
+    from vibeqc_compiler.geometry import Gfn2ShortRangeProgram
 
 # Independent values frozen in xTBloom's mctc-lib/tblite qualification tests.
 CN_ATOMIC_NUMBERS = (11, 1, 8, 1, 9, 1, 1, 8, 7, 1, 1, 17, 5, 5, 7, 13)
@@ -196,7 +206,7 @@ REP_COORDINATES = np.array(
 REP_EXPECTED_ENERGY = 0.49222837261241
 
 
-def _compiled(elements, coordinates):
+def _compiled(elements: Iterable[int], coordinates: ArrayLike) -> Gfn2ShortRangeProgram:
     geometry = gfn2_geometry(elements)
     topology = build_gfn2_pair_topology(geometry, coordinates)
     return build_gfn2_short_range_program(
@@ -205,7 +215,7 @@ def _compiled(elements, coordinates):
     )
 
 
-def test_parameter_subset_covers_complete_gfn2_element_domain():
+def test_parameter_subset_covers_complete_gfn2_element_domain() -> None:
     assert len({gfn2_element_parameters(z).atomic_number for z in range(1, 87)}) == 86
     for z in range(1, 87):
         item = gfn2_element_parameters(z)
@@ -216,7 +226,7 @@ def test_parameter_subset_covers_complete_gfn2_element_domain():
         gfn2_element_parameters(87)
 
 
-def test_gfn2_coordination_matches_pinned_mctc_xtbloom_oracle():
+def test_gfn2_coordination_matches_pinned_mctc_xtbloom_oracle() -> None:
     compiled = _compiled(
         CN_ATOMIC_NUMBERS,
         CN_COORDINATES,
@@ -235,7 +245,7 @@ def test_gfn2_coordination_matches_pinned_mctc_xtbloom_oracle():
     assert compiled.parameter_identity == GFN2_SHORT_RANGE_PARAMETER_IDENTITY
 
 
-def test_gfn2_repulsion_matches_pinned_xtb_oracle():
+def test_gfn2_repulsion_matches_pinned_xtb_oracle() -> None:
     compiled = _compiled(
         REP_ATOMIC_NUMBERS,
         REP_COORDINATES,
@@ -255,7 +265,7 @@ def test_gfn2_repulsion_matches_pinned_xtb_oracle():
     )
 
 
-def test_generated_repulsion_vjp_matches_finite_difference_and_translation():
+def test_generated_repulsion_vjp_matches_finite_difference_and_translation() -> None:
     compiled = _compiled(
         REP_ATOMIC_NUMBERS,
         REP_COORDINATES,
@@ -310,7 +320,7 @@ def test_generated_repulsion_vjp_matches_finite_difference_and_translation():
         )
 
 
-def test_generated_coordination_vjp_matches_weighted_finite_difference():
+def test_generated_coordination_vjp_matches_weighted_finite_difference() -> None:
     compiled = _compiled(
         CN_ATOMIC_NUMBERS,
         CN_COORDINATES,
@@ -361,7 +371,7 @@ def test_generated_coordination_vjp_matches_weighted_finite_difference():
         )
 
 
-def test_changed_geometry_requires_rebuilt_25_bohr_topology():
+def test_changed_geometry_requires_rebuilt_25_bohr_topology() -> None:
     geometry = gfn2_geometry((1, 1))
     near = np.array([[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]])
     far = np.array(
@@ -394,7 +404,7 @@ def test_changed_geometry_requires_rebuilt_25_bohr_topology():
         compiled.validate_coordinates(far)
 
 
-def test_gfn2_primal_and_generated_vjps_lower_through_shared_cuda_tensorir():
+def test_gfn2_primal_and_generated_vjps_lower_through_shared_cuda_tensorir() -> None:
     from vibeqc_compiler.common.cuda_target import (
         CUDA_TARGETS,
     )
@@ -431,3 +441,13 @@ def test_gfn2_primal_and_generated_vjps_lower_through_shared_cuda_tensorir():
         source = emit_cuda(plan_cuda(program, target))
         assert "tensor_create" in source
         assert "tensor_run" in source
+
+
+def test_gfn2_integration_preserves_existing_d3_and_scf_history_contracts() -> None:
+    from vibeqc_compiler import geometry
+    from vibeqc_compiler.tensor import Index, IndexSpace
+
+    assert geometry.D3CompilerSpec is not None
+    assert callable(geometry.compile_d3_bj)
+    assert callable(geometry.execute_d3_bj)
+    assert Index("step", IndexSpace("diis_history", "history", 2)).extent == 2

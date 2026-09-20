@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from itertools import combinations_with_replacement
 
@@ -16,7 +17,7 @@ from .rsh_expressions import energy_expression as rsh_energy_expression
 from .spec import SPECIAL_EXPRESSION_COMPONENTS, FunctionalSpec, UnsupportedXC
 
 
-def output_set(spec, order):
+def output_set(spec: typing.Any, order: typing.Any) -> typing.Any:
     """Energy, feature gradient, then packed upper-triangle feature Hessian."""
     if type(order) is not int or order not in (0, 1, 2):
         raise UnsupportedXC("XC supports derivative orders 0, 1 and 2")
@@ -28,7 +29,13 @@ def output_set(spec, order):
     return tuple(result)
 
 
-def validate_features(spec, features, *, order=2, copy=True):
+def validate_features(
+    spec: typing.Any,
+    features: typing.Any,
+    *,
+    order: typing.Any = 2,
+    copy: typing.Any = True,
+) -> typing.Any:
     """Validate interior-v1 without changing any feature or derivative.
 
     Positive densities span 24 decades, spin fractions reach 1e-10 and reduced
@@ -120,7 +127,7 @@ def validate_features(spec, features, *, order=2, copy=True):
     return x, active
 
 
-def pack_grid_features(spec, values):
+def pack_grid_features(spec: typing.Any, values: typing.Any) -> typing.Any:
     """Map DFT01 spin features; unpolarized conversion requires equal spins."""
     rho, sigma, tau = (np.asarray(values[k]) for k in ("rho", "sigma", "tau"))
     if (
@@ -158,10 +165,10 @@ class XCProgram:
     expression_hash: str
 
     @property
-    def order(self):
+    def order(self) -> typing.Any:
         return max(map(len, self.outputs))
 
-    def evaluate(self, features):
+    def evaluate(self, features: typing.Any) -> typing.Any:
         """Interpret the generated DAG on CPU; no autograd or Libxc dependency."""
         x, active = validate_features(self.spec, features, order=self.order)
         result = np.zeros((len(self.outputs), x.shape[1]))
@@ -177,7 +184,7 @@ class XCProgram:
             raise ArithmeticError("nonfinite XC output")
         return result
 
-    def unpack(self, result):
+    def unpack(self, result: typing.Any) -> typing.Any:
         """Return only complete requested tensors; never fill absent derivatives."""
         result = np.asarray(result)
         if result.ndim != 2 or result.shape[0] != len(self.outputs):
@@ -196,7 +203,7 @@ class XCProgram:
         return answer
 
 
-def _energy_expression(spec):
+def _energy_expression(spec: typing.Any) -> typing.Any:
     if any(
         name in SPECIAL_EXPRESSION_COMPONENTS and coefficient
         for name, coefficient in spec.components
@@ -205,7 +212,13 @@ def _energy_expression(spec):
     return semilocal_energy_expression(spec)
 
 
-def build_program(spec, *, order=2, outputs=None, optimization="after"):
+def build_program(
+    spec: typing.Any,
+    *,
+    order: typing.Any = 2,
+    outputs: typing.Any = None,
+    optimization: typing.Any = "after",
+) -> typing.Any:
     """Differentiate only consumer roots, using the shared algebra passes.
 
     ``before`` enables the independent optimize/differentiate ordering gate.

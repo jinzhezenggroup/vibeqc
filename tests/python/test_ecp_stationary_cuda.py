@@ -1,6 +1,9 @@
 """Opt-in real-device ECP stationary gradients; independent CPU/PySCF oracles."""
 
+from __future__ import annotations
+
 import os
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -21,7 +24,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def compiler():
+def compiler() -> typing.Any:
     from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
     from vibeqc_compiler.common.cuda_target import cuda_target_info
 
@@ -33,7 +36,9 @@ def compiler():
     )
 
 
-def diagnostic(state, basis, compiler, **kwargs):
+def diagnostic(
+    state: typing.Any, basis: typing.Any, compiler: typing.Any, **kwargs: typing.Any
+) -> typing.Any:
     with no_cpu_derivatives():
         return complete_rks_cuda_gradient_diagnostic(
             state,
@@ -51,8 +56,8 @@ def diagnostic(state, basis, compiler, **kwargs):
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
 def test_ecp_complete_cuda_gradient_analytic_fd_and_live_owner(
-    method, record_property, compiler
-):
+    method: typing.Any, record_property: typing.Any, compiler: typing.Any
+) -> None:
     spin = int(method.endswith("uks"))
     atoms, record, mol = fixture(spin=spin, representation="cartesian")
     calc = Calculator(
@@ -160,7 +165,7 @@ def test_ecp_complete_cuda_gradient_analytic_fd_and_live_owner(
         np.testing.assert_allclose(replay.gradient, result.gradient, atol=1e-9, rtol=0)
 
 
-def test_cuda_same_core_count_different_ecp_is_bound_to_actual_energy_owner():
+def test_cuda_same_core_count_different_ecp_is_bound_to_actual_energy_owner() -> None:
     import json
 
     atoms, record, _ = fixture(representation="cartesian")
@@ -210,7 +215,9 @@ def test_cuda_same_core_count_different_ecp_is_bound_to_actual_energy_owner():
         state._source.ecp_derivatives()
 
 
-def test_cuda_ecp_admission_failure_recovery_and_legacy_guard(compiler, monkeypatch):
+def test_cuda_ecp_admission_failure_recovery_and_legacy_guard(
+    compiler: typing.Any, monkeypatch: typing.Any
+) -> None:
     from vibeqc._ks_snapshot import NativeKsSnapshot
 
     atoms, record, _ = fixture(representation="cartesian")
@@ -227,7 +234,7 @@ def test_cuda_ecp_admission_failure_recovery_and_legacy_guard(compiler, monkeypa
         state = StationaryKsState.from_native(batch, basis)
         original = NativeKsSnapshot.ecp_derivatives
 
-        def forbidden(*args):
+        def forbidden(*args: typing.Any) -> None:
             pytest.fail("budget rejection occurred after ECP execution")
 
         with monkeypatch.context() as patch:
@@ -241,7 +248,7 @@ def test_cuda_ecp_admission_failure_recovery_and_legacy_guard(compiler, monkeypa
                 with pytest.raises(ValueError, match="budget"):
                     diagnostic(state, basis, compiler, **kwargs)
 
-        def nonfinite(source):
+        def nonfinite(source: typing.Any) -> typing.Any:
             result = np.array(original(source))
             result[0, 0, 0, 0, 0] = np.nan
             return result
@@ -298,7 +305,9 @@ def test_cuda_ecp_admission_failure_recovery_and_legacy_guard(compiler, monkeypa
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
-def test_all_electron_cuda_v3_regression(method, compiler):
+def test_all_electron_cuda_v3_regression(
+    method: typing.Any, compiler: typing.Any
+) -> None:
     from test_dft_complete_cpu import (
         ATOMS,
         independent_gradient,

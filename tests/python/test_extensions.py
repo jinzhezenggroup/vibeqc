@@ -1,5 +1,6 @@
 """Public programmable extension contracts for #558."""
 
+import typing
 from fractions import Fraction
 
 import pytest
@@ -7,7 +8,7 @@ from vibeqc.extensions import API_VERSION, method, tensor, xc
 from vibeqc_compiler.method import resolve_method
 
 
-def test_custom_hybrid_and_builtin_share_canonical_method_ir():
+def test_custom_hybrid_and_builtin_share_canonical_method_ir() -> None:
     functional = xc.compose(
         "my-pbe0",
         {"GGA_X_PBE": "3/4", "GGA_C_PBE": 1},
@@ -22,7 +23,7 @@ def test_custom_hybrid_and_builtin_share_canonical_method_ir():
     assert method.inspect(custom_ir)["extension_api_version"] == API_VERSION
 
 
-def test_public_builders_are_exact_and_fail_closed():
+def test_public_builders_are_exact_and_fail_closed() -> None:
     with pytest.raises(TypeError, match="exact integer"):
         xc.compose("bad", {"GGA_X_PBE": 0.75})
 
@@ -44,7 +45,7 @@ def test_public_builders_are_exact_and_fail_closed():
         method.compose("conflict", xc=inherited, exact_exchange="1/5")
 
 
-def test_xc_spin_is_preserved_by_public_method_composition():
+def test_xc_spin_is_preserved_by_public_method_composition() -> None:
     polarized = xc.compose(
         "polarized-pbe",
         {"GGA_X_PBE": 1, "GGA_C_PBE": 1},
@@ -57,7 +58,7 @@ def test_xc_spin_is_preserved_by_public_method_composition():
         method.compose("bad-spin", xc=polarized, spin="unpolarized")
 
 
-def test_component_builder_canonicalizes_fragment_order_and_cancellation():
+def test_component_builder_canonicalizes_fragment_order_and_cancellation() -> None:
     a = xc.compose(
         "a",
         [
@@ -74,7 +75,7 @@ def test_component_builder_canonicalizes_fragment_order_and_cancellation():
     assert method.compose("a", xc=a).identity == method.compose("b", xc=b).identity
 
 
-def test_public_method_typecheck_reuses_compiler_capability_contract():
+def test_public_method_typecheck_reuses_compiler_capability_contract() -> None:
     custom = method.compose(
         "custom",
         semilocal_components={"GGA_X_PBE": "3/4", "GGA_C_PBE": 1},
@@ -93,7 +94,7 @@ def test_public_method_typecheck_reuses_compiler_capability_contract():
     assert typed.backend == "test-cuda"
 
 
-def test_tensor_extension_surface_is_replayable_and_backend_neutral():
+def test_tensor_extension_surface_is_replayable_and_backend_neutral() -> None:
     space = tensor.IndexSpace("ao", "ao", 2)
     index = tensor.Index("i", space)
     spec = tensor.TensorSpec((index,), role="input")
@@ -118,7 +119,9 @@ def test_tensor_extension_surface_is_replayable_and_backend_neutral():
     ],
     ids=["empty-mapping", "empty-sequence", "cancelled", "zero-weight"],
 )
-def test_empty_semilocal_contribution_preserves_exact_exchange(components, spin):
+def test_empty_semilocal_contribution_preserves_exact_exchange(
+    components: typing.Any, spin: typing.Any
+) -> None:
     ir = method.compose(
         "pure-exchange",
         semilocal_components=components,
@@ -140,7 +143,9 @@ def test_empty_semilocal_contribution_preserves_exact_exchange(components, spin)
     ],
     ids=["empty-mapping", "empty-sequence", "cancelled", "zero-weight"],
 )
-def test_empty_method_and_standalone_xc_still_fail_closed(components):
+def test_empty_method_and_standalone_xc_still_fail_closed(
+    components: typing.Any,
+) -> None:
     with pytest.raises(method.UnsupportedMethod, match="empty"):
         method.compose("empty", semilocal_components=components)
     with pytest.raises(xc.UnsupportedXC, match="empty"):

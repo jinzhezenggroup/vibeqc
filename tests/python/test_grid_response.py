@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+import typing
 from dataclasses import replace
 from decimal import Decimal, localcontext
 
@@ -23,7 +24,9 @@ DP = np.array([[0.1, -0.3, 0.4], [0.2, 0.1, -0.2], [-0.4, 0.2, 0.1]])
 
 @pytest.mark.parametrize("iterations", [1, 3, 5])
 @pytest.mark.parametrize("source", ["point", "center", "both"])
-def test_partition_sources_match_independent_multistep_differences(iterations, source):
+def test_partition_sources_match_independent_multistep_differences(
+    iterations: typing.Any, source: typing.Any
+) -> None:
     dp = DP if source != "center" else np.zeros_like(DP)
     dc = DC if source != "point" else np.zeros_like(DC)
     result = partition_response(
@@ -50,10 +53,12 @@ def test_partition_sources_match_independent_multistep_differences(iterations, s
     np.testing.assert_allclose(result.directional.sum(axis=1), 0, atol=4e-15)
 
 
-def decimal_partition(points, centers, iterations):
+def decimal_partition(
+    points: typing.Any, centers: typing.Any, iterations: typing.Any
+) -> typing.Any:
     """Independent scalar high-precision direct products (not generated/log-DAG)."""
 
-    def distance(a, b):
+    def distance(a: typing.Any, b: typing.Any) -> typing.Any:
         return sum((x - y) ** 2 for x, y in zip(a, b, strict=True)).sqrt()
 
     answer = []
@@ -75,7 +80,9 @@ def decimal_partition(points, centers, iterations):
 
 
 @pytest.mark.parametrize("iterations", [1, 3, 5])
-def test_decimal_oracle_is_independent_of_generated_primal(iterations):
+def test_decimal_oracle_is_independent_of_generated_primal(
+    iterations: typing.Any,
+) -> None:
     with localcontext() as context:
         context.prec = 60
         h = Decimal("1e-16")
@@ -85,7 +92,9 @@ def test_decimal_oracle_is_independent_of_generated_primal(iterations):
         ]
         points, centers, dp, dc = arrays
 
-        def displaced(values, motion, sign):
+        def displaced(
+            values: typing.Any, motion: typing.Any, sign: typing.Any
+        ) -> typing.Any:
             return [
                 [x + sign * h * dx for x, dx in zip(row, direction, strict=True)]
                 for row, direction in zip(values, motion, strict=True)
@@ -109,7 +118,7 @@ def test_decimal_oracle_is_independent_of_generated_primal(iterations):
     np.testing.assert_allclose(result.directional, derivative, atol=6e-15, rtol=5e-13)
 
 
-def test_translation_permutation_and_empty_partition():
+def test_translation_permutation_and_empty_partition() -> None:
     translation = np.array([0.3, -0.7, 0.2])
     rigid = partition_response(
         POINTS,
@@ -138,7 +147,7 @@ def test_translation_permutation_and_empty_partition():
     np.testing.assert_array_equal(single.directional, 0)
 
 
-def test_exact_zero_pair_products_do_not_divide_by_zero():
+def test_exact_zero_pair_products_do_not_divide_by_zero() -> None:
     centers = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
     points = np.array([[-1.0, 0.0, 0.0], [3.0, 0.0, 0.0]])
     response = partition_response(
@@ -149,7 +158,7 @@ def test_exact_zero_pair_products_do_not_divide_by_zero():
     assert np.isfinite(response.directional).all()
 
 
-def grid_at(centers=CENTERS, spec=None):
+def grid_at(centers: typing.Any = CENTERS, spec: typing.Any = None) -> typing.Any:
     if spec is None:
         spec = GridSpec(
             radial_points=4,
@@ -162,7 +171,9 @@ def grid_at(centers=CENTERS, spec=None):
     )
 
 
-def gather(grid, motion, tile_points=17):
+def gather(
+    grid: typing.Any, motion: typing.Any, tile_points: typing.Any = 17
+) -> typing.Any:
     tiles = list(grid_response_tiles(grid, motion, tile_points=tile_points))
     return (
         tiles,
@@ -171,7 +182,7 @@ def gather(grid, motion, tile_points=17):
     )
 
 
-def test_owner_motion_weight_motion_and_partial_tile_match_rebuilt_grids():
+def test_owner_motion_weight_motion_and_partial_tile_match_rebuilt_grids() -> None:
     grid = grid_at()
     tiles, dx, dw = gather(grid, DC)
     explicit = grid.explicit()
@@ -210,7 +221,9 @@ def test_owner_motion_weight_motion_and_partial_tile_match_rebuilt_grids():
         tiles[0].weight_motion.flags.writeable = True
 
 
-def test_point_and_weight_sources_contract_once_with_existing_geometry_partials():
+def test_point_and_weight_sources_contract_once_with_existing_geometry_partials() -> (
+    None
+):
     grid = grid_at()
     _, dx, dw = gather(grid, DC)
     explicit = grid.explicit()
@@ -246,7 +259,7 @@ def test_point_and_weight_sources_contract_once_with_existing_geometry_partials(
     "bad",
     ["coincident", "tolerance", "point_collision", "nan", "complex", "motion_shape"],
 )
-def test_invalid_or_nonsmooth_inputs_fail_closed(bad):
+def test_invalid_or_nonsmooth_inputs_fail_closed(bad: typing.Any) -> None:
     centers, points, dc = CENTERS.copy(), POINTS.copy(), DC.copy()
     tolerance = 1e-12
     if bad == "coincident":
@@ -271,7 +284,7 @@ def test_invalid_or_nonsmooth_inputs_fail_closed(bad):
         )
 
 
-def test_branch_program_identity_and_no_runtime_import_during_generation():
+def test_branch_program_identity_and_no_runtime_import_during_generation() -> None:
     one = grid_response_program("becke", 1)
     three = grid_response_program("becke", 3)
     assert one.identity != three.identity
@@ -310,7 +323,7 @@ for kind in ('norm', 'ratio', 'log', 'becke'):
     )
 
 
-def test_grid_spec_and_bad_tile_boundaries_are_not_silently_changed():
+def test_grid_spec_and_bad_tile_boundaries_are_not_silently_changed() -> None:
     grid = grid_at(spec=replace(grid_at().spec, partition_iterations=1))
     _, _, derivative = gather(grid, DC)
     assert derivative.shape == (grid.npoint,)

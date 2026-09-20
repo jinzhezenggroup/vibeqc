@@ -1,7 +1,10 @@
 """Default output destinations pass the same admission as explicit CLI paths."""
 
+from __future__ import annotations
+
 import argparse
 import ast
+import typing
 from pathlib import Path
 
 import pytest
@@ -11,8 +14,8 @@ from benchmarks import _retention, build_ledger
 
 
 def test_build_ledger_default_rejects_retained_symlink_before_work(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     retained = tmp_path / "benchmarks/results"
     retained.mkdir(parents=True)
     (tmp_path / ".artifacts").symlink_to(retained, target_is_directory=True)
@@ -33,7 +36,7 @@ def test_build_ledger_default_rejects_retained_symlink_before_work(
     assert original.read_text() == "original scientific evidence"
 
 
-def test_live_output_defaults_are_strings_for_argparse_conversion():
+def test_live_output_defaults_are_strings_for_argparse_conversion() -> None:
     for path, node, options in active_runner_output_arguments():
         default = next((kw.value for kw in node.keywords if kw.arg == "default"), None)
         if default is None:
@@ -49,7 +52,9 @@ def test_live_output_defaults_are_strings_for_argparse_conversion():
         assert constant_string or explicit_string, (path, options, ast.unparse(default))
 
 
-def test_default_scratch_output_keeps_path_contract(tmp_path, monkeypatch):
+def test_default_scratch_output_keeps_path_contract(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(_retention, "_REPOSITORY_ROOT", tmp_path)
     parser = argparse.ArgumentParser()

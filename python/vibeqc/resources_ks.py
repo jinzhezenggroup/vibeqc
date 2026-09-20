@@ -13,6 +13,7 @@ import ctypes
 import json
 import math
 import os
+import typing
 from dataclasses import asdict, replace
 
 from .basis import BasisSet
@@ -35,7 +36,15 @@ from .resources_hf import _basis_record, _cuda_library_identity, _ecp_workspace
 _METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks")
 
 
-def _item_host_inventory(item, *, diis_history, max_iterations, pbe, backend, model):
+def _item_host_inventory(
+    item: typing.Any,
+    *,
+    diis_history: typing.Any,
+    max_iterations: typing.Any,
+    pbe: typing.Any,
+    backend: typing.Any,
+    model: typing.Any,
+) -> typing.Any:
     """Bound numeric and LP64 value metadata by actual execution lifetimes.
 
     Every plan retains its host grid, basis, warm/source metadata and provider.
@@ -102,7 +111,14 @@ def _item_host_inventory(item, *, diis_history, max_iterations, pbe, backend, mo
     }
 
 
-def _cuda_item_inventory(library, item, *, diis_history, pbe, tile):
+def _cuda_item_inventory(
+    library: typing.Any,
+    item: typing.Any,
+    *,
+    diis_history: typing.Any,
+    pbe: typing.Any,
+    tile: typing.Any,
+) -> typing.Any:
     query = getattr(library, "vibeqc_resource_ks_cuda_v1", None)
     if query is None:
         raise NotImplementedError(
@@ -153,26 +169,26 @@ def _cuda_item_inventory(library, item, *, diis_history, pbe, tile):
 
 
 def ks_resource_request(
-    systems,
+    systems: typing.Any,
     *,
-    method="pbe-rks",
-    basis="sto-3g",
-    backend="cpu",
-    basis_representation=None,
-    charges=None,
-    multiplicities=None,
-    diis_history=8,
-    max_iterations=100,
-    energy_tolerance=1e-10,
-    density_tolerance=1e-8,
-    screening_tolerance=1e-12,
-    ks_options=None,
-    device_id=0,
-    library=None,
-    name="ks",
-    first_phase=0,
-    last_phase=0,
-):
+    method: typing.Any = "pbe-rks",
+    basis: typing.Any = "sto-3g",
+    backend: typing.Any = "cpu",
+    basis_representation: typing.Any = None,
+    charges: typing.Any = None,
+    multiplicities: typing.Any = None,
+    diis_history: typing.Any = 8,
+    max_iterations: typing.Any = 100,
+    energy_tolerance: typing.Any = 1e-10,
+    density_tolerance: typing.Any = 1e-8,
+    screening_tolerance: typing.Any = 1e-12,
+    ks_options: typing.Any = None,
+    device_id: typing.Any = 0,
+    library: typing.Any = None,
+    name: typing.Any = "ks",
+    first_phase: typing.Any = 0,
+    last_phase: typing.Any = 0,
+) -> typing.Any:
     """Resolve one complete energy-only KS request for the shared global planner."""
     if method not in _METHODS or backend not in ("cpu", "cuda"):
         raise NotImplementedError(
@@ -439,7 +455,9 @@ def ks_resource_request(
     return ResourceRequest(name, identity, (candidate,), exclusions)
 
 
-def estimate_ks_resources(systems, *, budget=None, **options):
+def estimate_ks_resources(
+    systems: typing.Any, *, budget: typing.Any = None, **options: typing.Any
+) -> typing.Any:
     """Plan native KS energy capacity without creating scientific arrays."""
     return plan_resources(
         (ks_resource_request(systems, **options),),

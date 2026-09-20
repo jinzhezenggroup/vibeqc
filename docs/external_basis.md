@@ -26,8 +26,9 @@ from vibeqc import Calculator, load_basis, basis_capability
 
 basis = load_basis(Path("local-basis.json"))
 atoms = [("O", (0, 0, 0)), ("H", (0, -1.43, 1.1)), ("H", (0, 1.43, 1.1))]
-report = basis_capability(basis, atoms, backend="cuda",
-                          operator="eri", derivative_order=1)
+report = basis_capability(
+    basis, atoms, backend="cuda", operator="eri", derivative_order=1
+)
 if report["eligible"]:
     result = Calculator(basis=basis, device="cuda").singlepoint(atoms)
     print(result.energy, result.basis_metadata)

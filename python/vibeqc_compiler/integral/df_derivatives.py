@@ -8,6 +8,7 @@ moments. Neither lowering carries automatic differentiation into runtime.
 """
 
 import math
+import typing
 from dataclasses import dataclass, replace
 from functools import cache
 
@@ -22,7 +23,9 @@ from .expr import Expr, Graph, Node
 from .shell_spec import AXES
 
 
-def build_df_derivative_ir(family, angular, *, weighted=False):
+def build_df_derivative_ir(
+    family: typing.Any, angular: typing.Any, *, weighted: typing.Any = False
+) -> typing.Any:
     """Declare full (center,xyz,AO...) blocks with fixed bar_A or bar_M weights."""
     value = build_df_value_ir(family, angular)
     centers = len(value.operator.centers)
@@ -55,7 +58,9 @@ class DFDerivativeKernel:
     centers_count: int
 
 
-def build_df_derivative_kernel(integral, components):
+def build_df_derivative_kernel(
+    integral: typing.Any, components: typing.Any
+) -> typing.Any:
     """Differentiate physical centers before lowering recurrence boundaries."""
     if integral.derivative is None or integral.derivative.order != 1:
         raise ValueError("DF derivative lowering requires first nuclear derivatives")
@@ -161,7 +166,9 @@ def build_df_derivative_kernel(integral, components):
     )
 
 
-def evaluate_df_derivative(kernel, exponents, centers):
+def evaluate_df_derivative(
+    kernel: typing.Any, exponents: typing.Any, centers: typing.Any
+) -> typing.Any:
     """Evaluate generated roots for independent oracle/finite-difference tests."""
     if len(exponents) != kernel.centers_count or len(centers) != kernel.centers_count:
         raise ValueError("DF primitive centers/exponents do not match the signature")
@@ -188,7 +195,7 @@ def evaluate_df_derivative(kernel, exponents, centers):
     )
 
 
-def axis_polynomial(a, b, c):
+def axis_polynomial(a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
     """Rewrite the shared Gaussian moment DAG as coefficients in u=t^2.
 
     Rys means and covariances are affine in u. Coefficient convolution therefore
@@ -212,7 +219,7 @@ def axis_polynomial(a, b, c):
     }
 
     @cache
-    def coefficients(identifier):
+    def coefficients(identifier: typing.Any) -> typing.Any:
         node = source.nodes[identifier]
         if node.operation == "constant":
             return (g.clone_constant(node),)

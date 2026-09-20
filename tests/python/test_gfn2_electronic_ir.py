@@ -82,7 +82,7 @@ XTBLOOM_EXPECTED = np.array(
 )
 
 
-def _topology():
+def _topology() -> Gfn2ElectronicTopology:
     return Gfn2ElectronicTopology(
         system_atom_offsets=(0, 1, 3),
         system_shell_offsets=(0, 1, 4),
@@ -92,7 +92,7 @@ def _topology():
     )
 
 
-def _restricted_feeds():
+def _restricted_feeds() -> dict[str, np.ndarray]:
     topology = _topology()
     matrices = topology.matrix_count
     shell_scalar = np.array([-0.23, 0.33, -0.15, 0.41])
@@ -134,7 +134,7 @@ def _restricted_feeds():
     }
 
 
-def test_ragged_fixed_state_hamiltonian_matches_pinned_xtbloom_reference():
+def test_ragged_fixed_state_hamiltonian_matches_pinned_xtbloom_reference() -> None:
     compiled = build_gfn2_electronic_program(
         "GFN2-xTB",
         _topology(),
@@ -147,7 +147,7 @@ def test_ragged_fixed_state_hamiltonian_matches_pinned_xtbloom_reference():
     assert compiled.topology.canonical_forward[9] == 2
 
 
-def test_generated_sdq_adjoint_matches_reference_vjp_and_dot_product():
+def test_generated_sdq_adjoint_matches_reference_vjp_and_dot_product() -> None:
     compiled = build_gfn2_electronic_program(
         "GFN2-xTB",
         _topology(),
@@ -203,7 +203,9 @@ def test_generated_sdq_adjoint_matches_reference_vjp_and_dot_product():
         )
 
 
-def test_unrestricted_spin_semantics_are_explicit_and_reduce_to_charge_average():
+def test_unrestricted_spin_semantics_are_explicit_and_reduce_to_charge_average() -> (
+    None
+):
     topology = _topology()
     restricted = build_gfn2_electronic_program(
         "GFN2-xTB",
@@ -249,7 +251,7 @@ def test_unrestricted_spin_semantics_are_explicit_and_reduce_to_charge_average()
     assert restricted.identity != unrestricted.identity
 
 
-def test_topology_rejects_cross_system_ownership():
+def test_topology_rejects_cross_system_ownership() -> None:
     with pytest.raises(ValueError, match="crosses a system boundary"):
         Gfn2ElectronicTopology(
             system_atom_offsets=(0, 1, 2),
@@ -260,7 +262,7 @@ def test_topology_rejects_cross_system_ownership():
         )
 
 
-def test_primal_and_generated_sdq_adjoint_lower_through_cuda_tensorir():
+def test_primal_and_generated_sdq_adjoint_lower_through_cuda_tensorir() -> None:
     from vibeqc_compiler.common.cuda_target import CUDA_TARGETS
     from vibeqc_compiler.tensor.cuda_emit import emit_cuda
     from vibeqc_compiler.tensor.cuda_plan import plan_cuda

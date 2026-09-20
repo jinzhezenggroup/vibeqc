@@ -16,9 +16,11 @@ import json
 import re
 import statistics
 from collections import defaultdict
-from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 try:
     from benchmarks._retention import raw_output_path

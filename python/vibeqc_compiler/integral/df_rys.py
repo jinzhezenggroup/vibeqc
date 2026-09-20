@@ -7,6 +7,7 @@ The independent incomplete-gamma reference lives in the qualification tests.
 """
 
 import math
+import typing
 
 from .df_rys2_data import DF_RYS2_COEFFICIENTS
 from .rys import (
@@ -24,7 +25,7 @@ TAYLOR_COEFFICIENTS = tuple(
 )
 
 
-def rys_roots(argument, nroots=1):
+def rys_roots(argument: typing.Any, nroots: typing.Any = 1) -> typing.Any:
     """Evaluate ordered FP64 t² nodes; this host aid is not a runtime dependency."""
     if not math.isfinite(argument) or argument < 0 or nroots not in (1, 2, 3, 4):
         raise ValueError("DF Rys requires finite T >= 0 and one through four roots")
@@ -67,7 +68,7 @@ def rys_roots(argument, nroots=1):
     return ((0.5 / argument) * (1.0 - math.exp(-argument) / weight),), (weight,)
 
 
-def emit_df_rys_cuda():
+def emit_df_rys_cuda() -> typing.Any:
     """Emit independently owned analytic quadrature, stable at T=0 and large T.
 
     The small-T branch avoids cancellation in F1. Its fixed Taylor polynomial

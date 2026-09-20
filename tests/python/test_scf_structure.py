@@ -1,5 +1,6 @@
 """Keep method/backend ownership out of reusable CPU SCF reference interfaces."""
 
+import typing
 from pathlib import Path
 
 import pytest
@@ -7,13 +8,13 @@ import pytest
 from tools.check_scf_structure import audit_scf_structure
 
 
-def test_current_shared_scf_dependencies_are_valid():
+def test_current_shared_scf_dependencies_are_valid() -> None:
     report = audit_scf_structure()
     assert not report["errors"]
     assert report["modules"]
 
 
-def test_one_electron_mapping_uses_explicit_cuda_provider_capability():
+def test_one_electron_mapping_uses_explicit_cuda_provider_capability() -> None:
     root = Path(__file__).resolve().parents[2]
     policy = (root / "src/scf/cuda/rhf_policy.cpp").read_text(encoding="utf-8")
     provider = (root / "src/runtime/cuda_provider.hpp").read_text(encoding="utf-8")
@@ -27,7 +28,9 @@ def test_one_electron_mapping_uses_explicit_cuda_provider_capability():
     assert "-DVIBEQC_CUDA_PROVIDER=cumetal" in workflow
 
 
-def test_component_trace_cannot_depend_on_scf_provider(tmp_path):
+def test_component_trace_cannot_depend_on_scf_provider(
+    tmp_path: typing.Any,
+) -> None:
     source = tmp_path / "src"
     (source / "runtime").mkdir(parents=True)
     (source / "scf/cuda").mkdir(parents=True)
@@ -43,8 +46,8 @@ def test_component_trace_cannot_depend_on_scf_provider(tmp_path):
 @pytest.mark.parametrize("include", ['"scf/rhf.hpp"', '"../rhf.hpp"', "<scf/rhf.hpp>"])
 @pytest.mark.parametrize("owner", ["reference", "solver", "gradient"])
 def test_method_dependency_cannot_hide_behind_include_spelling(
-    tmp_path, include, owner
-):
+    tmp_path: typing.Any, include: typing.Any, owner: typing.Any
+) -> None:
     source = tmp_path / "src/scf"
     (source / owner).mkdir(parents=True)
     (source / "rhf.hpp").write_text("// Method-owned state\n")
@@ -54,7 +57,9 @@ def test_method_dependency_cannot_hide_behind_include_spelling(
     assert f"forbidden {owner} dependency on scf/rhf.hpp" in report["errors"][0]
 
 
-def test_gradient_assembly_cannot_depend_on_solver_state(tmp_path):
+def test_gradient_assembly_cannot_depend_on_solver_state(
+    tmp_path: typing.Any,
+) -> None:
     source = tmp_path / "src/scf"
     (source / "solver").mkdir(parents=True)
     (source / "gradient").mkdir()
@@ -65,7 +70,9 @@ def test_gradient_assembly_cannot_depend_on_solver_state(tmp_path):
     assert "forbidden gradient dependency on scf/solver/diis.hpp" in report["errors"][0]
 
 
-def test_initial_guess_consumes_reference_without_reverse_edge(tmp_path):
+def test_initial_guess_consumes_reference_without_reverse_edge(
+    tmp_path: typing.Any,
+) -> None:
     source = tmp_path / "src/scf"
     for directory in ["reference", "initial_guess"]:
         (source / directory).mkdir(parents=True)
@@ -78,7 +85,9 @@ def test_initial_guess_consumes_reference_without_reverse_edge(tmp_path):
     assert len(audit_scf_structure(tmp_path)["errors"]) == 1
 
 
-def test_documented_forbidden_example_is_not_an_include(tmp_path):
+def test_documented_forbidden_example_is_not_an_include(
+    tmp_path: typing.Any,
+) -> None:
     source = tmp_path / "src/scf"
     (source / "reference").mkdir(parents=True)
     (source / "rhf.hpp").write_text("// Method-owned state\n")
@@ -104,7 +113,9 @@ def test_documented_forbidden_example_is_not_an_include(tmp_path):
     ],
 )
 @pytest.mark.parametrize("include", ['"scf/rhf.hpp"', '"../rhf.hpp"', "<scf/rhf.hpp>"])
-def test_cuda_runtime_cannot_depend_on_method_driver(tmp_path, name, owner, include):
+def test_cuda_runtime_cannot_depend_on_method_driver(
+    tmp_path: typing.Any, name: typing.Any, owner: typing.Any, include: typing.Any
+) -> None:
     source = tmp_path / "src/scf"
     (source / "cuda").mkdir(parents=True)
     (source / "rhf.hpp").write_text("// Method-owned state\n")
@@ -114,7 +125,9 @@ def test_cuda_runtime_cannot_depend_on_method_driver(tmp_path, name, owner, incl
     assert f"forbidden {owner} dependency on scf/rhf.hpp" in errors[0]
 
 
-def test_eigensolver_cannot_acquire_direct_queue_policy(tmp_path):
+def test_eigensolver_cannot_acquire_direct_queue_policy(
+    tmp_path: typing.Any,
+) -> None:
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
     (source / "direct_constants.hpp").write_text("// Direct queue policy\n")
@@ -125,7 +138,9 @@ def test_eigensolver_cannot_acquire_direct_queue_policy(tmp_path):
 @pytest.mark.parametrize(
     "owner", ["df_jk_kernels.cu", "df_scf_kernels.cu", "scf_density_kernels.cu"]
 )
-def test_df_kernels_cannot_acquire_host_plan_state(tmp_path, owner):
+def test_df_kernels_cannot_acquire_host_plan_state(
+    tmp_path: typing.Any, owner: typing.Any
+) -> None:
     """Kernel changes must remain independent of resource and graph lifetimes."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -134,7 +149,9 @@ def test_df_kernels_cannot_acquire_host_plan_state(tmp_path, owner):
     assert len(audit_scf_structure(tmp_path)["errors"]) == 1
 
 
-def test_matrix_library_cannot_acquire_bucket_resource_owner(tmp_path):
+def test_matrix_library_cannot_acquire_bucket_resource_owner(
+    tmp_path: typing.Any,
+) -> None:
     """Matrix consumers borrow handles without depending on allocation lifetime."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -151,8 +168,8 @@ def test_matrix_library_cannot_acquire_bucket_resource_owner(tmp_path):
     ["resources.hpp", "one_electron_native_overlap.cuh", "df_plan_internal.hpp"],
 )
 def test_direct_queue_owners_cannot_acquire_plan_or_integral_state(
-    tmp_path, owner, dependency
-):
+    tmp_path: typing.Any, owner: typing.Any, dependency: typing.Any
+) -> None:
     """Queue rebuilds stay independent of host ownership and integral recurrences."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -170,8 +187,8 @@ def test_direct_queue_owners_cannot_acquire_plan_or_integral_state(
     ["direct_jk_kernels.cu", "one_electron_native_force.cuh", "resources.hpp"],
 )
 def test_provider_host_owners_cannot_import_recurrences_or_scf_lifetime(
-    tmp_path, owner, dependency
-):
+    tmp_path: typing.Any, owner: typing.Any, dependency: typing.Any
+) -> None:
     """Provider host rebuilds borrow launches instead of device implementations."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -188,7 +205,9 @@ def test_provider_host_owners_cannot_import_recurrences_or_scf_lifetime(
         "one_electron_export_kernels.hpp",
     ],
 )
-def test_provider_kernel_interfaces_cannot_acquire_plan_state(tmp_path, owner):
+def test_provider_kernel_interfaces_cannot_acquire_plan_state(
+    tmp_path: typing.Any, owner: typing.Any
+) -> None:
     """A consumer interface must remain usable without host plan allocations."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -212,8 +231,8 @@ def test_provider_kernel_interfaces_cannot_acquire_plan_state(tmp_path, owner):
     "dependency", ["direct_constants.hpp", "direct_jk_plan.hpp", "resources.hpp"]
 )
 def test_retained_numerics_cannot_acquire_queue_policy_or_plan_state(
-    tmp_path, owner, dependency
-):
+    tmp_path: typing.Any, owner: typing.Any, dependency: typing.Any
+) -> None:
     """Scientific implementations remain independent of scheduling and lifetime."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -222,7 +241,9 @@ def test_retained_numerics_cannot_acquire_queue_policy_or_plan_state(
     assert len(audit_scf_structure(tmp_path)["errors"]) == 1
 
 
-def test_shared_numerics_cannot_import_operator_contractions(tmp_path):
+def test_shared_numerics_cannot_import_operator_contractions(
+    tmp_path: typing.Any,
+) -> None:
     """Adding a consumer must not make the shared recurrence depend on it."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -240,8 +261,8 @@ def test_shared_numerics_cannot_import_operator_contractions(tmp_path):
     "dependency", ["direct_constants.hpp", "direct_angular_fock.hpp", "resources.hpp"]
 )
 def test_direct_numerical_families_cannot_acquire_policy_or_consumers(
-    tmp_path, owner, dependency
-):
+    tmp_path: typing.Any, owner: typing.Any, dependency: typing.Any
+) -> None:
     """Native formulas borrow class indexing without acquiring launch policy."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -258,7 +279,9 @@ def test_direct_numerical_families_cannot_acquire_policy_or_consumers(
         "direct_bounded_fallback.cu",
     ],
 )
-def test_direct_contractions_cannot_acquire_host_resources(tmp_path, owner):
+def test_direct_contractions_cannot_acquire_host_resources(
+    tmp_path: typing.Any, owner: typing.Any
+) -> None:
     """Fused native consumers stay independent of graph and allocation lifetime."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -267,7 +290,9 @@ def test_direct_contractions_cannot_acquire_host_resources(tmp_path, owner):
     assert len(audit_scf_structure(tmp_path)["errors"]) == 1
 
 
-def test_direct_launch_interface_cannot_import_its_implementation(tmp_path):
+def test_direct_launch_interface_cannot_import_its_implementation(
+    tmp_path: typing.Any,
+) -> None:
     """Sharing a basename must not weaken the host/device interface boundary."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -281,7 +306,9 @@ def test_direct_launch_interface_cannot_import_its_implementation(tmp_path):
 @pytest.mark.parametrize(
     "dependency", ["direct_native_cartesian.cuh", "direct_bounded_fallback.cu"]
 )
-def test_cpp_hf_driver_cannot_import_device_implementations(tmp_path, dependency):
+def test_cpp_hf_driver_cannot_import_device_implementations(
+    tmp_path: typing.Any, dependency: typing.Any
+) -> None:
     """C++ orchestration must keep borrowing launches after numerical extraction."""
     source = tmp_path / "src/scf"
     (source / "cuda").mkdir(parents=True)
@@ -293,7 +320,9 @@ def test_cpp_hf_driver_cannot_import_device_implementations(tmp_path, dependency
 @pytest.mark.parametrize(
     "dependency", ["tensor/cuda_runtime.cuh", "scf/cuda/direct_native_cartesian.cuh"]
 )
-def test_reference_export_uses_only_host_cuda_interfaces(tmp_path, dependency):
+def test_reference_export_uses_only_host_cuda_interfaces(
+    tmp_path: typing.Any, dependency: typing.Any
+) -> None:
     """Exporting a physical reference must not pull device syntax into C++."""
     source = tmp_path / "src"
     target = source / dependency
@@ -309,8 +338,8 @@ def test_reference_export_uses_only_host_cuda_interfaces(tmp_path, dependency):
     "dependency", ["rhf_bucket_internal.hpp", "direct_jk_kernels.hpp", "rhf_policy.hpp"]
 )
 def test_hf_graph_owner_cannot_acquire_bucket_policy_or_numerical_launches(
-    tmp_path, dependency
-):
+    tmp_path: typing.Any, dependency: typing.Any
+) -> None:
     """Graph capture lifetime stays independent of bucket and scientific work."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -323,7 +352,9 @@ def test_hf_graph_owner_cannot_acquire_bucket_policy_or_numerical_launches(
     assert "forbidden cuda_hf_graph dependency" in errors[0]
 
 
-def test_hf_bucket_owner_cannot_import_device_implementation(tmp_path):
+def test_hf_bucket_owner_cannot_import_device_implementation(
+    tmp_path: typing.Any,
+) -> None:
     """Bucket admission and warm-state lifetime borrow interfaces only."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
@@ -334,7 +365,7 @@ def test_hf_bucket_owner_cannot_import_device_implementation(tmp_path):
     assert "forbidden cuda_hf_bucket dependency" in errors[0]
 
 
-def test_bucket_routes_overflow_checked_basis_counts_through_topology():
+def test_bucket_routes_overflow_checked_basis_counts_through_topology() -> None:
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[2]

@@ -1,0 +1,29 @@
+{
+  "owner": "scf_tensor",
+  "current_default": "RHF response coefficients and method-level Coulomb/exchange A/M weight kernels are compiler-generated from the DensityFittingRHFResponsePlan identity. Native CUDA owns dynamic-size BLAS, packed/resident storage, tiling, streams and callbacks. Rank-deficient metric response calls the separately generated symmetric pseudoinverse custom rule.",
+  "generated_capability": "StationaryProblem derives RHF one-electron, Pulay, three-center A and metric M source weights; its native lowering emits the production RHF coefficient contract plus dynamic-size Coulomb/exchange source-weight kernels. #143 owns coordinate-integral derivatives and SymmetricMatrixFunctionSpec owns pseudoinverse spectral response.",
+  "missing_capability": "UHF/multiple-density composition and direct dynamic-shape execution of the full TensorIR stationary graph remain native/generic follow-up work; BLAS, eigensolver, allocation, tiling, packed layout and stream policy intentionally remain native runtime.",
+  "retained_duplicate_reason": "oracle",
+  "retirement_condition": "Remove exchange_metric_kernel and its opt-in selector after the #206 complete endpoint/resource and strict numerical regression matrix qualifies the GEMV path over RHF/UHF, batch 1/4 and representative resident/streamed layouts, and the independent NumPy/finite-difference/external gates plus retained samples cover the same regression role. No automatic fallback or measured production advantage justifies keeping this serial path after that acceptance. This classification is not physical code retirement.",
+  "evidence": [
+    "tests/python/test_df_response_weights_cuda.py",
+    "benchmarks/results/issue206-metric-gemv/README.md",
+    "benchmarks/results/issue206-metric-gemv/summary.json",
+    "benchmarks/results/issue308-shell-schedules/summary.json",
+    "tests/python/test_df_resident_response_cuda.py",
+    "benchmarks/results/issue308-768ao-response/README.md",
+    "benchmarks/results/issue308-768ao-response/summary.json",
+    "tests/python/test_df_occupied_response_cuda.py",
+    "tests/native/test_df_occupied_response.cpp",
+    "benchmarks/results/issue377-379-df/README.md",
+    "tests/native/test_df_shell_pairs.cpp",
+    "tests/python/test_df_shell_derivatives_cuda.py",
+    "benchmarks/results/issue382-packed-df/README.md",
+    "docs/df_tuning.md",
+    "tests/python/test_df_exchange_policy.py",
+    "tests/python/test_df_auto_exchange_cuda.py",
+    ".agents/notes/implemented/performance/2026-09-18-general-occupied-df-policy.md",
+    "tests/python/test_df_resources.py"
+  ],
+  "status": "partial_compiler_migration"
+}

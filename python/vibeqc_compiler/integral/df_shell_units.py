@@ -5,11 +5,13 @@ class specializations, so adding an auxiliary-f implementation cannot invalidate
 all numerical objects. Execution templates remain native runtime-owned.
 """
 
+import typing
+
 from .df_rys_shell import emit_df_rys_policy_cpp, emit_df_rys_shell_cuda
 from .df_shell_derivatives import SHELL_CLASSES, emit_df_shell_derivatives_cuda
 
 
-def emit_df_shell_units():
+def emit_df_shell_units() -> typing.Any:
     """Yield stable relative paths and contents, without runtime or GPU imports."""
     registry = [
         "// Generated class registry; independent of mathematical and tuning policy bytes.",

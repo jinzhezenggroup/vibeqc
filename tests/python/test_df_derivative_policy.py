@@ -3,6 +3,7 @@
 import os
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -13,7 +14,7 @@ from benchmarks.df_admission_probe import CONTROLS, controls, errors
 
 
 @pytest.fixture(scope="module")
-def policy(tmp_path_factory):
+def policy(tmp_path_factory: typing.Any) -> typing.Any:
     compiler = shutil.which("c++")
     if not compiler:
         pytest.skip("host C++ compiler unavailable")
@@ -24,11 +25,12 @@ def policy(tmp_path_factory):
 #include <iostream>
 #include "scf/df_derivative_policy.hpp"
 int main() {
-  std::size_t n, a, op, ap;
+  std::size_t n, a, op, ap, rank;
   unsigned arch, varied;
-  while (std::cin >> n >> a >> op >> ap >> varied >> arch)
+  while (std::cin >> n >> a >> op >> ap >> rank >> varied >> arch)
     std::cout << vibeqc::scf::df_shell_execution_preferred(n,a,arch) << " "
-              << vibeqc::scf::df_signature_packets_preferred(op,ap,varied,arch) << "\n";
+              << vibeqc::scf::df_signature_packets_preferred(op,ap,varied,arch) << " "
+              << vibeqc::scf::df_packed_response_preferred(n,a,rank,arch) << "\n";
 }
 """)
     executable = directory / "query"
@@ -44,7 +46,7 @@ int main() {
         check=True,
     )
 
-    def query(rows):
+    def query(rows: typing.Any) -> typing.Any:
         result = subprocess.run(
             [str(executable)],
             input="".join(" ".join(map(str, r)) + "\n" for r in rows),
@@ -58,9 +60,11 @@ int main() {
     return query
 
 
-def test_work_model_boundaries_and_unknown_architecture(policy):
+def test_work_model_boundaries_and_unknown_architecture(
+    policy: typing.Any,
+) -> None:
     rows = [
-        (n, a, op, ap, v, arch)
+        (n, a, op, ap, rank, v, arch)
         for n, a in [
             (0, 96),
             (29, 29),
@@ -81,17 +85,46 @@ def test_work_model_boundaries_and_unknown_architecture(policy):
             (256, 1000),
             (2**64 - 1, 2**64 - 1),
         ]
+        for rank in (0, max(1, n // 5), max(1, n // 4), n // 4 + 1)
         for v in (0, 1)
         for arch in (80, 89, 100, 120, 121)
     ]
-    for (n, a, op, ap, v, arch), selected in zip(rows, policy(rows), strict=True):
+    for (n, a, op, ap, rank, v, arch), selected in zip(rows, policy(rows), strict=True):
         assert selected == (
             int(arch == 120 and n * n * a >= 2**18),
             int(arch == 120 and v and op * op * ap >= 2**22),
+            int(
+                arch == 120
+                and rank > 0
+                and n >= 4
+                and rank <= n // 4
+                and n * n * a >= 2**28
+            ),
         )
 
 
-def test_controls_restore_absent_and_present_variables_on_failure(monkeypatch):
+def test_packed_response_profile_generalizes_beyond_benchmark_tuples(
+    policy: typing.Any,
+) -> None:
+    """The profile keeps small defaults while accepting nearby heavy workloads."""
+    rows = [
+        # n, naux, orbital primitives, auxiliary primitives, rank, varied, arch
+        (384, 384, 128, 256, 80, 1, 120),
+        (640, 640, 128, 256, 128, 1, 120),
+        (646, 646, 128, 256, 129, 1, 120),
+        (700, 600, 128, 256, 140, 1, 120),
+        (768, 768, 128, 256, 160, 1, 120),
+        (769, 900, 128, 256, 191, 1, 120),
+        (769, 900, 128, 256, 193, 1, 120),
+        (768, 768, 128, 256, 160, 1, 121),
+    ]
+    packed = [result[2] for result in policy(rows)]
+    assert packed == [0, 0, 1, 1, 1, 1, 0, 0]
+
+
+def test_controls_restore_absent_and_present_variables_on_failure(
+    monkeypatch: typing.Any,
+) -> None:
     monkeypatch.setenv("VIBEQC_DF_WEIGHTED_EXECUTION", "generic")
     monkeypatch.delenv("VIBEQC_DF_PRIMITIVE_BUCKETS", raising=False)
     monkeypatch.setenv("VIBEQC_DF_TRACE", "caller-trace")
@@ -110,7 +143,7 @@ def test_controls_restore_absent_and_present_variables_on_failure(monkeypatch):
 
 
 @pytest.mark.parametrize("invalid", ["shape", "energy_nan", "force_inf", "oracle_nan"])
-def test_probe_rejects_invalid_numerical_evidence(invalid):
+def test_probe_rejects_invalid_numerical_evidence(invalid: typing.Any) -> None:
     result = SimpleNamespace(
         energies=np.array([1.0]), items=[SimpleNamespace(forces=np.ones((2, 3)))]
     )
@@ -127,7 +160,9 @@ def test_probe_rejects_invalid_numerical_evidence(invalid):
         errors(result, energy, force)
 
 
-def test_architecture_query_only_reads_required_attributes(tmp_path):
+def test_architecture_query_only_reads_required_attributes(
+    tmp_path: typing.Any,
+) -> None:
     """Mock the runtime to test failure propagation and forbid full queries."""
     compiler = shutil.which("c++")
     if not compiler:

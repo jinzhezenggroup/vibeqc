@@ -1,5 +1,7 @@
 """Fixed-density CPU XC provider composition and boundary layouts."""
 
+import typing
+
 from vibeqc_compiler.common.layout import DenseLayout
 from vibeqc_compiler.common.program import PlanCall, ProgramBuffer, ProgramIR
 from vibeqc_compiler.common.provenance import canonical_hash
@@ -10,7 +12,7 @@ from vibeqc_compiler.dft.features import DENSITY_FEATURE_SCALAR_ROWS
 from .contracts import DiscreteEnergyContract
 
 
-def _dense(name, shape):
+def _dense(name: typing.Any, shape: typing.Any) -> typing.Any:
     return ProgramBuffer(
         name,
         byte_product(8, *shape),
@@ -20,16 +22,16 @@ def _dense(name, shape):
 
 
 def fixed_density_tile_program(
-    contract,
+    contract: typing.Any,
     *,
-    nao,
-    tile_points,
-    basis_bytes,
-    grid_bytes,
-    basis_identity,
-    native_identity,
-    packed_features=False,
-):
+    nao: typing.Any,
+    tile_points: typing.Any,
+    basis_bytes: typing.Any,
+    grid_bytes: typing.Any,
+    basis_identity: typing.Any,
+    native_identity: typing.Any,
+    packed_features: typing.Any = False,
+) -> typing.Any:
     """Describe one synchronous CPU potential tile without owning its runtime."""
     if not isinstance(contract, DiscreteEnergyContract):
         raise TypeError("expected DiscreteEnergyContract")

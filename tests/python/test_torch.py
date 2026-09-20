@@ -6,7 +6,7 @@ from vibeqc import Calculator
 from vibeqc.torch import batched_energy, energy
 
 
-def test_torch_backward_matches_native_force():
+def test_torch_backward_matches_native_force() -> None:
     coordinates = torch.tensor(
         [[0.0, 0.0, -0.7], [0.0, 0.0, 0.7]],
         dtype=torch.float64,
@@ -19,7 +19,7 @@ def test_torch_backward_matches_native_force():
     assert torch.max(torch.abs(coordinates.grad.sum(dim=0))).item() < 2.0e-10
 
 
-def test_ragged_batched_torch_backward_and_warm_start():
+def test_ragged_batched_torch_backward_and_warm_start() -> None:
     h2 = torch.tensor(
         [[0.0, 0.0, -0.7], [0.0, 0.0, 0.7]],
         dtype=torch.float64,
@@ -51,7 +51,7 @@ def test_ragged_batched_torch_backward_and_warm_start():
         assert torch.max(torch.abs(h3.grad.sum(dim=0))).item() < 2.0e-10
 
 
-def test_cuda_uhf_torch_backward_uses_native_analytic_force():
+def test_cuda_uhf_torch_backward_uses_native_analytic_force() -> None:
     coordinates = torch.tensor(
         [[0.0, 0.0, -0.7], [0.0, 0.0, 0.7]],
         dtype=torch.float64,
@@ -83,7 +83,7 @@ def test_cuda_uhf_torch_backward_uses_native_analytic_force():
     assert torch.max(torch.abs(coordinates.grad.sum(dim=0))).item() < 3.0e-9
 
 
-def test_cuda_uhf_batched_torch_backward_reuses_spin_warm_state():
+def test_cuda_uhf_batched_torch_backward_reuses_spin_warm_state() -> None:
     first = torch.tensor(
         [[0.0, 0.0, -0.7], [0.0, 0.0, 0.7]],
         dtype=torch.float64,

@@ -3,11 +3,12 @@
 import os
 import subprocess
 import sys
+import typing
 
 import pytest
 
 
-def test_cuda_source_generation_is_device_and_runtime_independent():
+def test_cuda_source_generation_is_device_and_runtime_independent() -> None:
     script = """
 import sys
 class Block:
@@ -37,7 +38,16 @@ for pbe in (False,True):
     assert 'stationary_gradient_cuda.cuh' in s
     assert 'ao_pullback' in s
     assert 'local_becke' in s
+    assert 'namespace vibeqc_grid_adjoint {' in s
+    assert 'grid_response_adjoint.hpp' not in s
+    include = s.index('#include "dft/stationary_gradient_cuda.cuh"')
+    for scientific in ('__global__ void primitive_kernel', '__global__ void geometry_kernel'):
+        assert scientific in s
+        assert s.index(scientific) > include
     assert s == emit_stationary_cuda(primitive,pbe=pbe)
+template=open('src/dft/stationary_gradient_cuda.cuh').read()
+assert '__global__ void primitive_kernel' in template
+assert 'for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count' not in template
 """
     subprocess.run(
         [sys.executable, "-c", script],
@@ -50,8 +60,8 @@ for pbe in (False,True):
 @pytest.mark.parametrize("name", ["NVCC_PREPEND_FLAGS", "NVCC_APPEND_FLAGS"])
 @pytest.mark.parametrize("flags", ["--use_fast_math", "--fmad=true", "--ftz=true"])
 def test_strict_stationary_cuda_rejects_environment_overrides(
-    monkeypatch, tmp_path, name, flags
-):
+    monkeypatch: typing.Any, tmp_path: typing.Any, name: typing.Any, flags: typing.Any
+) -> None:
     from pathlib import Path
 
     from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
@@ -63,7 +73,7 @@ def test_strict_stationary_cuda_rejects_environment_overrides(
     )
     monkeypatch.setenv(name, flags)
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail(
             "strict arithmetic override reached source generation or compilation"
         )
@@ -78,7 +88,9 @@ def test_strict_stationary_cuda_rejects_environment_overrides(
     assert not cache.exists()
 
 
-def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit():
+def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit() -> (
+    None
+):
     from vibeqc_compiler.dft.ao_cuda import emit_grid_policy
     from vibeqc_compiler.xc.geometry_cuda import emit_native_geometry_cuda
 
@@ -89,3 +101,5 @@ def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit()
     assert "vibeqc_grid_policy::" not in gradient
     assert "namespace vibeqc_xc_gradient_grid_policy {" in gradient
     assert "vibeqc_xc_gradient_grid_policy::axis_jet" in gradient
+    assert "namespace vibeqc_grid_adjoint {" in gradient
+    assert "grid_response_adjoint.hpp" not in gradient

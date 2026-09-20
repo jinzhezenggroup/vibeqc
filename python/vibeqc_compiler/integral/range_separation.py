@@ -9,6 +9,7 @@ during nuclear differentiation.
 from __future__ import annotations
 
 import math
+import typing
 from dataclasses import dataclass
 from enum import Enum
 
@@ -33,7 +34,7 @@ class CoulombKernel:
     family: CoulombKernelFamily | str = CoulombKernelFamily.FULL_RANGE
     omega: float = 0.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "family", CoulombKernelFamily(self.family))
         if isinstance(self.omega, bool):
             raise TypeError("omega must be a real inverse-bohr parameter")
@@ -44,7 +45,7 @@ class CoulombKernel:
             raise ValueError("full Coulomb does not accept a range parameter")
         object.__setattr__(self, "omega", 0.0 if omega == 0 else omega)
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         """Return normalized scientific inputs for IR/cache serialization."""
         return {"version": 1, "family": self.family.value, "omega": self.omega}
 
@@ -102,7 +103,7 @@ def reference_moments(
     for order in range(maximum_order + 1):
         # Extract small powers/decay so QUADPACK's relative error criterion
         # controls the shape integral even when the physical moment is tiny.
-        def integrand(point, order=order):
+        def integrand(point: typing.Any, order: typing.Any = order) -> typing.Any:
             delta = width * point
             return ((lower + delta) / upper) ** (2 * order) * math.exp(
                 -argument * delta * (2 * lower + delta)

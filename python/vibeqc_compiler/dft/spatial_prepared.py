@@ -10,10 +10,9 @@ from __future__ import annotations
 import json
 import threading
 import time
+import typing
 from contextlib import contextmanager
 from dataclasses import dataclass
-
-import numpy as np
 
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.resources import (
@@ -39,6 +38,9 @@ from .spatial import (
     spatial_resource_request,
 )
 
+if typing.TYPE_CHECKING:
+    import numpy as np
+
 
 @dataclass(frozen=True)
 class SpatialFeatureTile:
@@ -54,7 +56,12 @@ class SpatialFeatureTile:
     ao_jets: np.ndarray | None = None
 
 
-def _request(name, estimates, topology, backend="cpu"):
+def _request(
+    name: typing.Any,
+    estimates: typing.Any,
+    topology: typing.Any,
+    backend: typing.Any = "cpu",
+) -> typing.Any:
     return ResourceRequest(
         name,
         ResourceIdentity(
@@ -75,7 +82,7 @@ def _request(name, estimates, topology, backend="cpu"):
     )
 
 
-def _previous_request(plan):
+def _previous_request(plan: typing.Any) -> typing.Any:
     # Charge the previous complete capacities, including its scratch, over the
     # replacement's construction and execution phases. This deliberately
     # overestimates overlap instead of pretending old allocations disappeared.
@@ -97,7 +104,9 @@ def _previous_request(plan):
     return _request("previous_spatial_owner", estimates, {"identity": plan.identity})
 
 
-def _materialize_grid(basis, grid, budget, previous):
+def _materialize_grid(
+    basis: typing.Any, grid: typing.Any, budget: typing.Any, previous: typing.Any
+) -> typing.Any:
     if isinstance(grid, ExplicitGrid):
         return grid
     if not isinstance(grid, MolecularGrid):
@@ -133,22 +142,22 @@ class PreparedSpatialGrid:
 
     def __init__(
         self,
-        basis,
-        grid,
+        basis: typing.Any,
+        grid: typing.Any,
         *,
-        policy=None,
-        tasks=None,
-        backend="cpu",
-        tile_points=64,
-        resource_budget=None,
-        artifact=None,
-        device_id=0,
-        orbital_capacity=None,
-        orbital_tile=32,
-        ingredients=None,
-        basis_generation=0,
-        _previous_plan=None,
-    ):
+        policy: typing.Any = None,
+        tasks: typing.Any = None,
+        backend: typing.Any = "cpu",
+        tile_points: typing.Any = 64,
+        resource_budget: typing.Any = None,
+        artifact: typing.Any = None,
+        device_id: typing.Any = 0,
+        orbital_capacity: typing.Any = None,
+        orbital_tile: typing.Any = 32,
+        ingredients: typing.Any = None,
+        basis_generation: typing.Any = 0,
+        _previous_plan: typing.Any = None,
+    ) -> None:
         self._lock = threading.RLock()
         self._cuda = None
         self._closed = False
@@ -326,23 +335,29 @@ class PreparedSpatialGrid:
             "tiles": 0,
         }
 
-    def _check(self):
+    def _check(self) -> None:
         if self._closed:
             raise RuntimeError("prepared spatial grid is closed")
         if self._leased:
             raise RuntimeError("prepared spatial grid has an active task lease")
 
-    def _tiles(self):
+    def _tiles(self) -> typing.Any:
         for task in self.tasks.tasks:
             for begin in range(0, len(task.point_ids), self.tile_plan.tile_points):
                 yield task, task.point_ids[begin : begin + self.tile_plan.tile_points]
 
     @property
-    def source_statistics(self):
+    def source_statistics(self) -> typing.Any:
         """Detached CUDA source/packing diagnostics; CPU executes the supplied D."""
         return {} if self._cuda is None else self._cuda.source_statistics
 
-    def _start_execution(self, density, *, stamp=None, route="auto"):
+    def _start_execution(
+        self,
+        density: typing.Any,
+        *,
+        stamp: typing.Any = None,
+        route: typing.Any = "auto",
+    ) -> typing.Any:
         """Upload once and invalidate older iterators, under the spatial lock.
 
         A failed transport also invalidates previous iterators: the native owner
@@ -368,14 +383,14 @@ class PreparedSpatialGrid:
 
     def iter_features(
         self,
-        density,
+        density: typing.Any,
         *,
-        include_jets=False,
-        ingredients=None,
-        order=None,
-        stamp=None,
-        route="auto",
-    ):
+        include_jets: typing.Any = False,
+        ingredients: typing.Any = None,
+        order: typing.Any = None,
+        stamp: typing.Any = None,
+        route: typing.Any = "auto",
+    ) -> typing.Any:
         """Yield detached tiles; a new execution invalidates old iterators.
 
         CPU consumers may request fewer ingredients/jets than the screening
@@ -441,7 +456,13 @@ class PreparedSpatialGrid:
             yield result
 
     @contextmanager
-    def device_tasks(self, density, *, stamp=None, route="auto"):
+    def device_tasks(
+        self,
+        density: typing.Any,
+        *,
+        stamp: typing.Any = None,
+        route: typing.Any = "auto",
+    ) -> typing.Any:
         """Lend a serial iterator of native task leases without feature/jet D2H.
 
         Each yielded tuple is (SpatialTask, point_ids, DeviceGridTask). Finish
@@ -460,7 +481,7 @@ class PreparedSpatialGrid:
             self._start_execution(density, stamp=stamp, route=route)
             self._leased = True
 
-            def iterator():
+            def iterator() -> typing.Any:
                 for task, ids in self._tiles():
                     with cuda.task(
                         self.grid.points[ids], task.ao_ids, stamp=stamp
@@ -478,7 +499,14 @@ class PreparedSpatialGrid:
                 self._leased = False
 
     @contextmanager
-    def device_xc_tasks(self, density, functional, *, stamp=None, route="auto"):
+    def device_xc_tasks(
+        self,
+        density: typing.Any,
+        functional: typing.Any,
+        *,
+        stamp: typing.Any = None,
+        route: typing.Any = "auto",
+    ) -> typing.Any:
         """Lend serial local CUDA tasks with the minimal native XC feature mask."""
         with self._lock:
             self._check()
@@ -493,7 +521,7 @@ class PreparedSpatialGrid:
             self._start_execution(density, stamp=stamp, route=route)
             self._leased = True
 
-            def iterator():
+            def iterator() -> typing.Any:
                 for task, ids in self._tiles():
                     with cuda.xc_task(
                         self.grid.points[ids], task.ao_ids, functional, stamp=stamp
@@ -508,7 +536,9 @@ class PreparedSpatialGrid:
                 result.close()
                 self._leased = False
 
-    def reconfigure(self, basis, grid, **changes):
+    def reconfigure(
+        self, basis: typing.Any, grid: typing.Any, **changes: typing.Any
+    ) -> None:
         """Replace immutable scientific state transactionally, charging both owners."""
         with self._lock:
             self._check()
@@ -526,7 +556,7 @@ class PreparedSpatialGrid:
             replacement._cuda = None
             replacement._closed = True
 
-    def close(self):
+    def close(self) -> None:
         """Close owned native state while leaving caller-owned basis data alive."""
         with self._lock:
             if self._leased:
@@ -537,12 +567,12 @@ class PreparedSpatialGrid:
             self._closed = True
             self._execution += 1
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()

@@ -11,6 +11,7 @@ from __future__ import annotations
 import ctypes as c
 import ctypes.util
 import re
+import typing
 from dataclasses import dataclass, field
 
 from .backend import TargetInfo
@@ -25,7 +26,9 @@ from .runtime_backend import (
 class OpenCLError(RuntimeError):
     """Retain the vendor error code and complete build log without reclassification."""
 
-    def __init__(self, operation, code, log=""):
+    def __init__(
+        self, operation: typing.Any, code: typing.Any, log: typing.Any = ""
+    ) -> None:
         self.operation, self.code, self.log = operation, int(code), log
         super().__init__(
             f"{operation} failed with OpenCL status {code}"
@@ -56,7 +59,7 @@ class LocalMemory:
     nbytes: int
 
 
-def _check(code, operation, log=""):
+def _check(code: typing.Any, operation: typing.Any, log: typing.Any = "") -> None:
     if code:
         raise OpenCLError(operation, code, log)
 
@@ -70,7 +73,9 @@ class OpenCLRuntime:
     preserves the environment and never silently selects a CPU OpenCL device.
     """
 
-    def __init__(self, *, library=None, device_uuid=None):
+    def __init__(
+        self, *, library: typing.Any = None, device_uuid: typing.Any = None
+    ) -> None:
         path = library or ctypes_library()
         self.api = c.CDLL(path)
         self.library = path
@@ -105,7 +110,7 @@ class OpenCLRuntime:
             self.close()
             raise
 
-    def _bind(self):
+    def _bind(self) -> None:
         """Declare OpenCL 1.2 ABI signatures, using pointer-sized handles explicitly."""
         P, U, I, S, B = c.c_void_p, c.c_uint, c.c_int, c.c_size_t, c.c_uint64
         PP, UP, IP, SP = c.POINTER(P), c.POINTER(U), c.POINTER(I), c.POINTER(S)
@@ -149,7 +154,9 @@ class OpenCLRuntime:
             function = getattr(self.api, name)
             function.restype, function.argtypes = result, args
 
-    def _device_info(self, device, key, scalar=None):
+    def _device_info(
+        self, device: typing.Any, key: typing.Any, scalar: typing.Any = None
+    ) -> typing.Any:
         size = c.c_size_t()
         _check(
             self.api.clGetDeviceInfo(device, key, 0, None, c.byref(size)),
@@ -165,7 +172,7 @@ class OpenCLRuntime:
             else value.raw.rstrip(b"\0").decode()
         )
 
-    def _devices(self):
+    def _devices(self) -> typing.Any:
         count = c.c_uint()
         _check(self.api.clGetPlatformIDs(0, None, c.byref(count)), "clGetPlatformIDs")
         platforms = (c.c_void_p * count.value)()
@@ -226,7 +233,7 @@ class OpenCLRuntime:
                 rows.append(info)
         return rows
 
-    def capabilities(self):
+    def capabilities(self) -> typing.Any:
         return RuntimeCapabilities(
             "opencl",
             self.device["fp64"],
@@ -235,7 +242,7 @@ class OpenCLRuntime:
             self.device["subgroup_size"],
         )
 
-    def target_info(self):
+    def target_info(self) -> typing.Any:
         """Expose queried limits through the established generic target contract."""
         return TargetInfo(
             "opencl",
@@ -245,20 +252,26 @@ class OpenCLRuntime:
             None,
         )
 
-    def library_provider(self):
+    def library_provider(self) -> typing.Any:
         """OpenCL core supplies no BLAS/eigensolver/factorization provider."""
         return UnsupportedLibraryProvider(
             "opencl", "no native GEMM/eigensolver/Cholesky library adapter configured"
         )
 
-    def _own(self, kind, handle, nbytes=0, dependencies=()):
+    def _own(
+        self,
+        kind: typing.Any,
+        handle: typing.Any,
+        nbytes: typing.Any = 0,
+        dependencies: typing.Any = (),
+    ) -> typing.Any:
         if not handle:
             raise OpenCLError(f"create {kind}", -1, "vendor returned a null handle")
         resource = Resource(kind, int(handle), self, nbytes, tuple(dependencies))
         self._resources[id(resource)] = resource
         return resource
 
-    def _require(self, resource, kind):
+    def _require(self, resource: typing.Any, kind: typing.Any) -> typing.Any:
         if (
             self._closed
             or not isinstance(resource, Resource)
@@ -270,7 +283,7 @@ class OpenCLRuntime:
             raise ValueError(f"live {kind} from this OpenCL context required")
         return resource.handle
 
-    def create_stream(self):
+    def create_stream(self) -> typing.Any:
         """Create an in-order queue with native event profiling enabled."""
         if self._closed or not self._context:
             raise ValueError("OpenCL context is closed")
@@ -281,7 +294,7 @@ class OpenCLRuntime:
         _check(error.value, "clCreateCommandQueue")
         return self._own("queue", handle)
 
-    def allocate(self, nbytes):
+    def allocate(self, nbytes: typing.Any) -> typing.Any:
         """Allocate on the selected GPU, enforcing the queried per-buffer limit."""
         if (
             self._closed
@@ -296,7 +309,9 @@ class OpenCLRuntime:
         _check(error.value, "clCreateBuffer")
         return self._own("buffer", handle, nbytes)
 
-    def _bounds(self, buffer, offset, nbytes):
+    def _bounds(
+        self, buffer: typing.Any, offset: typing.Any, nbytes: typing.Any
+    ) -> typing.Any:
         handle = self._require(buffer, "buffer")
         if (
             type(offset) is not int
@@ -308,7 +323,14 @@ class OpenCLRuntime:
             raise ValueError("transfer exceeds the owned buffer")
         return handle
 
-    def write(self, buffer, data, *, offset=0, stream=None):
+    def write(
+        self,
+        buffer: typing.Any,
+        data: typing.Any,
+        *,
+        offset: typing.Any = 0,
+        stream: typing.Any = None,
+    ) -> None:
         """A blocking transfer owns the host input until the ICD has consumed it."""
         data = bytes(data)
         handle = self._bounds(buffer, offset, len(data))
@@ -322,7 +344,14 @@ class OpenCLRuntime:
                 "clEnqueueWriteBuffer",
             )
 
-    def read(self, buffer, nbytes, *, offset=0, stream=None):
+    def read(
+        self,
+        buffer: typing.Any,
+        nbytes: typing.Any,
+        *,
+        offset: typing.Any = 0,
+        stream: typing.Any = None,
+    ) -> typing.Any:
         handle = self._bounds(buffer, offset, nbytes)
         queue = self._require(stream or self.queue, "queue")
         if not nbytes:
@@ -336,7 +365,7 @@ class OpenCLRuntime:
         )
         return host.raw
 
-    def build_log(self, program):
+    def build_log(self, program: typing.Any) -> typing.Any:
         handle = self._require(program, "program")
         size = c.c_size_t()
         _check(
@@ -354,7 +383,9 @@ class OpenCLRuntime:
         )
         return value.value.decode(errors="replace")
 
-    def compile(self, source, *, options=("-cl-std=CL1.2",)):
+    def compile(
+        self, source: typing.Any, *, options: typing.Any = ("-cl-std=CL1.2",)
+    ) -> typing.Any:
         """Use clCompileProgram and preserve the vendor compiler's full diagnostics."""
         if self._closed or not isinstance(source, str) or not source:
             raise ValueError("nonempty source and a live context required")
@@ -382,7 +413,7 @@ class OpenCLRuntime:
             raise OpenCLError("clCompileProgram", code, log)
         return program
 
-    def link(self, programs):
+    def link(self, programs: typing.Any) -> typing.Any:
         """Link compatible compiled objects in this same live context/device."""
         if not programs:
             raise ValueError("at least one compiled program required")
@@ -410,7 +441,7 @@ class OpenCLRuntime:
             raise OpenCLError("clLinkProgram", error.value, log)
         return self._own("program", handle)
 
-    def binary(self, program):
+    def binary(self, program: typing.Any) -> typing.Any:
         """Export this context's single-device executable for an explicit local cache."""
         handle = self._require(program, "program")
         size = c.c_size_t()
@@ -432,7 +463,7 @@ class OpenCLRuntime:
         )
         return data.raw
 
-    def load_binary(self, binary, identity):
+    def load_binary(self, binary: typing.Any, identity: typing.Any) -> typing.Any:
         """Load explicitly supplied, validated local bytes only for this runtime identity.
 
         The cache caller must first verify the planned scientific/source/schedule
@@ -491,7 +522,7 @@ class OpenCLRuntime:
             raise OpenCLError("clBuildProgram(binary)", code, log)
         return program
 
-    def _kernel(self, program, name):
+    def _kernel(self, program: typing.Any, name: typing.Any) -> typing.Any:
         self._require(program, "program")
         if not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", name):
             raise ValueError("kernel name must be an identifier")
@@ -500,7 +531,7 @@ class OpenCLRuntime:
         _check(error.value, "clCreateKernel")
         return self._own("kernel", handle)
 
-    def resources(self, program, name):
+    def resources(self, program: typing.Any, name: typing.Any) -> typing.Any:
         """Report only resources exposed by OpenCL; registers/spills remain unknown."""
         kernel = self._kernel(program, name)
         result = {}
@@ -535,15 +566,15 @@ class OpenCLRuntime:
 
     def launch(
         self,
-        program,
-        kernel,
-        arguments,
+        program: typing.Any,
+        kernel: typing.Any,
+        arguments: typing.Any,
         *,
-        items,
+        items: typing.Any,
         shape: ExecutionShape,
-        stream=None,
-        wait_for=(),
-    ):
+        stream: typing.Any = None,
+        wait_for: typing.Any = (),
+    ) -> typing.Any:
         """Submit a padded NDRange and retain referenced objects until explicit wait."""
         shape.validate_for(self.capabilities())
         if type(items) is not int or items < 1:
@@ -651,7 +682,7 @@ class OpenCLRuntime:
         finally:
             self.release(fn)
 
-    def wait(self, event):
+    def wait(self, event: typing.Any) -> None:
         handle = c.c_void_p(self._require(event, "event"))
         code = self.api.clWaitForEvents(1, c.byref(handle))
         # -14 denotes a terminal execution failure, so retained resources can
@@ -660,7 +691,7 @@ class OpenCLRuntime:
             object.__setattr__(event, "completed", True)
         _check(code, "clWaitForEvents")
 
-    def elapsed_nanoseconds(self, event):
+    def elapsed_nanoseconds(self, event: typing.Any) -> typing.Any:
         self.wait(event)
         stamps = []
         for key in (0x1282, 0x1283):
@@ -674,7 +705,9 @@ class OpenCLRuntime:
             stamps.append(value.value)
         return stamps[1] - stamps[0]
 
-    def reduce_sum(self, buffer, count, *, workgroup=64):
+    def reduce_sum(
+        self, buffer: typing.Any, count: typing.Any, *, workgroup: typing.Any = 64
+    ) -> typing.Any:
         """Reduce FP64 values entirely on device without floating-point atomics.
 
         Each level uses bounded local scratch and writes one result per
@@ -747,7 +780,7 @@ __kernel void reduce_sum(__global const double* input, __global double* output,
             if not self._closed:
                 self.release(compiled)
 
-    def release(self, resource):
+    def release(self, resource: typing.Any) -> None:
         """Reject stale/cross-context handles and release only completed dependencies."""
         if not isinstance(resource, Resource):
             raise TypeError("a live typed OpenCL resource is required")
@@ -775,7 +808,7 @@ __kernel void reduce_sum(__global const double* input, __global double* output,
         object.__setattr__(resource, "handle", 0)
         self._resources.pop(id(resource))
 
-    def close(self):
+    def close(self) -> None:
         """Drain and attempt every native release, even after a vendor error.
 
         Enqueued commands retain their native objects until completion. Dropping
@@ -786,7 +819,9 @@ __kernel void reduce_sum(__global const double* input, __global double* output,
             return
         errors = []
 
-        def attempt(function, handle, operation):
+        def attempt(
+            function: typing.Any, handle: typing.Any, operation: typing.Any
+        ) -> None:
             try:
                 _check(function(handle), operation)
             except OpenCLError as error:
@@ -814,14 +849,14 @@ __kernel void reduce_sum(__global const double* input, __global double* output,
         if errors:
             raise OpenCLError("close", errors[0].code, "\n".join(map(str, errors)))
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
 
-def ctypes_library():
+def ctypes_library() -> typing.Any:
     """Locate the installed ICD lazily; missing SDK/runtime is explicit unsupported."""
     path = c.util.find_library("OpenCL")
     if path is None:

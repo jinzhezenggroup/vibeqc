@@ -6,6 +6,7 @@ among those actual executable plans and never edits the tensor equation.
 """
 
 import json
+import typing
 from dataclasses import asdict, dataclass, replace
 
 from vibeqc_compiler.common.resources import (
@@ -27,7 +28,7 @@ class TensorResourceChoices:
     request: ResourceRequest
     plans: tuple
 
-    def selected(self, resource_plan):
+    def selected(self, resource_plan: typing.Any) -> typing.Any:
         """Reject foreign or modified requests before loading a native artifact."""
         resource_plan.require_feasible()
         requests = {r.name: r for r in resource_plan.requests}
@@ -38,7 +39,9 @@ class TensorResourceChoices:
         name = dict(resource_plan.selections)[self.request.name]
         return dict(self.plans)[name]
 
-    def prepare(self, resource_plan, artifact, *, device=0):
+    def prepare(
+        self, resource_plan: typing.Any, artifact: typing.Any, *, device: typing.Any = 0
+    ) -> typing.Any:
         """Allocate the selected provider under the stored complete resource plan.
 
         The orchestrator must respect its declared lifetime and close the
@@ -59,7 +62,9 @@ class TensorResourceChoices:
             resource_owner=self.request.name,
         )
 
-    def factory(self, compiler, cache_root, *, device=0):
+    def factory(
+        self, compiler: typing.Any, cache_root: typing.Any, *, device: typing.Any = 0
+    ) -> typing.Any:
         """Bind this provider to a ResourceSession, including retry artifacts.
 
         Compilation selects the exact enumerated plan and does not execute
@@ -68,7 +73,7 @@ class TensorResourceChoices:
         """
         from .cuda_execute import compile_cuda
 
-        def prepare_selected(resource_plan):
+        def prepare_selected(resource_plan: typing.Any) -> typing.Any:
             plan = self.selected(resource_plan)
             artifact = compile_cuda(plan, compiler, cache_root)
             return self.prepare(resource_plan, artifact, device=device)
@@ -77,18 +82,18 @@ class TensorResourceChoices:
 
 
 def tensor_resource_choices(
-    program,
-    target,
+    program: typing.Any,
+    target: typing.Any,
     *,
-    name="tensor",
-    first_phase=0,
-    last_phase=0,
-    device=0,
-    sub_budget_bytes=256 << 20,
-    schedule=None,
-    allow_recompute=True,
-    **planner_options,
-):
+    name: typing.Any = "tensor",
+    first_phase: typing.Any = 0,
+    last_phase: typing.Any = 0,
+    device: typing.Any = 0,
+    sub_budget_bytes: typing.Any = 256 << 20,
+    schedule: typing.Any = None,
+    allow_recompute: typing.Any = True,
+    **planner_options: typing.Any,
+) -> typing.Any:
     """Obtain finite tile/recompute alternatives within an explicit sub-budget.
 
     The outer budget still accounts for all concurrently live providers. A

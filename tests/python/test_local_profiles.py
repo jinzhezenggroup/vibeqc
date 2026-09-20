@@ -4,6 +4,7 @@ import copy
 import json
 import subprocess
 import sys
+import typing
 import zipfile
 from pathlib import Path
 
@@ -17,7 +18,7 @@ TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
 
 @pytest.fixture
-def probe():
+def probe() -> typing.Any:
     return {
         "source_identity": "a" * 64,
         "native_abi": 1,
@@ -42,7 +43,7 @@ def probe():
 
 
 @pytest.fixture
-def bundle(tmp_path, probe):
+def bundle(tmp_path: typing.Any, probe: typing.Any) -> typing.Any:
     """Synthetic byte artifacts exercise storage only; no fake GPU acceptance is published."""
     directory = tmp_path / "fixture"
     directory.mkdir()
@@ -124,8 +125,8 @@ def bundle(tmp_path, probe):
     ],
 )
 def test_hardware_and_toolchain_changes_invalidate_profiles(
-    bundle, probe, field, value
-):
+    bundle: typing.Any, probe: typing.Any, field: typing.Any, value: typing.Any
+) -> None:
     profiles.validate_bundle(bundle, probe)
     changed = copy.deepcopy(probe)
     changed["device"][field] = value
@@ -143,22 +144,26 @@ def test_hardware_and_toolchain_changes_invalidate_profiles(
     ],
 )
 def test_source_schema_abi_and_precision_changes_invalidate(
-    bundle, probe, field, value
-):
+    bundle: typing.Any, probe: typing.Any, field: typing.Any, value: typing.Any
+) -> None:
     changed = copy.deepcopy(probe)
     changed[field] = value
     with pytest.raises(ValueError, match="identity changed"):
         profiles.validate_bundle(bundle, changed)
 
 
-def test_nvcc_and_ptxas_are_independently_checked(bundle, probe):
+def test_nvcc_and_ptxas_are_independently_checked(
+    bundle: typing.Any, probe: typing.Any
+) -> None:
     for name in ("nvcc", "ptxas"):
         tools = {"nvcc": "test NVCC", "ptxas": "test PTXAS", name: "changed"}
         with pytest.raises(ValueError, match="NVCC/PTXAS"):
             profiles.validate_bundle(bundle, probe, tools)
 
 
-def test_relabeling_foreign_gpu_evidence_does_not_make_it_compatible(bundle, probe):
+def test_relabeling_foreign_gpu_evidence_does_not_make_it_compatible(
+    bundle: typing.Any, probe: typing.Any
+) -> None:
     evidence_path = bundle / "evidence.json"
     evidence = json.loads(evidence_path.read_text())
     evidence["candidates"][0]["isolated"]["device"]["major"] = 13
@@ -172,8 +177,8 @@ def test_relabeling_foreign_gpu_evidence_does_not_make_it_compatible(bundle, pro
 
 
 def test_cached_binary_must_have_a_tuned_profile_on_the_actual_device(
-    probe, tmp_path, monkeypatch
-):
+    probe: typing.Any, tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     binary = object()
     monkeypatch.setattr(profiles.ctypes, "CDLL", lambda *a: binary)
     monkeypatch.setattr(profiles, "probe_device", lambda *a: probe)
@@ -185,7 +190,9 @@ def test_cached_binary_must_have_a_tuned_profile_on_the_actual_device(
     assert profiles.verify_library(tmp_path, probe) is binary
 
 
-def test_corrupt_and_ungated_profiles_are_rejected(bundle, probe):
+def test_corrupt_and_ungated_profiles_are_rejected(
+    bundle: typing.Any, probe: typing.Any
+) -> None:
     path = bundle / "profile.json"
     original = json.loads(path.read_text())
     for stage in ("target", "resources", "numerical", "performance", "endpoint"):
@@ -200,7 +207,9 @@ def test_corrupt_and_ungated_profiles_are_rejected(bundle, probe):
         profiles.validate_bundle(bundle, probe)
 
 
-def test_schedule_and_evidence_hashes_cannot_be_detached(bundle, probe):
+def test_schedule_and_evidence_hashes_cannot_be_detached(
+    bundle: typing.Any, probe: typing.Any
+) -> None:
     path = bundle / "profile.json"
     payload = json.loads(path.read_text())
     payload["kernels"][0]["schedule"]["block_threads"] = 64
@@ -217,12 +226,12 @@ def test_schedule_and_evidence_hashes_cannot_be_detached(bundle, probe):
 
 
 def test_atomic_failure_preserves_previous_profile_and_removes_temporary(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     path = tmp_path / "active.json"
     profiles.atomic_json(path, {"known-good": "old"})
 
-    def interrupted(*args):
+    def interrupted(*args: typing.Any) -> typing.Any:
         raise OSError("interrupted replacement")
 
     monkeypatch.setattr(profiles.os, "replace", interrupted)
@@ -233,8 +242,8 @@ def test_atomic_failure_preserves_previous_profile_and_removes_temporary(
 
 
 def test_export_import_roundtrip_and_clear_leave_live_binary(
-    bundle, probe, tmp_path, monkeypatch
-):
+    bundle: typing.Any, probe: typing.Any, tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     # Only the native-loader boundary is mocked; file validation, copying,
     # immutable bundle selection, locking, and atomic publication run normally.
     monkeypatch.setattr(profiles, "verify_library", lambda *a: object())
@@ -251,7 +260,9 @@ def test_export_import_roundtrip_and_clear_leave_live_binary(
     assert (installed / "libvibeqc.so").exists()
 
 
-def test_import_path_traversal_is_rejected(tmp_path, probe):
+def test_import_path_traversal_is_rejected(
+    tmp_path: typing.Any, probe: typing.Any
+) -> None:
     archive = tmp_path / "bad.zip"
     with zipfile.ZipFile(archive, "w") as stream:
         stream.writestr("../libvibeqc.so", "invalid")
@@ -261,8 +272,8 @@ def test_import_path_traversal_is_rejected(tmp_path, probe):
 
 
 def test_automatic_selection_and_corruption_fall_back(
-    bundle, probe, tmp_path, monkeypatch
-):
+    bundle: typing.Any, probe: typing.Any, tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     base, local = object(), object()
     monkeypatch.setenv("VIBEQC_PROFILE_CACHE", str(tmp_path / "cache"))
     monkeypatch.delenv("VIBEQC_PROFILE", raising=False)
@@ -278,7 +289,7 @@ def test_automatic_selection_and_corruption_fall_back(
     assert "artifact hash" in diagnostic["rejected"][0]
 
 
-def test_hotspots_are_measured_bounded_and_ignore_absent_f_work():
+def test_hotspots_are_measured_bounded_and_ignore_absent_f_work() -> None:
     rows = [
         {"shell_angular": angular, "primitive_quartets": work}
         for angular, work in [
@@ -295,7 +306,7 @@ def test_hotspots_are_measured_bounded_and_ignore_absent_f_work():
     assert rank_hotspots([], coverage=1) == []
 
 
-def sample(seconds, *, iterations=1):
+def sample(seconds: typing.Any, *, iterations: typing.Any = 1) -> typing.Any:
     return {
         "seconds": seconds,
         "iterations": [iterations],
@@ -306,7 +317,7 @@ def sample(seconds, *, iterations=1):
     }
 
 
-def test_endpoint_rejects_slow_noisy_changed_branch_and_wrong_forces():
+def test_endpoint_rejects_slow_noisy_changed_branch_and_wrong_forces() -> None:
     baseline = [sample(1.0) for _ in range(6)]
     faster = [sample(0.8) for _ in range(6)]
     assert endpoint_gate(baseline, faster)["passed"]
@@ -325,7 +336,7 @@ def test_endpoint_rejects_slow_noisy_changed_branch_and_wrong_forces():
         endpoint_gate(baseline, wrong)
 
 
-def test_xyz_units_and_incomplete_input(tmp_path):
+def test_xyz_units_and_incomplete_input(tmp_path: typing.Any) -> None:
     path = tmp_path / "h2.xyz"
     path.write_text("2\nAngstrom test\nH 0 0 0\nH 0 0 0.529177210903\n")
     np.testing.assert_allclose(read_xyz(path)[1][1], [0, 0, 1])
@@ -334,7 +345,9 @@ def test_xyz_units_and_incomplete_input(tmp_path):
         read_xyz(path)
 
 
-def test_installed_cli_help_and_show_need_no_native_library(tmp_path):
+def test_installed_cli_help_and_show_need_no_native_library(
+    tmp_path: typing.Any,
+) -> None:
     import os
 
     env = {**os.environ, "VIBEQC_PROFILE_CACHE": str(tmp_path)}
@@ -349,7 +362,7 @@ def test_installed_cli_help_and_show_need_no_native_library(tmp_path):
         assert run.stdout
 
 
-def test_generic_numerical_driver_supports_tuned_s_and_p_consumers():
+def test_generic_numerical_driver_supports_tuned_s_and_p_consumers() -> None:
     from vibeqc_compiler.integral.autotune import supported_schedule_trials
     from vibeqc_compiler.integral.benchmark import emit_shell_class_resource_cuda
     from vibeqc_compiler.integral.fused_schedule import build_fused_shell_plan
@@ -382,7 +395,7 @@ def test_generic_numerical_driver_supports_tuned_s_and_p_consumers():
             assert f'"uhf_{consumer}_persistent"' in driver
 
 
-def test_native_source_identity_and_probe_abi_match_checkout():
+def test_native_source_identity_and_probe_abi_match_checkout() -> None:
     import ctypes
 
     from vibeqc import _native
@@ -405,8 +418,8 @@ def test_native_source_identity_and_probe_abi_match_checkout():
 
 
 def test_workload_without_direct_counters_is_a_noop_but_other_errors_propagate(
-    monkeypatch,
-):
+    monkeypatch: typing.Any,
+) -> None:
     from types import SimpleNamespace
 
     from vibeqc import _autotune_worker
@@ -425,19 +438,19 @@ def test_workload_without_direct_counters_is_a_noop_but_other_errors_propagate(
     )
 
     class Prepared:
-        def __enter__(self):
+        def __enter__(self) -> typing.Any:
             return self
 
-        def __exit__(self, *args):
+        def __exit__(self, *args: object) -> None:
             return False
 
-        def execute(self, **kwargs):
+        def execute(self, **kwargs: typing.Any) -> typing.Any:
             return result
 
-        def set_warm_start_updates(self, enabled):
+        def set_warm_start_updates(self, enabled: typing.Any) -> typing.Any:
             pass
 
-        def last_shell_class_profile(self):
+        def last_shell_class_profile(self) -> typing.Any:
             raise error[0]
 
     calculator = SimpleNamespace(

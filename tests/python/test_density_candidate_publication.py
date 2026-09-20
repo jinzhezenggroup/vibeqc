@@ -2,6 +2,7 @@
 
 import copy
 import json
+import typing
 from hashlib import sha256
 from pathlib import Path
 
@@ -16,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2] / "benchmarks/results/density-candida
 
 
 @pytest.fixture(scope="module", params=["gpu", "native"])
-def publication(request):
+def publication(request: typing.Any) -> typing.Any:
     directory = ROOT / request.param
     manifest = json.loads((directory / "publication.json").read_text())
     files = {r["path"]: (directory / r["path"]).read_bytes() for r in manifest["files"]}
@@ -25,7 +26,9 @@ def publication(request):
     return request.param, decode_record(files[filename], files), files
 
 
-def test_retained_summary_reconstructs_and_has_complete_matrix(publication):
+def test_retained_summary_reconstructs_and_has_complete_matrix(
+    publication: typing.Any,
+) -> None:
     kind, report, files = publication
     summary = summarize(report)
     assert summary == json.loads(files["summary.json"])
@@ -74,7 +77,9 @@ def test_retained_summary_reconstructs_and_has_complete_matrix(publication):
 
 
 @pytest.mark.parametrize("fault", ["missing", "duplicate", "identity", "nonpositive"])
-def test_summary_rejects_incomparable_or_incomplete_pairs(publication, fault):
+def test_summary_rejects_incomparable_or_incomplete_pairs(
+    publication: typing.Any, fault: typing.Any
+) -> None:
     _, report, _ = publication
     report = copy.deepcopy(report)
     if fault == "missing":
@@ -90,7 +95,9 @@ def test_summary_rejects_incomparable_or_incomplete_pairs(publication, fault):
 
 
 @pytest.mark.parametrize("rename", [False, True])
-def test_matrix_gate_inventory_rejects_missing_or_reused_keys(rename):
+def test_matrix_gate_inventory_rejects_missing_or_reused_keys(
+    rename: typing.Any,
+) -> None:
     report = load_record(ROOT / "gpu/evidence.json")
     key = next(iter(report["block_errors"]))
     record = report["block_errors"].pop(key)

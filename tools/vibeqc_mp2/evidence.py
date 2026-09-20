@@ -6,6 +6,7 @@ import os
 import platform
 import subprocess
 import sys
+import typing
 from dataclasses import asdict
 from pathlib import Path
 
@@ -23,8 +24,14 @@ from tools.vibeqc_validation.schema import (
 
 
 def record_public_result(
-    calc, result, metadata, opposite_spin, same_spin, seconds, destination
-):
+    calc: typing.Any,
+    result: typing.Any,
+    metadata: typing.Any,
+    opposite_spin: typing.Any,
+    same_spin: typing.Any,
+    seconds: typing.Any,
+    destination: typing.Any,
+) -> None:
     """Save observed outputs, exact library identity and declared staging.
 
     Capacity estimates remain separate from allocator/whole-process metrics;

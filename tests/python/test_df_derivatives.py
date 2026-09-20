@@ -3,6 +3,7 @@
 import ctypes
 import shutil
 import subprocess
+import typing
 from itertools import product
 
 import numpy as np
@@ -28,7 +29,9 @@ SIGNATURES = [
 
 
 @pytest.mark.parametrize("angular", SIGNATURES)
-def test_physical_value_dag_derivatives_match_libcint(angular):
+def test_physical_value_dag_derivatives_match_libcint(
+    angular: typing.Any,
+) -> None:
     pytest.importorskip("pyscf")
     count = len(angular)
     fixture = make_df_derivative_fixture(angular, primitive_lengths=(1,) * count)
@@ -54,7 +57,9 @@ def test_physical_value_dag_derivatives_match_libcint(angular):
 
 
 @pytest.mark.parametrize("angular", [(3, 3), (1, 2, 3), (3, 3, 3)])
-def test_independent_center_finite_differences_and_auxiliary_motion(angular):
+def test_independent_center_finite_differences_and_auxiliary_motion(
+    angular: typing.Any,
+) -> None:
     count = len(angular)
     family = "coulomb_metric" if count == 2 else "three_center_eri"
     components = tuple(cartesian_components(momentum)[-1] for momentum in angular)
@@ -79,7 +84,7 @@ def test_independent_center_finite_differences_and_auxiliary_motion(angular):
                 assert actual[center, axis] == pytest.approx(fd, abs=5e-7, rel=5e-7)
 
 
-def test_derivative_domain_layout_and_internal_moments():
+def test_derivative_domain_layout_and_internal_moments() -> None:
     for angular in SIGNATURES:
         family = "coulomb_metric" if len(angular) == 2 else "three_center_eri"
         for weighted in (False, True):
@@ -98,7 +103,7 @@ def test_derivative_domain_layout_and_internal_moments():
 
 
 @pytest.fixture(scope="module")
-def emitted_library(tmp_path_factory):
+def emitted_library(tmp_path_factory: typing.Any) -> typing.Any:
     """Compile the actual bounded CUDA arithmetic as ordinary host C++."""
     from vibeqc_compiler.integral.df_derivatives_cuda import emit_df_derivatives_cuda
 
@@ -155,7 +160,9 @@ extern "C" void derivative(unsigned count,const double* exponents,const double* 
 
 
 @pytest.mark.parametrize("variant", ["asymmetric", "coincident"])
-def test_emitted_full_contracted_and_spherical_blocks(emitted_library, variant):
+def test_emitted_full_contracted_and_spherical_blocks(
+    emitted_library: typing.Any, variant: typing.Any
+) -> None:
     pytest.importorskip("pyscf")
     double = ctypes.POINTER(ctypes.c_double)
     for angular in SIGNATURES:

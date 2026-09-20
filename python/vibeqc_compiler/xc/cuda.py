@@ -2,6 +2,7 @@
 
 import ctypes as ct
 import threading
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,7 +27,13 @@ class XCArtifact:
     contract: dict
 
 
-def compile_cuda(program, compiler, cache, *, schedule=None):
+def compile_cuda(
+    program: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
+    *,
+    schedule: typing.Any = None,
+) -> typing.Any:
     """Reuse the existing compiler/resource/cache adapter; compilation is CPU-only."""
     source, contract, headers = emit_cuda(program, schedule)
     directory = Path(cache).resolve() / "source" / contract["identity"]
@@ -55,11 +62,16 @@ class XCTilePlan:
     identity: str
 
     @property
-    def allocation_bytes(self):
+    def allocation_bytes(self) -> typing.Any:
         return self.device_bytes + self.host_bytes
 
 
-def plan_tiles(program, *, tile_points=256, budget_bytes=64 << 20):
+def plan_tiles(
+    program: typing.Any,
+    *,
+    tile_points: typing.Any = 256,
+    budget_bytes: typing.Any = 64 << 20,
+) -> typing.Any:
     """Bound owned device IO/error storage and validation/output host scratch."""
     checked_int(tile_points, "XC tile points", low=1, high=1 << 24)
     checked_int(budget_bytes, "XC budget", low=1)
@@ -91,8 +103,14 @@ class CudaXC:
     """
 
     def __init__(
-        self, program, artifact, *, tile_points=256, budget_bytes=64 << 20, device_id=0
-    ):
+        self,
+        program: typing.Any,
+        artifact: typing.Any,
+        *,
+        tile_points: typing.Any = 256,
+        budget_bytes: typing.Any = 64 << 20,
+        device_id: typing.Any = 0,
+    ) -> None:
         self._lock = threading.RLock()
         self._handle = ct.c_void_p()
         self.program = program
@@ -158,16 +176,16 @@ class CudaXC:
                 ct.byref(self._handle),
             )
 
-    def _call(self, name, *args):
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def _check_open(self):
+    def _check_open(self) -> None:
         if not self._handle:
             raise RuntimeError("XC CUDA plan is closed")
 
-    def evaluate(self, features):
+    def evaluate(self, features: typing.Any) -> typing.Any:
         """Evaluate one tile in published output order, rejecting invalid domains."""
         with self._lock:
             self._check_open()
@@ -185,7 +203,7 @@ class CudaXC:
             )
             return result
 
-    def metrics(self):
+    def metrics(self) -> typing.Any:
         """Synchronized cumulative timings, capacities and actual CUDA versions."""
         with self._lock:
             self._check_open()
@@ -198,19 +216,19 @@ class CudaXC:
                 "driver_version": versions[1],
             }
 
-    def close(self):
+    def close(self) -> None:
         """Release the arena and stream; repeated closure is harmless."""
         with self._lock, _PREPARATION_LOCK:
             if self._handle:
                 self._library.xc_destroy_v1(self._handle)
                 self._handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()

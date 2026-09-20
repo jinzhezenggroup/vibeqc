@@ -7,16 +7,19 @@ Python object overhead. GPU planning and AD belong to subsequent issues.
 
 from __future__ import annotations
 
+import typing
 from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
 
 import numpy as np
 
-from .ir import Node
 from .program import Program
 from .scaled_arithmetic import scaled_bilinear_value
 from .types import checked_size
+
+if typing.TYPE_CHECKING:
+    from .ir import Node
 
 
 @dataclass(frozen=True)
@@ -29,7 +32,7 @@ class Execution:
     backend: str = "numpy-cpu-interpreter"
 
 
-def _coefficient(pair, dtype):
+def _coefficient(pair: typing.Any, dtype: typing.Any) -> typing.Any:
     # Fraction conversion avoids overflowing large integer numerator and
     # denominator separately when their ratio is small and representable.
     return np.dtype(dtype).type(float(Fraction(*pair)))
@@ -61,6 +64,8 @@ def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndar
             [_coefficient(v, node.spec.dtype) for v in a["values"]],
             dtype=node.spec.dtype,
         ).reshape(node.spec.shape)
+    if op == "cast":
+        return operands[0].astype(node.spec.dtype, copy=True)
     if op == "add":
         result = np.zeros(node.spec.shape, dtype=node.spec.dtype)
         for operand, coefficient in zip(operands, a["coefficients"]):
@@ -102,9 +107,11 @@ def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndar
         return np.take(value, np.asarray(a["positions"], dtype=np.intp), axis=a["axis"])
     if op == "scatter_add":
         result = np.zeros(node.spec.shape, dtype=node.spec.dtype)
-        index = [slice(None)] * result.ndim
-        index[a["axis"]] = np.asarray(a["positions"], dtype=np.intp)
-        np.add.at(result, tuple(index), value)
+        np.add.at(
+            np.moveaxis(result, a["axis"], 0),
+            np.asarray(a["positions"], dtype=np.intp),
+            np.moveaxis(value, a["axis"], 0),
+        )
         return result
     if op == "segment_sum":
         result = np.zeros(node.spec.shape, dtype=node.spec.dtype)

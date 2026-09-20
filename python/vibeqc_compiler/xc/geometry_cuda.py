@@ -1,14 +1,16 @@
 """CUDA AO translation pullback and Becke local partials from shared graphs."""
 
+import typing
+
 from vibeqc_compiler.dft.ao import jet_indices
 from vibeqc_compiler.dft.ao_cuda import emit_grid_policy
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .coefficients import jet_pullback_program
-from .grid_native import emit_grid_partials
+from .grid_native import emit_grid_adjoint, emit_grid_partials
 
 
-def emit_geometry_cuda(*, pbe, iterations=3):
+def emit_geometry_cuda(*, pbe: typing.Any, iterations: typing.Any = 3) -> typing.Any:
     """Lower AO bilinear AD; the caller supplies exact SCF point coefficients."""
     if type(pbe) is not bool:
         raise TypeError("geometry lowering requires a boolean PBE flag")
@@ -31,7 +33,7 @@ def emit_geometry_cuda(*, pbe, iterations=3):
         shifts.append("{" + ",".join(map(str, row)) + "}")
     return "\n".join(
         [
-            '#include "dft/grid_response_adjoint.hpp"',
+            emit_grid_adjoint(),
             emit_grid_partials(iterations, device=True),
             f"constexpr bool stationary_pbe = {'true' if pbe else 'false'};",
             f"constexpr unsigned stationary_jets = {len(domain)};",
@@ -48,7 +50,7 @@ def emit_geometry_cuda(*, pbe, iterations=3):
     )
 
 
-def _emit_pullback_namespace(*, pbe, namespace):
+def _emit_pullback_namespace(*, pbe: typing.Any, namespace: typing.Any) -> typing.Any:
     """Emit one namespaced compiler-owned AO translation pullback."""
     program = jet_pullback_program("gga" if pbe else "lda")
     variables = {
@@ -85,7 +87,7 @@ def _emit_pullback_namespace(*, pbe, namespace):
     )
 
 
-def emit_native_geometry_cuda():
+def emit_native_geometry_cuda() -> typing.Any:
     """Emit the build-time native XC force TU from shared AO/grid-response graphs."""
     partials = []
     for iterations in range(1, 6):
@@ -334,7 +336,7 @@ void enqueue_gradient(
             "#include <array>",
             "#include <cstdint>",
             '#include "dft/cuda_xc.hpp"',
-            '#include "dft/grid_response_adjoint.hpp"',
+            emit_grid_adjoint(),
             '#include "dft/xc_point.hpp"',
             '#include "tensor/cuda_runtime.cuh"',
             emit_grid_policy().replace(

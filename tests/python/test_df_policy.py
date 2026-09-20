@@ -3,6 +3,7 @@
 import ctypes
 import shutil
 import subprocess
+import typing
 
 import pytest
 from vibeqc_compiler.integral.df_cuda import emit_df_values_cuda
@@ -11,7 +12,9 @@ from vibeqc_compiler.integral.df_policy import emit_df_policy_cuda
 from vibeqc_compiler.integral.df_value_candidates import emit_df_value_candidates_cuda
 
 
-def test_shared_df_headers_have_translation_unit_safe_linkage(tmp_path):
+def test_shared_df_headers_have_translation_unit_safe_linkage(
+    tmp_path: typing.Any,
+) -> None:
     """Catch duplicate functions/tables without requiring a CUDA device or SDK.
 
     Only CUDA attributes are replaced for host compilation; scientific source

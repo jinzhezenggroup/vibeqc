@@ -3,6 +3,7 @@
 import ctypes
 import math
 import subprocess
+import typing
 
 import numpy as np
 import pytest
@@ -14,7 +15,7 @@ from tools.vibeqc_validation.f_shell_numerics import _normalized_primitives
 
 
 @pytest.fixture(scope="module")
-def bound(tmp_path_factory):
+def bound(tmp_path_factory: typing.Any) -> typing.Any:
     path = tmp_path_factory.mktemp("screen_bound")
     (path / "cuda_runtime.h").write_text("")
     (path / "generated_df_derivatives.cuh").write_text(emit_df_derivatives_cuda())
@@ -54,14 +55,18 @@ extern "C" double bound(const double* e,const double* r,double weight) {
     library.bound.argtypes = [double, double, ctypes.c_double]
     library.bound.restype = ctypes.c_double
 
-    def evaluate(exponents, coordinates, weight):
+    def evaluate(
+        exponents: typing.Any, coordinates: typing.Any, weight: typing.Any
+    ) -> typing.Any:
         e, r = np.ascontiguousarray(exponents), np.ascontiguousarray(coordinates)
         return library.bound(e.ctypes.data_as(double), r.ctypes.data_as(double), weight)
 
     return evaluate
 
 
-def independent(exponents, coordinates, weight):
+def independent(
+    exponents: typing.Any, coordinates: typing.Any, weight: typing.Any
+) -> typing.Any:
     """Direct libcint derivatives and normalization, without the candidate IR."""
     inputs = {
         "name": "screening-oracle",
@@ -97,7 +102,9 @@ def independent(exponents, coordinates, weight):
     return value, derivatives, primitive_weight
 
 
-def test_bound_covers_signs_geometry_exponents_and_translation(bound):
+def test_bound_covers_signs_geometry_exponents_and_translation(
+    bound: typing.Any,
+) -> None:
     pytest.importorskip("pyscf")
     rng = np.random.default_rng(406)
     for _ in range(40):
@@ -110,7 +117,7 @@ def test_bound_covers_signs_geometry_exponents_and_translation(bound):
         np.testing.assert_allclose(derivatives.sum(axis=0), 0, atol=1e-10)
 
 
-def test_small_value_large_force_is_not_screened(bound):
+def test_small_value_large_force_is_not_screened(bound: typing.Any) -> None:
     pytest.importorskip("pyscf")
     exponents = np.array([1e10, 2e10, 1.5e10])
     coordinates = np.array([[0.0, 0.0, 0.0], [1e-6, 2e-6, 0.0], [2e-6, 0.0, -1e-6]])

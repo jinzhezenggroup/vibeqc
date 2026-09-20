@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import typing
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from tools.generate_validation_references import pyscf_molecule
 from tools.vibeqc_posthf.fixtures import load_fixture
 
 
-def generate(output):
+def generate(output: typing.Any) -> None:
     """Use public PySCF PM APIs on the exact canonical #147 occupied subspaces."""
     import pyscf
     from pyscf import lo

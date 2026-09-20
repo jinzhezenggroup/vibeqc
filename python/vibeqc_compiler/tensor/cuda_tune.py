@@ -1,6 +1,7 @@
-"""Bounded, opt-in selection using complete FP64 TensorIR endpoints.
+"""Bounded, opt-in selection from a strict FP64 baseline.
 
-No candidate becomes the default merely because it compiles or saves FLOPs.
+No schedule or precision candidate becomes the default merely because it
+compiles, saves bytes, or saves FLOPs.
 Selection requires CPU/baseline parity and paired timing evidence on every
 provided fixture. Rejected candidates and all raw samples remain in evidence.
 """
@@ -8,13 +9,13 @@ provided fixture. Rejected candidates and all raw samples remain in evidence.
 from __future__ import annotations
 
 import time
+import typing
 from dataclasses import asdict, dataclass
 from itertools import islice
 from pathlib import Path
 
 import numpy as np
 
-from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.performance import assess_comparison, measure_interleaved
 from vibeqc_compiler.common.provenance import atomic_json, canonical_hash
 from vibeqc_compiler.common.specialization import (
@@ -27,7 +28,6 @@ from vibeqc_compiler.common.specialization import (
 )
 
 from .cuda_execute import CudaArtifact, PreparedCuda, compile_cuda
-from .cuda_plan import TensorPlan, TensorSchedule
 from .cuda_search import (
     DEFAULT_SCREENING_POLICY,
     DEFAULT_SEARCH_LIMITS,
@@ -39,9 +39,17 @@ from .cuda_search import (
     require_compiled_resources,
 )
 from .interpreter import execute
+from .precision import describe_precision
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+
+    from .cuda_plan import TensorPlan, TensorSchedule
 
 
-def endpoint_gate(baseline, candidate, *, minimum_speedup=1.02) -> dict:
+def endpoint_gate(
+    baseline: typing.Any, candidate: typing.Any, *, minimum_speedup: typing.Any = 1.02
+) -> dict:
     """Require a paired median gain whose bootstrap lower bound exceeds one."""
     left, right = np.asarray(baseline), np.asarray(candidate)
     if left.ndim != 1 or left.shape != right.shape or not 5 <= left.size <= 30:
@@ -77,7 +85,9 @@ def candidate_schedules(
     return (TensorScheduleSpace() if space is None else space).generate(maximum)
 
 
-def _static_compile_shortlist(search, maximum: int) -> tuple[tuple[int, object], ...]:
+def _static_compile_shortlist(
+    search: typing.Any, maximum: int
+) -> tuple[tuple[int, object], ...]:
     """Rank ready plans before expensive compilation using static audit facts.
 
     The score only allocates the finite compilation budget. It never promotes a
@@ -104,7 +114,9 @@ def _static_compile_shortlist(search, maximum: int) -> tuple[tuple[int, object],
     return tuple((index, proposal) for _, index, proposal in ready[:maximum])
 
 
-def _compile_cost_calibration(estimates, metadata, wall_seconds) -> dict:
+def _compile_cost_calibration(
+    estimates: typing.Any, metadata: typing.Any, wall_seconds: float
+) -> dict:
     source_bytes = estimates["generated_source_bytes"]
     compiler_seconds = metadata.get("compile_seconds")
     seconds_per_kib = None
@@ -140,11 +152,12 @@ class TensorSelection:
 def tune_cuda(
     baseline: TensorPlan,
     compiler: CudaCompilerAdapter,
-    fixtures,
+    fixtures: typing.Any,
     cache: Path,
     *,
-    schedules=None,
+    schedules: typing.Any = None,
     search_space: TensorScheduleSpace | None = None,
+    precision_programs: typing.Any = None,
     search_limits: TensorSearchLimits = DEFAULT_SEARCH_LIMITS,
     screening: TensorScreeningPolicy | None = DEFAULT_SCREENING_POLICY,
     repeats: int = 8,
@@ -161,6 +174,9 @@ def tune_cuda(
     Set screening=None to fully qualify every compiled candidate as before.
     A finite Slurm allocation remains the hard timeout for device work; this
     deadline stops further work. The CPU interpreter is a tuning oracle only.
+    Precision variants are opt-in typed TensorIR programs that must preserve
+    the baseline ABI and scientific source identity; they use this same search,
+    compilation cache, numerical gate, and endpoint evidence path.
     """
     if baseline.precision != "fp64":
         raise ValueError(
@@ -172,8 +188,20 @@ def tune_cuda(
         raise TypeError("screening must be TensorScreeningPolicy or None")
     if schedules is not None and search_space is not None:
         raise ValueError("provide schedules or search_space, not both")
+    precision_programs = (
+        (baseline.program,)
+        if precision_programs is None
+        else tuple(islice(precision_programs, search_limits.maximum_candidates + 1))
+    )
+    if not 1 <= len(precision_programs) <= search_limits.maximum_candidates:
+        raise ValueError(
+            "precision variant count exceeds the candidate limit or is empty"
+        )
+    maximum_schedules = max(
+        1, search_limits.maximum_candidates // len(precision_programs)
+    )
     schedules = (
-        candidate_schedules(search_space, maximum=search_limits.maximum_candidates)
+        candidate_schedules(search_space, maximum=maximum_schedules)
         if schedules is None
         else tuple(islice(schedules, search_limits.maximum_candidates + 1))
     )
@@ -197,11 +225,16 @@ def tune_cuda(
         raise ValueError("tuning requires an unfused CUDA baseline")
     started = time.monotonic()
 
-    def check_deadline():
+    def check_deadline() -> None:
         if time.monotonic() - started >= maximum_seconds:
             raise TimeoutError("tuning deadline exhausted")
 
-    search = plan_schedule_search(baseline, schedules, search_limits)
+    search = plan_schedule_search(
+        baseline,
+        schedules,
+        search_limits,
+        precision_programs=precision_programs,
+    )
     compile_shortlist = _static_compile_shortlist(
         search, search_limits.maximum_compilations
     )
@@ -249,6 +282,9 @@ def tune_cuda(
             "baseline": reference_cuda.identity,
             "fixtures": feed_identities,
             "schedules": [asdict(s) for s in schedules],
+            "precision_schedules": [
+                describe_precision(program).identity for program in precision_programs
+            ],
             "search_limits": asdict(search_limits),
             "screening": asdict(screening) if screening is not None else None,
             "screening_active": screening_active,
@@ -266,7 +302,7 @@ def tune_cuda(
             startup.append(result.metrics)
             reference_cuda.execute(feeds)
 
-        def qualify(plan, compiled, row):
+        def qualify(plan: typing.Any, compiled: typing.Any, row: typing.Any) -> None:
             nonlocal best_plan, best_artifact, best_score, selected_profiles
             try:
                 check_deadline()
@@ -469,7 +505,12 @@ def tune_cuda(
     return TensorSelection(best_plan, best_artifact, evidence, path)
 
 
-def _screening_plan(policy, candidate_budget, fixture_count, repeats):
+def _screening_plan(
+    policy: typing.Any,
+    candidate_budget: typing.Any,
+    fixture_count: typing.Any,
+    repeats: typing.Any,
+) -> typing.Any:
     """Avoid a shortlist when its planned sample count cannot save any work.
 
     Counts are A/B pairs only, not predicted time. Startup, compilation and
@@ -505,7 +546,7 @@ def _screening_plan(policy, candidate_budget, fixture_count, repeats):
     }
 
 
-def _timing_evidence(pairs):
+def _timing_evidence(pairs: typing.Any) -> typing.Any:
     """Retain invalid clock samples without emitting nonstandard JSON NaN/Inf."""
     rows = []
     for sample in pairs:
@@ -517,7 +558,7 @@ def _timing_evidence(pairs):
     return rows
 
 
-def _paired_seconds(pairs):
+def _paired_seconds(pairs: typing.Any) -> typing.Any:
     return tuple(
         np.asarray(
             [row["seconds"] for row in pairs if row["selection"] == side], dtype=float
@@ -526,7 +567,7 @@ def _paired_seconds(pairs):
     )
 
 
-def _screening_speedup(pairs):
+def _screening_speedup(pairs: typing.Any) -> typing.Any:
     """A finite descriptive ratio, not a promotion or statistical decision."""
     left, right = (np.asarray(values) for values in _paired_seconds(pairs))
     if (
@@ -546,16 +587,16 @@ def _screening_speedup(pairs):
 
 
 def _measure_fixture(
-    reference_cuda,
-    candidate,
-    feeds,
-    expected,
+    reference_cuda: typing.Any,
+    candidate: typing.Any,
+    feeds: typing.Any,
+    expected: typing.Any,
     *,
-    inputs_hash,
-    repeats,
-    check_deadline,
-    profile,
-):
+    inputs_hash: typing.Any,
+    repeats: typing.Any,
+    check_deadline: typing.Any,
+    profile: typing.Any,
+) -> typing.Any:
     """Warm and measure one full endpoint, checking every returned output.
 
     Both screening and final qualification use the same synchronized runner and
@@ -571,13 +612,13 @@ def _measure_fixture(
     error = max(error, _parity(candidate.execute(feeds).outputs, expected))
     latest = [None]
 
-    def before_sample(selection):
+    def before_sample(selection: typing.Any) -> None:
         nonlocal error
         check_deadline()
         if latest[0] is not None:
             error = max(error, _parity(latest[0].outputs, expected))
 
-    def evaluate(selection):
+    def evaluate(selection: typing.Any) -> typing.Any:
         selected = reference_cuda if selection == "baseline" else candidate
         latest[0] = selected.execute(feeds)
         return latest[0].metrics
@@ -602,15 +643,23 @@ def _measure_fixture(
     return pairs, error, metrics
 
 
-def _promotion_profiles(plan, artifact, feeds, evidence_hash, *, baseline_execution):
+def _promotion_profiles(
+    plan: typing.Any,
+    artifact: typing.Any,
+    feeds: typing.Any,
+    evidence_hash: typing.Any,
+    *,
+    baseline_execution: typing.Any,
+) -> typing.Any:
     """Declare only the measured layout domains using #459's shared records.
 
     No new profile database or runtime lookup is introduced. These records refer
     to #136's existing executable key and the candidate's complete evidence hash;
     they must not be treated as a general promotion to unmeasured inputs/targets.
     """
+    precision = plan.precision_schedule
     identity = CompilationIdentity(
-        plan.program.logical_hash,
+        precision.source_equation,
         canonical_hash(
             {
                 k: v
@@ -632,7 +681,10 @@ def _promotion_profiles(plan, artifact, feeds, evidence_hash, *, baseline_execut
         workload = WorkloadSignature(
             "tensor-cuda-endpoint",
             (
-                ("equation", plan.program.logical_hash),
+                ("equation", precision.source_equation),
+                ("precision_schedule", precision.identity),
+                ("math_mode", precision.math_mode),
+                ("strict_audit_dtype", precision.strict_audit_dtype),
                 ("max_bytes", plan.max_bytes),
                 ("reservations", canonical_hash(asdict(plan.reservations))),
                 ("input_layout", canonical_hash(layout)),
@@ -674,7 +726,12 @@ def _promotion_profiles(plan, artifact, feeds, evidence_hash, *, baseline_execut
             name=f"tensor-{plan.identity[:12]}-{domain[:12]}",
             identity=identity,
             artifact_key=artifact.metadata["key"],
-            schedule_hash=canonical_hash(asdict(plan.schedule)),
+            schedule_hash=canonical_hash(
+                {
+                    "schedule": asdict(plan.schedule),
+                    "precision_schedule": precision.identity,
+                }
+            ),
             profile_hash=evidence_hash,
             correctness=correctness,
             performance=performance,
@@ -687,7 +744,7 @@ def _promotion_profiles(plan, artifact, feeds, evidence_hash, *, baseline_execut
     return [profiles[key] for key in sorted(profiles)]
 
 
-def _parity(actual, expected):
+def _parity(actual: typing.Any, expected: typing.Any) -> typing.Any:
     error = 0.0
     for name, reference in expected.items():
         result = actual[name]

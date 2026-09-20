@@ -9,7 +9,7 @@ checked against the symbolic AD lowering before any production integration.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import typing
 from dataclasses import dataclass
 
 from .cuda_schedule import (
@@ -17,9 +17,13 @@ from .cuda_schedule import (
     ScheduleIR,
     default_schedule,
 )
-from .cuda_target import CudaTargetInfo
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_spec import AXES, ShellClassSpec
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    from .cuda_target import CudaTargetInfo
 
 ShellComponent = tuple[str, str, str, str]
 CoulombState = tuple[int, int, int]
@@ -177,7 +181,7 @@ def _matching_masks(axes: Sequence[int]) -> tuple[tuple[int, int], ...]:
     order-specific cases.
     """
 
-    def visit(indices: tuple[int, ...]):
+    def visit(indices: tuple[int, ...]) -> typing.Any:
         if not indices:
             yield (0, 0)
             return

@@ -6,11 +6,12 @@ caller. Native lowerings continue to consume the same graph directly.
 """
 
 import math
+import typing
 
 import numpy as np
 
 
-def _operation(node, args, variables):
+def _operation(node: typing.Any, args: typing.Any, variables: typing.Any) -> typing.Any:
     if node.operation == "constant":
         return float(node.payload)
     if node.operation == "variable":
@@ -37,7 +38,9 @@ def _operation(node, args, variables):
     raise ValueError(f"unsupported scalar primitive {node.operation!r}")
 
 
-def _evaluate_piecewise(graph, roots, variables):
+def _evaluate_piecewise(
+    graph: typing.Any, roots: typing.Any, variables: typing.Any
+) -> typing.Any:
     """Evaluate piecewise graphs lane-wise without touching inactive branches."""
 
     arrays = [np.asarray(value) for value in variables.values()]
@@ -50,7 +53,7 @@ def _evaluate_piecewise(graph, roots, variables):
     values = {}
     ready = {}
 
-    def visit(identifier, lanes):
+    def visit(identifier: typing.Any, lanes: typing.Any) -> typing.Any:
         if identifier not in values:
             values[identifier] = np.empty(size, dtype=np.float64)
             ready[identifier] = np.zeros(size, dtype=bool)
@@ -82,7 +85,9 @@ def _evaluate_piecewise(graph, roots, variables):
         return tuple(visit(root.identifier, lanes).reshape(shape) for root in roots)
 
 
-def evaluate_array_graph(graph, roots, variables):
+def evaluate_array_graph(
+    graph: typing.Any, roots: typing.Any, variables: typing.Any
+) -> typing.Any:
     """Evaluate shared intermediates once and return one value per root.
 
     Variables may be scalars or broadcast-compatible arrays. Constant roots remain

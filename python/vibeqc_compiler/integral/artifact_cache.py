@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import stat
+import typing
 from dataclasses import asdict
 from pathlib import Path
 
@@ -22,7 +23,7 @@ _MAXIMUM_RECORD_BYTES = 90 << 20
 class LocalArtifactCache:
     """A private local cache selected explicitly by the caller, with full identities."""
 
-    def __init__(self, directory):
+    def __init__(self, directory: typing.Any) -> None:
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         info = self.directory.stat()
@@ -35,7 +36,7 @@ class LocalArtifactCache:
                 "executable cache must be an owned directory without shared write access"
             )
 
-    def install(self, identity: CompiledArtifactIdentity, binary: bytes):
+    def install(self, identity: CompiledArtifactIdentity, binary: bytes) -> typing.Any:
         """Publish one complete checksummed executable record with fsync and replace."""
         from vibeqc_compiler.common.provenance import atomic_json
 
@@ -56,7 +57,7 @@ class LocalArtifactCache:
         atomic_json(path, payload)
         return path
 
-    def load(self, expected: CompiledArtifactIdentity):
+    def load(self, expected: CompiledArtifactIdentity) -> typing.Any:
         """Verify ownership, bounds, compatibility and checksum before returning bytes."""
         path = self.directory / (expected.key + ".json")
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)

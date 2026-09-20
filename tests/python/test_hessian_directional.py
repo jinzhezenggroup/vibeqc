@@ -1,5 +1,6 @@
 """Directional nuclear inputs/response, checked independently of Hessian assembly."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -19,7 +20,7 @@ from tools.vibeqc_validation.hessian_fixtures import fixture_inputs
 
 
 @pytest.fixture(scope="module", params=("h2", "water"))
-def case(request):
+def case(request: typing.Any) -> typing.Any:
     with NativeSource(**fixture_inputs(request.param)) as source:
         state = NativeRHFState.from_source(source)
         v = np.random.default_rng(180).normal(size=(state.nat, 3))
@@ -28,11 +29,13 @@ def case(request):
         yield request.param, state, v, result
 
 
-def forbidden(*args, **kwargs):
+def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
     raise AssertionError("directional path used an all-coordinate/dense/oracle input")
 
 
-def test_directional_sources_match_independent_native_integral_derivatives(case):
+def test_directional_sources_match_independent_native_integral_derivatives(
+    case: typing.Any,
+) -> None:
     _, s, v, result = case
     # Independent native derivative implementation exists only on the assertion side.
     integrals = s.source.integral_derivatives()
@@ -51,7 +54,9 @@ def test_directional_sources_match_independent_native_integral_derivatives(case)
     )
 
 
-def test_does_not_materialize_all_coordinate_inputs_or_rerun_scf(case, monkeypatch):
+def test_does_not_materialize_all_coordinate_inputs_or_rerun_scf(
+    case: typing.Any, monkeypatch: typing.Any
+) -> None:
     _, s, v, expected = case
     monkeypatch.setattr(NativeRHFState, "first_order_inputs", property(forbidden))
     monkeypatch.setattr(first_order, "generated_first_order", forbidden)
@@ -59,7 +64,9 @@ def test_does_not_materialize_all_coordinate_inputs_or_rerun_scf(case, monkeypat
     monkeypatch.setattr(s.source, "rhf_density", forbidden)
     original_zeros = first_order.np.zeros
 
-    def checked_zeros(shape, *args, **kwargs):
+    def checked_zeros(
+        shape: typing.Any, *args: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
         if isinstance(shape, tuple) and shape == (s.nat, 3, s.nbf, s.nbf):
             forbidden()
         return original_zeros(shape, *args, **kwargs)
@@ -68,7 +75,7 @@ def test_does_not_materialize_all_coordinate_inputs_or_rerun_scf(case, monkeypat
     original_solve = perturbation.solve
     solves = []
 
-    def counted_solve(*args, **kwargs):
+    def counted_solve(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         solves.append(1)
         return original_solve(*args, **kwargs)
 
@@ -85,7 +92,7 @@ def test_does_not_materialize_all_coordinate_inputs_or_rerun_scf(case, monkeypat
     assert len(solves) == 1
 
 
-def test_response_metric_and_immutable_result_contract(case):
+def test_response_metric_and_immutable_result_contract(case: typing.Any) -> None:
     _, s, v, result = case
     r = result.response
     c = s.C[:, : s.nocc]
@@ -126,7 +133,9 @@ def test_response_metric_and_immutable_result_contract(case):
     assert result.response.solve_result.residual_norm < 1e-9
 
 
-def test_three_step_finite_difference_of_native_D_W_and_frozen_F_S(case):
+def test_three_step_finite_difference_of_native_D_W_and_frozen_F_S(
+    case: typing.Any,
+) -> None:
     _, s, v, result = case
     targets = (
         result.frozen_fock_derivative,
@@ -164,7 +173,7 @@ def test_three_step_finite_difference_of_native_D_W_and_frozen_F_S(case):
     assert np.all(errors[-1] < np.maximum(0.2 * errors[0], 2e-7)), errors
 
 
-def test_translation_zero_and_direction_scaling(case):
+def test_translation_zero_and_direction_scaling(case: typing.Any) -> None:
     _, s, v, result = case
     zero = directional_rhf_response(s, np.zeros_like(v))
     assert zero.response.solve_result.iterations == 0
@@ -193,7 +202,9 @@ def test_translation_zero_and_direction_scaling(case):
 
 
 @pytest.mark.parametrize("case", ["water"], indirect=True)
-def test_metric_omission_changes_independently_checked_response(case, monkeypatch):
+def test_metric_omission_changes_independently_checked_response(
+    case: typing.Any, monkeypatch: typing.Any
+) -> None:
     _, s, v, expected = case
     monkeypatch.setattr(
         perturbation, "metric_density_response_mo", lambda s1, **_: np.zeros_like(s1)
@@ -230,7 +241,9 @@ def test_metric_omission_changes_independently_checked_response(case, monkeypatc
         np.full((2, 3), "x", dtype=object),
     ],
 )
-def test_invalid_direction_rejected_before_provider_work(bad, monkeypatch):
+def test_invalid_direction_rejected_before_provider_work(
+    bad: typing.Any, monkeypatch: typing.Any
+) -> None:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
         monkeypatch.setattr(directional, "generated_directional_first_order", forbidden)
@@ -238,7 +251,9 @@ def test_invalid_direction_rejected_before_provider_work(bad, monkeypatch):
             directional_rhf_response(state, bad)
 
 
-def test_invalid_backend_options_and_closed_state_fail_before_sources(monkeypatch):
+def test_invalid_backend_options_and_closed_state_fail_before_sources(
+    monkeypatch: typing.Any,
+) -> None:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
         monkeypatch.setattr(directional, "generated_directional_first_order", forbidden)
@@ -264,7 +279,9 @@ def test_invalid_backend_options_and_closed_state_fail_before_sources(monkeypatc
         directional_rhf_response(state, np.zeros((2, 3)))
 
 
-def test_insufficient_solver_workspace_does_not_publish_or_poison_result(case):
+def test_insufficient_solver_workspace_does_not_publish_or_poison_result(
+    case: typing.Any,
+) -> None:
     _, s, v, expected = case
     with pytest.raises(ResponseSolveError):
         directional_rhf_response(
@@ -280,12 +297,16 @@ def test_insufficient_solver_workspace_does_not_publish_or_poison_result(case):
 
 
 @pytest.mark.parametrize("case", ["h2"], indirect=True)
-def test_late_first_component_failure_replays_cleanly(case, monkeypatch):
+def test_late_first_component_failure_replays_cleanly(
+    case: typing.Any, monkeypatch: typing.Any
+) -> None:
     _, s, v, expected = case
     original = first_order.FirstDerivativeEvaluator.contract
     count = 0
 
-    def fail_late(self, *args, **kwargs):
+    def fail_late(
+        self: typing.Any, *args: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
         nonlocal count
         count += 1
         if count == 3:
@@ -303,7 +324,9 @@ def test_late_first_component_failure_replays_cleanly(case, monkeypatch):
 
 
 @pytest.mark.parametrize("case", ["water"], indirect=True)
-def test_nonconverged_response_fails_without_partial_publication(case):
+def test_nonconverged_response_fails_without_partial_publication(
+    case: typing.Any,
+) -> None:
     _, state, v, expected = case
     with pytest.raises(ResponseSolveError):
         directional_rhf_response(
@@ -321,7 +344,9 @@ def test_nonconverged_response_fails_without_partial_publication(case):
 
 
 @pytest.mark.parametrize("case", ["h2"], indirect=True)
-def test_one_perturbation_rejects_bad_matrices_before_jk(case, monkeypatch):
+def test_one_perturbation_rejects_bad_matrices_before_jk(
+    case: typing.Any, monkeypatch: typing.Any
+) -> None:
     from tools.vibeqc_response import NativeJKBackend, RHFResponseOperator
 
     _, state, _, result = case

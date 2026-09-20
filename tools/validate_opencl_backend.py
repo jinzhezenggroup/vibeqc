@@ -6,6 +6,7 @@ and runtime smoke gate, not an OpenCL HF provider or a domestic-GPU claim.
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -54,7 +55,7 @@ from tools.vibeqc_validation.df_values import make_df_value_fixture
 from tools.vibeqc_validation.schema import block_error, canonical_hash
 
 
-def integral_fixture():
+def integral_fixture() -> typing.Any:
     """Normalized (p_x|p_x) metric primitives against independent libcint blocks."""
     integral = build_df_value_ir("coulomb_metric", (1, 1))
     kernel = build_df_component_kernel(integral, ("x", "x"))
@@ -128,7 +129,14 @@ def integral_fixture():
     )
 
 
-def execute_program(runtime, kernel, inputs, directory, *, workgroup=32):
+def execute_program(
+    runtime: typing.Any,
+    kernel: typing.Any,
+    inputs: typing.Any,
+    directory: typing.Any,
+    *,
+    workgroup: typing.Any = 32,
+) -> typing.Any:
     """Compile and link separately, then retain real event timings and resources."""
     shape = ExecutionShape(workgroup)
     source = emit_opencl(kernel, runtime.capabilities(), shape)
@@ -220,7 +228,7 @@ def execute_program(runtime, kernel, inputs, directory, *, workgroup=32):
     }
 
 
-def main():
+def main() -> None:
     """Record current vendor/runtime provenance without advertising a full backend."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", required=True, type=Path)

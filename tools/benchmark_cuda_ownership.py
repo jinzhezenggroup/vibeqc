@@ -18,23 +18,24 @@ import json
 import os
 import subprocess
 import sys
+import typing
 from dataclasses import asdict
 from itertools import product
 from pathlib import Path
 from time import perf_counter
 
 
-def capture(argv):
+def capture(argv: typing.Any) -> typing.Any:
     """Run a checked command without shell interpolation."""
     return subprocess.check_output(argv, text=True).strip()
 
 
-def write(path, payload):
+def write(path: typing.Any, payload: typing.Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n")
 
 
-def endpoint_inventory(domain):
+def endpoint_inventory(domain: typing.Any) -> typing.Any:
     """Return the unchanged workload matrix, independently of process grouping."""
     inventory = [
         ("spf", *case)
@@ -62,13 +63,13 @@ def endpoint_inventory(domain):
     return inventory
 
 
-def case_id(row):
+def case_id(row: typing.Any) -> typing.Any:
     """Name a physical workload identically in workers and the driver."""
     family, method, representation, fitted, count = row
     return f"{family}/{method}/{representation}/{'df' if fitted else 'direct'}/batch{count}"
 
 
-def worker(args):
+def worker(args: typing.Any) -> None:
     """Measure synchronized public endpoints and retain actual plan diagnostics."""
     if not os.environ.get("SLURM_JOB_ID"):
         raise RuntimeError("real GPU measurements require Slurm")
@@ -356,7 +357,9 @@ def worker(args):
         raise ValueError("empty or unknown endpoint inventory")
 
 
-def measure_worker(args, label, cases, path):
+def measure_worker(
+    args: typing.Any, label: typing.Any, cases: typing.Any, path: typing.Any
+) -> typing.Any:
     """Retain one fresh process's record without overwriting an earlier attempt."""
     if path.exists():
         raise FileExistsError(f"refusing to overwrite measured sample {path}")
@@ -385,7 +388,7 @@ def measure_worker(args, label, cases, path):
     return json.loads(path.read_text())
 
 
-def collect_runs(args):
+def collect_runs(args: typing.Any) -> typing.Any:
     """Collect every case/sample with either historical or case-isolated ABBA.
 
     In case mode, individual process files remain immutable. Aggregated sample
@@ -445,7 +448,7 @@ def collect_runs(args):
     return runs, measured
 
 
-def compare(args):
+def compare(args: typing.Any) -> None:
     """Retain all samples; use unchanged numerical and 2% endpoint gates.
 
     The 2% gate is a non-regression ceiling, not a significant-speedup claim.
@@ -604,7 +607,7 @@ def compare(args):
         raise SystemExit(1)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     w = commands.add_parser("worker")

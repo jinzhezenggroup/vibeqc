@@ -1,6 +1,7 @@
 """Independent loop checks, view boundaries, packing metrics, and rewrites."""
 
 import json
+import typing
 from dataclasses import replace
 from fractions import Fraction
 from itertools import pairwise
@@ -39,12 +40,14 @@ from tools.vibeqc_validation.schema import GATES, block_error
 FP64 = GATES["integral_fp64"]
 
 
-def assert_gate(actual, reference):
+def assert_gate(actual: typing.Any, reference: typing.Any) -> None:
     assert block_error(actual, reference, **FP64)["passed"]
 
 
 @pytest.mark.parametrize("seed", [145, 321, 702])
-def test_examples_against_loops_after_replay_and_each_rewrite(seed):
+def test_examples_against_loops_after_replay_and_each_rewrite(
+    seed: typing.Any,
+) -> None:
     for case in example_cases(seed):
         source = case.program.dumps()
         program = Program.loads(source)
@@ -76,7 +79,7 @@ def test_examples_against_loops_after_replay_and_each_rewrite(seed):
             assert_gate(layout.unpack(layout.pack(dense)), dense)
 
 
-def test_views_gathers_reductions_and_broadcasts_against_coordinate_loops():
+def test_views_gathers_reductions_and_broadcasts_against_coordinate_loops() -> None:
     o, v = IndexSpace("o", "occupied", 3), IndexSpace("v", "virtual", 4)
     i, a = Index("i", o), Index("a", v)
     x = input_tensor("x", TensorSpec((i, a), role="parameter", differentiable=True))
@@ -132,7 +135,7 @@ def test_views_gathers_reductions_and_broadcasts_against_coordinate_loops():
     assert values.flags.writeable
 
 
-def test_gather_of_gather_and_sliced_partial_blocks_keep_global_identity():
+def test_gather_of_gather_and_sliced_partial_blocks_keep_global_identity() -> None:
     space = IndexSpace("o", "occupied", 7)
     x = input_tensor("x", TensorSpec((Index("i", space, 2, 6),), role="input"))
     g = slice_tensor(gather(gather(x, 0, (3, 0, 2)), 0, (2, 1, 2)), ((1, 3),))
@@ -147,7 +150,7 @@ def test_gather_of_gather_and_sliced_partial_blocks_keep_global_identity():
         add(slice_tensor(x, ((0, 2),)), slice_tensor(x, ((2, 4),)))
 
 
-def test_repeated_einsum_indices_trace_scalar_and_prefactor_against_loops():
+def test_repeated_einsum_indices_trace_scalar_and_prefactor_against_loops() -> None:
     o, v, aux = (
         IndexSpace("o", "occupied", 2),
         IndexSpace("v", "virtual", 3),
@@ -186,7 +189,9 @@ def test_repeated_einsum_indices_trace_scalar_and_prefactor_against_loops():
 
 
 @pytest.mark.parametrize("size", [0, 1])
-def test_empty_and_singleton_axes_have_defined_reduction_and_broadcast(size):
+def test_empty_and_singleton_axes_have_defined_reduction_and_broadcast(
+    size: typing.Any,
+) -> None:
     axis = Index("i", IndexSpace("o", "occupied", size))
     one = Index("b", IndexSpace("b", "batch", 1))
     x = input_tensor("x", TensorSpec((axis,), role="input"))
@@ -212,7 +217,7 @@ def test_empty_and_singleton_axes_have_defined_reduction_and_broadcast(size):
     assert layout.unpack(layout.pack(np.ones(size))).shape == (size,)
 
 
-def test_float32_lowering_rounds_only_at_execution():
+def test_float32_lowering_rounds_only_at_execution() -> None:
     axis = Index("i", IndexSpace("o", "occupied", 3))
     x = input_tensor("x", TensorSpec((axis,), dtype="float32", role="input"))
     result = execute(
@@ -223,7 +228,7 @@ def test_float32_lowering_rounds_only_at_execution():
     np.testing.assert_allclose(result, [1 / 3, 2 / 3, 1], atol=1e-7)
 
 
-def test_packed_spatial_and_spin_orbital_metrics_are_distinct():
+def test_packed_spatial_and_spin_orbital_metrics_are_distinct() -> None:
     o, v = IndexSpace("o", "occupied", 2), IndexSpace("v", "virtual", 3)
     indices = (Index("i", o), Index("j", o), Index("a", v), Index("b", v))
     spatial = TensorSpec(
@@ -270,7 +275,7 @@ def test_packed_spatial_and_spin_orbital_metrics_are_distinct():
         PackedLayout.from_payload(damaged)
 
 
-def test_transpose_carries_symmetry_and_constant_zero_orbits():
+def test_transpose_carries_symmetry_and_constant_zero_orbits() -> None:
     case = example_cases()[1]
     t = input_tensor("t", case.packing.spec)
     p = Program({"permuted": transpose(t, (2, 0, 3, 1))})
@@ -286,7 +291,7 @@ def test_transpose_carries_symmetry_and_constant_zero_orbits():
     np.testing.assert_array_equal(zeros.unpack(np.empty(0)), [0.0])
 
 
-def test_each_rewrite_has_an_effect_without_erasing_original_equation():
+def test_each_rewrite_has_an_effect_without_erasing_original_equation() -> None:
     case = example_cases()[0]
     left, right = case.program.outputs["value"].inputs
     first, duplicate = (
@@ -315,7 +320,7 @@ def test_each_rewrite_has_an_effect_without_erasing_original_equation():
     )
 
 
-def test_constant_folding_preserves_roundoff_overflow_and_zero_division():
+def test_constant_folding_preserves_roundoff_overflow_and_zero_division() -> None:
     cancellation = add(constant(10**16), constant(1), constant(-(10**16)))
     p = rewrite(Program({"value": cancellation}), "scalar_constants")
     assert p.outputs["value"].op == "add"
@@ -328,7 +333,7 @@ def test_constant_folding_preserves_roundoff_overflow_and_zero_division():
         execute(optimize(Program({"huge": huge})), {})
 
 
-def test_cse_never_merges_different_spin_symmetry_or_parameter_roles():
+def test_cse_never_merges_different_spin_symmetry_or_parameter_roles() -> None:
     space = IndexSpace("o", "occupied", 2)
     indices = (Index("i", space), Index("j", space))
     specs = [

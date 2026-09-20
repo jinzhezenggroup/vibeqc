@@ -1,6 +1,7 @@
 """Historical evidence remains intact and restores without overwriting files."""
 
 import json
+import typing
 from hashlib import sha256
 from pathlib import Path
 from zipfile import ZipFile
@@ -16,7 +17,9 @@ RESULTS = Path(__file__).resolve().parents[2] / "benchmarks/results"
     "name",
     ["rccsd-148-a", "rccsd-148-b", "rccsd-148-c", "rccsd-149-a", "xc-integration-162"],
 )
-def test_committed_evidence_restores_exact_bytes(name, tmp_path):
+def test_committed_evidence_restores_exact_bytes(
+    name: typing.Any, tmp_path: typing.Any
+) -> None:
     directory = RESULTS / name
     manifest = json.loads((directory / "raw-evidence.manifest.json").read_text())
     output = tmp_path / "restored"
@@ -30,7 +33,9 @@ def test_committed_evidence_restores_exact_bytes(name, tmp_path):
         unpack(directory, output)
 
 
-def sample_archive(directory, name="record.json"):
+def sample_archive(
+    directory: typing.Any, name: typing.Any = "record.json"
+) -> typing.Any:
     data = b'{"passed": true}\n'
     with ZipFile(directory / "raw-evidence.zip", "w") as archive:
         archive.writestr(name, data)
@@ -48,7 +53,9 @@ def sample_archive(directory, name="record.json"):
 
 
 @pytest.mark.parametrize("damage", ["archive", "member", "inventory"])
-def test_corruption_fails_before_creating_output(tmp_path, damage):
+def test_corruption_fails_before_creating_output(
+    tmp_path: typing.Any, damage: typing.Any
+) -> None:
     manifest = sample_archive(tmp_path)
     if damage == "archive":
         with (tmp_path / "raw-evidence.zip").open("ab") as stream:
@@ -65,7 +72,7 @@ def test_corruption_fails_before_creating_output(tmp_path, damage):
 
 
 @pytest.mark.parametrize("name", ["../escape", "/absolute", "C:/escape", "a\\b"])
-def test_unsafe_paths_are_rejected(tmp_path, name):
+def test_unsafe_paths_are_rejected(tmp_path: typing.Any, name: typing.Any) -> None:
     sample_archive(tmp_path, name)
     # Windows' ZIP writer can normalize backslashes before our inventory check.
     with pytest.raises(ValueError, match="unsafe archive path|members differ"):

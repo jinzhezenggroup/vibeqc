@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -21,7 +22,7 @@ class ResponseCompatibilityError(ValueError):
 class ResponseSolveError(RuntimeError):
     """A response solve failed without producing a valid converged solution."""
 
-    def __init__(self, result):
+    def __init__(self, result: typing.Any) -> None:
         self.result = result
         super().__init__(
             f"response solve failed after {result.iterations} iterations "
@@ -45,7 +46,7 @@ class RotationLayout:
     virtual: tuple[int, ...]
     spin_blocks: tuple[str, ...] = ("restricted",)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "occupied", tuple(self.occupied))
         object.__setattr__(self, "virtual", tuple(self.virtual))
         object.__setattr__(self, "spin_blocks", tuple(self.spin_blocks))
@@ -64,7 +65,7 @@ class RotationLayout:
             )
 
     @classmethod
-    def from_reference(cls, reference: ReferenceSnapshot):
+    def from_reference(cls, reference: ReferenceSnapshot) -> typing.Any:
         """Build the canonical occupied-then-virtual RHF layout."""
         if reference.algorithm not in ("RHF", "KS"):
             raise ResponseUnsupported(
@@ -76,23 +77,23 @@ class RotationLayout:
         )
 
     @property
-    def nocc(self):
+    def nocc(self) -> typing.Any:
         return len(self.occupied)
 
     @property
-    def nvirt(self):
+    def nvirt(self) -> typing.Any:
         return len(self.virtual)
 
     @property
-    def nmo(self):
+    def nmo(self) -> typing.Any:
         return self.nocc + self.nvirt
 
     @property
-    def dimension(self):
+    def dimension(self) -> typing.Any:
         return self.nocc * self.nvirt
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(
             {
                 "occupied": self.occupied,
@@ -103,7 +104,7 @@ class RotationLayout:
             }
         )
 
-    def validate_vector(self, values):
+    def validate_vector(self, values: typing.Any) -> typing.Any:
         """Return a finite immutable response vector of the declared shape."""
         vector = np.asarray(values)
         if vector.shape != (self.dimension,):
@@ -114,11 +115,11 @@ class RotationLayout:
             raise ValueError("response vectors must be finite real FP64 values")
         return immutable(vector)
 
-    def as_ia(self, values):
+    def as_ia(self, values: typing.Any) -> typing.Any:
         """Return ``x[i,a]`` with shape ``(nocc,nvirt)``."""
         return self.validate_vector(values).reshape(self.nocc, self.nvirt)
 
-    def pack(self, values):
+    def pack(self, values: typing.Any) -> typing.Any:
         """Pack an ``(nocc,nvirt)`` array into the canonical vector order."""
         array = np.asarray(values)
         if array.shape != (self.nocc, self.nvirt):
@@ -127,7 +128,7 @@ class RotationLayout:
             )
         return self.validate_vector(array.reshape(-1))
 
-    def density_matrix(self, values):
+    def density_matrix(self, values: typing.Any) -> typing.Any:
         """Return the symmetric MO density-response matrix ``2 sym_ov(x)``."""
         x = self.as_ia(values)
         result = np.zeros((self.nmo, self.nmo))
@@ -135,7 +136,7 @@ class RotationLayout:
         result[np.ix_(self.virtual, self.occupied)] = x.T
         return 2.0 * result
 
-    def generator_matrix(self, values):
+    def generator_matrix(self, values: typing.Any) -> typing.Any:
         """Return the skew orbital generator ``K`` used by finite rotations."""
         x = self.as_ia(values)
         result = np.zeros((self.nmo, self.nmo))
@@ -165,7 +166,7 @@ class ResponseProblem:
     perturbation_labels: tuple[str, ...] = ()
     identity: str = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.method not in ("rhf", "cpks"):
             raise ResponseUnsupported(f"unsupported response method {self.method!r}")
         if self.reference.algorithm == "RHF":
@@ -221,7 +222,7 @@ class ResponseProblem:
         object.__setattr__(self, "perturbation_labels", labels)
         object.__setattr__(self, "identity", canonical_hash(self._payload()))
 
-    def _payload(self):
+    def _payload(self) -> typing.Any:
         return {
             "reference_identity": self.reference.identity,
             "reference_algorithm": self.reference.algorithm,
@@ -237,7 +238,7 @@ class ResponseProblem:
         }
 
     @property
-    def compatibility_identity(self):
+    def compatibility_identity(self) -> typing.Any:
         """Identity for safe Krylov reuse across different perturbation RHSs.
 
         Human-readable perturbation labels are intentionally excluded.  The
@@ -250,14 +251,14 @@ class ResponseProblem:
         cls,
         reference: ReferenceSnapshot,
         *,
-        method="rhf",
-        operator_identity,
-        model_hash=None,
-        rhs_layout="ov-response-vector",
-        gauge="canonical-nonredundant-ov",
-        overlap_metric="mo-orthonormal",
-        perturbation_labels=(),
-    ):
+        method: typing.Any = "rhf",
+        operator_identity: typing.Any,
+        model_hash: typing.Any = None,
+        rhs_layout: typing.Any = "ov-response-vector",
+        gauge: typing.Any = "canonical-nonredundant-ov",
+        overlap_metric: typing.Any = "mo-orthonormal",
+        perturbation_labels: typing.Any = (),
+    ) -> typing.Any:
         """Bind a converged reference to one concrete operator backend."""
         layout = RotationLayout.from_reference(reference)
         if model_hash is None:
@@ -285,14 +286,14 @@ class ResponseProblem:
         )
 
     @property
-    def dimension(self):
+    def dimension(self) -> typing.Any:
         return self.layout.dimension
 
     @property
-    def reference_identity(self):
+    def reference_identity(self) -> typing.Any:
         return self.reference.identity
 
-    def _active_rotation_gaps(self):
+    def _active_rotation_gaps(self) -> typing.Any:
         """Return occupied-virtual energy denominators of active rotations.
 
         The nonredundant response space contains only occupied-virtual
@@ -307,7 +308,7 @@ class ResponseProblem:
         return energies[virtual][:, None] - energies[occupied][None, :]
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         """Report response-relevant reference conditioning without clipping.
 
         ``minimum_ov_gap`` is the smallest absolute occupied-virtual orbital
@@ -326,7 +327,7 @@ class ResponseProblem:
             "scf_residual": float(self.reference.scf_residual),
         }
 
-    def require_stable(self, *, orbital_gap_tolerance=1e-8):
+    def require_stable(self, *, orbital_gap_tolerance: typing.Any = 1e-8) -> typing.Any:
         """Fail closed when a caller requires a non-degenerate reference.
 
         A near-degenerate reference is not silently altered or regularized.
@@ -344,7 +345,7 @@ class ResponseProblem:
             )
         return self
 
-    def validate_rhs(self, values):
+    def validate_rhs(self, values: typing.Any) -> typing.Any:
         """Return an immutable ``(dimension,k)`` RHS with a matching layout."""
         rhs = np.asarray(values)
         if rhs.ndim == 1:
@@ -359,7 +360,7 @@ class ResponseProblem:
             raise ValueError("perturbation labels do not match RHS columns")
         return immutable(rhs)
 
-    def assert_compatible(self, other):
+    def assert_compatible(self, other: typing.Any) -> None:
         """Reject any retained state that does not describe this exact problem."""
         if not isinstance(other, ResponseProblem):
             raise TypeError("expected ResponseProblem")

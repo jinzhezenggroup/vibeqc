@@ -1,6 +1,7 @@
 """Bounded orbital-f ECP extension; projector angular momentum remains <= d."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -9,14 +10,16 @@ from vibeqc import Calculator, ResourceBudget
 from vibeqc.ecp import ecp_integrals
 
 
-def require_device(device):
+def require_device(device: typing.Any) -> None:
     if device == "cuda" and os.environ.get("VIBEQC_ECP_CUDA_TEST") != "1":
         pytest.skip("requires an allocated CUDA device")
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
-def test_f_raw_matrices_all_center_derivatives_and_weights(device, representation):
+def test_f_raw_matrices_all_center_derivatives_and_weights(
+    device: typing.Any, representation: typing.Any
+) -> None:
     require_device(device)
     atoms, basis, mol = fixture(
         representation=representation, f_shell=True, f_on_h=True
@@ -59,7 +62,7 @@ def test_f_raw_matrices_all_center_derivatives_and_weights(device, representatio
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_f_detached_ecp_center_and_d_projector(device):
+def test_f_detached_ecp_center_and_d_projector(device: typing.Any) -> None:
     require_device(device)
     xyz = np.array([[0.13, -0.21, 0.17], [0.43, 0.19, 1.2], [-0.21, 0.11, -0.7]])
     actual = detached_native(xyz, device=device, orbital=3, d_projector=True)
@@ -85,7 +88,9 @@ def test_f_detached_ecp_center_and_d_projector(device):
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 @pytest.mark.parametrize("spin", [0, 1])
-def test_f_complete_hf_energy_and_force(device, representation, spin):
+def test_f_complete_hf_energy_and_force(
+    device: typing.Any, representation: typing.Any, spin: typing.Any
+) -> None:
     require_device(device)
     scf = pytest.importorskip("pyscf.scf")
     atoms, basis, mol = fixture(representation=representation, f_shell=True, spin=spin)
@@ -102,7 +107,7 @@ def test_f_complete_hf_energy_and_force(device, representation, spin):
     np.testing.assert_allclose(result.forces.sum(axis=0), 0, atol=2e-7)
 
 
-def test_f_cuda_complete_energy_directional_finite_difference():
+def test_f_cuda_complete_energy_directional_finite_difference() -> None:
     require_device("cuda")
     atoms, basis, mol = fixture(f_shell=True)
     calculator = Calculator(basis=basis, device="cuda")
@@ -123,7 +128,7 @@ def test_f_cuda_complete_energy_directional_finite_difference():
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_f_prepared_replay_with_planned_budget(device):
+def test_f_prepared_replay_with_planned_budget(device: typing.Any) -> None:
     require_device(device)
     # Complete HF above covers f on the ECP atom. This replay gate covers f
     # on the all-electron atom too, without repeating the very expensive

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -30,6 +31,12 @@ if __package__ in (None, ""):
 from vibeqc.profiles import find_nvcc
 from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.tensor import (
+    PrecisionDirective,
+    conservative_precision_variants,
+    describe_precision,
+    lower_precision,
+)
 from vibeqc_compiler.tensor.cuda_execute import (
     PreparedCuda,
     compile_cuda,
@@ -52,7 +59,32 @@ from tools.vibeqc_validation.schema import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run(args):
+def precision_candidates(program: typing.Any) -> tuple[tuple[str, typing.Any], ...]:
+    """Build bounded #528 qualification candidates from one scientific equation."""
+    rows = [("strict-fp64", program)]
+    conservative = conservative_precision_variants(program)
+    if len(conservative) == 2:
+        rows.append(("mixed-ordinary-fp32-fp64-reduction", conservative[1]))
+    names = program.debug_names
+    directives = {
+        names[node]: PrecisionDirective(
+            "float32",
+            "float32",
+            "float32",
+            qualification="issue-528-experimental-full-fp32",
+        )
+        for node in program.live_nodes
+        if node.spec.dtype == "float64" and node.op not in ("input", "constant", "cast")
+    }
+    if directives:
+        rows.append(("experimental-full-fp32", lower_precision(program, directives)))
+    unique = {}
+    for label, candidate in rows:
+        unique.setdefault(candidate.logical_hash, (label, candidate))
+    return tuple(unique.values())
+
+
+def run(args: typing.Any) -> typing.Any:
     """Retain full tuning ledgers and one shared-schema record per input scale."""
     nvcc = args.nvcc or find_nvcc()
     if nvcc is None:
@@ -92,12 +124,19 @@ def run(args):
                 for scale in args.scale
             ]
             tuning = None
+            precision_rows = (
+                precision_candidates(case.program)
+                if args.precision_candidates
+                else (("strict-fp64", case.program),)
+            )
             if args.mode == "tune":
                 tuning = tune_cuda(
                     baseline,
                     compiler,
                     fixtures,
                     args.cache,
+                    schedules=[TensorSchedule()] if args.precision_candidates else None,
+                    precision_programs=tuple(program for _, program in precision_rows),
                     repeats=args.repeats,
                     maximum_seconds=args.tune_seconds,
                     device=args.device,
@@ -154,6 +193,14 @@ def run(args):
                         "promotion_limits": {
                             "peak_bytes": args.max_bytes,
                             "compile_seconds": args.compile_timeout,
+                        },
+                        "precision_qualification": {
+                            "enabled": args.precision_candidates,
+                            "candidates": {
+                                name: describe_precision(candidate).to_payload()
+                                for name, candidate in precision_rows
+                            },
+                            "promotion": "existing numerical + complete-endpoint gates only",
                         },
                         "plan": selected_plan.to_payload(),
                         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
@@ -306,7 +353,7 @@ def run(args):
     return records
 
 
-def _shape(value):
+def _shape(value: typing.Any) -> typing.Any:
     try:
         result = tuple(int(n) for n in value.split(","))
         if len(result) != 2 or min(result) < 1:
@@ -316,7 +363,7 @@ def _shape(value):
         raise argparse.ArgumentTypeError("shape must be positive nocc,nvir") from error
 
 
-def main():
+def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--mode", choices=("compile", "numerical", "tune"), default="numerical"
@@ -342,6 +389,11 @@ def main():
     parser.add_argument("--scale", type=float, nargs="+", default=(0.001, 1.0, 100.0))
     parser.add_argument("--seed", type=int, default=146)
     parser.add_argument("--repeats", type=int, default=8)
+    parser.add_argument(
+        "--precision-candidates",
+        action="store_true",
+        help="in tune mode compare strict FP64, mixed FP32/FP64 and experimental full-FP32 compiler schedules from the same equation",
+    )
     parser.add_argument("--tune-seconds", type=float, default=300)
     parser.add_argument("--compile-timeout", type=float, default=120)
     parser.add_argument("--max-bytes", type=int, default=256 * 1024**2)
@@ -351,6 +403,8 @@ def main():
     args.shape = args.shape or ((3, 7), (5, 17), (8, 31))
     if any(not np.isfinite(s) or s == 0 for s in args.scale):
         parser.error("scales must be finite and nonzero")
+    if args.precision_candidates and args.mode != "tune":
+        parser.error("--precision-candidates requires --mode tune")
     records = run(args)
     return int(any(r["stages"]["numerical"]["status"] == "fail" for r in records))
 

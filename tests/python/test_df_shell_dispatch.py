@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
@@ -21,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture(scope="module")
-def dispatcher(tmp_path_factory):
+def dispatcher(tmp_path_factory: typing.Any) -> typing.Any:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("host C++ compiler unavailable")
@@ -121,16 +122,16 @@ int main(int argc,char** argv) {
     )
 
     def run(
-        kind=0,
-        full=True,
-        variant=0,
-        architecture=120,
-        error=0,
-        fail=-1,
-        empty=False,
-        policy="auto",
-        schedule=None,
-    ):
+        kind: typing.Any = 0,
+        full: typing.Any = True,
+        variant: typing.Any = 0,
+        architecture: typing.Any = 120,
+        error: typing.Any = 0,
+        fail: typing.Any = -1,
+        empty: typing.Any = False,
+        policy: typing.Any = "auto",
+        schedule: typing.Any = None,
+    ) -> typing.Any:
         env = dict(os.environ, VIBEQC_DF_SHELL_POLICY=policy)
         env.pop("VIBEQC_DF_SHELL_SCHEDULE", None)
         if schedule is not None:
@@ -158,8 +159,8 @@ int main(int argc,char** argv) {
 @pytest.mark.parametrize("full", [False, True])
 @pytest.mark.parametrize("variant", range(3))
 def test_dispatch_preserves_domains_order_and_explicit_schedules(
-    dispatcher, kind, full, variant
-):
+    dispatcher: typing.Any, kind: typing.Any, full: typing.Any, variant: typing.Any
+) -> None:
     result = dispatcher(kind, full, variant, policy="legacy")
     domain = [
         16 * a + 4 * b + c
@@ -170,7 +171,9 @@ def test_dispatch_preserves_domains_order_and_explicit_schedules(
 
 
 @pytest.mark.parametrize("kind", range(3))
-def test_qualified_policy_and_unknown_target_fallback(dispatcher, kind):
+def test_qualified_policy_and_unknown_target_fallback(
+    dispatcher: typing.Any, kind: typing.Any
+) -> None:
     manifest = json.loads(
         (
             ROOT / "python/vibeqc_compiler/integral/production_df_derivatives.json"
@@ -200,7 +203,9 @@ def test_qualified_policy_and_unknown_target_fallback(dispatcher, kind):
 
 
 @pytest.mark.parametrize("kind", range(3))
-def test_errors_stop_dispatch_and_invalid_variant_is_rejected(dispatcher, kind):
+def test_errors_stop_dispatch_and_invalid_variant_is_rejected(
+    dispatcher: typing.Any, kind: typing.Any
+) -> None:
     assert dispatcher(kind, policy="invalid") == {"status": 1, "calls": []}
     assert dispatcher(kind, variant=3) == {"status": 1, "calls": []}
     assert dispatcher(kind, error=7) == {"status": 7, "calls": []}
@@ -209,7 +214,7 @@ def test_errors_stop_dispatch_and_invalid_variant_is_rejected(dispatcher, kind):
     assert [row[0] for row in failed["calls"]] == list(range(22))
 
 
-def test_empty_packet_keeps_early_return_contract(dispatcher):
+def test_empty_packet_keeps_early_return_contract(dispatcher: typing.Any) -> None:
     assert dispatcher(2, empty=True, error=7, policy="invalid") == {
         "status": 0,
         "calls": [],

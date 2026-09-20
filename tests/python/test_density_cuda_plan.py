@@ -1,5 +1,6 @@
 """Device-free capacity and preflight gates for the D/C feature owner."""
 
+import typing
 from types import SimpleNamespace
 
 import numpy as np
@@ -9,11 +10,11 @@ from vibeqc_compiler.dft.cuda import CudaGrid
 from vibeqc_compiler.dft.plan import plan_tiles
 
 
-def basis():
+def basis() -> typing.Any:
     return SimpleNamespace(nao=32, natom=3, numeric_bytes=8192, packed=np.zeros(256))
 
 
-def test_occupied_capacity_does_not_materialize_full_point_by_orbital_data():
+def test_occupied_capacity_does_not_materialize_full_point_by_orbital_data() -> None:
     small, large = [
         plan_tiles(
             basis(),
@@ -48,8 +49,10 @@ def test_occupied_capacity_does_not_materialize_full_point_by_orbital_data():
 @pytest.mark.parametrize(
     "budget", [ResourceBudget(host_bytes=1), ResourceBudget(device_bytes=1)]
 )
-def test_shared_budget_rejects_before_loading_or_allocating_cuda(budget, monkeypatch):
-    def forbidden(*args, **kwargs):
+def test_shared_budget_rejects_before_loading_or_allocating_cuda(
+    budget: typing.Any, monkeypatch: typing.Any
+) -> None:
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("CUDA must not load before resource preflight")
 
     monkeypatch.setattr("vibeqc_compiler.dft.cuda.ct.CDLL", forbidden)
@@ -60,12 +63,14 @@ def test_shared_budget_rejects_before_loading_or_allocating_cuda(budget, monkeyp
 @pytest.mark.parametrize(
     "counts,tile", [((-1, 0), 3), ((2, 3, 4), 3), ((True, 1), 3), ((3, 2), 0)]
 )
-def test_invalid_orbital_topology_fails_before_allocation(counts, tile):
+def test_invalid_orbital_topology_fails_before_allocation(
+    counts: typing.Any, tile: typing.Any
+) -> None:
     with pytest.raises(ValueError):
         plan_tiles(basis(), backend="cuda", orbital_capacity=counts, orbital_tile=tile)
 
 
-def test_legacy_and_shared_budget_are_not_silently_combined():
+def test_legacy_and_shared_budget_are_not_silently_combined() -> None:
     with pytest.raises(ValueError, match="shared resource budget or"):
         CudaGrid(
             basis(), None, budget_bytes=128 << 20, resource_budget=ResourceBudget()

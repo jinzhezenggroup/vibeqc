@@ -1,5 +1,6 @@
 """Explicit chemists' integral and restricted-amplitude axis conventions."""
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -16,7 +17,7 @@ class MOBlock:
 
     slots: tuple[tuple[int, ...], ...]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "slots", tuple(tuple(x) for x in self.slots))
         if len(self.slots) != 4:
             raise ValueError("chemists' ERIs require four explicit MO slots")
@@ -27,7 +28,7 @@ class MOBlock:
                 raise ValueError("MO slots require unique nonnegative integer indices")
 
     @classmethod
-    def from_spaces(cls, snapshot, spaces):
+    def from_spaces(cls, snapshot: typing.Any, spaces: typing.Any) -> typing.Any:
         """Expand a documented chemists'-slot label into explicit global MOs."""
         if len(spaces) != 4 or any(s not in "ov" for s in spaces):
             raise ValueError("use four o/v slots in chemists' order")
@@ -38,15 +39,15 @@ class MOBlock:
         return cls(tuple(indices[s] for s in spaces))
 
     @property
-    def shape(self):
+    def shape(self) -> typing.Any:
         return tuple(map(len, self.slots))
 
-    def validate(self, snapshot):
+    def validate(self, snapshot: typing.Any) -> None:
         if any(i >= snapshot.nmo for slot in self.slots for i in slot):
             raise ValueError("MO index outside the reference snapshot")
 
 
-def ovov_to_ijab(ovov):
+def ovov_to_ijab(ovov: typing.Any) -> typing.Any:
     """Explicit adapter: chemists' (i a|j b) -> G[i,j,a,b], no antisymmetry."""
     value = np.asarray(ovov)
     if value.ndim != 4:

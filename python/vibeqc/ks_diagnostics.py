@@ -2,6 +2,7 @@
 
 import ctypes
 import math
+import typing
 from dataclasses import asdict, dataclass
 
 from . import _native
@@ -18,7 +19,7 @@ class KsEnergyComponents:
     xc: float
 
     @property
-    def total(self):
+    def total(self) -> typing.Any:
         return self.nuclear + self.one_electron + self.hartree + self.xc
 
 
@@ -64,7 +65,7 @@ class KsDiagnostic:
     physical_residual_max: float
     history: tuple[KsIteration, ...]
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         """Return a finite JSON-compatible snapshot, including every iteration."""
         return asdict(self)
 
@@ -81,11 +82,11 @@ class KsTransportDiagnostic:
     iterations: int
     occupation_stabilized_proposals: int
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return asdict(self)
 
 
-def _components(value):
+def _components(value: typing.Any) -> typing.Any:
     return KsEnergyComponents(
         value.nuclear_energy,
         value.one_electron_energy,
@@ -94,7 +95,9 @@ def _components(value):
     )
 
 
-def read_ks_diagnostic(library, handle, index=None):
+def read_ks_diagnostic(
+    library: typing.Any, handle: typing.Any, index: typing.Any = None
+) -> typing.Any:
     """Copy the current native record; absence never substitutes an old one."""
     name = (
         "vibeqc_calculation_get_ks_diagnostic"
@@ -151,7 +154,9 @@ def read_ks_diagnostic(library, handle, index=None):
     )
 
 
-def read_ks_transport_diagnostic(library, handle, index=None):
+def read_ks_transport_diagnostic(
+    library: typing.Any, handle: typing.Any, index: typing.Any = None
+) -> typing.Any:
     """Snapshot cumulative CUDA movement; old/CPU libraries return None."""
     name = (
         "vibeqc_calculation_get_ks_transport_diagnostic"

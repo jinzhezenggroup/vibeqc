@@ -7,6 +7,7 @@ are invented for the localized occupied orbitals.
 """
 
 import time
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -38,7 +39,13 @@ class LocalSpacePlan:
     maximum_pair_rank: int
 
 
-def plan_local_spaces(snapshot, localization, domain, *, budget_bytes=128 << 20):
+def plan_local_spaces(
+    snapshot: typing.Any,
+    localization: typing.Any,
+    domain: typing.Any,
+    *,
+    budget_bytes: typing.Any = 128 << 20,
+) -> typing.Any:
     """Preflight local storage before reading any provider integrals."""
     no, nv = checked_reference(snapshot)
     budget = checked_budget(budget_bytes)
@@ -91,7 +98,7 @@ class PairMP2Result:
     energy: float
     full_virtual_pair_energy: float
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.space, PairSpace):
             raise TypeError("pair result requires a typed PNO space")
         shape = (self.space.rank, self.space.rank)
@@ -109,7 +116,7 @@ class PairMP2Result:
             )
 
     @property
-    def multiplicity(self):
+    def multiplicity(self) -> typing.Any:
         """RHF sums all ordered occupied pairs; store i<=j and count i<j twice."""
         return 1 if self.space.pair[0] == self.space.pair[1] else 2
 
@@ -133,7 +140,7 @@ class LocalMP2Result:
     full_space_recovery: bool
     derivative_status: str = "unsupported"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         pairs = tuple(self.pairs)
         if not pairs or any(
             not isinstance(p, PairMP2Result)
@@ -169,12 +176,12 @@ class LocalMP2Result:
         object.__setattr__(self, "pairs", pairs)
 
     @property
-    def observed_energy_difference(self):
+    def observed_energy_difference(self) -> typing.Any:
         """Measured truncation error; pair-density losses are not error bounds."""
         return abs(self.correlation_energy - self.canonical_correlation_energy)
 
     @property
-    def retained_numeric_bytes(self):
+    def retained_numeric_bytes(self) -> typing.Any:
         return sum(
             a.nbytes
             for p in self.pairs
@@ -188,19 +195,19 @@ class LocalMP2Result:
 
 
 def build_local_mp2(
-    snapshot,
-    source,
-    localization,
-    domain,
+    snapshot: typing.Any,
+    source: typing.Any,
+    localization: typing.Any,
+    domain: typing.Any,
     *,
-    metric=None,
-    occupation_threshold=1e-7,
-    cluster_tolerance=1e-12,
-    keep_full_space=False,
-    denominator_threshold=1e-10,
-    budget_bytes=128 << 20,
-    axis_tile=2,
-):
+    metric: typing.Any = None,
+    occupation_threshold: typing.Any = 1e-7,
+    cluster_tolerance: typing.Any = 1e-12,
+    keep_full_space: typing.Any = False,
+    denominator_threshold: typing.Any = 1e-10,
+    budget_bytes: typing.Any = 128 << 20,
+    axis_tile: typing.Any = 2,
+) -> typing.Any:
     """Build bounded local transforms from #147's same-Hamiltonian MP2 provider.
 
     A fresh provider receives the remaining budget after local storage is
@@ -317,8 +324,12 @@ def build_local_mp2(
 
 
 def recover_canonical_amplitudes(
-    snapshot, localization, result, *, budget_bytes=128 << 20
-):
+    snapshot: typing.Any,
+    localization: typing.Any,
+    result: typing.Any,
+    *,
+    budget_bytes: typing.Any = 128 << 20,
+) -> typing.Any:
     """Small diagnostic inverse transform; pair spaces may deliberately be truncated.
 
     Both orientations of i<j are reconstructed, with T_ji=T_ij^T. This function

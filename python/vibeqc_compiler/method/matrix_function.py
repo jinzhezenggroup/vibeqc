@@ -9,6 +9,7 @@ and first-order full-Frobenius JVP/VJP are supported.
 from __future__ import annotations
 
 import hashlib
+import typing
 from dataclasses import dataclass, field
 from typing import ClassVar
 
@@ -51,7 +52,7 @@ class SymmetricMatrixFunctionSpec:
     version: str = VERSION
     kind: ClassVar[str] = "symmetric_matrix_function"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if type(self.size) is not int or self.size <= 0 or self.size > 2**31 - 1:
             raise ValueError("matrix size must be a positive bounded integer")
         if self.logical_workspace_bytes > 2**63 - 1:
@@ -279,7 +280,9 @@ class SymmetricMatrixFunctionSpec:
         )
 
 
-def _matrix(value, size, *, symmetric):
+def _matrix(
+    value: typing.Any, size: typing.Any, *, symmetric: typing.Any
+) -> typing.Any:
     value = np.asarray(value)
     if value.shape != (size, size) or value.dtype != np.dtype("float64"):
         raise ValueError(
@@ -295,7 +298,7 @@ def _matrix(value, size, *, symmetric):
     return value
 
 
-def _immutable(array):
+def _immutable(array: typing.Any) -> typing.Any:
     # A bytes-backed view cannot be made writable again by setflags().
     return np.frombuffer(array.tobytes(), dtype=np.float64).reshape(array.shape)
 
@@ -334,7 +337,7 @@ class MatrixFunctionEvaluation:
     def identity(self) -> str:
         return canonical_hash(self.manifest)
 
-    def _response(self, seed, *, symmetric):
+    def _response(self, seed: typing.Any, *, symmetric: typing.Any) -> typing.Any:
         seed = _matrix(seed, self.spec.size, symmetric=symmetric)
         return execute(
             self.spec.response_program(),

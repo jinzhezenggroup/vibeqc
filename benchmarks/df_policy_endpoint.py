@@ -15,6 +15,7 @@ import json
 import os
 import subprocess
 import time
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -41,7 +42,13 @@ CASES = {
 }
 
 
-def independent_reference(reference, aos, energies, forces, basis_metadata):
+def independent_reference(
+    reference: typing.Any,
+    aos: typing.Any,
+    energies: typing.Any,
+    forces: typing.Any,
+    basis_metadata: typing.Any,
+) -> typing.Any:
     """Reject stale scientific metadata and broadcasting before numerical gates.
 
     Geometry uses the comparison runner's deterministic batch-one round trip;
@@ -101,7 +108,9 @@ def independent_reference(reference, aos, energies, forces, basis_metadata):
     return expected_energy, expected_forces
 
 
-def cpu_reference(case, orbital_basis, auxiliary_basis):
+def cpu_reference(
+    case: typing.Any, orbital_basis: typing.Any, auxiliary_basis: typing.Any
+) -> typing.Any:
     """Build an independent explicit-basis oracle outside all native timers."""
     import pyscf
     from pyscf import gto, scf
@@ -147,7 +156,12 @@ def cpu_reference(case, orbital_basis, auxiliary_basis):
     )
 
 
-def endpoint_errors(energy, force, reference_energy, reference_force):
+def endpoint_errors(
+    energy: typing.Any,
+    force: typing.Any,
+    reference_energy: typing.Any,
+    reference_force: typing.Any,
+) -> typing.Any:
     """Keep every reference check shape-strict, including cold and prime calls."""
     energy, reference_energy = np.asarray(energy), np.asarray(reference_energy)
     pairs = [(energy, reference_energy)]
@@ -162,7 +176,7 @@ def endpoint_errors(energy, force, reference_energy, reference_force):
     return differences[0], differences[1] if force is not None else None
 
 
-def main():
+def main() -> None:
     """Retain each numerical result before enforcing unchanged strict gates."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--aos", type=int, choices=CASES, required=True)
@@ -273,7 +287,7 @@ def main():
     if any(names != control_sets[0] for names in control_sets):
         parser.error("policy-controls must set the same controls for every policy")
 
-    def select_policy(policy):
+    def select_policy(policy: typing.Any) -> None:
         """Apply the complete declared arm before rebuilding/priming its owner."""
         os.environ[args.control] = policy
         os.environ.update(args.policy_controls.get(policy, {}))
@@ -368,11 +382,11 @@ def main():
         "samples": [],
     }
 
-    def save():
+    def save() -> None:
         """Keep raw numerical evidence even if a subsequent gate fails."""
         args.output.write_text(json.dumps(payload, indent=2) + "\n")
 
-    def execute(batch, *, cold=False):
+    def execute(batch: typing.Any, *, cold: typing.Any = False) -> typing.Any:
         """Time the complete strict energy-and-force endpoint."""
         start = time.perf_counter()
         result = batch.execute(

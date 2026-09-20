@@ -1,5 +1,6 @@
 """Bounded DF Gaussian-moment polynomial lowering with analytic basis response."""
 
+import typing
 from itertools import product
 
 from .cuda import CudaEmitter
@@ -7,7 +8,7 @@ from .df_derivatives import axis_polynomial, build_df_derivative_ir
 from .ir_serialization import integral_to_payload
 
 
-def df_derivative_inventory():
+def df_derivative_inventory() -> typing.Any:
     """Separate the external-response contract from native tiling decisions."""
     return {
         "schema": "vibeqc.df_derivatives",
@@ -27,10 +28,10 @@ def df_derivative_inventory():
 
 
 def emit_df_geometry_cuda(
-    name="prepare_geometry",
+    name: typing.Any = "prepare_geometry",
     *,
-    moments="boys_values(total+1,rho*distance,g.f,work);",
-):
+    moments: typing.Any = "boys_values(total+1,rho*distance,g.f,work);",
+) -> typing.Any:
     """Share primitive geometry between polynomial and Rys derivative lowering.
 
     ``moments`` injects a compiler-owned quadrature call into the same Gaussian
@@ -58,7 +59,7 @@ def emit_df_geometry_cuda(
     )
 
 
-def emit_df_derivatives_cuda():
+def emit_df_derivatives_cuda() -> typing.Any:
     """Share base axis moments and Boys values across all independent centers.
 
     The derivative of an unnormalized basis factor is

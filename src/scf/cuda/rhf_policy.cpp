@@ -291,6 +291,13 @@ unsigned one_electron_derivative_mapping_requested() noexcept {
 
 bool resident_psss_bra_requested() noexcept { return enabled("VIBEQC_PSSS_RESIDENT_BRA"); }
 
+bool generated_ssss_force_requested() noexcept {
+  // The generated sm_120 ssss force consumer is compiled for A/B validation,
+  // but the tuned native path remains the default until the complete endpoint
+  // gate in #356 passes.
+  return selected("VIBEQC_SSSS_FORCE", "generated");
+}
+
 bool generated_psss_weighted_requested() noexcept {
   // Keep the handwritten implementation selected until native resource and
   // complete RHF/UHF endpoint comparisons justify promoting this candidate.

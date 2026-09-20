@@ -1,6 +1,7 @@
 """Matched-grid LDA/PBE ECP energies, independent of public force qualification."""
 
 import os
+import typing
 from dataclasses import asdict
 
 import numpy as np
@@ -12,12 +13,14 @@ from vibeqc_compiler.dft.grid import MolecularGrid
 METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks")
 
 
-def require_device(device):
+def require_device(device: typing.Any) -> None:
     if device == "cuda" and os.environ.get("VIBEQC_ECP_CUDA_TEST") != "1":
         pytest.skip("requires an allocated CUDA device")
 
 
-def reference(mol, atoms, method, guess="1e"):
+def reference(
+    mol: typing.Any, atoms: typing.Any, method: typing.Any, guess: typing.Any = "1e"
+) -> typing.Any:
     """Independent Libcint/Libxc SCF on the exact declared molecular grid."""
     dft = pytest.importorskip("pyscf.dft")
     grid = MolecularGrid(
@@ -52,7 +55,9 @@ def reference(mol, atoms, method, guess="1e"):
     return solver.e_tot, components, ecp_expectation, grid.identity
 
 
-def calculator(basis, method, device, **kwargs):
+def calculator(
+    basis: typing.Any, method: typing.Any, device: typing.Any, **kwargs: typing.Any
+) -> typing.Any:
     return Calculator(
         basis=basis,
         method=method,
@@ -64,7 +69,9 @@ def calculator(basis, method, device, **kwargs):
     )
 
 
-def endpoint(method, device, representation):
+def endpoint(
+    method: typing.Any, device: typing.Any, representation: typing.Any
+) -> typing.Any:
     require_device(device)
     spin = int(method.endswith("uks"))
     atoms, basis, mol = fixture(spin=spin, representation=representation)
@@ -123,13 +130,17 @@ def endpoint(method, device, representation):
 @pytest.mark.parametrize("method", METHODS)
 @pytest.mark.parametrize("device", ("cpu", "cuda"))
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
-def test_ecp_dft_independent_energy_components(method, device, representation):
+def test_ecp_dft_independent_energy_components(
+    method: typing.Any, device: typing.Any, representation: typing.Any
+) -> None:
     endpoint(method, device, representation)
 
 
 @pytest.mark.parametrize("method", METHODS)
 @pytest.mark.parametrize("device", ("cpu", "cuda"))
-def test_ecp_dft_budgeted_ragged_replay_and_isolation(method, device):
+def test_ecp_dft_budgeted_ragged_replay_and_isolation(
+    method: typing.Any, device: typing.Any
+) -> None:
     require_device(device)
     spin = int(method.endswith("uks"))
     atoms, basis, mol = fixture(spin=spin)

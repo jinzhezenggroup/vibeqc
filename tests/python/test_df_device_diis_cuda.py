@@ -1,6 +1,7 @@
 """Compact DF DIIS keeps independent spin/force accuracy and resets warm history."""
 
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -21,8 +22,14 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("exchange", ("dense", "occupied"))
 @pytest.mark.parametrize("dots", ("serial", "auto"))
 def test_compact_diis_independent_forces_and_warm_reset(
-    method, representation, size, exchange, dots, monkeypatch, tmp_path
-):
+    method: typing.Any,
+    representation: typing.Any,
+    size: typing.Any,
+    exchange: typing.Any,
+    dots: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     from pyscf import gto, scf
 
     assert os.environ.get("SLURM_JOB_ID")
@@ -115,7 +122,9 @@ def test_compact_diis_independent_forces_and_warm_reset(
             ]
 
 
-def test_diis_workspace_shortfall_fails_without_numerical_retry(monkeypatch, tmp_path):
+def test_diis_workspace_shortfall_fails_without_numerical_retry(
+    monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     """A force half-budget cannot borrow response capacity for solver owners."""
     assert os.environ.get("SLURM_JOB_ID")
     path = tmp_path / "shortfall.jsonl"

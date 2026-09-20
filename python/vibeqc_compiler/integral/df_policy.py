@@ -6,8 +6,10 @@ Raw coordinate projections and externally weighted consumers share these exact
 center channels, including the translation-derived auxiliary contribution.
 """
 
+import typing
 
-def emit_df_derivative_schedule_cuda():
+
+def emit_df_derivative_schedule_cuda() -> typing.Any:
     """Emit weighted-response scheduling independently of scalar mathematics.
 
     Four lanes split long primitive products while keeping eight independent
@@ -27,7 +29,7 @@ struct WeightedSchedule {
 """
 
 
-def emit_df_policy_cuda(*, derivatives=False):
+def emit_df_policy_cuda(*, derivatives: typing.Any = False) -> typing.Any:
     """Emit one consumer's policy without registering unused device tables.
 
     CUDA emits host registration symbols even for device definitions. Keep

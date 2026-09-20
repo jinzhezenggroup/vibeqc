@@ -4,6 +4,7 @@ These tests run locally (numpy only, no PySCF, no CUDA).  GPU validation
 tests are run manually on qz and record their results as JSON evidence.
 """
 
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -33,7 +34,7 @@ GROUND_TRUTH = {
 }
 
 
-def _random_case(nocc, nvir, seed):
+def _random_case(nocc: typing.Any, nvir: typing.Any, seed: typing.Any) -> typing.Any:
     rng = np.random.default_rng(seed)
     ovvv = rng.normal(size=(nocc, nvir, nvir, nvir))
     ovoo = rng.normal(size=(nocc, nvir, nocc, nocc))
@@ -47,7 +48,7 @@ def _random_case(nocc, nvir, seed):
     return ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v
 
 
-def _bounded_tensorir_feeds(arrays, a_end):
+def _bounded_tensorir_feeds(arrays: typing.Any, a_end: typing.Any) -> typing.Any:
     ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = arrays
     return {
         "ovvv": np.ascontiguousarray(ovvv[:, :a_end, :, :a_end]),
@@ -61,7 +62,7 @@ def _bounded_tensorir_feeds(arrays, a_end):
     }
 
 
-def _endpoint_feeds(name):
+def _endpoint_feeds(name: typing.Any) -> typing.Any:
     with np.load(ENDPOINTS / f"{name}.npz", allow_pickle=False) as data:
         eps = data["eps"]
         occ = data["occ"]
@@ -94,7 +95,9 @@ def _endpoint_feeds(name):
 
 @pytest.mark.parametrize("o,v", [(1, 1), (1, 2), (2, 1), (2, 2), (2, 3), (3, 2)])
 @pytest.mark.parametrize("chunk", [1, 2, 3, 5])
-def test_tile_enumerator_covers_all_virtual_triples(o, v, chunk):
+def test_tile_enumerator_covers_all_virtual_triples(
+    o: typing.Any, v: typing.Any, chunk: typing.Any
+) -> None:
     """Every (a,b,c) with a>=b>=c appears in exactly one tile."""
     enumerator = TriplesTileEnumerator(o, v, vir_chunk_size=chunk)
     seen = set()
@@ -118,7 +121,9 @@ def test_tile_enumerator_covers_all_virtual_triples(o, v, chunk):
         (3, 4, 102, 3),
     ],
 )
-def test_tile_sum_equals_full_reference(o, v, seed, chunk):
+def test_tile_sum_equals_full_reference(
+    o: typing.Any, v: typing.Any, seed: typing.Any, chunk: typing.Any
+) -> None:
     """Sum of per-tile energies equals the full reference to 1e-10.
 
     Floating-point associativity differences across tile-ordered vs full
@@ -143,7 +148,9 @@ def test_tile_sum_equals_full_reference(o, v, seed, chunk):
         (3, 4, 104, 3),
     ],
 )
-def test_masked_tile_sum_equals_full_reference(o, v, seed, chunk):
+def test_masked_tile_sum_equals_full_reference(
+    o: typing.Any, v: typing.Any, seed: typing.Any, chunk: typing.Any
+) -> None:
     """Sum of masked per-tile energies equals the full reference to 1e-10."""
     arrays = _random_case(o, v, seed)
     ref = triples_energy(o, v, *arrays)
@@ -159,7 +166,7 @@ def test_masked_tile_sum_equals_full_reference(o, v, seed, chunk):
 # ---------------------------------------------------------------------------
 
 
-def test_tile_energy_matches_enumeration():
+def test_tile_energy_matches_enumeration() -> None:
     """The per-tile energy function loops exactly the triples claimed by the tile."""
     o, v = 2, 3
     arrays = _random_case(o, v, 105)
@@ -180,7 +187,9 @@ def test_tile_energy_matches_enumeration():
 
 
 @pytest.mark.parametrize("o,v,seed", [(1, 1, 201), (2, 2, 202), (2, 3, 203)])
-def test_tile_tensorir_program_roundtrip(o, v, seed):
+def test_tile_tensorir_program_roundtrip(
+    o: typing.Any, v: typing.Any, seed: typing.Any
+) -> None:
     """The tile TensorIR program produces the same output after JSON roundtrip."""
     from vibeqc_compiler.tensor import Program
     from vibeqc_compiler.tensor import execute as tensor_execute
@@ -196,7 +205,9 @@ def test_tile_tensorir_program_roundtrip(o, v, seed):
 
 
 @pytest.mark.parametrize("o,v,seed", [(2, 3, 204), (3, 3, 205)])
-def test_tile_tensorir_vs_cpu_reference(o, v, seed):
+def test_tile_tensorir_vs_cpu_reference(
+    o: typing.Any, v: typing.Any, seed: typing.Any
+) -> None:
     """Tile TensorIR matches the CPU tile reference to < 1e-11."""
     from vibeqc_compiler.tensor import execute as tensor_execute
 
@@ -213,7 +224,7 @@ def test_tile_tensorir_vs_cpu_reference(o, v, seed):
             np.testing.assert_allclose(tir, cpu, atol=1e-11, rtol=1e-10)
 
 
-def test_partial_tile_tensorir_bounds_labels_but_keeps_full_f_axis():
+def test_partial_tile_tensorir_bounds_labels_but_keeps_full_f_axis() -> None:
     """Partial-tile specs retain full summation axes and bounded label axes."""
     from vibeqc_compiler.tensor import execute as tensor_execute
 
@@ -232,7 +243,9 @@ def test_partial_tile_tensorir_bounds_labels_but_keeps_full_f_axis():
 
 
 @pytest.mark.parametrize("o,v,seed", [(2, 2, 206)])
-def test_tile_tensorir_is_differentiable(o, v, seed):
+def test_tile_tensorir_is_differentiable(
+    o: typing.Any, v: typing.Any, seed: typing.Any
+) -> None:
     """The tile TensorIR program passes the adjoint dot test."""
     from vibeqc_compiler.tensor import dot_test
 
@@ -250,12 +263,12 @@ def test_tile_tensorir_is_differentiable(o, v, seed):
 # ---------------------------------------------------------------------------
 
 
-def test_deterministic_same_order_bitwise():
+def test_deterministic_same_order_bitwise() -> None:
     """Same tile order produces identical results across two runs."""
     o, v = 2, 3
     arrays = _random_case(o, v, 300)
 
-    def run():
+    def run() -> typing.Any:
         enumerator = TriplesTileEnumerator(o, v, vir_chunk_size=1)
         return [tile_triples_energy(t, o, *arrays) for t in enumerator]
 
@@ -264,7 +277,7 @@ def test_deterministic_same_order_bitwise():
         assert a == b, f"tile {i}: values differ"
 
 
-def test_different_chunk_sizes_agree():
+def test_different_chunk_sizes_agree() -> None:
     """Total E_T must agree across different vir_chunk_size values to 1e-12."""
     o, v = 3, 5
     arrays = _random_case(o, v, 301)
@@ -280,7 +293,7 @@ def test_different_chunk_sizes_agree():
 # ---------------------------------------------------------------------------
 
 
-def test_tile_spec_validation():
+def test_tile_spec_validation() -> None:
     with pytest.raises(ValueError):
         TileSpec(-1, 2, 3)
     with pytest.raises(ValueError):
@@ -289,7 +302,7 @@ def test_tile_spec_validation():
         TileSpec(0, 4, 3)
 
 
-def test_tile_spec_ntriples():
+def test_tile_spec_ntriples() -> None:
     assert TileSpec(0, 1, 3).ntriples == 1
     assert TileSpec(0, 2, 5).ntriples == 4  # (0,0,0),(1,0,0),(1,1,0),(1,1,1)
 
@@ -301,7 +314,9 @@ def test_tile_spec_ntriples():
 
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4"])
 @pytest.mark.parametrize("chunk", [None])
-def test_endpoint_tile_sum_matches_ground_truth(name, chunk):
+def test_endpoint_tile_sum_matches_ground_truth(
+    name: typing.Any, chunk: typing.Any
+) -> None:
     """Tile sum over endpoint data matches pinned PySCF 2.14.0 ground truth."""
     expected_nocc, expected_nvir, expected = GROUND_TRUTH[name]
     feeds = _endpoint_feeds(name)
@@ -325,7 +340,7 @@ def test_endpoint_tile_sum_matches_ground_truth(name, chunk):
 
 @pytest.mark.parametrize("name", ["h2o", "nh3", "ch4"])
 @pytest.mark.parametrize("chunk", [1, 2])
-def test_endpoint_multi_tile_coverage(name, chunk):
+def test_endpoint_multi_tile_coverage(name: typing.Any, chunk: typing.Any) -> None:
     """Multi-tile coverage on all non-zero-triples endpoints."""
     feeds = _endpoint_feeds(name)
     nocc, nvir = feeds[0], feeds[1]
@@ -356,7 +371,7 @@ def test_endpoint_multi_tile_coverage(name, chunk):
 # ---------------------------------------------------------------------------
 
 
-def test_build_tile_program_refuses_invalid_inputs():
+def test_build_tile_program_refuses_invalid_inputs() -> None:
     with pytest.raises(ValueError):
         build_tile_triples_program(0, 2)
     with pytest.raises(ValueError):
@@ -367,7 +382,7 @@ def test_build_tile_program_refuses_invalid_inputs():
         build_tile_triples_program(2, 3, vir_chunk=(3, 1))
 
 
-def test_tile_enumerator_refuses_invalid_inputs():
+def test_tile_enumerator_refuses_invalid_inputs() -> None:
     with pytest.raises(ValueError):
         TriplesTileEnumerator(0, 2)
     with pytest.raises(ValueError):
@@ -378,7 +393,7 @@ def test_tile_enumerator_refuses_invalid_inputs():
         TriplesTileEnumerator(2, 3, vir_chunk_size=-1)
 
 
-def test_program_deterministic_hash():
+def test_program_deterministic_hash() -> None:
     """Same parameters produce identical logical hashes."""
     p1 = build_tile_triples_program(2, 3)
     p2 = build_tile_triples_program(2, 3)
@@ -397,7 +412,9 @@ def test_program_deterministic_hash():
         ("near_zero", "near-zero"),
     ],
 )
-def test_cuda_input_guards_precede_planning(tmp_path, invalid, message):
+def test_cuda_input_guards_precede_planning(
+    tmp_path: typing.Any, invalid: typing.Any, message: typing.Any
+) -> None:
     """Invalid scientific inputs fail before compilation or device allocation."""
     from tools.vibeqc_cc.triples_cuda import CudaTriplesTiles, TriplesTileConfig
 
@@ -408,7 +425,7 @@ def test_cuda_input_guards_precede_planning(tmp_path, invalid, message):
         arrays["eps_o"].fill(0)
         arrays["eps_v"].fill(-1 if invalid == "noncanonical" else 1e-12)
 
-    def unexpected_planning(*args, **kwargs):
+    def unexpected_planning(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("invalid inputs reached CUDA planning")
 
     config = TriplesTileConfig(2, 3, vir_chunk_size=1, max_bytes=256 << 20)

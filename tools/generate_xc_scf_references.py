@@ -6,6 +6,7 @@ differentiation uses 450 decimal digits. This supplements, and never rewrites,
 the existing #214 identical-grid Libxc fixtures.
 """
 
+import typing
 from pathlib import Path
 
 import mpmath as mp
@@ -13,7 +14,7 @@ import numpy as np
 from pyscf.dft import libxc
 
 
-def energy(pbe, inputs):
+def energy(pbe: typing.Any, inputs: typing.Any) -> typing.Any:
     """Original per-volume formula; explicit C2 extension only for PBE phi."""
     a, b, *gradient = inputs
     n = a + b
@@ -75,7 +76,7 @@ def energy(pbe, inputs):
         exchange -= cx * density ** (mp.mpf(4) / 3) * enhancement
     if pbe:
 
-        def spin_power(u):
+        def spin_power(u: typing.Any) -> typing.Any:
             cutoff = mp.mpf("1e-18")
             if u >= cutoff:
                 return u ** (mp.mpf(2) / 3)
@@ -91,14 +92,14 @@ def energy(pbe, inputs):
     return exchange + n * eps
 
 
-def boundary_reference(pbe, values):
+def boundary_reference(pbe: typing.Any, values: typing.Any) -> typing.Any:
     """Differentiate original formula in normalized coordinates, at high precision."""
     values = [mp.mpf(float(x)) for x in values]
     scale = values[0] + values[1]
     result = [energy(pbe, values)]
     for i in range(8):
 
-        def displaced(t, index=i):
+        def displaced(t: typing.Any, index: typing.Any = i) -> typing.Any:
             inputs = values.copy()
             inputs[index] += t * scale
             return energy(pbe, inputs) / scale
@@ -109,7 +110,7 @@ def boundary_reference(pbe, values):
     return np.array([float(x) for x in result])
 
 
-def main():
+def main() -> None:
     mp.mp.dps = 450
     rng = np.random.default_rng(162)
     rows = []

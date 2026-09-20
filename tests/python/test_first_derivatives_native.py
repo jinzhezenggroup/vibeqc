@@ -1,6 +1,7 @@
 """Generated first-component CPU execution: independent values and failure gates."""
 
 import shutil
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -26,7 +27,7 @@ from tools.vibeqc_posthf.sources import NativeSource
 
 
 @pytest.fixture(scope="module")
-def artifact(tmp_path_factory):
+def artifact(tmp_path_factory: typing.Any) -> typing.Any:
     executable = shutil.which("c++")
     if executable is None:
         pytest.skip("CPU C++ compiler required")
@@ -39,7 +40,7 @@ def artifact(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def full_shell_artifact(tmp_path_factory):
+def full_shell_artifact(tmp_path_factory: typing.Any) -> typing.Any:
     executable = shutil.which("c++")
     if executable is None:
         pytest.skip("CPU C++ compiler required")
@@ -51,7 +52,9 @@ def full_shell_artifact(tmp_path_factory):
     )
 
 
-def test_raw_eri_component_matches_independent_native_source(artifact):
+def test_raw_eri_component_matches_independent_native_source(
+    artifact: typing.Any,
+) -> None:
     coordinates = (
         (0.13, -0.31, 0.24),
         (-0.43, 0.27, 0.51),
@@ -70,7 +73,9 @@ def test_raw_eri_component_matches_independent_native_source(artifact):
     np.testing.assert_allclose(actual[1:].reshape(4, 3).sum(axis=0), 0, atol=2e-13)
 
 
-def test_full_shell_eri_tiles_match_independent_native_oracle(full_shell_artifact):
+def test_full_shell_eri_tiles_match_independent_native_oracle(
+    full_shell_artifact: typing.Any,
+) -> None:
     from vibeqc_compiler.integral.weight_pullback import normalized_cartesian_components
 
     assert [len(tile.component_indices) for tile in full_shell_artifact.tiles] == [
@@ -166,7 +171,9 @@ def test_full_shell_eri_tiles_match_independent_native_oracle(full_shell_artifac
         )
 
 
-def test_full_shell_metadata_and_budget_are_bounded(full_shell_artifact):
+def test_full_shell_metadata_and_budget_are_bounded(
+    full_shell_artifact: typing.Any,
+) -> None:
     ir = full_shell_artifact.integral
     assert first_derivative_component_tiles(ir, tile_size=5) == tuple(
         tile.component_indices for tile in full_shell_artifact.tiles
@@ -194,7 +201,9 @@ def test_full_shell_metadata_and_budget_are_bounded(full_shell_artifact):
         )
 
 
-def test_first_component_rejects_bad_metadata_and_budget(artifact):
+def test_first_component_rejects_bad_metadata_and_budget(
+    artifact: typing.Any,
+) -> None:
     with pytest.raises(TypeError, match="compiled first"):
         FirstDerivativeEvaluator(object())
     with pytest.raises(ValueError, match="budget"):
@@ -205,7 +214,9 @@ def test_first_component_rejects_bad_metadata_and_budget(artifact):
         FirstDerivativeEvaluator(replace(artifact, program_identity="unrelated"))
 
 
-def test_failed_late_chunk_does_not_poison_next_call(artifact):
+def test_failed_late_chunk_does_not_poison_next_call(
+    artifact: typing.Any,
+) -> None:
     executor = FirstDerivativeEvaluator(artifact, record_capacity=1)
     good = (((0.7, 1.0),),) * 4
     centers = np.arange(12).reshape(4, 3) * 0.07
@@ -236,7 +247,9 @@ def test_failed_late_chunk_does_not_poison_next_call(artifact):
     np.testing.assert_array_equal(output, 0.0)
 
 
-def test_one_electron_component_matches_closed_form_overlap(tmp_path):
+def test_one_electron_component_matches_closed_form_overlap(
+    tmp_path: typing.Any,
+) -> None:
     ir = build_one_electron_derivative_ir("overlap", (0, 0))
     art = compile_first_derivative(
         ir,
@@ -257,7 +270,9 @@ def test_one_electron_component_matches_closed_form_overlap(tmp_path):
 
 
 @pytest.mark.parametrize("angular", (1, 2, 3))
-def test_higher_components_and_coincident_slots_match_native_oracle(tmp_path, angular):
+def test_higher_components_and_coincident_slots_match_native_oracle(
+    tmp_path: typing.Any, angular: typing.Any
+) -> None:
     from vibeqc_compiler.integral.weight_pullback import normalized_cartesian_components
 
     ir = build_weighted_eri_ir((angular, 0, 0, 0))
@@ -304,8 +319,8 @@ def test_higher_components_and_coincident_slots_match_native_oracle(tmp_path, an
 
 @pytest.mark.parametrize("angular", (2, 3))
 def test_generated_stv_includes_both_basis_motions_and_operator_nucleus(
-    tmp_path, angular
-):
+    tmp_path: typing.Any, angular: typing.Any
+) -> None:
     from vibeqc_compiler.integral.weight_pullback import normalized_cartesian_components
 
     coords = np.array([[0.13, -0.31, 0.24], [-0.43, 0.27, 0.51]])
@@ -362,7 +377,9 @@ def test_generated_stv_includes_both_basis_motions_and_operator_nucleus(
         )
 
 
-def test_installed_asset_layout_contains_first_runtime(tmp_path, monkeypatch):
+def test_installed_asset_layout_contains_first_runtime(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     import tomllib
     from vibeqc_compiler.common import paths
 

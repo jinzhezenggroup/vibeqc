@@ -2,6 +2,7 @@
 
 import copy
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -18,7 +19,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def fixture_inputs(representation, shared):
+def fixture_inputs(representation: typing.Any, shared: typing.Any) -> typing.Any:
     """A third atom owns only auxiliary functions unless shared centers are requested."""
     common = {
         "atomic_numbers": [2, 1, 1],
@@ -28,7 +29,7 @@ def fixture_inputs(representation, shared):
         "basis_representation": representation,
     }
 
-    def shell(atom, angular):
+    def shell(atom: typing.Any, angular: typing.Any) -> typing.Any:
         return {
             "atom_index": atom,
             "angular_momentum": angular,
@@ -48,7 +49,7 @@ def fixture_inputs(representation, shared):
     return orbital, auxiliary
 
 
-def calculator(inputs):
+def calculator(inputs: typing.Any) -> typing.Any:
     return Calculator(
         device="cuda",
         basis_representation=inputs["basis_representation"],
@@ -66,8 +67,8 @@ def calculator(inputs):
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 @pytest.mark.parametrize("shared", [False, True])
 def test_arbitrary_raw_fused_and_two_budgets_with_auxiliary_motion(
-    representation, shared
-):
+    representation: typing.Any, shared: typing.Any
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
     oi, xi = fixture_inputs(representation, shared)
     o, x = calculator(oi), calculator(xi)
@@ -120,7 +121,9 @@ def test_arbitrary_raw_fused_and_two_budgets_with_auxiliary_motion(
 
 
 @pytest.mark.parametrize("tile_elements", [1, 7, 13])
-def test_cooperative_sparse_weights_and_ragged_primitive_partitions(tile_elements):
+def test_cooperative_sparse_weights_and_ragged_primitive_partitions(
+    tile_elements: typing.Any,
+) -> None:
     """Zero-weight groups and partial warps must preserve the shuffle mask.
 
     Unequal odd contraction lengths leave different primitive remainders in
@@ -154,8 +157,8 @@ def test_cooperative_sparse_weights_and_ragged_primitive_partitions(tile_element
     [("cartesian", "spherical"), ("spherical", "cartesian")],
 )
 def test_mixed_representations_and_permuted_auxiliary_shells(
-    orbital_rep, auxiliary_rep
-):
+    orbital_rep: typing.Any, auxiliary_rep: typing.Any
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
     oi, xi = fixture_inputs(orbital_rep, False)
     xi["basis_representation"] = auxiliary_rep
@@ -180,8 +183,13 @@ def test_mixed_representations_and_permuted_auxiliary_shells(
 # Keep two feasible bounded cases and test the smaller rejected budgets below.
 @pytest.mark.parametrize("budget", [0, 8 << 20, 16 << 20])
 def test_complete_hf_replay_two_budgets_and_force_components(
-    monkeypatch, method, charge, multiplicity, representation, budget
-):
+    monkeypatch: typing.Any,
+    method: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+    representation: typing.Any,
+    budget: typing.Any,
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.2, 0.7))]
     base = np.array([r for _, r in atoms])
@@ -247,7 +255,9 @@ def test_complete_hf_replay_two_budgets_and_force_components(
 
 
 @pytest.mark.parametrize("budget", [1 << 20, 4 << 20])
-def test_complete_force_rejects_budget_below_provider_workspace_floors(budget):
+def test_complete_force_rejects_budget_below_provider_workspace_floors(
+    budget: typing.Any,
+) -> None:
     """Retain the former tiny requests as explicit bounded-allocation failures."""
     assert os.environ.get("SLURM_JOB_ID")
     calc = Calculator(
@@ -268,8 +278,11 @@ def test_complete_force_rejects_budget_below_provider_workspace_floors(budget):
 
 @pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 0, 1), ("uhf", 1, 2)])
 def test_generated_df_hf_matches_pyscf_and_two_energy_difference_steps(
-    monkeypatch, method, charge, multiplicity
-):
+    monkeypatch: typing.Any,
+    method: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
     # This tier is explicitly enabled in an allocated GPU job. Missing oracle
     # dependencies must fail the requested numerical gate instead of skipping it.
@@ -323,7 +336,7 @@ def test_generated_df_hf_matches_pyscf_and_two_energy_difference_steps(
         )
 
 
-def test_metric_only_weight_response_moves_both_auxiliary_centers():
+def test_metric_only_weight_response_moves_both_auxiliary_centers() -> None:
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
     oi, xi = fixture_inputs("spherical", False)
     o, x = calculator(oi), calculator(xi)
@@ -341,8 +354,8 @@ def test_metric_only_weight_response_moves_both_auxiliary_centers():
 
 @pytest.mark.parametrize("null_a,null_m", [(True, False), (False, True), (True, True)])
 def test_null_weight_channels_are_documented_zero_operators(
-    monkeypatch, null_a, null_m
-):
+    monkeypatch: typing.Any, null_a: typing.Any, null_m: typing.Any
+) -> None:
     """The C ABI retains full shape counts when a null pointer denotes zero."""
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
     oi, xi = fixture_inputs("spherical", False)
@@ -361,7 +374,7 @@ def test_null_weight_channels_are_documented_zero_operators(
     )
     native = orbital._library.vibeqc_system_df_gradient_cuda
 
-    def nullable(*arguments):
+    def nullable(*arguments: typing.Any) -> typing.Any:
         native.argtypes, native.restype = nullable.argtypes, nullable.restype
         arguments = list(arguments)
         assert arguments[4] == wa.size and arguments[6] == wm.size
@@ -381,13 +394,16 @@ def test_null_weight_channels_are_documented_zero_operators(
 
 @pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 0, 1), ("uhf", 1, 2)])
 def test_auxiliary_only_atom_hf_energy_derivative(
-    monkeypatch, method, charge, multiplicity
-):
+    monkeypatch: typing.Any,
+    method: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
     oi, xi = fixture_inputs("cartesian", False)
     atoms = [(z, tuple(r)) for z, r in zip(("He", "H", "H"), oi["coordinates"])]
 
-    def shells(inputs):
+    def shells(inputs: typing.Any) -> typing.Any:
         return [
             Shell(
                 s["atom_index"],
@@ -445,8 +461,11 @@ def test_auxiliary_only_atom_hf_energy_derivative(
 # This bucket owns three compact SCF workspaces in addition to metric/AO frames.
 @pytest.mark.parametrize("budget", [0, 16 << 20])
 def test_df_generated_sdf_bucket_preserves_all_geometry_phases(
-    monkeypatch, method, representation, budget
-):
+    monkeypatch: typing.Any,
+    method: typing.Any,
+    representation: typing.Any,
+    budget: typing.Any,
+) -> None:
     from pyscf import gto, scf
     from test_one_electron_values_cuda import run_case, sdf_case_inputs
 
@@ -504,7 +523,9 @@ def test_df_generated_sdf_bucket_preserves_all_geometry_phases(
 
 
 @pytest.mark.parametrize("budget", [0, 16 << 20])
-def test_df_generated_failed_item_preserves_successful_neighbor(monkeypatch, budget):
+def test_df_generated_failed_item_preserves_successful_neighbor(
+    monkeypatch: typing.Any, budget: typing.Any
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
@@ -525,7 +546,9 @@ def test_df_generated_failed_item_preserves_successful_neighbor(monkeypatch, bud
 
 
 @pytest.mark.parametrize("budget", [0, 8 << 20])
-def test_df_rank_crossing_is_reported_without_oracle_retry(monkeypatch, budget):
+def test_df_rank_crossing_is_reported_without_oracle_retry(
+    monkeypatch: typing.Any, budget: typing.Any
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
     inputs = {
         "atomic_numbers": [1, 1],

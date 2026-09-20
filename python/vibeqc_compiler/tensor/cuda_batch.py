@@ -1,5 +1,6 @@
 """Independent prepared tensor states grouped by compatible compiled plans."""
 
+import typing
 from concurrent.futures import ThreadPoolExecutor
 
 from .cuda_execute import PreparedCuda, compile_cuda
@@ -15,7 +16,15 @@ class PreparedTensorBatch:
     caller-retained result sets remain outside numeric-buffer accounting.
     """
 
-    def __init__(self, plans, compiler, cache, *, max_bytes, device=0):
+    def __init__(
+        self,
+        plans: typing.Any,
+        compiler: typing.Any,
+        cache: typing.Any,
+        *,
+        max_bytes: typing.Any,
+        device: typing.Any = 0,
+    ) -> None:
         plans = tuple(plans)
         checked_size(max_bytes, "batch byte budget")
         if not plans:
@@ -39,7 +48,7 @@ class PreparedTensorBatch:
             self.close()
             raise
 
-    def execute(self, feeds, *, workers=1):
+    def execute(self, feeds: typing.Any, *, workers: typing.Any = 1) -> typing.Any:
         """Return results in system order even with independent concurrent streams."""
         feeds = tuple(feeds)
         if len(feeds) != len(self.items):
@@ -58,12 +67,12 @@ class PreparedTensorBatch:
             ]
             return tuple(f.result() for f in futures)
 
-    def close(self):
+    def close(self) -> None:
         for item in self.items:
             item.close()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *unused):
+    def __exit__(self, *unused: object) -> None:
         self.close()

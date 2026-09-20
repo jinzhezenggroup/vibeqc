@@ -1,6 +1,7 @@
 """Real-device ordinary/resident TensorIR transcendental qualification (#500)."""
 
 import os
+import typing
 from fractions import Fraction
 from pathlib import Path
 
@@ -30,7 +31,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def compiler():
+def compiler() -> typing.Any:
     from vibeqc.profiles import find_nvcc
     from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
     from vibeqc_compiler.common.cuda_target import cuda_target_info
@@ -44,7 +45,7 @@ def compiler():
 
 
 @pytest.fixture(scope="module")
-def cache(tmp_path_factory):
+def cache(tmp_path_factory: typing.Any) -> typing.Any:
     return (
         Path(os.environ["VIBEQC_TENSOR_CACHE"])
         if "VIBEQC_TENSOR_CACHE" in os.environ
@@ -52,15 +53,18 @@ def cache(tmp_path_factory):
     )
 
 
-def _input():
+def _input() -> typing.Any:
     i = Index("i", IndexSpace("axis", "batch", 6))
     return input_tensor("x", TensorSpec((i,), role="parameter", differentiable=True))
 
 
 @pytest.mark.parametrize("schedule_id", [0, 1, 2])
 def test_cuda_primal_jvp_vjp_ordinary_and_resident(
-    compiler, cache, schedule_id, monkeypatch
-):
+    compiler: typing.Any,
+    cache: typing.Any,
+    schedule_id: typing.Any,
+    monkeypatch: typing.Any,
+) -> None:
     from vibeqc_compiler.tensor import interpreter
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
@@ -86,7 +90,7 @@ def test_cuda_primal_jvp_vjp_ordinary_and_resident(
     ]
     expected = [execute(program, args).outputs for program, args in jobs]
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("CUDA delegated arithmetic to the CPU interpreter")
 
     monkeypatch.setattr(interpreter, "_evaluate", forbidden)
@@ -128,8 +132,8 @@ def test_cuda_primal_jvp_vjp_ordinary_and_resident(
     ],
 )
 def test_cuda_error_propagation_recovery_and_no_stale_resident_outputs(
-    compiler, cache, kind
-):
+    compiler: typing.Any, cache: typing.Any, kind: typing.Any
+) -> None:
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
     from vibeqc_compiler.tensor.cuda_resident import PreparedResident, compile_resident

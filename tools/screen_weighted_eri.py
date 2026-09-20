@@ -34,7 +34,7 @@ from vibeqc_compiler.integral.weighted_eri_cuda import emit_psss_weighted_header
 from tools.vibeqc_validation.schema import file_hash
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--nvcc", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

@@ -5,12 +5,21 @@ occupations, convergence policy, and mutable history.  It represents the
 already-prepared H0/S/D/Q operators and fixed shell/atomic potentials as one
 auditable tensor program, including the directed ket-origin multipole
 convention used by xTB/tblite and the pinned xTBloom reference.
+
+Rationale: .agents/notes/implemented/numerics/2026-09-20-gfn2-electronic-contract.md
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import pairwise
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from vibeqc_compiler.tensor.ad_program import VJPProgram
+    from vibeqc_compiler.tensor.ir import Node
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor import (
@@ -34,7 +43,7 @@ GFN2_DIPOLE_COMPONENTS = ("x", "y", "z")
 GFN2_QUADRUPOLE_COMPONENTS = ("xx", "xy", "yy", "xz", "yz", "zz")
 
 
-def _offsets(values, label: str) -> tuple[int, ...]:
+def _offsets(values: Iterable[int], label: str) -> tuple[int, ...]:
     values = tuple(values)
     if (
         len(values) < 2
@@ -71,6 +80,7 @@ class Gfn2ElectronicTopology:
             raise ValueError("GFN2 ragged partitions must have one entry per system")
         if len(shell_map) != orbitals[-1] or len(atom_map) != orbitals[-1]:
             raise ValueError("GFN2 orbital ownership maps have the wrong extent")
+        shell_atoms: dict[int, int] = {}
         for system in range(self.system_count):
             shell_begin, shell_end = shells[system : system + 2]
             atom_begin, atom_end = atoms[system : system + 2]
@@ -86,6 +96,8 @@ class Gfn2ElectronicTopology:
                     raise ValueError(
                         "GFN2 orbital-to-atom map crosses a system boundary"
                     )
+                if shell_atoms.setdefault(shell, atom) != atom:
+                    raise ValueError("GFN2 shell orbitals must share one atom owner")
 
     @property
     def system_count(self) -> int:
@@ -179,7 +191,9 @@ def _index(name: str, kind: str, size: int) -> Index:
     return Index(name, IndexSpace(name, kind, size))
 
 
-def _input(name: str, indices, *, differentiable: bool = False):
+def _input(
+    name: str, indices: tuple[Index, ...], *, differentiable: bool = False
+) -> Node:
     return input_tensor(
         name,
         TensorSpec(
@@ -190,23 +204,23 @@ def _input(name: str, indices, *, differentiable: bool = False):
     )
 
 
-def _scaled(value, coefficient):
+def _scaled(value: Node, coefficient: str) -> Node:
     return add(value, coefficients=(coefficient,))
 
 
 def _assemble_channel(
     *,
-    h0,
-    overlap,
-    dipole_integrals,
-    quadrupole_integrals,
-    shell_potential,
-    dipole_potential,
-    quadrupole_potential,
+    h0: Node,
+    overlap: Node,
+    dipole_integrals: Node,
+    quadrupole_integrals: Node,
+    shell_potential: Node,
+    dipole_potential: Node,
+    quadrupole_potential: Node,
     topology: Gfn2ElectronicTopology,
     orbital: Index,
     matrix: Index,
-):
+) -> Node:
     forward, reverse, row_orbital, column_orbital = topology._canonical_maps()
 
     shell_by_orbital = indexed_gather(
@@ -332,7 +346,7 @@ class Gfn2ElectronicProgram:
             }
         )
 
-    def integral_vjp(self, output: str | None = None):
+    def integral_vjp(self, output: str | None = None) -> VJPProgram:
         if "nuclear-gradient" not in self.method.requested_products:
             raise ValueError(
                 "GFN2 S/D/Q adjoints require the nuclear-gradient compiler product"

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from ..batch_benchmark import KernelResources
-from ..cuda_target import (
-    CudaTargetInfo,
-)
-from ..ir import KernelConsumer
-from .policy import ScheduleTrial
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..batch_benchmark import KernelResources
+    from ..cuda_target import (
+        CudaTargetInfo,
+    )
+    from ..ir import KernelConsumer
+    from .policy import ScheduleTrial
 
 
 def estimate_occupancy(

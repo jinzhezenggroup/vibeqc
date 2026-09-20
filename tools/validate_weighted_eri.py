@@ -9,6 +9,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -66,8 +67,13 @@ CENTERS = np.array(
 
 
 def make_fixture(
-    name, variant, *, displacement=None, unit_component=None, coulomb_kernel=None
-):
+    name: typing.Any,
+    variant: typing.Any,
+    *,
+    displacement: typing.Any = None,
+    unit_component: typing.Any = None,
+    coulomb_kernel: typing.Any = None,
+) -> typing.Any:
     """Use independent libcint center derivatives and normalized public AOs."""
     radial = CoulombKernel() if coulomb_kernel is None else coulomb_kernel
     if not isinstance(radial, CoulombKernel):
@@ -230,7 +236,7 @@ def make_fixture(
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--probe", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

@@ -1,6 +1,7 @@
 """Hash-checked pinned Libxc fixtures with explicit boundary-oracle selection."""
 
 import json
+import typing
 from itertools import combinations_with_replacement
 
 import numpy as np
@@ -11,7 +12,9 @@ from vibeqc_compiler.common.provenance import file_hash
 from .reference import exchange_reference
 
 
-def load_fixture(name, *, spin="polarized", domain="typical"):
+def load_fixture(
+    name: typing.Any, *, spin: typing.Any = "polarized", domain: typing.Any = "typical"
+) -> typing.Any:
     """Return metadata, physical features, checked oracle and raw Libxc output.
 
     Boundary exchange uses closed-form spin scaling because Libxc's internal

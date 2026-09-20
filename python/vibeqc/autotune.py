@@ -18,6 +18,7 @@ import sys
 import tempfile
 import time
 import traceback
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -40,7 +41,13 @@ from .profiles import (
 )
 
 
-def dft_density_candidates(prepared, source, *, stamp, delta_density=None):
+def dft_density_candidates(
+    prepared: typing.Any,
+    source: typing.Any,
+    *,
+    stamp: typing.Any,
+    delta_density: typing.Any = None,
+) -> typing.Any:
     """Expose executable D/C registrations to the existing tuning workflow.
 
     These fixed-input candidates retain the ordinary #138 evidence records
@@ -55,44 +62,78 @@ def dft_density_candidates(prepared, source, *, stamp, delta_density=None):
     )
 
 
+_SOURCE_IDENTITY_MANIFEST = Path("cmake/VibeQCSourceIdentity.json")
+
+
+def _identity_relative_path(value: typing.Any, *, field: str) -> Path:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{field} must be a non-empty relative path")
+    relative = Path(value)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError(f"{field} must stay inside the source checkout: {value!r}")
+    return relative
+
+
+def _source_identity_paths(source: Path) -> tuple[Path, ...]:
+    """Expand the canonical build/tuning compatibility inventory."""
+    manifest = source / _SOURCE_IDENTITY_MANIFEST
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+        raise ValueError("unsupported VibeQC source identity manifest schema")
+
+    recursive = payload.get("recursive_groups")
+    files = payload.get("files")
+    if not isinstance(recursive, list) or not isinstance(files, list):
+        raise TypeError("source identity manifest requires recursive_groups and files")
+
+    paths = {manifest}
+    for index, group in enumerate(recursive):
+        if not isinstance(group, dict):
+            raise TypeError(f"recursive_groups[{index}] must be an object")
+        root = _identity_relative_path(
+            group.get("root"), field=f"recursive_groups[{index}].root"
+        )
+        directory = source / root
+        if not directory.is_dir():
+            raise FileNotFoundError(
+                f"source identity root is missing: {root.as_posix()}"
+            )
+        patterns = group.get("patterns")
+        if not isinstance(patterns, list) or not patterns:
+            raise ValueError(f"recursive_groups[{index}].patterns must be non-empty")
+        for pattern_index, raw_pattern in enumerate(patterns):
+            pattern = _identity_relative_path(
+                raw_pattern,
+                field=f"recursive_groups[{index}].patterns[{pattern_index}]",
+            )
+            paths.update(
+                candidate
+                for candidate in directory.rglob(pattern.as_posix())
+                if candidate.is_file()
+            )
+
+    for index, value in enumerate(files):
+        relative = _identity_relative_path(value, field=f"files[{index}]")
+        path = source / relative
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"source identity file is missing: {relative.as_posix()}"
+            )
+        paths.add(path)
+
+    return tuple(sorted(paths, key=lambda path: path.relative_to(source).as_posix()))
+
+
 def source_identity(source: Path) -> str:
-    """Mirror the CMake compatibility inventory before spending a tuning budget."""
-    paths = {
-        source / "CMakeLists.txt",
-        source / "cmake/VibeQCCuda.cmake",
-        source / "cmake/VibeQCCudaImplib.cmake",
-        source / "cmake/VibeQCGenerated.cmake",
-        source / "cmake/VibeQCGeneratedSources.cmake",
-        source / "cmake/VibeQCSources.cmake",
-        source / "cmake/VibeQCTests.cmake",
-        source / "cmake/3rdparty/implib_manifest.json",
-        source / "tools/generate_cuda_implib.py",
-        source / "tools/generate_shell_kernels.py",
-        source / "tools/generate_ecp_kernels.py",
-        source / "tools/generate_df_kernels.py",
-        source / "tools/generate_weighted_eri_kernels.py",
-        source / "tools/generate_one_electron_kernels.py",
-        source / "tools/generate_grid_kernels.py",
-        source / "tools/generate_mp2_native.py",
-        source / "tools/generate_xc_cpu.py",
-        source / "tools/generate_xc_gradient_cuda.py",
-    }
-    for directory in ("src", "include", "cmake/3rdparty/implib"):
-        paths.update(p for p in (source / directory).rglob("*") if p.is_file())
-    paths.update((source / "python/vibeqc").rglob("*.py"))
-    for pattern in ("*.py", "*.json"):
-        paths.update((source / "python/vibeqc_compiler").rglob(pattern))
-    for directory in ("tools/vibeqc_tensor", "tools/vibeqc_mp2"):
-        paths.update((source / directory).rglob("*.py"))
-    paths.add(source / "tools/vibeqc_posthf/plan_spec.py")
+    """Hash the canonical CMake/autotune compatibility inventory."""
     text = "".join(
-        f"{p.relative_to(source).as_posix()}:{file_hash(p)}\n"
-        for p in sorted(paths, key=lambda p: p.relative_to(source).as_posix())
+        f"{path.relative_to(source).as_posix()}:{file_hash(path)}\n"
+        for path in _source_identity_paths(source)
     )
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def read_xyz(path: Path, *, units="angstrom") -> list:
+def read_xyz(path: Path, *, units: typing.Any = "angstrom") -> list:
     """Read one ordinary XYZ geometry and convert coordinates to public-API Bohr."""
     lines = path.read_text().splitlines()
     count = int(lines[0])
@@ -115,7 +156,9 @@ def read_xyz(path: Path, *, units="angstrom") -> list:
     return atoms
 
 
-def rank_hotspots(rows: list[dict], *, coverage=0.97, maximum_classes=8) -> list[dict]:
+def rank_hotspots(
+    rows: list[dict], *, coverage: typing.Any = 0.97, maximum_classes: typing.Any = 8
+) -> list[dict]:
     """Use exact active primitive work; never compile absent shell classes by default."""
     if not 0 < coverage <= 1 or maximum_classes < 1:
         raise ValueError("coverage must be in (0,1] and class limit positive")
@@ -146,7 +189,7 @@ def rank_hotspots(rows: list[dict], *, coverage=0.97, maximum_classes=8) -> list
 
 
 def endpoint_gate(
-    baseline: list[dict], candidate: list[dict], *, minimum_speedup=1.02
+    baseline: list[dict], candidate: list[dict], *, minimum_speedup: typing.Any = 1.02
 ) -> dict:
     """Reject noisy/slower proposals and changed SCF branches without dropping samples."""
     if len(baseline) != len(candidate) or len(baseline) < 4:
@@ -206,9 +249,9 @@ def _worker(
     workload: Path,
     output: Path,
     *,
-    generic=False,
-    profile=False,
-    timeout=600,
+    generic: typing.Any = False,
+    profile: typing.Any = False,
+    timeout: typing.Any = 600,
 ) -> dict:
     env = {**os.environ, "VIBEQC_LIBRARY": str(library), "VIBEQC_PROFILE": "off"}
     # Ambient debugging masks would otherwise turn an A/B into a comparison of
@@ -243,7 +286,16 @@ def _worker(
     return json.loads(output.read_text())
 
 
-def _compare(base, candidate, workload, directory, *, repeats, generic, timeout):
+def _compare(
+    base: typing.Any,
+    candidate: typing.Any,
+    workload: typing.Any,
+    directory: typing.Any,
+    *,
+    repeats: typing.Any,
+    generic: typing.Any,
+    timeout: typing.Any,
+) -> typing.Any:
     samples = {"baseline": [], "candidate": []}
     # Alternate fresh processes in balanced ABBA blocks. Startup, cold SCF,
     # and warmup are outside each sample; all raw repeats enter the gate.
@@ -262,7 +314,16 @@ def _compare(base, candidate, workload, directory, *, repeats, generic, timeout)
     return endpoint_gate(samples["baseline"], samples["candidate"])
 
 
-def _build(source, build, manifest, target, nvcc, *, timeout, jobs):
+def _build(
+    source: typing.Any,
+    build: typing.Any,
+    manifest: typing.Any,
+    target: typing.Any,
+    nvcc: typing.Any,
+    *,
+    timeout: typing.Any,
+    jobs: typing.Any,
+) -> typing.Any:
     command = [
         "cmake",
         "-S",
@@ -301,7 +362,9 @@ def _build(source, build, manifest, target, nvcc, *, timeout, jobs):
     return library.resolve(), time.monotonic() - started
 
 
-def _native_kernel_paths(build, architecture, name):
+def _native_kernel_paths(
+    build: typing.Any, architecture: typing.Any, name: typing.Any
+) -> typing.Any:
     """Locate the generated source and exact object in a class-mode native build."""
     relative = (
         Path("generated/production_shell_kernels")
@@ -317,7 +380,7 @@ def _native_kernel_paths(build, architecture, name):
     )
 
 
-def run(args) -> dict:
+def run(args: typing.Any) -> dict:
     """Tune measured hotspots; publish only complete accepted endpoint replacements."""
     source = args.source_dir.resolve()
     if not (source / "python/vibeqc_compiler/integral/autotune.py").is_file():
@@ -409,7 +472,7 @@ def run(args) -> dict:
     atomic_json(workload_path, workload)
     started = time.monotonic()
 
-    def remaining():
+    def remaining() -> typing.Any:
         seconds = args.budget_seconds - (time.monotonic() - started)
         if seconds <= 0:
             raise TimeoutError("local autotuning budget exhausted")
