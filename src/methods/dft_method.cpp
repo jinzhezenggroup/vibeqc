@@ -378,9 +378,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
     invalidate_final_state();
     const char* method_name = functional_name(method_);
     if (compute_forces) {
-      throw MethodError(
-          VIBEQC_STATUS_NOT_IMPLEMENTED,
-          std::string(method_name) + " KS nuclear gradients are tracked separately in issue #163");
+      const char* issue = is_r2scan(method_) ? "#164" : "#163";
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        std::string(method_name) +
+                            " KS nuclear gradients are tracked separately in issue " + issue);
     }
     return adapt_result(run(nullptr, true, true), backend_);
   }
