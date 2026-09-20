@@ -146,6 +146,8 @@ bool generated_one_electron_derivatives_requested() noexcept;
 /** 0: AO threads; 1: shell-pair warp lanes (default); 2: deterministic serial diagnostics. */
 unsigned one_electron_derivative_mapping_requested() noexcept;
 bool resident_psss_bra_requested() noexcept;
+/** Generated ssss force candidate; native remains default until the endpoint gate passes. */
+bool generated_ssss_force_requested() noexcept;
 /** Generated weighted primitive candidate; frozen into a prepared bucket. */
 bool generated_psss_weighted_requested() noexcept;
 

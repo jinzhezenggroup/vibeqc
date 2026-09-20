@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "api/handles.hpp"
@@ -24,6 +26,10 @@ using namespace vibeqc;
 using scf::reference::Matrix;
 void require(bool value, const std::string& message) {
   if (!value) throw std::runtime_error(message);
+}
+bool expect_iteration_chunking() {
+  const char* selection = std::getenv("VIBEQC_CUDA_KS_CHUNK");
+  return selection != nullptr && std::string(selection) == "2";
 }
 core::System hydrogens(unsigned count, bool restricted, double shift = 0.0) {
   core::System system;
@@ -94,6 +100,53 @@ void physical_check(const scf::PreparedFockPlan& cpu, const dft::AoBasis& basis,
           "CUDA endpoint gate does not detect XC double counting");
 }
 
+void compare_rks_chunk_history(bool pbe) {
+  const auto system = hydrogens(2, true);
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  scf::ScfOptions options;
+  options.compute_forces = false;
+  options.energy_tolerance = 1e-12;
+  options.density_tolerance = 1e-10;
+  options.max_iterations = 150;
+  const auto solve = [&](const char* width) {
+    require(::setenv("VIBEQC_CUDA_KS_CHUNK", width, 1) == 0,
+            "could not select CUDA RKS history route");
+    const scf::PreparedFockPlan gpu(system, nullptr, strategy(true, scf::FockBackend::Cuda), 0);
+    dft::CudaKsPlan plan(gpu, basis, grid, options, pbe, 257);
+    auto result = plan.run(nullptr, false, false);
+    return std::pair{std::move(result), plan.transfers()};
+  };
+  const auto ordinary = solve("1");
+  const auto chunked = solve("2");
+  const auto& left = ordinary.first.dft_diagnostic.history;
+  const auto& right = chunked.first.dft_diagnostic.history;
+  require(ordinary.first.converged && chunked.first.converged &&
+              ordinary.first.iterations == chunked.first.iterations &&
+              left.size() == right.size() &&
+              std::abs(ordinary.first.energy - chunked.first.energy) < 1e-13,
+          "CUDA RKS chunk changed the ordinary physical trajectory");
+  for (std::size_t i = 0; i < left.size(); ++i) {
+    const bool energy_change_equal =
+        (std::isinf(left[i].energy_change) && std::isinf(right[i].energy_change)) ||
+        std::abs(left[i].energy_change - right[i].energy_change) < 1e-13;
+    require(left[i].iteration == right[i].iteration && energy_change_equal &&
+                std::abs(left[i].components.total() - right[i].components.total()) < 1e-13 &&
+                std::abs(left[i].density_change - right[i].density_change) < 1e-13 &&
+                std::abs(left[i].physical_residual - right[i].physical_residual) < 1e-13 &&
+                std::abs(left[i].electrons[0] - right[i].electrons[0]) < 1e-13 &&
+                std::abs(left[i].electrons[1] - right[i].electrons[1]) < 1e-13 &&
+                left[i].occupation_stabilized == right[i].occupation_stabilized,
+            "CUDA RKS chunk changed an ordinary iteration-history row");
+  }
+  require(ordinary.second.iteration_synchronizations == ordinary.second.iterations &&
+              chunked.second.iteration_synchronizations < chunked.second.iterations,
+          "CUDA RKS history comparison did not exercise both fence cadences");
+  require(::setenv("VIBEQC_CUDA_KS_CHUNK", "2", 1) == 0,
+          "could not restore CUDA RKS chunk qualification");
+}
+
 /** OH exercises the stationary integer-occupation cycle from #305 on CUDA.
  * Rebuild every returned physical quantity with the unshifted CPU operator. */
 void run_hydroxyl(bool pbe) {
@@ -125,6 +178,11 @@ void run_hydroxyl(bool pbe) {
   dft::CudaKsPlan plan(gpu, basis, grid, options, pbe);
   const auto cold = plan.run(nullptr, false, false);
   require(cold.converged && !plan.failed(), "CUDA OH occupation cycle did not converge");
+  const auto cold_execution = plan.transfers();
+  require(cold_execution.iterations == cold.iterations &&
+              cold_execution.iteration_chunks == cold_execution.iteration_synchronizations &&
+              cold_execution.iteration_synchronizations == cold_execution.iterations,
+          "CUDA OH must retain the host-controlled one-fence-per-iteration path");
   require(plan.transfers().matrix_d2h_bytes == 0,
           "CUDA occupation stabilization exported iteration matrices");
   physical_check(cpu, basis, grid, pbe, plan.result());
@@ -187,6 +245,20 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
   }
   require(plan.transfers().matrix_d2h_bytes == 0, "CUDA SCF staged an iteration matrix");
   const auto result = plan.result();
+  const auto cold_execution = plan.transfers();
+  require(cold_execution.iterations == result.iterations &&
+              cold_execution.iteration_chunks == cold_execution.iteration_synchronizations,
+          "CUDA KS chunk accounting does not match the physical trajectory");
+  if (restricted && expect_iteration_chunking() && result.iterations > 1)
+    require(cold_execution.iteration_synchronizations < cold_execution.iterations,
+            "qualified CUDA RKS retained a mandatory host fence after every iteration");
+  else
+    require(cold_execution.iteration_synchronizations == cold_execution.iterations,
+            "ordinary CUDA KS baseline changed its host-fence cadence");
+  require(cold_execution.submitted_iterations >= cold_execution.iterations &&
+              cold_execution.submitted_iterations <=
+                  cold_execution.iterations + cold_execution.iteration_chunks,
+          "CUDA KS speculative work escaped the bounded chunk contract");
   if (!result.converged || plan.failed()) {
     std::cerr << "failed atoms=" << atoms << " restricted=" << restricted << " pbe=" << pbe
               << " iter=" << result.iterations
@@ -477,6 +549,16 @@ int main() {
   int devices = 0;
   if (cudaGetDeviceCount(&devices) != cudaSuccess || devices == 0) return 77;
   try {
+    if (std::getenv("VIBEQC_CUDA_KS_CHUNK") == nullptr) {
+      require(::setenv("VIBEQC_CUDA_KS_CHUNK", "2", 1) == 0,
+              "could not enable CUDA RKS chunk qualification");
+      for (bool pbe : {false, true}) {
+        compare_rks_chunk_history(pbe);
+        run_case(2, true, pbe);
+      }
+      require(::unsetenv("VIBEQC_CUDA_KS_CHUNK") == 0,
+              "could not restore CUDA KS synchronization baseline");
+    }
     rejected_api_requests_revoke_tokens();
     for (bool pbe : {false, true}) {
       run_case(2, true, pbe);

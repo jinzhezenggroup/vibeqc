@@ -101,8 +101,23 @@ def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndar
         return value.reshape(node.spec.shape, order="C")
     if op == "slice":
         return value[tuple(slice(start, stop) for start, stop in a["ranges"])]
-    if op == "gather":
+    if op in ("gather", "indexed_gather"):
         return np.take(value, np.asarray(a["positions"], dtype=np.intp), axis=a["axis"])
+    if op == "scatter_add":
+        result = np.zeros(node.spec.shape, dtype=node.spec.dtype)
+        np.add.at(
+            np.moveaxis(result, a["axis"], 0),
+            np.asarray(a["positions"], dtype=np.intp),
+            np.moveaxis(value, a["axis"], 0),
+        )
+        return result
+    if op == "segment_sum":
+        result = np.zeros(node.spec.shape, dtype=node.spec.dtype)
+        source = np.moveaxis(value, a["axis"], 0)
+        target = np.moveaxis(result, a["axis"], 0)
+        for segment, (start, stop) in enumerate(zip(a["offsets"], a["offsets"][1:])):
+            target[segment] = np.sum(source[start:stop], axis=0, dtype=node.spec.dtype)
+        return result
     if op == "reduce":
         return np.sum(value, axis=a["axes"], dtype=node.spec.dtype)
     if op == "broadcast":

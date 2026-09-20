@@ -34,6 +34,20 @@ def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     # Keep the independently compiled JIT owner's ABI free of that extension.
     source, _, headers = emit_grid_source()
     assert native == source + '#include "cuda_xc_kernels.cuh"\n'
+    runtime = source.index('#include "cuda_grid.cu"')
+    for scientific in (
+        "__global__ void ao_kernel",
+        "__global__ void feature_kernel",
+        "__device__ vibeqc::dft::point::Value evaluate_xc_point",
+        "__global__ void xc_local_potential_kernel",
+    ):
+        assert scientific in source
+        assert source.index(scientific) < runtime
+    native_template = (ROOT / "src/dft/cuda_grid.cu").read_text()
+    assert "__global__ void ao_kernel" not in native_template
+    assert (
+        "__device__ vibeqc::dft::point::Value evaluate_xc_point" not in native_template
+    )
     assert headers[-1] == ROOT / "include/vibeqc/vibeqc.h"
 
 

@@ -8,7 +8,6 @@ import os
 import site
 import sys
 from pathlib import Path
-from typing import Any
 
 # Keep this list in dependency-friendly load order. libcuda is deliberately
 # absent: the NVIDIA kernel driver must come from the system, never a toolkit
@@ -96,9 +95,9 @@ def install_native_loader() -> None:
         return
 
     @functools.wraps(original)
-    def load_library(*args: Any, **kwargs: Any) -> ctypes.CDLL:
+    def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDLL:
         preload_cuda_runtime_libraries()
-        return original(*args, **kwargs)
+        return original(device=device, device_id=device_id)
 
     load_library._vibeqc_cuda_runtime_loader = True  # type: ignore[attr-defined]
     _native.load_library = load_library

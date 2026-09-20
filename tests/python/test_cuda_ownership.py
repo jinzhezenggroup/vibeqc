@@ -8,13 +8,18 @@ from pathlib import Path
 import pytest
 
 from tools.compare_cuda_ownership import compare
-from tools.report_cuda_ownership import code_lines, ownership_report, validate_baseline
+from tools.report_cuda_ownership import (
+    code_lines,
+    load_ledger,
+    ownership_report,
+    validate_baseline,
+)
 
 
 def test_current_report_is_generated_deterministically_from_source_and_ledger() -> None:
     """Keep the current report reproducible without a merge-conflict-prone snapshot."""
     root = Path(__file__).resolve().parents[2]
-    ledger = json.loads((root / "docs/cuda_ownership.json").read_text())
+    ledger = load_ledger(root / "docs/cuda_ownership")
     first = ownership_report(root, ledger)
     second = ownership_report(root, ledger)
     validate_baseline(first)
@@ -22,6 +27,8 @@ def test_current_report_is_generated_deterministically_from_source_and_ledger() 
     assert first["schema"] == "vibeqc.cuda-ownership-report.v1"
     assert first["files"]
     assert not (root / "docs/cuda_ownership_current.json").exists()
+    assert not (root / "docs/cuda_ownership.json").exists()
+    assert any((root / "docs/cuda_ownership/files").rglob("*.json"))
 
 
 def ledger_for(tmp_path: typing.Any) -> typing.Any:
@@ -66,6 +73,14 @@ def ledger_for(tmp_path: typing.Any) -> typing.Any:
             {"name": "test", "owner": "src/sample.cu", "outputs": ["generated/*.cuh"]}
         ],
     }
+
+
+def test_load_ledger_accepts_legacy_monolith(tmp_path: typing.Any) -> None:
+    """Keep historical benchmark/reproduction ledgers usable by explicit path."""
+    ledger = ledger_for(tmp_path)
+    path = tmp_path / "legacy-cuda-ownership.json"
+    path.write_text(json.dumps(ledger))
+    assert load_ledger(path) == ledger
 
 
 def test_complete_inventory_and_stale_region_fail_closed(
