@@ -167,13 +167,31 @@ def test_captured_take_vjp_replay_and_cuda_plan_use_plain_tensorir() -> None:
     assert all(step.node.op != "array_frontend" for step in direct_plan.steps)
 
 
-def test_scf_density_builders_are_real_frontend_consumers() -> None:
-    from vibeqc_compiler.tensor import density_program, weighted_density_program
+def test_scf_density_builders_reuse_single_source_equations_through_frontend() -> None:
+    from vibeqc_compiler.array_api.scf import (
+        density_program as frontend_density_program,
+    )
+    from vibeqc_compiler.array_api.scf import (
+        weighted_density_program as frontend_weighted_density_program,
+    )
+    from vibeqc_compiler.tensor import density_program as tensor_density_program
+    from vibeqc_compiler.tensor import (
+        weighted_density_program as tensor_weighted_density_program,
+    )
 
-    for program in (density_program(2, 3), weighted_density_program(2, 3)):
-        assert program.provenance["array_frontend_version"] == 1
-        assert all(node.op != "array_frontend" for node in program.live_nodes)
-        assert Program.loads(program.dumps()).logical_hash == program.logical_hash
+    pairs = (
+        (frontend_density_program(2, 3), tensor_density_program(2, 3)),
+        (
+            frontend_weighted_density_program(2, 3),
+            tensor_weighted_density_program(2, 3),
+        ),
+    )
+    for frontend, direct in pairs:
+        assert frontend.logical_hash == direct.logical_hash
+        assert frontend.provenance["array_frontend_version"] == 1
+        assert frontend.provenance["construction"] == "array_frontend"
+        assert all(node.op != "array_frontend" for node in frontend.live_nodes)
+        assert Program.loads(frontend.dumps()).logical_hash == frontend.logical_hash
 
 
 def test_capabilities_declare_explicit_index_surfaces() -> None:
