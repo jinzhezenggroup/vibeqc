@@ -183,8 +183,10 @@ struct PreparedFockPlan::Impl {
     DfResourceEnvelope df_resource{};
     DfBudgetWorkload df_workload{};
     if (has_df) {
+#if VIBEQC_HAS_CUDA
       const auto memory = cuda_density_fitting_memory_info(device);
       df_resource = {memory.free_bytes, memory.total_bytes, memory.available};
+#endif
       df_workload = {diagnostic.nbf, molecule::ao_count(*auxiliary), system.atoms.size(), 1U, 0U,
                      derivatives};
     }
