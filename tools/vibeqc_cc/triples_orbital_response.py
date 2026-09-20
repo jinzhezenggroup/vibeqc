@@ -276,6 +276,7 @@ class BoundCCSDTOrbitalResponse:
                     {weight.parameter: weight.values for weight in parameter_weights}
                 ),
                 "orbital_energy_weights": _feed_hash(dict(orbital_energy_weights)),
+                "z_state": _feed_hash({"rhs": rhs, "solution": z.solution}),
                 "scope": "RCCSD(T) total orbital/metric response; no nuclear derivatives",
             }
         )
