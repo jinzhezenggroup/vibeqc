@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-from typing_extensions import Self
 
 from vibeqc_compiler.tensor import Program
 from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
@@ -26,6 +25,9 @@ from .d3 import (
     D3SpecLike,
     compile_d3_bj_batch,
 )
+
+if typing.TYPE_CHECKING:
+    from typing_extensions import Self
 
 
 @dataclass(frozen=True)
