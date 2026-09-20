@@ -13,6 +13,9 @@
 
 namespace vibeqc::scf {
 
+/** Diagnostic A/B control: retain coordinate-resolved CPU DF derivative tensors. */
+[[nodiscard]] bool cpu_materialized_df_derivatives_requested() noexcept;
+
 /** Conditioning diagnostics and symmetric inverse square root of (P|Q). */
 struct DensityFittingMetricFactor {
   std::size_t dimension{};
