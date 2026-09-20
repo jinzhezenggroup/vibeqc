@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -176,7 +177,15 @@ def _record(
     work = dict(result.work)
     timeline = dict(work["timeline"])
     phases = {"state_export": export_seconds, **timeline["exclusive_seconds"]}
+    durations = (endpoint, export_seconds, *phases.values())
+    if any(not math.isfinite(value) or value < 0.0 for value in durations):
+        raise ValueError("timeline durations must be finite and nonnegative")
+    gradient = np.asarray(result.gradient)
+    if gradient.shape != (basis.natom, 3) or not np.isfinite(gradient).all():
+        raise ValueError("timeline gradient must be finite with shape (natom, 3)")
     phase_total = sum(phases.values())
+    if not math.isfinite(phase_total):
+        raise ValueError("timeline duration sum must be finite")
     residual = endpoint - phase_total
     return {
         "status": "ok",
