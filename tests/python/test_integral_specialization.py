@@ -3,6 +3,7 @@
 from math import comb
 
 import pytest
+
 from vibeqc_compiler.integral import (
     DPPP_SPEC,
     PSSS_SPEC,
