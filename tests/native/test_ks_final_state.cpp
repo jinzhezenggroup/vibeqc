@@ -125,6 +125,7 @@ void model_and_state_rejection() {
       [](auto& a) { a.id.model.tile_points = 0; },
       [](auto& a) { a.id.model.version = 2; },
       [](auto& a) { a.id.model.scf_domain_version = 2; },
+      [](auto& a) { a.id.model.functional = 3; },
       [](auto& a) { a.id.model.spins = 2; },
       [](auto& a) { a.id.model.device = -1; },
       [](auto& a) { a.id.model.grid.version = 99; },
