@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import typing
+from fractions import Fraction
 from pathlib import Path
 from time import perf_counter
 
@@ -16,6 +17,7 @@ from test_ecp_stationary_cpu import GRID, reference
 from vibeqc import Calculator, KsOptions, ResourceBudget, _native
 from vibeqc._dft_gradient import StationaryKsState
 from vibeqc_compiler.dft import NativeAO
+from vibeqc_compiler.method import MethodSpec, resolve_method
 
 
 @pytest.fixture(autouse=True)
@@ -467,6 +469,60 @@ def check_spd_paired_endpoint(
             "ordered_quartets",
         ):
             assert old["work"][counter] == new["work"][counter]
+
+
+@pytest.mark.parametrize("method", ["pbe-rks", "pbe-uks"])
+@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
+def test_ecp_force_promotion_rejects_named_and_custom_hybrids_before_preparation(
+    method: str, representation: str, monkeypatch: typing.Any
+) -> None:
+    """Only unit semilocal, zero-K compositions may inherit public ECP forces."""
+    spin = int(method.endswith("uks"))
+    atoms, record, _ = fixture(spin=spin, representation=representation)
+
+    # Positive controls: the already-qualified pure LDA/PBE ECP endpoints stay public.
+    suffix = "uks" if spin else "rks"
+    for pure_method in (f"lda-{suffix}", f"pbe-{suffix}"):
+        pure = calculator(record, pure_method)
+        assert pure.ks_options.coefficients == (1.0, 1.0, 0.0)
+        assert "forces" in pure._capabilities.supported_properties
+
+    named = calculator(record, f"pbe0-{suffix}")
+    assert named.ks_options.coefficients != (1.0, 1.0, 0.0)
+    assert "forces" not in named._capabilities.supported_properties
+
+    graph = resolve_method(
+        MethodSpec(
+            "PBE50-ecp-force-boundary",
+            (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
+        spin="polarized" if spin else "unpolarized",
+    )
+    custom = Calculator(
+        basis=record,
+        method=method,
+        device="cpu",
+        ks_options=KsOptions(grid=GRID, composition=graph),
+        max_iterations=150,
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+    )
+    assert custom.ks_options.coefficients != (1.0, 1.0, 0.0)
+    assert "forces" not in custom._capabilities.supported_properties
+
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
+        pytest.fail("unqualified hybrid forces reached batch preparation")
+
+    monkeypatch.setattr(Calculator, "prepare_batch", forbidden)
+    for candidate in (named, custom):
+        with pytest.raises(ValueError, match="does not support properties: forces"):
+            candidate.singlepoint(
+                atoms,
+                charge=spin,
+                multiplicity=spin + 1,
+                properties=("energy", "forces"),
+            )
 
 
 def test_cpu_f_ecp_forces_rejected_before_preparation(monkeypatch: typing.Any) -> None:
