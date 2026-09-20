@@ -214,7 +214,7 @@ class NativeKsSnapshot:
             natom,
             packed_count,
             npoint,
-            pbe,
+            functional,
             _,
             owner,
             epoch,
@@ -344,7 +344,10 @@ class NativeKsSnapshot:
         ):
             raise ValueError("native stationary grid source mismatch")
         self.grid = grid
-        method = ("pbe" if pbe else "lda") + ("-rks" if spins == 1 else "-uks")
+        functional_names = {0: "lda", 1: "pbe", 2: "r2scan"}
+        if functional not in functional_names:
+            raise NotImplementedError("unsupported native stationary functional id")
+        method = functional_names[functional] + ("-rks" if spins == 1 else "-uks")
         _, spec = resolve_ks_method(method)
         basis_identity = basis.identity
         identity = StationaryKsIdentity(
@@ -410,11 +413,15 @@ class NativeKsSnapshot:
         )
 
     def evaluate_xc_points(
-        self, pbe: typing.Any, rho: typing.Any, gradient: typing.Any
+        self,
+        functional: typing.Any,
+        rho: typing.Any,
+        gradient: typing.Any,
+        tau: typing.Any = None,
     ) -> typing.Any:
         """Return SCF-domain point energy and Cartesian first derivatives."""
         self.check_current()
-        values = _scf_xc_points(self._library, pbe, rho, gradient)
+        values = _scf_xc_points(self._library, functional, rho, gradient, tau)
         self.check_current()
         return values
 
