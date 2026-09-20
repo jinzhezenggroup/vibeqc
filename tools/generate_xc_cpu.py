@@ -3,6 +3,7 @@
 import sys as _compiler_sys
 import types as _compiler_types
 from pathlib import Path as _CompilerPath
+from typing import Any
 
 _compiler_root = (
     _CompilerPath(__file__).resolve().parents[1] / "python" / "vibeqc_compiler"
@@ -32,7 +33,7 @@ from vibeqc_compiler.xc.expressions import (
 from vibeqc_compiler.xc.spec import functional
 
 
-def build_roots(spec, outputs, *, production=False):
+def build_roots(spec: Any, outputs: Any, *, production: bool = False) -> tuple[Any, Any, str]:
     """Build derivative roots and the exact emitted-expression identity."""
 
     graph, energy, variables = energy_expression(spec, production=production)
