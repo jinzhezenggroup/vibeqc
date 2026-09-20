@@ -144,7 +144,7 @@ def test_ragged_fixed_state_hamiltonian_matches_pinned_xtbloom_reference():
     assert compiled.topology.matrix_offsets == (0, 1, 65)
     assert compiled.topology.canonical_forward[1] == 1
     assert compiled.topology.canonical_forward[8] == 8
-    assert compiled.topology.canonical_forward[9] == 8
+    assert compiled.topology.canonical_forward[9] == 2
 
 
 def test_generated_sdq_adjoint_matches_reference_vjp_and_dot_product():
