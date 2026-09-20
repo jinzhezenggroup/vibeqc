@@ -84,7 +84,9 @@ def _scf_xc_points(
         "energy": immutable(output[:, 0]),
         "rho": immutable(output[:, 1:3].T),
         "gradient": immutable(output[:, 3:9].reshape(-1, 2, 3).transpose(1, 0, 2)),
-        "tau": immutable(output[:, 9:11].T),
+        # Native r2SCAN publishes the AO kinetic coefficient vtau/2, not
+        # the raw feature derivative dE/dtau.
+        "kinetic": immutable(output[:, 9:11].T),
     }
 
 
