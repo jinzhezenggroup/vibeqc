@@ -1,10 +1,10 @@
-# RCCSD(T) triples correction (slice A, issue #150)
+# RCCSD(T) energy and internal analytic-gradient validation
 
-`tools.vibeqc_cc/triples.py` provides the internal, auditable, pure-CPU
-NumPy reference for the closed-shell non-iterative (T) triples energy
-RCCSD(T). It does not register a public `Calculator` method; the reserved
-`RCCSD_T` enum identifier remains inactive (issue #150 step 9). No PySCF
-runtime is imported and no GPU path is implied.
+`tools.vibeqc_cc/triples.py` provides the auditable standard closed-shell
+non-iterative (T) energy definition used by RCCSD(T). Bounded CUDA triples and
+generated response paths share that definition. The reserved native/public
+`RCCSD_T` method remains inactive: public `Calculator` forces are not enabled.
+PySCF is used only by pinned validation tooling and is never a runtime dependency.
 
 ## Mathematical contract
 
@@ -173,3 +173,39 @@ per-tile resident design and revisit conditions:
 ```bash
 python -m pytest tests/python/test_cc_triples_tiles.py -q
 ```
+
+## Complete analytic-gradient validation boundary
+
+`tools.vibeqc_cc/triples_complete_gradient.py` provides the internal conventional
+RCCSD(T) complete-gradient endpoint for #155 B. It composes the existing pieces
+in one state-bound chain:
+
+```text
+RHF -> RCCSD -> baseline Lambda -> corrected RCCSD(T) Lambda
+    -> direct (T) + denominator + canonical-gauge response
+    -> one total RHF Z solve -> AO/nuclear derivative contraction
+```
+
+The response mathematics is owned by `BoundCCSDTOrbitalResponse`; the final
+`BoundCCSDTGradient` layer does not solve another Z-vector or introduce another
+set of coupled-cluster derivative equations. It reuses the already-qualified
+RCCSD CPU dense derivative oracle and generated bounded CUDA one-electron /
+weighted-ERI consumers for the final h/g/S cotangents. CPU and CUDA final
+contractions therefore consume the same total response weights.
+
+The current qualification is restricted to real closed-shell canonical RHF,
+conventional unscreened all-electron Hamiltonians, no frozen core, no ECP or
+auxiliary basis, and the existing <=12-AO small-system validation boundary.
+`derivative_backend="cuda"` moves only the final AO/nuclear derivative consumers
+to CUDA; it does not by itself qualify a fully resident GPU response chain.
+Failure of any RHF, CCSD, corrected-Lambda, canonical-gauge, Z-vector, identity,
+or derivative-consumer gate prevents a gradient result. No force/torque
+projection is applied after assembly.
+
+Pinned PySCF 2.14.0 analytic gradients for H2O and NH3 are independent acceptance
+oracles in `tests/python/test_ccsd_t_complete_gradient.py`; complete-energy
+finite differences and omission controls remain in
+`tests/python/test_ccsd_t_gradient_validation.py`. Public/native RCCSD(T) force
+registration, bindings, prepared batches, and failure propagation remain #155 C.
+The ownership rationale is recorded in
+[the complete-gradient Agent Note](../.agents/notes/implemented/numerics/2026-09-21-ccsdt-complete-gradient-assembly.md).

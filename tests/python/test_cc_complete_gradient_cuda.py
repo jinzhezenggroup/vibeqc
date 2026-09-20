@@ -8,6 +8,8 @@ import pytest
 from vibeqc.calculator import Atom, Primitive, Shell
 
 from tools.cc_gradient_fixtures import inputs, load, source_arguments
+from tools.validate_ccsd_t_gradient import analytic_oracle
+from tools.vibeqc_cc import complete_ccsdt_gradient_validation
 from tools.vibeqc_cc.complete_gradient import (
     CCSDGradientOptions,
     complete_gradient_validation,
@@ -98,6 +100,29 @@ def test_complete_cuda_derivative_endpoint_matches_independent_reference(
     assert result.diagnostics["gpu_eri_weight_mode"] == "dense"
     assert result.diagnostics["gpu_one_electron_calls"] == 6
     assert result.diagnostics["gpu_weighted_eri_calls"] == 4
+
+
+def test_complete_ccsdt_cuda_derivative_endpoint_matches_pinned_pyscf() -> None:
+    expected = np.asarray(analytic_oracle("h2o")["analytic"]["gradient"])
+    with _source("h2o") as source:
+        result = complete_ccsdt_gradient_validation(
+            source,
+            options=CCSDGradientOptions(
+                derivative_backend="cuda",
+                device_id=0,
+                derivative_stage_budget_bytes=32 << 20,
+                one_electron_schedule=0,
+            ),
+            vir_chunk_size=1,
+        )
+    np.testing.assert_allclose(result.gradient, expected, atol=1e-6, rtol=0)
+    assert result.diagnostics["triples_gradient"] is True
+    assert (
+        result.diagnostics["derivative_backend"] == "cuda-generated-bounded-consumers"
+    )
+    assert result.diagnostics["dense_ao_derivative_oracle"] is False
+    assert result.diagnostics["gpu_one_electron_calls"] == 10
+    assert result.diagnostics["gpu_weighted_eri_calls"] == 8
 
 
 def test_h2_shell_streamed_eri_weights_match_dense_cuda_endpoint() -> None:
