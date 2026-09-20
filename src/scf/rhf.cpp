@@ -500,9 +500,9 @@ Matrix generated_df_hf_gradient(const DensityFittingScfData& data, CudaDensityFi
                  data.metric_relative_threshold)
           .derivative;
     }
-    return build_density_fitting_rhf_weighted_gradient(
-               *data.df_gradient_orbital, *data.df_gradient_auxiliary, data.raw, density,
-               data.metric_relative_threshold)
+    return build_density_fitting_rhf_weighted_gradient(*data.df_gradient_orbital,
+                                                       *data.df_gradient_auxiliary, data.raw,
+                                                       density, data.metric_relative_threshold)
         .derivative;
   }
 #if VIBEQC_HAS_CUDA

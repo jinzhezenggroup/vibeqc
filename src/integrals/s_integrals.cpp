@@ -618,9 +618,9 @@ std::vector<double> transform_three_center(
   return transformed;
 }
 
-std::vector<double> pullback_matrix_weights(
-    std::span<const double> source, std::size_t cartesian_count,
-    const std::vector<GlobalAoExpansion>& public_aos) {
+std::vector<double> pullback_matrix_weights(std::span<const double> source,
+                                            std::size_t cartesian_count,
+                                            const std::vector<GlobalAoExpansion>& public_aos) {
   std::vector<double> result(checked_product(cartesian_count, cartesian_count), 0.0);
   const std::size_t public_count = public_aos.size();
   for (std::size_t p = 0; p < public_count; ++p) {
@@ -643,8 +643,7 @@ std::vector<double> pullback_three_center_weights(
     std::size_t cartesian_auxiliary_count, const std::vector<GlobalAoExpansion>& public_aos,
     const std::vector<GlobalAoExpansion>& public_auxiliary_aos) {
   const std::size_t cartesian_matrix = checked_product(cartesian_count, cartesian_count);
-  std::vector<double> result(
-      checked_product(cartesian_matrix, cartesian_auxiliary_count), 0.0);
+  std::vector<double> result(checked_product(cartesian_matrix, cartesian_auxiliary_count), 0.0);
   const std::size_t public_count = public_aos.size();
   const std::size_t public_auxiliary_count = public_auxiliary_aos.size();
   for (std::size_t p = 0; p < public_count; ++p) {
@@ -784,8 +783,8 @@ std::vector<double> contract_weighted_density_fitting_derivative(
       const AoView& second = orbital_aos[j];
       const auto second_center = center(second.shell->atom_index);
       for (std::size_t p = 0; p < cartesian_naux; ++p) {
-        const double external = cartesian_three_center_weights[
-            three_center_index(i, j, p, cartesian_nbf, cartesian_naux)];
+        const double external = cartesian_three_center_weights[three_center_index(
+            i, j, p, cartesian_nbf, cartesian_naux)];
         if (external == 0.0) continue;
         const AoView& auxiliary = auxiliary_aos[p];
         const auto auxiliary_center = center(auxiliary.shell->atom_index);
@@ -796,8 +795,7 @@ std::vector<double> contract_weighted_density_fitting_derivative(
           for (const auto& second_primitive : second.shell->primitives) {
             for (const auto& auxiliary_primitive : auxiliary.shell->primitives) {
               const double weight = external * component_factor * first_primitive.coefficient *
-                                    second_primitive.coefficient *
-                                    auxiliary_primitive.coefficient;
+                                    second_primitive.coefficient * auxiliary_primitive.coefficient;
               const auto response = generated_df_cpu::three_center_derivative(
                   first_primitive.exponent, first_center, angular(first.angular),
                   second_primitive.exponent, second_center, angular(second.angular),

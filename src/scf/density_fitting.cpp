@@ -449,8 +449,7 @@ void validate_density_fitting_value_data(const integrals::DensityFittingIntegral
   std::size_t matrix_elements = 0;
   std::size_t metric_elements = 0;
   std::size_t three_center_elements = 0;
-  if (data.nbf == 0 || data.naux == 0 ||
-      !checked_multiply(data.nbf, data.nbf, matrix_elements) ||
+  if (data.nbf == 0 || data.naux == 0 || !checked_multiply(data.nbf, data.nbf, matrix_elements) ||
       !checked_multiply(data.naux, data.naux, metric_elements) ||
       !checked_multiply(matrix_elements, data.naux, three_center_elements) ||
       data.metric.size() != metric_elements || data.three_center.size() != three_center_elements) {
@@ -460,10 +459,11 @@ void validate_density_fitting_value_data(const integrals::DensityFittingIntegral
   require_finite(data.three_center, "DF three-center entries must be finite");
 }
 
-void accumulate_coulomb_reverse_weights(
-    const integrals::DensityFittingIntegralData& data, const std::vector<double>& density,
-    const std::vector<double>& inverse, double scale, std::vector<double>& inverse_weights,
-    std::vector<double>& three_center_weights) {
+void accumulate_coulomb_reverse_weights(const integrals::DensityFittingIntegralData& data,
+                                        const std::vector<double>& density,
+                                        const std::vector<double>& inverse, double scale,
+                                        std::vector<double>& inverse_weights,
+                                        std::vector<double>& three_center_weights) {
   if (scale == 0.0) return;
   const std::size_t nbf = data.nbf;
   const std::size_t naux = data.naux;
@@ -494,16 +494,16 @@ void accumulate_coulomb_reverse_weights(
   }
   for (std::size_t row = 0; row < naux; ++row) {
     for (std::size_t column = 0; column < naux; ++column) {
-      inverse_weights[index(row, column, naux)] +=
-          0.5 * scale * charge[row] * charge[column];
+      inverse_weights[index(row, column, naux)] += 0.5 * scale * charge[row] * charge[column];
     }
   }
 }
 
-void accumulate_exchange_reverse_weights(
-    const integrals::DensityFittingIntegralData& data, const std::vector<double>& density,
-    const std::vector<double>& inverse, double scale, std::vector<double>& inverse_weights,
-    std::vector<double>& three_center_weights) {
+void accumulate_exchange_reverse_weights(const integrals::DensityFittingIntegralData& data,
+                                         const std::vector<double>& density,
+                                         const std::vector<double>& inverse, double scale,
+                                         std::vector<double>& inverse_weights,
+                                         std::vector<double>& three_center_weights) {
   if (scale == 0.0) return;
   const std::size_t nbf = data.nbf;
   const std::size_t naux = data.naux;
@@ -587,8 +587,8 @@ DensityFittingReverseWeights density_fitting_reverse_weights(
     accumulate_exchange_reverse_weights(data, *density, inverse, 0.5 * coefficients.exchange,
                                         inverse_weights, weights.three_center);
   }
-  weights.metric = density_fitting_metric_inverse_response(
-      data.metric, inverse, inverse_weights, data.naux, relative_threshold);
+  weights.metric = density_fitting_metric_inverse_response(data.metric, inverse, inverse_weights,
+                                                           data.naux, relative_threshold);
   return weights;
 }
 std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile,
@@ -994,8 +994,8 @@ DensityFittingRhfGradient build_density_fitting_rhf_weighted_gradient(
       integrals.naux != molecule::ao_count(auxiliary_system)) {
     throw std::invalid_argument("DF weighted RHF gradient geometry dimensions are inconsistent");
   }
-  const DensityFittingReverseWeights weights = density_fitting_reverse_weights(
-      integrals, {{&density, coefficients}}, relative_threshold);
+  const DensityFittingReverseWeights weights =
+      density_fitting_reverse_weights(integrals, {{&density, coefficients}}, relative_threshold);
   DensityFittingRhfGradient result;
   result.ncoord = integrals.ncoord;
   result.derivative = integrals::contract_weighted_density_fitting_derivative(
@@ -1023,11 +1023,12 @@ DensityFittingUhfGradient build_density_fitting_uhf_weighted_gradient(
   std::vector<double> total_density(alpha_density.size());
   for (std::size_t item = 0; item < total_density.size(); ++item)
     total_density[item] = alpha_density[item] + beta_density[item];
-  const DensityFittingReverseWeights weights = density_fitting_reverse_weights(
-      integrals, {{&total_density, {coefficients.coulomb, 0.0}},
-                  {&alpha_density, {0.0, coefficients.exchange}},
-                  {&beta_density, {0.0, coefficients.exchange}}},
-      relative_threshold);
+  const DensityFittingReverseWeights weights =
+      density_fitting_reverse_weights(integrals,
+                                      {{&total_density, {coefficients.coulomb, 0.0}},
+                                       {&alpha_density, {0.0, coefficients.exchange}},
+                                       {&beta_density, {0.0, coefficients.exchange}}},
+                                      relative_threshold);
   DensityFittingUhfGradient result;
   result.ncoord = integrals.ncoord;
   result.derivative = integrals::contract_weighted_density_fitting_derivative(
