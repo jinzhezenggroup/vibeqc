@@ -78,11 +78,22 @@ def density_program(
         Index("p", ao),
         Index("i", orbital),
     )
-    coefficients = input_tensor("coefficients", TensorSpec((b, s, p, i), role="input"))
-    occupations = input_tensor("occupations", TensorSpec((b, s, i), role="input"))
-    density = einsum("bspi,bsi,bsqi->bspq", coefficients, occupations, coefficients)
-    return Program(
-        {"density": density},
+    from vibeqc_compiler.array_api import namespace as xp
+    from vibeqc_compiler.array_api import trace
+
+    return trace(
+        lambda coefficients, occupations: {
+            "density": xp.einsum(
+                "bspi,bsi,bsqi->bspq",
+                coefficients,
+                occupations,
+                coefficients,
+            )
+        },
+        {
+            "coefficients": TensorSpec((b, s, p, i), role="input"),
+            "occupations": TensorSpec((b, s, i), role="input"),
+        },
         provenance={
             "scf_tensor_version": SCF_TENSOR_VERSION,
             "operation": "density",
@@ -109,17 +120,23 @@ def weighted_density_program(
         Index("p", ao),
         Index("i", orbital),
     )
-    coefficients = input_tensor("coefficients", TensorSpec((b, s, p, i), role="input"))
-    occupations = input_tensor("occupations", TensorSpec((b, s, i), role="input"))
-    orbital_energies = input_tensor(
-        "orbital_energies", TensorSpec((b, s, i), role="input")
-    )
-    weights = multiply(occupations, orbital_energies)
-    weighted_density = einsum(
-        "bspi,bsi,bsqi->bspq", coefficients, weights, coefficients
-    )
-    return Program(
-        {"weighted_density": weighted_density},
+    from vibeqc_compiler.array_api import namespace as xp
+    from vibeqc_compiler.array_api import trace
+
+    return trace(
+        lambda coefficients, occupations, orbital_energies: {
+            "weighted_density": xp.einsum(
+                "bspi,bsi,bsqi->bspq",
+                coefficients,
+                occupations * orbital_energies,
+                coefficients,
+            )
+        },
+        {
+            "coefficients": TensorSpec((b, s, p, i), role="input"),
+            "occupations": TensorSpec((b, s, i), role="input"),
+            "orbital_energies": TensorSpec((b, s, i), role="input"),
+        },
         provenance={
             "scf_tensor_version": SCF_TENSOR_VERSION,
             "operation": "weighted_density",
