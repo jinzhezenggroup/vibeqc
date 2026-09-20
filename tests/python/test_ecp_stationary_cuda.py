@@ -260,16 +260,18 @@ def test_cuda_ecp_admission_failure_recovery_and_legacy_guard(compiler, monkeypa
         # Fresh transaction after a late TensorIR failure must recover.
         result = diagnostic(state, basis, compiler)
         assert np.isfinite(result.gradient).all()
-        # Reject the ECP-specific reservations before invoking its provider,
-        # even when the smaller seven-source arenas would fit.
+        # Check the extra dense-export host reservation before ECP execution.
+        # The ordinary CUDA grid reservation dominates the smaller provider
+        # workspace; its device rejection is covered by max_device_bytes=1.
         with monkeypatch.context() as patch:
             patch.setattr(NativeKsSnapshot, "ecp_derivatives", forbidden)
-            for kwargs in (
-                {"max_device_bytes": result.work["ecp_provider_workspace_bound"] - 1},
-                {"max_host_bytes": result.work["additional_host_numeric_bound"] - 1},
-            ):
-                with pytest.raises(ValueError, match="ECP.*budget"):
-                    diagnostic(state, basis, compiler, **kwargs)
+            with pytest.raises(ValueError, match="ECP.*budget"):
+                diagnostic(
+                    state,
+                    basis,
+                    compiler,
+                    max_host_bytes=result.work["additional_host_numeric_bound"] - 1,
+                )
         # The exact declared work boundary is admitted; one sample less is not.
         samples = result.work["ecp_quadrature_pair_samples"]
         with monkeypatch.context() as patch:
