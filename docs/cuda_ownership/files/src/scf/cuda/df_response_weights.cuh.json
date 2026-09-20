@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/df_response_weights.cuh",
+  "reason": "Native HF density/source response runtime contract, buffers and bounded scheduling. Spectral Fréchet mathematics is owned by the shared tensor matrix-function custom rule.",
+  "regions": [],
+  "role": "scientific",
+  "subsystem": "df_response_weights"
+}

@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/aot_shell_registry.hpp",
+  "reason": "Typed registry and task interfaces; generated entries own class mathematics.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

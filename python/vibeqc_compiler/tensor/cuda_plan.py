@@ -423,10 +423,15 @@ def plan_cuda(
     offsets, active, free, capacity = {}, {}, [], 0
     tables = []
     for i, (node, _) in enumerate(nodes):
-        if node.op == "gather":
+        values = None
+        if node.op in ("gather", "indexed_gather", "scatter_add"):
+            values = node.attrs["positions"]
+        elif node.op == "segment_sum":
+            values = node.attrs["offsets"]
+        if values is not None:
             tables.append((i, capacity))
             capacity = checked_size(
-                capacity + aligned(len(node.attrs["positions"]) * 8),
+                capacity + aligned(len(values) * 8),
                 "index table bytes",
             )
     steps, flops, traffic = [], 0, 0
@@ -477,7 +482,12 @@ def plan_cuda(
             for child, labels in zip(node.inputs, node.attrs["labels"], strict=True):
                 domains.update(zip(labels, child.spec.shape, strict=True))
             flops += len(node.inputs) * prod(domains.values())
-        elif node.op not in VIEWS and node.op not in ("input", "constant", "gather"):
+        elif node.op not in VIEWS and node.op not in (
+            "input",
+            "constant",
+            "gather",
+            "indexed_gather",
+        ):
             flops += sum(child.spec.size for child in node.inputs)
         steps.append(
             Step(

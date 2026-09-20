@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/one_electron_export_kernels.hpp",
+  "role": "runtime",
+  "subsystem": "runtime",
+  "reason": "Borrowed retained-response and nuclear launch ABI; no new operator formula.",
+  "regions": []
+}

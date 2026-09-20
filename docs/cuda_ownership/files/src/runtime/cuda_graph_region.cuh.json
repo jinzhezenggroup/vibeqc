@@ -1,0 +1,7 @@
+{
+  "path": "src/runtime/cuda_graph_region.cuh",
+  "reason": "Shared graph capture, replay, invalidation and diagnostics. No scientific equations.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

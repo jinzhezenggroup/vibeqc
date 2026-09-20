@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/one_electron_reference.cu",
+  "reason": "Retained legacy Dual first-coordinate response used only by the explicit reference/validation route after generated derivative promotion.",
+  "regions": [],
+  "role": "performance_exception",
+  "subsystem": "one_electron_derivatives"
+}
