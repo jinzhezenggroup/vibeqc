@@ -23,6 +23,7 @@ from vibeqc_compiler.tensor import (
     multiply,
     power,
     sqrt,
+    transpose_program,
 )
 
 from .ir import (
@@ -277,10 +278,58 @@ def _logistic(argument, one, minus_one):
     return divide(one, add(one, exp(multiply(minus_one, argument))))
 
 
+@dataclass(frozen=True)
+class Gfn2ShortRangeProgram:
+    """Geometry-owned GFN2 CN/repulsion graph with no MethodIR dependency."""
+
+    geometry: GeometryIR
+    topology: PairTopology
+    program: Program
+    parameter_identity: str = GFN2_SHORT_RANGE_PARAMETER_IDENTITY
+    version: str = GFN2_SHORT_RANGE_VERSION
+
+    def __post_init__(self) -> None:
+        if self.geometry.parameter_identity != self.parameter_identity:
+            raise ValueError("GFN2 geometry parameter identity mismatch")
+        _require_gfn2_topology(self.geometry, self.topology)
+        if self.version != GFN2_SHORT_RANGE_VERSION:
+            raise ValueError("unsupported GFN2 short-range compiler version")
+
+    @property
+    def identity(self) -> str:
+        return canonical_hash(
+            {
+                "version": self.version,
+                "geometry": self.geometry.to_payload(),
+                "topology": self.topology.to_payload(),
+                "equation": self.program.logical_hash,
+                "parameter_identity": self.parameter_identity,
+            }
+        )
+
+    def validate_execution_identity(self, identity: str) -> None:
+        if identity != self.identity:
+            raise ValueError("stale GFN2 geometry compiler execution state")
+
+    def validate_coordinates(self, coordinates) -> None:
+        expected = build_gfn2_pair_topology(self.geometry, coordinates)
+        if expected.identity != self.topology.identity:
+            raise ValueError("stale GFN2 pair topology for changed coordinates")
+
+    def coordinate_vjp(self, output: str):
+        if output not in ("coordination", "repulsion_energy"):
+            raise ValueError("unknown GFN2 short-range derivative output")
+        return transpose_program(
+            self.program,
+            [output],
+            inputs=[self.geometry.coordinate_name],
+        )
+
+
 def build_gfn2_short_range_program(
     geometry: GeometryIR,
     topology: PairTopology,
-) -> Program:
+) -> Gfn2ShortRangeProgram:
     """Compile GFN2 CN and nuclear repulsion through PairIR/TensorIR."""
 
     if not isinstance(geometry, GeometryIR):
@@ -381,7 +430,7 @@ def build_gfn2_short_range_program(
     )
     repulsion_energy = pair_to_system(pair_repulsion, context)
 
-    return Program(
+    program = Program(
         {
             "coordination": coordination,
             "repulsion_energy": repulsion_energy,
@@ -393,4 +442,10 @@ def build_gfn2_short_range_program(
             "xtbloom_revision": GFN2_XTBLOOM_REVISION,
             "topology": topology.to_payload(),
         },
+    )
+
+    return Gfn2ShortRangeProgram(
+        geometry,
+        topology,
+        program,
     )
