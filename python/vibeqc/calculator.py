@@ -36,6 +36,8 @@ _METHODS = {
     "pbe-rks": _native.METHOD_PBE_RKS,
     "lda-uks": _native.METHOD_LDA_UKS,
     "pbe-uks": _native.METHOD_PBE_UKS,
+    "r2scan-rks": _native.METHOD_R2SCAN_RKS,
+    "r2scan-uks": _native.METHOD_R2SCAN_UKS,
 }
 
 _HF_METHODS = frozenset((_native.METHOD_RHF, _native.METHOD_UHF))
@@ -428,12 +430,12 @@ class Calculator:
         self._method_name = method.lower()
         self._method = _METHODS[self._method_name]
         self._ks_options = None
-        if self._method_name in ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"):
+        if self._method_name in ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks", "r2scan-rks", "r2scan-uks"):
             from .ks import resolve_ks_options
 
             self._ks_options = resolve_ks_options(self._method_name, ks_options)
         elif ks_options is not None:
-            raise ValueError("ks_options requires an LDA/PBE RKS/UKS method")
+            raise ValueError("ks_options requires a supported semilocal RKS/UKS method")
         if self._method == _native.METHOD_MP2:
             if target_accuracy is not None:
                 raise NotImplementedError(

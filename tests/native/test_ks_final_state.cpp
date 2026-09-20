@@ -103,7 +103,7 @@ void identity_rejection() {
       [](auto& id) { ++id.determinant.solve_epoch; },
       [](auto& id) { ++id.model.owner; },
       [](auto& id) { ++id.model.grid.radial_points; },
-      [](auto& id) { id.model.pbe = !id.model.pbe; },
+      [](auto& id) { id.model.functional = (id.model.functional + 1U) % 3U; },
       [](auto& id) { ++id.model.tile_points; },
       [](auto& id) { ++id.model.device; },
       [](auto& id) { ++id.model.scf_domain_version; },

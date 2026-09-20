@@ -68,10 +68,63 @@ def test_r2scan_vtau_potential_matches_complete_density_directional_derivative()
     assert np.all(np.asarray(errors) < [2e-7, 3e-8, 5e-9]), errors
 
 
-@pytest.mark.parametrize("observable", ["response", "geometry"])
-def test_r2scan_unvalidated_derivative_consumers_fail_closed(observable):
-    with pytest.raises(UnsupportedXC, match="tau-dependent"):
-        program("R2SCAN", observable=observable)
+def test_r2scan_unvalidated_density_response_fails_closed():
+    with pytest.raises(UnsupportedXC, match="tau-dependent density response"):
+        program("R2SCAN", observable="response")
+
+
+@pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
+def test_r2scan_geometry_includes_tau_and_matches_moved_collocation(spin):
+    meta, data, grid = fixture("h2")
+    args = basis_arguments(meta)
+    density = data["density_spin" if spin == "polarized" else "density_total"]
+    geometry = program("R2SCAN", spin, "geometry")
+    energy = program("R2SCAN", spin, "energy")
+    with NativeAO(**args) as basis:
+        ao_atoms = np.repeat(
+            [shell.atom_index for shell in basis.shells],
+            [
+                2 * shell.angular_momentum + 1
+                if basis.representation == "real_spherical"
+                else (shell.angular_momentum + 1) * (shell.angular_momentum + 2) // 2
+                for shell in basis.shells
+            ],
+        )
+        jets = basis.evaluate(grid.points, geometry.contract.ao_order)
+        assert geometry.contract.ao_order == 2
+        assert set(geometry.features(jets, density)) >= {"rho", "gradient", "sigma", "tau"}
+        partials = geometry.evaluate(
+            jets,
+            density,
+            grid.weights,
+            ao_atoms=ao_atoms,
+            natom=basis.natom,
+        )["geometry"]
+    centers = np.array([[0.017, -0.011, 0.013], [-0.009, 0.014, -0.007]])
+    points = np.tile(np.array([[0.003, -0.002, 0.001]]), (len(grid.points), 1))
+    measure = np.linspace(-2e-5, 2e-5, len(grid.weights))
+    expected = partials.directional(centers=centers, points=points, weights=measure)
+    errors = []
+    for step in (2e-4, 7e-5, 2e-5):
+        values = []
+        for sign in (1, -1):
+            moved = [
+                (atom, np.asarray(position) + sign * step * delta)
+                for (atom, position), delta in zip(args["atoms"], centers, strict=True)
+            ]
+            with NativeAO(**{**args, "atoms": moved}) as basis:
+                moved_jets = basis.evaluate(
+                    grid.points + sign * step * points, energy.contract.ao_order
+                )
+                values.append(
+                    energy.evaluate(
+                        moved_jets,
+                        density,
+                        grid.weights + sign * step * measure,
+                    )["energy"]
+                )
+        errors.append(abs((values[0] - values[1]) / (2 * step) - expected))
+    assert np.all(np.asarray(errors) < [2e-7, 3e-8, 6e-9]), errors
 
 
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])

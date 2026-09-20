@@ -141,7 +141,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
   bool warm_updates{true};
   bool stabilize_occupations{}, final_closure{};
   unsigned final_corrections{};
-  bool pbe{}, final_state_ready{}, final_frame_ready{};
+  std::uint32_t functional{};
+  bool final_state_ready{}, final_frame_ready{};
   std::uint64_t owner{next_ks_owner()}, solve_epoch{}, generation{}, final_generation{};
   double previous_energy{std::numeric_limits<double>::infinity()};
 
@@ -174,8 +175,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
   }
 
   Impl(const scf::PreparedFockPlan& plan, const AoBasis& basis, const MolecularGrid& grid,
-       const scf::ScfOptions& control, bool pbe, std::size_t tile)
-      : provider(plan), options(control), grid_spec(grid.spec()), pbe(pbe) {
+       const scf::ScfOptions& control, std::uint32_t functional, std::size_t tile)
+      : provider(plan), options(control), grid_spec(grid.spec()), functional(functional) {
+    if (functional > 2U) throw std::invalid_argument("unknown CUDA KS semilocal functional");
     const auto& strategy = provider.strategy();
     scf::validate_resolved_fock_build(strategy);
     if (!owner || strategy.backend != scf::FockBackend::Cuda ||
@@ -224,7 +226,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     orthogonalizer = scf::reference::symmetric_orthogonalizer(provider.one_electron().overlap, n);
     cold_density = seed(nullptr);
     resource.state_device_bytes = partition(n, spins, history, nullptr);
-    resource.xc_device_bytes = cuda_xc_layout(basis, grid, pbe, spins == 2, tile).device_bytes;
+    resource.xc_device_bytes =
+        cuda_xc_layout(basis, grid, functional, spins == 2, tile).device_bytes;
     resource.provider_device_bytes = provider.diagnostic().device_bytes;
     output.dft_diagnostic.history.reserve(options.max_iterations);
     resource.retained_host_numeric_bytes =
@@ -251,7 +254,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       const std::uint8_t all_spins[]{1, 1};
       upload(final_spin_enabled, all_spins, spins * sizeof(std::uint8_t));
       // XC setup drains this same stream, including the small stack inputs.
-      xc = std::make_unique<CudaXcPlan>(basis, grid, pbe, spins == 2, tile, xc_arena,
+      xc = std::make_unique<CudaXcPlan>(basis, grid, functional, spins == 2, tile, xc_arena,
                                         resource.xc_device_bytes, stream);
     } catch (...) {
       cleanup();
@@ -301,7 +304,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     output.dft_diagnostic.occupations = occupations;
     output.dft_diagnostic.grid_points = xc->layout().npoint;
     output.dft_diagnostic.tile_points = xc->layout().tile_points;
-    output.dft_diagnostic.ao_order = xc->layout().pbe ? 1 : 0;
+    output.dft_diagnostic.ao_order = xc->layout().functional == 0U ? 0 : 1;
     output.initial_density_used = input != nullptr || use_warm;
     is_active = false;
     started = true;
@@ -525,7 +528,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     identity.determinant.model = provider.strategy();
     identity.determinant.occupied = {occupations[0]};
     if (spins == 2) identity.determinant.occupied.push_back(occupations[1]);
-    identity.model = {1, 1, grid_spec, xc->layout().tile_points, pbe, spins, device, owner};
+    identity.model = {1, functional == 2U ? 2U : 1U, grid_spec, xc->layout().tile_points,
+                      functional, spins, device, owner};
     return identity;
   }
 
@@ -660,9 +664,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
 };
 
 CudaKsPlan::CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis,
-                       const MolecularGrid& grid, const scf::ScfOptions& options, bool pbe,
-                       std::size_t tile_points)
-    : impl_(std::make_unique<Impl>(fock, basis, grid, options, pbe, tile_points)) {}
+                       const MolecularGrid& grid, const scf::ScfOptions& options,
+                       std::uint32_t functional, std::size_t tile_points)
+    : impl_(std::make_unique<Impl>(fock, basis, grid, options, functional, tile_points)) {}
 CudaKsPlan::~CudaKsPlan() = default;
 void CudaKsPlan::begin(const std::vector<double>* seed, bool reuse_warm) {
   impl_->begin(seed, reuse_warm);

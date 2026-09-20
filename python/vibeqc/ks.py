@@ -19,6 +19,8 @@ _NATIVE_KS_METHODS = {
     "pbe-rks": ("PBE", "unpolarized"),
     "lda-uks": ("LDA_XC_PW", "polarized"),
     "pbe-uks": ("PBE", "polarized"),
+    "r2scan-rks": ("R2SCAN", "unpolarized"),
+    "r2scan-uks": ("R2SCAN", "polarized"),
 }
 
 

@@ -39,11 +39,29 @@ std::uint64_t next_cpu_ks_owner() {
 }
 
 bool is_uks(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_LDA_UKS || method == VIBEQC_METHOD_PBE_UKS;
+  return method == VIBEQC_METHOD_LDA_UKS || method == VIBEQC_METHOD_PBE_UKS ||
+         method == VIBEQC_METHOD_R2SCAN_UKS;
+}
+
+bool is_r2scan(vibeqc_method method) noexcept {
+  return method == VIBEQC_METHOD_R2SCAN_RKS || method == VIBEQC_METHOD_R2SCAN_UKS;
 }
 
 bool is_supported_dft(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_PBE_RKS || is_uks(method);
+  return method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_PBE_RKS ||
+         method == VIBEQC_METHOD_R2SCAN_RKS || is_uks(method);
+}
+
+std::uint32_t functional_code(vibeqc_method method) {
+  if (is_r2scan(method)) return 2U;
+  if (method == VIBEQC_METHOD_PBE_RKS || method == VIBEQC_METHOD_PBE_UKS) return 1U;
+  if (method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_LDA_UKS) return 0U;
+  throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unknown semilocal functional family");
+}
+
+const char* functional_name(vibeqc_method method) {
+  if (is_r2scan(method)) return "R2SCAN";
+  return functional_code(method) == 1U ? "PBE" : "LDA";
 }
 
 bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offset,
@@ -88,10 +106,8 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   }
 
   scf::FockBuildSpec fock;
-  fock.spin =
-      (descriptor.method == VIBEQC_METHOD_LDA_UKS || descriptor.method == VIBEQC_METHOD_PBE_UKS)
-          ? scf::FockSpin::Unrestricted
-          : scf::FockSpin::Restricted;
+  fock.spin = is_uks(descriptor.method) ? scf::FockSpin::Unrestricted
+                                                : scf::FockSpin::Restricted;
   fock.derivative_order = 0;
   fock.exchange.present = false;
   options.resolved_fock_build = scf::resolve_fock_build(
@@ -220,9 +236,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
 #if VIBEQC_HAS_CUDA
     if (backend_ == VIBEQC_BACKEND_CUDA)
       cuda_ = std::make_unique<dft::CudaKsPlan>(
-          fock_, basis_, grid_, options_,
-          method_ == VIBEQC_METHOD_PBE_RKS || method_ == VIBEQC_METHOD_PBE_UKS,
-          options_.xc_tile_points);
+          fock_, basis_, grid_, options_, functional_code(method_), options_.xc_tile_points);
 #endif
     runtime::sample_cpu_capacity(host_numeric_capacity());
   }
@@ -363,8 +377,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
 
   Result execute(bool compute_forces) override {
     invalidate_final_state();
-    const char* method_name =
-        (method_ == VIBEQC_METHOD_PBE_RKS || method_ == VIBEQC_METHOD_PBE_UKS) ? "PBE" : "LDA";
+    const char* method_name = functional_name(method_);
     if (compute_forces) {
       throw MethodError(
           VIBEQC_STATUS_NOT_IMPLEMENTED,
@@ -397,8 +410,12 @@ class KsPreparedCalculation final : public PreparedCalculation {
     // last-good density, which coexists with its current/proposed densities.
     runtime::CpuRetainedCapacity retained_warm(runtime::vector_bytes(warm_));
     scf::ScfResult native;
-    if (method_ == VIBEQC_METHOD_LDA_UKS || method_ == VIBEQC_METHOD_PBE_UKS)
+    if (method_ == VIBEQC_METHOD_R2SCAN_UKS)
+      native = scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed);
+    else if (method_ == VIBEQC_METHOD_LDA_UKS || method_ == VIBEQC_METHOD_PBE_UKS)
       native = scf::run_uks(fock_, basis_, grid_, options_, method_ == VIBEQC_METHOD_PBE_UKS, seed);
+    else if (method_ == VIBEQC_METHOD_R2SCAN_RKS)
+      native = scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
     else if (method_ == VIBEQC_METHOD_PBE_RKS)
       native = scf::run_pbe_rks(fock_, basis_, grid_, options_, seed);
     else
@@ -435,7 +452,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
                         1,
                         grid_.spec(),
                         options_.xc_tile_points,
-                        method_ == VIBEQC_METHOD_PBE_RKS || method_ == VIBEQC_METHOD_PBE_UKS,
+                        functional_code(method_),
                         spins,
                         -1,
                         cpu_owner_};
@@ -888,8 +905,7 @@ vibeqc_status validate_dft_system(vibeqc_method method, const core::System& syst
     detail = "requested DFT method is reserved but not implemented";
     return VIBEQC_STATUS_NOT_IMPLEMENTED;
   }
-  const char* functional =
-      method == VIBEQC_METHOD_PBE_RKS || method == VIBEQC_METHOD_PBE_UKS ? "PBE" : "LDA";
+  const char* functional = functional_name(method);
   if (!is_uks(method)) {
     if (system.electron_count > 0 && system.electron_count % 2 == 0 && system.multiplicity == 1)
       return VIBEQC_STATUS_SUCCESS;
@@ -914,8 +930,7 @@ std::unique_ptr<PreparedCalculation> prepare_dft_calculation(
   if (context.requested_backend == VIBEQC_BACKEND_CUDA)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT CUDA backend is not built");
 #endif
-  if (descriptor.method != VIBEQC_METHOD_LDA_RKS && descriptor.method != VIBEQC_METHOD_PBE_RKS &&
-      descriptor.method != VIBEQC_METHOD_LDA_UKS && descriptor.method != VIBEQC_METHOD_PBE_UKS)
+  if (!is_supported_dft(descriptor.method))
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "requested DFT method is reserved but not implemented");
   auto options = dft_options(descriptor, context.requested_backend);

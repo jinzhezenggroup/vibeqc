@@ -214,7 +214,8 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
       spins * (3 * basis.nao * basis.nao + basis.nao) * sizeof(double) + spins * sizeof(int);
   require(snapshot.weighted_density.empty() && snapshot.density.size() == spins &&
               snapshot.fock.size() == spins && snapshot.orbitals.size() == spins &&
-              snapshot.identity.model.grid == grid_spec && snapshot.identity.model.pbe == pbe &&
+              snapshot.identity.model.grid == grid_spec &&
+              snapshot.identity.model.functional == (pbe ? 1U : 0U) &&
               snapshot.identity.model.spins == spins &&
               snapshot.identity.determinant.model == gpu.strategy() &&
               snapshot.identity.determinant.factor.orbital_generation ==
@@ -245,7 +246,7 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
       [](auto& value) { value.identity.determinant.occupied[0] = 0; },
       [](auto& value) { ++value.identity.model.owner; },
       [](auto& value) { ++value.identity.model.grid.radial_points; },
-      [](auto& value) { value.identity.model.pbe = !value.identity.model.pbe; },
+      [](auto& value) { value.identity.model.functional = (value.identity.model.functional + 1U) % 3U; },
       [](auto& value) { ++value.identity.model.tile_points; },
       [](auto& value) { ++value.identity.model.device; },
       [](auto& value) { ++value.identity.model.scf_domain_version; }};

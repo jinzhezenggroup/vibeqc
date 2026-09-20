@@ -18,10 +18,12 @@ from .batch import PreparedBatch
 from .ks import SCF_DOMAIN, resolve_ks_method
 
 
-def _scf_xc_points(library, pbe, rho, gradient):
-    """Evaluate the exact native SCF point model without an AO contraction."""
-    if type(pbe) is not bool:
-        raise TypeError("SCF point evaluator requires a boolean PBE flag")
+def _scf_xc_points(library, functional, rho, gradient, tau=None):
+    """Evaluate the exact native semilocal SCF point model."""
+    if type(functional) is bool:
+        functional = int(functional)
+    if type(functional) is not int or functional not in (0, 1, 2):
+        raise TypeError("SCF point evaluator requires functional code 0, 1, or 2")
     raw_rho, raw_gradient = np.asarray(rho), np.asarray(gradient)
     if (
         np.iscomplexobj(raw_rho)
@@ -34,15 +36,23 @@ def _scf_xc_points(library, pbe, rho, gradient):
         raise ValueError("SCF point evaluator requires rho[2,n] and gradient[2,n,3]")
     rho = np.ascontiguousarray(raw_rho, dtype=np.float64)
     gradient = np.ascontiguousarray(raw_gradient, dtype=np.float64)
-    output = np.empty((rho.shape[1], 9), dtype=np.float64)
+    if tau is None:
+        if functional == 2:
+            raise ValueError("r2SCAN point evaluation requires tau[2,n]")
+        tau = np.zeros_like(rho)
+    tau = np.ascontiguousarray(tau, dtype=np.float64)
+    if tau.shape != rho.shape or np.iscomplexobj(tau):
+        raise ValueError("SCF point evaluator requires tau[2,n]")
+    output = np.empty((rho.shape[1], 11), dtype=np.float64)
     try:
-        evaluate = library.vibeqc_xc_point_batch_v1
+        evaluate = library.vibeqc_xc_point_batch_v2
     except AttributeError as error:
         raise NotImplementedError(
-            "native library lacks the #163-A XC point bridge"
+            "native library lacks the semilocal XC point bridge v2"
         ) from error
     evaluate.argtypes = [
         ct.c_uint32,
+        ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
         ct.c_size_t,
@@ -53,9 +63,10 @@ def _scf_xc_points(library, pbe, rho, gradient):
     _native.check(
         library,
         evaluate(
-            int(pbe),
+            functional,
             rho.ctypes.data_as(ct.POINTER(ct.c_double)),
             gradient.ctypes.data_as(ct.POINTER(ct.c_double)),
+            tau.ctypes.data_as(ct.POINTER(ct.c_double)),
             rho.shape[1],
             output.ctypes.data_as(ct.POINTER(ct.c_double)),
             output.size,
@@ -64,7 +75,8 @@ def _scf_xc_points(library, pbe, rho, gradient):
     return {
         "energy": immutable(output[:, 0]),
         "rho": immutable(output[:, 1:3].T),
-        "gradient": immutable(output[:, 3:].reshape(-1, 2, 3).transpose(1, 0, 2)),
+        "gradient": immutable(output[:, 3:9].reshape(-1, 2, 3).transpose(1, 0, 2)),
+        "tau": immutable(output[:, 9:11].T),
     }
 
 

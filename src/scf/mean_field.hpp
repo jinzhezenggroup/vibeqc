@@ -50,6 +50,10 @@ ScfResult run_pbe_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density = nullptr);
 
+ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                         const dft::MolecularGrid& grid, const ScfOptions& options,
+                         const std::vector<double>* initial_density = nullptr);
+
 /** CPU energy-only spin-polarized LDA UKS with independent alpha/beta
  * densities and a Coulomb
  * source built from their total density. */
@@ -61,6 +65,10 @@ ScfResult run_lda_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 ScfResult run_pbe_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density = nullptr);
+
+ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                         const dft::MolecularGrid& grid, const ScfOptions& options,
+                         const std::vector<double>* initial_density = nullptr);
 
 /** Independent unit-occupation spins, Coulomb of total D, and semilocal XC.
  * initial_density is alpha followed by beta; warm normalization preserves
