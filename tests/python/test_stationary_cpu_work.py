@@ -121,3 +121,24 @@ def test_cpu_numeric_inventory_covers_provider_arrays_and_export_copies() -> Non
     assert sum(huge.values()) > CPU_FORCE_HOST_CAP
     with pytest.raises(ValueError, match="grid point work"):
         cpu_force_inventory(basis, grid_points=1_000_001, ecp_terms=2)
+
+
+@pytest.mark.parametrize(
+    "field,limit", [("nao", 16), ("natom", 8), ("nprimitive", 128), ("ecp_terms", 128)]
+)
+def test_cpu_force_inventory_rejects_each_oversized_dimension(
+    field: str, limit: int
+) -> None:
+    _, basis, _ = inputs()
+    options = {"grid_points": 11, "ecp_terms": 2}
+    if field == "ecp_terms":
+        options[field] = limit
+    else:
+        setattr(basis, field, limit)
+    assert sum(cpu_force_inventory(basis, **options).values()) < CPU_FORCE_HOST_CAP
+    if field == "ecp_terms":
+        options[field] += 1
+    else:
+        setattr(basis, field, limit + 1)
+    with pytest.raises(ValueError, match="dense-export domain"):
+        cpu_force_inventory(basis, **options)
