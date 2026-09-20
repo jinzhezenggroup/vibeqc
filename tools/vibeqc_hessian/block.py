@@ -22,7 +22,11 @@ from tools.vibeqc_response import (
     RHFResponseOperator,
 )
 
-from .analytic import nuclear_hvp, provider_hvp_components
+from .analytic import (
+    _checked_second_hvp_options,
+    nuclear_hvp,
+    provider_hvp_components,
+)
 from .first_order import (
     generated_directional_first_order,
     generated_rhf_relaxation_contraction,
@@ -153,6 +157,9 @@ def rhf_hvp_many(
     first_backend="cpu",
     first_compiler=None,
     first_budget_bytes=64 << 20,
+    second_backend="cpu",
+    second_compiler=None,
+    second_budget_bytes=64 << 20,
     relaxation_backend="cpu",
     relaxation_compiler=None,
     relaxation_budget_bytes=64 << 20,
@@ -162,7 +169,8 @@ def rhf_hvp_many(
     First-integral sources are generated independently per direction, while one
     shared response operator and one #179 solve_many call own the orbital solve.
     Second-integral HVPs and relaxation contractions remain directional and are
-    assembled only after all response solutions converge.
+    assembled only after all response solutions converge. The #178 HVP provider
+    may execute on CPU or CUDA independently of response and relaxation.
 
     total_budget_bytes is a conservative numeric live-storage bound for this
     block. It includes retained first/prepared matrices, published response and
@@ -176,6 +184,9 @@ def rhf_hvp_many(
     total_budget_bytes = _checked_budget(total_budget_bytes, "total_budget_bytes")
     device_budget_bytes = _checked_budget(device_budget_bytes, "device_budget_bytes")
     first_budget_bytes = _checked_budget(first_budget_bytes, "first_budget_bytes")
+    _checked_second_hvp_options(
+        second_backend, second_compiler, device_id, second_budget_bytes
+    )
     if strategy not in ("sequential", "blocked", "recycled"):
         raise ValueError("strategy must be sequential, blocked or recycled")
     if jk_backend not in ("cpu", "cuda"):
@@ -318,10 +329,23 @@ def rhf_hvp_many(
     relaxation_seconds = time.perf_counter() - relaxation_started
 
     second_started = time.perf_counter()
-    second_items = [provider_hvp_components(state, vector) for vector in vectors]
-    core = np.stack([item["core"] for item in second_items])
-    pulay = np.stack([item["pulay"] for item in second_items])
-    two_electron = np.stack([item["two_electron"] for item in second_items])
+    second_items = [
+        provider_hvp_components(
+            state,
+            vector,
+            backend=second_backend,
+            compiler=second_compiler,
+            device_id=device_id,
+            budget_bytes=second_budget_bytes,
+            return_diagnostics=True,
+        )
+        for vector in vectors
+    ]
+    second_components = [item[0] for item in second_items]
+    second_diagnostics = [item[1] for item in second_items]
+    core = np.stack([item["core"] for item in second_components])
+    pulay = np.stack([item["pulay"] for item in second_components])
+    two_electron = np.stack([item["two_electron"] for item in second_components])
     second_seconds = time.perf_counter() - second_started
 
     nuclear_started = time.perf_counter()
@@ -340,7 +364,20 @@ def rhf_hvp_many(
     relaxation_phase_bound = storage["total"] + (
         0 if relaxation_storage is None else relaxation_storage["numeric_peak_bytes"]
     )
-    actual_bound = max(response_phase_bound, relaxation_phase_bound)
+    second_host_peak = max(
+        (item["peak_host_bytes"] for item in second_diagnostics), default=0
+    )
+    second_device_peak = max(
+        (item["peak_device_bytes"] for item in second_diagnostics), default=0
+    )
+    second_phase_bound = storage["total"] + second_host_peak + second_device_peak
+    if second_phase_bound > total_budget_bytes:
+        raise ValueError(
+            "HVP block plus second-integral provider storage exceeds total_budget_bytes"
+        )
+    actual_bound = max(
+        response_phase_bound, relaxation_phase_bound, second_phase_bound
+    )
     first_programs = (
         tuple(
             sorted(
@@ -369,6 +406,16 @@ def rhf_hvp_many(
             "jk_backend": jk_backend,
             "first_backend": first_backend,
             "first_programs": first_programs,
+            "second_backend": second_backend,
+            "second_programs": tuple(
+                sorted(
+                    {
+                        program
+                        for diagnostic in second_diagnostics
+                        for program in diagnostic["program_identities"]
+                    }
+                )
+            ),
             "relaxation_backend": relaxation_backend,
             "relaxation_programs": (
                 tuple(
@@ -399,11 +446,15 @@ def rhf_hvp_many(
         "relaxation_numeric_bound": deepcopy(relaxation_storage),
         "response_phase_numeric_bound_bytes": response_phase_bound,
         "relaxation_phase_numeric_bound_bytes": relaxation_phase_bound,
+        "second_integral_phase_numeric_bound_bytes": second_phase_bound,
         "complete_numeric_peak_bound_bytes": actual_bound,
         "total_budget_bytes": total_budget_bytes,
         "solver_options": asdict(bounded_options),
         "jk_backend": jk_backend,
         "first_backend": first_backend,
+        "second_backend": second_backend,
+        "second_integral_budget_bytes": second_budget_bytes,
+        "second_integral_provider": deepcopy(second_diagnostics),
         "relaxation_backend": relaxation_backend,
         "relaxation_provider": deepcopy(relaxation_diagnostics),
         "execution_residency": (
@@ -411,6 +462,7 @@ def rhf_hvp_many(
             if jk_backend == "cuda"
             or first_backend == "cuda"
             or relaxation_backend == "cuda"
+            or second_backend == "cuda"
             else "host"
         ),
         "jk_statistics": jk_statistics,
