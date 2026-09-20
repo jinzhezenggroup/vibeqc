@@ -542,7 +542,8 @@ class Calculator:
                 or (self._device_name == "cpu" and qualified_basis(self._basis))
             )
             and not (
-                isinstance(self._basis, BasisSet)
+                self._device_name == "cuda"
+                and isinstance(self._basis, BasisSet)
                 and any(element.ecp_core_electrons for element in self._basis.elements)
                 and any(
                     shell.angular_momentum > 1

@@ -121,6 +121,29 @@ def test_f_shell_rejected_before_work() -> None:
         admit(state, basis)
 
 
+@pytest.mark.parametrize("invalid", ["tile", "shell", "components"])
+def test_component_executor_rejects_invalid_metadata_before_compilation(
+    invalid: str, monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
+    from vibeqc import _stationary_cpu_components as module
+
+    _, basis, _ = inputs()
+    tile = 1
+    if invalid == "tile":
+        tile = 0
+    elif invalid == "shell":
+        basis.shells = (SimpleNamespace(angular_momentum=3),)
+    else:
+        basis.packed[-48:].reshape(3, 16)[0, 3] = 4
+
+    def forbidden(*args: typing.Any) -> None:
+        pytest.fail("invalid component metadata reached source generation")
+
+    monkeypatch.setattr(module, "derivative_sources", forbidden)
+    with pytest.raises((ValueError, NotImplementedError)):
+        module.ComponentPrimitiveExecutor(basis, tmp_path, tile, None)
+
+
 @pytest.mark.parametrize(
     "field,value",
     [("nao", 17), ("natom", 9), ("nprimitive", 129), ("ecp_terms", (0,) * 129)],

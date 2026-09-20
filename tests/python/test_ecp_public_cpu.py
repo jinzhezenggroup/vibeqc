@@ -370,6 +370,18 @@ def test_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
                     )
                     < 2e-8
                 )
+        # A failed native derivative publishes nothing and does not advance
+        # semantic work; restoring the dispatch permits a valid subsequent call.
+        request = ("nuclear", ())
+        original = executor.calls[request]
+        before = executor.records
+        executor.calls[request] = (lambda *args: 1, 0)
+        with pytest.raises(ArithmeticError, match="component derivative failed"):
+            executor.nuclear(0, 1, mol.atom_charges())
+        assert executor.records == before
+        executor.calls[request] = original
+        assert np.isfinite(executor.nuclear(0, 1, mol.atom_charges())).all()
+        assert executor.records == before + 1
 
 
 def test_cpu_f_ecp_forces_rejected_before_preparation(monkeypatch: typing.Any) -> None:
