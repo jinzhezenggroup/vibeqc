@@ -45,7 +45,9 @@ def test_all_problem_fields_rejected_before_cuda_owner(tmp_path: Path) -> None:
         text=True,
         timeout=60,
     )
-    result = subprocess.run([str(exe)], capture_output=True, text=True, timeout=10)
+    result = subprocess.run(
+        [str(exe)], capture_output=True, text=True, timeout=10, check=False
+    )
     assert result.returncode == 0, result.stdout + result.stderr
 
 
