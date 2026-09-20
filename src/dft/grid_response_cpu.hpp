@@ -7,8 +7,6 @@
 #include <limits>
 #include <vector>
 
-#include "grid_response_adjoint.hpp"
-
 namespace vibeqc_grid_cpu {
 template <class Norm, class Ratio, class Log, class Pair>
 int contract(const double* points, size_t np, const double* centers, size_t na,

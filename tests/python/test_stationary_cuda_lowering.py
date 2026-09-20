@@ -38,6 +38,8 @@ for pbe in (False,True):
     assert 'stationary_gradient_cuda.cuh' in s
     assert 'ao_pullback' in s
     assert 'local_becke' in s
+    assert 'namespace vibeqc_grid_adjoint {' in s
+    assert 'grid_response_adjoint.hpp' not in s
     assert s == emit_stationary_cuda(primitive,pbe=pbe)
 """
     subprocess.run(
@@ -92,3 +94,5 @@ def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit()
     assert "vibeqc_grid_policy::" not in gradient
     assert "namespace vibeqc_xc_gradient_grid_policy {" in gradient
     assert "vibeqc_xc_gradient_grid_policy::axis_jet" in gradient
+    assert "namespace vibeqc_grid_adjoint {" in gradient
+    assert "grid_response_adjoint.hpp" not in gradient

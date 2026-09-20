@@ -59,7 +59,6 @@ def compile_stationary_cuda(
             asset_path(name)
             for name in (
                 "src/dft/stationary_gradient_cuda.cuh",
-                "src/dft/grid_response_adjoint.hpp",
                 "src/dft/grid_task_view.cuh",
                 "src/dft/xc_point.hpp",
                 "src/integrals/eri_geometry.hpp",
