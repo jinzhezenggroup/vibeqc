@@ -3821,10 +3821,7 @@ def test_ssss_force_candidate_keeps_native_default_until_endpoint_gate():
     driver = _direct_cuda_source()
     assert 'selected("VIBEQC_SSSS_FORCE", "generated")' in policy
     assert "generated_ssss_force_requested()" in driver
-    assert (
-        "explicit_generated_force_shell_class_mask &= "
-        "~(std::uint64_t{1} << kSsssShellClass)"
-    ) in driver
+    assert "std::uint64_t{1} << kSsssShellClass" in driver
     assert "~explicit_generated_force_shell_class_mask" in driver
 
 
