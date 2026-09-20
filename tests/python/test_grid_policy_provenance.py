@@ -35,3 +35,21 @@ def test_snapshot_has_write_once_grid_provenance_storage() -> None:
     snapshot.grid_provenance = {"policy_version": 1, "contract": "reference-grid-v1"}
     with pytest.raises(AttributeError, match="immutable"):
         snapshot.grid_provenance = {"policy_version": 2}
+
+
+def test_snapshot_owns_read_only_grid_provenance() -> None:
+    original = grid_policy_provenance(GridPolicy().resolve("pbe"))
+    snapshot = NativeKsSnapshot.__new__(NativeKsSnapshot)
+    snapshot.grid_provenance = original
+    original["radii_source"] = "modified-by-caller"
+    assert snapshot.grid_provenance == GridPolicy().provenance
+    with pytest.raises(TypeError):
+        snapshot.grid_provenance["radii_source"] = "modified-through-snapshot"
+    with pytest.raises(TypeError):
+        del snapshot.grid_provenance["radii_source"]
+
+
+def test_snapshot_preserves_absent_legacy_cuda_provenance() -> None:
+    snapshot = NativeKsSnapshot.__new__(NativeKsSnapshot)
+    snapshot.grid_provenance = None
+    assert snapshot.grid_provenance is None

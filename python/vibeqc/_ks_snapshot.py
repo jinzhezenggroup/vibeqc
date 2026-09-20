@@ -118,6 +118,10 @@ class NativeKsSnapshot:
     def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed and hasattr(self, name):
             raise AttributeError("native KS snapshot provenance is immutable")
+        if name == "grid_provenance" and value is not None:
+            # Own the mapping as well as the attribute: write-once storage alone
+            # does not prevent a caller from mutating model-defining provenance.
+            value = MappingProxyType(dict(value))
         super().__setattr__(name, value)
 
     def __delattr__(self, name: typing.Any) -> None:
@@ -379,7 +383,7 @@ class NativeKsSnapshot:
                     "scf_domain": SCF_DOMAIN,
                     "grid": grid.identity,
                     **(
-                        {"grid_provenance": self.grid_provenance}
+                        {"grid_provenance": dict(self.grid_provenance)}
                         if self.grid_provenance is not None
                         else {}
                     ),
