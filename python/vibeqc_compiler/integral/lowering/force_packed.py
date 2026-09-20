@@ -42,11 +42,6 @@ def _emit_packed_force_consumer_cuda(
             "one recovered derivative center"
         )
     independent_center_table = ", ".join(f"{center}U" for center in independent_centers)
-    is_ssss = spec.angular == (0, 0, 0, 0)
-    if is_ssss and (independent_centers != (0, 1, 2) or recovered_centers != (3,)):
-        raise ValueError(
-            "ssss packed force expects centers 0/1/2 plus recovered center 3"
-        )
     independent_atomic_code = f"""  constexpr unsigned derivative_centers[3] = {{
       {independent_center_table}}};
 #pragma unroll
@@ -79,45 +74,6 @@ def _emit_packed_force_consumer_cuda(
   }}"""
         )
     recovered_atomic_code = "\n".join(recovered_atomic_blocks)
-    if is_ssss:
-        # The order-zero shell frequently places several centers on the same
-        # atom.  Merge those center forces in-lane before global atomics,
-        # matching the tuned native path and avoiding same-address contention.
-        force_writeback_code = """  const std::uint32_t center_atoms[4] = {
-      task.atom[0], task.atom[1], task.atom[2], task.atom[3]};
-#pragma unroll
-  for (unsigned coordinate = 0; coordinate < 3U; ++coordinate) {
-    const double center_force[4] = {
-        task_force[0U + coordinate],
-        task_force[3U + coordinate],
-        task_force[6U + coordinate],
-        -task_force[0U + coordinate] - task_force[3U + coordinate] -
-            task_force[6U + coordinate],
-    };
-#pragma unroll
-    for (unsigned center = 0; center < 4U; ++center) {
-      bool first_for_atom = true;
-#pragma unroll
-      for (unsigned previous = 0; previous < center; ++previous) {
-        first_for_atom = first_for_atom && center_atoms[center] != center_atoms[previous];
-      }
-      if (!first_for_atom) continue;
-      double atom_force = 0.0;
-#pragma unroll
-      for (unsigned source = 0; source < 4U; ++source) {
-        if (center_atoms[source] == center_atoms[center]) {
-          atom_force += center_force[source];
-        }
-      }
-      if (atom_force != 0.0) {
-        atomicAdd(
-            forces + static_cast<std::size_t>(center_atoms[center]) * 3U + coordinate,
-            atom_force);
-      }
-    }
-  }"""
-    else:
-        force_writeback_code = independent_atomic_code + "\n" + recovered_atomic_code
 
     task_component_setup = _generic_task_component_setup(spec).replace(
         "shared.task", "task"
@@ -222,7 +178,8 @@ __device__ __forceinline__ void generated_dppp_packed_force_lane(
       }}
     }}
   }}
-{force_writeback_code}
+{independent_atomic_code}
+{recovered_atomic_code}
 }}
 
 extern "C" __global__ {kernel_qualifier}
