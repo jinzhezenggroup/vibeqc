@@ -624,11 +624,10 @@ class Calculator:
                 self._ks_options_version = query()
             from .ks import resolve_ks_options
 
-            default_ks_options = resolve_ks_options(self._method_name)
             if self._ks_options_version == 0:
                 if (
-                    self._ks_options != default_ks_options
-                    or self._ks_options.requires_composition_v2
+                    self._ks_options.requires_composition_v2
+                    or self._ks_options != resolve_ks_options(self._method_name)
                 ):
                     raise NotImplementedError(
                         "native library does not support KS model options"
