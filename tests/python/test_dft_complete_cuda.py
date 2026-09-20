@@ -539,7 +539,8 @@ def test_public_cuda_prepared_force_replay_retains_execution(
     moved[1, 0] += 2.0e-3
     with calc.prepare_batch([ATOMS], warm_start=True) as batch:
         first = batch.execute(strict=True, properties=("energy", "forces"))
-        owner = batch._stationary_cuda_executions[0]
+        owner = batch._stationary_cuda_execution
+        assert owner is not None
         identity = owner.identity
         resident = (
             id(owner.sources),
@@ -625,6 +626,9 @@ def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
         )
         assert all(item.forces is not None for item in first.items)
         assert not np.array_equal(first.items[0].forces, first.items[1].forces)
+        owner = batch._stationary_cuda_execution
+        assert owner is not None
+        assert owner._executions == 2
 
         malformed = np.asarray([0.0, 1.0])
         isolated = batch.execute(
@@ -635,6 +639,8 @@ def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
         assert isolated.items[1].succeeded
         assert isolated.items[1].forces is not None
         assert np.isfinite(isolated.items[1].forces).all()
+        assert batch._stationary_cuda_execution is owner
+        assert owner._executions == 3
 
 
 def test_cuda_ks_resource_plan_accounts_for_public_force_staging() -> None:

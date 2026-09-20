@@ -355,6 +355,10 @@ class _CudaSources:
             self.close()
 
 
+class PreparedStationaryCudaTopologyMismatch(ValueError):
+    """Retained execution is incompatible with the requested scientific topology."""
+
+
 class PreparedStationaryCudaExecution:
     """Retain verified artifacts and bounded CUDA owners for force replay."""
 
@@ -425,7 +429,9 @@ class PreparedStationaryCudaExecution:
         )
         if self._key is not None:
             if key != self._key:
-                raise ValueError("stationary CUDA prepared execution topology changed")
+                raise PreparedStationaryCudaTopologyMismatch(
+                    "stationary CUDA prepared execution topology changed"
+                )
             if basis.identity != self._bound_basis_identity or self._failed:
                 if any(
                     file_hash(artifact.library) != artifact.metadata["binary_sha256"]
