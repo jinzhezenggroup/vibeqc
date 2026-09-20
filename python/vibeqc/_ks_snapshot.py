@@ -405,7 +405,7 @@ class NativeKsSnapshot:
         """Backend-specific provider bound to this live owner's exact ECP model.
 
         This explicit diagnostic materializes two atom/xyz/AO-pair arrays.
-        CUDA uses only generated CUDA ECP derivatives; CPU keeps its oracle.
+        CPU and CUDA use compiler-generated ECP derivatives on their own backend.
         This dense host export is not a production force endpoint.
         """
         self.check_current()
