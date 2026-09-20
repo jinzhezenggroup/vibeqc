@@ -504,7 +504,12 @@ class PreparedBatch:
                 _native.check(
                     self._library,
                     prepare(),
-                    context=self._context,
+                    context=(
+                        self._context
+                        if calculator._method
+                        in (_native.METHOD_MP2, _native.METHOD_RCCSD)
+                        else None
+                    ),
                 )
             else:
                 from .resources_native import check_resource_status, observe_method_call
