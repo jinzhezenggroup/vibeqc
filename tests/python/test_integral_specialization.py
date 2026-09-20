@@ -5,11 +5,15 @@ from math import comb
 import pytest
 from vibeqc_compiler.integral import (
     DPPP_SPEC,
+    FUSED_SHELL_SPEC_BY_NAME,
     PSSS_SPEC,
     KernelConsumer,
+    ScheduleIR,
+    ScheduleKind,
     build_fused_shell_plan,
     build_integral_ir,
     cuda_target_info,
+    emit_shell_class_fused_cuda,
     specialize_integral_ir,
 )
 from vibeqc_compiler.integral.lowering.dispatch import _specialize_fock_plan
@@ -99,3 +103,33 @@ def test_generated_hf_fock_subplan_uses_value_only_coulomb_state_space() -> None
         3,
     )
     assert len(fock_plan.coulomb_states) < len(plan.coulomb_states)
+
+
+
+def test_rys_fock_support_remains_live_after_output_pruning() -> None:
+    """Separate requested Fock outputs from the live fixed-root support plan."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["dpss"]
+    schedule = ScheduleIR(
+        kind=ScheduleKind.COMPONENT_LANES,
+        block_threads=32,
+        component_tile=spec.component_count,
+        tasks_per_warp=1,
+        shared_coulomb=True,
+        minimum_blocks_per_sm=1,
+    )
+    plan = build_fused_shell_plan(
+        spec,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        schedule=schedule,
+        recurrence="rys3",
+        target=cuda_target_info("sm_120"),
+    )
+
+    fock_plan = _specialize_fock_plan(plan)
+    source = emit_shell_class_fused_cuda(spec, plan)
+
+    assert fock_plan.kernel.integral.derivative is None
+    assert fock_plan.kernel.integral.consumers == frozenset((KernelConsumer.FOCK,))
+    assert fock_plan.kernel.integral.recurrence == "subset_wick"
+    assert "generated_dpss_rys3_value_axis" in source

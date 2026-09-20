@@ -1301,9 +1301,14 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
             spec,
             fock_plan,
             honor_schedule_block_threads=fock_schedule is not None,
+            rys_support_integral=plan.kernel.integral,
         )
         if CAPABILITY_MIXED_FOCK in selected_capabilities:
-            source += _emit_shell_class_mixed_fock_cuda(spec, fock_plan)
+            source += _emit_shell_class_mixed_fock_cuda(
+                spec,
+                fock_plan,
+                rys_support_integral=plan.kernel.integral,
+            )
     pair_unroll = (
         "#pragma unroll" if plan.schedule.unroll_pair_terms else "#pragma unroll 1"
     )
