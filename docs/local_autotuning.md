@@ -114,6 +114,18 @@ public CUDA KS/force endpoint is still native C++ and does not yet switch these
 prepared schedules, so fixed-density E/V measurements cannot activate a DFT
 schedule for complete SCF calculations.
 
+Real-device component qualification has exercised this boundary on an NVIDIA
+GeForce RTX 4090 with CUDA 12.9.86. At revision `cc3fc40d`, a complete native
+CUDA build and seven focused schedule/fallback tests passed. A separate
+fixed-density PBE ablation used seven alternating-order warm pairs at three
+scales: H2 (2 AO/32 points), water (7 AO/48 points), and spherical-f (16 AO/32
+points). The device-fused median wall time was 1.84x, 1.23x, and 1.58x faster
+than the host-unfused path respectively, with every execution still passing the
+independent stored energy/potential gate. These measurements establish that
+both lowerings really execute and that fusion can remove this prepared-boundary
+cost; they are explicitly **not** an accepted local profile or a substitute for
+the complete SCF energy-plus-analytic-force promotion evidence above.
+
 ## Reuse and diagnostics
 
 Profiles live under `$XDG_CACHE_HOME/vibeqc/profiles`, defaulting to

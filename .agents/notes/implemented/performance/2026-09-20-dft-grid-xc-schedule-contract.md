@@ -69,10 +69,32 @@ potential references as well as against each other.
 
 The Windows Runner cannot execute the native CUDA fixture and its POSIX profile
 installation tests because it lacks the built native library/`fcntl`. The
-configured one-shot `ssh qz` path was also unavailable during this run with a
-websocket HTTP 500 handshake, so no real-device performance result is claimed
-here. Real-device evidence must be collected through the repository Slurm/qz
-path before any schedule is promoted.
+legacy one-shot `ssh qz` tunnel was unavailable with a websocket HTTP 500
+handshake, but the supported Inspire job path was subsequently used for
+real-device qualification.
+
+At implementation revision
+`cc3fc40d548f082cbd67aab815824b0bd959c89b`, Inspire job
+`vibeqc-168-smoke-v3-cc3fc40d` completed successfully on a real NVIDIA
+GeForce RTX 4090 (49,140 MiB, driver 595.71.05, CUDA 12.9.86). A clean
+reconfigured native CUDA build completed all 261 targets and linked
+`libvibeqc.so` with SHA-256
+`698aa44aee146b3d8dbe86e15c6734cecb8eb184d180c16d475a1ca9e235b571`.
+The focused schedule/candidate/fallback suite then passed 7/7 tests in 10.57 s,
+including independent stored PBE energy/potential checks for both
+`device_fused` and `host_unfused`.
+
+A separate fixed-density ablation on the same source/library retained 48
+executions: first executions plus seven alternating-order warm pairs for each
+of H2 (2 AO/32 points), water (7 AO/48 points), and spherical-f (16 AO/32
+points). Median warm wall times were respectively 9.60/17.68 ms,
+14.60/17.95 ms, and 11.48/18.09 ms for fused/unfused, corresponding to
+1.84x, 1.23x, and 1.58x fused speedups. Every execution met the unchanged
+independent PBE energy/potential gate. The raw JSON is retained under
+`/inspire/qb-ilm/project/chemicalreaction/czxs25220150/experiments/vibeqc/issue-0168-dft09/rtx4090-ablation-cc3fc40d`
+with SHA-256
+`e45f191e9ca0885da1c8ffc74b7f164b11d732344a54bb94308ff7a4e7d9637d`.
+This component evidence is deliberately marked non-promotion evidence.
 
 ## Consequences and revisit conditions
 
@@ -80,10 +102,11 @@ The generated/prepared grid-XC schedule and profile/promotion contracts are now
 explicit and independently testable. The public CUDA KS/force endpoint still
 runs through the native C++ path rather than `PreparedXCContractions`, so this
 slice does not claim full #168 closure or a complete-SCF schedule speedup.
-After #713/native endpoint wiring exposes the same schedule identity to the
-production KS loop, run real-device cold, warm same-geometry, changed-geometry,
-multi-scale and batch interleaved evidence and publish a winner only if the full
-energy-plus-force gate passes. Retain negative evidence otherwise.
+PR #713 remains separately owned and does not yet expose these prepared
+schedules as a selectable public CUDA KS plan. After that native endpoint
+wiring exists, run cold, warm same-geometry, changed-geometry, multi-scale and
+batch interleaved complete energy-plus-force evidence and publish a winner only
+if the full promotion gate passes. Retain negative evidence otherwise.
 
 ## References
 
@@ -93,6 +116,7 @@ energy-plus-force gate passes. Retain negative evidence otherwise.
 - #235
 - #660 and children
 - PR #713
+- `benchmarks/results/issue168-grid-xc-schedules/README.md`
 - `docs/local_autotuning.md`
 - `docs/density_sources.md`
 
