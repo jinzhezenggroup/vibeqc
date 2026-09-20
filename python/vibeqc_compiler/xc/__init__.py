@@ -1,5 +1,7 @@
 """Audited semilocal XC kernels; this does not register a public DFT method."""
 
+from typing import Any
+
 from .spec import FunctionalSpec, UnsupportedXC, functional
 
 __all__ = [
@@ -14,7 +16,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> Any:
     if name in {"FixedDensityXC", "XCIntegral"}:
         from .integration import FixedDensityXC, XCIntegral
 
