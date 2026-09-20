@@ -29,6 +29,7 @@ from vibeqc_compiler.tensor import (
     transpose_program,
 )
 
+from .nonlocal_correlation import NonlocalCorrelationPrimitive
 from .spec import (
     ExactExchangePrimitive,
     MethodIR,
@@ -38,7 +39,7 @@ from .spec import (
 )
 from .typecheck import BackendCapability, verify_method_ir
 
-VERSION = "stationary-gradient-plan-v2"
+VERSION = "stationary-gradient-plan-v3"
 SCF_POINT_MODEL = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
 
 _STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
@@ -52,6 +53,7 @@ _STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
         "full-range-exchange",
         "short-range-exchange",
         "long-range-exchange",
+        "nonlocal-correlation",
     ),
 )
 
@@ -105,6 +107,11 @@ _SOURCES = (
     GradientSource("xc_weight", "semilocal_xc", ("partition_weight",)),
     GradientSource("overlap_pulay", "overlap_constraint", ("ao_center",)),
     GradientSource("nuclear", "nuclear_repulsion", ("nuclear_center",)),
+)
+_NONLOCAL_SOURCES = (
+    GradientSource("nonlocal_ao", "nonlocal_correlation", ("ao_center",)),
+    GradientSource("nonlocal_grid", "nonlocal_correlation", ("grid_point",)),
+    GradientSource("nonlocal_weight", "nonlocal_correlation", ("partition_weight",)),
 )
 _INTEGRAL_SOURCES = ("one_electron", "coulomb", "overlap_pulay")
 _RANGE_EXCHANGE_SOURCE = {
@@ -202,25 +209,34 @@ class StationaryGradientPlan:
                 "stationary gradient requires an explicit mean-field envelope"
             )
         semilocal = tuple(
-            primitive
-            for primitive in self.method.primitives
-            if isinstance(primitive, SemilocalXCPrimitive)
+            p for p in self.method.primitives if type(p) is SemilocalXCPrimitive
         )
         ranges = tuple(
-            primitive
-            for primitive in self.method.primitives
-            if isinstance(primitive, RangeSeparatedExchangePrimitive)
+            p
+            for p in self.method.primitives
+            if type(p) is RangeSeparatedExchangePrimitive
         )
-        full = tuple(
-            p for p in self.method.primitives if isinstance(p, ExactExchangePrimitive)
+        exchange = tuple(
+            p for p in self.method.primitives if type(p) is ExactExchangePrimitive
+        )
+        nonlocal_primitives = tuple(
+            p for p in self.method.primitives if type(p) is NonlocalCorrelationPrimitive
         )
         if (
             len(semilocal) != 1
-            or len(full) > 1
-            or len(semilocal) + len(ranges) + len(full) != len(self.method.primitives)
+            or len(exchange) > 1
+            or len(nonlocal_primitives) > 1
+            or len(self.method.primitives)
+            != len(semilocal) + len(ranges) + len(exchange) + len(nonlocal_primitives)
         ):
             raise UnsupportedMethod(
                 "required primitive has no stationary-gradient rule"
+            )
+        # Preserve independently qualified exchange and nonlocal envelopes
+        # without silently promoting a combined hybrid/nonlocal execution domain.
+        if (exchange or ranges) and nonlocal_primitives:
+            raise UnsupportedMethod(
+                "combined hybrid/nonlocal stationary gradients are not qualified"
             )
         verify_method_ir(
             self.method,
@@ -232,8 +248,8 @@ class StationaryGradientPlan:
         if not required <= set(semilocal[0].derivative_capabilities):
             raise UnsupportedMethod("required XC feature derivative is unavailable")
         if (
-            self.exchange is not None
-            and "eri-first-derivative" not in self.exchange.derivative_capabilities
+            exchange
+            and "eri-first-derivative" not in exchange[0].derivative_capabilities
         ):
             raise UnsupportedMethod("required exchange ERI derivative is unavailable")
         if any(
@@ -243,16 +259,19 @@ class StationaryGradientPlan:
             raise UnsupportedMethod(
                 "required range-exchange nuclear derivative is unavailable"
             )
+        if (
+            nonlocal_primitives
+            and "nuclear-gradient" not in nonlocal_primitives[0].derivative_capabilities
+        ):
+            raise UnsupportedMethod(
+                "required nonlocal-correlation nuclear derivative is unavailable"
+            )
 
     @property
     def exchange(self) -> typing.Any:
         """Full-range exchange only; a single SR/LR node is not a global hybrid."""
         return next(
-            (
-                p
-                for p in self.method.primitives
-                if isinstance(p, ExactExchangePrimitive)
-            ),
+            (p for p in self.method.primitives if type(p) is ExactExchangePrimitive),
             None,
         )
 
@@ -262,7 +281,7 @@ class StationaryGradientPlan:
         return tuple(
             primitive
             for primitive in self.method.primitives
-            if isinstance(primitive, RangeSeparatedExchangePrimitive)
+            if type(primitive) is RangeSeparatedExchangePrimitive
         )
 
     @property
@@ -296,13 +315,24 @@ class StationaryGradientPlan:
             if self.mean_field.hamiltonian == "scalar-semilocal-ecp"
             else base
         )
-        if self.exchange is None:
+        if self.exchange is not None:
+            sources = (
+                *sources[:2],
+                GradientSource(
+                    "exact_exchange", "exact_exchange", ("all_eri_centers",)
+                ),
+                *sources[2:],
+            )
+        if not any(
+            type(p) is NonlocalCorrelationPrimitive for p in self.method.primitives
+        ):
             return sources
-        return (
-            *sources[:2],
-            GradientSource("exact_exchange", "exact_exchange", ("all_eri_centers",)),
-            *sources[2:],
-        )
+        result = []
+        for source in sources:
+            result.append(source)
+            if source.name == "xc_weight":
+                result.extend(_NONLOCAL_SOURCES)
+        return tuple(result)
 
     @property
     def source_names(self) -> typing.Any:
@@ -324,6 +354,10 @@ class StationaryGradientPlan:
             "density_convention": "occupation-weighted; sum alpha/beta for Coulomb",
             "integral_layout": "full ordered tuples; no implicit symmetry factors",
             "xc_coefficients": "already applied inside the resolved semilocal primitive",
+            "nonlocal_chain_rule": (
+                "AO-center, grid-point, and partition-weight sources are distinct "
+                "and must each be consumed exactly once"
+            ),
         }
 
         if self.range_exchange_primitives:

@@ -20,7 +20,10 @@ class BasicFockPlanView;
 class CpuFockProviderView {
  public:
   static constexpr FockBackend backend = FockBackend::Cpu;
-  explicit CpuFockProviderView(const integrals::IntegralData& exact);
+  explicit CpuFockProviderView(const integrals::IntegralData& exact,
+                               const std::vector<double>* range_eri = nullptr,
+                               FockOperator range_operator = FockOperator::FullRange,
+                               double range_omega = 0.0);
   explicit CpuFockProviderView(const DensityFittingScfData& fitted);
   // Do not allow a view of a temporary integral owner.
   CpuFockProviderView(integrals::IntegralData&&) = delete;
@@ -42,6 +45,9 @@ class CpuFockProviderView {
                                  const std::vector<double>& beta) const;
   const integrals::IntegralData* exact_{};
   const DensityFittingScfData* fitted_{};
+  const std::vector<double>* range_eri_{};
+  FockOperator range_operator_{FockOperator::FullRange};
+  double range_omega_{};
 };
 
 /** Independent J/K binding with preflight of both providers before execution.

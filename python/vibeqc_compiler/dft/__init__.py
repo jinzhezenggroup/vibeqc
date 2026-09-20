@@ -12,11 +12,16 @@ from .grid import (
     grid_policy_provenance,
     partition_weights,
 )
-from .nonlocal_integration import FixedDensityNonlocalCorrelation, NonlocalIntegral
+from .nonlocal_integration import (
+    FixedDensityNonlocalCorrelation,
+    NonlocalGeometry,
+    NonlocalIntegral,
+)
 from .nonlocal_reference import (
     assemble_nonlocal_potential_reference,
     nonlocal_energy_density_reference,
     nonlocal_energy_reference,
+    nonlocal_explicit_geometry_derivatives_reference,
     nonlocal_feature_derivatives_reference,
     nonlocal_kernel_matrix_reference,
 )
@@ -50,6 +55,7 @@ __all__ = [
     "GridXcScientificIdentity",
     "MolecularGrid",
     "NativeAO",
+    "NonlocalGeometry",
     "NonlocalIntegral",
     "PreparedGrid",
     "PreparedGridBatch",
@@ -61,6 +67,7 @@ __all__ = [
     "jet_indices",
     "nonlocal_energy_density_reference",
     "nonlocal_energy_reference",
+    "nonlocal_explicit_geometry_derivatives_reference",
     "nonlocal_feature_derivatives_reference",
     "nonlocal_kernel_matrix_reference",
     "orbital_features",

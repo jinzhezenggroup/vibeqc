@@ -54,7 +54,8 @@ jobs:
             /usr/local/bin/ccache
           ccache --version
       - name: Restore ccache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cpu_ccache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
           key: ccache-cpu-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
@@ -71,12 +72,18 @@ jobs:
           cmake -S . -B build -G Ninja
           -DVIBEQC_ENABLE_CUDA=OFF
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DVIBEQC_COMPILER_CACHE=ccache
           -DCMAKE_CXX_FLAGS="${COVERAGE_COMPILE_FLAGS}"
           -DCMAKE_EXE_LINKER_FLAGS="${COVERAGE_LINK_FLAGS}"
           -DCMAKE_SHARED_LINKER_FLAGS="${COVERAGE_LINK_FLAGS}"
       - name: Build
         run: cmake --build build --parallel
+      - name: Save ccache immediately after build
+        if: steps.cpu_ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ${{ steps.cpu_ccache.outputs.cache-primary-key }}
       - name: Show ccache statistics
         run: ccache --show-stats
       - name: Test
@@ -130,7 +137,15 @@ jobs:
           curl --fail --silent --show-error --location --output cuda-keyring.deb \
             https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
           sudo dpkg -i cuda-keyring.deb
-          sudo apt-get update
+          for attempt in 1 2 3; do
+            if sudo apt-get update; then
+              break
+            fi
+            if [[ "$attempt" == 3 ]]; then
+              exit 1
+            fi
+            sleep $((attempt * 2))
+          done
       - name: Install CUDA 12.9 build dependencies
         run: |
           sudo apt-get install --yes \
@@ -155,7 +170,8 @@ jobs:
             /usr/local/bin/ccache
           ccache --version
       - name: Restore CUDA ccache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cuda_ccache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
           key: ccache-cuda-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
@@ -168,12 +184,21 @@ jobs:
           cmake --preset cuda-release-sm120
           -DVIBEQC_BUILD_TESTS=ON
           -DVIBEQC_CUDA_FAST_COMPILE=ON
-          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
+          -DVIBEQC_CUDA_COMPILE_JOBS=3
+          -DVIBEQC_COMPILER_CACHE=ccache
       - name: Compile production CUDA and runtime CTest
         run: >-
           cmake --build --preset cuda-release-sm120
-          --target vibeqc_cuda_runtime_tests --parallel 2
+          --target vibeqc_cuda_runtime_tests --parallel 3
+      # Master pushes are frequently superseded while the remaining CI jobs
+      # are still running. Persist the expensive native compile cache here,
+      # rather than waiting for the cache action's end-of-job post step.
+      - name: Save CUDA ccache immediately after build
+        if: steps.cuda_ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ${{ steps.cuda_ccache.outputs.cache-primary-key }}
       - name: Check Fock and proposal preflight without a GPU
         env:
           CUDA_VISIBLE_DEVICES: ""
@@ -267,7 +292,8 @@ jobs:
             /usr/local/bin/ccache
           ccache --version
       - name: Restore ccache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: python_ccache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
           key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml') }}
@@ -279,8 +305,16 @@ jobs:
             -DVIBEQC_ENABLE_CUDA=OFF \
             -DVIBEQC_BUILD_TESTS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+            -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build --parallel
+      # The four Python shards build the same native library. One shard saves
+      # the cache immediately so a later master cancellation cannot discard it.
+      - name: Save Python-build ccache immediately
+        if: matrix.shard == 'core' && steps.python_ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ${{ steps.python_ccache.outputs.cache-primary-key }}
       - name: Install the Python package and test dependencies
         run: |
           uv venv --python 3.11
@@ -382,12 +416,36 @@ jobs:
               'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-0-Au]'
               --deselect
               'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-1-Au]'
+              # Keep one response-functional variant on routine CI; the
+              # alternate LDA reconverged response remains in nightly/manual.
+              --deselect
+              'tests/python/test_response_native_rks.py::test_complete_solve_and_reconverged_density_response[lda-rks]'
+              --deselect
+              'tests/python/test_response_native_uks.py::test_solve_reconverged_spin_densities_and_recycling[lda-uks]'
+              # Standard production-grid RKS/UKS endpoints remain routine.
+              # The tighter-profile duplicates are qualification coverage.
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_converges_against_independent_dense_quadrature[lda-rks-tight]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_converges_against_independent_dense_quadrature[pbe-rks-tight]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[lda-uks-tight]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[pbe-uks-tight]'
+              # Full reconverged SPD ECP finite differences each cost about
+              # nine minutes on hosted runners. Keep the lighter complete
+              # ECP force contracts on every PR and the exhaustive pair nightly.
+              --deselect
+              'tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
+              --deselect
+              'tests/python/test_ecp_spd_spherical_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
             )
           fi
           # Keep every routine Python test on every PR, but remove the single
           # 26-minute critical path by separating the known numerical/codegen
           # tails. New test files land in core automatically until they become
           # expensive enough to earn an explicit shard.
+          dist_mode=loadfile
           slow_paths=(
             tests/python/test_cc_complete_gradient.py
             tests/python/test_cc_triples_response.py
@@ -407,6 +465,8 @@ jobs:
             tests/python/test_hessian_directional.py
             tests/python/test_response_operator.py
             tests/python/test_codegen.py
+            tests/python/test_d3_geometry_ir.py
+            tests/python/test_d3_generated_ragged.py
             tests/python/test_high_angular.py
             tests/python/test_one_electron_derivatives.py
             tests/python/test_range_separation.py
@@ -414,6 +474,9 @@ jobs:
           )
           case "${{ matrix.shard }}" in
             core)
+              # Core contains many independent long calls spread across files.
+              # Work stealing avoids a single long file pinning the job tail.
+              dist_mode=worksteal
               test_targets=(tests/python)
               for path in "${slow_paths[@]}"; do
                 extra_args+=(--ignore="${path}")
@@ -464,7 +527,7 @@ jobs:
               ;;
           esac
           .venv/bin/python -m pytest "${test_targets[@]}" -q \
-            -n 4 --dist=loadfile --durations=25 \
+            -n 4 --dist="$dist_mode" --durations=25 \
             --cov --cov-report="xml:coverage-python-${{ matrix.shard }}.xml" \
             "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
@@ -530,7 +593,7 @@ jobs:
             -DVIBEQC_ENABLE_CUDA=OFF \
             -DVIBEQC_BUILD_TESTS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+            -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build-benchmark --target vibeqc --parallel
       - name: Install benchmark dependencies
         run: |

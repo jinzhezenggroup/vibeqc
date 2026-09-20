@@ -145,6 +145,7 @@ void model_and_state_rejection() {
       [](auto& a) { a.physical.physical_residual = -1e-12; },
       [](auto& a) { a.physical.reported_energy += 1e-5; },
       [nan](auto& a) { a.physical.components.xc = nan; },
+      [nan](auto& a) { a.physical.components.exact_exchange = nan; },
       [nan](auto& a) { a.physical.physical_residual = nan; }};
   for (const auto& change : changes) {
     Fixture a;
