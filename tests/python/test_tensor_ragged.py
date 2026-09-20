@@ -183,6 +183,21 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     assert "if (reinterpret_cast<const I*>" not in source
 
 
+def test_batch_schedule_counts_outer_ragged_work() -> None:
+    shell = _index("shell_outer", "shell", 3)
+    orbital = _index("orbital_outer", "orbital", 5)
+    component = _index("component_outer", "component", 2)
+    values = input_tensor("values", TensorSpec((orbital, component), role="input"))
+    program = Program(
+        {"out": scatter_add(values, 0, (0, 0, 1, 2, 2), shell)}
+    )
+    schedule = plan_cuda(program, TARGET).batch_schedule
+    scatter = schedule.ragged_steps[0]
+    assert scatter.scan_work == 30
+    assert scatter.scheduled_work == 10
+    assert scatter.avoided_scan_work == 20
+
+
 def test_batch_schedule_tracks_homogeneous_batch_domains() -> None:
     batch = _index("systems", "batch", 4)
     x = input_tensor("x", TensorSpec((batch,), role="input"))
