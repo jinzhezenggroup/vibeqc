@@ -3815,9 +3815,9 @@ def test_ssss_force_candidate_keeps_native_default_until_endpoint_gate():
     assert "contracted_eri_cartesian_source_ssss_weighted_gradient" in gradient_source
     assert "contract_two_electron_force_ssss_task" in low_order_source
 
-    policy = (
-        REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp"
-    ).read_text(encoding="utf-8")
+    policy = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text(
+        encoding="utf-8"
+    )
     driver = _direct_cuda_source()
     assert 'selected("VIBEQC_SSSS_FORCE", "generated")' in policy
     assert "generated_ssss_force_requested()" in driver
