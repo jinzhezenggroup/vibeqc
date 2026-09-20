@@ -74,6 +74,44 @@ def _minimum_same_space_gap(energies: np.ndarray, nocc: int) -> float:
     return min(values, default=float("inf"))
 
 
+def _same_space_fock_cotangent(
+    stationarity: np.ndarray, energies: np.ndarray, nocc: int
+) -> np.ndarray:
+    """Build canonicalization multipliers that cancel oo/vv rotation gradients.
+
+    Standard (T) is defined in a canonical orbital gauge.  Nonzero occupied-
+    occupied or virtual-virtual Lagrangian rotation derivatives therefore do
+    not belong in the physical RHF occupied-virtual Z solve.  For a canonical
+    Fock matrix, an off-diagonal symmetric cotangent B contributes
+    2 * (eps_p - eps_q) * B_pq to the antisymmetric rotation stationarity.
+    Solve that relation inside each same-occupancy block and leave the
+    occupied-virtual block untouched.
+    """
+
+    energies = np.asarray(energies, dtype=np.float64)
+    stationarity = np.asarray(stationarity, dtype=np.float64)
+    n = energies.size
+    if stationarity.shape != (n, n) or not 0 < nocc < n:
+        raise ValueError("same-space canonicalization inputs have incompatible shapes")
+    if not np.isfinite(stationarity).all() or not np.isfinite(energies).all():
+        raise ImplicitSolveError("nonfinite same-space canonicalization input")
+
+    result = np.zeros((n, n), dtype=np.float64)
+    for start, stop in ((0, nocc), (nocc, n)):
+        for p in range(start, stop):
+            for q in range(p + 1, stop):
+                gap = energies[p] - energies[q]
+                if abs(gap) <= _MINIMUM_SAME_SPACE_GAP:
+                    raise ResponseCompatibilityError(
+                        "degenerate canonical occupied/virtual subspaces are not yet "
+                        "qualified for RCCSD(T) orbital response"
+                    )
+                value = -stationarity[p, q] / (2.0 * gap)
+                result[p, q] = value
+                result[q, p] = value
+    return _immutable(result)
+
+
 @dataclass(frozen=True, init=False, eq=False, repr=False)
 class BoundCCSDTOrbitalResponse:
     """Bind standard-(T) sources to the complete conventional RHF response chain.
@@ -201,7 +239,39 @@ class BoundCCSDTOrbitalResponse:
             fock_program,
             {**baseline.raw_inputs, "bar_fock": bar_fock},
         )
-        correlation = _sum_weight_maps(combined_parameters, denominator)
+        uncorrected_correlation = _sum_weight_maps(
+            combined_parameters, denominator
+        )
+        uncorrected_same_space = max(
+            float(
+                np.max(
+                    np.abs(uncorrected_correlation["stationarity"][:o, :o])
+                )
+            ),
+            float(
+                np.max(
+                    np.abs(uncorrected_correlation["stationarity"][o:, o:])
+                )
+            ),
+        )
+
+        # Standard (T) is tied to a canonical occupied/virtual gauge.  The
+        # oo/vv Lagrangian rotations are therefore fixed by the corresponding
+        # off-diagonal Fock constraints, not by the physical ov RHF Z solve.
+        # Generate those constraint pullbacks through the same Fock VJP used
+        # for the direct orbital-energy denominator source.
+        same_space_fock = _same_space_fock_cotangent(
+            uncorrected_correlation["stationarity"],
+            reference.orbital_energies,
+            o,
+        )
+        canonicalization = baseline._run(
+            fock_program,
+            {**baseline.raw_inputs, "bar_fock": same_space_fock},
+        )
+        correlation = _sum_weight_maps(
+            uncorrected_correlation, canonicalization
+        )
 
         same_space = max(
             float(np.max(np.abs(correlation["stationarity"][:o, :o]))),
@@ -209,7 +279,7 @@ class BoundCCSDTOrbitalResponse:
         )
         if same_space > options.stationarity_tolerance:
             raise ImplicitSolveError(
-                "RCCSD(T) same-space canonical stationarity is not satisfied"
+                "RCCSD(T) same-space canonicalization response failed"
             )
 
         rhs = _immutable(np.asarray(correlation["orbital_rhs"]).reshape(-1))
@@ -256,6 +326,7 @@ class BoundCCSDTOrbitalResponse:
                 "direct_triples": direct_triples,
                 "delta_lambda": delta_lambda,
                 "triples_denominator": denominator,
+                "same_space_canonicalization": canonicalization,
                 "orbital_response": orbital,
             }
         )
@@ -278,6 +349,9 @@ class BoundCCSDTOrbitalResponse:
                     {weight.parameter: weight.values for weight in parameter_weights}
                 ),
                 "orbital_energy_weights": _feed_hash(dict(orbital_energy_weights)),
+                "same_space_fock_weights": _feed_hash(
+                    {"bar_fock": same_space_fock}
+                ),
                 "z_state": _feed_hash({"rhs": rhs, "solution": z.solution}),
                 "canonical_fock_tolerance": _CANONICAL_FOCK_TOLERANCE,
                 "minimum_same_space_gap_tolerance": _MINIMUM_SAME_SPACE_GAP,
@@ -299,9 +373,11 @@ class BoundCCSDTOrbitalResponse:
             ("component_weights", components),
             ("parameter_weights", parameter_weights),
             ("orbital_energy_weights", orbital_energy_weights),
+            ("same_space_fock_weights", same_space_fock),
             ("orbital_rhs", rhs),
             ("z_result", z),
             ("independent_z_residual", independent_z_residual),
+            ("uncorrected_same_space_stationarity", uncorrected_same_space),
             ("same_space_stationarity", same_space),
             ("orbital_stationarity", stationarity),
             ("minimum_orbital_curvature", baseline.minimum_orbital_curvature),
