@@ -11,6 +11,7 @@ from tools.validate_ccsd_t_gradient import (
     analytic_oracle,
     finite_difference,
 )
+from tools.vibeqc_cc.triples import triples_energy
 from tools.vibeqc_cc.triples_response import full_triples_vjp
 
 
@@ -43,6 +44,7 @@ def test_pinned_pyscf_ccsdt_oracle_has_nontrivial_triples_force(name: str) -> No
     np.testing.assert_allclose(gradient.sum(axis=0), 0, atol=2e-8, rtol=0)
     assert analytic["scf_commutator_max"] < 1e-8
     assert analytic["ccsd_amplitude_update_max"] < 1e-8
+    assert analytic["canonical_fock_offdiag_max"] < 1e-9
     assert set(analytic["source_sha256"]) == {
         "pyscf.cc.ccsd_t",
         "pyscf.cc.ccsd_t_lambda",
@@ -82,6 +84,28 @@ def test_denominator_response_is_nonzero_on_physical_ccsdt_cases(name: str) -> N
     )
     assert np.linalg.norm(response["eps_o"]) > 1e-10
     assert np.linalg.norm(response["eps_v"]) > 1e-10
+
+    rng = np.random.default_rng(15520 + ("h2o", "nh3").index(name))
+    d_occ = rng.normal(size=response["eps_o"].shape)
+    d_vir = rng.normal(size=response["eps_v"].shape)
+    scale = max(1.0, float(np.linalg.norm(d_occ)), float(np.linalg.norm(d_vir)))
+    d_occ /= scale
+    d_vir /= scale
+    analytic = float(
+        np.vdot(response["eps_o"], d_occ) + np.vdot(response["eps_v"], d_vir)
+    )
+    assert abs(analytic) > 1e-10
+
+    arrays = [np.array(value, copy=True) for value in arrays]
+    for step in (2e-5, 2e-6):
+        samples = []
+        for sign in (-1.0, 1.0):
+            changed = [np.array(value, copy=True) for value in arrays]
+            changed[-2] += sign * step * d_occ
+            changed[-1] += sign * step * d_vir
+            samples.append(triples_energy(nocc, nvir, *changed))
+        finite = (samples[1] - samples[0]) / (2.0 * step)
+        np.testing.assert_allclose(analytic, finite, atol=2e-7, rtol=2e-6)
 
 
 def test_ccsdt_oracle_is_not_the_runtime_force_endpoint() -> None:
