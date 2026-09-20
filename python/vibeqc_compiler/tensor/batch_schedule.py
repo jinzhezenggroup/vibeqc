@@ -115,6 +115,17 @@ def scatter_add_inverted_table(node: typing.Any) -> tuple[int, ...]:
     return tuple(offsets + members)
 
 
+def index_table_length(node: typing.Any) -> int:
+    """Count the static payload without allocating target-sized scatter buckets."""
+    if node.op in ("gather", "indexed_gather"):
+        return len(node.attrs["positions"])
+    if node.op == "scatter_add":
+        return node.spec.shape[node.attrs["axis"]] + 1 + len(node.attrs["positions"])
+    if node.op == "segment_sum":
+        return len(node.attrs["offsets"])
+    raise ValueError(f"primitive has no static index table: {node.op}")
+
+
 def index_table_values(node: typing.Any) -> tuple[int, ...]:
     """Return the exact static integer payload copied for one indexed primitive."""
 

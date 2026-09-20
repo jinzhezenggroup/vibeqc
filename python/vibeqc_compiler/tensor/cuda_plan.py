@@ -19,7 +19,7 @@ from math import prod
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
-from .batch_schedule import BatchScheduleIR, analyze_batch_schedule, index_table_values
+from .batch_schedule import BatchScheduleIR, analyze_batch_schedule, index_table_length
 from .cuda_dtype import program_precision, scalar_type
 from .cuda_gemm import gemm_contract
 from .cuda_layout import LayoutDecision, conversion_bytes, select_layouts
@@ -180,9 +180,9 @@ class TensorPlan:
         total = 0
         for step_index, _ in self.index_tables:
             node = self.steps[step_index].node
-            values = index_table_values(node)
+            table_length = index_table_length(node)
             total = checked_size(
-                total + aligned(len(values) * 8),
+                total + aligned(table_length * 8),
                 "index table bytes",
             )
         return total
@@ -471,10 +471,10 @@ def plan_cuda(
     tables = []
     for i, (node, _) in enumerate(nodes):
         if node.op in ("gather", "indexed_gather", "scatter_add", "segment_sum"):
-            values = index_table_values(node)
+            table_length = index_table_length(node)
             tables.append((i, capacity))
             capacity = checked_size(
-                capacity + aligned(len(values) * 8),
+                capacity + aligned(table_length * 8),
                 "index table bytes",
             )
     steps, flops, traffic = [], 0, 0
