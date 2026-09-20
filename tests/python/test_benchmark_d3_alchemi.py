@@ -72,3 +72,13 @@ def test_error_summary_rejects_broadcasting_and_nonfinite_outputs(field, value):
     candidate = {**baseline, field: value}
     with pytest.raises(ValueError, match="finite.*matching"):
         _error_summary(baseline, candidate)
+
+
+@pytest.mark.parametrize("gradient", [[1.0, 2.0, 3.0], [[1.0], [2.0], [3.0]]])
+def test_error_summary_rejects_same_size_wrong_cartesian_layout(gradient):
+    baseline = {
+        "energies_hartree": [-1.0],
+        "gradients_hartree_per_bohr": [[1.0, 2.0, 3.0]],
+    }
+    with pytest.raises(ValueError, match="Cartesian"):
+        _error_summary(baseline, {**baseline, "gradients_hartree_per_bohr": gradient})

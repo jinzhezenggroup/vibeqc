@@ -303,12 +303,13 @@ def benchmark_alchemi(
 def _error_summary(vibeqc: dict[str, Any], alchemi: dict[str, Any]) -> dict[str, float]:
     lhs_e = np.asarray(vibeqc["energies_hartree"], dtype=np.float64)
     rhs_e = np.asarray(alchemi["energies_hartree"], dtype=np.float64)
-    lhs_g = np.asarray(vibeqc["gradients_hartree_per_bohr"], dtype=np.float64).reshape(
-        -1, 3
-    )
-    rhs_g = np.asarray(alchemi["gradients_hartree_per_bohr"], dtype=np.float64).reshape(
-        -1, 3
-    )
+    lhs_g = np.asarray(vibeqc["gradients_hartree_per_bohr"], dtype=np.float64)
+    rhs_g = np.asarray(alchemi["gradients_hartree_per_bohr"], dtype=np.float64)
+    if any(
+        value.ndim not in (2, 3) or value.shape[-1] != 3 for value in (lhs_g, rhs_g)
+    ):
+        raise ValueError("gradients require an explicit Cartesian axis of length three")
+    lhs_g, rhs_g = lhs_g.reshape(-1, 3), rhs_g.reshape(-1, 3)
     if (
         lhs_e.shape != rhs_e.shape
         or lhs_e.ndim != 1
