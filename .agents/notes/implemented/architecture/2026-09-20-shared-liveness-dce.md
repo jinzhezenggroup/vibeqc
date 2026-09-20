@@ -19,6 +19,12 @@ TensorIR is the first consumer. Its immutable SSA primitives are already pure, s
 - Adding an effect field directly to common.ProgramIR.PlanCall in the first slice was rejected because ProgramIR serialization/identity is already a contract and its provider calls are intentionally opaque. A later ProgramIR optimization must supply or version an explicit provider effect contract.
 - Treating unknown calls as pure was rejected because diagnostics, stores, atomics, failure semantics, or external effects could be lost.
 
+Missing effect metadata defaults to OPAQUE, not PURE. TensorIR explicitly
+marks its known immutable primitives PURE at the adapter boundary. EFFECTFUL
+and OPAQUE operations may have no SSA results (for example a check, store or
+synchronization); their reads still retain transitive dependencies. Pure
+output-free operations remain invalid rather than needing a fabricated token.
+
 ## Invariants
 
 - Unknown/opaque operations are retained.

@@ -38,15 +38,15 @@ class LivenessNode:
     key: Hashable
     reads: tuple[Hashable, ...]
     writes: tuple[Hashable, ...]
-    effect: EffectKind = EffectKind.PURE
+    effect: EffectKind = EffectKind.OPAQUE
 
     def __post_init__(self) -> None:
         if not isinstance(self.key, Hashable):
             raise TypeError("liveness node key must be hashable")
         object.__setattr__(self, "reads", _values(self.reads, "reads"))
         object.__setattr__(self, "writes", _values(self.writes, "writes"))
-        if not self.writes:
-            raise ValueError("liveness node must produce at least one value")
+        if not self.writes and self.effect is EffectKind.PURE:
+            raise ValueError("pure liveness node must produce at least one value")
         if len(set(self.writes)) != len(self.writes):
             raise ValueError("liveness node contains duplicate writes")
         if not isinstance(self.effect, EffectKind):

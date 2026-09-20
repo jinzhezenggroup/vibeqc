@@ -14,7 +14,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from vibeqc_compiler.common.liveness import LivenessNode, analyze_liveness
+from vibeqc_compiler.common.liveness import EffectKind, LivenessNode, analyze_liveness
 
 from .ir import Node
 from .types import spec_from_payload, spec_to_payload
@@ -154,6 +154,7 @@ class Program:
                     key=node,
                     reads=node.inputs,
                     writes=(node,),
+                    effect=EffectKind.PURE,
                 )
                 for node in nodes
             ),
