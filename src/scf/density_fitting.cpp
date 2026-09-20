@@ -440,6 +440,157 @@ double exchange_quadratic_derivative(const integrals::DensityFittingIntegralData
   return derivative;
 }
 
+struct DensityFittingReverseWeights {
+  std::vector<double> metric;
+  std::vector<double> three_center;
+};
+
+void validate_density_fitting_value_data(const integrals::DensityFittingIntegralData& data) {
+  std::size_t matrix_elements = 0;
+  std::size_t metric_elements = 0;
+  std::size_t three_center_elements = 0;
+  if (data.nbf == 0 || data.naux == 0 ||
+      !checked_multiply(data.nbf, data.nbf, matrix_elements) ||
+      !checked_multiply(data.naux, data.naux, metric_elements) ||
+      !checked_multiply(matrix_elements, data.naux, three_center_elements) ||
+      data.metric.size() != metric_elements || data.three_center.size() != three_center_elements) {
+    throw std::invalid_argument("DF value integral dimensions are inconsistent");
+  }
+  require_finite(data.metric, "DF metric entries must be finite");
+  require_finite(data.three_center, "DF three-center entries must be finite");
+}
+
+void accumulate_coulomb_reverse_weights(
+    const integrals::DensityFittingIntegralData& data, const std::vector<double>& density,
+    const std::vector<double>& inverse, double scale, std::vector<double>& inverse_weights,
+    std::vector<double>& three_center_weights) {
+  if (scale == 0.0) return;
+  const std::size_t nbf = data.nbf;
+  const std::size_t naux = data.naux;
+  std::vector<double> charge(naux, 0.0);
+  for (std::size_t mu = 0; mu < nbf; ++mu) {
+    for (std::size_t nu = 0; nu < nbf; ++nu) {
+      const double density_value = density[index(mu, nu, nbf)];
+      for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+        charge[auxiliary] +=
+            density_value * data.three_center[three_center_index(mu, nu, auxiliary, nbf, naux)];
+      }
+    }
+  }
+  std::vector<double> potential(naux, 0.0);
+  for (std::size_t row = 0; row < naux; ++row) {
+    for (std::size_t column = 0; column < naux; ++column) {
+      potential[row] += inverse[index(row, column, naux)] * charge[column];
+    }
+  }
+  for (std::size_t mu = 0; mu < nbf; ++mu) {
+    for (std::size_t nu = 0; nu < nbf; ++nu) {
+      const double density_value = scale * density[index(mu, nu, nbf)];
+      for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+        three_center_weights[three_center_index(mu, nu, auxiliary, nbf, naux)] +=
+            density_value * potential[auxiliary];
+      }
+    }
+  }
+  for (std::size_t row = 0; row < naux; ++row) {
+    for (std::size_t column = 0; column < naux; ++column) {
+      inverse_weights[index(row, column, naux)] +=
+          0.5 * scale * charge[row] * charge[column];
+    }
+  }
+}
+
+void accumulate_exchange_reverse_weights(
+    const integrals::DensityFittingIntegralData& data, const std::vector<double>& density,
+    const std::vector<double>& inverse, double scale, std::vector<double>& inverse_weights,
+    std::vector<double>& three_center_weights) {
+  if (scale == 0.0) return;
+  const std::size_t nbf = data.nbf;
+  const std::size_t naux = data.naux;
+  const std::size_t matrix_elements = nbf * nbf;
+  const tensor::CpuLinalgPlan plan{tensor::CpuLinalgProvider::automatic,
+                                   tensor::CpuLinalgThreadOwnership::provider_parallel, 1};
+
+  std::vector<double> b_aux(naux * matrix_elements);
+  for (std::size_t row = 0; row < nbf; ++row) {
+    for (std::size_t column = 0; column < nbf; ++column) {
+      const std::size_t pair = index(row, column, nbf);
+      for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+        b_aux[auxiliary * matrix_elements + pair] =
+            data.three_center[three_center_index(row, column, auxiliary, nbf, naux)];
+      }
+    }
+  }
+
+  std::vector<double> response(naux * matrix_elements);
+  std::vector<double> transformed(matrix_elements);
+  for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+    const double* bq = b_aux.data() + auxiliary * matrix_elements;
+    double* rq = response.data() + auxiliary * matrix_elements;
+    tensor::cpu_gemm('N', 'N', nbf, nbf, nbf, bq, density.data(), transformed.data(), 1.0, 0.0,
+                     plan);
+    tensor::cpu_gemm('T', 'N', nbf, nbf, nbf, density.data(), transformed.data(), rq, 1.0, 0.0,
+                     plan);
+  }
+
+  std::vector<double> quadratic(naux * naux);
+  tensor::cpu_gemm('N', 'T', naux, naux, matrix_elements, response.data(), b_aux.data(),
+                   quadratic.data(), 1.0, 0.0, plan);
+  for (std::size_t item = 0; item < quadratic.size(); ++item)
+    inverse_weights[item] += scale * quadratic[item];
+
+  std::vector<double> bar_b_aux(naux * matrix_elements);
+  tensor::cpu_gemm('T', 'N', naux, matrix_elements, naux, inverse.data(), response.data(),
+                   bar_b_aux.data(), scale, 0.0, plan);
+
+  std::vector<double> mixed(naux * matrix_elements);
+  tensor::cpu_gemm('N', 'N', naux, matrix_elements, naux, inverse.data(), b_aux.data(),
+                   mixed.data(), 1.0, 0.0, plan);
+  std::vector<double> left(matrix_elements);
+  std::vector<double> indirect(matrix_elements);
+  for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+    const double* xq = mixed.data() + auxiliary * matrix_elements;
+    tensor::cpu_gemm('N', 'N', nbf, nbf, nbf, density.data(), xq, left.data(), 1.0, 0.0, plan);
+    tensor::cpu_gemm('N', 'T', nbf, nbf, nbf, left.data(), density.data(), indirect.data(), 1.0,
+                     0.0, plan);
+    double* target = bar_b_aux.data() + auxiliary * matrix_elements;
+    for (std::size_t item = 0; item < matrix_elements; ++item)
+      target[item] += scale * indirect[item];
+  }
+
+  for (std::size_t row = 0; row < nbf; ++row) {
+    for (std::size_t column = 0; column < nbf; ++column) {
+      const std::size_t pair = index(row, column, nbf);
+      for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+        three_center_weights[three_center_index(row, column, auxiliary, nbf, naux)] +=
+            bar_b_aux[auxiliary * matrix_elements + pair];
+      }
+    }
+  }
+}
+
+DensityFittingReverseWeights density_fitting_reverse_weights(
+    const integrals::DensityFittingIntegralData& data,
+    const std::vector<std::pair<const std::vector<double>*, JkCoefficients>>& terms,
+    double relative_threshold) {
+  validate_density_fitting_value_data(data);
+  const std::vector<double> inverse = metric_pseudoinverse(data, relative_threshold);
+  DensityFittingReverseWeights weights;
+  std::vector<double> inverse_weights(data.naux * data.naux, 0.0);
+  weights.three_center.assign(data.nbf * data.nbf * data.naux, 0.0);
+  for (const auto& [density, coefficients] : terms) {
+    if (!density || !std::isfinite(coefficients.coulomb) || !std::isfinite(coefficients.exchange))
+      throw std::invalid_argument("DF weighted gradient coefficients are invalid");
+    validate_gradient_density(*density, data.nbf, "DF weighted gradient density is inconsistent");
+    accumulate_coulomb_reverse_weights(data, *density, inverse, coefficients.coulomb,
+                                       inverse_weights, weights.three_center);
+    accumulate_exchange_reverse_weights(data, *density, inverse, 0.5 * coefficients.exchange,
+                                        inverse_weights, weights.three_center);
+  }
+  weights.metric = density_fitting_metric_inverse_response(
+      data.metric, inverse, inverse_weights, data.naux, relative_threshold);
+  return weights;
+}
 std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile,
                             std::size_t batch_size, std::size_t nbf, std::size_t naux,
                             std::size_t metric_bytes, std::size_t fixed_device_bytes,
