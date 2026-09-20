@@ -11,10 +11,10 @@ from vibeqc_compiler.tensor import (
     IndexSpace,
     Program,
     TensorSpec,
+    cuda_plan,
     input_tensor,
     scatter_add,
 )
-from vibeqc_compiler.tensor import cuda_plan
 
 if TYPE_CHECKING:
     from vibeqc_compiler.tensor.ir import Node
