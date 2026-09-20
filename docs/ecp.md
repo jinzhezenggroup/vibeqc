@@ -175,7 +175,7 @@ canonical MP2 with ECP is also rejected until its reference/provider gates are
 validated. The all-electron accuracy-model schema cannot represent an ECP
 Hamiltonian, so ECP `resolved_model()` requests fail explicitly. Complete
 LDA/PBE RKS/UKS energy-only calculations use the same ECP Hamiltonian, as
-described below. Public CPU DFT/ECP forces remain unsupported; CUDA force support has its own
+described below. Public CPU/CUDA DFT/ECP forces have their own
 bounded qualification below. No broad heavy-element validation follows from support
 for the parameter format.
 
@@ -191,7 +191,7 @@ nonlinear core correction. Atomic number still determines grid element identity.
 
 AO capability checks permit values and first spatial jets needed by LDA/GGA
 energies. They still validate ECP metadata and angular limits. Higher AO jets, DF/ECP and other DFT methods do not inherit support.
-Complete first forces use the separately qualified CUDA consumer below.
+Complete first forces use the separately qualified CPU/CUDA consumers below.
 
 ```python
 result = Calculator(method="pbe-rks", basis=basis, device="cuda").singlepoint(

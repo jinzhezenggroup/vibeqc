@@ -233,6 +233,8 @@ def test_cpu_ecp_work_rejects_before_compilation_and_recovers(
             "execution": execution,
             "tile_points": 137,
         }
+        if execution == "native":
+            kwargs["max_host_bytes"] = 256 << 20
         result = complete_rks_gradient_diagnostic(state, basis, **kwargs)
         limits = {
             "max_primitive_records": result.work["primitive_records"],
@@ -257,6 +259,13 @@ def test_cpu_ecp_work_rejects_before_compilation_and_recovers(
                         complete_rks_gradient_diagnostic(
                             state, basis, **kwargs, **{name: invalid}
                         )
+            if execution == "native":
+                host_bound = result.work["additional_host_numeric_bound"]
+                with pytest.raises(ValueError, match="additional-host byte"):
+                    complete_rks_gradient_diagnostic(
+                        state, basis, **(kwargs | {"max_host_bytes": host_bound - 1})
+                    )
+                kwargs["max_host_bytes"] = host_bound
         StationaryDerivativeContract(state.identity).validate(state)
         boundary = complete_rks_gradient_diagnostic(state, basis, **kwargs, **limits)
         np.testing.assert_array_equal(boundary.gradient, result.gradient)
