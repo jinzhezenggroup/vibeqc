@@ -1,7 +1,8 @@
 #pragma once
 
 // Included only by the native generated_grid_policy.cu, after cuda_grid.cu.
-// Reuse compiler-emitted AO traversal and dense XC contractions; this header keeps\n// validation, point-domain adaptation and launch/runtime glue.
+// Reuse compiler-emitted AO traversal and dense XC contractions; this header keeps
+// validation, point-domain adaptation and launch/runtime glue.
 #include "dft/cuda_xc.hpp"
 #include "dft/xc_point.hpp"
 #include "dft/xc_point_response.hpp"
