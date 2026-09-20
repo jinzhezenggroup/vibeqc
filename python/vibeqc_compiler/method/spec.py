@@ -86,7 +86,7 @@ class MethodSpec:
     basis: BasisBinding | None = None
     gcp: GCPSpec | None = None
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.identifier, str) or not self.identifier.strip():
             raise UnsupportedMethod("method requires a non-empty identifier")
         if self.version != METHOD_CATALOG_VERSION:
@@ -185,7 +185,7 @@ class SemilocalXCPrimitive:
     functional: FunctionalSpec
     kind: ClassVar[str] = "semilocal_xc"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.functional, FunctionalSpec):
             raise TypeError("semilocal primitive requires FunctionalSpec")
         if any(
@@ -237,7 +237,7 @@ class RangeSeparatedExchangePrimitive:
     operator: str
     kind: ClassVar[str] = "range_separated_exchange"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         _require_fraction(self.coefficient, "range-separated exchange")
         _require_fraction(self.omega, "range omega")
         if self.coefficient <= 0 or self.omega <= 0:
@@ -275,7 +275,7 @@ class ExactExchangePrimitive:
     operator: str = FULL_RANGE
     kind: ClassVar[str] = "exact_exchange"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         _require_fraction(self.coefficient, "exact exchange")
         if self.coefficient <= 0:
             raise UnsupportedMethod(
@@ -336,7 +336,7 @@ class MethodIR:
     basis: BasisBinding | None = None
     version: str = METHOD_IR_VERSION
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.identifier, str) or not self.identifier.strip():
             raise UnsupportedMethod("MethodIR requires a non-empty identifier")
         if self.spin not in _SPINS:

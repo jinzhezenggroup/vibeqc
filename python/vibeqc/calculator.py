@@ -38,7 +38,7 @@ class Atom:
     atomic_number: int
     position: tuple[float, float, float]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         """Own finite coordinates and validate nuclei independently of basis data."""
         z = element_number(self.atomic_number)
         xyz = tuple(float(v) for v in self.position)
@@ -912,7 +912,7 @@ class Calculator:
 
     def _preflight_hf_basis(
         self, atoms: typing.Any, *, compute_forces: typing.Any = True
-    ) -> typing.Any:
+    ) -> None:
         """Check operators and AO jets needed by the selected mean-field outputs.
 
         Runtime shape/resource and occupation checks remain native. This data

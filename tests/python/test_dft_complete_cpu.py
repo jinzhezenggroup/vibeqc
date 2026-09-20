@@ -166,7 +166,7 @@ def independent_uks_gradient(
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
 def test_complete_asymmetric_water_analytic_and_reconverged_fd(
     method: typing.Any, record_property: typing.Any, execution: typing.Any
-) -> typing.Any:
+) -> None:
     pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
     calc = calculator(method)
     with calc.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
@@ -287,7 +287,7 @@ def test_complete_asymmetric_water_analytic_and_reconverged_fd(
 @pytest.mark.parametrize("method", ["lda-uks", "pbe-uks"])
 def test_complete_open_shell_uks_analytic_and_reconverged_fd(
     method: typing.Any, execution: typing.Any
-) -> typing.Any:
+) -> None:
     """B3: asymmetric doublet uses the same seven-source plan without RKS factors."""
     pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
     charge, multiplicity = 1, 2
@@ -562,7 +562,7 @@ def product_coordinates() -> typing.Any:
     return ((a, axis) for a in range(3) for axis in range(3))
 
 
-def test_failure_isolation_native_malformed_geometry_and_detached_state() -> typing.Any:
+def test_failure_isolation_native_malformed_geometry_and_detached_state() -> None:
     calc = calculator("pbe-rks")
     with calc.prepare_batch([ATOMS, ATOMS]) as batch, NativeAO(ATOMS) as basis:
         batch.execute(strict=True)
@@ -609,7 +609,7 @@ def test_failure_isolation_native_malformed_geometry_and_detached_state() -> typ
 @pytest.mark.parametrize("fail_publication", [False, True])
 def test_compiler_source_publication_is_atomic(
     tmp_path: typing.Any, monkeypatch: typing.Any, fail_publication: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc import _stationary_cpu as module
 
     path = tmp_path / "source.cpp"
@@ -618,7 +618,7 @@ def test_compiler_source_publication_is_atomic(
 
     def check_then_publish(
         temporary: typing.Any, destination: typing.Any
-    ) -> typing.Any:
+    ) -> None:
         assert path.read_text() == "old complete source"
         assert temporary.read_text() == "new complete source"
         if fail_publication:
@@ -639,7 +639,7 @@ def test_compiler_source_publication_is_atomic(
 @pytest.mark.parametrize("execution", ["reference", "native"])
 def test_cpu_diagnostic_bounds_and_late_provider_failure(
     tmp_path: typing.Any, monkeypatch: typing.Any, execution: typing.Any
-) -> typing.Any:
+) -> None:
     from pathlib import Path
 
     from vibeqc import _stationary_cpu as module
@@ -701,7 +701,7 @@ def test_cpu_diagnostic_bounds_and_late_provider_failure(
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
 def test_fresh_process_gradient_has_no_external_oracle_dependency(
     tmp_path: typing.Any, method: typing.Any
-) -> typing.Any:
+) -> None:
     import subprocess
     import sys
 
@@ -755,7 +755,7 @@ assert not any(name.split('.')[0] in {'pyscf', 'gpu4pyscf', 'cupy'} for name in 
 
 def test_native_late_grid_failure_stale_lease_and_changed_geometry(
     tmp_path: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc import _stationary_cpu as module
 
     atoms = [("H", (0.1, 0.2, -0.6)), ("H", (0.2, -0.1, 0.8))]

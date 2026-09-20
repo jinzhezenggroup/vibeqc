@@ -37,7 +37,7 @@ def device(request: typing.Any) -> typing.Any:
     return request.param
 
 
-def test_functional_composition_resolves_only_required_ingredients() -> typing.Any:
+def test_functional_composition_resolves_only_required_ingredients() -> None:
     lda = resolve_ks_options("lda-rks")
     pbe = resolve_ks_options("pbe-uks")
     assert lda.ao_order == 0 and lda.functional.ingredients == ("rho",)
@@ -96,7 +96,7 @@ def test_pbe0_named_selector_resolves_common_methodir_composition(
 )
 def test_method_ir_projection_preserves_catalog_identity(
     method: typing.Any, identifier: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     options = resolve_ks_options(method)
     expected = functional(identifier, spin=spin)
     assert options.functional.identity == expected.identity
@@ -135,11 +135,11 @@ def test_method_ir_projection_preserves_catalog_identity(
 @pytest.mark.parametrize("consumer", ("options", "calculator", "resources"))
 def test_method_ir_mismatch_fails_before_native_load(
     monkeypatch: typing.Any, graph: typing.Any, consumer: typing.Any
-) -> typing.Any:
+) -> None:
     import vibeqc.ks as ks_module
     from vibeqc import _native
 
-    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("inconsistent MethodIR reached native loading")
 
     # The common resolver is authoritative for composition, but native selectors
@@ -157,7 +157,7 @@ def test_method_ir_mismatch_fails_before_native_load(
 
 def test_method_ir_projection_treats_identifiers_as_descriptive(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     import vibeqc.ks as ks_module
 
     graph = replace(resolve_method("PBE"), identifier="descriptive-pbe-alias")
@@ -169,10 +169,10 @@ def test_method_ir_projection_treats_identifiers_as_descriptive(
 
 def test_unsupported_compositions_and_policy_fail_before_native_load(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc import _native
 
-    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("unsupported KS model reached native loading")
 
     monkeypatch.setattr(_native, "load_library", forbidden)
@@ -237,7 +237,7 @@ def test_custom_model_changes_plan_identity_without_materializing_grid(
 @pytest.mark.parametrize("method", ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"))
 def test_custom_native_grid_matches_independent_scf_and_budget(
     method: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     pyscf = pytest.importorskip("pyscf")
     from pyscf import dft, gto
 

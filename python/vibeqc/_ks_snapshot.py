@@ -112,12 +112,12 @@ class NativeKsSnapshot:
     )
     _fixed = frozenset(__slots__)
 
-    def __setattr__(self, name: typing.Any, value: typing.Any) -> typing.Any:
+    def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed and hasattr(self, name):
             raise AttributeError("native KS snapshot provenance is immutable")
         super().__setattr__(name, value)
 
-    def __delattr__(self, name: typing.Any) -> typing.Any:
+    def __delattr__(self, name: typing.Any) -> None:
         if name in self._fixed:
             raise AttributeError("native KS snapshot provenance is immutable")
         super().__delattr__(name)
@@ -186,7 +186,7 @@ class NativeKsSnapshot:
             self.close()
             raise
 
-    def check_current(self) -> typing.Any:
+    def check_current(self) -> None:
         """Host-only exact token check; numerical equality cannot renew a lease."""
         self._batch._ensure_open()
         if not self._handle or self._library.vibeqc_ks_snapshot_check_v1(
@@ -475,7 +475,7 @@ class NativeKsSnapshot:
             raise ArithmeticError("nonfinite native ECP derivatives")
         return immutable(output)
 
-    def validate(self, state: typing.Any) -> typing.Any:
+    def validate(self, state: typing.Any) -> None:
         """Reject copied labels and even self-consistent replacement matrices."""
         self.check_current()
         if state.identity != self._identity:
@@ -486,7 +486,7 @@ class NativeKsSnapshot:
         ):
             raise ValueError("native stationary snapshot content mismatch")
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         if self._handle:
             handle = self._handle
             # Revocation may clear the binding internally; public assignment

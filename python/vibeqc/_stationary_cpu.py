@@ -55,7 +55,7 @@ class DiagnosticStationaryGradient:
     execution: str = "native-cpu-primitives/compiler-interpreter-diagnostic-v1"
 
 
-def _publish_source(path: typing.Any, source: typing.Any) -> typing.Any:
+def _publish_source(path: typing.Any, source: typing.Any) -> None:
     """Publish complete immutable compiler input before hashing or compilation.
 
     Concurrent calls may reuse a cache. Never truncate a hash-named source

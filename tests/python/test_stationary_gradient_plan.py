@@ -68,7 +68,7 @@ def independent_weights(source: typing.Any, feeds: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
 def test_ecp_stationary_plan_has_complete_sources_and_generated_weights(
     spin: typing.Any,
-) -> typing.Any:
+) -> None:
     ae = plan(spin)
     ecp = StationaryGradientPlan(
         ae.method,
@@ -99,7 +99,7 @@ def test_ecp_stationary_plan_has_complete_sources_and_generated_weights(
 @pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
 def test_generated_weights_and_all_coordinate_components_have_independent_oracle(
     source: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     p = plan(spin)
     feeds, integrals = fixture(source, p.spin_blocks)
     block = p.integral_block(source, terms=len(integrals), coordinates=6)
@@ -225,7 +225,7 @@ def test_uks_coulomb_includes_cross_spin_and_recovers_total_density_rks() -> Non
     assert not np.allclose(wrong @ feeds["integral_derivatives"], u)
 
 
-def test_tiled_ordered_quartets_sum_to_the_unsplit_result() -> typing.Any:
+def test_tiled_ordered_quartets_sum_to_the_unsplit_result() -> None:
     p = plan("polarized")
     feeds, integrals = fixture("coulomb", 2)
     expected = execute(
@@ -247,7 +247,7 @@ def test_tiled_ordered_quartets_sum_to_the_unsplit_result() -> typing.Any:
 
 
 def test_complete_reduction_requires_all_sources_once_and_preserves_inputs() -> (
-    typing.Any
+    None
 ):
     p = plan()
     components = {
@@ -279,7 +279,7 @@ def test_complete_reduction_requires_all_sources_once_and_preserves_inputs() -> 
     assert normal.logical_hash == reordered.logical_hash
 
 
-def test_plan_identity_uses_semantics_not_names_or_live_solve_epochs() -> typing.Any:
+def test_plan_identity_uses_semantics_not_names_or_live_solve_epochs() -> None:
     p = plan()
     renamed = replace(p, method=replace(p.method, identifier="an-equivalent-alias"))
     assert p.identity == renamed.identity
@@ -323,7 +323,7 @@ def test_plan_identity_uses_semantics_not_names_or_live_solve_epochs() -> typing
 )
 def test_unsupported_envelope_is_not_silently_substituted(
     change: typing.Any,
-) -> typing.Any:
+) -> None:
     with pytest.raises(UnsupportedMethod):
         StationaryMeanField(**{"point_model": SCF_POINT_MODEL, **change})
 
@@ -350,7 +350,7 @@ def test_global_hybrid_plan_adds_exact_exchange_without_granting_public_forces()
         hybrid.require_native_endpoint("silently-use-pyscf")
 
 
-def test_budget_shape_dtype_and_nonfinite_fail_before_publishing() -> typing.Any:
+def test_budget_shape_dtype_and_nonfinite_fail_before_publishing() -> None:
     p = plan()
     for kwargs in (
         {"terms": True},
@@ -376,7 +376,7 @@ def test_budget_shape_dtype_and_nonfinite_fail_before_publishing() -> typing.Any
 
 
 def test_same_tensor_graph_has_deterministic_cuda_source_and_separate_schedule_identity() -> (
-    typing.Any
+    None
 ):
     p = plan("polarized")
     programs = [
@@ -406,7 +406,7 @@ def test_same_tensor_graph_has_deterministic_cuda_source_and_separate_schedule_i
         p.require_native_endpoint("cuda")
 
 
-def test_missing_xc_derivative_rule_rejects_plan(monkeypatch: typing.Any) -> typing.Any:
+def test_missing_xc_derivative_rule_rejects_plan(monkeypatch: typing.Any) -> None:
     from vibeqc_compiler.method import SemilocalXCPrimitive
 
     monkeypatch.setattr(

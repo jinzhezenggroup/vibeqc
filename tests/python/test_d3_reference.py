@@ -41,7 +41,7 @@ def native(tmp_path_factory: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("case", _GOLDENS, ids=lambda case: case["name"])
 def test_independent_simple_dftd3_golden(
     native: typing.Any, case: typing.Any
-) -> typing.Any:
+) -> None:
     spec = make_spec(**case["parameters"])
     energy, gradient = native.evaluate(spec, case["numbers"], case["positions"])
     assert energy == pytest.approx(case["energy"], abs=2e-14, rel=0)
@@ -51,7 +51,7 @@ def test_independent_simple_dftd3_golden(
 @pytest.mark.parametrize("step", [2e-4, 7e-5, 2e-5])
 def test_complete_cn_response_finite_differences(
     native: typing.Any, step: typing.Any
-) -> typing.Any:
+) -> None:
     case = _GOLDENS[1]
     spec = make_spec(**case["parameters"])
     x = np.array(case["positions"])
@@ -67,7 +67,7 @@ def test_complete_cn_response_finite_differences(
     np.testing.assert_allclose(gradient, numerical, atol=1e-9, rtol=0)
 
 
-def test_invariance_and_atom_pair_transposition(native: typing.Any) -> typing.Any:
+def test_invariance_and_atom_pair_transposition(native: typing.Any) -> None:
     case = _GOLDENS[1]
     z = np.array(case["numbers"])
     x = np.array(case["positions"])
@@ -83,7 +83,7 @@ def test_invariance_and_atom_pair_transposition(native: typing.Any) -> typing.An
     np.testing.assert_allclose(gradient.sum(axis=0), 0, atol=1e-14)
 
 
-def test_pair_switch_and_energy_force_sign(native: typing.Any) -> typing.Any:
+def test_pair_switch_and_energy_force_sign(native: typing.Any) -> None:
     spec = gfn1_compatibility()
     z = [6, 8]
     x = np.array([[0.0, 0.0, 0.0], [49.975, 0.0, 0.0]])
@@ -105,7 +105,7 @@ def test_pair_switch_and_energy_force_sign(native: typing.Any) -> typing.Any:
     assert native.evaluate(unscreened, z, x)[0] < 0
 
 
-def test_scaling_parameters_are_not_gfn1_constants(native: typing.Any) -> typing.Any:
+def test_scaling_parameters_are_not_gfn1_constants(native: typing.Any) -> None:
     case = _GOLDENS[1]
     spec = make_spec(**case["parameters"])
     e, g = native.evaluate(spec, case["numbers"], case["positions"])
@@ -137,13 +137,13 @@ def test_scaling_parameters_are_not_gfn1_constants(native: typing.Any) -> typing
         {"radii_sha256": "a" * 63},
     ],
 )
-def test_unsupported_parameters_fail_closed(change: typing.Any) -> typing.Any:
+def test_unsupported_parameters_fail_closed(change: typing.Any) -> None:
     spec = make_spec(s6=1.0, s8=1.0, a1=0.4, a2=4.0)
     with pytest.raises((ValueError, TypeError)):
         replace(spec, **change)
 
 
-def test_guardrails_and_unchanged_inputs(native: typing.Any) -> typing.Any:
+def test_guardrails_and_unchanged_inputs(native: typing.Any) -> None:
     spec = gfn1_compatibility()
     x = np.array([[0.0, 0.0, 0.0], [3.0, 0.0, 0.0]])
     original = x.copy()
@@ -166,7 +166,7 @@ def test_guardrails_and_unchanged_inputs(native: typing.Any) -> typing.Any:
     np.testing.assert_array_equal(g, 0.0)
 
 
-def test_canonical_methodir_composition_and_identity() -> typing.Any:
+def test_canonical_methodir_composition_and_identity() -> None:
     spec = gfn1_compatibility()
     assert D3Spec(**spec.to_payload()) == spec
     plain = resolve_method("PBE")
@@ -196,7 +196,7 @@ def test_canonical_methodir_composition_and_identity() -> typing.Any:
 )
 def test_native_ks_cannot_silently_omit_correction(
     monkeypatch: typing.Any, method: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc import ks
 
     graph = resolve_method(

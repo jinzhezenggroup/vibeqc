@@ -140,7 +140,7 @@ class FixedDensityMethodPlan:
     functional: FunctionalSpec
     fock_spec: FockBuildSpec
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.fock_spec, FockBuildSpec):
             raise TypeError("executable MethodIR plan requires FockBuildSpec")
         functional, spec = _compile_fixed_density_components(
