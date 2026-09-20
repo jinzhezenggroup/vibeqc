@@ -30,8 +30,7 @@ struct MethodDefinition {
   PrepareBatch prepare_batch{};
 };
 
-constexpr MethodDefinition register_method(
-    const generated::MethodManifestEntry& manifest) {
+constexpr MethodDefinition register_method(const generated::MethodManifestEntry& manifest) {
   ValidateSystem validate = nullptr;
   PrepareCalculation prepare = nullptr;
   PrepareBatch batch = nullptr;
@@ -63,11 +62,9 @@ constexpr MethodDefinition register_method(
     throw "public method manifest properties disagree with native provider";
   const auto availability = executable ? runtime::ProviderAvailability::Executable
                                        : runtime::ProviderAvailability::Reserved;
-  const auto registered_properties =
-      executable ? manifest.properties : vibeqc_property_flags{};
+  const auto registered_properties = executable ? manifest.properties : vibeqc_property_flags{};
   return {{{"methods", manifest.name, 1, runtime::ProviderBackend::Any},
-           {manifest.method, manifest.family, registered_properties, executable,
-            supports_batch},
+           {manifest.method, manifest.family, registered_properties, executable, supports_batch},
            availability,
            runtime::ProviderFallback::None,
            runtime::ProviderRequirement::PreparedState,

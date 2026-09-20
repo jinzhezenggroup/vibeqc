@@ -105,8 +105,7 @@ int main(int argc, char** argv) {
   auto method = unrestricted ? VIBEQC_METHOD_UHF : VIBEQC_METHOD_RHF;
   const bool ks = argc == 2;
   if (ks) {
-    const auto* manifest =
-        vibeqc::methods::generated::find_method(std::string_view(argv[1]));
+    const auto* manifest = vibeqc::methods::generated::find_method(std::string_view(argv[1]));
     if (manifest == nullptr ||
         manifest->provider != vibeqc::methods::generated::PublicProvider::Dft)
       return 2;

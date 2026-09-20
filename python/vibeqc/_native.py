@@ -10,18 +10,6 @@ import ctypes
 import os
 from pathlib import Path
 
-from ._generated_methods import (
-    METHOD_LDA_RKS,
-    METHOD_LDA_UKS,
-    METHOD_MP2,
-    METHOD_PBE_RKS,
-    METHOD_PBE_UKS,
-    METHOD_RCCSD_T,
-    METHOD_RHF,
-    METHOD_UHF,
-    METHOD_WB97M_V,
-)
-
 PACKAGE_DIR = Path(__file__).resolve().parent
 
 ABI_VERSION = 0

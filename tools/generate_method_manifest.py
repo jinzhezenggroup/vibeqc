@@ -104,13 +104,8 @@ def load_manifest() -> list[dict]:
             raise ValueError(f"{name}: HF provider requires Hartree-Fock family")
         if method["provider"] == "mp2" and method["family"] != "perturbation":
             raise ValueError(f"{name}: MP2 provider requires perturbation family")
-        if (
-            method["provider"] == "dft"
-            and method["family"] != "density_functional"
-        ):
-            raise ValueError(
-                f"{name}: DFT provider requires density-functional family"
-            )
+        if method["provider"] == "dft" and method["family"] != "density_functional":
+            raise ValueError(f"{name}: DFT provider requires density-functional family")
 
         method_aliases = method.get("aliases", [])
         if not isinstance(method_aliases, list) or any(
@@ -145,9 +140,7 @@ def emit_c_ids(methods: list[dict]) -> str:
     ]
     for index, method in enumerate(methods):
         comma = "," if index + 1 < len(methods) else ""
-        lines.append(
-            f"  VIBEQC_METHOD_{method['symbol']} = {method['abi_id']}{comma}"
-        )
+        lines.append(f"  VIBEQC_METHOD_{method['symbol']} = {method['abi_id']}{comma}")
     lines.extend(["};", "// clang-format on", "", "#endif", ""])
     return "\n".join(lines)
 
@@ -234,8 +227,8 @@ def emit_cpp(methods: list[dict]) -> str:
         reason = method.get("unavailable_reason", "")
         lines.append(
             f'    {{"{method["name"]}", VIBEQC_METHOD_{method["symbol"]}, '
-            f'{FAMILIES[method["family"]]}, {cpp_properties(method)}, '
-            f'{"true" if method["supports_batch"] else "false"}, '
+            f"{FAMILIES[method['family']]}, {cpp_properties(method)}, "
+            f"{'true' if method['supports_batch'] else 'false'}, "
             f'PublicProvider::{PROVIDERS[method["provider"]][0]}, "{reason}"}},'
         )
     lines.extend(
