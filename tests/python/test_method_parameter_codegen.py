@@ -40,8 +40,22 @@ def test_cpp_codegen_uses_same_source_identity_and_values() -> None:
 
 
 def test_generated_python_catalog_has_expected_profiles() -> None:
-    assert set(D3_BJ_PARAMETER_SETS) == {"PBE-D3(BJ)", "PBE0-D3(BJ)"}
-    assert set(D4_PARAMETER_SETS) == {"r2SCAN-3c"}
+    assert len(D3_BJ_PARAMETER_SETS) == 157
+    assert len(D4_PARAMETER_SETS) == 118
+    assert {
+        "PBE-D3(BJ)",
+        "PBE0-D3(BJ)",
+        "B3LYP-D3(BJ)",
+        "R2SCAN-D3(BJ)",
+        "WB97M-D3(BJ)",
+    } <= set(D3_BJ_PARAMETER_SETS)
+    assert {
+        "PBE-D4(BJ-EEQ-ATM)",
+        "PBE0-D4(BJ-EEQ-ATM)",
+        "B3LYP-D4(BJ-EEQ-ATM)",
+        "R2SCAN-D4(BJ-EEQ-ATM)",
+        "r2SCAN-3c",
+    } <= set(D4_PARAMETER_SETS)
     assert set(GCP_PARAMETER_SETS) == {"r2SCAN-3c"}
     assert D4_PARAMETER_SETS["r2SCAN-3c"]["charge_cn_cutoff"] == 25.0
     assert GCP_PARAMETER_SETS["r2SCAN-3c"]["supported_atomic_numbers"] == tuple(
