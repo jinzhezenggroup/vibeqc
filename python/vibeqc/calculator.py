@@ -682,6 +682,10 @@ class Calculator:
                 raise NotImplementedError(
                     "native library does not support KS composition options v2"
                 )
+            elif self._ks_options_version < 3 and self._ks_options.requires_schedule_v3:
+                raise NotImplementedError(
+                    "native library does not support KS execution schedules v3"
+                )
 
         available = ctypes.c_int32()
         _native.check(
@@ -825,7 +829,7 @@ class Calculator:
             descriptor.ks_options = ctypes.pointer(
                 native_ks_options(
                     self._ks_options,
-                    version=1 if self._ks_options_version == 1 else 2,
+                    version=min(self._ks_options_version, 3),
                 )
             )
         if self._method == _native.METHOD_RCCSD:

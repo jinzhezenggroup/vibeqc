@@ -55,6 +55,7 @@ class KsOptions:
     grid: GridSpec | None = None
     grid_accuracy: str = "standard"
     tile_points: int = 256
+    xc_schedule: str = "device_fused"
     scf_domain: str = SCF_DOMAIN
     _method_ir: MethodIR | None = field(default=None, init=False, repr=False)
 
@@ -72,6 +73,8 @@ class KsOptions:
         if self.grid_accuracy not in ("standard", "tight"):
             raise ValueError("KS grid_accuracy must be 'standard' or 'tight'")
         checked_int(self.tile_points, "KS XC tile points")
+        if self.xc_schedule not in ("device_fused", "host_unfused"):
+            raise ValueError("KS XC schedule must be 'device_fused' or 'host_unfused'")
         if self.scf_domain != SCF_DOMAIN:
             raise NotImplementedError("unsupported native KS tail/spin domain policy")
 
@@ -92,6 +95,10 @@ class KsOptions:
         return self.coefficients != (1.0, 1.0, 0.0)
 
     @property
+    def requires_schedule_v3(self) -> bool:
+        return self.xc_schedule != "device_fused"
+
+    @property
     def ao_order(self) -> typing.Any:
         """SCF needs the potential; GGA/meta-GGA compositions need first AO jets."""
         if self.functional is None:
@@ -110,6 +117,7 @@ class KsOptions:
             "grid": asdict(self.grid),
             "grid_provenance": grid_policy_provenance(self.grid),
             "tile_points": self.tile_points,
+            "xc_schedule": self.xc_schedule,
             "required_ao_order": self.ao_order,
             "required_ingredients": self.functional.ingredients,
             "scalar_derivative_order": 1,
@@ -288,7 +296,7 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
     return result
 
 
-def native_ks_options(options: typing.Any, *, version: int = 2) -> typing.Any:
+def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
     """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
     import ctypes
 
@@ -303,11 +311,13 @@ def native_ks_options(options: typing.Any, *, version: int = 2) -> typing.Any:
         radii = (ctypes.c_double * 119)(*[fill] * 119)
         for z, radius in grid.element_radii:
             radii[z] = radius
-    if version not in (1, 2):
-        raise ValueError("native KS options version must be 1 or 2")
+    if version not in (1, 2, 3):
+        raise ValueError("native KS options version must be 1, 2, or 3")
     size = (
         _native.KsOptionsDescriptor.composition_version.offset
         if version == 1
+        else _native.KsOptionsDescriptor.xc_execution_schedule.offset
+        if version == 2
         else ctypes.sizeof(_native.KsOptionsDescriptor)
     )
     return _native.KsOptionsDescriptor(
@@ -326,4 +336,7 @@ def native_ks_options(options: typing.Any, *, version: int = 2) -> typing.Any:
         0,
         1,
         *options.coefficients,
+        _native.XC_EXECUTION_DEVICE_FUSED
+        if options.xc_schedule == "device_fused"
+        else _native.XC_EXECUTION_HOST_UNFUSED,
     )

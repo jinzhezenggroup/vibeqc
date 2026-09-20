@@ -14,6 +14,7 @@
 
 #include "dft/cuda_ks_kernels.hpp"
 #include "dft/cuda_xc.hpp"
+#include "dft/xc.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/eigensolver.hpp"
 #include "scf/cuda/scf_constants.hpp"
@@ -69,7 +70,8 @@ struct KsStateStorage {
   std::int32_t* occupied{};
   std::uint8_t *enabled{}, *spin_enabled{};
   std::uint32_t *history_count{}, *history_head{};
-  int *solver_info{}, *final_solver_info{}, *jk_error{};
+  int *solver_info{}, *final_solver_info{}, *jk_error{}, *staged_xc_error{};
+  double* staged_xc_totals{};
   std::uint8_t *final_spin_enabled{}, *final_enabled{};
   cuda_ks_detail::Control* control{};
   cuda_ks_detail::Scalars* scalar_records{};
@@ -103,6 +105,8 @@ struct KsStateStorage {
     reserve(solver_info, spins);
     reserve(final_solver_info, spins);
     reserve(jk_error, 1);
+    reserve(staged_xc_totals, 3);
+    reserve(staged_xc_error, 1);
     reserve(final_spin_enabled, spins);
     reserve(final_enabled, 1);
     reserve(control, 1);
@@ -131,6 +135,8 @@ std::size_t cuda_ks_state_bytes(std::size_t n, unsigned spins, unsigned history)
 
 struct CudaKsPlan::Impl : KsStateStorage {
   const scf::PreparedFockPlan& provider;
+  const AoBasis& basis;
+  const MolecularGrid& grid;
   scf::ScfOptions options;
   scf::CudaDirectJkPlan* direct{};
   cudaStream_t stream{};
@@ -138,8 +144,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
   std::size_t n{}, matrix{}, elements{};
   unsigned spins{}, history{};
   std::array<std::size_t, 2> occupations{};
-  std::vector<double> orthogonalizer, cold_density;
+  std::vector<double> orthogonalizer, cold_density, host_xc_density, host_xc_alpha, host_xc_beta,
+      host_xc_potential;
   GridSpec grid_spec;
+  CudaXcLayout xc_layout;
   CudaKsResources resource;
   CudaKsTransfers movement;
   void *arena{}, *xc_arena{};
@@ -187,7 +195,12 @@ struct CudaKsPlan::Impl : KsStateStorage {
 
   Impl(const scf::PreparedFockPlan& plan, const AoBasis& basis, const MolecularGrid& grid,
        const scf::ScfOptions& control, std::uint32_t functional, std::size_t tile)
-      : provider(plan), options(control), grid_spec(grid.spec()), functional(functional) {
+      : provider(plan),
+        basis(basis),
+        grid(grid),
+        options(control),
+        grid_spec(grid.spec()),
+        functional(functional) {
     if (functional > 2U) throw std::invalid_argument("unknown CUDA KS semilocal functional");
     const auto& strategy = provider.strategy();
     scf::validate_resolved_fock_build(strategy);
@@ -240,21 +253,34 @@ struct CudaKsPlan::Impl : KsStateStorage {
     current_device();
     orthogonalizer = scf::reference::symmetric_orthogonalizer(provider.one_electron().overlap, n);
     cold_density = seed(nullptr);
+    xc_layout = cuda_xc_layout(basis, grid, functional, spins == 2, tile);
+    const bool host_unfused =
+        options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::HostUnfused;
+    if (host_unfused) {
+      host_xc_density.resize(elements);
+      host_xc_potential.resize(elements);
+      if (spins == 2) {
+        host_xc_alpha.resize(matrix);
+        host_xc_beta.resize(matrix);
+      }
+    }
     resource.state_device_bytes = partition(n, spins, history, nullptr);
-    resource.xc_device_bytes =
-        cuda_xc_layout(basis, grid, functional, spins == 2, tile).device_bytes;
+    resource.xc_device_bytes = host_unfused ? 0 : xc_layout.device_bytes;
     resource.provider_device_bytes = provider.diagnostic().device_bytes;
     const auto diagnostic_iterations =
         mixed_j ? sum(product(options.max_iterations, 2U), kMaximumFinalCorrections)
                 : options.max_iterations;
     output.dft_diagnostic.history.reserve(diagnostic_iterations);
     resource.retained_host_numeric_bytes =
-        (orthogonalizer.capacity() + cold_density.capacity()) * sizeof(double) +
+        (orthogonalizer.capacity() + cold_density.capacity() + host_xc_density.capacity() +
+         host_xc_alpha.capacity() + host_xc_beta.capacity() + host_xc_potential.capacity()) *
+            sizeof(double) +
         output.dft_diagnostic.history.capacity() * sizeof(ScfIteration);
     try {
       check(runtime::resource_cuda_malloc(&arena, resource.state_device_bytes));
       partition(n, spins, history, arena);
-      check(runtime::resource_cuda_malloc(&xc_arena, resource.xc_device_bytes));
+      if (resource.xc_device_bytes)
+        check(runtime::resource_cuda_malloc(&xc_arena, resource.xc_device_bytes));
       check(cudaMemsetAsync(arena, 0, resource.state_device_bytes, stream));
       const auto upload = [&](void* destination, const void* source, std::size_t bytes) {
         check(cudaMemcpyAsync(destination, source, bytes, cudaMemcpyHostToDevice, stream));
@@ -273,9 +299,11 @@ struct CudaKsPlan::Impl : KsStateStorage {
       const std::uint8_t one = 1;
       upload(final_spin_enabled, all_spins, spins * sizeof(std::uint8_t));
       upload(final_enabled, &one, sizeof(one));
-      // XC setup drains this same stream, including the small stack inputs.
-      xc = std::make_unique<CudaXcPlan>(basis, grid, functional, spins == 2, tile, xc_arena,
-                                        resource.xc_device_bytes, stream);
+      if (!host_unfused) {
+        // XC setup drains this same stream, including the small stack inputs.
+        xc = std::make_unique<CudaXcPlan>(basis, grid, functional, spins == 2, tile, xc_arena,
+                                          resource.xc_device_bytes, stream);
+      }
     } catch (...) {
       cleanup();
       throw;
@@ -322,9 +350,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
     output = {};
     output.dft_diagnostic.history = std::move(retained_history);
     output.dft_diagnostic.occupations = occupations;
-    output.dft_diagnostic.grid_points = xc->layout().npoint;
-    output.dft_diagnostic.tile_points = xc->layout().tile_points;
-    output.dft_diagnostic.ao_order = xc->layout().functional == 0U ? 0 : 1;
+    output.dft_diagnostic.grid_points = xc_layout.npoint;
+    output.dft_diagnostic.tile_points = xc_layout.tile_points;
+    output.dft_diagnostic.ao_order = xc_layout.functional == 0U ? 0 : 1;
     output.initial_density_used = input != nullptr || use_warm;
     is_active = false;
     started = true;
@@ -342,8 +370,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
     // direct all-electron RKS. AUTO must stay on the legacy host-controlled
     // path so its FP32 mixed-J stage and independent FP64 refinement cannot be
     // bypassed by an opt-in two-iteration device chunk.
-    device_chunk_mode = !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
-                        configured_chunk_width() == kCudaKsChunkCapacity;
+    device_chunk_mode =
+        options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused &&
+        !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
+        configured_chunk_width() == kCudaKsChunkCapacity;
     try {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
       check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
@@ -550,6 +580,61 @@ struct CudaKsPlan::Impl : KsStateStorage {
   }
   bool finish() { return device_chunk_mode ? finish_device() : finish_legacy(); }
 
+  CudaXcView stage_xc(std::uint64_t next_generation) {
+    if (options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused) {
+      if (!xc) throw std::logic_error("device-fused XC owner is unavailable");
+      xc->enqueue(density, elements, next_generation);
+      return xc->view(next_generation);
+    }
+    const auto bytes = elements * sizeof(double);
+    check(cudaMemcpyAsync(host_xc_density.data(), density, bytes, cudaMemcpyDeviceToHost, stream));
+    check(cudaStreamSynchronize(stream));
+    movement.xc_host_d2h_bytes += bytes;
+    ++movement.xc_host_synchronizations;
+    ++movement.synchronizations;
+
+    std::array<double, 3> totals{};
+    if (spins == 1) {
+      XcIntegral value;
+      if (functional == 0U)
+        value = integrate_lda_xc_pw_rks(basis, grid, host_xc_density, xc_layout.tile_points);
+      else if (functional == 1U)
+        value = integrate_pbe_rks_with_tail(basis, grid, host_xc_density, xc_layout.tile_points);
+      else
+        value = integrate_r2scan_rks(basis, grid, host_xc_density, xc_layout.tile_points);
+      if (value.potential.size() != matrix)
+        throw std::runtime_error("host-unfused RKS XC potential size changed");
+      std::copy(value.potential.begin(), value.potential.end(), host_xc_potential.begin());
+      totals = {value.energy, 0.5 * value.electrons, 0.5 * value.electrons};
+    } else {
+      std::copy_n(host_xc_density.begin(), matrix, host_xc_alpha.begin());
+      std::copy_n(host_xc_density.begin() + matrix, matrix, host_xc_beta.begin());
+      SpinXcIntegral value;
+      if (functional == 0U)
+        value = integrate_lda_xc_pw_uks(basis, grid, host_xc_alpha, host_xc_beta,
+                                        xc_layout.tile_points);
+      else if (functional == 1U)
+        value = integrate_pbe_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
+      else
+        value =
+            integrate_r2scan_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
+      if (value.potential[0].size() != matrix || value.potential[1].size() != matrix)
+        throw std::runtime_error("host-unfused UKS XC potential size changed");
+      std::copy(value.potential[0].begin(), value.potential[0].end(), host_xc_potential.begin());
+      std::copy(value.potential[1].begin(), value.potential[1].end(),
+                host_xc_potential.begin() + matrix);
+      totals = {value.energy, value.electrons[0], value.electrons[1]};
+    }
+
+    const int error = 0;
+    check(cudaMemcpyAsync(tmp1, host_xc_potential.data(), bytes, cudaMemcpyHostToDevice, stream));
+    check(cudaMemcpyAsync(staged_xc_totals, totals.data(), sizeof(totals), cudaMemcpyHostToDevice,
+                          stream));
+    check(cudaMemcpyAsync(staged_xc_error, &error, sizeof(error), cudaMemcpyHostToDevice, stream));
+    movement.xc_host_h2d_bytes += bytes + sizeof(totals) + sizeof(error);
+    return {next_generation, n, spins, tmp1, staged_xc_totals, staged_xc_error, stream};
+  }
+
   void enqueue_legacy() {
     current_device();
     if (!is_active || is_pending) throw std::logic_error("CUDA KS iteration state is not ready");
@@ -569,11 +654,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                                    j, nullptr, nullptr, jk_error, detail);
       check(jk_status, detail);
       mixed_j_executed = mixed_j_executed || pending_mixed_j;
-      xc->enqueue(density, elements, ++generation);
+      const auto potential = stage_xc(++generation);
       pending_generations[0] = generation;
       ++movement.submitted_iterations;
       pending_iterations = 1;
-      const auto potential = xc->view(generation);
       cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, potential.potential, enabled, fock);
       check(cudaGetLastError());
       const auto blocks = static_cast<unsigned>((elements + 127) / 128);
@@ -792,7 +876,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     identity.determinant.model = provider.strategy();
     identity.determinant.occupied = {occupations[0]};
     if (spins == 2) identity.determinant.occupied.push_back(occupations[1]);
-    identity.model = {1, 1, grid_spec, xc->layout().tile_points, functional, spins, device, owner};
+    identity.model = {1, 1, grid_spec, xc_layout.tile_points, functional, spins, device, owner};
     return identity;
   }
 
@@ -1009,9 +1093,11 @@ vibeqc_status CudaKsPlan::read_final_state(const CudaKsFinalStateToken& expected
 const CudaKsResources& CudaKsPlan::resources() const noexcept { return impl_->resource; }
 CudaKsTransfers CudaKsPlan::transfers() const noexcept {
   auto out = impl_->movement;
-  const auto& xc = impl_->xc->transfers();
-  out.setup_h2d_bytes += xc.setup_h2d_bytes;
-  out.synchronizations += xc.synchronizations;
+  if (impl_->xc) {
+    const auto& xc = impl_->xc->transfers();
+    out.setup_h2d_bytes += xc.setup_h2d_bytes;
+    out.synchronizations += xc.synchronizations;
+  }
   return out;
 }
 }  // namespace vibeqc::dft
