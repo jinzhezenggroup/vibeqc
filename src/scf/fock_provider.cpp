@@ -69,11 +69,16 @@ void CpuFockProviderView::validate(const ResolvedFockBuild& strategy) const {
       finite(b.auxiliary_major_values);
     }
     if (strategy.spec.derivative_order) {
-      require(raw.metric_derivative.size() == product(ncoord(), metric) &&
-                  raw.three_center_derivative.size() == product(ncoord(), tensor),
-              "DF Fock provider derivative shape mismatch");
-      finite(raw.metric_derivative);
-      finite(raw.three_center_derivative);
+      const bool materialized = raw.metric_derivative.size() == product(ncoord(), metric) &&
+                                raw.three_center_derivative.size() == product(ncoord(), tensor);
+      const bool weighted = raw.metric_derivative.empty() && raw.three_center_derivative.empty() &&
+                            fitted_->df_gradient_orbital.has_value() &&
+                            fitted_->df_gradient_auxiliary.has_value();
+      require(materialized || weighted, "DF Fock provider derivative shape/source mismatch");
+      if (materialized) {
+        finite(raw.metric_derivative);
+        finite(raw.three_center_derivative);
+      }
     }
   }
 }
@@ -108,9 +113,24 @@ std::vector<double> CpuFockProviderView::derivative(FockBuildSpec spec,
   }
   const JkCoefficients coefficients{spec.coulomb.present ? spec.coulomb.coefficient : 0.0,
                                     spec.exchange.present ? spec.exchange.coefficient : 0.0};
-  if (spec.spin == FockSpin::Restricted)
+  const bool weighted = fitted_->raw.metric_derivative.empty() &&
+                        fitted_->raw.three_center_derivative.empty() &&
+                        fitted_->df_gradient_orbital.has_value() &&
+                        fitted_->df_gradient_auxiliary.has_value();
+  if (spec.spin == FockSpin::Restricted) {
+    if (weighted)
+      return build_density_fitting_rhf_weighted_gradient(
+                 *fitted_->df_gradient_orbital, *fitted_->df_gradient_auxiliary, fitted_->raw,
+                 density, fitted_->metric_relative_threshold, coefficients)
+          .derivative;
     return build_density_fitting_rhf_gradient(fitted_->raw, density,
                                               fitted_->metric_relative_threshold, coefficients)
+        .derivative;
+  }
+  if (weighted)
+    return build_density_fitting_uhf_weighted_gradient(
+               *fitted_->df_gradient_orbital, *fitted_->df_gradient_auxiliary, fitted_->raw,
+               density, beta, fitted_->metric_relative_threshold, coefficients)
         .derivative;
   return build_density_fitting_uhf_gradient(fitted_->raw, density, beta,
                                             fitted_->metric_relative_threshold, coefficients)
