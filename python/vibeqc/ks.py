@@ -154,7 +154,16 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
         )
     grid = options.grid
     if grid is None:
-        grid = GridPolicy(options.grid_accuracy).resolve(method, derivative_order=0)
+        if method in ("r2scan-rks", "r2scan-uks"):
+            # The v2 policy has no qualified meta-GGA profile. Preserve the
+            # existing explicit v1 default rather than assigning a GGA grid.
+            if options.grid_accuracy != "standard":
+                raise NotImplementedError(
+                    "r2SCAN grid accuracy profiles require an explicit GridSpec"
+                )
+            grid = GridSpec()
+        else:
+            grid = GridPolicy(options.grid_accuracy).resolve(method, derivative_order=0)
     result = replace(options, functional=resolved, grid=grid)
     object.__setattr__(result, "_method_ir", method_ir)
     return result
