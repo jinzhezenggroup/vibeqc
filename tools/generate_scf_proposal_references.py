@@ -18,7 +18,7 @@ from tools.generate_validation_references import molecular_data, pyscf_molecule
 from tools.vibeqc_numerics.fixtures import FAMILIES, accuracy_suite
 
 
-def generate(path: typing.Any) -> typing.Any:
+def generate(path: Path) -> dict[str, typing.Any]:
     import pyscf
     from pyscf import scf
     from threadpoolctl import threadpool_limits

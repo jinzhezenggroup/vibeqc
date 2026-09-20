@@ -11,13 +11,15 @@ namespace vibeqc::scf {
 struct DfDerivativeProfile {
   std::size_t minimum_public_weights;
   std::size_t minimum_ordered_primitive_products;
+  std::size_t minimum_packed_response_weights;
 };
 
 constexpr DfDerivativeProfile df_derivative_profile(unsigned architecture) noexcept {
   // Small molecular endpoints lose to shell-launch/metadata overhead. Retain
   // headroom below the measured medium-size wins; these are work thresholds,
   // not AO/rank pairs, molecule fingerprints or GPU marketing names.
-  return architecture == 120 ? DfDerivativeProfile{1U << 18, 1U << 22} : DfDerivativeProfile{0, 0};
+  return architecture == 120 ? DfDerivativeProfile{1U << 18, 1U << 22, 1U << 28}
+                             : DfDerivativeProfile{0, 0, 0};
 }
 
 /** Compare a*b*c with a positive bound without ever forming the product. */
@@ -44,6 +46,23 @@ constexpr bool df_signature_packets_preferred(std::size_t orbital_primitives,
          df_derivative_work_at_least(
              orbital_primitives, orbital_primitives, auxiliary_primitives,
              df_derivative_profile(architecture).minimum_ordered_primitive_products);
+}
+
+/** Promote folded packed occupied-response weights by general work and rank
+ * features, never by a benchmark AO/rank tuple or GPU marketing name.
+ *
+ * The first sm_120 profile deliberately keeps the measured smaller-domain
+ * dense/symmetric default: 2^28 lies above the 384^3 negative/default domain
+ * and below the qualified 768^3 packed-response endpoint.  Rank admission is
+ * expressed as an occupied fraction so nearby RHF shapes can reuse the same
+ * policy.  Correctness, provenance, resident storage and one-term RHF gates
+ * remain with the response owner; unknown architectures stay unpromoted.
+ */
+constexpr bool df_packed_response_preferred(std::size_t nbf, std::size_t naux, std::size_t rank,
+                                            unsigned architecture) noexcept {
+  const auto profile = df_derivative_profile(architecture);
+  return rank > 0 && nbf >= 4 && rank <= nbf / 4 &&
+         df_derivative_work_at_least(nbf, nbf, naux, profile.minimum_packed_response_weights);
 }
 
 }  // namespace vibeqc::scf

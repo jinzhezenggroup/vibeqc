@@ -1,4 +1,4 @@
-# Prepared FP64 TensorIR CUDA plans
+# Prepared typed TensorIR CUDA plans
 
 CG09 (#146) lowers the immutable [TensorIR](tensor_ir.md) into an executable
 CUDA shared library. A prepared executor makes one native call for a complete
@@ -10,8 +10,8 @@ supplied equations and do not implement a complete CCSD/MP2 method.
 | --- | --- |
 | CPU planning | Checked shapes, layouts, lifetimes, reservations and bounded GEMM tiles |
 | Source and compilation | Whole-program CUDA generation through the existing finite NVCC adapter |
-| Baseline execution | Unfused FP64, cuBLAS GEMM/strided-batched GEMM and generated primitive kernels |
-| Candidate execution | Producer/consumer layouts, view elimination, ordered elementwise fusion, smaller panels and root recomputation |
+| Baseline execution | Unfused strict FP64, cuBLAS GEMM/strided-batched GEMM and generated primitive kernels |
+| Candidate execution | Producer/consumer layouts, view elimination, ordered elementwise fusion, smaller panels, root recomputation and opt-in typed precision variants |
 | Selection | Explicit bounded tuning, CPU/baseline parity, resource and complete-endpoint gates |
 | Graph capture | Opt-in fixed-region replay with ordinary fallback |
 | Complete molecular CC solver | Outside this executor |
@@ -46,8 +46,9 @@ with PreparedCuda(plan, artifact, device=0) as prepared:
     print(second.outputs, second.metrics, prepared.graph_status)
 ```
 
-Input arrays must be FP64 NumPy ndarrays of the declared shape. Negative,
-noncontiguous, read-only and overlapping caller layouts are accepted through
+Input arrays must be NumPy ndarrays of the declared shape and declared
+`float32`/`float64` dtype. Negative, noncontiguous, read-only and overlapping
+caller layouts are accepted through
 prepared C-order staging. Missing/wrong inputs, nonfinite values, declared
 symmetry violations, zero division and nonfinite intermediates fail explicitly.
 Unused feeds are allowed. Each named result owns independent host storage,
@@ -195,13 +196,43 @@ Layout selection is rerun whenever admission shrinks packing tiles, so costs and
 panel capacities describe the final schedule. Dense permutations do not enlarge
 arena slots or alter lifetimes; eliminated panels reduce the charged peak.
 
-Plan schema 3 serializes physical descriptors, the layout decision and the
-semantic-traffic record. The separate `plan.layout_identity` can be supplied as
-an exact `layout_identity` workload fact to #459 specialization guards; it must
-not replace scientific, compiler or full-plan identity checks. Existing artifact
-keys and native identity checks already include the complete plan, preventing reuse
-across different layouts.
-Generated JVP/VJP programs use the same pass without new derivative rules.
+Plan schema 4 serializes physical descriptors, the layout decision, the
+semantic-traffic record, and the resolved precision schedule. The separate
+`plan.layout_identity` can be supplied as an exact `layout_identity` workload
+fact to #459 specialization guards; it must not replace scientific, compiler or
+full-plan identity checks. Existing artifact keys and native identity checks
+already include the complete plan, preventing reuse across different layouts or
+precision schedules. Generated JVP/VJP programs use the same pass without new
+derivative rules.
+
+### Opt-in precision schedules
+
+Issue #528 makes precision an explicit typed scheduling dimension rather than a
+global mixed-precision flag. `cast` nodes are materialized SSA boundaries;
+FP64-to-FP32 lowering emits round-to-nearest conversion and FP32-to-FP64
+conversion is explicit. There are no implicit dtype promotions in TensorIR
+arithmetic, and the strict CUDA arithmetic identity remains
+`ieee-rn-no-tf32`.
+
+`PrecisionDirective` records requested storage, compute and accumulation
+dtypes. `lower_precision` converts supported requests into ordinary TensorIR
+DAGs with explicit casts while preserving the external input/output ABI and the
+source-equation identity. The current ordinary-stream lowering requires compute
+and accumulation dtypes to agree. FP32 requests for reductions/contractions or
+sensitive divide/transcendental operations fail closed unless they carry
+qualification provenance; the conservative generated candidate only lowers
+ordinary elementwise/view subgraphs and leaves those boundaries in FP64.
+
+Precision candidates are passed to the existing #508 schedule search and tuner.
+They share the same planning budgets, deduplication, compilation cache, resource
+gates, strict-FP64 reference parity and complete-endpoint promotion evidence.
+No precision candidate is searched unless the caller opts in; the default
+baseline and fallback remain strict FP64. Cast read/write traffic and
+simultaneous source/target storage are recorded in the plan/static cost model,
+and the plan identity includes the resolved precision schedule, strict audit
+dtype and arithmetic mode. Method-level strict refinement/audit remains the
+method controller's responsibility rather than a compiler-side convergence
+shortcut.
 
 This switch remains opt-in. `tune_cuda` includes layout-only and layout/view/fusion
 candidates and still requires parity, resource and complete-endpoint gates before
@@ -443,3 +474,8 @@ unless explicitly enabled by the caller's GPU allocation.
 The [archived CG09 records](../benchmarks/results/tensor-cuda-146/README.md)
 include the retained-provider allocation audit, all candidate samples and the
 measured selection/fallback results for six shape buckets.
+
+Precision-request identity and qualification scope are part of the resolved schedule,
+not the source equation hash. Cast AD uses the declared arithmetic linearization
+rather than the derivative of bit-level rounding; see the
+[precision identity and AD contract](../.agents/notes/implemented/numerics/2026-09-20-tensor-precision-identity-and-ad.md).

@@ -101,14 +101,6 @@ def endpoint(
         )
         < 1e-12
     )
-    if device == "cpu":
-        with pytest.raises(ValueError, match="does not support properties.*forces"):
-            calc.singlepoint(
-                atoms,
-                charge=spin,
-                multiplicity=spin + 1,
-                properties=("energy", "forces"),
-            )
     return {
         "method": method,
         "device": device,

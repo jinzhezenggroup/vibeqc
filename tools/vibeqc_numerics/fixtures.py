@@ -24,7 +24,7 @@ FAMILIES = {
 }
 
 
-def extra_inputs() -> typing.Any:
+def extra_inputs() -> list[dict[str, typing.Any]]:
     """Hold out HF as a molecule and def2-SVP as a complete basis family."""
     originals = {row["name"]: row for row in molecular_inputs()}
     hf = deepcopy(originals["hf-plus-uhf"])
@@ -49,7 +49,7 @@ def extra_inputs() -> typing.Any:
     return [hf, hydrogen]
 
 
-def accuracy_suite() -> typing.Any:
+def accuracy_suite() -> list[dict[str, typing.Any]]:
     """Load only independent molecular references, with their pinned hashes."""
     return [
         r for r in load_fixtures() if r["inputs"]["kind"] == "molecule"

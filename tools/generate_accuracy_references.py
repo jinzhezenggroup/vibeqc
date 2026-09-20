@@ -20,7 +20,7 @@ from tools.vibeqc_validation.fixtures import mathematical_hash, validate_fixture
 from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
-def generate(destination: typing.Any) -> typing.Any:
+def generate(destination: Path) -> dict[str, typing.Any]:
     """Save source/data/library provenance; this function never installs PySCF."""
     import pyscf
     from threadpoolctl import threadpool_info, threadpool_limits
@@ -91,7 +91,7 @@ def generate(destination: typing.Any) -> typing.Any:
     return manifest
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     arguments = parser.parse_args()

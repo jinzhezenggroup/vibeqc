@@ -7,7 +7,6 @@ vectors, never arbitrary sigma triples. This script imports no VibeQC XC code.
 import argparse
 import hashlib
 import json
-import typing
 from itertools import combinations_with_replacement
 from pathlib import Path
 
@@ -32,7 +31,7 @@ CODES = {
 }
 
 
-def reference(code: typing.Any, rho: typing.Any, spin: typing.Any) -> typing.Any:
+def reference(code: str, rho: np.ndarray, spin: int) -> np.ndarray:
     """Convert documented Libxc vxc/fxc order to full feature Hessians."""
     family = libxc.xc_type(code)
     lda = family == "LDA"
@@ -88,7 +87,7 @@ def reference(code: typing.Any, rho: typing.Any, spin: typing.Any) -> typing.Any
     )
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()

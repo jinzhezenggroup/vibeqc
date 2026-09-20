@@ -28,7 +28,9 @@ from tools.vibeqc_validation.fixtures import (
 from tools.vibeqc_validation.schema import block_error, canonical_hash, file_hash
 
 
-def pyscf_molecule(inputs: typing.Any) -> typing.Any:
+def pyscf_molecule(
+    inputs: dict[str, typing.Any],
+) -> tuple[typing.Any, np.ndarray, list[int]]:
     """Preserve per-atom shells and convert libcint Cartesian normalization."""
     from pyscf import gto
 
@@ -58,7 +60,7 @@ def pyscf_molecule(inputs: typing.Any) -> typing.Any:
     return mol, scale, actual
 
 
-def quartet_data(mol: typing.Any, scale: typing.Any) -> typing.Any:
+def quartet_data(mol: typing.Any, scale: np.ndarray) -> dict[str, typing.Any]:
     """Store (ij|kl) and four independent shell-center nuclear derivatives.
 
     libcint ip1 differentiates the electronic coordinate on the first AO:
@@ -83,8 +85,8 @@ def quartet_data(mol: typing.Any, scale: typing.Any) -> typing.Any:
 
 
 def molecular_data(
-    inputs: typing.Any, mol: typing.Any, scale: typing.Any
-) -> typing.Any:
+    inputs: dict[str, typing.Any], mol: typing.Any, scale: np.ndarray
+) -> dict[str, typing.Any]:
     """Save canonical occupied/virtual orbitals and converged independent HF/CC."""
     from pyscf import cc, scf
 
@@ -259,9 +261,9 @@ def _generate(destination: Path, compare: Path | None = None) -> dict:
             def compare_data(
                 a: typing.Any,
                 b: typing.Any,
-                key: typing.Any,
-                errors: typing.Any = errors,
-            ) -> typing.Any:
+                key: str,
+                errors: dict[str, typing.Any] = errors,
+            ) -> None:
                 if isinstance(a, dict):
                     if a.keys() != b.keys():
                         raise ValueError("reference data structure changed")
@@ -312,7 +314,7 @@ def generate(destination: Path, compare: Path | None = None) -> dict:
         return _generate(destination, compare)
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",

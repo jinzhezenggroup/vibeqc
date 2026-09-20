@@ -40,6 +40,7 @@ from .ir import (
     _execution_power_exponent,
     add,
     broadcast,
+    cast,
     constant,
     divide,
     einsum,
@@ -60,6 +61,7 @@ from .ir import (
     transpose,
 )
 from .packing import PackedLayout
+from .precision import derivative_precision_provenance
 from .program import Program
 from .types import Index, IndexSpace, TensorSpec
 
@@ -67,7 +69,7 @@ if typing.TYPE_CHECKING:
     from collections.abc import Mapping
 
 GENERATION_SCHEMA = "vibeqc.tensor.ad_program"
-GENERATION_VERSION = 2
+GENERATION_VERSION = 3
 TANGENT_PREFIX = "d_"
 COTANGENT_PREFIX = "bar_"
 DEFAULT_MAX_ELEMENTS = 1_000_000
@@ -330,6 +332,8 @@ def _jvp_graph(node: Node, operand_tangents: typing.Any) -> Node | None:
     tangent = operand_tangents[0]
     if tangent is None:
         return None
+    if node.op == "cast":
+        return cast(tangent, node.spec.dtype)
     if node.op in TRANSCENDENTALS:
         return _transcendental_partial(node, tangent)
     if node.op == "transpose":
@@ -502,6 +506,8 @@ def _vjp_graph(
     """
     if not any(active):
         return [None] * len(node.inputs)
+    if node.op == "cast":
+        return [cast(bar, node.inputs[0].spec.dtype)]
     if node.op in TRANSCENDENTALS:
         return [_transcendental_partial(node, bar)]
     if node.op == "add":
@@ -695,6 +701,8 @@ def _rebuild_node(node: Node, inputs: typing.Any) -> Node:
                 _coefficient(coefficient) for coefficient in node.attrs["coefficients"]
             ),
         )
+    if node.op == "cast":
+        return cast(inputs[0], node.spec.dtype)
     if node.op == "multiply":
         return multiply(*inputs)
     if node.op == "divide":
@@ -974,6 +982,7 @@ def linearize(
             "output_names": sorted(selected_outputs),
             "packed_inputs": program.provenance.get("packed_inputs", {}),
             "generation": "demand-driven",
+            **derivative_precision_provenance(program),
         },
     )
     return JVPProgram(
@@ -1084,6 +1093,7 @@ def transpose_program(
             "input_names": sorted(selected_inputs),
             "packed_inputs": program.provenance.get("packed_inputs", {}),
             "generation": "demand-driven",
+            **derivative_precision_provenance(program),
         },
     )
     return VJPProgram(

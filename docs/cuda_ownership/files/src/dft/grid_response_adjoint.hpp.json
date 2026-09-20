@@ -1,7 +1,0 @@
-{
-  "path": "src/dft/grid_response_adjoint.hpp",
-  "role": "scientific",
-  "subsystem": "xc",
-  "regions": [],
-  "reason": "Shared CPU/CUDA two-pass normalized Becke adjoint traversal and exact-zero branch composition. Local norm/ratio/log/Becke partials remain Graph-generated. Conservatively counted as maintained scientific glue."
-}

@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "methods/dft_method.hpp"
+#include "methods/generated_method_manifest.hpp"
 #include "methods/hf_method.hpp"
 #include "methods/method.hpp"
 #include "methods/mp2_method.hpp"
@@ -29,57 +30,59 @@ struct MethodDefinition {
   PrepareBatch prepare_batch{};
 };
 
-constexpr vibeqc_property_flags kEnergyAndForces = VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES;
+constexpr MethodDefinition register_method(const generated::MethodManifestEntry& manifest) {
+  ValidateSystem validate = nullptr;
+  PrepareCalculation prepare = nullptr;
+  PrepareBatch batch = nullptr;
+  switch (manifest.provider) {
+    case generated::PublicProvider::Hf:
+      validate = detail::validate_hf_system;
+      prepare = detail::prepare_hf_calculation;
+      batch = detail::prepare_hf_batch;
+      break;
+    case generated::PublicProvider::Mp2:
+      validate = detail::validate_mp2_system;
+      prepare = detail::prepare_mp2_calculation;
+      batch = detail::prepare_mp2_batch;
+      break;
+    case generated::PublicProvider::Dft:
+      validate = detail::validate_dft_system;
+      prepare = detail::prepare_dft_calculation;
+      batch = detail::prepare_dft_batch;
+      break;
+    case generated::PublicProvider::Reserved:
+      break;
+  }
 
-constexpr MethodDefinition register_method(std::string_view name, vibeqc_method method,
-                                           vibeqc_method_family family,
-                                           vibeqc_property_flags properties,
-                                           ValidateSystem validate, PrepareCalculation prepare,
-                                           PrepareBatch batch,
-                                           std::string_view unavailable_reason = {}) {
   const bool executable = validate != nullptr && prepare != nullptr;
+  const bool supports_batch = executable && batch != nullptr;
+  if (manifest.supports_batch != supports_batch)
+    throw "public method manifest batch capability disagrees with native provider";
+  if ((manifest.properties != 0) != executable)
+    throw "public method manifest properties disagree with native provider";
   const auto availability = executable ? runtime::ProviderAvailability::Executable
                                        : runtime::ProviderAvailability::Reserved;
-  const auto registered_properties = executable ? properties : vibeqc_property_flags{};
-  return {{{"methods", name, 1, runtime::ProviderBackend::Any},
-           {method, family, registered_properties, executable, executable && batch != nullptr},
+  const auto registered_properties = executable ? manifest.properties : vibeqc_property_flags{};
+  return {{{"methods", manifest.name, 1, runtime::ProviderBackend::Any},
+           {manifest.method, manifest.family, registered_properties, executable, supports_batch},
            availability,
            runtime::ProviderFallback::None,
            runtime::ProviderRequirement::PreparedState,
-           unavailable_reason,
-           "src/methods/registry.cpp"},
+           manifest.unavailable_reason,
+           "methods/public_methods.json"},
           validate,
           prepare,
           batch};
 }
 
-constexpr std::array<MethodDefinition, 9> kMethods{{
-    register_method("mp2", VIBEQC_METHOD_MP2, VIBEQC_METHOD_FAMILY_PERTURBATION, kEnergyAndForces,
-                    detail::validate_mp2_system, detail::prepare_mp2_calculation,
-                    detail::prepare_mp2_batch),
-    register_method("rhf", VIBEQC_METHOD_RHF, VIBEQC_METHOD_FAMILY_HARTREE_FOCK, kEnergyAndForces,
-                    detail::validate_hf_system, detail::prepare_hf_calculation,
-                    detail::prepare_hf_batch),
-    register_method("uhf", VIBEQC_METHOD_UHF, VIBEQC_METHOD_FAMILY_HARTREE_FOCK, kEnergyAndForces,
-                    detail::validate_hf_system, detail::prepare_hf_calculation,
-                    detail::prepare_hf_batch),
-    register_method("wb97m-v", VIBEQC_METHOD_WB97M_V, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, 0,
-                    nullptr, nullptr, nullptr, "method has no executable provider registration"),
-    register_method("rccsd(t)", VIBEQC_METHOD_RCCSD_T, VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER, 0,
-                    nullptr, nullptr, nullptr, "method has no executable provider registration"),
-    register_method("lda-rks", VIBEQC_METHOD_LDA_RKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
-                    VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
-                    detail::prepare_dft_calculation, detail::prepare_dft_batch),
-    register_method("pbe-rks", VIBEQC_METHOD_PBE_RKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
-                    VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
-                    detail::prepare_dft_calculation, detail::prepare_dft_batch),
-    register_method("lda-uks", VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
-                    VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
-                    detail::prepare_dft_calculation, detail::prepare_dft_batch),
-    register_method("pbe-uks", VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
-                    VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
-                    detail::prepare_dft_calculation, detail::prepare_dft_batch),
-}};
+constexpr auto build_methods() {
+  std::array<MethodDefinition, generated::kMethodManifest.size()> result{};
+  for (std::size_t i = 0; i < generated::kMethodManifest.size(); ++i)
+    result[i] = register_method(generated::kMethodManifest[i]);
+  return result;
+}
+
+constexpr auto kMethods = build_methods();
 
 const MethodDefinition* find_definition(vibeqc_method method) noexcept {
   const auto found = std::find_if(

@@ -53,7 +53,20 @@ GROUND_TRUTH = {
 }
 
 
-def _triples_feeds(name: typing.Any) -> typing.Any:
+def _triples_feeds(
+    name: str,
+) -> tuple[
+    int,
+    int,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+]:
     with np.load(ENDPOINTS / f"{name}.npz", allow_pickle=False) as data:
         eps = data["eps"]
         occ = data["occ"]
@@ -79,12 +92,12 @@ def _triples_feeds(name: typing.Any) -> typing.Any:
     )
 
 
-def _mo_fock(name: typing.Any) -> typing.Any:
+def _mo_fock(name: str) -> np.ndarray:
     with np.load(ENDPOINTS / f"{name}.npz", allow_pickle=False) as data:
         return data["C"].T @ data["F"] @ data["C"]
 
 
-def _endpoint_inputs(name: typing.Any) -> typing.Any:
+def _endpoint_inputs(name: str) -> dict[str, typing.Any]:
     """Geometry/basis inputs recorded by generate_cc_endpoints.py."""
     return json.loads((ENDPOINTS / f"{name}.json").read_text())["inputs"]
 
@@ -104,7 +117,7 @@ def _solve_rhf(mol: typing.Any) -> typing.Any:
     return mf
 
 
-def _inputs_hash(name: typing.Any) -> typing.Any:
+def _inputs_hash(name: str) -> str:
     _nocc, _nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = _triples_feeds(name)
     return array_hash(
         {
@@ -120,9 +133,7 @@ def _inputs_hash(name: typing.Any) -> typing.Any:
     )
 
 
-def _check_energies(
-    name: typing.Any, et_numpy: typing.Any, et_pyscf: typing.Any, truth: typing.Any
-) -> typing.Any:
+def _check_energies(name: str, et_numpy: float, et_pyscf: float, truth: float) -> None:
     """Enforce both the independent agreement gate and the stored target.
 
     Two results on opposite sides of the target can each satisfy its
@@ -140,7 +151,7 @@ def _check_energies(
         )
 
 
-def generate(output: typing.Any, compare: typing.Any = None) -> typing.Any:
+def generate(output: Path, compare: Path | None = None) -> dict[str, typing.Any]:
     import pyscf
     from threadpoolctl import threadpool_limits
 
@@ -239,7 +250,7 @@ def generate(output: typing.Any, compare: typing.Any = None) -> typing.Any:
     return result
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--compare", type=Path)

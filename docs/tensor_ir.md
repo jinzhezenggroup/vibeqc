@@ -51,8 +51,10 @@ be differentiable. Result differentiability propagates from operands; this
 marks future AD inputs without claiming implemented derivatives.
 
 Representations are `general`, `restricted_spatial`, and `spin_orbital`.
-Operands of an operation must agree on representation and dtype. In particular,
-restricted spatial amplitudes obey the simultaneous exchange
+Operands of an arithmetic operation must agree on representation and dtype.
+Cross-dtype boundaries are represented only by the explicit `cast` primitive;
+there is no implicit promotion. In particular, restricted spatial amplitudes
+obey the simultaneous exchange
 
 ```text
 t[i,j,a,b] = t[j,i,b,a]             Symmetry((1,0,3,2), +1)
@@ -121,7 +123,8 @@ division by zero, and arithmetic overflow fail explicitly.
 | Factory | Semantics and constraints |
 | --- | --- |
 | `constant(values, spec=None)` | Exact scalar or flattened C-order literals; default is an FP64 scalar |
-| `add(*values, coefficients=...)` | Ordered rational-scaled sum; equal domains, no implicit broadcast |
+| `cast(value, dtype)` | Explicit real FP32/FP64 storage/compute boundary; logical axes, representation, symmetry and differentiability are preserved |
+| `add(*values, coefficients=...)` | Ordered rational-scaled sum; equal domains, no implicit broadcast or dtype promotion |
 | `multiply(a,b)`, `divide(a,b)` | Elementwise operations on equal domains |
 | `einsum("...->...", *values, coefficient=...)` | Explicit-output alphabetic labels; traces/repeated input labels and scalar terms supported; literal ellipses unsupported |
 | `transpose(value, axes)` | Full permutation of logical axes |
@@ -138,6 +141,24 @@ checked signed-64-bit contract before allocation. `execute(max_bytes=...)`
 defaults to 256 MiB and bounds logical retained arrays plus returned snapshots.
 It does not claim a bound on NumPy internal scratch, Python objects, or process
 RSS. CUDA allocation planning has its own explicit [budget scope](tensor_cuda.md).
+
+### Precision scheduling
+
+Issue #528 adds `PrecisionDirective(storage_dtype, compute_dtype,
+accumulation_dtype)` and `lower_precision`. The directive is a scheduling
+request, while the lowered program remains an ordinary typed TensorIR DAG whose
+precision changes are visible as `cast` nodes. `describe_precision` produces a
+stable `PrecisionSchedule` identity containing every live value's resolved
+dtype, sensitivity class, cast traffic, strict-audit dtype and arithmetic mode.
+
+The default schedule remains strict FP64. `conservative_precision_variants`
+only creates an opt-in FP32 candidate for ordinary elementwise/view subgraphs;
+reductions/contractions and numerically sensitive operations stay FP64.
+Requests for separate compute/accumulation dtype are currently rejected rather
+than approximated, and low-precision sensitive/reduction requests require
+qualification provenance. Generated JVP/VJP programs preserve explicit cast
+boundaries, so derivative execution cannot silently recover a different
+precision policy.
 
 Compile-time coefficients accept integers, `Fraction`, or exact rational
 strings such as `"1/4"`. Float coefficients are rejected. Serialization stores
@@ -319,3 +340,8 @@ commit. The #151 CUDA records in
 [`benchmarks/results/tensor-ad-151`](../benchmarks/results/tensor-ad-151/README.md)
 record JVP/VJP numerical, dot-test, recomputation, plan and device-delta
 evidence; they explicitly leave production promotion `not-run`.
+
+Precision-request identity and qualification scope are part of the resolved schedule,
+not the source equation hash. Cast AD uses the declared arithmetic linearization
+rather than the derivative of bit-level rounding; see the
+[precision identity and AD contract](../.agents/notes/implemented/numerics/2026-09-20-tensor-precision-identity-and-ad.md).
