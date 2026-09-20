@@ -149,8 +149,8 @@ def independent_converged_grid_reference(
         spin=basis.multiplicity - 1,
         verbose=0,
     )
-    mf = dft.RKS(mol)
-    mf.xc = "PBE" if method == "pbe-rks" else "LDA_X,LDA_C_PW"
+    mf = dft.UKS(mol) if method.endswith("-uks") else dft.RKS(mol)
+    mf.xc = "PBE" if method.startswith("pbe-") else "LDA_X,LDA_C_PW"
     # This deliberately does not consume VibeQC GridSpec/points/weights.  The
     # independent oracle uses PySCF's Treutler radial mapping, Lebedev angular
     # rule and Becke partition at a substantially denser unpruned resolution.
@@ -206,6 +206,51 @@ def test_production_grid_converges_against_independent_dense_quadrature(
         # Initial conservative qualification bounds are tightened to measured
         # errors after the independent qz CPU campaign below exercises all four
         # method/profile combinations.
+        assert energy_error < 5e-4
+        assert gradient_error < 5e-3
+
+
+@pytest.mark.parametrize("accuracy", ["standard", "tight"])
+@pytest.mark.parametrize("method", ["lda-uks", "pbe-uks"])
+def test_production_grid_open_shell_converges_against_independent_dense_quadrature(
+    method: typing.Any, accuracy: typing.Any, record_property: typing.Any
+) -> None:
+    """Production v2 unrestricted profiles converge against an independent dense grid."""
+    pytest.importorskip("pyscf", reason="independent dense-grid reference requires PySCF")
+    charge, multiplicity = 1, 2
+    calc = production_calculator(method, grid_accuracy=accuracy, max_iterations=200)
+    with (
+        calc.prepare_batch(
+            [ATOMS], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
+        NativeAO(ATOMS, charge=charge, multiplicity=multiplicity) as basis,
+    ):
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        expected = GridPolicy(accuracy).resolve(method)
+        assert state._source.grid_spec == expected
+        assert state.density.shape[0] == 2
+        result = complete_rks_gradient_diagnostic(
+            state,
+            basis,
+            cache=f".cache/production-grid-convergence-{method}-{accuracy}",
+            execution="native",
+            tile_points=137,
+            integral_terms=17,
+            primitive_tile=29,
+        )
+        reference_energy, reference_gradient, reference_points = (
+            independent_converged_grid_reference(basis, method)
+        )
+        production_points = len(state.grid.points)
+        energy_error = abs(energy - reference_energy)
+        gradient_error = float(np.max(np.abs(result.gradient - reference_gradient)))
+        record_property("grid_accuracy", accuracy)
+        record_property("production_points", production_points)
+        record_property("independent_reference_points", reference_points)
+        record_property("energy_error_hartree", energy_error)
+        record_property("gradient_error_hartree_per_bohr", gradient_error)
+        assert production_points < reference_points
         assert energy_error < 5e-4
         assert gradient_error < 5e-3
 

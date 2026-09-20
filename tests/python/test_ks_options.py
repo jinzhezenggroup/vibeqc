@@ -163,7 +163,16 @@ def test_production_grid_radii_match_pinned_provenance_and_unknowns_fail_closed(
 
 def test_grid_policy_capability_boundaries_fail_closed() -> None:
     policy = GridPolicy()
-    for method in ("r2scan-rks", "scan-rks", "vv10-rks", "pbe0-rks"):
+    for method in (
+        "r2scan-rks",
+        "r2scan-uks",
+        "scan-rks",
+        "scan-uks",
+        "vv10-rks",
+        "vv10-uks",
+        "pbe0-rks",
+        "pbe0-uks",
+    ):
         with pytest.raises(NotImplementedError, match="qualified only"):
             policy.resolve(method)
     with pytest.raises(NotImplementedError, match="orders 0 and 1"):
