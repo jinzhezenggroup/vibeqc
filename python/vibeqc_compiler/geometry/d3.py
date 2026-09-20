@@ -594,13 +594,16 @@ def _switch(
     )
     if spec.pair_switch_width == 0.0:
         return inner
+    pair_cutoff = spec.pair_cutoff
+    if pair_cutoff is None:
+        raise ValueError("D3 pair switch requires a finite pair cutoff")
     switching = _pair_constant(
         context,
         (1.0 if region == "switch" else 0.0 for region in state.energy_regions),
     )
     cutoff = _pair_constant(
         context,
-        (spec.pair_cutoff,) * pair_count,
+        (pair_cutoff,) * pair_count,
     )
     width = _pair_constant(
         context,
