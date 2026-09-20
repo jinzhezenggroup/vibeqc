@@ -419,7 +419,9 @@ class PreparedStationaryCudaExecution:
             primitive_tile,
             integral_terms,
             grid_plan.allocation_bytes,
-            tuple((name, value.identity) for name, value in sorted(tensor_plans.items())),
+            tuple(
+                (name, value.identity) for name, value in sorted(tensor_plans.items())
+            ),
         )
         if self._key is not None:
             if key != self._key:
@@ -444,7 +446,9 @@ class PreparedStationaryCudaExecution:
         self.device_peak_bound = grid_plan.peak_bytes + source_bytes + tensor_peak
         if self.device_peak_bound > max_device_bytes:
             raise ValueError("prepared stationary CUDA device budget exceeded")
-        retained_host = host_bound + sum(value.host_bytes for value in tensor_plans.values())
+        retained_host = host_bound + sum(
+            value.host_bytes for value in tensor_plans.values()
+        )
         if retained_host > max_host_bytes:
             raise ValueError("prepared stationary CUDA host budget exceeded")
         self.host_bound = retained_host
@@ -489,7 +493,9 @@ class PreparedStationaryCudaExecution:
                 )
             )
             tensors = {
-                name: stack.enter_context(PreparedCuda(value, tensor_artifacts[name], device=device))
+                name: stack.enter_context(
+                    PreparedCuda(value, tensor_artifacts[name], device=device)
+                )
                 for name, value in tensor_plans.items()
             }
         except Exception:
@@ -576,7 +582,14 @@ def _metric_delta(after: typing.Any, before: typing.Any) -> typing.Any:
 
 def _grid_metric_delta(after: typing.Any, before: typing.Any) -> typing.Any:
     result = dict(after)
-    for name in ("device_ms", "input_ms", "output_ms", "packing_ms", "library_ms", "kernel_ms"):
+    for name in (
+        "device_ms",
+        "input_ms",
+        "output_ms",
+        "packing_ms",
+        "library_ms",
+        "kernel_ms",
+    ):
         result[name] = after[name] - before[name]
     return result
 
@@ -958,7 +971,9 @@ def _complete_rks_cuda_gradient_diagnostic(
             for k, name in enumerate(("ecp_local", "ecp_nonlocal")):
                 tp = tensor_plans[name]
                 if prepared is None:
-                    peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
+                    peak = max(
+                        peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes
+                    )
                 feeds = {
                     "density_left": np.ascontiguousarray(
                         state.density.reshape(plan.spin_blocks, n * n)

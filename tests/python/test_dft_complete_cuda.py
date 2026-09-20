@@ -573,8 +573,7 @@ def test_public_cuda_prepared_force_replay_retains_execution(
                 id(owner.sources),
                 id(owner.grid),
                 tuple(
-                    (name, id(value))
-                    for name, value in sorted(owner.tensors.items())
+                    (name, id(value)) for name, value in sorted(owner.tensors.items())
                 ),
             )
 
