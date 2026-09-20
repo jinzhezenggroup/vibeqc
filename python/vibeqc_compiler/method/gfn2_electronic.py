@@ -28,9 +28,7 @@ from vibeqc_compiler.tensor import (
 from .xtb import GFN2_PARAMETER_SET, XtbMethodIR, resolve_xtb_method
 
 GFN2_ELECTRONIC_VERSION = "gfn2-fixed-state-electronic-ir-v1"
-GFN2_ELECTRONIC_REFERENCE_REVISION = (
-    "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
-)
+GFN2_ELECTRONIC_REFERENCE_REVISION = "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
 GFN2_DIPOLE_COMPONENTS = ("x", "y", "z")
 GFN2_QUADRUPOLE_COMPONENTS = ("xx", "xy", "yy", "xz", "yz", "zz")
 
@@ -80,9 +78,13 @@ class Gfn2ElectronicTopology:
                 shell = shell_map[orbital]
                 atom = atom_map[orbital]
                 if type(shell) is not int or not shell_begin <= shell < shell_end:
-                    raise ValueError("GFN2 orbital-to-shell map crosses a system boundary")
+                    raise ValueError(
+                        "GFN2 orbital-to-shell map crosses a system boundary"
+                    )
                 if type(atom) is not int or not atom_begin <= atom < atom_end:
-                    raise ValueError("GFN2 orbital-to-atom map crosses a system boundary")
+                    raise ValueError(
+                        "GFN2 orbital-to-atom map crosses a system boundary"
+                    )
 
     @property
     def system_count(self) -> int:
@@ -306,9 +308,13 @@ class Gfn2ElectronicProgram:
         if self.method.model_flavor != "gfn2":
             raise ValueError("GFN2 electronic program requires model_flavor='gfn2'")
         if self.method.parameter_set.identity != GFN2_PARAMETER_SET.identity:
-            raise ValueError("GFN2 electronic program requires the audited parameter set")
+            raise ValueError(
+                "GFN2 electronic program requires the audited parameter set"
+            )
         if self.reference not in ("restricted", "unrestricted"):
-            raise ValueError("GFN2 electronic reference must be restricted or unrestricted")
+            raise ValueError(
+                "GFN2 electronic reference must be restricted or unrestricted"
+            )
         if self.version != GFN2_ELECTRONIC_VERSION:
             raise ValueError("unsupported GFN2 electronic compiler version")
 
@@ -332,9 +338,7 @@ class Gfn2ElectronicProgram:
             )
         if output is None:
             output = (
-                "hamiltonian"
-                if self.reference == "restricted"
-                else "hamiltonian_alpha"
+                "hamiltonian" if self.reference == "restricted" else "hamiltonian_alpha"
             )
         if output not in self.program.outputs:
             raise ValueError(f"unknown GFN2 Hamiltonian output: {output}")
