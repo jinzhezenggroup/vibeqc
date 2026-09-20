@@ -55,6 +55,7 @@ class CudaTriplesResponseResult:
     nvir: int
     vir_chunk_size: int
     peak_device_bytes: int
+    input_identity: str
     source_identity: str
     peak_bytes_per_tile: tuple[int, ...] = ()
     artifact_keys: tuple[str, ...] = ()
@@ -226,6 +227,7 @@ class CudaTriplesResponseTiles:
                     runtime_device = dict(resident.device)
 
         timing["total_s"] = time.perf_counter() - total_start
+        input_identity = _feed_hash(values)
         source_identity = canonical_hash(
             {
                 "backend": self.backend,
@@ -233,6 +235,7 @@ class CudaTriplesResponseTiles:
                 "nvir": nvir,
                 "vir_chunk_size": self.config.vir_chunk_size,
                 "inputs": selected,
+                "input_identity": input_identity,
                 "primal_hashes": primal_hashes,
                 "reverse_hashes": reverse_hashes,
                 "sources": _feed_hash(totals),
@@ -245,6 +248,7 @@ class CudaTriplesResponseTiles:
             nvir=nvir,
             vir_chunk_size=self.config.vir_chunk_size,
             peak_device_bytes=max(peak_bytes_per_tile, default=0),
+            input_identity=input_identity,
             peak_bytes_per_tile=tuple(peak_bytes_per_tile),
             artifact_keys=tuple(artifact_keys),
             runtime_device=runtime_device,
@@ -284,10 +288,26 @@ def solve_corrected_lambda_cuda(
     bound = prepared.bound
     prepared._assert_current(reference_identity)
     baseline_response = BoundCCSDResponse(bound, baseline)
-    nvir = bound.reference.nmo - bound.reference.nocc
-    if triples_response.nocc != bound.reference.nocc or triples_response.nvir != nvir:
+    nocc = bound.reference.nocc
+    nvir = bound.reference.nmo - nocc
+    if triples_response.nocc != nocc or triples_response.nvir != nvir:
         raise ResponseCompatibilityError(
             "CUDA triples response shape belongs to another CC state"
+        )
+    eps = bound.reference.orbital_energies
+    expected_inputs = {
+        "ovvv": bound.feeds["ovvv"],
+        "ovoo": bound.feeds["ovoo"],
+        "ovov": bound.feeds["ovov"],
+        "fov": bound.feeds["fov"],
+        "t1": bound.feeds["t1"],
+        "t2": bound.feeds["t2"],
+        "eps_o": eps[:nocc],
+        "eps_v": eps[nocc:],
+    }
+    if triples_response.input_identity != _feed_hash(expected_inputs):
+        raise ResponseCompatibilityError(
+            "CUDA triples response inputs belong to another CC state"
         )
 
     dense_sources = {
