@@ -84,12 +84,12 @@ def _source_identity_paths(source: Path) -> tuple[Path, ...]:
     recursive = payload.get("recursive_groups")
     files = payload.get("files")
     if not isinstance(recursive, list) or not isinstance(files, list):
-        raise ValueError("source identity manifest requires recursive_groups and files")
+        raise TypeError("source identity manifest requires recursive_groups and files")
 
     paths = {manifest}
     for index, group in enumerate(recursive):
         if not isinstance(group, dict):
-            raise ValueError(f"recursive_groups[{index}] must be an object")
+            raise TypeError(f"recursive_groups[{index}] must be an object")
         root = _identity_relative_path(
             group.get("root"), field=f"recursive_groups[{index}].root"
         )
