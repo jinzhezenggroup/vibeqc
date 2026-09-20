@@ -4,6 +4,8 @@ The scientific equations remain owned by lambda_equations. This module prepares
 shared and expanded primal/RHS/transpose TensorIR programs under one explicit
 host/device resource plan, then reuses #179's host GMRES control. It does not
 claim a device-resident Krylov loop or a public force capability.
+
+Rationale: .agents/notes/implemented/architecture/2026-09-20-generated-cuda-lambda-owner.md
 """
 
 from __future__ import annotations
