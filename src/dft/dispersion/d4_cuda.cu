@@ -132,11 +132,28 @@ __device__ void compute_weights_atom(int atom, const std::int32_t* atomic_number
   }
 }
 
+// Offsets describe shared storage, so a malformed partition is a batch error.
+// Validate once before any per-member workspace access, not only at neighbors.
+__global__ void validate_partition_kernel(D4CudaBatch batch, D4CudaResult result) {
+  __shared__ int invalid;
+  if (threadIdx.x == 0)
+    invalid = batch.offsets[0] != 0u || batch.offsets[batch.systems] != batch.total_atoms;
+  __syncthreads();
+  for (std::size_t system = threadIdx.x; system < batch.systems; system += blockDim.x)
+    if (batch.offsets[system] > batch.offsets[system + 1] ||
+        batch.offsets[system + 1] > batch.total_atoms)
+      atomicExch(&invalid, 1);
+  __syncthreads();
+  if (invalid)
+    for (std::size_t system = threadIdx.x; system < batch.systems; system += blockDim.x)
+      result.statuses[system] = D4Status::invalid_argument;
+}
+
 __global__ void validate_and_coordination_kernel(D4CudaBatch batch, D4Parameters parameters,
                                                  D4Tables tables, double* workspace,
                                                  D4CudaResult result) {
   const std::uint32_t system = blockIdx.x;
-  if (system >= batch.systems) return;
+  if (system >= batch.systems || result.statuses[system] != D4Status::success) return;
   __shared__ std::uint32_t begin;
   __shared__ std::uint32_t end;
   __shared__ int run;
@@ -384,6 +401,11 @@ __global__ void coordination_response_kernel(D4CudaBatch batch, D4Parameters par
 __global__ void finalize_kernel(D4CudaBatch batch, double* workspace, D4CudaResult result) {
   const std::uint32_t system = blockIdx.x;
   if (system >= batch.systems) return;
+  // Admission errors precede every numerical phase. Their outputs are already
+  // zero; never use an invalid interval to clear another member's storage.
+  if (result.statuses[system] == D4Status::invalid_argument ||
+      result.statuses[system] == D4Status::unsupported)
+    return;
   const std::uint32_t begin = batch.offsets[system];
   const std::uint32_t end = batch.offsets[system + 1];
   if (begin > end || end > batch.total_atoms) {
@@ -472,6 +494,8 @@ cudaError_t launch_d4_fixed_charge_batched_cuda(const D4CudaBatch& batch,
     if (error != cudaSuccess) return error;
   }
 
+  validate_partition_kernel<<<1, kThreadsPerBlock, 0, stream>>>(batch, result);
+  if ((error = launch_status()) != cudaSuccess) return error;
   validate_and_coordination_kernel<<<batch.systems, kThreadsPerBlock, 0, stream>>>(
       batch, parameters, tables, workspace, result);
   if ((error = launch_status()) != cudaSuccess) return error;

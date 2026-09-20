@@ -32,7 +32,8 @@ inline constexpr std::size_t d4_cuda_workspace_elements(std::size_t total_atoms)
 
 // Launch a bounded, block-cooperative fixed-charge D4 batch. One CUDA block owns
 // each ragged molecule while its lanes share pair/triple work. Failed/inactive
-// members publish zero outputs and never poison successful peers.
+// members publish zero outputs and never poison successful peers. A malformed
+// shared offset partition invalidates the whole batch before member work.
 cudaError_t launch_d4_fixed_charge_batched_cuda(const D4CudaBatch& batch,
                                                 const D4Parameters& parameters, D4Tables tables,
                                                 double* workspace, std::size_t workspace_elements,

@@ -180,6 +180,44 @@ struct DeviceFixture {
   }
 };
 
+int run_invalid_partitions_and_recovery() {
+  DeviceFixture fixture;
+  const auto original = fixture.host.offsets;
+  std::vector<std::vector<std::uint32_t>> cases(4, original);
+  cases[0][2] = 1;  // Backward interval followed by an overlapping valid interval.
+  cases[1][0] = 1;
+  --cases[2].back();
+  cases[3][2] = static_cast<std::uint32_t>(fixture.host.z.size() + 1);
+  for (const auto& offsets : cases) {
+    fixture.offsets.upload(offsets.data(), offsets.size());
+    const D4CudaBatch batch{static_cast<std::uint32_t>(fixture.host.molecules.size()),
+                            static_cast<std::uint32_t>(fixture.host.z.size()),
+                            fixture.offsets.ptr,
+                            fixture.z.ptr,
+                            fixture.xyz.ptr,
+                            fixture.q.ptr,
+                            nullptr};
+    const D4CudaResult result{fixture.statuses.ptr, fixture.energies.ptr, fixture.gradients.ptr,
+                              fixture.dedq.ptr};
+    checked(launch_d4_fixed_charge_batched_cuda(batch, gfn2_d4_parameters(), fixture.tables(),
+                                                fixture.workspace.ptr, fixture.workspace.count,
+                                                result));
+    checked(cudaDeviceSynchronize());
+    std::vector<D4Status> status(batch.systems);
+    fixture.statuses.download(status.data(), status.size());
+    for (auto value : status)
+      if (value != D4Status::invalid_argument) return 40;
+    for (const auto* buffer : {&fixture.energies, &fixture.gradients, &fixture.dedq}) {
+      std::vector<double> values(buffer->count);
+      buffer->download(values.data(), values.size());
+      for (double value : values)
+        if (value != 0.0) return 41;
+    }
+  }
+  fixture.offsets.upload(original.data(), original.size());
+  return fixture.run(false, false);
+}
+
 int run_all_empty_batch() {
   const std::array<std::uint32_t, 3> offsets{0u, 0u, 0u};
   Buffer<std::uint32_t> d_offsets(offsets.size());
@@ -299,6 +337,7 @@ int main() {
     DeviceFixture fixture;
     if (const int rc = fixture.run(false, false)) return rc;
     if (const int rc = fixture.run(true, true)) return rc;
+    if (const int rc = run_invalid_partitions_and_recovery()) return rc;
     if (const int rc = run_all_empty_batch()) return rc;
     if (const int rc = run_r2scan3c_fixed_charge_profile()) return rc;
     std::puts(
