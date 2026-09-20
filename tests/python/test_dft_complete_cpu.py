@@ -11,13 +11,53 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from vibeqc import Calculator, GridPolicy, GridSpec, KsOptions, method_capabilities
+from vibeqc import (
+    BasisProvenance,
+    BasisSet,
+    BasisShell,
+    Calculator,
+    ElementBasis,
+    GridPolicy,
+    GridSpec,
+    KsOptions,
+    method_capabilities,
+)
 from vibeqc._dft_gradient import StationaryDerivativeContract, StationaryKsState
 from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
 from vibeqc_compiler.dft import NativeAO
 
 ATOMS = [("O", (0.1, -0.1, 0.0)), ("H", (0.1, 0.2, 1.7)), ("H", (1.6, -0.2, -0.5))]
 GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
+TRANSITION_METAL_GRID_BASIS_PAYLOAD = {
+    1: ((0, ("1.2",), (("1",),)),),
+    26: (
+        (0, ("2.0",), (("1",),)),
+        (1, ("1.0",), (("1",),)),
+    ),
+}
+
+
+def transition_metal_grid_basis() -> BasisSet:
+    """Synthetic Fe/H s-p fixture kept inside the qualified CPU gradient domain."""
+    from vibeqc.profiles import canonical_hash
+
+    elements = tuple(
+        ElementBasis(
+            atomic_number,
+            tuple(BasisShell(*shell) for shell in shells),
+        )
+        for atomic_number, shells in sorted(TRANSITION_METAL_GRID_BASIS_PAYLOAD.items())
+    )
+    return BasisSet(
+        "issue-596-fe-h-sp-grid-qualification",
+        elements,
+        BasisProvenance(
+            "inline issue-596 transition-metal grid qualification fixture",
+            "1",
+            "CC0-1.0",
+            canonical_hash(TRANSITION_METAL_GRID_BASIS_PAYLOAD),
+        ),
+    )
 GRID_CONVERGENCE_GATES = {
     "standard": {
         "energy_hartree": 2e-6,
@@ -316,13 +356,12 @@ def test_production_grid_light_element_energy_and_force(method: typing.Any) -> N
 
 
 def test_production_grid_transition_metal_energy_and_force() -> None:
-    """Pinned synthetic Fe/H basis exercises a real v2 transition-metal KS solve."""
+    """Fe/H v2 grid resolves sourced Z=26 radii with an independent force oracle."""
     pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
-    from test_external_basis import imported
 
     atoms = [("Fe", (0.05, -0.02, 0.03)), ("H", (0.17, 0.11, 2.25))]
     charge, multiplicity = 25, 1
-    basis_definition = imported("synthetic-fe-h")
+    basis_definition = transition_metal_grid_basis()
     calc = production_calculator("lda-rks", basis=basis_definition, max_iterations=250)
     with (
         calc.prepare_batch(
@@ -339,6 +378,8 @@ def test_production_grid_transition_metal_energy_and_force() -> None:
         state = StationaryKsState.from_native(batch, basis)
         assert state._source.grid_spec.version == 2
         assert dict(state._source.grid_spec.element_radii)[26] > 0
+        assert max(shell.angular_momentum for shell in basis.shells) == 1
+        assert basis_definition.provenance.source.startswith("inline issue-596")
         result = complete_rks_gradient_diagnostic(
             state,
             basis,
