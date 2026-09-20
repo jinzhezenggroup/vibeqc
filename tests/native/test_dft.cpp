@@ -11,6 +11,7 @@
 #include "dft/grid.hpp"
 #include "dft/xc.hpp"
 #include "molecule/basis.hpp"
+#include "xc_cpu_generated.hpp"
 
 #if VIBEQC_HAS_CUDA
 extern "C" void grid_cuda_fail_next_allocation_for_test_v1();
@@ -44,6 +45,17 @@ vibeqc::core::System h2() {
 
 int main() {
   try {
+    const auto cam_point =
+        vibeqc::dft::generated::cam_b3lyp_polarized(0.3, 0.2, 0.015, 0.003, 0.01);
+    const std::array<double, 6> cam_oracle{-0.22534883092171914, -0.6376091098611569,
+                                           -0.5721238021867927,  -0.012862968002481867,
+                                           0.001656668925640544, -0.01898573870842516};
+    require(std::abs(cam_point.energy_density - cam_oracle[0]) < 2e-13,
+            "CAM semilocal scalar differs from pinned Libxc oracle");
+    for (std::size_t i = 0; i < 5; ++i)
+      require(std::abs(cam_point.feature_derivative[i] - cam_oracle[i + 1]) < 2e-13,
+              "CAM semilocal derivative differs from pinned Libxc oracle");
+
     const auto system = h2();
     const vibeqc::dft::GridSpec small{1, 2, 2, 4, 3, 1.0e-12};
     const vibeqc::dft::MolecularGrid grid(system, small);
@@ -141,6 +153,27 @@ int main() {
     // PySCF 2.14.0 / Libxc 7.0.0 on this exact 32-point GridSpec v1 grid.
     const std::vector<double> reference_density{1.2007575959127958, 0.011302590336886256,
                                                 0.011302590336886256, 0.462144452714005};
+    const vibeqc::dft::GridSpec cam_interior_spec{1, 1, 2, 4, 3, 1.0e-12};
+    const vibeqc::dft::MolecularGrid cam_interior_grid(system, cam_interior_spec);
+    const auto cam =
+        vibeqc::dft::integrate_cam_b3lyp_rks(basis, cam_interior_grid, reference_density, 7);
+    require(std::isfinite(cam.energy) && cam.potential.size() == reference_density.size(),
+            "CAM-B3LYP MethodIR semilocal integration is invalid on the audited grid");
+    for (double step : {1.0e-5, 3.0e-6}) {
+      std::vector<double> plus = reference_density, minus = reference_density;
+      for (std::size_t i = 0; i < reference_density.size(); ++i) {
+        plus[i] += step * direction[i];
+        minus[i] -= step * direction[i];
+      }
+      const double finite_difference =
+          (vibeqc::dft::integrate_cam_b3lyp_rks(basis, cam_interior_grid, plus, 7).energy -
+           vibeqc::dft::integrate_cam_b3lyp_rks(basis, cam_interior_grid, minus, 7).energy) /
+          (2.0 * step);
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i) trace += cam.potential[i] * direction[i];
+      require(std::abs(finite_difference - trace) < 3.0e-6,
+              "CAM-B3LYP semilocal potential violates delta E = Tr(V delta D)");
+    }
     const vibeqc::dft::MolecularGrid default_grid(system);
     bool default_grid_rejected = false;
     try {

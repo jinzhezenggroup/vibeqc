@@ -19,8 +19,35 @@
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
 #include "scf/solver/self_consistent.hpp"
+#include "xc_cpu_generated.hpp"
 
 namespace vibeqc::scf {
+
+FockBuildSpec make_rsh_primary_fock_spec(FockSpin spin, double short_range_exchange) {
+  if (!std::isfinite(short_range_exchange))
+    throw std::invalid_argument("RSH short-range exchange fraction must be finite");
+  auto spec = make_hf_fock_spec(spin);
+  spec.derivative_order = 0;
+  const double spin_factor = spin == FockSpin::Restricted ? -0.5 : -1.0;
+  spec.exchange.coefficient = spin_factor * short_range_exchange;
+  return spec;
+}
+
+FockBuildSpec make_rsh_correction_fock_spec(FockSpin spin, double short_range_exchange,
+                                            double long_range_exchange, double omega) {
+  if (!std::isfinite(short_range_exchange) || !std::isfinite(long_range_exchange) ||
+      !std::isfinite(omega) || omega < 0.0)
+    throw std::invalid_argument(
+        "RSH exchange fractions/omega must be finite and omega nonnegative");
+  auto spec = make_hf_fock_spec(spin);
+  spec.derivative_order = 0;
+  spec.coulomb.present = false;
+  const double spin_factor = spin == FockSpin::Restricted ? -0.5 : -1.0;
+  spec.exchange = {true, spin_factor * (long_range_exchange - short_range_exchange),
+                   FockOperator::LongRange, omega, FockApproximation::Exact};
+  return spec;
+}
+
 namespace {
 
 using initial_guess::prepare_initial_density;
@@ -86,7 +113,17 @@ dft::XcIntegral evaluate_r2scan_xc_rks(const dft::AoBasis& basis, const dft::Mol
   return dft::integrate_r2scan_rks(basis, grid, density, tile, source);
 }
 
-RksEvaluation evaluate_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+dft::XcIntegral evaluate_cam_b3lyp_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                                          const Matrix& density, dft::XcDensitySource source,
+                                          std::size_t tile, double exchange_scale,
+                                          double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled CAM-B3LYP RKS is not qualified");
+  return dft::integrate_cam_b3lyp_rks(basis, grid, density, tile, source);
+}
+
+RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
+                           const PreparedFockPlan* long_range_correction, const dft::AoBasis& basis,
                            const dft::MolecularGrid& grid, const Matrix& density,
                            RksXcEvaluator evaluate_xc, const char* method_name,
                            dft::XcDensitySource source, std::size_t retained_capacity,
@@ -96,6 +133,20 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan, const dft::AoBasis& bas
   const auto jk = plan.build(density);
   RksEvaluation result;
   result.fock = assemble_fock(strategy, ints.hcore, jk).alpha;
+  const auto primary_energy = contract_fock_energy_components(strategy, jk, density);
+  double exact_exchange = primary_energy.exchange;
+  DirectJkMatrices correction_jk;
+  if (long_range_correction) {
+    correction_jk = long_range_correction->build(density);
+    const auto& correction_strategy = long_range_correction->strategy();
+    if (correction_jk.exchange_alpha.size() != result.fock.size())
+      throw std::runtime_error("RSH correction exchange dimensions do not match the Fock matrix");
+    for (std::size_t i = 0; i < result.fock.size(); ++i)
+      result.fock[i] +=
+          correction_strategy.spec.exchange.coefficient * correction_jk.exchange_alpha[i];
+    exact_exchange +=
+        contract_fock_energy_components(correction_strategy, correction_jk, density).exchange;
+  }
   const auto xc =
       evaluate_xc(basis, grid, density, source, tile, exchange_scale, correlation_scale);
   result.density_diagnostic = xc.density_diagnostic;
@@ -104,25 +155,27 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan, const dft::AoBasis& bas
   // the caller's retained state twice.
   runtime::sample_cpu_capacity(runtime::add_capacity(
       retained_capacity,
-      runtime::add_capacity(xc.density_diagnostic.owned_numeric_bytes,
-                            runtime::vector_capacities(result.fock, jk.coulomb, jk.exchange_alpha,
-                                                       jk.exchange_beta))));
+      runtime::add_capacity(
+          xc.density_diagnostic.owned_numeric_bytes,
+          runtime::vector_capacities(result.fock, jk.coulomb, jk.exchange_alpha, jk.exchange_beta,
+                                     correction_jk.coulomb, correction_jk.exchange_alpha,
+                                     correction_jk.exchange_beta))));
   if (xc.potential.size() != result.fock.size())
     throw std::runtime_error(std::string(method_name) +
                              " XC potential dimensions do not match the Fock matrix");
   for (std::size_t i = 0; i < result.fock.size(); ++i) result.fock[i] += xc.potential[i];
-  result.components = {ints.nuclear_repulsion, dot(density, ints.hcore),
-                       contract_fock_energy(strategy, jk, density), xc.energy};
+  result.components = {ints.nuclear_repulsion, dot(density, ints.hcore), primary_energy.coulomb,
+                       xc.energy, exact_exchange};
   result.energy = result.components.total();
   if (!std::isfinite(result.energy))
     throw std::runtime_error(std::string("nonfinite ") + method_name + " RKS energy");
   return result;
 }
 
-ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
-                  const dft::MolecularGrid& grid, const ScfOptions& options,
-                  const std::vector<double>* initial_density, RksXcEvaluator evaluate_xc,
-                  const char* method_name) {
+ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_range_correction,
+                  const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                  const ScfOptions& options, const std::vector<double>* initial_density,
+                  RksXcEvaluator evaluate_xc, const char* method_name) {
   if (options.xc_density_route != dft::XcDensityRoute::DensityMatrix &&
       options.xc_density_route != dft::XcDensityRoute::OccupiedOrbitals)
     throw std::invalid_argument("unsupported RKS XC density route");
@@ -140,6 +193,22 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
         strategy.spec.exchange.approximation != FockApproximation::Exact)))
     throw std::invalid_argument(std::string(method_name) +
                                 " RKS requires a CPU full-range exact J/K Fock strategy");
+  if (long_range_correction) {
+    const auto& correction = long_range_correction->strategy();
+    validate_resolved_fock_build(correction);
+    const bool primary_exchange =
+        strategy.spec.exchange.present &&
+        strategy.spec.exchange.approximation == FockApproximation::Exact &&
+        strategy.spec.exchange.op == FockOperator::FullRange && strategy.spec.exchange.omega == 0.0;
+    const bool correction_exchange =
+        correction.backend == FockBackend::Cpu && correction.spec.spin == FockSpin::Restricted &&
+        correction.spec.derivative_order == 0 && !correction.spec.coulomb.present &&
+        correction.spec.exchange.present &&
+        correction.spec.exchange.approximation == FockApproximation::Exact &&
+        correction.spec.exchange.op == FockOperator::LongRange;
+    if (!primary_exchange || !correction_exchange)
+      throw std::invalid_argument("RSH RKS requires full-range primary K plus direct long-range K");
+  }
   if (system.electron_count <= 0 || system.electron_count % 2 || system.multiplicity != 1)
     throw std::invalid_argument(std::string(method_name) +
                                 " RKS requires a closed-shell electron count");
@@ -151,6 +220,10 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   if (!plan.matches(grid.system(), nullptr, strategy, -1, 0) ||
       basis.packed != dft::AoBasis(system).packed)
     throw std::invalid_argument("RKS refuses a stale geometry, basis, charge or spin binding");
+  if (long_range_correction &&
+      (!long_range_correction->matches(system, nullptr, long_range_correction->strategy(), -1, 0) ||
+       long_range_correction->one_electron().nbf != ints.nbf))
+    throw std::invalid_argument("RSH correction refuses a stale or incompatible source binding");
 
   const std::size_t n = ints.nbf;
   const std::size_t occupied = static_cast<std::size_t>(system.electron_count / 2);
@@ -185,8 +258,11 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     identity = {owner, owner, 0, 0};
   }
   const auto retained_capacity = [&](const Matrix& current_density) {
+    const auto provider_capacity = runtime::add_capacity(
+        plan.cpu_observation_capacity(),
+        long_range_correction ? long_range_correction->cpu_observation_capacity() : 0);
     return runtime::add_capacity(
-        runtime::add_capacity(plan.cpu_observation_capacity(), diis.numeric_capacity()),
+        runtime::add_capacity(provider_capacity, diis.numeric_capacity()),
         runtime::add_capacity(
             factor ? factor->numeric_capacity_bytes() : 0,
             runtime::vector_capacities(orthogonalizer, current_density, orbitals.values,
@@ -220,8 +296,8 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   const auto evaluate_current = [&](const Matrix& current_density,
                                     std::size_t extra_live_bytes = 0) {
     auto physical =
-        evaluate_rks(plan, basis, grid, current_density, evaluate_xc, method_name,
-                     {options.xc_density_route, factor.get(), identity},
+        evaluate_rks(plan, long_range_correction, basis, grid, current_density, evaluate_xc,
+                     method_name, {options.xc_density_route, factor.get(), identity},
                      runtime::add_capacity(retained_capacity(current_density), extra_live_bytes),
                      options.xc_tile_points, options.semilocal_exchange_scale,
                      options.semilocal_correlation_scale);
@@ -359,19 +435,39 @@ ScfResult run_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 ScfResult run_lda_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {
-  return run_rks(plan, basis, grid, options, initial_density, evaluate_lda_xc_rks, "LDA");
+  return run_rks(plan, nullptr, basis, grid, options, initial_density, evaluate_lda_xc_rks, "LDA");
 }
 
 ScfResult run_pbe_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {
-  return run_rks(plan, basis, grid, options, initial_density, evaluate_pbe_xc_rks, "PBE");
+  return run_rks(plan, nullptr, basis, grid, options, initial_density, evaluate_pbe_xc_rks, "PBE");
 }
 
 ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density) {
-  return run_rks(plan, basis, grid, options, initial_density, evaluate_r2scan_xc_rks, "R2SCAN");
+  return run_rks(plan, nullptr, basis, grid, options, initial_density, evaluate_r2scan_xc_rks,
+                 "R2SCAN");
+}
+
+ScfResult run_cam_b3lyp_rks(const PreparedFockPlan& primary,
+                            const PreparedFockPlan& long_range_correction,
+                            const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                            const ScfOptions& options, const std::vector<double>* initial_density) {
+  const auto expected_primary = resolve_fock_build(
+      make_rsh_primary_fock_spec(FockSpin::Restricted, dft::generated::kCamB3lypShortExchange),
+      FockBackend::Cpu);
+  const auto expected_correction =
+      resolve_fock_build(make_rsh_correction_fock_spec(
+                             FockSpin::Restricted, dft::generated::kCamB3lypShortExchange,
+                             dft::generated::kCamB3lypLongExchange, dft::generated::kCamB3lypOmega),
+                         FockBackend::Cpu);
+  if (primary.strategy() != expected_primary ||
+      long_range_correction.strategy() != expected_correction)
+    throw std::invalid_argument("CAM-B3LYP plans do not match the generated MethodIR composition");
+  return run_rks(primary, &long_range_correction, basis, grid, options, initial_density,
+                 evaluate_cam_b3lyp_xc_rks, "CAM-B3LYP");
 }
 
 }  // namespace vibeqc::scf

@@ -17,6 +17,7 @@
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
 #include "scf/solver/self_consistent.hpp"
+#include "xc_cpu_generated.hpp"
 
 namespace vibeqc::scf {
 namespace {
@@ -55,15 +56,44 @@ dft::SpinXcIntegral evaluate_r2scan_xc_uks(const dft::AoBasis& basis,
   return dft::integrate_r2scan_uks(basis, grid, alpha, beta, tile);
 }
 
+dft::SpinXcIntegral evaluate_cam_b3lyp_xc_uks(const dft::AoBasis& basis,
+                                              const dft::MolecularGrid& grid, const Matrix& alpha,
+                                              const Matrix& beta, std::size_t tile,
+                                              double exchange_scale, double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled CAM-B3LYP UKS is not qualified");
+  return dft::integrate_cam_b3lyp_uks(basis, grid, alpha, beta, tile);
+}
+
 /** The physical operator is independent of extrapolation and occupations.
- * The common strategy owns J/K dispatch and all exact-exchange coefficients. */
-SpinEvaluation evaluate(const PreparedFockPlan& plan, const dft::AoBasis& basis,
-                        const dft::MolecularGrid& grid, const Matrix& alpha, const Matrix& beta,
-                        SpinXcEvaluator evaluate_xc, const ScfOptions& options) {
+ * The common Fock plans own J/K dispatch; RSH adds a structurally separate
+ * long-range exchange correction without changing proposal semantics. */
+SpinEvaluation evaluate(const PreparedFockPlan& plan, const PreparedFockPlan* long_range_correction,
+                        const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                        const Matrix& alpha, const Matrix& beta, SpinXcEvaluator evaluate_xc,
+                        const ScfOptions& options) {
   const auto& ints = plan.one_electron();
   const auto jk = plan.build(alpha, beta);
   SpinEvaluation out;
   out.fock = assemble_fock(plan.strategy(), ints.hcore, jk);
+  const auto primary_energy = contract_fock_energy_components(plan.strategy(), jk, alpha, beta);
+  double exact_exchange = primary_energy.exchange;
+  if (long_range_correction) {
+    const auto correction_jk = long_range_correction->build(alpha, beta);
+    const auto& correction_strategy = long_range_correction->strategy();
+    if (correction_jk.exchange_alpha.size() != out.fock.alpha.size() ||
+        correction_jk.exchange_beta.size() != out.fock.beta.size())
+      throw std::runtime_error(
+          "RSH spin correction exchange dimensions do not match the Fock matrix");
+    for (std::size_t i = 0; i < alpha.size(); ++i) {
+      out.fock.alpha[i] +=
+          correction_strategy.spec.exchange.coefficient * correction_jk.exchange_alpha[i];
+      out.fock.beta[i] +=
+          correction_strategy.spec.exchange.coefficient * correction_jk.exchange_beta[i];
+    }
+    exact_exchange +=
+        contract_fock_energy_components(correction_strategy, correction_jk, alpha, beta).exchange;
+  }
   const auto xc =
       evaluate_xc(basis, grid, alpha, beta, options.xc_tile_points,
                   options.semilocal_exchange_scale, options.semilocal_correlation_scale);
@@ -72,7 +102,7 @@ SpinEvaluation evaluate(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     out.fock.beta[i] += xc.potential[1][i];
   }
   out.components = {ints.nuclear_repulsion, dot(alpha, ints.hcore) + dot(beta, ints.hcore),
-                    contract_fock_energy(plan.strategy(), jk, alpha, beta), xc.energy};
+                    primary_energy.coulomb, xc.energy, exact_exchange};
   if (!std::isfinite(out.components.total())) throw std::runtime_error("nonfinite UKS energy");
   return out;
 }
@@ -90,14 +120,15 @@ EigenResult stabilized_uks_orbitals(Matrix fock, const Matrix& density, const Ma
 
 }  // namespace
 
-ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
-                       const dft::MolecularGrid& grid, const ScfOptions& options,
-                       SpinXcEvaluator evaluate_xc, const char* method_name,
-                       const std::vector<double>* initial_density) {
+ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* long_range_correction,
+                       const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                       const ScfOptions& options, SpinXcEvaluator evaluate_xc,
+                       const char* method_name, const std::vector<double>* initial_density) {
   using namespace reference;
   const auto& strategy = plan.strategy();
   validate_resolved_fock_build(strategy);
-  if (options.compute_forces) throw std::invalid_argument("UKS gradients require issue #163");
+  if (options.compute_forces)
+    throw std::invalid_argument(std::string(method_name) + " UKS forces are not implemented");
   if (strategy.backend != FockBackend::Cpu || strategy.spec.spin != FockSpin::Unrestricted ||
       strategy.spec.derivative_order != 0 || !strategy.spec.coulomb.present ||
       strategy.spec.coulomb.coefficient != 1.0 ||
@@ -105,6 +136,22 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
        (strategy.spec.exchange.op != FockOperator::FullRange ||
         strategy.spec.exchange.approximation != FockApproximation::Exact)))
     throw std::invalid_argument("UKS requires a CPU full-range exact J/K Fock strategy");
+  if (long_range_correction) {
+    const auto& correction = long_range_correction->strategy();
+    validate_resolved_fock_build(correction);
+    const bool primary_exchange =
+        strategy.spec.exchange.present &&
+        strategy.spec.exchange.approximation == FockApproximation::Exact &&
+        strategy.spec.exchange.op == FockOperator::FullRange && strategy.spec.exchange.omega == 0.0;
+    const bool correction_exchange =
+        correction.backend == FockBackend::Cpu && correction.spec.spin == FockSpin::Unrestricted &&
+        correction.spec.derivative_order == 0 && !correction.spec.coulomb.present &&
+        correction.spec.exchange.present &&
+        correction.spec.exchange.approximation == FockApproximation::Exact &&
+        correction.spec.exchange.op == FockOperator::LongRange;
+    if (!primary_exchange || !correction_exchange)
+      throw std::invalid_argument("RSH UKS requires full-range primary K plus direct long-range K");
+  }
   if (options.xc_density_route != dft::XcDensityRoute::DensityMatrix)
     throw std::invalid_argument("UKS occupied-factor XC has not been implemented");
   const auto& system = plan.system();
@@ -115,6 +162,10 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   if (!plan.matches(grid.system(), nullptr, strategy, -1, 0) ||
       basis.packed != dft::AoBasis(system).packed)
     throw std::invalid_argument("UKS refuses a stale geometry, basis, charge or spin binding");
+  if (long_range_correction &&
+      (!long_range_correction->matches(system, nullptr, long_range_correction->strategy(), -1, 0) ||
+       long_range_correction->one_electron().nbf != ints.nbf))
+    throw std::invalid_argument("RSH correction refuses a stale or incompatible source binding");
   const auto [na, nb] = initial_guess::spin_occupations(system);
   if (na > n || nb > n || system.electron_count <= 0)
     throw std::invalid_argument("UKS occupations exceed the orbital space");
@@ -171,7 +222,8 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
       UksState{std::move(alpha), std::move(beta)}, policy,
       [&](const UksState& state, unsigned) {
         const bool stabilized = stabilize_occupations;
-        auto physical = evaluate(plan, basis, grid, state.alpha, state.beta, evaluate_xc, options);
+        auto physical = evaluate(plan, long_range_correction, basis, grid, state.alpha, state.beta,
+                                 evaluate_xc, options);
         ++result.fock_builds;
         Matrix ra = commutator_residual(physical.fock.alpha, state.alpha, ints.overlap, n);
         Matrix rb = commutator_residual(physical.fock.beta, state.beta, ints.overlap, n);
@@ -207,7 +259,11 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
       [&](UksState& state, UksLoopEvaluation evaluation,
           const solver::SelfConsistentProgress& progress) {
         runtime::sample_cpu_capacity(runtime::add_capacity(
-            runtime::add_capacity(plan.cpu_observation_capacity(), diis.numeric_capacity()),
+            runtime::add_capacity(
+                runtime::add_capacity(
+                    plan.cpu_observation_capacity(),
+                    long_range_correction ? long_range_correction->cpu_observation_capacity() : 0),
+                diis.numeric_capacity()),
             runtime::vector_capacities(basis.packed, grid.points(), grid.weights(), grid.owners(),
                                        x, state.alpha, state.beta, ca.values, ca.vectors, cb.values,
                                        cb.vectors, evaluation.physical_fock.alpha,
@@ -257,7 +313,8 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   // DIIS/stabilized proposal orbitals are only a convergence device and must
   // never become the derivative-state proof. A small bounded fixed-point
   // correction mirrors the shared final-state policy without another SCF loop.
-  auto final = evaluate(plan, basis, grid, alpha, beta, evaluate_xc, options);
+  auto final =
+      evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc, options);
   ++result.fock_builds;
   double previous_physical_energy = result.energy;
   result.converged = false;
@@ -279,7 +336,8 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     alpha = std::move(projected_a);
     beta = std::move(projected_b);
 
-    auto next = evaluate(plan, basis, grid, alpha, beta, evaluate_xc, options);
+    auto next =
+        evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc, options);
     ++result.fock_builds;
     const Matrix ra = commutator_residual(next.fock.alpha, alpha, ints.overlap, n);
     const Matrix rb = commutator_residual(next.fock.beta, beta, ints.overlap, n);
@@ -310,23 +368,44 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                   const dft::MolecularGrid& grid, const ScfOptions& options, bool pbe,
                   const std::vector<double>* initial_density) {
-  return run_uks_impl(plan, basis, grid, options, pbe ? evaluate_pbe_xc_uks : evaluate_lda_xc_uks,
-                      pbe ? "PBE" : "LDA", initial_density);
+  return run_uks_impl(plan, nullptr, basis, grid, options,
+                      pbe ? evaluate_pbe_xc_uks : evaluate_lda_xc_uks, pbe ? "PBE" : "LDA",
+                      initial_density);
 }
 ScfResult run_lda_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {
-  return run_uks_impl(plan, basis, grid, options, evaluate_lda_xc_uks, "LDA", initial_density);
+  return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_lda_xc_uks, "LDA",
+                      initial_density);
 }
 ScfResult run_pbe_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {
-  return run_uks_impl(plan, basis, grid, options, evaluate_pbe_xc_uks, "PBE", initial_density);
+  return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_pbe_xc_uks, "PBE",
+                      initial_density);
 }
 ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density) {
-  return run_uks_impl(plan, basis, grid, options, evaluate_r2scan_xc_uks, "R2SCAN",
+  return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_r2scan_xc_uks, "R2SCAN",
                       initial_density);
+}
+ScfResult run_cam_b3lyp_uks(const PreparedFockPlan& primary,
+                            const PreparedFockPlan& long_range_correction,
+                            const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                            const ScfOptions& options, const std::vector<double>* initial_density) {
+  const auto expected_primary = resolve_fock_build(
+      make_rsh_primary_fock_spec(FockSpin::Unrestricted, dft::generated::kCamB3lypShortExchange),
+      FockBackend::Cpu);
+  const auto expected_correction =
+      resolve_fock_build(make_rsh_correction_fock_spec(
+                             FockSpin::Unrestricted, dft::generated::kCamB3lypShortExchange,
+                             dft::generated::kCamB3lypLongExchange, dft::generated::kCamB3lypOmega),
+                         FockBackend::Cpu);
+  if (primary.strategy() != expected_primary ||
+      long_range_correction.strategy() != expected_correction)
+    throw std::invalid_argument("CAM-B3LYP plans do not match the generated MethodIR composition");
+  return run_uks_impl(primary, &long_range_correction, basis, grid, options,
+                      evaluate_cam_b3lyp_xc_uks, "CAM-B3LYP", initial_density);
 }
 }  // namespace vibeqc::scf

@@ -49,7 +49,7 @@ bool valid_model(const KsFinalStateIdentity& identity) {
 bool finite_components(const EnergyComponents& components) {
   return std::isfinite(components.nuclear) && std::isfinite(components.one_electron) &&
          std::isfinite(components.hartree) && std::isfinite(components.xc) &&
-         std::isfinite(components.total());
+         std::isfinite(components.exact_exchange) && std::isfinite(components.total());
 }
 
 }  // namespace

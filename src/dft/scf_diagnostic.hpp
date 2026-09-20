@@ -9,8 +9,8 @@ namespace vibeqc::dft {
 
 /** Physical energy terms, never the half-trace of an XC-containing Fock. */
 struct EnergyComponents {
-  double nuclear{}, one_electron{}, hartree{}, xc{};
-  double total() const noexcept { return nuclear + one_electron + hartree + xc; }
+  double nuclear{}, one_electron{}, hartree{}, xc{}, exact_exchange{};
+  double total() const noexcept { return nuclear + one_electron + hartree + xc + exact_exchange; }
 };
 
 /** A physical evaluation and its proposed density change. Each spin residual
