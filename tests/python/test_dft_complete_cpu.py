@@ -85,14 +85,18 @@ def assert_production_grid_convergence(
     """Bind promoted profiles to measured accuracy and point-cost envelopes."""
     gate = GRID_CONVERGENCE_GATES[accuracy]
     point_fraction = production_points / reference_points
+    # pytest-xdist serializes user properties through execnet, which does not
+    # accept NumPy scalar subclasses. Keep retained evidence transport-neutral.
     record_property("grid_accuracy", accuracy)
-    record_property("production_points", production_points)
-    record_property("independent_reference_points", reference_points)
-    record_property("production_dense_point_fraction", point_fraction)
-    record_property("energy_error_hartree", energy_error)
-    record_property("gradient_error_hartree_per_bohr", gradient_error)
-    record_property("energy_gate_hartree", gate["energy_hartree"])
-    record_property("gradient_gate_hartree_per_bohr", gate["gradient_hartree_per_bohr"])
+    record_property("production_points", int(production_points))
+    record_property("independent_reference_points", int(reference_points))
+    record_property("production_dense_point_fraction", float(point_fraction))
+    record_property("energy_error_hartree", float(energy_error))
+    record_property("gradient_error_hartree_per_bohr", float(gradient_error))
+    record_property("energy_gate_hartree", float(gate["energy_hartree"]))
+    record_property(
+        "gradient_gate_hartree_per_bohr", float(gate["gradient_hartree_per_bohr"])
+    )
     assert point_fraction < gate["maximum_dense_point_fraction"]
     assert energy_error < gate["energy_hartree"]
     assert gradient_error < gate["gradient_hartree_per_bohr"]
