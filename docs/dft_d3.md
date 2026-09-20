@@ -75,6 +75,21 @@ PYTHONPATH=python:. OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 python tools/check_compiler_structure.py
 ```
 
+## Compiler GeometryIR/PairIR ownership
+
+The two-body D3(BJ) scientific equation now also has a compiler-owned
+GeometryIR/PairIR/TensorIR representation. CN response, C6 interpolation, BJ pair
+energy and smooth switching lower through the shared TensorIR, and Cartesian
+`dE/dR` is generated from that energy graph with the shared VJP. The compiler
+representation uses an explicit fixed pair/switch-state identity and fails closed when
+coordinate replay crosses that state.
+
+This is not yet the public ragged production execution path: `d3_bj.hpp` remains the
+qualified native CPU/CUDA runtime and oracle until dynamic/ragged PairIR execution can
+preserve the public batch/replay contract. The exact conventions, provenance,
+underflow boundary, rejected alternatives and retirement condition are recorded in the
+[D3 GeometryIR/PairIR decision](../.agents/notes/implemented/numerics/2026-09-20-d3-geometry-pair-ir.md).
+
 ## Remaining boundary
 
 The public correction owner is deliberately separate from the electronic DFT
