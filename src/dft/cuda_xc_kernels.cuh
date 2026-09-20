@@ -25,7 +25,6 @@ __global__ void validate_density(const double* density, I n, I spins, int* error
   }
 }
 
-
 struct DevicePointValue {
   double energy{}, rho[2]{}, gradient[2][3]{}, kinetic[2]{};
   bool valid{true};
@@ -142,7 +141,6 @@ __global__ void evaluate_points(const double* features, const double* weights, I
     }
   }
 }
-
 
 }  // namespace
 
