@@ -204,3 +204,25 @@ __device__ __forceinline__ Response three_center(double alpha,Vec3 A,Angular a,
         .replace("__DF_GEOMETRY_PREPARATION__", emit_df_geometry_cuda())
         .replace("__device__", "static __device__")
     )
+
+
+def emit_df_derivatives_cpu() -> str:
+    """Lower the same generated DF derivative algebra to ordinary host C++.
+
+    Keep one scientific expression source for CUDA and CPU.  The CUDA emitter
+    already contains only scalar math after code generation; this adapter removes
+    device-only qualifiers/includes without changing any generated arithmetic.
+    """
+
+    source = emit_df_derivatives_cuda()
+    source = source.replace(
+        "VIBEQC_GENERATED_DF_DERIVATIVES_CUH",
+        "VIBEQC_GENERATED_DF_DERIVATIVES_CPU_HPP",
+    )
+    source = source.replace("#include <cuda_runtime.h>\n", "")
+    source = source.replace("static __device__ __forceinline__", "inline")
+    source = source.replace("static __device__ __noinline__", "inline")
+    source = source.replace("static __device__", "inline")
+    source = source.replace("__forceinline__", "inline")
+    source = source.replace("__noinline__", "")
+    return source

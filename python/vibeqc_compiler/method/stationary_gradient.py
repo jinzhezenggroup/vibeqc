@@ -30,7 +30,12 @@ from vibeqc_compiler.tensor import (
 )
 
 from .nonlocal_correlation import NonlocalCorrelationPrimitive
-from .spec import MethodIR, SemilocalXCPrimitive, UnsupportedMethod
+from .spec import (
+    ExactExchangePrimitive,
+    MethodIR,
+    SemilocalXCPrimitive,
+    UnsupportedMethod,
+)
 from .typecheck import BackendCapability, verify_method_ir
 
 VERSION = "stationary-gradient-plan-v3"
@@ -42,7 +47,7 @@ _STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
     ("unpolarized", "polarized"),
     (1,),
     ("rho", "sigma", "tau"),
-    ("semilocal-xc", "nonlocal-correlation"),
+    ("semilocal-xc", "full-range-exchange", "nonlocal-correlation"),
 )
 
 
@@ -193,22 +198,29 @@ class StationaryGradientPlan:
                 "stationary gradient requires an explicit mean-field envelope"
             )
         semilocal = tuple(
-            primitive
-            for primitive in self.method.primitives
-            if type(primitive) is SemilocalXCPrimitive
+            p for p in self.method.primitives if type(p) is SemilocalXCPrimitive
+        )
+        exchange = tuple(
+            p for p in self.method.primitives if type(p) is ExactExchangePrimitive
         )
         nonlocal_primitives = tuple(
-            primitive
-            for primitive in self.method.primitives
-            if type(primitive) is NonlocalCorrelationPrimitive
+            p for p in self.method.primitives if type(p) is NonlocalCorrelationPrimitive
         )
         if (
             len(semilocal) != 1
+            or len(exchange) > 1
             or len(nonlocal_primitives) > 1
-            or len(self.method.primitives) != len(semilocal) + len(nonlocal_primitives)
+            or len(self.method.primitives)
+            != len(semilocal) + len(exchange) + len(nonlocal_primitives)
         ):
             raise UnsupportedMethod(
                 "required primitive has no stationary-gradient rule"
+            )
+        # Preserve the two independently qualified envelopes without silently
+        # promoting their combined global-hybrid/nonlocal execution domain.
+        if exchange and nonlocal_primitives:
+            raise UnsupportedMethod(
+                "combined hybrid/nonlocal stationary gradients are not qualified"
             )
         verify_method_ir(
             self.method,
@@ -219,31 +231,53 @@ class StationaryGradientPlan:
         required = {"energy-density", "feature-gradient"}
         if not required <= set(semilocal[0].derivative_capabilities):
             raise UnsupportedMethod("required XC feature derivative is unavailable")
-        if nonlocal_primitives and "nuclear-gradient" not in set(
-            nonlocal_primitives[0].derivative_capabilities
+        if (
+            exchange
+            and "eri-first-derivative" not in exchange[0].derivative_capabilities
+        ):
+            raise UnsupportedMethod("required exchange ERI derivative is unavailable")
+        if (
+            nonlocal_primitives
+            and "nuclear-gradient" not in nonlocal_primitives[0].derivative_capabilities
         ):
             raise UnsupportedMethod(
                 "required nonlocal-correlation nuclear derivative is unavailable"
             )
 
     @property
+    def exchange(self) -> typing.Any:
+        """Select exact exchange by primitive type, never by a positional count."""
+        return next(
+            (p for p in self.method.primitives if type(p) is ExactExchangePrimitive),
+            None,
+        )
+
+    @property
     def sources(self) -> typing.Any:
-        if self.mean_field.hamiltonian == "scalar-semilocal-ecp":
-            base = (
+        sources = (
+            (
                 replace(_SOURCES[0], primitive="kinetic_effective_charge_attraction"),
                 *_ECP_SOURCES,
                 *_SOURCES[1:-1],
                 replace(_SOURCES[-1], primitive="effective_charge_nuclear_repulsion"),
             )
-        else:
-            base = _SOURCES
+            if self.mean_field.hamiltonian == "scalar-semilocal-ecp"
+            else _SOURCES
+        )
+        if self.exchange is not None:
+            sources = (
+                *sources[:2],
+                GradientSource(
+                    "exact_exchange", "exact_exchange", ("all_eri_centers",)
+                ),
+                *sources[2:],
+            )
         if not any(
-            type(primitive) is NonlocalCorrelationPrimitive
-            for primitive in self.method.primitives
+            type(p) is NonlocalCorrelationPrimitive for p in self.method.primitives
         ):
-            return base
+            return sources
         result = []
-        for source in base:
+        for source in sources:
             result.append(source)
             if source.name == "xc_weight":
                 result.extend(_NONLOCAL_SOURCES)
@@ -259,7 +293,9 @@ class StationaryGradientPlan:
 
     def to_payload(self) -> typing.Any:
         return {
-            "schema": VERSION,
+            "schema": VERSION
+            if self.exchange is None
+            else "stationary-gradient-plan-v2/global-hybrid",
             "method": self.method.semantic_payload(),
             "mean_field": asdict(self.mean_field),
             "sources": [asdict(source) for source in self.sources],
@@ -299,6 +335,7 @@ class StationaryGradientPlan:
 
         L_h = sum_t D_total[t] h[t]
         L_J = 1/2 sum_t D_total_left[t] D_total_right[t] (ab|cd)[t]
+        L_K = cK/2 sum_st D_s[a,c] D_s[b,d] (ab|cd)[t]
         L_S = -sum_t W_total[t] S[t]
 
         In the J block each t denotes an ordered quartet: left/right densities
@@ -308,7 +345,12 @@ class StationaryGradientPlan:
         owner when a later native endpoint binds the plan.
         """
         if (
-            source not in (*_INTEGRAL_SOURCES, *(s.name for s in _ECP_SOURCES))
+            source
+            not in (
+                *_INTEGRAL_SOURCES,
+                *(s.name for s in _ECP_SOURCES),
+                "exact_exchange",
+            )
             or source not in self.source_names
         ):
             raise ValueError("source is not an integral-gradient primitive")
@@ -323,8 +365,20 @@ class StationaryGradientPlan:
         q = Index("q", IndexSpace("coordinate_block", "batch", coordinates))
         integrals = _input("integrals", (t,), differentiable=True)
         left_name = "weighted_density" if source == "overlap_pulay" else "density_left"
-        left = reduce_sum(_input(left_name, (s, t)), (0,))
-        if source == "coulomb":
+        spin_left = _input(left_name, (s, t))
+        left = reduce_sum(spin_left, (0,))
+        if source == "exact_exchange":
+            # Providers bind (ac)/(bd) for the ordered (ab|cd) derivative.
+            # Contract spin before reducing: total-density weights introduce
+            # spurious alpha/beta exchange and the RKS occupation factor differs.
+            energy = einsum(
+                "st,st,t->",
+                spin_left,
+                _input("density_right", (s, t)),
+                integrals,
+                coefficient=self.exchange.fock_coefficient(self.method.spin) / 2,
+            )
+        elif source == "coulomb":
             right = reduce_sum(_input("density_right", (s, t)), (0,))
             energy = einsum(
                 "t,t,t->", left, right, integrals, coefficient=Fraction(1, 2)

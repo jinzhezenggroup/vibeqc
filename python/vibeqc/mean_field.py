@@ -225,9 +225,8 @@ def _compile_fixed_density_components(
                 "fixed-density execution cannot lower exchange operator "
                 f"{exchange.operator!r}"
             ) from error
-        density_factor = -0.5 if method.reference == "restricted" else -1.0
         exchange_term = FockTerm(
-            coefficient=density_factor * float(exchange.coefficient),
+            coefficient=float(exchange.fock_coefficient(method.spin)),
             operator=operator,
             approximation=exchange_approximation,
         )

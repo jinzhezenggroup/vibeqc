@@ -3615,7 +3615,9 @@ def test_generated_one_electron_derivatives_are_the_production_default() -> None
     assert "selection == nullptr" in selection
     assert 'std::strcmp(selection, "generated") == 0' in selection
     assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING")' in selection
-    assert "if (selection == nullptr) return 1U;" in selection
+    assert "if (selection == nullptr) return 3U;" in selection
+    assert 'std::strcmp(selection, "nucleus_cooperative") == 0' in selection
+    assert "return 3U;" in selection
 
 
 def test_batched_finalization_reuses_each_converged_raw_fock() -> None:
@@ -4041,9 +4043,9 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs(
 ) -> None:
     """Regenerate production CUDA whenever shared compiler stages change."""
 
-    # The modular build collects compiler inputs recursively. Inspect the actual
-    # dependency graph of its CPU-configurable shell-codegen pilot, rather than
-    # requiring a redundant list of compiler filenames in the top-level CMake.
+    # Dynamic dependencies exist only after the generator has run. Exercise the
+    # real CPU-configurable pilot, then inspect its emitted depfile rather than
+    # requiring the retired all-compiler glob in Ninja's pre-build graph.
     subprocess.run(
         [
             "cmake",
@@ -4060,17 +4062,14 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs(
         capture_output=True,
         text=True,
     )
-    dependencies = subprocess.check_output(
-        [
-            "ninja",
-            "-C",
-            str(tmp_path),
-            "-t",
-            "query",
-            "generated/shell_kernels/eri_psss_x_gradient.cuh",
-        ],
+    output = "generated/shell_kernels/eri_psss_x_gradient.cuh"
+    subprocess.run(
+        ["cmake", "--build", str(tmp_path), "--target", output],
+        check=True,
+        capture_output=True,
         text=True,
     )
+    dependencies = (tmp_path / f"{output}.d").read_text(encoding="utf-8")
     for dependency in (
         "python/vibeqc_compiler/integral/blocks.py",
         "python/vibeqc_compiler/integral/cache.py",
@@ -4090,12 +4089,15 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs(
         "python/vibeqc_compiler/integral/shell_spec.py",
     ):
         assert dependency in dependencies
-    # Production AOT generation must consume the same complete compiler input
-    # set. Checking this declaration needs no CUDA compiler or device in CPU CI.
+    # Production AOT uses the same depfile-enabled registration while retaining
+    # its explicit non-Python manifest dependency. Unrelated compiler stages must
+    # not be reintroduced as unconditional dependencies.
+    assert "python/vibeqc_compiler/tensor/layout.py" not in dependencies
     cuda = (REPOSITORY_ROOT / "cmake/VibeQCCuda.cmake").read_text(encoding="utf-8")
     production = cuda.split("vibeqc_register_generated_sources(", 1)[1]
     production_dependencies = production.split("DEPENDS", 1)[1].split("ARGS", 1)[0]
-    assert "${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}" in production_dependencies
+    assert "${VIBEQC_AOT_SHELL_MANIFEST}" in production_dependencies
+    assert "${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}" not in production_dependencies
 
 
 def test_batch_screening_ranks_real_profile_and_emits_one_process_driver() -> None:

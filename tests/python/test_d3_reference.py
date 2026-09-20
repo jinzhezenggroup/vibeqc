@@ -201,5 +201,5 @@ def test_native_ks_cannot_silently_omit_correction(
         replace(METHOD_CATALOG["PBE"], dispersion=gfn1_compatibility()), spin=spin
     )
     monkeypatch.setattr(ks, "resolve_method", lambda *args, **kwargs: graph)
-    with pytest.raises(NotImplementedError, match="exactly one supported semilocal"):
+    with pytest.raises(NotImplementedError, match="one semilocal XC primitive"):
         ks.resolve_ks_method(method)

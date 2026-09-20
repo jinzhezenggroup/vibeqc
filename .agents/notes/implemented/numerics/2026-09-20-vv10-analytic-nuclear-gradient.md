@@ -105,3 +105,17 @@ finite-difference threshold or public capability is changed.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Integration with the merged global-hybrid plan
+
+Master f529b85f includes #618's independently qualified global-hybrid gradient
+plan. The integration keeps both that plan and the semilocal/nonlocal plan.
+Exact exchange is selected by primitive type, not by assuming every second
+primitive is exact exchange: a nonlocal correlation node must never become K
+weights. Two spin-mode regressions protect both inventories. A combined
+hybrid-plus-nonlocal plan remains explicitly unqualified rather than being
+promoted accidentally by resolving this merge. Existing exchange coefficients,
+ERI derivative weights, nonlocal kernel binding and independent gates remain.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

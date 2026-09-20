@@ -143,7 +143,8 @@ OneElectronValuePolicy resolve_one_electron_value_policy(
 unsigned one_electron_value_mapping_requested() noexcept;
 /** Generated derivatives default; reference/none/0 selects the retained native exception. */
 bool generated_one_electron_derivatives_requested() noexcept;
-/** 0: AO threads; 1: shell-pair warp lanes (default); 2: deterministic serial diagnostics. */
+/** 0: AO threads; 1: shell-pair/component warp lanes;
+ * 2: deterministic serial diagnostics; 3: AO-pair warp with nucleus lanes (default). */
 unsigned one_electron_derivative_mapping_requested() noexcept;
 bool resident_psss_bra_requested() noexcept;
 /** Generated weighted primitive candidate; frozen into a prepared bucket. */

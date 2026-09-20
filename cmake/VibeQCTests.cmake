@@ -95,6 +95,10 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_basis_contract_tests tests/native/test_basis_contract.cpp)
   vibeqc_native_test(vibeqc_grid_tests tests/native/test_grid.cpp)
   vibeqc_native_test(vibeqc_runtime_workspace_tests tests/native/test_runtime_workspace.cpp NO_VIBEQC)
+  vibeqc_native_test(vibeqc_cpu_linalg_tests tests/native/test_cpu_linalg.cpp)
+  add_executable(vibeqc_cpu_linalg_probe benchmarks/cpu_linalg_probe.cpp)
+  target_link_libraries(vibeqc_cpu_linalg_probe PRIVATE vibeqc)
+  target_include_directories(vibeqc_cpu_linalg_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
   vibeqc_native_test(vibeqc_cosx_reference_tests tests/native/test_cosx_reference.cpp)
 
   add_executable(vibeqc_dft_tests
