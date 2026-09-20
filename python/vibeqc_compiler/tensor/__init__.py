@@ -13,12 +13,6 @@ from .ad_program import (
     linearize,
     transpose_program,
 )
-from .batch_schedule import (
-    BATCH_SCHEDULE_SCHEMA,
-    BatchScheduleIR,
-    RaggedStepSchedule,
-    analyze_batch_schedule,
-)
 from .autodiff import (
     AD_PRIMITIVES,
     AD_RULE_VERSION,
@@ -30,6 +24,12 @@ from .autodiff import (
     dot_test,
     jvp,
     vjp,
+)
+from .batch_schedule import (
+    BATCH_SCHEDULE_SCHEMA,
+    BatchScheduleIR,
+    RaggedStepSchedule,
+    analyze_batch_schedule,
 )
 from .interpreter import Execution, execute
 from .ir import (

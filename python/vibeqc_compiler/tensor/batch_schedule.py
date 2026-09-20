@@ -11,7 +11,6 @@ from __future__ import annotations
 import typing
 from dataclasses import dataclass
 
-
 BATCH_SCHEDULE_SCHEMA = 1
 RAGGED_OPS = frozenset(("indexed_gather", "scatter_add", "segment_sum"))
 
@@ -141,7 +140,9 @@ def _ragged_step(step_index: int, node: typing.Any) -> RaggedStepSchedule:
         lowering = "inverted-segments"
     elif node.op == "segment_sum":
         offsets = tuple(node.attrs["offsets"])
-        degrees = [stop - start for start, stop in zip(offsets, offsets[1:], strict=True)]
+        degrees = [
+            stop - start for start, stop in zip(offsets, offsets[1:], strict=True)
+        ]
         scan_work = source_extent
         scheduled_work = source_extent
         lowering = "contiguous-segments"
