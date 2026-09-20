@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/one_electron_native_overlap.cuh",
+  "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
+  "regions": [],
+  "role": "performance_exception",
+  "subsystem": "one_electron_derivatives"
+}

@@ -155,10 +155,33 @@ return finite({mul}(finite(value, error, {i}), {scalar.literal(a["coefficient"])
         )
     elif node.op == "broadcast":
         index = _flat([c[axis] for axis in a["axes"]], source_shape)
-    elif node.op == "gather":
+    elif node.op in ("gather", "indexed_gather"):
         table = dict(plan.index_tables)[i]
         c[a["axis"]] = f"reinterpret_cast<const I*>(p + {table})[{c[a['axis']]}]"
         index = _flat(c, source_shape)
+    elif node.op == "scatter_add":
+        table = dict(plan.index_tables)[i]
+        axis = a["axis"]
+        target = c[axis]
+        source = list(c)
+        source[axis] = "r"
+        return f"""{ty} value = {scalar.zero};
+{reduction_pragma}for (I r = 0; r < {_integer(source_shape[axis])}; ++r)
+    if (reinterpret_cast<const I*>(p + {table})[r] == {target})
+        value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
+return finite(value, error, {i});"""
+    elif node.op == "segment_sum":
+        table = dict(plan.index_tables)[i]
+        axis = a["axis"]
+        segment = c[axis]
+        source = list(c)
+        source[axis] = "r"
+        return f"""{ty} value = {scalar.zero};
+const I begin = reinterpret_cast<const I*>(p + {table})[{segment}];
+const I end = reinterpret_cast<const I*>(p + {table})[{segment} + 1];
+{reduction_pragma}for (I r = begin; r < end; ++r)
+    value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
+return finite(value, error, {i});"""
     elif node.op == "reduce":
         reduction_shape = tuple(source_shape[axis] for axis in a["axes"])
         source, cursor = [], 0
@@ -408,11 +431,16 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
             initialize.append(
                 f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, {prefix}constant_{i}, {node.spec.size * node.spec.itemsize}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
-        if node.op == "gather" and node.attrs["positions"]:
-            values = ", ".join(_integer(v) for v in node.attrs["positions"])
-            parts.append(f"static const I {prefix}positions_{i}[] = {{{values}}};")
+        table_values = None
+        if node.op in ("gather", "indexed_gather", "scatter_add"):
+            table_values = node.attrs["positions"]
+        elif node.op == "segment_sum":
+            table_values = node.attrs["offsets"]
+        if table_values:
+            values = ", ".join(_integer(v) for v in table_values)
+            parts.append(f"static const I {prefix}index_data_{i}[] = {{{values}}};")
             initialize.append(
-                f"cuda_check(cudaMemcpyAsync(ctx->arena + {tables[i]}, {prefix}positions_{i}, {len(node.attrs['positions']) * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
+                f"cuda_check(cudaMemcpyAsync(ctx->arena + {tables[i]}, {prefix}index_data_{i}, {len(table_values) * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
         body = (
             _value(plan, i, prefix)

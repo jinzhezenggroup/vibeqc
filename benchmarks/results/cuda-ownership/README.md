@@ -11,7 +11,7 @@ The two completed phases retain independent, reproducible evidence:
   sanitizers pass. The earlier rejected full comparison and subsequent diagnostic
   evidence remain explicitly labeled and retained alongside the accepted bundle.
 
-The tracked [semantic ownership ledger](../../../docs/cuda_ownership.json), the
+The tracked [semantic ownership ledger](../../../docs/cuda_ownership/README.md), the
 CI-generated current ownership report, and [physical accounting](df/physical-lines.json)
 distinguish scientific/runtime edits from unchanged lines that changed category.
 Generate the current report with `python tools/report_cuda_ownership.py --check

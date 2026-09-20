@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/df_packed_values.hpp",
+  "role": "runtime",
+  "subsystem": "scf_tensor",
+  "reason": "Checked owner-facing launch boundary for packed value density, expansion and projection.",
+  "regions": []
+}

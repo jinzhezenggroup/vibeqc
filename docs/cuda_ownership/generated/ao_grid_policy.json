@@ -1,0 +1,8 @@
+{
+  "name": "ao_grid_policy",
+  "outputs": [
+    "generated/generated_grid_policy.cu"
+  ],
+  "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
+  "scope": "Shared CMake/JIT through-f/order-three AO polynomials and requested spin-density bilinears/sigma. dft/feature_policy.py also emits those bilinears for the native CPU RKS C consumer; CUDA dense/local traversal remains unchanged."
+}
