@@ -158,7 +158,7 @@ def qualify() -> dict[str, typing.Any]:
     ultra_spec = _spec(ULTRA_SHAPE, radii)
     result: dict[str, typing.Any] = {
         "schema": "vibeqc.production-grid-convergence",
-        "version": 1,
+        "version": 2,
         "molecule": {"atoms_bohr": ATOMS, "basis": "sto-3g"},
         "pyscf_version": pyscf.__version__,
         "numpy_version": np.__version__,
@@ -190,7 +190,11 @@ def qualify() -> dict[str, typing.Any]:
         "lda-tight": GridPolicy("tight").resolve("lda-rks"),
         "pbe-standard": GridPolicy().resolve("pbe-rks"),
         "pbe-tight": GridPolicy("tight").resolve("pbe-rks"),
-        "pbe-legacy48": _spec((48, 16, 32), radii),
+        # This isolates the radial count while holding v2 radii constant; it
+        # must not be described as the historical unit-radius public default.
+        "pbe-radial48": _spec((48, 16, 32), radii),
+        "lda-legacy-v1": GridSpec(),
+        "pbe-legacy-v1": GridSpec(),
     }
     for name, spec in production_specs.items():
         family = name.split("-", 1)[0]
@@ -214,15 +218,15 @@ def qualify() -> dict[str, typing.Any]:
         result["profiles"][name] = profile
 
     pbe_standard = result["profiles"]["pbe-standard"]
-    pbe_legacy = result["profiles"]["pbe-legacy48"]
+    pbe_radial = result["profiles"]["pbe-radial48"]
     result["accuracy_cost_checks"] = {
-        "pbe_standard_improves_legacy48_energy": (
+        "pbe_standard_improves_radial48_energy": (
             pbe_standard["error_vs_dense"]["energy_hartree"]
-            < pbe_legacy["error_vs_dense"]["energy_hartree"]
+            < pbe_radial["error_vs_dense"]["energy_hartree"]
         ),
-        "pbe_standard_improves_legacy48_force": (
+        "pbe_standard_improves_radial48_force": (
             pbe_standard["error_vs_dense"]["force_hartree_per_bohr"]
-            < pbe_legacy["error_vs_dense"]["force_hartree_per_bohr"]
+            < pbe_radial["error_vs_dense"]["force_hartree_per_bohr"]
         ),
         "lda_tight_improves_standard_force": (
             result["profiles"]["lda-tight"]["error_vs_dense"]["force_hartree_per_bohr"]
@@ -234,8 +238,8 @@ def qualify() -> dict[str, typing.Any]:
             result["profiles"]["pbe-tight"]["error_vs_dense"]["force_hartree_per_bohr"]
             < pbe_standard["error_vs_dense"]["force_hartree_per_bohr"]
         ),
-        "pbe_standard_point_cost_vs_legacy48": (
-            pbe_standard["endpoint"]["npoint"] / pbe_legacy["endpoint"]["npoint"]
+        "pbe_standard_point_cost_vs_radial48": (
+            pbe_standard["endpoint"]["npoint"] / pbe_radial["endpoint"]["npoint"]
         ),
     }
     failures = [

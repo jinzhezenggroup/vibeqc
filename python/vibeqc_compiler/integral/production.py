@@ -38,6 +38,7 @@ from .cuda_target import (
 from .fused_schedule import build_fused_shell_plan
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec, shell_pair_class
+from .specialize import specialize_integral_ir
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
@@ -314,18 +315,11 @@ def _selection_integral(
     ):
         return base
     if frozenset(selected_consumers) == base.consumers:
-        return build_integral_ir(
-            selection.spec,
-            operator=base.operator,
-            derivative=base.derivative,
-            contractions=base.contractions,
-            recurrence=selected_recurrence,
-        )
-    return build_integral_ir(
-        selection.spec,
-        selected_consumers,
-        operator=base.operator,
-        recurrence=selected_recurrence,
+        return specialize_integral_ir(base, recurrence=selected_recurrence)
+    return specialize_integral_ir(
+        base,
+        consumers=selected_consumers,
+        recurrence=recurrence,
     )
 
 

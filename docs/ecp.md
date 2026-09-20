@@ -507,6 +507,31 @@ The [s/p/d scheduling decision](../.agents/notes/implemented/performance/2026-09
 records component normalization, work accounting and compilation bounds.
 See also the [native enumeration decision](../.agents/notes/implemented/performance/2026-09-20-cpu-component-streaming.md).
 
+## Stuttgart RLC DFT force qualification
+
+`tests/python/test_ecp_stuttgart_dft.py` applies the complete public force gates
+to the pinned PySCF 2.14.0 `stuttgart-dz` Na/K orbital and scalar-ECP records,
+with STO-3G H. These are nine-AO s/p NaH/KH fixtures: neutral singlets for
+LDA/PBE RKS and +1 doublets for LDA/PBE UKS, in Cartesian and real-spherical
+representations. The local residual is zero; the nonlocal s/p/d projectors and
+effective-charge Coulomb attraction remain active. Parameter data is read from
+the test-only installation and checked against the existing fixture hashes.
+
+CPU and explicitly allocated NVIDIA CUDA runs require independent PySCF
+full-grid-response analytic gradients and two reconverged energy-difference
+steps. The matched discrete XC grid is explicitly 24 x 8 x 16. PBE mixed
+NaH/KH + hydrogen-fragment batches additionally check exact resource budgets,
+warm replay, changed geometry and failed-item recovery. CPU cases run in the
+`ecp-forces` CI shard; CUDA cases require `VIBEQC_ECP_CUDA_TEST=1` on an actual
+allocated GPU. CUDA derivative execution is checked with CPU scientific
+fallback entrypoints disabled.
+
+This qualification adds physical parameter-family coverage to the complete DFT
+force contract. It does not extend angular, method, ECP-format or resource limits,
+and does not establish arbitrary Stuttgart chemistry or basis/grid convergence.
+See the [Stuttgart DFT qualification decision](../.agents/notes/implemented/numerics/2026-09-20-stuttgart-dft-forces.md)
+and [retained endpoint evidence](../benchmarks/results/ecp-stuttgart-dft-171/README.md).
+
 ## Public CUDA semilocal ECP forces
 
 The Python `Calculator` and `PreparedBatch` support `energy` plus `forces` for

@@ -115,7 +115,23 @@ source = ["python/vibeqc"]
 extend-exclude = ["external/libxc-7.0.0", "cmake/3rdparty/implib", "benchmarks/results"]
 
 [tool.ruff.lint]
-extend-select = ["ANN", "TC", "NPY001", "NPY003", "NPY201", "PGH003", "PGH004", "S"]
+extend-select = [
+  "ANN",
+  "TC",
+  "NPY001",
+  "NPY003",
+  "NPY201",
+  "PGH003",
+  "PGH004",
+  "S",
+  "RET502",
+  "RET503",
+  "PLW2901",
+  "RUF102",
+  "RUF103",
+  "RUF104",
+  "A005",
+]
 # Assertions are pervasive internal/test invariants; subprocess invocation is a core compiler/tooling boundary.
 # Keep the narrower shell-injection checks active while avoiding blanket S603/S607 noise.
 ignore = ["ANN401", "S101", "S603", "S607"]

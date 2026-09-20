@@ -44,7 +44,7 @@ def test_directional_relaxation_equals_dense_cphf_contraction(
     np.testing.assert_allclose(actual, expected, atol=3e-10, rtol=2e-10)
 
 
-def test_complete_hvp_matches_independent_dense_assembly_by_component(
+def test_complete_hvp_matches_native_dense_assembly_by_component(
     h2_case: typing.Any,
 ) -> None:
     state, v, _, _ = h2_case

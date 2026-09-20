@@ -7,9 +7,10 @@ matrix-free operator, and the linear-solver/recycling state so downstream
 property, Hessian, and correlated-gradient code can reuse one implementation.
 This slice is partial: the RHF response layer and the direct-CPU UHF response
 layer (including `export_uhf`), host-orchestrated spin CUDA exact/DF J/K, and
-the native CPU/CUDA LDA/PBE RKS/UKS CPKS handoffs are delivered. Resident
-blocked/multi-RHS execution and complete endpoint performance acceptance remain
-open under `#179`.
+native CPU/CUDA LDA/PBE RKS/UKS CPKS handoffs are delivered. Exact-RHF resident
+scalar, blocked and recycled multi-RHS execution share the same solver and are
+qualified for the bounded tools domain. Performance evidence describes measured
+endpoints, not an automatic execution selector.
 
 This internal tooling is not a new public electronic-structure method. It
 consumes the converged native HF/KS endpoints rather than implementing SCF.
@@ -83,7 +84,7 @@ and `finite_rotation_jvp` checks the same action against an explicit
 
 `solve` implements restarted GMRES with a true residual at every configured
 checkpoint. It reports the actual residual, iteration count, operator actions,
-orthogonalization/operator timings, workspace bytes, and a non-success reason.
+orthogonalization/operator/recycling timings, workspace bytes, and a non-success reason.
 It does not silently regularize a singular denominator or claim success after
 a workspace or stagnation failure.
 
@@ -243,19 +244,25 @@ and 48 unrestricted independent high-precision point directions on device with
 the unchanged CPU-tier numerical gates. See
 [the CUDA CPKS decision](../.agents/notes/implemented/numerics/2026-09-20-native-cuda-cpks.md).
 
-## #153 interface
+## Downstream consumers
 
-The correlated-gradient work in #153 should:
+The #153 tools endpoint `BoundCCSDGradient` builds the CC-specific orbital RHS
+and weights, binds the converged RHF reference to `RHFResponseOperator`, and
+calls `checked_transpose_solve` through `ResponseGMRES`. The callback delegates
+to this package's GMRES. A separately generated physical orbital matrix checks
+the final Z-vector residual and the complete gradient's stationarity before
+publication. `test_cc_complete_gradient.py` qualifies the shared action against
+an independent MO matrix, native complete gradients against pinned references,
+and explicit Z-vector nonconvergence. The CC-specific weight/source ownership
+remains in the correlated-gradient consumer; no SCF/DIIS iteration tape is part
+of this contract.
 
-1. build its CC-specific orbital RHS and weights outside this package;
-2. create one `ResponseProblem` from the exact converged RHF reference and the
-   shared operator backend;
-3. call `solve`/`solve_many` and require the returned true residual to meet its
-   gradient gate;
-4. retain only CC-specific RHS/weight state, not a second RHF CPHF/Z-vector
-   implementation.
-
-No SCF/DIIS iteration tape is part of this contract.
+The #180 `solve_rhf_nuclear_perturbations` consumer prepares ordered nuclear and
+metric RHS columns, calls `solve_many` with final basis publication disabled,
+and reconstructs the occupied-orbital/density responses. `rhf_hvp_many` and
+`rhf_hessian` use that same boundary for bounded blocks. Their opt-in exact-RHF
+resident execution and independent complete-HVP gates are described in
+[hessian.md](hessian.md).
 
 ## Backend boundary
 
@@ -289,10 +296,47 @@ problem, and convergence decisions. Thus diagnostics call this
 `cuda-resident-host-controlled`, not an all-device CPHF. During a resident
 operator action no density/J/K matrix crosses the PCIe boundary: only the
 4-byte native numerical-status flag returns; dot/norm reductions return
-scalars, and final solution publication is explicit. Directional Hessian
+scalars, and final solution publication is explicit. Scalar and block Hessian
 consumers suppress final Arnoldi-basis publication. Host preconditioners and
-resident blocked-Arnoldi are not qualified and fail closed rather than falling
-back to host execution.
+non-RHF resident operators are not qualified and fail closed.
+
+`solve_many(..., collect_basis=False)` suppresses final basis publication for
+all three strategies; each solution is still returned on the host. Block Arnoldi
+uses the same vector-engine operations as scalar GMRES: twice-reorthogonalized
+thin QR followed by an SVD of its small factor determines the new range. Neither
+a long host block nor Gram normal equations are constructed. The initial
+sequential/recycled RHS-rank diagnostic still runs a value-only host SVD on
+already-host API inputs; small projected block factors also stay on the host.
+
+An automatic recycled space follows the selected vector engine and releases its
+retained leases on every exit. For reuse across calls, pass
+`KrylovRecycleSpace(problem, vector_engine=resident)` explicitly and close it
+before its borrowed resident owner. The same reference/operator key and exact
+owner must match, including on zero RHS. Replacement is atomic: an unsuccessful
+update preserves the previous space and generation. Explicit diagnostic
+`initial_guess`, `update` and `transport` calls may transfer vectors; the solver's
+bound resident projection/update path does not.
+
+`resident_vector_slots(dimension, options, rhs_count=..., strategy=...)` plans
+conservative lease capacity. Counts above 4096 must be rejected by consumers;
+they must not be clamped. A smaller supplied arena reports `vector_slot_limit`
+before uploading RHS or applying the operator. The arena's physical byte budget
+and the solver's logical numeric-buffer bound are separate reservations.
+
+`MultiRHSResult` exposes aggregate action, orthogonalization and recycling times.
+Blocked per-column records describe one shared solve, so the aggregate counts it
+once. Action time covers engine application only, orthogonalization covers basis
+construction/projection/range factorization, and recycling covers retained-space
+projection/replacement. These components exclude residual vector arithmetic,
+small least squares, validation and publication; use an outer wall-clock timer
+for the complete endpoint. `tools/response_resident_benchmark.py` compares the
+same exact CUDA Hamiltonian with host/resident vector storage and checks every
+sample against an independent committed-integral matrix. See the
+[resident multi-RHS decision](../.agents/notes/implemented/numerics/2026-09-20-resident-multirhs-response.md)
+for numerical, lifecycle and consumer evidence. The
+[matched exact-CUDA endpoint record](../benchmarks/results/response-179-resident/README.md)
+includes every measured sample, native binary/source identity, transfers,
+synchronizations, resource bounds and complete HVP costs.
 
 The response device budget combines retained direct-J/K storage with the
 resident owner allocation. It excludes provider preparation temporaries,
