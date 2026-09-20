@@ -73,7 +73,7 @@ struct DfResourceEnvelope {
  * for the prepared execution owner even though they are not scientific identity.
  * A positive requested_bytes is always a hard upper bound on total_bytes. */
 struct DfResolvedBudget {
-  static constexpr std::uint32_t policy_version = 1;
+  static constexpr std::uint32_t policy_version = 2;
   std::size_t requested_bytes{};
   std::size_t total_bytes{};
   std::size_t value_bytes{};
@@ -94,7 +94,9 @@ inline std::size_t df_budget_bytes(long double bytes) noexcept {
 
 /** Resolve one value/response allowance without a fixed-size magic default.
  *
- * Automatic mode uses a bounded workload target, then leaves both an absolute
+ * Live automatic mode bounds its workload target by available device memory,
+ * not the probe-failure cap: a 1-GiB cap forces roomy multi-GiB tensors to
+ * regenerate on every replay. It leaves both an absolute
  * and fractional device reservation when live free-memory is available. If the
  * probe is unavailable, the same dimensions deterministically resolve to a
  * conservative 32 MiB..1 GiB envelope. Force response and value ownership are
@@ -104,7 +106,7 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
                                           std::size_t requested_bytes) noexcept {
   constexpr std::size_t mib = 1024U * 1024U;
   constexpr std::size_t min_auto = 32U * mib;
-  constexpr std::size_t max_auto = 1024U * mib;
+  constexpr std::size_t max_fallback = 1024U * mib;
   constexpr std::size_t min_headroom = 256U * mib;
 
   const long double n = static_cast<long double>(std::max<std::size_t>(1, workload.nbf));
@@ -118,8 +120,7 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
       16.0L * mib + sizeof(double) * (4.0L * n * n * a + batch * (8.0L + 2.0L * diis) * n * n);
   const long double response_demand =
       workload.forces ? 8.0L * mib + sizeof(double) * 3.0L * atoms * (n * n + a * a + n * a) : 0.0L;
-  const auto workload_target =
-      std::clamp(df_budget_bytes(value_demand + response_demand), min_auto, max_auto);
+  const auto workload_target = std::max(df_budget_bytes(value_demand + response_demand), min_auto);
 
   DfResolvedBudget result;
   result.requested_bytes = requested_bytes;
@@ -142,7 +143,7 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
     const auto available = after_absolute - after_absolute / 4U;
     result.total_bytes = std::min(workload_target, available);
   } else {
-    result.total_bytes = workload_target;
+    result.total_bytes = std::min(workload_target, max_fallback);
   }
 
   if (!workload.forces) {
