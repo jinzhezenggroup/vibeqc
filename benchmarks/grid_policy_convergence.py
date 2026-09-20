@@ -21,6 +21,11 @@ import numpy as np
 from vibeqc import Atom
 from vibeqc_compiler.dft.grid import GridPolicy, GridSpec, MolecularGrid
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 ATOMS = (
     ("O", (0.1, -0.1, 0.0)),
     ("H", (0.1, 0.2, 1.7)),
@@ -257,7 +262,7 @@ def qualify() -> dict[str, typing.Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     args = parser.parse_args()
     result = qualify()
     try:

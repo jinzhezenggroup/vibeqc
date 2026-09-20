@@ -419,6 +419,19 @@ class Calculator:
             raise ValueError("density_fitting_memory_budget_bytes must be non-negative")
         self._method_name = method.lower()
         self._method = _METHODS[self._method_name]
+        precision_modes = {
+            "fp64": _native.PRECISION_FP64,
+            "auto": _native.PRECISION_AUTO,
+        }
+        try:
+            self._precision_mode = precision_modes[str(precision).lower()]
+        except KeyError as error:
+            raise ValueError("precision must be 'fp64' or 'auto'") from error
+        if (
+            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
+            and self._precision_mode != _native.PRECISION_FP64
+        ):
+            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._ks_options = None
         if self._method_name in (
             "lda-rks",
@@ -488,24 +501,11 @@ class Calculator:
                 raise ValueError("canonical MP2 requires screening_tolerance=0")
         elif self._screening_tolerance <= 0.0:
             raise ValueError("screening_tolerance must be positive")
-        precision_modes = {
-            "fp64": _native.PRECISION_FP64,
-            "auto": _native.PRECISION_AUTO,
-        }
-        try:
-            self._precision_mode = precision_modes[str(precision).lower()]
-        except KeyError as error:
-            raise ValueError("precision must be 'fp64' or 'auto'") from error
         if (
             self._method == _native.METHOD_MP2
             and self._precision_mode != _native.PRECISION_FP64
         ):
             raise ValueError("canonical MP2 requires precision='fp64'")
-        if (
-            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
-            and self._precision_mode != _native.PRECISION_FP64
-        ):
-            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._library = _native.load_library(device=device, device_id=self._device_id)
         self._ks_options_version = 0
         if self._ks_options is not None:

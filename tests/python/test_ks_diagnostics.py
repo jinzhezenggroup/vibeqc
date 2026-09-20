@@ -57,7 +57,12 @@ def test_physical_components_and_history_match_independent_state(
         unit="Bohr",
         verbose=0,
     )
-    grid = MolecularGrid(atoms, charge=charge, multiplicity=multiplicity).explicit()
+    grid = MolecularGrid(
+        atoms,
+        spec=calculator.ks_options.grid,
+        charge=charge,
+        multiplicity=multiplicity,
+    ).explicit()
     reference = dft.UKS(mol) if unrestricted else dft.RKS(mol)
     reference.xc = "PBE" if method.startswith("pbe") else "LDA_X,LDA_C_PW"
     reference.grids.coords = np.array(grid.points)
