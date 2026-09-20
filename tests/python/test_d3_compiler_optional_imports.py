@@ -4,7 +4,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 _IMPORT_PROBE = """
 import importlib.abc
 import sys
