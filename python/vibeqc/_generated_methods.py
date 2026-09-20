@@ -1,5 +1,6 @@
 """Generated public method identity metadata; do not edit by hand."""
 
+# fmt: off
 from types import MappingProxyType
 
 METHOD_RHF = 1
@@ -48,4 +49,4 @@ METHOD_ID_TO_NAME = MappingProxyType({
 })
 
 HF_METHOD_IDS = frozenset((METHOD_RHF, METHOD_UHF,))
-NATIVE_DFT_METHOD_IDS = frozenset((METHOD_LDA_RKS, METHOD_PBE_RKS, METHOD_LDA_UKS, METHOD_PBE_UKS,))
+NATIVE_DFT_METHOD_IDS = frozenset((METHOD_LDA_RKS, METHOD_PBE_RKS, METHOD_LDA_UKS, METHOD_PBE_UKS,))# fmt: on
