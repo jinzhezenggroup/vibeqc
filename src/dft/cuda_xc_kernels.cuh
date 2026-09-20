@@ -21,7 +21,6 @@ __global__ void validate_density(const double* density, I n, I spins, int* error
   }
 }
 
-
 }  // namespace
 
 void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, const double* points,
