@@ -239,20 +239,10 @@ class BoundCCSDTOrbitalResponse:
             fock_program,
             {**baseline.raw_inputs, "bar_fock": bar_fock},
         )
-        uncorrected_correlation = _sum_weight_maps(
-            combined_parameters, denominator
-        )
+        uncorrected_correlation = _sum_weight_maps(combined_parameters, denominator)
         uncorrected_same_space = max(
-            float(
-                np.max(
-                    np.abs(uncorrected_correlation["stationarity"][:o, :o])
-                )
-            ),
-            float(
-                np.max(
-                    np.abs(uncorrected_correlation["stationarity"][o:, o:])
-                )
-            ),
+            float(np.max(np.abs(uncorrected_correlation["stationarity"][:o, :o]))),
+            float(np.max(np.abs(uncorrected_correlation["stationarity"][o:, o:]))),
         )
 
         # Standard (T) is tied to a canonical occupied/virtual gauge.  The
@@ -269,9 +259,7 @@ class BoundCCSDTOrbitalResponse:
             fock_program,
             {**baseline.raw_inputs, "bar_fock": same_space_fock},
         )
-        correlation = _sum_weight_maps(
-            uncorrected_correlation, canonicalization
-        )
+        correlation = _sum_weight_maps(uncorrected_correlation, canonicalization)
 
         same_space = max(
             float(np.max(np.abs(correlation["stationarity"][:o, :o]))),
@@ -349,9 +337,7 @@ class BoundCCSDTOrbitalResponse:
                     {weight.parameter: weight.values for weight in parameter_weights}
                 ),
                 "orbital_energy_weights": _feed_hash(dict(orbital_energy_weights)),
-                "same_space_fock_weights": _feed_hash(
-                    {"bar_fock": same_space_fock}
-                ),
+                "same_space_fock_weights": _feed_hash({"bar_fock": same_space_fock}),
                 "z_state": _feed_hash({"rhs": rhs, "solution": z.solution}),
                 "canonical_fock_tolerance": _CANONICAL_FOCK_TOLERANCE,
                 "minimum_same_space_gap_tolerance": _MINIMUM_SAME_SPACE_GAP,

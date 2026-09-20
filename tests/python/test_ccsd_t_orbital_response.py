@@ -300,9 +300,7 @@ def test_same_space_canonicalization_cotangent_cancels_generated_stationarity(
     n = o + v
     _, g, _, _ = random_case(o, v, 159)
     rotation = np.eye(n)
-    fock_without_h = _direct_fields(
-        np.zeros((n, n)), g, rotation, o
-    )["fock"]
+    fock_without_h = _direct_fields(np.zeros((n, n)), g, rotation, o)["fock"]
     energies = np.linspace(-1.4, 0.8, n)
     h = np.diag(energies) - fock_without_h
     np.testing.assert_allclose(
