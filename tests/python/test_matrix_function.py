@@ -9,6 +9,7 @@ import pytest
 from vibeqc_compiler.method.matrix_function import SymmetricMatrixFunctionSpec
 from vibeqc_compiler.method.matrix_function_cuda import (
     emit_pseudoinverse_vjp_cuda,
+    emit_symmetric_matrix_function_vjp_cuda,
 )
 from vibeqc_compiler.tensor import Program, execute
 
@@ -440,11 +441,15 @@ def test_pseudoinverse_full_rank_closed_form() -> None:
     )
 
 
-def test_pseudoinverse_cuda_lowering_carries_custom_rule_identity() -> None:
-    source = emit_pseudoinverse_vjp_cuda()
+def test_matrix_function_cuda_lowering_carries_both_custom_rule_identities() -> None:
+    source = emit_symmetric_matrix_function_vjp_cuda()
+    assert "custom-rule: inverse-sqrt-frechet-v1" in source
     assert "custom-rule: pseudoinverse-frechet-v1" in source
+    assert "launch_symmetric_inverse_sqrt_vjp" in source
     assert "launch_symmetric_pseudoinverse_vjp" in source
+    assert "sqrt(li)" in source and "sqrt(lj)" in source
     assert "li > cutoff" in source and "lj > cutoff" in source
+    assert emit_pseudoinverse_vjp_cuda() == source
 
 
 def test_nonobject_payload_is_a_type_error() -> None:

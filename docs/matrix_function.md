@@ -15,13 +15,14 @@ positive relative threshold selects a truncated locally stable rank branch.
 Complex values, packed metrics, other matrix functions and second
 matrix-function derivatives are not supported.
 
-CPU eigendecomposition prepares the spectral state. The derivative contractions
-are emitted as an ordinary, serializable TensorIR `Program`, interpretable on
-CPU and accepted by the existing CUDA planner. For the runtime-sized DF metric
-consumer, `matrix_function_cuda.py` also emits the pseudoinverse CUDA custom-rule
-lowering. Native code still owns factorization, eigensystem/rank validation,
-scratch, streams and method integration; the generated custom rule owns only
-the spectral response arithmetic.
+CPU eigendecomposition prepares the reference spectral state. The derivative
+contractions are emitted as an ordinary, serializable TensorIR `Program`,
+interpretable on CPU and accepted by the existing CUDA planner. For runtime-sized
+native consumers, `matrix_function_cuda.py` emits one shared CUDA custom-rule
+lowering with inverse-square-root and pseudoinverse entry points. Native code
+still owns factorization, eigensystem/rank validation, scratch, streams and
+method integration; the generated custom rule owns only the spectral response
+arithmetic.
 
 ```python
 import numpy as np
@@ -104,7 +105,9 @@ independent Kronecker/Sylvester solve, pseudoinverse closed forms and finite
 differences, full-Frobenius dot tests, repeated-eigenspace rotations,
 retained/discarded response, scale/rotation covariance, state/rank failures,
 and the independent #293 metric-response oracle. The production generated CUDA
-header carries the same versioned `pseudoinverse-frechet-v1` rule identity.
+header carries both versioned `inverse-sqrt-frechet-v1` and
+`pseudoinverse-frechet-v1` rule identities; the explicit Slurm CUDA tier checks
+both entry points over exact FP64 scalar fixtures.
 
 See the [decision note](../.agents/notes/implemented/numerics/2026-09-19-symmetric-matrix-function-rule.md)
 for the ownership rationale and rejected alternatives.

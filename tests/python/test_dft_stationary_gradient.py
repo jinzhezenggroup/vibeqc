@@ -134,8 +134,10 @@ def bound_h2(
     [
         ("lda-rks", "LDA_XC_PW", "unpolarized"),
         ("pbe-rks", "PBE", "unpolarized"),
+        ("r2scan-rks", "R2SCAN", "unpolarized"),
         ("lda-uks", "LDA_XC_PW", "polarized"),
         ("pbe-uks", "PBE", "polarized"),
+        ("r2scan-uks", "R2SCAN", "polarized"),
     ],
 )
 def test_cartesian_point_coefficient_pullback_matches_generated_interior(
@@ -157,10 +159,15 @@ def test_cartesian_point_coefficient_pullback_matches_generated_interior(
         compact = program.coefficients.evaluate(functional_gradient, v)
         rho = compact["rho"]
         cartesian_gradient = compact.get("gradient")
+        # The compact meta-GGA coefficient and native point ABI both expose
+        # the AO kinetic coefficient vtau/2 directly.
+        cartesian_tau = compact.get("tau")
         if spec.spin == "unpolarized":
             rho = np.repeat(rho, 2, axis=0)
             if cartesian_gradient is not None:
                 cartesian_gradient = np.repeat(cartesian_gradient, 2, axis=0)
+            if cartesian_tau is not None:
+                cartesian_tau = np.repeat(cartesian_tau, 2, axis=0)
         actual = program.geometry_from_cartesian_coefficients(
             jets,
             density,
@@ -168,6 +175,7 @@ def test_cartesian_point_coefficient_pullback_matches_generated_interior(
             rows[()],
             rho,
             cartesian_gradient,
+            cartesian_tau,
             ao_atoms=_native_ao_atoms(basis),
             natom=basis.natom,
         )
@@ -181,8 +189,10 @@ def test_cartesian_point_coefficient_pullback_matches_generated_interior(
     [
         ("lda-rks", "LDA_XC_PW", "unpolarized"),
         ("pbe-rks", "PBE", "unpolarized"),
+        ("r2scan-rks", "R2SCAN", "unpolarized"),
         ("lda-uks", "LDA_XC_PW", "polarized"),
         ("pbe-uks", "PBE", "polarized"),
+        ("r2scan-uks", "R2SCAN", "polarized"),
     ],
 )
 def test_scf_domain_pullback_matches_independent_displaced_energy(
@@ -195,13 +205,20 @@ def test_scf_domain_pullback_matches_independent_displaced_energy(
         occupations=([[1.0, 0.0], [0.7, 0.2]] if spin == "polarized" else None),
     )
     library = _native.load_library(device="cpu")
-    pbe = method.startswith("pbe")
+    functional_code = {"lda": 0, "pbe": 1, "r2scan": 2}[method.split("-", 1)[0]]
+    family = StationaryDerivativeContract(value.identity).family
 
     def point_energy(features: typing.Any) -> typing.Any:
         gradient = features.get("gradient")
         if gradient is None:
             gradient = np.zeros((2, len(grid.points), 3))
-        return _scf_xc_points(library, pbe, features["rho"], gradient)["energy"]
+        return _scf_xc_points(
+            library,
+            functional_code,
+            features["rho"],
+            gradient,
+            features.get("tau"),
+        )["energy"]
 
     with NativeAO(**args) as basis:
         program = ContractionProgram(spec, "geometry")
@@ -210,14 +227,21 @@ def test_scf_domain_pullback_matches_independent_displaced_energy(
         gradient = features.get("gradient")
         if gradient is None:
             gradient = np.zeros((2, len(grid.points), 3))
-        point = _scf_xc_points(library, pbe, features["rho"], gradient)
+        point = _scf_xc_points(
+            library,
+            functional_code,
+            features["rho"],
+            gradient,
+            features.get("tau"),
+        )
         partials = program.geometry_from_cartesian_coefficients(
             jets,
             density,
             grid.weights,
             point["energy"],
             point["rho"],
-            point["gradient"] if pbe else None,
+            point["gradient"] if family != "lda" else None,
+            point["kinetic"] if family == "mgga" else None,
             ao_atoms=_native_ao_atoms(basis),
             natom=basis.natom,
         )
@@ -248,7 +272,10 @@ def test_scf_domain_pullback_matches_independent_displaced_energy(
     np.testing.assert_allclose(oracle.stable_estimate, expected, atol=2e-8)
 
 
-@pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
+@pytest.mark.parametrize(
+    "method",
+    ["lda-rks", "pbe-rks", "r2scan-rks", "lda-uks", "pbe-uks", "r2scan-uks"],
+)
 def test_stationary_contract_accepts_consistent_rks_and_uks(
     method: typing.Any,
 ) -> None:
@@ -260,7 +287,14 @@ def test_stationary_contract_accepts_consistent_rks_and_uks(
 
     assert contract._validate_arrays(value) is value
     assert contract.spin == ("unpolarized" if method.endswith("rks") else "polarized")
-    assert contract.family == ("lda" if method.startswith("lda") else "gga")
+    expected_family = (
+        "lda"
+        if method.startswith("lda")
+        else "mgga"
+        if method.startswith("r2scan")
+        else "gga"
+    )
+    assert contract.family == expected_family
     assert contract.to_payload()["force_capability"] == "unsupported"
     assert contract.identity == StationaryDerivativeContract(value.identity).identity
 
@@ -372,7 +406,7 @@ def test_stationary_state_requires_finite_scalar_physical_residual(
 def test_stationary_contract_rejects_unsupported_method_domain(
     method: typing.Any,
 ) -> None:
-    with pytest.raises(ValueError, match="LDA/PBE RKS/UKS"):
+    with pytest.raises(ValueError, match="LDA/PBE/r2SCAN RKS/UKS"):
         replace(identity(), method=method)
 
 
@@ -381,8 +415,10 @@ def test_stationary_contract_rejects_unsupported_method_domain(
     [
         ("lda-rks", "LDA_XC_PW", "unpolarized"),
         ("pbe-rks", "PBE", "unpolarized"),
+        ("r2scan-rks", "R2SCAN", "unpolarized"),
         ("lda-uks", "LDA_XC_PW", "polarized"),
         ("pbe-uks", "PBE", "polarized"),
+        ("r2scan-uks", "R2SCAN", "polarized"),
     ],
 )
 def test_generated_xc_geometry_is_bound_to_stationary_identity(
@@ -589,8 +625,10 @@ def test_generated_xc_geometry_owns_read_only_partial_arrays() -> None:
     [
         ("lda-rks", "LDA_XC_PW", "unpolarized"),
         ("pbe-rks", "PBE", "unpolarized"),
+        ("r2scan-rks", "R2SCAN", "unpolarized"),
         ("lda-uks", "LDA_XC_PW", "polarized"),
         ("pbe-uks", "PBE", "polarized"),
+        ("r2scan-uks", "R2SCAN", "polarized"),
     ],
 )
 def test_stationary_xc_directions_match_independent_multistep_oracle(

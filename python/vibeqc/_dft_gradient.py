@@ -18,7 +18,14 @@ from vibeqc_compiler.xc.spec import FunctionalSpec
 
 from .ks import SCF_DOMAIN, resolve_ks_method
 
-_METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks")
+_METHODS = (
+    "lda-rks",
+    "pbe-rks",
+    "r2scan-rks",
+    "lda-uks",
+    "pbe-uks",
+    "r2scan-uks",
+)
 _ARRAY_TOLERANCE = 1e-8  # Match the absolute canonicality cap of the #162 handoff.
 _RESIDUAL_TOLERANCE = 1e-8
 
@@ -45,7 +52,9 @@ class StationaryKsIdentity:
 
     def __post_init__(self) -> None:
         if self.method not in _METHODS:
-            raise ValueError("stationary derivatives support LDA/PBE RKS/UKS only")
+            raise ValueError(
+                "stationary derivatives support LDA/PBE/r2SCAN RKS/UKS only"
+            )
         for name in (
             "model_identity",
             "geometry_identity",
@@ -188,7 +197,9 @@ class StationaryDerivativeContract:
     @property
     def family(self) -> typing.Any:
         _, functional = resolve_ks_method(self.state_identity.method)
-        return "lda" if functional.ingredients == ("rho",) else "gga"
+        if functional.ingredients == ("rho",):
+            return "lda"
+        return "mgga" if "tau" in functional.ingredients else "gga"
 
     def to_payload(self) -> typing.Any:
         return {
@@ -505,7 +516,7 @@ def bind_generated_xc_geometry(
 
 
 def scf_regularization_identity() -> typing.Any:
-    """Identify the exact native LDA/PBE SCF energy/first-derivative domain."""
+    """Identify the exact native semilocal SCF energy/first-derivative domain."""
     return canonical_hash({"scf_domain": SCF_DOMAIN})
 
 
@@ -526,7 +537,13 @@ def _scf_domain_xc_geometry(
         raise ValueError("stationary functional identity mismatch")
     if functional.spin != contract.spin:
         raise ValueError("stationary spin identity mismatch")
-    family = "lda" if functional.ingredients == ("rho",) else "gga"
+    family = (
+        "lda"
+        if functional.ingredients == ("rho",)
+        else "mgga"
+        if "tau" in functional.ingredients
+        else "gga"
+    )
     if family != contract.family:
         raise ValueError("stationary functional family mismatch")
     _, expected_functional = resolve_ks_method(state.identity.method)
@@ -555,8 +572,12 @@ def _scf_domain_xc_geometry(
     point_gradient = (
         np.zeros((2, len(grid.points), 3)) if gradient is None else gradient
     )
+    functional_code = {"lda": 0, "gga": 1, "mgga": 2}[contract.family]
     point_values = state._source.evaluate_xc_points(
-        contract.family == "gga", features["rho"], point_gradient
+        functional_code,
+        features["rho"],
+        point_gradient,
+        features.get("tau"),
     )
     partials = program.geometry_from_cartesian_coefficients(
         jets,
@@ -564,7 +585,8 @@ def _scf_domain_xc_geometry(
         grid.weights,
         point_values["energy"],
         point_values["rho"],
-        point_values["gradient"] if contract.family == "gga" else None,
+        point_values["gradient"] if contract.family != "lda" else None,
+        point_values["kinetic"] if contract.family == "mgga" else None,
         ao_atoms=_native_ao_atoms(basis),
         natom=basis.natom,
     )
@@ -575,7 +597,11 @@ def _scf_domain_xc_geometry(
                 "schema": "vibeqc.stationary-scf-xc-geometry/v1",
                 "functional": functional.identity,
                 "scf_domain": SCF_DOMAIN,
-                "point_coefficients": "rho-gradient-cartesian-v1",
+                "point_coefficients": (
+                    "rho-gradient-kinetic-cartesian-v1"
+                    if contract.family == "mgga"
+                    else "rho-gradient-cartesian-v1"
+                ),
                 "generated_pullback": program.contract.identity,
             }
         ),
@@ -611,7 +637,13 @@ def _fixed_density_xc_geometry(
         raise ValueError("stationary functional identity mismatch")
     if functional.spin != contract.spin:
         raise ValueError("stationary spin identity mismatch")
-    family = "lda" if functional.ingredients == ("rho",) else "gga"
+    family = (
+        "lda"
+        if functional.ingredients == ("rho",)
+        else "mgga"
+        if "tau" in functional.ingredients
+        else "gga"
+    )
     if family != contract.family:
         raise ValueError("stationary functional family mismatch")
     _, expected_functional = resolve_ks_method(state.identity.method)

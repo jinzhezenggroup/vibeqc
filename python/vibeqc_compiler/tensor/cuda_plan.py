@@ -169,6 +169,41 @@ class TensorPlan:
         )
 
     @property
+    def index_table_bytes(self) -> int:
+        """Exact arena bytes reserved for static ragged/index metadata."""
+        total = 0
+        for step_index, _ in self.index_tables:
+            node = self.steps[step_index].node
+            if node.op in ("gather", "indexed_gather", "scatter_add"):
+                values = node.attrs["positions"]
+            elif node.op == "segment_sum":
+                values = node.attrs["offsets"]
+            else:  # pragma: no cover - planner constructs the table list
+                raise AssertionError(f"unexpected index-table owner: {node.op}")
+            total = checked_size(
+                total + aligned(len(values) * 8),
+                "index table bytes",
+            )
+        return total
+
+    @property
+    def accumulation_workspace_bytes(self) -> int:
+        """Extra ragged reduction workspace beyond materialized outputs."""
+        # scatter_add and segment_sum assign one CUDA output element per thread
+        # and reduce deterministically inside that owner. No atomics or side
+        # accumulation buffer are required.
+        return 0
+
+    @property
+    def ragged_resources(self) -> dict[str, int | bool]:
+        """Auditable ragged storage contract; index tables live in arena_bytes."""
+        return {
+            "index_table_bytes": self.index_table_bytes,
+            "accumulation_workspace_bytes": self.accumulation_workspace_bytes,
+            "included_in_arena_bytes": True,
+        }
+
+    @property
     def device_bytes(self) -> int:
         return self.allocation_bytes + self.provider_bytes
 

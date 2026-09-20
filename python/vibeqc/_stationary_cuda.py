@@ -349,6 +349,10 @@ def complete_rks_cuda_gradient_diagnostic(
     started = perf_counter()
     contract = StationaryDerivativeContract(state.identity)
     contract.validate(state)
+    if contract.family == "mgga":
+        raise NotImplementedError(
+            "CUDA tau-dependent stationary gradients require generated meta-GGA geometry lowering"
+        )
     if state._source.backend != "cuda":
         raise NotImplementedError("CUDA diagnostic requires a native CUDA KS state")
     if state._source.metadata[0] not in (3, 5) or state._source.grid_spec is None:

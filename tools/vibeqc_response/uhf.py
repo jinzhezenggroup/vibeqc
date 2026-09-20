@@ -1,4 +1,4 @@
-"""Validated UHF response snapshot, spin layout and matrix-free Jacobian."""
+"""Validated spin response snapshots and shared UHF/UKS matrix-free actions."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from tools.vibeqc_posthf.reference import immutable
 
 from .backends import CudaDFJKBackend
 from .direct_cuda import CudaDirectJKBackend
-from .problem import ResponseCompatibilityError
+from .problem import ResponseCompatibilityError, ResponseUnsupported
 
 
 def _symmetric_matrix(
@@ -29,11 +29,13 @@ def _symmetric_matrix(
 
 @dataclass(frozen=True, eq=False)
 class UHFReferenceSnapshot:
-    """Immutable canonical alpha/beta UHF state for orbital response.
+    """Immutable canonical alpha/beta UHF or UKS state for orbital response.
 
     This is intentionally separate from ``ReferenceSnapshot``: that existing
     public contract models a single closed-shell 2/0 spatial density, while a
-    UHF response state must preserve two independently canonical spin blocks.
+    spin response state must preserve two independently canonical spin blocks.
+    The historical class name remains compatible; UKS requires an explicit
+    algorithm tag and functional/grid identities, never an HF relabeling.
     """
 
     overlap: np.ndarray
@@ -57,9 +59,24 @@ class UHFReferenceSnapshot:
     hf_backend: str = "cpu-reference"
     converged: bool = True
     validation_tolerance: float = 1e-8
+    algorithm: str = "UHF"
+    functional_identity: str | None = None
+    grid_identity: str | None = None
     identity: str = field(init=False)
 
     def __post_init__(self) -> None:
+        if self.algorithm not in ("UHF", "UKS"):
+            raise ValueError("spin response reference requires UHF or UKS")
+        if self.algorithm == "UKS":
+            if not all(
+                isinstance(value, str) and value
+                for value in (self.functional_identity, self.grid_identity)
+            ):
+                raise ValueError(
+                    "UKS reference requires functional and grid identities"
+                )
+        elif self.functional_identity is not None or self.grid_identity is not None:
+            raise ValueError("UHF reference cannot carry a KS functional/grid identity")
         if self.precision != "float64":
             raise ValueError("UHF response requires real FP64 reference buffers")
         if self.representation not in ("cartesian", "real_spherical"):
@@ -164,7 +181,17 @@ class UHFReferenceSnapshot:
             "identity",
             canonical_hash(
                 {
-                    "kind": "uhf-response-reference-v1",
+                    "kind": "uhf-response-reference-v1"
+                    if self.algorithm == "UHF"
+                    else "uks-response-reference-v1",
+                    **(
+                        {
+                            "functional": self.functional_identity,
+                            "grid": self.grid_identity,
+                        }
+                        if self.algorithm == "UKS"
+                        else {}
+                    ),
                     "overlap": sha256(
                         self.overlap.astype("<f8", copy=False).tobytes()
                     ).hexdigest(),
@@ -359,7 +386,7 @@ class UHFResponseProblem:
                     "reference": self.reference.identity,
                     "layout": self.layout.identity,
                     "operator": self.operator_identity,
-                    "method": "uhf",
+                    "method": self.reference.algorithm.lower(),
                 }
             ),
         )
@@ -429,6 +456,12 @@ def uhf_operator_identity(backend: typing.Any) -> typing.Any:
 class UHFResponseOperator:
     """Matrix-free UHF Jacobian with Coulomb spin coupling and spin exchange."""
 
+    reference_algorithm = "UHF"
+
+    def _operator_identity(self, backend: typing.Any) -> str:
+        """Bind the concrete spin Fock action; subclasses add their XC owner."""
+        return uhf_operator_identity(backend)
+
     def __init__(self, problem: typing.Any, backend: typing.Any) -> None:
         if not isinstance(problem, UHFResponseProblem):
             raise TypeError("expected UHFResponseProblem")
@@ -438,7 +471,11 @@ class UHFResponseOperator:
             )
         # Matching dimensions/reference metadata cannot certify the ERI action.
         # Recycling must retain the identity of the backend actually applied.
-        if problem.operator_identity != uhf_operator_identity(backend):
+        if problem.reference.algorithm != self.reference_algorithm:
+            raise ResponseUnsupported(
+                f"{type(self).__name__} requires a {self.reference_algorithm} reference"
+            )
+        if problem.operator_identity != self._operator_identity(backend):
             raise ValueError("problem operator_identity does not match its UHF backend")
         self.problem = problem
         self.backend = backend
@@ -492,14 +529,12 @@ class UHFResponseOperator:
         beta_density = (
             reference.coefficients_beta @ beta_mo @ reference.coefficients_beta.T
         )
-        coulomb, _ = self.backend.coulomb_exchange(alpha_density + beta_density)
-        _, alpha_exchange = self.backend.coulomb_exchange(alpha_density)
-        _, beta_exchange = self.backend.coulomb_exchange(beta_density)
+        alpha_fock, beta_fock = self._fock_response(alpha_density, beta_density)
         alpha_x, beta_x = self.problem.layout.split(vector)
         response = []
         for spin, rotations, fock_response in (
-            ("alpha", alpha_x, coulomb - alpha_exchange),
-            ("beta", beta_x, coulomb - beta_exchange),
+            ("alpha", alpha_x, alpha_fock),
+            ("beta", beta_x, beta_fock),
         ):
             occupied, virtual = self.problem.layout.spaces(spin)
             coefficients = getattr(reference, f"coefficients_{spin}")
@@ -516,6 +551,15 @@ class UHFResponseOperator:
             10 * reference.nbf * reference.nbf * 8,
         )
         return self.problem.layout.pack(*response)
+
+    def _fock_response(
+        self, alpha_density: typing.Any, beta_density: typing.Any
+    ) -> typing.Any:
+        """Shared AO seam: HF uses total Coulomb and same-spin exchange."""
+        coulomb, _ = self.backend.coulomb_exchange(alpha_density + beta_density)
+        _, alpha_exchange = self.backend.coulomb_exchange(alpha_density)
+        _, beta_exchange = self.backend.coulomb_exchange(beta_density)
+        return coulomb - alpha_exchange, coulomb - beta_exchange
 
     def apply_transpose(self, vector: typing.Any) -> typing.Any:
         """Apply the transpose in the real canonical spin-orbital gauge."""
@@ -548,3 +592,65 @@ class UHFResponseOperator:
                 [self.apply(eye[:, column]) for column in range(self.dimension)]
             )
         )
+
+
+def uks_operator_identity(backend: typing.Any, xc_kernel: typing.Any) -> str:
+    """Bind both-spin CPKS to the actual J provider and semilocal XC kernel."""
+    return canonical_hash(
+        {
+            "method": "uks-cpks",
+            "backend": backend.identity,
+            "xc_kernel": xc_kernel.identity,
+            "coulomb": "J[delta-P-alpha + delta-P-beta]",
+            "exchange": "none",
+            "parameterization": "spin-density-symmetric-ov",
+        }
+    )
+
+
+class UKSResponseOperator(UHFResponseOperator):
+    """Semilocal spin CPKS using the shared spin layout and orbital action.
+
+    Only the AO Fock-response seam differs from UHF. XC preserves both spin
+    outputs and cross-spin derivatives; no restricted averaging is permitted.
+    The common kernel contract rejects unsupported hybrid/meta-GGA response.
+    """
+
+    reference_algorithm = "UKS"
+
+    def _operator_identity(self, backend: typing.Any) -> str:
+        return uks_operator_identity(backend, self.xc_kernel)
+
+    def __init__(
+        self, problem: typing.Any, backend: typing.Any, xc_kernel: typing.Any
+    ) -> None:
+        if xc_kernel.spec.spin != "polarized":
+            raise ResponseUnsupported("UKS CPKS requires a polarized XC kernel")
+        self.xc_kernel = xc_kernel
+        super().__init__(problem, backend)
+        xc_kernel.validate_reference(problem.reference)
+
+    @classmethod
+    def build_problem(
+        cls,
+        reference: typing.Any,
+        backend: typing.Any,
+        xc_kernel: typing.Any,
+        *,
+        perturbation_labels: typing.Any = (),
+    ) -> UHFResponseProblem:
+        """Reuse the spin reference/layout contract with a KS-specific identity."""
+        if reference.algorithm != "UKS":
+            raise ResponseUnsupported("UKS CPKS requires a UKS reference")
+        return UHFResponseProblem.from_reference(
+            reference,
+            operator_identity=uks_operator_identity(backend, xc_kernel),
+            perturbation_labels=perturbation_labels,
+        )
+
+    def _fock_response(
+        self, alpha_density: typing.Any, beta_density: typing.Any
+    ) -> typing.Any:
+        coulomb, _ = self.backend.coulomb_exchange(alpha_density + beta_density)
+        xc = self.xc_kernel.apply_spin(np.stack([alpha_density, beta_density]))
+        return coulomb + xc[0], coulomb + xc[1]

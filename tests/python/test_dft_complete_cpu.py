@@ -159,6 +159,159 @@ def independent_uks_gradient(
     return mf.e_tot, grad.kernel()
 
 
+def independent_semilocal_total_gradient(
+    basis: typing.Any, state: typing.Any, method: typing.Any
+) -> typing.Any:
+    """Independent PySCF analytic total gradient on the identical explicit grid."""
+    from pyscf import dft, gto, lib
+    from pyscf.data.elements import ELEMENTS
+
+    lib.num_threads(1)
+    labels = [f"{ELEMENTS[a.atomic_number]}{i}" for i, a in enumerate(basis.atoms)]
+    shells = {label: [] for label in labels}
+    for shell in basis.shells:
+        shells[labels[shell.atom_index]].append(
+            [
+                shell.angular_momentum,
+                *[(p.exponent, p.coefficient) for p in shell.primitives],
+            ]
+        )
+    mol = gto.M(
+        atom=[(label, a.position) for label, a in zip(labels, basis.atoms)],
+        basis=shells,
+        unit="Bohr",
+        cart=True,
+        charge=basis.charge,
+        spin=basis.multiplicity - 1,
+        verbose=0,
+    )
+    mf = dft.RKS(mol) if method.endswith("-rks") else dft.UKS(mol)
+    mf.xc = "R2SCAN"
+    mf.grids.coords = np.array(state.grid.points)
+    mf.grids.weights = np.array(state.grid.weights)
+    mf.grids.radii_adjust = None
+    owners = np.asarray(state.grid.owners)
+    tab = {
+        mol.atom_symbol(a): (
+            np.array(state.grid.points[owners == a] - mol.atom_coord(a)),
+            np.array(state._source.atomic_weights[owners == a]),
+        )
+        for a in range(mol.natm)
+    }
+    mf.grids.gen_atomic_grids = lambda *args, **kwargs: tab
+    mf.small_rho_cutoff = 0
+    mf.conv_tol = 1e-13
+    mf.conv_tol_grad = 1e-10
+    mf.max_cycle = 200
+    mf.kernel()
+    assert mf.converged
+    grad = mf.nuc_grad_method()
+    grad.grid_response = True
+    return mf.e_tot, grad.kernel()
+
+
+@pytest.mark.parametrize(
+    "method,charge,multiplicity",
+    [("r2scan-rks", 0, 1), ("r2scan-uks", 1, 2)],
+)
+def test_complete_r2scan_cpu_gradient_reconverged_directional_fd(
+    method: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+    record_property: typing.Any,
+) -> None:
+    """Hard gate: complete tau force agrees with fully reconverged energy differences."""
+    calc = calculator(method, max_iterations=200)
+    with (
+        calc.prepare_batch(
+            [ATOMS], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
+        NativeAO(ATOMS, charge=charge, multiplicity=multiplicity) as basis,
+    ):
+        batch.execute(strict=True)
+        state = StationaryKsState.from_native(batch, basis)
+        assert state.identity.method == method
+        result = complete_rks_gradient_diagnostic(
+            state,
+            basis,
+            cache=".cache/r2scan-gradient-tests",
+            execution="native",
+            tile_points=137,
+            integral_terms=17,
+            primitive_tile=29,
+        )
+        np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=2e-9, rtol=0)
+
+        xyz = np.asarray([position for _, position in ATOMS])
+        direction = np.array(
+            [[0.13, -0.07, 0.11], [-0.05, 0.17, 0.03], [0.09, 0.02, -0.14]]
+        )
+        estimates = []
+        for step in (3e-4, 1e-4):
+            energies = []
+            for sign in (1, -1):
+                moved = [
+                    (atom[0], position)
+                    for atom, position in zip(
+                        ATOMS, xyz + sign * step * direction, strict=True
+                    )
+                ]
+                energies.append(
+                    calc.singlepoint(
+                        moved,
+                        charge=charge,
+                        multiplicity=multiplicity,
+                        properties=("energy",),
+                    ).energy
+                )
+            estimates.append((energies[0] - energies[1]) / (2 * step))
+        actual = float(np.sum(result.gradient * direction))
+        assert abs(estimates[-1] - estimates[-2]) < 2e-6
+        assert abs(estimates[-1] - actual) < 2e-6
+        record_property("r2scan_fd_error", abs(estimates[-1] - actual))
+
+
+@pytest.mark.parametrize(
+    "method,charge,multiplicity",
+    [("r2scan-rks", 0, 1), ("r2scan-uks", 1, 2)],
+)
+def test_complete_r2scan_cpu_gradient_independent_analytic(
+    method: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+    record_property: typing.Any,
+) -> None:
+    """Independent PySCF/libxc analytic gate when that validation stack is installed."""
+    pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
+    calc = calculator(method, max_iterations=200)
+    with (
+        calc.prepare_batch(
+            [ATOMS], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
+        NativeAO(ATOMS, charge=charge, multiplicity=multiplicity) as basis,
+    ):
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        result = complete_rks_gradient_diagnostic(
+            state,
+            basis,
+            cache=".cache/r2scan-gradient-tests",
+            execution="native",
+            tile_points=137,
+            integral_terms=17,
+            primitive_tile=29,
+        )
+        reference_energy, reference = independent_semilocal_total_gradient(
+            basis, state, method
+        )
+        assert energy == pytest.approx(reference_energy, abs=2e-8)
+        np.testing.assert_allclose(result.gradient, reference, atol=2e-6, rtol=0)
+        record_property(
+            "r2scan_analytic_max_error",
+            float(np.max(np.abs(result.gradient - reference))),
+        )
+
+
 @pytest.mark.parametrize("execution", ["reference", "native"])
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
 def test_complete_asymmetric_water_analytic_and_reconverged_fd(

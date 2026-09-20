@@ -457,6 +457,57 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
   return static_cast<std::size_t>(bytes);
 }
 
+std::vector<double> metric_function_response_from_value(
+    const std::vector<double>& metric, const std::vector<double>& function_value_matrix,
+    const std::vector<double>& response, std::size_t n, double relative_threshold,
+    tensor::SymmetricMatrixFunction function) {
+  const auto elements = checked_matrix_elements(n, "DF metric response dimension is invalid");
+  if (metric.size() != elements || function_value_matrix.size() != elements ||
+      response.size() != elements || !std::isfinite(relative_threshold) ||
+      relative_threshold < 0.0 || relative_threshold >= 1.0)
+    throw std::invalid_argument("DF metric response dimensions or threshold are inconsistent");
+  require_finite(metric, "DF metric response requires a finite metric");
+  require_finite(function_value_matrix, "DF metric response requires a finite matrix function");
+  require_finite(response, "DF metric response requires finite weights");
+
+  std::vector<double> symmetric(elements);
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = 0; j < n; ++j)
+      symmetric[i * n + j] = 0.5 * (metric[i * n + j] + metric[j * n + i]);
+
+  const auto eigen = symmetric_eigen(std::move(symmetric), n);
+  const auto& q = eigen.vectors;
+  const double largest = eigen.values.back();
+  if (!(largest > 0.0)) throw std::runtime_error("DF metric has no positive response subspace");
+  const double cutoff = relative_threshold * largest;
+  const double resolution = 128 * std::numeric_limits<double>::epsilon() * largest;
+  std::vector<std::uint8_t> retained(n);
+  for (std::size_t i = 0; i < n; ++i) {
+    double projected_value = 0.0;
+    for (std::size_t row = 0; row < n; ++row)
+      for (std::size_t column = 0; column < n; ++column)
+        projected_value +=
+            q[row * n + i] * function_value_matrix[row * n + column] * q[column * n + i];
+    if (function == tensor::SymmetricMatrixFunction::pseudoinverse) {
+      retained[i] = eigen.values[i] * projected_value > 0.5;
+    } else {
+      retained[i] = eigen.values[i] > 0.0 && std::sqrt(eigen.values[i]) * projected_value > 0.5;
+    }
+    if (relative_threshold > 0.0) {
+      if (std::abs(eigen.values[i] - cutoff) <= resolution)
+        throw std::runtime_error("DF metric rank crossing: eigenvalue is unresolved at the cutoff");
+      if (static_cast<bool>(retained[i]) != (eigen.values[i] > cutoff))
+        throw std::invalid_argument(
+            "DF metric function active subspace differs from its threshold");
+    }
+  }
+  if (std::none_of(retained.begin(), retained.end(), [](std::uint8_t keep) { return keep != 0; }))
+    throw std::invalid_argument("DF metric function retains no positive subspace");
+
+  return tensor::symmetric_matrix_function_vjp(eigen.values, q, retained, response, function,
+                                               resolution);
+}
+
 }  // namespace
 
 std::vector<double> density_fitting_metric_pseudoinverse(
@@ -486,46 +537,16 @@ std::vector<double> density_fitting_metric_inverse_response(const std::vector<do
                                                             const std::vector<double>& response,
                                                             std::size_t n,
                                                             double relative_threshold) {
-  const auto elements = checked_matrix_elements(n, "DF metric response dimension is invalid");
-  if (metric.size() != elements || inverse.size() != elements || response.size() != elements ||
-      !std::isfinite(relative_threshold) || relative_threshold < 0.0 || relative_threshold >= 1.0)
-    throw std::invalid_argument("DF metric response dimensions or threshold are inconsistent");
-  require_finite(metric, "DF metric response requires a finite metric");
-  require_finite(inverse, "DF metric response requires a finite inverse");
-  require_finite(response, "DF metric response requires finite weights");
-  std::vector<double> symmetric(elements);
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j)
-      symmetric[i * n + j] = 0.5 * (metric[i * n + j] + metric[j * n + i]);
+  return metric_function_response_from_value(metric, inverse, response, n, relative_threshold,
+                                             tensor::SymmetricMatrixFunction::pseudoinverse);
+}
 
-  const auto eigen = symmetric_eigen(std::move(symmetric), n);
-  const auto& q = eigen.vectors;
-  const double largest = eigen.values.back();
-  if (!(largest > 0.0)) throw std::runtime_error("DF metric has no positive response subspace");
-  const double cutoff = relative_threshold * largest;
-  // Match the eigensolver's relative resolution. A cutoff inside this interval
-  // cannot define a reproducible derivative even if this call chooses a rank.
-  const double resolution = 128 * std::numeric_limits<double>::epsilon() * largest;
-  std::vector<std::uint8_t> retained(n);
-  for (std::size_t i = 0; i < n; ++i) {
-    double inverse_eigenvalue = 0.0;
-    for (std::size_t row = 0; row < n; ++row)
-      for (std::size_t column = 0; column < n; ++column)
-        inverse_eigenvalue += q[row * n + i] * inverse[row * n + column] * q[column * n + i];
-    retained[i] = eigen.values[i] * inverse_eigenvalue > 0.5;
-    if (relative_threshold > 0.0) {
-      if (std::abs(eigen.values[i] - cutoff) <= resolution)
-        throw std::runtime_error("DF metric rank crossing: eigenvalue is unresolved at the cutoff");
-      if (static_cast<bool>(retained[i]) != (eigen.values[i] > cutoff))
-        throw std::invalid_argument("DF metric inverse active subspace differs from its threshold");
-    }
-  }
-  if (std::none_of(retained.begin(), retained.end(), [](std::uint8_t keep) { return keep != 0; }))
-    throw std::invalid_argument("DF metric inverse retains no positive subspace");
-
-  return tensor::symmetric_matrix_function_vjp(eigen.values, q, retained, response,
-                                               tensor::SymmetricMatrixFunction::pseudoinverse,
-                                               resolution);
+std::vector<double> density_fitting_metric_inverse_square_root_response(
+    const std::vector<double>& metric, const std::vector<double>& inverse_square_root,
+    const std::vector<double>& response, std::size_t n, double relative_threshold) {
+  return metric_function_response_from_value(metric, inverse_square_root, response, n,
+                                             relative_threshold,
+                                             tensor::SymmetricMatrixFunction::inverse_sqrt);
 }
 
 DensityFittingMetricFactor factor_density_fitting_metric(const std::vector<double>& metric,

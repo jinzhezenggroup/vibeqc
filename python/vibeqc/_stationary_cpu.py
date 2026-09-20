@@ -325,7 +325,7 @@ def complete_rks_gradient_diagnostic(
     """Consume one live native CPU RKS/UKS state with complete plan-owned sources.
 
     Admitted domain: direct real FP64 integer RKS/UKS, canonical
-    LDA or PBE, s/p/d AOs, native unpruned version-one grid, distinct nuclei and no
+    LDA, PBE or r2SCAN, s/p/d AOs, native unpruned version-one grid, distinct nuclei and no
     point/center collisions. CPU is explicit; CUDA snapshots are rejected.
     Caller chooses an ignored/temporary compilation cache and may supply a
     CppCompilerAdapter; otherwise CXX (or c++) selects the executable. Scientific work is
@@ -524,7 +524,7 @@ def complete_rks_gradient_diagnostic(
         else None
     )
     ao_atoms = _native_ao_atoms(basis)
-    pbe = contract.family == "gga"
+    functional_code = {"lda": 0, "gga": 1, "mgga": 2}[contract.family]
     for begin in range(0, len(grid.points), tile_points):
         end = min(begin + tile_points, len(grid.points))
         points, weights, atoms = (
@@ -535,9 +535,10 @@ def complete_rks_gradient_diagnostic(
         jets = basis.evaluate(points, program.contract.ao_order)
         features = program.features(jets, density)
         coefficients = state._source.evaluate_xc_points(
-            pbe,
+            functional_code,
             features["rho"],
             features.get("gradient", np.zeros((2, end - begin, 3))),
+            features.get("tau"),
         )
         partials = program.geometry_from_cartesian_coefficients(
             jets,
@@ -545,7 +546,8 @@ def complete_rks_gradient_diagnostic(
             weights,
             coefficients["energy"],
             coefficients["rho"],
-            coefficients["gradient"] if pbe else None,
+            coefficients["gradient"] if contract.family != "lda" else None,
+            coefficients["kinetic"] if contract.family == "mgga" else None,
             ao_atoms=ao_atoms,
             natom=natom,
         )

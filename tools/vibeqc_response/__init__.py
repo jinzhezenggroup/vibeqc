@@ -22,7 +22,7 @@ from .krylov import (
     solve,
     solve_many,
 )
-from .native_ks import NativeRKSResponse
+from .native_ks import NativeRKSResponse, NativeUKSResponse
 from .operators import (
     CPKSResponseOperator,
     DenseMatrixResponseOperator,
@@ -42,6 +42,7 @@ from .uhf import (
     UHFResponseOperator,
     UHFResponseProblem,
     UHFSpinRotationLayout,
+    UKSResponseOperator,
 )
 from .xc import FixedDensityXCDerivativeKernel
 
@@ -59,6 +60,7 @@ __all__ = [
     "MultiRHSResult",
     "NativeJKBackend",
     "NativeRKSResponse",
+    "NativeUKSResponse",
     "RHFResponseOperator",
     "ResponseCompatibilityError",
     "ResponseProblem",
@@ -70,6 +72,7 @@ __all__ = [
     "UHFResponseOperator",
     "UHFResponseProblem",
     "UHFSpinRotationLayout",
+    "UKSResponseOperator",
     "explicit_rhf_response_matrix",
     "finite_rotation_jvp",
     "solve",
