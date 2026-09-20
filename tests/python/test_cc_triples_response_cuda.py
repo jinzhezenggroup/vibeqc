@@ -12,6 +12,7 @@ from vibeqc_compiler.common.resources import ResourceBudget
 from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import execute as cpu_execute
+from typing_extensions import Self
 
 from tools.vibeqc_cc import PreparedCUDALambda
 from tools.vibeqc_cc.lambda_solver import BoundCCSDLambda
@@ -32,7 +33,9 @@ class _Plan:
 
 
 class _Artifact:
-    metadata = {"key": "fake-cuda-triples-response"}
+    metadata: typing.ClassVar[dict[str, str]] = {
+        "key": "fake-cuda-triples-response"
+    }
 
 
 class _Resident:
@@ -48,7 +51,7 @@ class _Resident:
         self.device = {"ordinal": device, "name": "fake-cuda"}
         self.feeds: dict[str, np.ndarray] = {}
 
-    def __enter__(self) -> "_Resident":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *unused: object) -> None:
