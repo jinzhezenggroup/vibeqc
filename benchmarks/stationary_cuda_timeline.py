@@ -11,11 +11,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
 import typing
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from time import perf_counter
 
 import numpy as np
@@ -30,6 +30,11 @@ from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.provenance import file_hash
 from vibeqc_compiler.dft import NativeAO
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 METHODS = (
     "lda-rks",
@@ -211,7 +216,7 @@ def _record(
     }
 
 
-def _run_case(
+def _run_case_in_cache(
     fixture: str,
     method: str,
     compiler: CudaCompilerAdapter,
@@ -223,7 +228,6 @@ def _run_case(
     case: dict[str, typing.Any] = {"fixture": fixture, "method": method, "samples": []}
     try:
         if include_cold:
-            shutil.rmtree(cache, ignore_errors=True)
             cold, _ = _sample(
                 mode="cold",
                 atoms=atoms,
@@ -268,9 +272,24 @@ def _run_case(
     return case
 
 
+def _run_case(
+    fixture: str,
+    method: str,
+    compiler: CudaCompilerAdapter,
+    cache_root: Path,
+    include_cold: bool,
+) -> dict[str, typing.Any]:
+    if not include_cold:
+        return _run_case_in_cache(fixture, method, compiler, cache_root, False)
+    # A cold sample owns one new child; never recursively remove a caller path.
+    cache_root.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(prefix="stationary-timeline-", dir=cache_root) as cache:
+        return _run_case_in_cache(fixture, method, compiler, Path(cache), True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--cache", type=Path, default=ROOT / ".cache/stationary-662")
     parser.add_argument("--methods", nargs="+", choices=METHODS, default=list(METHODS))
     parser.add_argument(
