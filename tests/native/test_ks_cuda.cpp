@@ -62,20 +62,18 @@ void physical_check(const scf::PreparedFockPlan& cpu, const dft::AoBasis& basis,
   auto fock = scf::assemble_fock(cpu.strategy(), cpu.one_electron().hcore, jk);
   double xc_energy;
   if (uks) {
-    const auto xc =
-        functional == 2U ? dft::integrate_r2scan_uks(basis, grid, a, b)
-        : functional == 1U ? dft::integrate_pbe_uks(basis, grid, a, b)
-                           : dft::integrate_lda_xc_pw_uks(basis, grid, a, b);
+    const auto xc = functional == 2U   ? dft::integrate_r2scan_uks(basis, grid, a, b)
+                    : functional == 1U ? dft::integrate_pbe_uks(basis, grid, a, b)
+                                       : dft::integrate_lda_xc_pw_uks(basis, grid, a, b);
     xc_energy = xc.energy;
     for (std::size_t i = 0; i < elements; ++i) {
       fock.alpha[i] += xc.potential[0][i];
       fock.beta[i] += xc.potential[1][i];
     }
   } else {
-    const auto xc =
-        functional == 2U ? dft::integrate_r2scan_rks(basis, grid, a)
-        : functional == 1U ? dft::integrate_pbe_rks_with_tail(basis, grid, a)
-                           : dft::integrate_lda_xc_pw_rks(basis, grid, a);
+    const auto xc = functional == 2U   ? dft::integrate_r2scan_rks(basis, grid, a)
+                    : functional == 1U ? dft::integrate_pbe_rks_with_tail(basis, grid, a)
+                                       : dft::integrate_lda_xc_pw_rks(basis, grid, a);
     xc_energy = xc.energy;
     for (std::size_t i = 0; i < elements; ++i) fock.alpha[i] += xc.potential[i];
   }
@@ -193,8 +191,8 @@ void run_case(unsigned atoms, bool restricted, bool functional) {
   require(plan.transfers().matrix_d2h_bytes == 0, "CUDA SCF staged an iteration matrix");
   const auto result = plan.result();
   if (!result.converged || plan.failed()) {
-    std::cerr << "failed atoms=" << atoms << " restricted=" << restricted << " functional=" << functional
-              << " iter=" << result.iterations
+    std::cerr << "failed atoms=" << atoms << " restricted=" << restricted
+              << " functional=" << functional << " iter=" << result.iterations
               << " residual=" << result.dft_diagnostic.physical_residual
               << " density=" << result.density_rms << '\n';
     throw std::runtime_error("native CUDA KS did not converge");
@@ -498,7 +496,8 @@ int main() {
     }
     run_case(2, true, 2U);
     run_case(2, false, 2U);
-    std::cout << "Native CUDA LDA/PBE/r2SCAN KS SCF, physical-state, warm/failure/resource gates passed\n";
+    std::cout << "Native CUDA LDA/PBE/r2SCAN KS SCF, physical-state, warm/failure/resource gates "
+                 "passed\n";
     return 0;
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
