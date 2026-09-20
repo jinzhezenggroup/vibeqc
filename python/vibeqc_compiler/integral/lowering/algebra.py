@@ -86,8 +86,7 @@ def _emit_packed_force_geometry_algebra_cuda(
     if selected_integral.spec != spec:
         raise ValueError("packed geometry spec does not match its integral IR")
     algebra = build_packed_force_geometry_algebra()
-    is_ssss = spec.angular == (0, 0, 0, 0)
-    pair_shift_rows = 0 if is_ssss else (4 if spec.angular[3] != 0 else 3)
+    pair_shift_rows = 4 if spec.angular[3] != 0 else 3
     decay_gradient_rows = (
         4 if 3 in selected_integral.independent_derivative_centers else 3
     )
@@ -106,62 +105,30 @@ def _emit_packed_force_geometry_algebra_cuda(
         variable_code[f"product_p_{axis}"] = f"first_pair.product_center.{axis}"
         variable_code[f"product_q_{axis}"] = f"second_pair.product_center.{axis}"
 
-    if is_ssss:
-        # Order-zero force algebra never references inverse pair exponents or
-        # pair-center shifts.  Do not materialize dead geometry into the lane
-        # record: the helper is called once per primitive quartet and these
-        # stores otherwise become pure scheduling/register overhead.
-        field_targets = (
-            "geometry.rho",
-            *(f"geometry.difference[{axis}]" for axis in range(3)),
-            *(
-                f"geometry.decay_gradients[{center}][{axis}]"
-                for center in range(decay_gradient_rows)
-                for axis in range(3)
-            ),
-            "argument_squared_distance",
-            None,
-            "geometry.prefactor",
-            "geometry.primitive_coefficient",
-        )
-        source_roots = (
-            algebra.rho,
-            *algebra.difference,
-            *(
-                item
-                for center in algebra.decay_gradients[:decay_gradient_rows]
-                for item in center
-            ),
-            algebra.argument_squared_distance,
-            algebra.boys_argument,
-            algebra.prefactor,
-            algebra.primitive_coefficient,
-        )
-    else:
-        field_targets = (
-            "geometry.rho",
-            "geometry.inverse_two_p",
-            "geometry.inverse_two_q",
-            *(
-                f"geometry.pair_shifts[{center}][{axis}]"
-                for center in range(pair_shift_rows)
-                for axis in range(3)
-            ),
-            *(f"geometry.difference[{axis}]" for axis in range(3)),
-            *(
-                f"geometry.decay_gradients[{center}][{axis}]"
-                for center in range(decay_gradient_rows)
-                for axis in range(3)
-            ),
-            "argument_squared_distance",
-            None,
-            "geometry.prefactor",
-            "geometry.primitive_coefficient",
-        )
-        source_roots = algebra.roots_for_pair_shift_rows(
-            pair_shift_rows,
-            decay_gradient_rows=decay_gradient_rows,
-        )
+    field_targets = (
+        "geometry.rho",
+        "geometry.inverse_two_p",
+        "geometry.inverse_two_q",
+        *(
+            f"geometry.pair_shifts[{center}][{axis}]"
+            for center in range(pair_shift_rows)
+            for axis in range(3)
+        ),
+        *(f"geometry.difference[{axis}]" for axis in range(3)),
+        *(
+            f"geometry.decay_gradients[{center}][{axis}]"
+            for center in range(decay_gradient_rows)
+            for axis in range(3)
+        ),
+        "argument_squared_distance",
+        None,
+        "geometry.prefactor",
+        "geometry.primitive_coefficient",
+    )
+    source_roots = algebra.roots_for_pair_shift_rows(
+        pair_shift_rows,
+        decay_gradient_rows=decay_gradient_rows,
+    )
     root_specs = tuple(zip(source_roots, field_targets, strict=True))
     graph, roots = algebra.graph.apply_algebra_form(
         source_roots,
@@ -212,20 +179,13 @@ def _emit_weighted_component_gradient_cuda(
         raise ValueError("weighted gradient spec does not match its integral IR")
     maximum_order = spec.maximum_force_coulomb_order
     side = maximum_order + 1
-    is_ssss = spec.angular == (0, 0, 0, 0)
-    pair_shift_rows = 0 if is_ssss else (4 if spec.angular[3] != 0 else 3)
+    pair_shift_rows = 4 if spec.angular[3] != 0 else 3
     decay_gradient_rows = (
         4 if 3 in selected_integral.independent_derivative_centers else 3
     )
     geometry_algebra = _emit_packed_force_geometry_algebra_cuda(
         spec,
         integral=selected_integral,
-    )
-    inverse_fields = (
-        "" if is_ssss else "  double inverse_two_p;\n  double inverse_two_q;\n"
-    )
-    pair_shift_field = (
-        "" if is_ssss else f"  double pair_shifts[{pair_shift_rows}][3];\n"
     )
     compact_geometry = f"""/**
  * Geometry retained by packed force lanes.
@@ -236,11 +196,14 @@ def _emit_weighted_component_gradient_cuda(
  * tables would waste per-lane shared memory and reduce resident warps.
  */
 struct GeneratedDpppPackedForceGeometry {{
-{inverse_fields}  double rho;
+  double inverse_two_p;
+  double inverse_two_q;
+  double rho;
   double product_scales[3];
-  // Order-zero force uses no pair-center shifts; higher-order packed
-  // consumers retain only the rows their angular recurrence can reference.
-{pair_shift_field}  double difference[3];
+  // The compact default stores three independent center decay rows.  An
+  // explicit IR that differentiates center four requests a fourth row.
+  double pair_shifts[{pair_shift_rows}][3];
+  double difference[3];
   double decay_gradients[{decay_gradient_rows}][3];
   double boys[{side}];
   double prefactor;
@@ -273,6 +236,8 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
         integral=selected_integral,
     )
     variable_code = {
+        "inverse_two_p": "geometry.inverse_two_p",
+        "inverse_two_q": "geometry.inverse_two_q",
         "rho": "geometry.rho",
         "first_product_scale": "geometry.product_scales[0]",
         "second_product_scale": "geometry.product_scales[1]",
@@ -282,18 +247,12 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
         "fourth_product_scale": "1.0 - geometry.product_scales[2]",
         "prefactor": "geometry.prefactor",
     }
-    if not is_ssss:
-        variable_code["inverse_two_p"] = "geometry.inverse_two_p"
-        variable_code["inverse_two_q"] = "geometry.inverse_two_q"
     for axis_index, axis in enumerate(AXES):
         variable_code[f"difference_{axis}"] = f"geometry.difference[{axis_index}]"
-        if not is_ssss:
-            for center, prefix in enumerate(("pa", "pb", "qc", "qd")):
-                if center >= pair_shift_rows:
-                    continue
-                variable_code[f"{prefix}_{axis}"] = (
-                    f"geometry.pair_shifts[{center}][{axis_index}]"
-                )
+        for center, prefix in enumerate(("pa", "pb", "qc", "qd")):
+            variable_code[f"{prefix}_{axis}"] = (
+                f"geometry.pair_shifts[{center}][{axis_index}]"
+            )
         for center_index, center in enumerate(("first", "second", "third", "fourth")):
             if center_index >= decay_gradient_rows:
                 continue
@@ -332,11 +291,7 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
         compact_geometry.rstrip(),
         "",
         "/** Density-weighted shell gradient with cross-component CSE. */",
-        (
-            "__device__ __forceinline__ void generated_dppp_weighted_component_gradient("
-            if is_ssss
-            else "__device__ __noinline__ void generated_dppp_weighted_component_gradient("
-        ),
+        "__device__ __noinline__ void generated_dppp_weighted_component_gradient(",
         "    const GeneratedDpppPackedForceGeometry& geometry,",
         "    const double (&component_weights)[kGeneratedDpppComponentCount],",
         "    double (&gradient)[3][3]) {",
