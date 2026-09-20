@@ -178,3 +178,40 @@ oracle and as the higher-l fallback. Removing that oracle requires separate vali
 ---
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+
+## Independent review qualification (2026-09-21)
+
+The scalar-provider review independently built the exact source and ran all 46
+native CTests. The prepared-provider follow-up was read and included in the
+rebuild. No OpenBLAS or GPU result is inferred from this scalar build.
+
+Additional review regressions repair two gaps in the initial test coverage:
+
+- A one-center spherical fixture has a zero nuclear derivative. The new two-center
+  spherical fixture uses signed, nonsymmetric metric/three-center weights, requires
+  a nonzero reference derivative, and checks every coordinate against materialized
+  public derivative tensors.
+- The new weighted reverse-chain test executes 48 independently rebuilt energy
+  finite differences: RHF/UHF, full and genuinely truncated constant metric ranks,
+  four Coulomb/exchange coefficient choices, and three displacement sizes. It also
+  checks the force sign, translational sum and materialized derivative parity.
+
+`tests/python/test_df_cpu_weighted_endpoint.py` adds four complete public CPU
+endpoints: H2/sto-3g RHF, H2O/sto-3g RHF, OH/sto-3g UHF and H2O/def2-SVP RHF.
+Both ownership modes agree, including SCF iteration counts. An independent PySCF
+2.14.0 calculation consumes the exact same primitive exponents and coefficients,
+not just an equal basis name; independently maintained catalogs can differ in
+rounding. Auxiliary-basis response is enabled in the oracle. Each endpoint also
+checks two independently reconverged energy finite differences and zero net force.
+All four regression cases passed locally without skips.
+
+Across these four endpoint comparisons, the largest fused/materialized force
+change was 2.64e-12 Eh/bohr and the largest matched-basis independent force error
+was 1.32e-10 Eh/bohr. This is numerical qualification, not a universal performance
+claim: the very small systems do not establish a speed advantage. The larger
+OpenBLAS measurements above belong to the implementation campaign, not this
+independent scalar review. Final published-head CI remains required.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro
