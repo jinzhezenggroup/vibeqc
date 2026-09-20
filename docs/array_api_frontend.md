@@ -91,3 +91,14 @@ program = trace(
 The resulting object is an ordinary `vibeqc_compiler.tensor.Program`; no
 frontend-only node survives lowering and no Python callback is needed for
 prepared native execution.
+
+## Ownership
+
+`vibeqc_compiler.array_api` is a separate compiler owner above
+`vibeqc_compiler.tensor`. Its dependency direction is deliberately one-way:
+the frontend may import TensorIR, while TensorIR cannot import the frontend.
+This keeps TensorIR usable by hand-built/generated equations and avoids making
+array syntax part of mathematical IR identity.
+
+The design rationale, rejected alternatives and invariants are retained in the
+[Array API frontend architecture note](../.agents/notes/implemented/architecture/2026-09-20-array-api-tensorir-frontend.md).
