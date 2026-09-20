@@ -301,15 +301,18 @@ class ContractionProgram:
         energy: typing.Any,
         rho_coefficients: typing.Any,
         gradient_coefficients: typing.Any = None,
+        tau_coefficients: typing.Any = None,
         *,
         ao_atoms: typing.Any,
         natom: typing.Any,
     ) -> typing.Any:
         """Apply generated AO-jet pullback to an audited point differential.
 
-        The point provider supplies dE/drho_s and, for GGA, dE/dgrad(rho_s)
-        in the physical two-spin convention. This method owns only the generated
-        density/AO geometric chain and never reinterprets the scalar XC model.
+        The point provider supplies dE/drho_s, dE/dgrad(rho_s), and for
+        meta-GGA dE/dtau_s in the physical two-spin convention. The tau
+        coefficient is converted to the compact AO bilinear coefficient here:
+        tau_s = 1/2 grad(phi) D_s grad(phi), so the generated pullback consumes
+        vtau_s/2 for UKS and one additional spin-half factor for RKS.
         """
         if self.contract.request.observable != "geometry":
             raise ValueError("Cartesian coefficient pullback requires geometry")
@@ -329,12 +332,19 @@ class ContractionProgram:
         energy = immutable(energy, shape=(npoint,))
         rho = immutable(rho_coefficients, shape=(2, npoint))
         arrays = [energy, rho]
+        family = self.contract.ingredients.family
         gradient = None
-        if self.contract.ingredients.family == "gga":
+        tau = None
+        if family in ("gga", "mgga"):
             gradient = immutable(gradient_coefficients, shape=(2, npoint, 3))
             arrays.append(gradient)
         elif gradient_coefficients is not None:
             raise ValueError("LDA Cartesian pullback does not consume gradients")
+        if family == "mgga":
+            tau = immutable(tau_coefficients, shape=(2, npoint))
+            arrays.append(tau)
+        elif tau_coefficients is not None:
+            raise ValueError("LDA/GGA Cartesian pullback does not consume tau")
         if not all(np.isfinite(value).all() for value in arrays):
             raise ValueError("nonfinite XC Cartesian coefficient")
 
@@ -342,14 +352,19 @@ class ContractionProgram:
             coefficients = {"rho": rho}
             if gradient is not None:
                 coefficients["gradient"] = gradient
+            if tau is not None:
+                coefficients["tau"] = immutable(0.5 * tau)
         else:
-            # RKS stores D=Da+Db.  Its derivative is the half-sum of the two
-            # spin derivatives because Da=Db=D/2.
+            # RKS stores D=Da+Db. Its derivative is the half-sum of the two
+            # spin derivatives because Da=Db=D/2. Tau adds its own 1/2 AO
+            # bilinear convention, hence the quarter-sum below.
             coefficients = {"rho": immutable(0.5 * (rho[0] + rho[1]))[None]}
             if gradient is not None:
                 coefficients["gradient"] = immutable(0.5 * (gradient[0] + gradient[1]))[
                     None
                 ]
+            if tau is not None:
+                coefficients["tau"] = immutable(0.25 * (tau[0] + tau[1]))[None]
         return self._geometry(jets, d, weights, coefficients, energy, ao_atoms, natom)
 
     def _geometry(
