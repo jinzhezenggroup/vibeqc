@@ -16,7 +16,11 @@ SUPPORTED_FUNCTIONS = frozenset(
         "log",
         "sqrt",
         "sum",
+        "reshape_explicit_indices",
         "permute_dims",
+        "broadcast_to_explicit_indices",
+        "slice_static",
+        "take_static",
         "matmul_rank2",
         "einsum_extension",
     }
