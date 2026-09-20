@@ -54,7 +54,8 @@ jobs:
             /usr/local/bin/ccache
           ccache --version
       - name: Restore ccache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cpu_ccache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
           key: ccache-cpu-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
@@ -77,6 +78,12 @@ jobs:
           -DCMAKE_SHARED_LINKER_FLAGS="${COVERAGE_LINK_FLAGS}"
       - name: Build
         run: cmake --build build --parallel
+      - name: Save ccache immediately after build
+        if: steps.cpu_ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ${{ steps.cpu_ccache.outputs.cache-primary-key }}
       - name: Show ccache statistics
         run: ccache --show-stats
       - name: Test
@@ -130,7 +137,15 @@ jobs:
           curl --fail --silent --show-error --location --output cuda-keyring.deb \
             https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
           sudo dpkg -i cuda-keyring.deb
-          sudo apt-get update
+          for attempt in 1 2 3; do
+            if sudo apt-get update; then
+              break
+            fi
+            if [[ "$attempt" == 3 ]]; then
+              exit 1
+            fi
+            sleep $((attempt * 2))
+          done
       - name: Install CUDA 12.9 build dependencies
         run: |
           sudo apt-get install --yes \
@@ -155,7 +170,8 @@ jobs:
             /usr/local/bin/ccache
           ccache --version
       - name: Restore CUDA ccache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cuda_ccache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
           key: ccache-cuda-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
@@ -175,6 +191,15 @@ jobs:
         run: >-
           cmake --build --preset cuda-release-sm120
           --target vibeqc_cuda_runtime_tests --parallel 3
+      # Master pushes are frequently superseded while the remaining CI jobs
+      # are still running. Persist the expensive native compile cache here,
+      # rather than waiting for the cache action's end-of-job post step.
+      - name: Save CUDA ccache immediately after build
+        if: steps.cuda_ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ${{ steps.cuda_ccache.outputs.cache-primary-key }}
       - name: Check Fock and proposal preflight without a GPU
         env:
           CUDA_VISIBLE_DEVICES: ""
@@ -268,7 +293,8 @@ jobs:
             /usr/local/bin/ccache
           ccache --version
       - name: Restore ccache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: python_ccache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
           key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml') }}
@@ -282,6 +308,14 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build build --parallel
+      # The four Python shards build the same native library. One shard saves
+      # the cache immediately so a later master cancellation cannot discard it.
+      - name: Save Python-build ccache immediately
+        if: matrix.shard == 'core' && steps.python_ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ${{ steps.python_ccache.outputs.cache-primary-key }}
       - name: Install the Python package and test dependencies
         run: |
           uv venv --python 3.11
