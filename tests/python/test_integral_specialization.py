@@ -105,7 +105,6 @@ def test_generated_hf_fock_subplan_uses_value_only_coulomb_state_space() -> None
     assert len(fock_plan.coulomb_states) < len(plan.coulomb_states)
 
 
-
 def test_rys_fock_support_remains_live_after_output_pruning() -> None:
     """Separate requested Fock outputs from the live fixed-root support plan."""
 
