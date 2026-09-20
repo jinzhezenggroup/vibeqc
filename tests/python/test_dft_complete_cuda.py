@@ -166,6 +166,12 @@ def test_complete_cuda_independent_analytic(
         np.testing.assert_allclose(result.gradient, ref_gradient, atol=1e-7, rtol=0)
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=2e-10, rtol=0)
         assert result.work["launches"] > 0
+        assert result.work["tensor_executions"] == 1
+        assert result.work["stationary_weight_tensor_executions"] == 0
+        assert result.work["stationary_weight_roundtrip_bytes"] == 0
+        assert result.work["stationary_state_dw_upload_bytes"] == (
+            state.density.nbytes + state.weighted_density.nbytes
+        )
         assert result.work["xc_points"] == len(state.grid.points)
         assert (
             result.work["additional_device_peak_bound"]
@@ -217,6 +223,12 @@ def test_complete_cuda_open_shell_uks_independent_analytic(
         np.testing.assert_allclose(result.gradient, reference, atol=1e-7, rtol=0)
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=3e-10, rtol=0)
         assert result.work["xc_points"] == len(state.grid.points)
+        assert result.work["tensor_executions"] == 1
+        assert result.work["stationary_weight_tensor_executions"] == 0
+        assert result.work["stationary_weight_roundtrip_bytes"] == 0
+        assert result.work["stationary_state_dw_upload_bytes"] == (
+            state.density.nbytes + state.weighted_density.nbytes
+        )
         assert (
             result.work["additional_device_peak_bound"]
             <= result.work["additional_device_budget"]
@@ -339,15 +351,26 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
     from vibeqc_compiler.integral.first_derivative_native import (
         emit_first_derivative_cuda,
     )
+    from vibeqc_compiler.method import resolve_method
     from vibeqc_compiler.method.stationary_cuda import compile_stationary_cuda
+    from vibeqc_compiler.method.stationary_gradient import (
+        SCF_POINT_MODEL,
+        StationaryGradientPlan,
+        StationaryMeanField,
+    )
 
     atoms = [("H", (0.0, 0.0, 0.0)), ("H", (1.0, 0.0, 0.0)), ("H", (2.0, 0.0, 0.0))]
     cache = Path(os.environ["VIBEQC_STATIONARY_CACHE"])
     with NativeAO(atoms, multiplicity=2) as basis:
         _, _, _, requests = _layout(basis)
+        plan = StationaryGradientPlan(
+            resolve_method("LDA_XC_PW", spin="unpolarized"),
+            StationaryMeanField(SCF_POINT_MODEL),
+        )
         artifact = compile_stationary_cuda(
             emit_first_derivative_cuda(requests),
             pbe=False,
+            plan=plan,
             iterations=3,
             compiler=compiler,
             cache=cache,
@@ -383,7 +406,9 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
         ):
             with pytest.raises(RuntimeError, match="reset"):
                 sources.finish()
-            sources.reset(1e-12)
+            density = np.eye(3)[None, :, :]
+            weighted_density = np.zeros_like(density)
+            sources.reset(1e-12, density, weighted_density)
             ao.set_density(np.eye(3))
             # Single exact-zero factor, saturated products, vacuum tail and an
             # empty tile. Points deliberately avoid center collisions.
@@ -415,7 +440,7 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
             with pytest.raises(RuntimeError, match="reset"):
                 sources._call("stationary_finish", sources.handle, _ptr(out), out.size)
             np.testing.assert_array_equal(out, 42.0)
-            sources.reset(1e-12)
+            sources.reset(1e-12, density, weighted_density)
             with ao.xc_task(points, np.arange(3), "LDA_XC_PW") as task:
                 sources.geometry(task, owners, np.ones(3), np.ones(3), pbe=False)
             for k, v in sources.finish().items():
@@ -424,7 +449,7 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
             # is copied, and reset clears previous successful accumulation.
             records = np.ones((2, 26))
             records[-1, -1] = np.nan
-            maps = np.zeros((2, 4), dtype=np.int64)
+            maps = np.zeros((2, 8), dtype=np.int64)
             with pytest.raises(RuntimeError, match="invalid stationary CUDA"):
                 sources._call(
                     "stationary_records",
@@ -437,7 +462,7 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
                 )
             with pytest.raises(RuntimeError, match="reset"):
                 sources.finish()
-            sources.reset(1e-12)
+            sources.reset(1e-12, density, weighted_density)
             assert all(np.all(v == 0) for v in sources.finish().values())
             _evidence("source-failure-zero-tail-recovery", sources.metrics())
 
