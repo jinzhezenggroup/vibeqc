@@ -113,6 +113,17 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
                                                            const core::System& auxiliary_system,
                                                            bool include_derivatives = true);
 
+/** Contract public-basis DF derivative weights directly into nuclear coordinates.
+ *
+ * metric_weights and three_center_weights use the same public AO layouts as
+ * DensityFittingIntegralData::metric and three_center. Generated s/p/d/f
+ * derivatives are consumed immediately, so no coordinate-resolved dM/dR or
+ * d(mu nu|P)/dR tensor is materialized. Higher angular momentum retains the
+ * full-tensor oracle as an explicit correctness fallback.
+ */
+std::vector<double> contract_weighted_density_fitting_derivative(
+    const core::System& orbital_system, const core::System& auxiliary_system,
+    std::span<const double> metric_weights, std::span<const double> three_center_weights);
 /**
  * Transform Cartesian density-fitting tensors into the public AO
  * representations selected by the two systems.
