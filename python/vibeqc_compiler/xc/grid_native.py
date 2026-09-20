@@ -3,6 +3,8 @@
 One forward and one reverse pair pass per point replace coordinate-wise JVP
 traversals. Local scalar partials are differentiated from Graph roots and the
 normalized-product reverse traversal is emitted by the compiler for CPU/CUDA.
+
+Rationale: .agents/notes/implemented/architecture/2026-09-20-becke-adjoint-compiler-owner.md
 """
 
 import ctypes as ct
