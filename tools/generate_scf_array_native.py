@@ -142,8 +142,13 @@ def _validate_diis_gram(program: typing.Any) -> None:
         (0, 5, 2, 3, 4),
     ) or contraction.attrs.get("output") != (0, 1, 5):
         raise ValueError("SCF DIIS Gram contraction topology changed")
-    if len(contraction.inputs) != 2 or contraction.inputs[0] is not contraction.inputs[1]:
-        raise ValueError("SCF DIIS Gram must contract one residual-history input with itself")
+    if (
+        len(contraction.inputs) != 2
+        or contraction.inputs[0] is not contraction.inputs[1]
+    ):
+        raise ValueError(
+            "SCF DIIS Gram must contract one residual-history input with itself"
+        )
     residual = contraction.inputs[0]
     if _input_name(residual) != "residual_history" or _kind_signature(residual) != (
         "batch",

@@ -67,7 +67,7 @@ Matrix Diis::update(const Matrix& fock, const Matrix& residual) {
     }
 
     Matrix extrapolated(fock.size());
-    generated::diis_extrapolate(extrapolated.data(), focks_, coefficients.data(), m,\n                                fock.size());
+    generated::diis_extrapolate(extrapolated.data(), focks_, coefficients.data(), m,\n fock.size());
     return extrapolated;
   }
 }
