@@ -84,6 +84,17 @@ def _parse_inline_table(line: str) -> dict[str, Any]:
     return result
 
 
+def _method_key(raw: str) -> str:
+    """Decode one TOML method key without interpreting dots inside quotes."""
+    if raw.startswith('"') and raw.endswith('"'):
+        return json.loads(raw)
+    if raw.startswith("'") and raw.endswith("'"):
+        return raw[1:-1]
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", raw):
+        raise ValueError(f"unsupported TOML method key {raw!r}")
+    return raw
+
+
 def _parse_variant(path: Path, variant: str) -> dict[str, dict[str, Any]]:
     section = ""
     defaults: dict[str, Any] = {}
@@ -100,7 +111,10 @@ def _parse_variant(path: Path, variant: str) -> dict[str, dict[str, Any]]:
             continue
         method = re.fullmatch(r"parameter\.(.+)", section)
         if method and line.startswith(prefix):
-            records[method.group(1)] = {**defaults, **_parse_inline_table(line)}
+            name = _method_key(method.group(1))
+            if name in records:
+                raise ValueError(f"duplicate parameter record {name!r}")
+            records[name] = {**defaults, **_parse_inline_table(line)}
     if not defaults or not records:
         raise ValueError(f"{path} does not contain {variant} defaults and records")
     return records

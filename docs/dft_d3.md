@@ -175,3 +175,19 @@ For retained performance evidence, pin the exact `nvalchemi-toolkit-ops` wheel,
 PyTorch/CUDA versions, GPU, VibeQC commit/library, cutoff, workload, and timing
 samples. Do not compare published H100 numbers directly with a local RTX 5090 run;
 run both implementations on the same allocated device.
+
+## Parameter catalog availability
+
+The generated parameter catalog retains all 157 pinned upstream D3(BJ) records,
+projected explicitly to the implemented two-body `s9=0` model. Parameter
+availability is separate from executable capability: `B97M-D3(BJ)` has negative
+`a1`, and `SSB-D3(BJ)` has negative `s8`. The current `D3Spec` sign constraints
+still reject these two records. Do not clip or take absolute values to bypass
+that boundary; extending signed damping requires separate numerical qualification.
+
+Quoted upstream TOML keys are decoded as names: for example,
+`SKALA-1.0-D3(BJ)` and `SKALA-1.1-D3(BJ)` contain no literal quote characters.
+The development-time synchronizer checks pinned source hashes; production uses
+generated constants without opening an upstream table or importing its package.
+The same pipeline preserves 118 D4 parameter records, without advertising new
+public DFT+D4 endpoints solely because those records are present.

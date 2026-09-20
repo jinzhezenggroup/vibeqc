@@ -4,29 +4,11 @@ import math
 from types import MappingProxyType
 from typing import TypedDict
 
-PARAMETER_SOURCE_SHA256 = '8c61f796eccb7d1e9420d087d7e5697f0adcae22f4d3f84838d8968105d2ca30'
+PARAMETER_SOURCE_SHA256 = '0a3d706ba4e77e35ed0290e08d6e4907ca2118a7a344a9bcd26497f88166dd2b'
 D3_TABLE_SHA256 = '9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e'
 D3_RADII_SHA256 = '92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111'
 
 D3_BJ_PARAMETER_SETS = MappingProxyType({
-    '"SKALA-1.0"-D3(BJ)': MappingProxyType({
-        's6': 1,
-        's8': 1.9889,
-        'a1': 0.3981,
-        'a2': 4.4211,
-        's9': 0,
-        'table_sha256': '9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e',
-        'radii_sha256': '92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111',
-    }),
-    '"SKALA-1.1"-D3(BJ)': MappingProxyType({
-        's6': 1,
-        's8': 1.9889,
-        'a1': 0.3981,
-        'a2': 4.4211,
-        's9': 0,
-        'table_sha256': '9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e',
-        'radii_sha256': '92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111',
-    }),
     'B1B95-D3(BJ)': MappingProxyType({
         's6': 1,
         's8': 1.4507,
@@ -1310,6 +1292,24 @@ D3_BJ_PARAMETER_SETS = MappingProxyType({
         's8': 0,
         'a1': 0,
         'a2': 4.505,
+        's9': 0,
+        'table_sha256': '9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e',
+        'radii_sha256': '92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111',
+    }),
+    'SKALA-1.0-D3(BJ)': MappingProxyType({
+        's6': 1,
+        's8': 1.9889,
+        'a1': 0.3981,
+        'a2': 4.4211,
+        's9': 0,
+        'table_sha256': '9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e',
+        'radii_sha256': '92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111',
+    }),
+    'SKALA-1.1-D3(BJ)': MappingProxyType({
+        's6': 1,
+        's8': 1.9889,
+        'a1': 0.3981,
+        'a2': 4.4211,
         's9': 0,
         'table_sha256': '9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e',
         'radii_sha256': '92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111',
@@ -3575,26 +3575,6 @@ GCP_PARAMETER_SETS = MappingProxyType({
 })
 
 PARAMETER_PROVENANCE = MappingProxyType({
-    'd3_bj:"SKALA-1.0"-D3(BJ)': MappingProxyType({
-        'source': 'dftd3/simple-dftd3',
-        'revision': '41d5a07b98ce15e97bec7a1815869725f6c7b0c2',
-        'path': 'assets/parameters.toml',
-        'sha256': 'b1d9d1b9882dcad5361a99c34745ad44f8a274d80c907d9d0187255e4323d645',
-        'upstream_key': '"skala-1.0"',
-        'variant': 'd3.bj',
-        'projection': 'two-body-s9=0',
-        'doi': '10.48550/arXiv.2506.14665',
-    }),
-    'd3_bj:"SKALA-1.1"-D3(BJ)': MappingProxyType({
-        'source': 'dftd3/simple-dftd3',
-        'revision': '41d5a07b98ce15e97bec7a1815869725f6c7b0c2',
-        'path': 'assets/parameters.toml',
-        'sha256': 'b1d9d1b9882dcad5361a99c34745ad44f8a274d80c907d9d0187255e4323d645',
-        'upstream_key': '"skala-1.1"',
-        'variant': 'd3.bj',
-        'projection': 'two-body-s9=0',
-        'doi': '10.48550/arXiv.2506.14665',
-    }),
     'd3_bj:B1B95-D3(BJ)': MappingProxyType({
         'source': 'dftd3/simple-dftd3',
         'revision': '41d5a07b98ce15e97bec7a1815869725f6c7b0c2',
@@ -5019,6 +4999,26 @@ PARAMETER_PROVENANCE = MappingProxyType({
         'variant': 'd3.bj',
         'projection': 'two-body-s9=0',
         'doi': '10.1021/acs.jpca.1c01295',
+    }),
+    'd3_bj:SKALA-1.0-D3(BJ)': MappingProxyType({
+        'source': 'dftd3/simple-dftd3',
+        'revision': '41d5a07b98ce15e97bec7a1815869725f6c7b0c2',
+        'path': 'assets/parameters.toml',
+        'sha256': 'b1d9d1b9882dcad5361a99c34745ad44f8a274d80c907d9d0187255e4323d645',
+        'upstream_key': 'skala-1.0',
+        'variant': 'd3.bj',
+        'projection': 'two-body-s9=0',
+        'doi': '10.48550/arXiv.2506.14665',
+    }),
+    'd3_bj:SKALA-1.1-D3(BJ)': MappingProxyType({
+        'source': 'dftd3/simple-dftd3',
+        'revision': '41d5a07b98ce15e97bec7a1815869725f6c7b0c2',
+        'path': 'assets/parameters.toml',
+        'sha256': 'b1d9d1b9882dcad5361a99c34745ad44f8a274d80c907d9d0187255e4323d645',
+        'upstream_key': 'skala-1.1',
+        'variant': 'd3.bj',
+        'projection': 'two-body-s9=0',
+        'doi': '10.48550/arXiv.2506.14665',
     }),
     'd3_bj:SOGGA11X-D3(BJ)': MappingProxyType({
         'source': 'dftd3/simple-dftd3',
