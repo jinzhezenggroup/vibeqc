@@ -60,7 +60,6 @@ wheel.py-api = "py3"
 "src/tensor/metrics.hpp" = "vibeqc_compiler/assets/src/tensor/metrics.hpp"
 "src/tensor/cpu_runtime.hpp" = "vibeqc_compiler/assets/src/tensor/cpu_runtime.hpp"
 "src/dft/grid_response_cpu.hpp" = "vibeqc_compiler/assets/src/dft/grid_response_cpu.hpp"
-"src/dft/grid_response_adjoint.hpp" = "vibeqc_compiler/assets/src/dft/grid_response_adjoint.hpp"
 "src/dft/stationary_gradient_cuda.cuh" = "vibeqc_compiler/assets/src/dft/stationary_gradient_cuda.cuh"
 "src/runtime/allocation_measurement.hpp" = "vibeqc_compiler/assets/src/runtime/allocation_measurement.hpp"
 "src/runtime/bounded_workspace.hpp" = "vibeqc_compiler/assets/src/runtime/bounded_workspace.hpp"
@@ -79,6 +78,7 @@ wheel.py-api = "py3"
 "src/scf/cuda_weighted_eri.hpp" = "vibeqc_compiler/assets/src/scf/cuda_weighted_eri.hpp"
 "src/scf/weighted_eri_runtime.hpp" = "vibeqc_compiler/assets/src/scf/weighted_eri_runtime.hpp"
 "include/vibeqc/vibeqc.h" = "vibeqc_compiler/assets/include/vibeqc/vibeqc.h"
+"include/vibeqc/generated_method_ids.h" = "vibeqc_compiler/assets/include/vibeqc/generated_method_ids.h"
 "external/libxc-7.0.0" = "vibeqc_compiler/assets/external/libxc-7.0.0"
 "external/xtbloom-d3" = "vibeqc_compiler/assets/external/xtbloom-d3"
 
@@ -114,9 +114,18 @@ source = ["python/vibeqc"]
 extend-exclude = ["external/libxc-7.0.0", "cmake/3rdparty/implib", "benchmarks/results"]
 
 [tool.ruff.lint]
-extend-select = ["ANN", "TC"]
-ignore = ["ANN401"]
+extend-select = ["ANN", "TC", "NPY001", "NPY003", "NPY201", "PGH003", "PGH004", "S"]
+# Assertions are pervasive internal/test invariants; subprocess invocation is a core compiler/tooling boundary.
+# Keep the narrower shell-injection checks active while avoiding blanket S603/S607 noise.
+ignore = ["ANN401", "S101", "S603", "S607"]
 [tool.ruff.lint.per-file-ignores]
+# Scope known-safe historical uses instead of disabling these checks repository-wide.
+".github/scripts/run_cumetal_cuda_pytests.py" = ["S108", "S314"]
+"benchmarks/shell_class_histogram.py" = ["S608"]
+"python/vibeqc_compiler/tensor/optimize.py" = ["S105"]
+"tests/**/*.py" = ["S108", "S311", "S314", "S324"]
+"tools/**/*.py" = ["S108"]
+"tools/vibeqc_validation/retention.py" = ["S314"]
 "tools/generate_xc_integration_references.py" = ["ANN", "TC"]
 "tools/generate_validation_references.py" = ["ANN", "TC"]
 "tools/generate_density_workload_references.py" = ["ANN", "TC"]

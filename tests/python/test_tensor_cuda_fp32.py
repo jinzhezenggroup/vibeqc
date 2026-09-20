@@ -17,6 +17,7 @@ from vibeqc_compiler.tensor import (
     TensorSpec,
     add,
     broadcast,
+    cast,
     constant,
     divide,
     einsum,
@@ -270,6 +271,25 @@ def test_fp32_primitives_views_general_contractions_and_empty_outputs(
         np.testing.assert_array_equal(
             actual.outputs["out"], np.zeros((3, 5), np.float32)
         )
+
+
+@DEVICE
+def test_explicit_precision_casts_execute_on_cuda(gpu: typing.Any) -> None:
+    x = tensor("x", (4,), "float64")
+    low = cast(x, "float32")
+    program = Program({"out": cast(multiply(low, low), "float64")})
+    feeds = {
+        "x": np.array(
+            [1.0 + 2**-25, 1.0 / 3.0, -2.5, np.finfo(np.float32).tiny],
+            dtype=np.float64,
+        )
+    }
+    expected = execute(program, feeds).outputs["out"]
+    with prepare(program, gpu) as prepared:
+        actual = prepared.execute(feeds)
+        assert actual.metrics["precision"] == "typed-fp32-fp64"
+        assert actual.outputs["out"].dtype == np.float64
+        np.testing.assert_array_equal(actual.outputs["out"], expected)
 
 
 @DEVICE

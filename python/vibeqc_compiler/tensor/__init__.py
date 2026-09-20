@@ -31,6 +31,7 @@ from .ir import (
     Node,
     add,
     broadcast,
+    cast,
     constant,
     divide,
     einsum,
@@ -53,6 +54,15 @@ from .ir import (
 from .layout import DenseLayout
 from .optimize import PASSES, optimize, rewrite
 from .packing import PackedLayout
+from .precision import (
+    CastBoundary,
+    PrecisionDirective,
+    PrecisionSchedule,
+    ValuePrecision,
+    conservative_precision_variants,
+    describe_precision,
+    lower_precision,
+)
 from .program import Program
 from .scf import (
     SCF_TENSOR_VERSION,
@@ -73,6 +83,7 @@ __all__ = [
     "PASSES",
     "PRIMITIVES",
     "SCF_TENSOR_VERSION",
+    "CastBoundary",
     "DenseLayout",
     "DotTestResult",
     "Execution",
@@ -82,16 +93,22 @@ __all__ = [
     "JVPResult",
     "Node",
     "PackedLayout",
+    "PrecisionDirective",
+    "PrecisionSchedule",
     "Program",
     "Symmetry",
     "TensorSpec",
     "VJPProgram",
     "VJPResult",
+    "ValuePrecision",
     "add",
     "broadcast",
     "capabilities",
+    "cast",
+    "conservative_precision_variants",
     "constant",
     "density_program",
+    "describe_precision",
     "diis_extrapolation_program",
     "diis_gram_program",
     "divide",
@@ -107,6 +124,7 @@ __all__ = [
     "jvp",
     "linearize",
     "log",
+    "lower_precision",
     "multiply",
     "optimize",
     "power",

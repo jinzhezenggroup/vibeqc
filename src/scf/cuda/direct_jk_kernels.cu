@@ -36,6 +36,7 @@ __global__ void independent_jk_bounds_kernel(DeviceBatch batch, double* bounds, 
  * Full pair traversal preserves nonsymmetric input orientation. Integral and
  * sparse spherical expansion arithmetic is exactly the existing evaluator.
  */
+template <bool MixedJ>
 __global__ void independent_jk_kernel(DeviceBatch batch, std::size_t system_begin, bool want_j,
                                       bool want_k, bool unrestricted, double screening,
                                       const double* bounds, const double* density,
@@ -52,8 +53,12 @@ __global__ void independent_jk_kernel(DeviceBatch batch, std::size_t system_begi
   for (std::size_t kl = threadIdx.x; kl < matrix; kl += blockDim.x) {
     const auto k = static_cast<std::int32_t>(kl / n), l = static_cast<std::int32_t>(kl % n);
     const double a = density[offset + kl], b = unrestricted ? beta[offset + kl] : 0.0;
-    if (want_j && bounds[item] * bounds[offset + kl] >= screening && a + b != 0.0)
-      coulomb += (a + b) * contracted_eri<double>(batch, system, i, j, k, l, -1);
+    if (want_j && bounds[item] * bounds[offset + kl] >= screening && a + b != 0.0) {
+      const double value =
+          MixedJ ? scalar_value(contracted_eri<MixedPrecisionFloat>(batch, system, i, j, k, l, -1))
+                 : contracted_eri<double>(batch, system, i, j, k, l, -1);
+      coulomb += (a + b) * value;
+    }
     if (want_k && bounds[offset + i * n + k] * bounds[offset + j * n + l] >= screening &&
         (a != 0.0 || b != 0.0)) {
       const double value = contracted_eri<double>(batch, system, i, k, j, l, -1);
@@ -146,12 +151,18 @@ void launch_independent_jk_bounds_kernel(dim3 grid, dim3 block, std::size_t shar
 
 void launch_independent_jk_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                   cudaStream_t stream, DeviceBatch batch, std::size_t system_begin,
-                                  bool want_j, bool want_k, bool unrestricted, double screening,
-                                  const double* bounds, const double* density, const double* beta,
-                                  double* j_out, double* ka_out, double* kb_out) {
-  independent_jk_kernel<<<grid, block, shared_bytes, stream>>>(
-      batch, system_begin, want_j, want_k, unrestricted, screening, bounds, density, beta, j_out,
-      ka_out, kb_out);
+                                  bool want_j, bool want_k, bool unrestricted, bool mixed_j,
+                                  double screening, const double* bounds, const double* density,
+                                  const double* beta, double* j_out, double* ka_out,
+                                  double* kb_out) {
+  if (mixed_j)
+    independent_jk_kernel<true><<<grid, block, shared_bytes, stream>>>(
+        batch, system_begin, want_j, want_k, unrestricted, screening, bounds, density, beta, j_out,
+        ka_out, kb_out);
+  else
+    independent_jk_kernel<false><<<grid, block, shared_bytes, stream>>>(
+        batch, system_begin, want_j, want_k, unrestricted, screening, bounds, density, beta, j_out,
+        ka_out, kb_out);
 }
 
 void launch_independent_jk_derivative_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

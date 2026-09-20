@@ -15,6 +15,7 @@ import math
 import os
 from dataclasses import asdict, replace
 
+from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
 from .basis import BasisSet
 from .basis_capabilities import require_basis
 from .calculator import Atom, _snapshot_basis
@@ -155,29 +156,35 @@ def _cuda_item_inventory(library, item, *, diis_history, pbe, tile):
 def ks_resource_request(
     systems,
     *,
-    method="pbe-rks",
-    basis="sto-3g",
-    backend="cpu",
-    basis_representation=None,
-    charges=None,
-    multiplicities=None,
-    diis_history=8,
-    max_iterations=100,
-    energy_tolerance=1e-10,
-    density_tolerance=1e-8,
-    screening_tolerance=1e-12,
-    ks_options=None,
-    device_id=0,
-    library=None,
-    name="ks",
-    first_phase=0,
-    last_phase=0,
-):
+    method: typing.Any = "pbe-rks",
+    basis: typing.Any = "sto-3g",
+    backend: typing.Any = "cpu",
+    precision: typing.Any = "fp64",
+    basis_representation: typing.Any = None,
+    charges: typing.Any = None,
+    multiplicities: typing.Any = None,
+    diis_history: typing.Any = 8,
+    max_iterations: typing.Any = 100,
+    energy_tolerance: typing.Any = 1e-10,
+    density_tolerance: typing.Any = 1e-8,
+    screening_tolerance: typing.Any = 1e-12,
+    ks_options: typing.Any = None,
+    device_id: typing.Any = 0,
+    library: typing.Any = None,
+    name: typing.Any = "ks",
+    first_phase: typing.Any = 0,
+    last_phase: typing.Any = 0,
+) -> typing.Any:
     """Resolve one complete energy-only KS request for the shared global planner."""
     if method not in _METHODS or backend not in ("cpu", "cuda"):
         raise NotImplementedError(
             "KS planning supports native CPU LDA/PBE/PBE0 and CUDA LDA/PBE RKS/UKS energies"
         )
+    precision = str(precision).lower()
+    if precision not in ("fp64", "auto"):
+        raise ValueError("KS precision must be 'fp64' or 'auto'")
+    if precision == "auto" and backend != "cuda":
+        raise NotImplementedError("KS automatic precision currently requires CUDA")
     model = resolve_ks_options(method, ks_options)
     if backend == "cuda" and model.requires_composition_v2:
         raise NotImplementedError(
@@ -204,6 +211,7 @@ def ks_resource_request(
         if not math.isfinite(value) or value <= 0:
             raise ValueError("KS numerical tolerances must be positive finite")
     selected = _snapshot_basis(basis, basis_representation)
+    cpu_forces = backend == "cpu" and qualified_basis(selected)
     pbe, unrestricted = bool(model.ao_order), method.endswith("uks")
     items = []
     for atoms, charge, multiplicity in zip(
@@ -266,7 +274,7 @@ def ks_resource_request(
         "density_tolerance": density_tolerance,
         "screening_tolerance": screening_tolerance,
         "ks_options": model.to_payload(),
-        "outputs": "energy+forces" if backend == "cuda" else "energy",
+        "outputs": "energy+forces" if backend == "cuda" or cpu_forces else "energy",
         "inventory_version": 1,
         "schedule": "ordinary-stream-round-robin"
         if backend == "cuda"
@@ -277,13 +285,19 @@ def ks_resource_request(
             device_id=device_id,
             one_electron_mapping=os.environ.get("VIBEQC_ONE_ELECTRON_VALUE_MAPPING"),
         )
+    # AUTO runs two separately bounded nonlinear stages. Reserve the native
+    # owner and exported history for both stages plus strict closure corrections.
+    history_iterations = max_iterations
+    if precision == "auto":
+        history_iterations = checked_bytes(2 * max_iterations + 4, "KS mixed history")
+        controls["history_iterations"] = history_iterations
     identity = ResourceIdentity(
         method,
         "native-ks-direct-v1",
         backend,
-        "fp64",
+        precision,
         json.dumps({"items": items}),
-        ("energy", "forces") if backend == "cuda" else ("energy",),
+        ("energy", "forces") if backend == "cuda" or cpu_forces else ("energy",),
         json.dumps(controls, sort_keys=True),
     )
     exclusions = (
@@ -298,7 +312,7 @@ def ks_resource_request(
         _item_host_inventory(
             item,
             diis_history=diis_history,
-            max_iterations=max_iterations,
+            max_iterations=history_iterations,
             pbe=pbe,
             backend=backend,
             model=model,
@@ -334,6 +348,19 @@ def ks_resource_request(
         )
     )
     device = []
+    if cpu_forces:
+        estimates.append(
+            ResourceEstimate(
+                "serialized generated KS CPU force host staging cap",
+                CPU_FORCE_HOST_CAP,
+                "pageable",
+                first_phase,
+                last_phase,
+            )
+        )
+        exclusions += (
+            "force JIT/compiler processes, loaded code, BLAS/runtime internal storage",
+        )
     try:
         if backend == "cuda" and library is None:
             from . import _native

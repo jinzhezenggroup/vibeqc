@@ -172,6 +172,8 @@ assert 'tensor_cpu' in first[0]
 first = emit_grid_contraction(3)
 assert first == emit_grid_contraction(3)
 assert 'grid_contract' in first
+assert 'namespace vibeqc_grid_adjoint {' in first
+assert 'grid_response_adjoint.hpp' not in first
 """
     subprocess.run(
         [sys.executable, "-c", source],

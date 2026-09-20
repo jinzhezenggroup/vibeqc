@@ -35,7 +35,7 @@ from .types import checked_size
 
 AD_SCHEMA = "vibeqc.tensor.autodiff"
 AD_VERSION = 1
-AD_RULE_VERSION = 2
+AD_RULE_VERSION = 3
 DEFAULT_MAX_BYTES = 256 * 1024 * 1024
 BACKEND = "numpy-cpu-autodiff"
 
@@ -353,6 +353,14 @@ def _vjp_transcendental(
     return [_transcendental_partial(node, values, bar)]
 
 
+def _jvp_cast(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
+    return tangents[0].astype(node.spec.dtype, copy=True)
+
+
+def _vjp_cast(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
+    return [bar.astype(node.inputs[0].spec.dtype, copy=True)]
+
+
 def _jvp_add(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     result = _zeros(node.spec)
     for tangent, coefficient in zip(tangents, node.attrs["coefficients"]):
@@ -482,6 +490,7 @@ def _jvp_scaled_bilinear(
 
 
 _JVP_RULES = {
+    "cast": _jvp_cast,
     "add": _jvp_add,
     "multiply": _jvp_multiply,
     "divide": _jvp_divide,
@@ -665,6 +674,7 @@ def _vjp_broadcast(node: Node, values: typing.Any, bar: typing.Any) -> list[np.n
 
 
 _VJP_RULES = {
+    "cast": _vjp_cast,
     "add": _vjp_add,
     "multiply": _vjp_multiply,
     "divide": _vjp_divide,
