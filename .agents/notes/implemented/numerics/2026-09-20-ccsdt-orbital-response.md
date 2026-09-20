@@ -40,6 +40,37 @@ reserve complete-gradient derivative memory, or expose a nuclear-gradient
 method. The CCSD(T) layer supplies the total RHS and performs the one required
 Z solve only after triples and denominator sources have been combined.
 
+## Same-occupancy canonicalization response
+
+The exact-head H2O qualification exposed nonzero occupied-occupied and
+virtual-virtual rotation derivatives of the fixed-orbital standard-(T)
+Lagrangian. Standard (T) uses a canonical Fock gauge; treating those directions
+as redundant without differentiating that gauge omits a constraint response.
+It is not corrected by loosening the orbital-stationarity tolerance.
+
+For each nonredundant pair p<q within the same occupancy block, the symmetric
+Fock cotangent is `B_pq = B_qp = -S_pq / (2 * (eps_p - eps_q))`, where `S` is
+the antisymmetric rotation stationarity of the combined parameter and diagonal
+denominator pullback. Summation covers both matrix entries, hence the factor
+two. The diagonal and occupied-virtual blocks of B are zero. Pull B back through
+the same generated full-Fock VJP used for diagonal denominator weights, then
+require the existing strict oo/vv stationarity gate to pass.
+
+Only after that correction is included is the total physical occupied-virtual
+RHF Z-vector solved. The canonicalization term is recorded separately and is
+not inserted a second time as a Z seed or as another diagonal denominator
+source. Near-degenerate oo/vv gaps remain explicitly rejected by the existing
+1e-10 gate; no denominator clipping or alternate eigenvector gauge is assumed.
+
+The generated-chain cancellation test protects sign and factor conventions.
+The additional independent regression perturbs symmetric Fock blocks, obtains
+canonical orbitals with NumPy eigendecomposition, aligns eigenvector signs and
+compares three central-difference steps with the multiplier contraction. It
+tests canonicalization response independently of the generated Fock VJP; it is
+not a complete nuclear-gradient or GPU qualification.
+
+Review update: Agent ChatGPT; Model GPT-6 Astra Pro.
+
 ## Canonical and degeneracy boundary
 
 The denominator semantics in this slice are explicitly canonical RHF. The raw

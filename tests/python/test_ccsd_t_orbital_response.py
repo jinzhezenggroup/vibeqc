@@ -342,3 +342,39 @@ def test_same_space_canonicalization_cotangent_cancels_generated_stationarity(
         atol=3e-11,
         rtol=3e-11,
     )
+
+
+@pytest.mark.parametrize("o,v", [(2, 2), (3, 3)])
+def test_same_space_multiplier_matches_independent_eigenvector_response(
+    o: int, v: int
+) -> None:
+    """Differentiate a canonical gauge by eigh, not by the generated Fock VJP."""
+    rng = np.random.default_rng(709)
+    energies = np.linspace(-2.3, 3.1, o + v)
+    raw = rng.normal(size=(o + v, o + v))
+    stationarity = raw - raw.T
+    direction = np.zeros_like(stationarity)
+    for start, stop in ((0, o), (o, o + v)):
+        block = rng.normal(scale=0.05, size=(stop - start, stop - start))
+        direction[start:stop, start:stop] = block + block.T
+    multiplier = _same_space_fock_cotangent(stationarity, energies, o)
+    expected = float(np.sum(multiplier * direction))
+
+    def gauge_objective(step: float) -> float:
+        result = 0.0
+        for start, stop in ((0, o), (o, o + v)):
+            matrix = (
+                np.diag(energies[start:stop]) + step * direction[start:stop, start:stop]
+            )
+            _, vectors = np.linalg.eigh(matrix)
+            vectors *= np.where(np.diag(vectors) < 0.0, -1.0, 1.0)
+            for p in range(stop - start):
+                for q in range(p + 1, stop - start):
+                    result += stationarity[start + p, start + q] * vectors[p, q]
+        return result
+
+    for step in (1e-4, 3e-5, 1e-5):
+        actual = (gauge_objective(step) - gauge_objective(-step)) / (2 * step)
+        np.testing.assert_allclose(actual, expected, atol=2e-9, rtol=2e-8)
+    np.testing.assert_array_equal(multiplier[:o, o:], 0.0)
+    np.testing.assert_array_equal(np.diag(multiplier), 0.0)
