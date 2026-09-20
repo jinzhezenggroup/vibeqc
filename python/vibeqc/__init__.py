@@ -41,7 +41,7 @@ from .dispersion import (
 )
 from .elements import ElectronState, electron_state
 from .fock import FockBuildSpec, FockEvaluation, FockPlan, FockScfResult, FockTerm
-from .ks import FunctionalSpec, GridSpec, KsOptions
+from .ks import FunctionalSpec, GridPolicy, GridProfile, GridSpec, KsOptions
 from .ks_diagnostics import (
     KsDiagnostic,
     KsEnergyComponents,
@@ -111,6 +111,8 @@ __all__ = [
     "FockTerm",
     "FunctionalSpec",
     "GridSpec",
+    "GridPolicy",
+    "GridProfile",
     "InactiveEigensolverProfileEntry",
     "KsDiagnostic",
     "KsEnergyComponents",

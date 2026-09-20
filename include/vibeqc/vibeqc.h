@@ -433,6 +433,9 @@ typedef struct vibeqc_ks_options {
   uint32_t abi_version;
   /** Version 1: semilocal-scaled-v1/pbe-spin-c2-1e-18. */
   uint32_t scf_domain_version;
+  /** Grid contract version. Version 1 is the deterministic reference
+   * prescription with unit-radius fallback. Version 2 is a fully resolved
+   * production prescription with sourced element radii. */
   uint32_t grid_version;
   uint32_t radial_points;
   uint32_t angular_polar;
@@ -440,8 +443,10 @@ typedef struct vibeqc_ks_options {
   uint32_t partition_iterations;
   double coincident_tolerance;
   uint64_t tile_points;
-  /** Optional positive finite radii [0..118] in Bohr, indexed by atomic
-   * number; slot zero is unused. NULL/zero means unit radii for all elements. */
+  /** Radii [0..118] in Bohr, indexed by atomic number; slot zero is unused.
+   * Version 1 accepts NULL/zero as the historical unit-radius fallback.
+   * Version 2 requires a positive finite entry for every element actually
+   * materialized; zero/missing entries fail closed. */
   const double* element_radii;
   uint32_t element_radius_count;
 } vibeqc_ks_options;

@@ -29,6 +29,32 @@ J. Chem. Phys. 88, 2547 (1988), with no heteronuclear radius correction.
 Radius overrides change the radial grid, not the partition. All these choices
 participate in the identity; an opaque accuracy level is insufficient.
 
+## Production grid policy
+
+`GridSpec(version=1)` remains the exact reference/fixture contract above. Production
+KS defaults are resolved separately by the compiler-side `GridPolicy` into a
+fully explicit `GridSpec(version=2)` before native execution. Modern LDA uses a
+48×16×32 standard profile; PBE/GGA uses 56×18×36. `grid_accuracy="tight"`, and
+the fixed-topology first-derivative profile, use 64×20×40 for LDA and 72×24×48
+for GGA. Partition iterations remain three; pruning and screening remain
+explicitly disabled so derivative topology does not change under response.
+
+Production radii are pinned xTBloom GFN1 covalent radii from
+`external/xtbloom-d3/covalent_radii.json`, with source hash and upstream revision
+carried by the policy provenance. The table currently covers atomic numbers
+1–86. A version-2 grid must carry a positive sourced radius for every element it
+uses; unsupported elements fail closed instead of silently receiving 1 Bohr.
+LDA and PBE/GGA are the qualified families. meta-GGA/r2SCAN, VV10 and hybrid
+requests remain outside this policy boundary and fail closed until separately
+qualified.
+
+The resolved version, point counts, partition controls and complete radius table
+enter the KS calculation payload and native snapshot identity. Serialization
+therefore preserves the resolved contract rather than only an accuracy label.
+Native descriptors that omit KS options retain the historical v1 behavior only
+as an ABI/reference compatibility boundary; they are not a second production
+policy. See the [#596 grid-policy decision](../.agents/notes/implemented/architecture/2026-09-20-production-grid-policy.md).
+
 `MolecularGrid` retains radial/angular topology and streams bounded tiles. It
 computes normalized ownership using log products. Coincident atoms share
 ownership, avoiding duplicate molecular measure. Points move with their owning

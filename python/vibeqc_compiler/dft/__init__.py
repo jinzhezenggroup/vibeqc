@@ -3,7 +3,15 @@
 from .ao import NativeAO, jet_indices
 from .density_source import DensitySource, DensityStamp
 from .features import density_features, orbital_features, spin_densities
-from .grid import ExplicitGrid, GridSpec, MolecularGrid, partition_weights
+from .grid import (
+    ExplicitGrid,
+    GridPolicy,
+    GridProfile,
+    GridSpec,
+    MolecularGrid,
+    grid_policy_provenance,
+    partition_weights,
+)
 from .nonlocal_integration import FixedDensityNonlocalCorrelation, NonlocalIntegral
 from .nonlocal_reference import (
     assemble_nonlocal_potential_reference,
@@ -20,6 +28,9 @@ __all__ = [
     "ExplicitGrid",
     "FixedDensityNonlocalCorrelation",
     "GridSpec",
+    "GridPolicy",
+    "GridProfile",
+    "grid_policy_provenance",
     "MolecularGrid",
     "NativeAO",
     "NonlocalIntegral",

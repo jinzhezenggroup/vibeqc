@@ -31,6 +31,17 @@ def calculator(method: typing.Any, **kwargs: typing.Any) -> typing.Any:
     )
 
 
+def production_calculator(method: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    return Calculator(
+        method=method,
+        device="cpu",
+        ks_options=KsOptions(),
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+        **kwargs,
+    )
+
+
 def independent_gradient(
     basis: typing.Any, state: typing.Any, method: typing.Any
 ) -> typing.Any:
@@ -54,6 +65,8 @@ def independent_gradient(
         basis=shells,
         unit="Bohr",
         cart=True,
+        charge=basis.charge,
+        spin=basis.multiplicity - 1,
         verbose=0,
     )
     mf = dft.RKS(mol)
@@ -106,6 +119,72 @@ def independent_gradient(
     components["nuclear"] = grad.grad_nuc()
     np.testing.assert_allclose(sum(components.values()), total, atol=2e-12, rtol=0)
     return mf.e_tot, total, components
+
+
+@pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
+def test_production_grid_light_element_energy_and_force(method):
+    """Production v2 survives the independent full-response water oracle."""
+    pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
+    calc = production_calculator(method, max_iterations=200)
+    with calc.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        assert state._source.grid_spec.version == 2
+        assert state._source.grid_provenance["policy_version"] == 2
+        result = complete_rks_gradient_diagnostic(
+            state,
+            basis,
+            cache=".cache/production-grid-cpu",
+            execution="native",
+            tile_points=137,
+            integral_terms=17,
+            primitive_tile=29,
+        )
+        reference_energy, reference, _ = independent_gradient(basis, state, method)
+        assert energy == pytest.approx(reference_energy, abs=2e-9)
+        np.testing.assert_allclose(result.gradient, reference, atol=1e-7, rtol=0)
+        np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=3e-10, rtol=0)
+
+
+def test_production_grid_transition_metal_energy_and_force():
+    """Pinned synthetic Fe/H basis exercises a real v2 transition-metal KS solve."""
+    pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
+    from test_external_basis import imported
+
+    atoms = [("Fe", (0.05, -0.02, 0.03)), ("H", (0.17, 0.11, 2.25))]
+    charge, multiplicity = 25, 1
+    basis_definition = imported("synthetic-fe-h")
+    calc = production_calculator(
+        "lda-rks", basis=basis_definition, max_iterations=250
+    )
+    with (
+        calc.prepare_batch(
+            [atoms], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
+        NativeAO(
+            atoms,
+            basis=basis_definition,
+            charge=charge,
+            multiplicity=multiplicity,
+        ) as basis,
+    ):
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        assert state._source.grid_spec.version == 2
+        assert dict(state._source.grid_spec.element_radii)[26] > 0
+        result = complete_rks_gradient_diagnostic(
+            state,
+            basis,
+            cache=".cache/production-grid-fe",
+            execution="native",
+            tile_points=137,
+            integral_terms=17,
+            primitive_tile=29,
+        )
+        reference_energy, reference, _ = independent_gradient(basis, state, "lda-rks")
+        assert energy == pytest.approx(reference_energy, abs=3e-9)
+        np.testing.assert_allclose(result.gradient, reference, atol=2e-7, rtol=0)
+        np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=5e-10, rtol=0)
 
 
 def independent_uks_gradient(
