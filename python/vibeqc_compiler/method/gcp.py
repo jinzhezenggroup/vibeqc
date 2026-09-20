@@ -115,7 +115,7 @@ class GCPSpec:
 
 def r2scan3c_gcp() -> typing.Any:
     """Exact def2-mTZVPP gCP profile used by r2SCAN-3c, scoped to H-Ar."""
-    return GCPSpec(**dict(GCP_PARAMETER_SETS["r2SCAN-3c"]))
+    return GCPSpec(**typing.cast("typing.Any", GCP_PARAMETER_SETS["r2SCAN-3c"]))
 
 
 @dataclass(frozen=True)

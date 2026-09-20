@@ -74,6 +74,7 @@ def source_identity(source: Path) -> str:
         source / "cmake/VibeQCTests.cmake",
         source / "cmake/3rdparty/implib_manifest.json",
         source / "tools/generate_cuda_implib.py",
+        source / "tools/generate_method_parameters.py",
         source / "tools/generate_shell_kernels.py",
         source / "tools/generate_ecp_kernels.py",
         source / "tools/generate_df_kernels.py",
