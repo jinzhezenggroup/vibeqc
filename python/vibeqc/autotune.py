@@ -95,7 +95,9 @@ def _source_identity_paths(source: Path) -> tuple[Path, ...]:
         )
         directory = source / root
         if not directory.is_dir():
-            raise FileNotFoundError(f"source identity root is missing: {root.as_posix()}")
+            raise FileNotFoundError(
+                f"source identity root is missing: {root.as_posix()}"
+            )
         patterns = group.get("patterns")
         if not isinstance(patterns, list) or not patterns:
             raise ValueError(f"recursive_groups[{index}].patterns must be non-empty")
@@ -119,9 +121,7 @@ def _source_identity_paths(source: Path) -> tuple[Path, ...]:
             )
         paths.add(path)
 
-    return tuple(
-        sorted(paths, key=lambda path: path.relative_to(source).as_posix())
-    )
+    return tuple(sorted(paths, key=lambda path: path.relative_to(source).as_posix()))
 
 
 def source_identity(source: Path) -> str:
