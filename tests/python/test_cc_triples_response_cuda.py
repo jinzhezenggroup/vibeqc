@@ -162,9 +162,24 @@ def test_cuda_reverse_tiles_match_generated_cpu_sources_and_honor_budget(
 def test_cuda_corrected_lambda_matches_cpu_corrected_equations(
     monkeypatch: typing.Any, tmp_path: Path
 ) -> None:
-    _fake_cuda_runtime(monkeypatch)
     snapshot, cc = _cc_state("h2o")
     compiler = CudaCompilerAdapter(Path("nvcc"), cuda_target_info("sm_120"))
+    source_bound = BoundCCSDLambda(snapshot, cc)
+    owner, _budgets = _fake_response_owner(
+        snapshot.nocc,
+        snapshot.nmo - snapshot.nocc,
+        compiler,
+        tmp_path / "triples",
+        chunk=1,
+    )
+    # Keep the bounded triples-reverse and resident-Lambda device peaks
+    # sequential. The response result is host-owned after every tile closes.
+    gpu_sources = owner.run_tiles(
+        _triples_arrays(source_bound),
+        inputs=("t1", "t2"),
+    )
+
+    _fake_cuda_runtime(monkeypatch)
     with PreparedCUDALambda(
         snapshot,
         cc,
@@ -173,17 +188,6 @@ def test_cuda_corrected_lambda_matches_cpu_corrected_equations(
         budget=ResourceBudget(host_bytes=512 << 20, device_bytes=1 << 30),
     ) as prepared:
         baseline = prepared.solve(reference_identity=snapshot.identity)
-        owner, _budgets = _fake_response_owner(
-            snapshot.nocc,
-            snapshot.nmo - snapshot.nocc,
-            compiler,
-            tmp_path / "triples",
-            chunk=1,
-        )
-        gpu_sources = owner.run_tiles(
-            _triples_arrays(prepared.bound),
-            inputs=("t1", "t2"),
-        )
         actual = solve_corrected_lambda_cuda(
             prepared,
             baseline,
@@ -223,9 +227,18 @@ def test_cuda_corrected_lambda_matches_cpu_corrected_equations(
 def test_cuda_corrected_lambda_rejects_response_for_other_shape(
     monkeypatch: typing.Any, tmp_path: Path
 ) -> None:
-    _fake_cuda_runtime(monkeypatch)
     snapshot, cc = _cc_state("h2")
     compiler = CudaCompilerAdapter(Path("nvcc"), cuda_target_info("sm_120"))
+    source_bound = BoundCCSDLambda(snapshot, cc)
+    owner, _budgets = _fake_response_owner(
+        snapshot.nocc,
+        snapshot.nmo - snapshot.nocc,
+        compiler,
+        tmp_path / "triples",
+    )
+    result = owner.run_tiles(_triples_arrays(source_bound), inputs=("t1", "t2"))
+
+    _fake_cuda_runtime(monkeypatch)
     with PreparedCUDALambda(
         snapshot,
         cc,
@@ -234,13 +247,6 @@ def test_cuda_corrected_lambda_rejects_response_for_other_shape(
         budget=ResourceBudget(host_bytes=512 << 20, device_bytes=1 << 30),
     ) as prepared:
         baseline = prepared.solve(reference_identity=snapshot.identity)
-        owner, _budgets = _fake_response_owner(
-            snapshot.nocc,
-            snapshot.nmo - snapshot.nocc,
-            compiler,
-            tmp_path / "triples",
-        )
-        result = owner.run_tiles(_triples_arrays(prepared.bound), inputs=("t1", "t2"))
         forged = type(result)(
             sources=result.sources,
             inputs=result.inputs,
@@ -305,6 +311,21 @@ def test_real_cuda_water_triples_response_and_corrected_lambda(
     cache = Path(
         os.environ.get("VIBEQC_TENSOR_CACHE", tmp_path / "triples-response-cuda")
     )
+    response_owner = CudaTriplesResponseTiles(
+        TriplesTileConfig(
+            snapshot.nocc,
+            snapshot.nmo - snapshot.nocc,
+            1,
+            1 << 30,
+        ),
+        compiler,
+        cache,
+    )
+    response = response_owner.run_tiles(
+        _triples_arrays(cpu_bound),
+        inputs=TRIPLES_RESPONSE_INPUTS,
+    )
+    # Do not overlap the reverse-tile arena with the persistent Lambda owner.
     with PreparedCUDALambda(
         snapshot,
         cc,
@@ -313,20 +334,6 @@ def test_real_cuda_water_triples_response_and_corrected_lambda(
         budget=ResourceBudget(host_bytes=1 << 30, device_bytes=2 << 30),
     ) as prepared:
         baseline = prepared.solve(reference_identity=snapshot.identity)
-        response_owner = CudaTriplesResponseTiles(
-            TriplesTileConfig(
-                snapshot.nocc,
-                snapshot.nmo - snapshot.nocc,
-                1,
-                1 << 30,
-            ),
-            compiler,
-            cache,
-        )
-        response = response_owner.run_tiles(
-            _triples_arrays(prepared.bound),
-            inputs=TRIPLES_RESPONSE_INPUTS,
-        )
         corrected = solve_corrected_lambda_cuda(
             prepared,
             baseline,
