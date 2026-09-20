@@ -12,7 +12,7 @@ def test_huge_empty_domains_have_bounded_diagnostics(operation: str) -> None:
     pytest.importorskip("resource")
     if not Path("/proc/self/statm").exists():
         pytest.skip("address-space-bounded regression requires Linux procfs")
-    program = r'''
+    program = r"""
 import os, resource, sys
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import Index, IndexSpace, Program, TensorSpec, input_tensor, indexed_gather, scatter_add
@@ -39,7 +39,7 @@ assert row.edge_count == row.nonempty_groups == row.max_degree == 0
 assert row.empty_groups == huge
 assert row.degree_histogram == ((0, huge),)
 assert row.scan_work == row.scheduled_work == 0
-'''
+"""
     result = subprocess.run(
         [sys.executable, "-c", program, operation],
         capture_output=True,
