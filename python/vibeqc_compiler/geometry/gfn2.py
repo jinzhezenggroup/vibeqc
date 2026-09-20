@@ -223,6 +223,9 @@ def build_gfn2_pair_topology(
 
     if not isinstance(geometry, GeometryIR):
         raise TypeError("geometry must be GeometryIR")
+    coordinates = np.asarray(coordinates)
+    if coordinates.dtype.kind not in "iuf":
+        raise ValueError("GFN2 coordinates must be real numeric arrays")
     coordinates = np.asarray(coordinates, dtype=np.float64)
     if coordinates.shape != (geometry.atom_count, 3):
         raise ValueError("GFN2 coordinates must have shape (atom_count, 3)")
