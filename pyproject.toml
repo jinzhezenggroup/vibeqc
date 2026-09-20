@@ -114,9 +114,18 @@ source = ["python/vibeqc"]
 extend-exclude = ["external/libxc-7.0.0", "cmake/3rdparty/implib", "benchmarks/results"]
 
 [tool.ruff.lint]
-extend-select = ["ANN", "TC"]
-ignore = ["ANN401"]
+extend-select = ["ANN", "TC", "NPY001", "NPY003", "NPY201", "PGH003", "PGH004", "S"]
+# Assertions are pervasive internal/test invariants; subprocess invocation is a core compiler/tooling boundary.
+# Keep the narrower shell-injection checks active while avoiding blanket S603/S607 noise.
+ignore = ["ANN401", "S101", "S603", "S607"]
 [tool.ruff.lint.per-file-ignores]
+# Scope known-safe historical uses instead of disabling these checks repository-wide.
+".github/scripts/run_cumetal_cuda_pytests.py" = ["S108", "S314"]
+"benchmarks/shell_class_histogram.py" = ["S608"]
+"python/vibeqc_compiler/tensor/optimize.py" = ["S105"]
+"tests/**/*.py" = ["S108", "S311", "S314", "S324"]
+"tools/**/*.py" = ["S108"]
+"tools/vibeqc_validation/retention.py" = ["S314"]
 "tools/generate_xc_integration_references.py" = ["ANN", "TC"]
 "tools/generate_validation_references.py" = ["ANN", "TC"]
 "tools/generate_density_workload_references.py" = ["ANN", "TC"]
