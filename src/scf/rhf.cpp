@@ -82,11 +82,6 @@ initial_guess::InitialOrbitalRequest df_initial_orbital_request() {
              : initial_guess::InitialOrbitalRequest::ColdDensityOnly;
 }
 
-/** Preserve the full CPU derivative-tensor oracle for causal A/B validation. */
-bool cpu_materialized_df_derivatives_requested() {
-  const char* value = std::getenv("VIBEQC_CPU_DF_MATERIALIZED_DERIVATIVES");
-  return value && value[0] == '1' && value[1] == '\0';
-}
 /** Assemble immutable DF state from already-evaluated one- and three-center data.
  * CUDA plans factor the raw metric and transform A on their own device stream.
  * They never consume the CPU oracle's transformed tensor, even on their host-
