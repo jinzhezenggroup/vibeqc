@@ -550,8 +550,13 @@ class Calculator:
                 | {"forces"},
             )
         if self._capabilities.family == "density_functional":
-            if self._precision_mode != _native.PRECISION_FP64:
-                raise NotImplementedError("DFT supports explicit FP64 precision only")
+            if (
+                self._precision_mode == _native.PRECISION_AUTO
+                and self._device_name != "cuda"
+            ):
+                raise NotImplementedError(
+                    "DFT automatic precision currently requires CUDA"
+                )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError("DFT supports conventional Coulomb only")
             if auxiliary_basis is not None:

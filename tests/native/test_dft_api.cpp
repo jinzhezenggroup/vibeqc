@@ -543,6 +543,29 @@ int main() {
                 cuda_result.iterations <= cold.iterations &&
                 std::abs(cuda_result.energy - cold.energy) < 1e-11,
             "public CUDA KS compatible replay changed the endpoint");
+
+        auto auto_method = method;
+        auto_method.precision_mode = VIBEQC_PRECISION_AUTO;
+        vibeqc_calculation* auto_calculation = nullptr;
+        require(vibeqc_calculation_prepare(cuda_context, cuda_system, &auto_method,
+                                           &auto_calculation) == VIBEQC_STATUS_SUCCESS &&
+                    auto_calculation != nullptr,
+                "CUDA KS automatic-precision preparation failed");
+        auto auto_result = unconverged;
+        require(
+            vibeqc_calculation_execute(auto_calculation, &auto_result) == VIBEQC_STATUS_SUCCESS &&
+                auto_result.converged == 1 && std::abs(auto_result.energy - cold.energy) < 2e-8,
+            "CUDA KS mixed-J target refinement changed the FP64 endpoint");
+        vibeqc_precision_provenance precision{sizeof(vibeqc_precision_provenance),
+                                              VIBEQC_ABI_VERSION};
+        require(vibeqc_calculation_get_precision_provenance(auto_calculation, &precision) ==
+                        VIBEQC_STATUS_SUCCESS &&
+                    precision.requested_mode == VIBEQC_PRECISION_AUTO &&
+                    precision.effective_bits == 32U && precision.strict_refinement_applied == 1 &&
+                    precision.refinement_iterations >= 1U,
+                "CUDA KS mixed-J provenance omitted actual FP32 work or FP64 refinement");
+        vibeqc_calculation_destroy(auto_calculation);
+
         if (ks == VIBEQC_METHOD_LDA_RKS) {
           // Cover both the owner and generated-XC error boundaries. Neither
           // runtime nor allocation failure may be hidden by a cold warm retry.
