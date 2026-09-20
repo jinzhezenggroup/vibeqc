@@ -20,10 +20,10 @@ FAMILIES = {
     "perturbation": "VIBEQC_METHOD_FAMILY_PERTURBATION",
 }
 PROVIDERS = {
-    "reserved": ("Reserved", False),
-    "hf": ("Hf", True),
-    "mp2": ("Mp2", True),
-    "dft": ("Dft", True),
+    "reserved": ("Reserved", False, False),
+    "hf": ("Hf", True, True),
+    "mp2": ("Mp2", True, True),
+    "dft": ("Dft", True, True),
 }
 PROPERTIES = {
     "energy": "VIBEQC_PROPERTY_ENERGY",
@@ -74,7 +74,7 @@ def load_manifest() -> list[dict]:
             or not symbol.replace("_", "").isalnum()
         ):
             raise ValueError(f"invalid C/Python method symbol {symbol!r}")
-        if type(abi_id) is not int or abi_id <= 0:
+        if not isinstance(abi_id, int) or isinstance(abi_id, bool) or abi_id <= 0:
             raise ValueError(f"method {name} requires one explicit positive ABI id")
         if name in names or symbol in symbols or abi_id in ids:
             raise ValueError("public method names, symbols and ABI ids must be unique")
@@ -90,15 +90,15 @@ def load_manifest() -> list[dict]:
             raise ValueError(f"unknown public property in {name}")
 
         provider_executable = PROVIDERS[method["provider"]][1]
+        provider_batch = PROVIDERS[method["provider"]][2]
         if provider_executable != bool(method["properties"]):
             raise ValueError(
                 f"{name}: executable providers require public properties and "
                 "reserved providers forbid them"
             )
-        if provider_executable != bool(method["supports_batch"]):
+        if provider_batch != bool(method["supports_batch"]):
             raise ValueError(
-                f"{name}: current native providers are all batched; "
-                "reserved methods are not"
+                f"{name}: batch capability disagrees with its native provider"
             )
         if method["provider"] == "hf" and method["family"] != "hartree_fock":
             raise ValueError(f"{name}: HF provider requires Hartree-Fock family")
@@ -125,10 +125,6 @@ def load_manifest() -> list[dict]:
 
     if aliases & names:
         raise ValueError("public method aliases cannot shadow canonical names")
-    if ids != set(range(1, max(ids) + 1)):
-        raise ValueError(
-            "ABI ids must remain explicit and contiguous in the current ABI"
-        )
     return sorted(methods, key=lambda method: method["abi_id"])
 
 
@@ -143,6 +139,7 @@ def emit_c_ids(methods: list[dict]) -> str:
         "",
         "#include <stdint.h>",
         "",
+        "// clang-format off",
         "typedef int32_t vibeqc_method;",
         "enum {",
     ]
@@ -151,7 +148,7 @@ def emit_c_ids(methods: list[dict]) -> str:
         lines.append(
             f"  VIBEQC_METHOD_{method['symbol']} = {method['abi_id']}{comma}"
         )
-    lines.extend(["};", "", "#endif", ""])
+    lines.extend(["};", "// clang-format on", "", "#endif", ""])
     return "\n".join(lines)
 
 
@@ -159,6 +156,7 @@ def emit_python(methods: list[dict]) -> str:
     lines = [
         '"""Generated public method identity metadata; do not edit by hand."""',
         "",
+        "# fmt: off",
         "from types import MappingProxyType",
         "",
     ]
@@ -190,7 +188,7 @@ def emit_python(methods: list[dict]) -> str:
     dft = [f"METHOD_{m['symbol']}" for m in methods if m["provider"] == "dft"]
     lines.append(f"HF_METHOD_IDS = frozenset(({', '.join(hf)},))")
     lines.append(f"NATIVE_DFT_METHOD_IDS = frozenset(({', '.join(dft)},))")
-    lines.append("")
+    lines.extend(["# fmt: on", ""])
     return "\n".join(lines)
 
 
@@ -214,6 +212,7 @@ def emit_cpp(methods: list[dict]) -> str:
         "",
         '#include "vibeqc/vibeqc.h"',
         "",
+        "// clang-format off",
         "namespace vibeqc::methods::generated {",
         "",
         "enum class PublicProvider : std::uint8_t { Reserved, Hf, Mp2, Dft };",
@@ -258,6 +257,7 @@ def emit_cpp(methods: list[dict]) -> str:
             "}",
             "",
             "}  // namespace vibeqc::methods::generated",
+            "// clang-format on",
             "",
             "#endif",
             "",
