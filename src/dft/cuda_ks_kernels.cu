@@ -85,9 +85,14 @@ __global__ void advance_kernel(std::size_t matrix, unsigned spins, double nuclea
                                Scalars* current, Control* control, const double* proposal,
                                double* density, double* warm, std::uint8_t* enabled,
                                std::uint8_t* spin_enabled) {
+  __shared__ int active_at_entry;
   __shared__ int copy_density;
   __shared__ int publish_warm;
-  if (control->active == 0) return;
+  // All threads must observe one entry decision before thread zero can make
+  // this iteration terminal; late warps still owe their warm-density copies.
+  if (threadIdx.x == 0) active_at_entry = control->active;
+  __syncthreads();
+  if (active_at_entry == 0) return;
   if (threadIdx.x == 0) {
     copy_density = 0;
     publish_warm = 0;
