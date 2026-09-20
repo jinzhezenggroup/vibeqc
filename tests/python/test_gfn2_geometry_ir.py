@@ -5,11 +5,11 @@ import pytest
 from vibeqc_compiler.geometry import (
     GFN2_CUTOFF_BOHR,
     GFN2_SHORT_RANGE_PARAMETER_IDENTITY,
-    build_gfn2_geometry_program,
     build_gfn2_pair_topology,
     gfn2_element_parameters,
     gfn2_geometry,
 )
+from vibeqc_compiler.method import build_gfn2_geometry_program
 from vibeqc_compiler.tensor import execute
 
 # Independent values frozen in xTBloom's mctc-lib/tblite qualification tests.

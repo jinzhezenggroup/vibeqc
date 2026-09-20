@@ -28,6 +28,8 @@ _EXPORTS = {
     "ExactExchangePrimitive": ".spec",
     "FeatureType": ".typecheck",
     "GFN2_PARAMETER_SET": ".xtb",
+    "build_gfn2_geometry_program": ".gfn2_geometry",
+    "Gfn2GeometryProgram": ".gfn2_geometry",
     "ImplicitSolveSpec": ".implicit",
     "ImplicitVJPPlan": ".implicit",
     "IntegralGradientBlock": ".stationary_gradient",
