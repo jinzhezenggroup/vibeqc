@@ -11,7 +11,7 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from vibeqc import Calculator, GridSpec, KsOptions, method_capabilities
+from vibeqc import Calculator, GridPolicy, GridSpec, KsOptions, method_capabilities
 from vibeqc._dft_gradient import StationaryDerivativeContract, StationaryKsState
 from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
 from vibeqc_compiler.dft import NativeAO
@@ -31,11 +31,13 @@ def calculator(method: typing.Any, **kwargs: typing.Any) -> typing.Any:
     )
 
 
-def production_calculator(method: typing.Any, **kwargs: typing.Any) -> typing.Any:
+def production_calculator(
+    method: typing.Any, *, grid_accuracy: str = "standard", **kwargs: typing.Any
+) -> typing.Any:
     return Calculator(
         method=method,
         device="cpu",
-        ks_options=KsOptions(),
+        ks_options=KsOptions(grid_accuracy=grid_accuracy),
         energy_tolerance=1e-12,
         density_tolerance=1e-10,
         **kwargs,
@@ -119,6 +121,93 @@ def independent_gradient(
     components["nuclear"] = grad.grad_nuc()
     np.testing.assert_allclose(sum(components.values()), total, atol=2e-12, rtol=0)
     return mf.e_tot, total, components
+
+
+def independent_converged_grid_reference(
+    basis: typing.Any, method: typing.Any
+) -> tuple[float, np.ndarray, int]:
+    """Use PySCF's own dense unpruned quadrature as an independent grid oracle."""
+    from pyscf import dft, gto, lib
+    from pyscf.data.elements import ELEMENTS
+
+    lib.num_threads(1)
+    labels = [f"{ELEMENTS[a.atomic_number]}{i}" for i, a in enumerate(basis.atoms)]
+    shells = {label: [] for label in labels}
+    for shell in basis.shells:
+        shells[labels[shell.atom_index]].append(
+            [
+                shell.angular_momentum,
+                *[(p.exponent, p.coefficient) for p in shell.primitives],
+            ]
+        )
+    mol = gto.M(
+        atom=[(label, a.position) for label, a in zip(labels, basis.atoms)],
+        basis=shells,
+        unit="Bohr",
+        cart=True,
+        charge=basis.charge,
+        spin=basis.multiplicity - 1,
+        verbose=0,
+    )
+    mf = dft.RKS(mol)
+    mf.xc = "PBE" if method == "pbe-rks" else "LDA_X,LDA_C_PW"
+    # This deliberately does not consume VibeQC GridSpec/points/weights.  The
+    # independent oracle uses PySCF's Treutler radial mapping, Lebedev angular
+    # rule and Becke partition at a substantially denser unpruned resolution.
+    mf.grids.atom_grid = (120, 974)
+    mf.grids.prune = None
+    mf.small_rho_cutoff = 0
+    mf.conv_tol = 1e-13
+    mf.conv_tol_grad = 1e-10
+    mf.max_cycle = 200
+    mf.kernel()
+    assert mf.converged
+    grad = mf.nuc_grad_method()
+    grad.grid_response = True
+    gradient = grad.kernel()
+    assert mf.grids.coords is not None
+    return mf.e_tot, gradient, len(mf.grids.coords)
+
+
+@pytest.mark.parametrize("accuracy", ["standard", "tight"])
+@pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
+def test_production_grid_converges_against_independent_dense_quadrature(
+    method: typing.Any, accuracy: typing.Any, record_property: typing.Any
+) -> None:
+    """Promoted production profiles stay accurate against an independent dense grid."""
+    pytest.importorskip("pyscf", reason="independent dense-grid reference requires PySCF")
+    calc = production_calculator(method, grid_accuracy=accuracy, max_iterations=200)
+    with calc.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        expected = GridPolicy(accuracy).resolve(method)
+        assert state._source.grid_spec == expected
+        result = complete_rks_gradient_diagnostic(
+            state,
+            basis,
+            cache=f".cache/production-grid-convergence-{method}-{accuracy}",
+            execution="native",
+            tile_points=137,
+            integral_terms=17,
+            primitive_tile=29,
+        )
+        reference_energy, reference_gradient, reference_points = (
+            independent_converged_grid_reference(basis, method)
+        )
+        production_points = len(state.grid.points)
+        energy_error = abs(energy - reference_energy)
+        gradient_error = float(np.max(np.abs(result.gradient - reference_gradient)))
+        record_property("grid_accuracy", accuracy)
+        record_property("production_points", production_points)
+        record_property("independent_reference_points", reference_points)
+        record_property("energy_error_hartree", energy_error)
+        record_property("gradient_error_hartree_per_bohr", gradient_error)
+        assert production_points < reference_points
+        # Initial conservative qualification bounds are tightened to measured
+        # errors after the independent qz CPU campaign below exercises all four
+        # method/profile combinations.
+        assert energy_error < 5e-4
+        assert gradient_error < 5e-3
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
