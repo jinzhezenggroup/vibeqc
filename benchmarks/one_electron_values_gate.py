@@ -41,7 +41,9 @@ def main() -> None:
     parser.add_argument("--case", choices=cases, default="sp8")
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument(
-        "--mapping", choices=("thread", "shell_warp", "nucleus_cooperative", "serial"), default="thread"
+        "--mapping",
+        choices=("thread", "shell_warp", "nucleus_cooperative", "serial"),
+        default="thread",
     )
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--energy-tolerance", type=float, default=1e-12)
@@ -72,7 +74,10 @@ def main() -> None:
         parser.error("run this real-GPU gate inside Slurm")
     if args.batch < 1 or args.repeats < 5:
         parser.error("batch must be positive and at least five repeats are required")
-    if min(args.energy_tolerance, args.density_tolerance, args.screening_tolerance) <= 0:
+    if (
+        min(args.energy_tolerance, args.density_tolerance, args.screening_tolerance)
+        <= 0
+    ):
         parser.error("SCF and screening tolerances must be positive")
     if args.df_derivatives or not args.derivatives:
         parser.error(
@@ -80,7 +85,9 @@ def main() -> None:
             "with explicit archived baseline and candidate checkouts"
         )
     if args.mapping == "serial":
-        parser.error("one-electron derivatives use thread/shell_warp/nucleus_cooperative mapping")
+        parser.error(
+            "one-electron derivatives use thread/shell_warp/nucleus_cooperative mapping"
+        )
     case = cases[args.case]
     basis = case.vibeqc_basis
     if args.contraction_length:

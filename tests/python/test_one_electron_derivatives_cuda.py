@@ -235,9 +235,7 @@ def test_failed_item_does_not_contaminate_generated_neighbor(
 ) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
-    monkeypatch.setenv(
-        "VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "nucleus_cooperative"
-    )
+    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "nucleus_cooperative")
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     other = [("He", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     calc = Calculator(device="cuda", max_iterations=3)
@@ -266,9 +264,7 @@ def test_screened_target_energy_force_domain(
     """
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
-    monkeypatch.setenv(
-        "VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "nucleus_cooperative"
-    )
+    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "nucleus_cooperative")
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.2, 0.7))]
     options = {
         "device": "cuda",
