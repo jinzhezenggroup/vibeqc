@@ -41,3 +41,12 @@ Existing independent molecular-energy and expanded residual tests remain require
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Legacy descriptor admission
+
+The optional correlation budget is read only after its full field is covered
+by struct_size. Older ABI prefixes keep the default even when bytes beyond
+the declared prefix contain an invalid budget. Present values are checked
+against both signed-64-bit and size_t ranges before conversion. Two poisoned-
+prefix regressions reproduce the prior unconditional-read rejection and now
+pass without relying on a memory fault.

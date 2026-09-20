@@ -121,11 +121,13 @@ scf::ScfOptions reference_options(const vibeqc_method_descriptor& d, std::size_t
 std::size_t correlation_budget(const vibeqc_method_descriptor& d) {
   std::size_t budget = 256ULL << 20;
   if (present(d, offsetof(vibeqc_method_descriptor, correlation_memory_budget_bytes) +
-                     sizeof(d.correlation_memory_budget_bytes)) &&
-      d.correlation_memory_budget_bytes)
-    budget = static_cast<std::size_t>(d.correlation_memory_budget_bytes);
-  if (!budget || d.correlation_memory_budget_bytes > static_cast<std::uint64_t>(INT64_MAX))
-    throw std::invalid_argument("RCCSD budget exceeds signed-64-bit numeric capacity");
+                     sizeof(d.correlation_memory_budget_bytes))) {
+    const auto requested = d.correlation_memory_budget_bytes;
+    if (requested > static_cast<std::uint64_t>(INT64_MAX) ||
+        requested > std::numeric_limits<std::size_t>::max())
+      throw std::invalid_argument("RCCSD budget exceeds numeric capacity");
+    if (requested) budget = static_cast<std::size_t>(requested);
+  }
   return budget;
 }
 
