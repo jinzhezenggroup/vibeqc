@@ -432,6 +432,11 @@ class PreparedStationaryCudaExecution:
                 raise PreparedStationaryCudaTopologyMismatch(
                     "stationary CUDA prepared execution topology changed"
                 )
+            # Replay caps are requests, not topology. Reject before any rebind.
+            if self.host_bound > max_host_bytes:
+                raise ValueError("prepared stationary CUDA host budget exceeded")
+            if self.device_peak_bound > max_device_bytes:
+                raise ValueError("prepared stationary CUDA device budget exceeded")
             if basis.identity != self._bound_basis_identity or self._failed:
                 if any(
                     file_hash(artifact.library) != artifact.metadata["binary_sha256"]
