@@ -185,7 +185,6 @@ def emit_r2scan_polarized() -> str:
     return "\n".join(lines)
 
 
-
 def emit_b3lyp_polarized() -> str:
     """Emit canonical B3LYP semilocal E/vxc and its full-range exchange fraction."""
 
@@ -201,7 +200,9 @@ def emit_b3lyp_polarized() -> str:
         if isinstance(primitive, ExactExchangePrimitive)
     ]
     if len(exchange) != 1 or exchange[0].operator != "full-range":
-        raise RuntimeError("B3LYP MethodIR lost its canonical full-range exchange primitive")
+        raise RuntimeError(
+            "B3LYP MethodIR lost its canonical full-range exchange primitive"
+        )
 
     outputs = ((), *((i,) for i in range(5)))
     graph, roots, expression_hash = build_roots(semilocal, outputs)
@@ -227,6 +228,7 @@ def emit_b3lyp_polarized() -> str:
             "",
         ]
     )
+
 
 def emit_cam_b3lyp_polarized() -> str:
     """Emit the semilocal CAM-B3LYP primitive and its MethodIR-owned RSH constants."""

@@ -60,9 +60,13 @@ def test_b3lyp_point_bridge_matches_pinned_libxc_oracle() -> None:
             feature[3] * ga + 2.0 * feature[4] * gb,
         ]
     )[:, None, :]
-    np.testing.assert_allclose(actual["energy"], [-0.26232290280116083], rtol=2e-12, atol=2e-13)
+    np.testing.assert_allclose(
+        actual["energy"], [-0.26232290280116083], rtol=2e-12, atol=2e-13
+    )
     np.testing.assert_allclose(actual["rho"][:, 0], feature[:2], rtol=2e-12, atol=2e-13)
-    np.testing.assert_allclose(actual["gradient"], expected_gradient, rtol=3e-12, atol=3e-13)
+    np.testing.assert_allclose(
+        actual["gradient"], expected_gradient, rtol=3e-12, atol=3e-13
+    )
     np.testing.assert_array_equal(actual["kinetic"], np.zeros((2, 1)))
 
 

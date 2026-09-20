@@ -79,7 +79,9 @@ def test_b3lyp_methodir_geometry_matches_moved_collocation() -> None:
     meta, data, grid = fixture("h2")
     args = basis_arguments(meta)
     density = data["density_total"]
-    functional_spec = resolve_method("B3LYP", spin="unpolarized").primitives[0].functional
+    functional_spec = (
+        resolve_method("B3LYP", spin="unpolarized").primitives[0].functional
+    )
     geometry = ContractionProgram(functional_spec, "geometry")
     energy = ContractionProgram(functional_spec, "energy")
     with NativeAO(**args) as basis:
