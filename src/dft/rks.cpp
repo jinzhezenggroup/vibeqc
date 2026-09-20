@@ -115,7 +115,8 @@ dft::XcIntegral evaluate_r2scan_xc_rks(const dft::AoBasis& basis, const dft::Mol
 
 dft::XcIntegral evaluate_cam_b3lyp_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                           const Matrix& density, dft::XcDensitySource source,
-                                          std::size_t tile, double exchange_scale, double correlation_scale) {
+                                          std::size_t tile, double exchange_scale,
+                                          double correlation_scale) {
   if (exchange_scale != 1.0 || correlation_scale != 1.0)
     throw std::invalid_argument("scaled CAM-B3LYP RKS is not qualified");
   return dft::integrate_cam_b3lyp_rks(basis, grid, density, tile, source);

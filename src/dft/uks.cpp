@@ -58,7 +58,8 @@ dft::SpinXcIntegral evaluate_r2scan_xc_uks(const dft::AoBasis& basis,
 
 dft::SpinXcIntegral evaluate_cam_b3lyp_xc_uks(const dft::AoBasis& basis,
                                               const dft::MolecularGrid& grid, const Matrix& alpha,
-                                              const Matrix& beta, std::size_t tile, double exchange_scale, double correlation_scale) {
+                                              const Matrix& beta, std::size_t tile,
+                                              double exchange_scale, double correlation_scale) {
   if (exchange_scale != 1.0 || correlation_scale != 1.0)
     throw std::invalid_argument("scaled CAM-B3LYP UKS is not qualified");
   return dft::integrate_cam_b3lyp_uks(basis, grid, alpha, beta, tile);
@@ -312,8 +313,8 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
   // DIIS/stabilized proposal orbitals are only a convergence device and must
   // never become the derivative-state proof. A small bounded fixed-point
   // correction mirrors the shared final-state policy without another SCF loop.
-  auto final = evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc,
-                        options);
+  auto final =
+      evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc, options);
   ++result.fock_builds;
   double previous_physical_energy = result.energy;
   result.converged = false;
@@ -335,8 +336,8 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
     alpha = std::move(projected_a);
     beta = std::move(projected_b);
 
-    auto next = evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc,
-                         options);
+    auto next =
+        evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc, options);
     ++result.fock_builds;
     const Matrix ra = commutator_residual(next.fock.alpha, alpha, ints.overlap, n);
     const Matrix rb = commutator_residual(next.fock.beta, beta, ints.overlap, n);
