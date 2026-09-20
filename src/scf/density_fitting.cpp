@@ -77,8 +77,16 @@ void validate_three_center(const DensityFittingThreeCenter& three_center) {
     throw std::invalid_argument("orthonormalized DF three-center tensor is inconsistent");
   }
   require_finite(three_center.values, "orthonormalized DF three-center entries must be finite");
-  require_finite(three_center.auxiliary_major_values,
-                 "orthonormalized DF provider cache entries must be finite");
+  if (!three_center.auxiliary_major_values.empty()) {
+    // This cache is a layout copy, not a second scientific input. Both vectors
+    // are publicly mutable; finite same-sized stale caches must not change J/K.
+    const auto pairs = three_center.nbf * three_center.nbf;
+    for (std::size_t auxiliary = 0; auxiliary < three_center.naux; ++auxiliary)
+      for (std::size_t pair = 0; pair < pairs; ++pair)
+        if (three_center.auxiliary_major_values[auxiliary * pairs + pair] !=
+            three_center.values[pair * three_center.naux + auxiliary])
+          throw std::invalid_argument("orthonormalized DF provider cache is stale");
+  }
 }
 
 void validate_density(const std::vector<double>& density, std::size_t matrix_elements) {

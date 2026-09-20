@@ -88,6 +88,46 @@ void require_matrix_close(const std::vector<double>& actual, const std::vector<d
   }
 }
 
+void check_provider_cache_identity() {
+  using namespace vibeqc::scf;
+  constexpr std::size_t n = 16, q = 3;
+  DensityFittingThreeCenter source{n, q, q, std::vector<double>(n * n * q)};
+  std::vector<double> density(n * n);
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = 0; j < n; ++j) {
+      density[i * n + j] = i == j ? 0.5 : 0.001 * (i + j);
+      for (std::size_t k = 0; k < q; ++k)
+        source.values[(i * n + j) * q + k] = 0.01 * (1 + (i + j + k) % 7);
+    }
+  const auto expected = reference_jk(source, density);
+  source.auxiliary_major_values.resize(source.values.size());
+  for (std::size_t pair = 0; pair < n * n; ++pair)
+    for (std::size_t k = 0; k < q; ++k)
+      source.auxiliary_major_values[k * n * n + pair] = source.values[pair * q + k];
+  const auto valid = build_density_fitting_rhf_jk(source, density);
+  require_matrix_close(valid.coulomb, expected.first, 2e-12, "valid cache changes J");
+  require_matrix_close(valid.exchange, expected.second, 2e-12, "valid cache changes K");
+  unsigned accepted = 0;
+  for (bool mutate_source : {false, true})
+    for (bool unrestricted : {false, true}) {
+      auto stale = source;
+      (mutate_source ? stale.values : stale.auxiliary_major_values)[3] += 0.125;
+      try {
+        if (unrestricted)
+          (void)build_density_fitting_uhf_jk(stale, density, density);
+        else
+          (void)build_density_fitting_rhf_jk(stale, density);
+        ++accepted;
+      } catch (const std::invalid_argument&) {
+      }
+    }
+  require(accepted == 0, "stale finite Q-major DF caches were accepted");
+  source.auxiliary_major_values.clear();
+  const auto fallback = build_density_fitting_rhf_jk(source, density);
+  require_matrix_close(fallback.coulomb, expected.first, 2e-12, "no-cache J changed");
+  require_matrix_close(fallback.exchange, expected.second, 2e-12, "no-cache K changed");
+}
+
 void append_values(std::vector<double>& destination, const std::vector<double>& source) {
   destination.insert(destination.end(), source.begin(), source.end());
 }
@@ -405,6 +445,7 @@ vibeqc::core::System compact_auxiliary_system() {
 
 int main() {
   try {
+    check_provider_cache_identity();
     check_packed_storage_planner();
     const vibeqc::core::System orbital = orbital_system();
     const vibeqc::core::System auxiliary = auxiliary_system();
