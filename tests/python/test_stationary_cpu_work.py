@@ -86,6 +86,64 @@ def test_all_electron_has_no_ecp_work_or_dense_provider_limit() -> None:
     )
 
 
+def test_multicomponent_work_counts_and_exact_budget() -> None:
+    state, basis, counts = inputs()
+    rows = basis.packed[-48:].reshape(3, 16)
+    components = (1, 2, 3)
+    rows[:, 3] = components
+    records = 3
+    for rank, repeats in ((2, 5), (4, 1)):
+        for aos in product(range(3), repeat=rank):
+            for _terms in product(*(range(components[a]) for a in aos)):
+                records += repeats * sum(
+                    1 for _ in product(*(range(counts[a]) for a in aos))
+                )
+    assert (
+        admit(state, basis, max_primitive_records=records)["primitive_record_bound"]
+        == records
+    )
+    with pytest.raises(ValueError, match="primitive work budget"):
+        admit(state, basis, max_primitive_records=records - 1)
+
+
+@pytest.mark.parametrize("components", [0, 4])
+def test_unsupported_component_count_rejected(components: int) -> None:
+    state, basis, _ = inputs()
+    basis.packed[-48:].reshape(3, 16)[0, 3] = components
+    with pytest.raises(NotImplementedError, match="Cartesian components"):
+        admit(state, basis)
+
+
+def test_f_shell_rejected_before_work() -> None:
+    state, basis, _ = inputs()
+    basis.shells = (SimpleNamespace(angular_momentum=3),)
+    with pytest.raises(NotImplementedError, match="s/p/d"):
+        admit(state, basis)
+
+
+@pytest.mark.parametrize("invalid", ["tile", "shell", "components"])
+def test_component_executor_rejects_invalid_metadata_before_compilation(
+    invalid: str, monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
+    from vibeqc import _stationary_cpu_components as module
+
+    _, basis, _ = inputs()
+    tile = 1
+    if invalid == "tile":
+        tile = 0
+    elif invalid == "shell":
+        basis.shells = (SimpleNamespace(angular_momentum=3),)
+    else:
+        basis.packed[-48:].reshape(3, 16)[0, 3] = 4
+
+    def forbidden(*args: typing.Any) -> None:
+        pytest.fail("invalid component metadata reached source generation")
+
+    monkeypatch.setattr(module, "derivative_sources", forbidden)
+    with pytest.raises((ValueError, NotImplementedError)):
+        module.ComponentPrimitiveExecutor(basis, tmp_path, tile, None)
+
+
 @pytest.mark.parametrize(
     "field,value",
     [("nao", 17), ("natom", 9), ("nprimitive", 129), ("ecp_terms", (0,) * 129)],

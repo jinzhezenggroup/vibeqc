@@ -227,7 +227,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [core, posthf, compiler-heavy]
+        shard: [core, posthf, compiler-heavy, ecp-forces]
     runs-on: ubuntu-24.04
     # Full nightly/manual qualification includes expensive Hessian and Au replay.
     # Keep routine PR/push feedback capped separately; do not truncate that tier.
@@ -390,6 +390,8 @@ jobs:
             tests/python/test_dft_complete_cpu.py
             tests/python/test_ecp_stationary_cpu.py
             tests/python/test_ecp_public_cpu.py
+            tests/python/test_ecp_spd_cartesian_cpu.py
+            tests/python/test_ecp_spd_spherical_cpu.py
             tests/python/test_ecp_f.py
             tests/python/test_ecp_f_projector.py
             tests/python/test_ecp_heavy.py
@@ -417,7 +419,6 @@ jobs:
                 tests/python/test_cc_triples_response.py
                 tests/python/test_dft_complete_cpu.py
                 tests/python/test_ecp_stationary_cpu.py
-                tests/python/test_ecp_public_cpu.py
                 tests/python/test_ecp_f.py
                 tests/python/test_ecp_f_projector.py
                 tests/python/test_ecp_heavy.py
@@ -426,6 +427,16 @@ jobs:
                 tests/python/test_hessian_analytic.py
                 tests/python/test_hessian_directional.py
                 tests/python/test_response_operator.py
+              )
+              ;;
+            ecp-forces)
+              # Full d-force qualification exceeded the 20-minute job cap when
+              # serialized in one file. Keep every case, split representations
+              # across loadfile workers, and retain the existing job time cap.
+              test_targets=(
+                tests/python/test_ecp_public_cpu.py
+                tests/python/test_ecp_spd_cartesian_cpu.py
+                tests/python/test_ecp_spd_spherical_cpu.py
               )
               ;;
             compiler-heavy)
@@ -554,6 +565,10 @@ jobs:
             file: coverage/coverage-python-compiler-heavy.xml
             flag: python
             name: code-coverage/python-compiler-heavy
+          - artifact: coverage-report-python-ecp-forces
+            file: coverage/coverage-python-ecp-forces.xml
+            flag: python
+            name: code-coverage/python-ecp-forces
     runs-on: ubuntu-24.04
     # Keep OIDC away from jobs that build or execute pull-request code. This
     # job checks out source metadata and consumes coverage artifacts only.

@@ -417,7 +417,7 @@ wrapper below additionally enforces numeric capacity and lifecycle gates.
 Work admission precedes derivative compilation and ECP execution,
 after the caller has prepared the SCF state and exported its snapshot. Defaults
 are 2 million primitive records, 1 million XC points, 100 million grid pair
-visits (including per-tile center-pair validation), and 100 million ECP
+visits (including per-tile center-pair validation), and 200 million ECP
 quadrature pair-samples. Both interpreter and compiled consumers enforce these
 limits; directional reference grid work includes all `3*natom` traversals.
 The ECP dense-provider domain is at most 16 AOs, 8 atoms, 128 primitives and
@@ -438,13 +438,23 @@ records the work contract and the prerequisites addressed by the public wrapper.
 ## Public CPU semilocal ECP forces
 
 Python `Calculator` and `PreparedBatch` expose LDA/PBE RKS/UKS first forces
-for Cartesian and real-spherical s/p scalar-ECP basis records, including
+for Cartesian and real-spherical s/p/d scalar-ECP basis records, including
 all-electron fragments of those records. Default calls include forces;
 `properties=("energy",)` skips all derivative work. Standalone all-electron
-CPU records and higher-angular ECP records retain their existing capability.
+CPU records and ECP records containing f or higher shells retain their existing capability.
 The native C method registry is unchanged. A C++ compiler (`CXX` or `c++`) is
 required for the shared generated consumers; `VIBEQC_STATIONARY_CACHE` selects
 their cache.
+
+For bases containing d shells, the compiler canonicalizes exact ERI center
+symmetries and global Cartesian-axis permutations. Complete s/p/d coverage uses
+313 ERI representatives, 362 total kernels in 46 translation units of at most
+eight requests. Generated source is capped at 4 MiB per unit and 64 MiB per
+program. Every ordered AO/component/primitive weight is still evaluated;
+center and axis derivatives are restored before physical-atom scattering.
+The primitive work bound includes each public spherical AO's Cartesian
+components. Compilation caches retain source/header/toolchain/binary checks
+on every load. The existing s/p execution route remains available unchanged.
 
 The same nine-source stationary plan supplies force = -gradient. CPU ECP
 derivatives explicitly come from `checked_ecp_integrals`, the generated
@@ -470,10 +480,17 @@ replay can recover. `tests/python/test_ecp_public_cpu.py` checks four methods,
 both representations, independent PySCF full-grid-response gradients and
 two-step reconverged energy differences, plus mixed batches, geometry replay,
 byte/work rejection and snapshot cleanup. Physical qualification is bounded
-LANL2DZ Na / STO-3G H with the 24 x 8 x 16 unpruned XC grid; it is not a claim
+LANL2DZ Na / STO-3G H, also augmented by one Na d shell of exponent 0.35,
+with the 24 x 8 x 16 unpruned XC grid; it is not a claim
 for arbitrary ECP families or a performance promotion.
 
+The d-shell cases reuse these gates from `test_ecp_spd_cartesian_cpu.py` and
+`test_ecp_spd_spherical_cpu.py`. CI runs all three files in the `ecp-forces`
+shard, with separate representation workers and the same 20-minute job cap.
+
 See [the CPU public-force contract](../.agents/notes/implemented/compatibility/2026-09-20-ecp-public-cpu-forces.md).
+The [s/p/d scheduling decision](../.agents/notes/implemented/performance/2026-09-20-spd-cpu-derivative-schedule.md)
+records component normalization, work accounting and compilation bounds.
 
 ## Public CUDA semilocal ECP forces
 
