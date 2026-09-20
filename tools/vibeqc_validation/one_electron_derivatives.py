@@ -1,5 +1,6 @@
 """Libcint raw derivative blocks using independent normalized AO conventions."""
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -13,17 +14,17 @@ from .one_electron_values import OneElectronValueFixture, one_electron_value_mat
 class OneElectronDerivativeFixture(OneElectronValueFixture):
     """Derivative channels are [operator S/T/V, center A/B/C, xyz, AO, AO]."""
 
-    def contract(self, values):
+    def contract(self, values: typing.Any) -> typing.Any:
         blocks = values.reshape(*self.weights.shape, 3, 3, 3)
         result = (blocks * self.weights[:, :, None, None, None]).sum(axis=1)
         return result.transpose(1, 2, 3, 0).reshape(self.reference.shape)
 
-    def spherical(self, values):
+    def spherical(self, values: typing.Any) -> typing.Any:
         a, b = self.projections
         return np.einsum("ia,ocxij,jb->ocxab", a, values, b)
 
 
-def one_electron_derivative_matrix():
+def one_electron_derivative_matrix() -> typing.Any:
     """All public pairs, difficult geometries and long normalized contractions."""
     fixtures = []
     for value in one_electron_value_matrix():

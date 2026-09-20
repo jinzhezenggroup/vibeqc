@@ -1,6 +1,7 @@
 """Independent numerical/device gates for direct CUDA RHF J/K response."""
 
 import os
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -31,12 +32,14 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _no_cpu(*args, **kwargs):
+def _no_cpu(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
     raise AssertionError("CPU/ERI-tile fallback used by CUDA J/K response")
 
 
 @pytest.mark.parametrize("name", ["h2", "lih", "water", "f_heh"])
-def test_cuda_direct_signed_raw_jk_match_independent_ao_integrals(name, monkeypatch):
+def test_cuda_direct_signed_raw_jk_match_independent_ao_integrals(
+    name: typing.Any, monkeypatch: typing.Any
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     meta, arrays = load_fixture(name)
     with (
@@ -71,7 +74,9 @@ def test_cuda_direct_signed_raw_jk_match_independent_ao_integrals(name, monkeypa
 
 
 @pytest.mark.parametrize("name", ["h2", "lih", "water"])
-def test_cuda_direct_cphf_action_and_all_shared_multirhs_strategies(name, monkeypatch):
+def test_cuda_direct_cphf_action_and_all_shared_multirhs_strategies(
+    name: typing.Any, monkeypatch: typing.Any
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     meta, arrays = load_fixture(name)
     with NativeSource(**source_arguments(meta)) as source:
@@ -118,7 +123,9 @@ def test_cuda_direct_cphf_action_and_all_shared_multirhs_strategies(name, monkey
             assert not backend.diagnostics["gpu_resident_response"]
 
 
-def test_native_rhf_snapshot_connects_to_direct_cuda_response(monkeypatch):
+def test_native_rhf_snapshot_connects_to_direct_cuda_response(
+    monkeypatch: typing.Any,
+) -> None:
     """A real VibeQC SCF state, not only an external/synthetic fixture snapshot."""
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     atoms = [(1, (0.0, 0.0, 0.0)), (1, (0.0, 0.0, 1.4))]
@@ -142,7 +149,7 @@ def test_native_rhf_snapshot_connects_to_direct_cuda_response(monkeypatch):
                 operator.apply(np.ones(problem.dimension))
 
 
-def test_cuda_direct_impossible_budget_fails_and_new_plan_replays():
+def test_cuda_direct_impossible_budget_fails_and_new_plan_replays() -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     with NativeSource([(1, (0, 0, 0)), (1, (0, 0, 1.4))]) as source:
         with pytest.raises(MemoryError):

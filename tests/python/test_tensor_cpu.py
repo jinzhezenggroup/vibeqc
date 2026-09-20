@@ -1,6 +1,7 @@
 """Executable CPU TensorIR subset: independent algebra and hostile ABI gates."""
 
 import ctypes as ct
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -21,7 +22,9 @@ from vibeqc_compiler.tensor import (
 from vibeqc_compiler.tensor.cpu import NativeTensorProgram, emit_cpu
 
 
-def tensor(name, shape, dtype="float64"):
+def tensor(
+    name: typing.Any, shape: typing.Any, dtype: typing.Any = "float64"
+) -> typing.Any:
     return input_tensor(
         name,
         TensorSpec(
@@ -35,14 +38,18 @@ def tensor(name, shape, dtype="float64"):
     )
 
 
-def native(program, tmp_path, **kwargs):
+def native(
+    program: typing.Any, tmp_path: typing.Any, **kwargs: typing.Any
+) -> typing.Any:
     return NativeTensorProgram(
         program, compiler=CppCompilerAdapter(Path("c++")), cache=tmp_path, **kwargs
     )
 
 
 @pytest.mark.parametrize("size", [0, 3])
-def test_reductions_einsums_and_detached_outputs(tmp_path, size):
+def test_reductions_einsums_and_detached_outputs(
+    tmp_path: typing.Any, size: typing.Any
+) -> None:
     a, b = tensor("a", (2, size)), tensor("b", (size, 4))
     contracted = einsum("ij,jk->ki", a, b, coefficient="-1/2")
     program = Program({"matrix": contracted, "total": reduce_sum(contracted, (0, 1))})
@@ -63,7 +70,7 @@ def test_reductions_einsums_and_detached_outputs(tmp_path, size):
     assert executor.identity != other.identity
 
 
-def test_ordinary_pointwise_arithmetic(tmp_path):
+def test_ordinary_pointwise_arithmetic(tmp_path: typing.Any) -> None:
     a, b = tensor("a", (4,)), tensor("b", (4,))
     executor = native(
         Program({"value": add(multiply(a, b), a, coefficients=(2, -3))}), tmp_path
@@ -74,7 +81,7 @@ def test_ordinary_pointwise_arithmetic(tmp_path):
     )
 
 
-def test_preallocation_and_semantic_rejection(tmp_path):
+def test_preallocation_and_semantic_rejection(tmp_path: typing.Any) -> None:
     a = tensor("a", (3,))
     for program, message in (
         (Program({"a": tensor("a", (3,), "float32")}), "float64"),
@@ -98,7 +105,9 @@ def test_preallocation_and_semantic_rejection(tmp_path):
             emit_cpu(Program({"a": a}), max_bytes=budget)
 
 
-def test_invalid_feeds_and_late_native_overflow_are_transactional(tmp_path):
+def test_invalid_feeds_and_late_native_overflow_are_transactional(
+    tmp_path: typing.Any,
+) -> None:
     a = tensor("a", (3,))
     executor = native(Program({"a": multiply(a, a)}), tmp_path)
     for bad in (
@@ -129,7 +138,7 @@ def test_invalid_feeds_and_late_native_overflow_are_transactional(tmp_path):
     )
 
 
-def test_native_source_generation_does_not_probe_runtime_or_compilers():
+def test_native_source_generation_does_not_probe_runtime_or_compilers() -> None:
     import subprocess
     import sys
 

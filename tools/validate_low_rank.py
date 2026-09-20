@@ -12,6 +12,7 @@ import os
 import platform
 import sys
 import time
+import typing
 from contextlib import ExitStack
 from pathlib import Path
 
@@ -46,7 +47,7 @@ CASES = ("h2", "water", "lih")
 MODES = ("exact", "fixed_rank", "adaptive_rank", "density_fitted")
 
 
-def run(args):
+def run(args: typing.Any) -> typing.Any:
     """Measure clean source and keep all raw whole-solve samples in one bundle."""
     if args.backend == "cuda" and not os.environ.get("SLURM_JOB_ID"):
         raise ValueError("real GPU evidence requires a finite Slurm allocation")
@@ -365,7 +366,7 @@ def run(args):
         "Per-sample shared factor/initializer plans and observed native arena/provider bytes; target FockPlan reported separately. Reference tensors, driver/context, Python and BLAS host overhead excluded."
     )
 
-    def save(name, value):
+    def save(name: typing.Any, value: typing.Any) -> None:
         (args.output / name).write_text(
             json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n"
         )

@@ -2,6 +2,7 @@
 
 import copy
 import json
+import typing
 from pathlib import Path
 
 import pytest
@@ -14,11 +15,13 @@ ROOT = Path(__file__).resolve().parents[2] / "benchmarks/results/xc-contractions
 
 
 @pytest.fixture(scope="module")
-def run():
+def run() -> typing.Any:
     return load_record(ROOT / "samples.json")
 
 
-def test_retained_xc_publication_is_complete_and_reconstructs(run):
+def test_retained_xc_publication_is_complete_and_reconstructs(
+    run: typing.Any,
+) -> None:
     assert summarize(run) == json.loads((ROOT / "summary.json").read_text())
     manifest = json.loads((ROOT / "publication.json").read_text())
     validate_publication(
@@ -47,7 +50,9 @@ def test_retained_xc_publication_is_complete_and_reconstructs(run):
         "local_mask",
     ],
 )
-def test_xc_publication_rejects_corrupt_scientific_evidence(run, fault):
+def test_xc_publication_rejects_corrupt_scientific_evidence(
+    run: typing.Any, fault: typing.Any
+) -> None:
     broken = copy.deepcopy(run)
     row = broken["cases"][0]
     if fault == "dirty":

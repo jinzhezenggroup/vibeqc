@@ -2,6 +2,7 @@
 
 import ctypes as ct
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -22,7 +23,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
-def test_native_source_to_component_energies(name):
+def test_native_source_to_component_energies(name: typing.Any) -> None:
     meta, arrays = load_fixture(name)
     s = fixture_snapshot(meta, arrays)
     mo = arrays["conventional_mo"]
@@ -48,7 +49,7 @@ def test_native_source_to_component_energies(name):
         )
 
 
-def test_native_hf_export_and_scf_failure_remain_visible():
+def test_native_hf_export_and_scf_failure_remain_visible() -> None:
     meta, _ = load_fixture("h2")
     with NativeSource(**source_arguments(meta)) as source:
         s, diagnostics = export_rhf(source)
@@ -65,7 +66,9 @@ def test_native_hf_export_and_scf_failure_remain_visible():
             export_rhf(source, max_iterations=1)
 
 
-def bounded_reference(source, *, budget=256 << 20, iterations=100):
+def bounded_reference(
+    source: typing.Any, *, budget: typing.Any = 256 << 20, iterations: typing.Any = 100
+) -> typing.Any:
     lib = source._library
     fn = lib.vibeqc_posthf_reference_v1
     ptr = ct.POINTER(ct.c_double)
@@ -109,7 +112,7 @@ def bounded_reference(source, *, budget=256 << 20, iterations=100):
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
-def test_bounded_reference_uses_native_physical_fock(name):
+def test_bounded_reference_uses_native_physical_fock(name: typing.Any) -> None:
     meta, a = load_fixture(name)
     with NativeSource(**source_arguments(meta)) as source:
         (s, h, f, c, d), eps, diag = bounded_reference(source)

@@ -6,7 +6,10 @@ relaxation contractions. It intentionally does not expose a Calculator Hessian
 API and does not claim an all-device response path.
 """
 
+from __future__ import annotations
+
 import time
+import typing
 from copy import deepcopy
 from dataclasses import dataclass, field
 from hashlib import sha256
@@ -38,11 +41,11 @@ class RHFHVPResult:
     _diagnostics: dict = field(repr=False)
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         return deepcopy(self._diagnostics)
 
     @property
-    def components(self):
+    def components(self) -> typing.Any:
         return {
             "nuclear": self.nuclear,
             "core": self.core,
@@ -53,22 +56,22 @@ class RHFHVPResult:
 
 
 def rhf_hvp(
-    state,
-    direction,
+    state: typing.Any,
+    direction: typing.Any,
     *,
-    jk_backend="cpu",
-    device_id=0,
-    device_budget_bytes=64 << 20,
-    response_execution="host",
-    response_device_budget_bytes=128 << 20,
-    solver_options=None,
-    first_backend="cpu",
-    first_compiler=None,
-    first_budget_bytes=64 << 20,
-    relaxation_backend="cpu",
-    relaxation_compiler=None,
-    relaxation_budget_bytes=64 << 20,
-):
+    jk_backend: typing.Any = "cpu",
+    device_id: typing.Any = 0,
+    device_budget_bytes: typing.Any = 64 << 20,
+    response_execution: typing.Any = "host",
+    response_device_budget_bytes: typing.Any = 128 << 20,
+    solver_options: typing.Any = None,
+    first_backend: typing.Any = "cpu",
+    first_compiler: typing.Any = None,
+    first_budget_bytes: typing.Any = 64 << 20,
+    relaxation_backend: str = "cpu",
+    relaxation_compiler: typing.Any = None,
+    relaxation_budget_bytes: int = 64 << 20,
+) -> typing.Any:
     """Apply the complete conventional RHF molecular Hessian to one direction.
 
     The second-integral skeleton is generated directly as weighted HVPs. One

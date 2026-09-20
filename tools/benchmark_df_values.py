@@ -16,6 +16,7 @@ import statistics
 import struct
 import subprocess
 import sys
+import typing
 from collections import defaultdict
 from importlib.metadata import version
 from itertools import product
@@ -52,7 +53,9 @@ from tools.vibeqc_validation.df_values import PRIMITIVE_DTYPE
 from tools.vibeqc_validation.f_shell_numerics import _normalized_primitives
 
 
-def write_workloads(path, *, aos=(384, 768), samples=8):
+def write_workloads(
+    path: typing.Any, *, aos: typing.Any = (384, 768), samples: typing.Any = 8
+) -> typing.Any:
     """Sample actual shell triples, retaining exact complete signature frequency.
 
     Reference contraction uses libcint's independent three-center API. Records
@@ -198,7 +201,13 @@ def write_workloads(path, *, aos=(384, 768), samples=8):
     return groups
 
 
-def rank_values(groups, records, compiled, *, minimum_gain=0.03):
+def rank_values(
+    groups: typing.Any,
+    records: typing.Any,
+    compiled: typing.Any,
+    *,
+    minimum_gain: typing.Any = 0.03,
+) -> typing.Any:
     """Fail closed on absent/failed signatures and retain profile disagreements."""
     if not groups or not math.isfinite(minimum_gain) or not 0 <= minimum_gain < 1:
         raise ValueError("nonempty workloads and minimum_gain in [0,1) required")
@@ -300,7 +309,7 @@ def rank_values(groups, records, compiled, *, minimum_gain=0.03):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
     parser.add_argument("--nvcc", type=Path, required=True)

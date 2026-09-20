@@ -13,6 +13,7 @@ or evidence that a statically cheaper plan will execute faster.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import asdict, dataclass
 from itertools import product
 
@@ -34,10 +35,10 @@ class LayoutDecision:
     access_penalty_bytes: int
 
     @property
-    def selected_cost(self):
+    def selected_cost(self) -> typing.Any:
         return self.selected_conversion_bytes + self.access_penalty_bytes
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "schema": "vibeqc.tensor.layout-planning.v1",
             **asdict(self),
@@ -48,7 +49,9 @@ class LayoutDecision:
         }
 
 
-def conversion_bytes(g, schedule, itemsize):
+def conversion_bytes(
+    g: typing.Any, schedule: typing.Any, itemsize: typing.Any
+) -> typing.Any:
     """Semantic packing/scatter reads+writes, not measured DRAM traffic.
 
     Include repeated A packing across N tiles and B packing across M tiles.
@@ -63,7 +66,14 @@ def conversion_bytes(g, schedule, itemsize):
     )
 
 
-def select_layouts(nodes, virtual, pinned, schedule, *, alignment):
+def select_layouts(
+    nodes: typing.Any,
+    virtual: typing.Any,
+    pinned: typing.Any,
+    schedule: typing.Any,
+    *,
+    alignment: typing.Any,
+) -> typing.Any:
     """Return legal layouts, lowering kinds and a reproducible cost decision.
 
     The caller reruns this bounded choice when budget admission shrinks tiles,
@@ -83,7 +93,7 @@ def select_layouts(nodes, virtual, pinned, schedule, *, alignment):
             reads.update(leaves[child] if virtual[child] else (child,))
         leaves.append(reads)
 
-    def kinds_for(candidate):
+    def kinds_for(candidate: typing.Any) -> typing.Any:
         return tuple(
             "none"
             if g is None
@@ -98,7 +108,7 @@ def select_layouts(nodes, virtual, pinned, schedule, *, alignment):
             for i, ((_, operands), g) in enumerate(zip(nodes, contracts, strict=True))
         )
 
-    def cost(candidate):
+    def cost(candidate: typing.Any) -> typing.Any:
         kinds = kinds_for(candidate)
         conversion = sum(
             conversion_bytes(g, schedule, node.spec.itemsize)

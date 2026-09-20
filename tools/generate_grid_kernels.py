@@ -12,7 +12,7 @@ from vibeqc_compiler.dft.ao_cuda import emit_grid_source
 from tools.generate_df_kernels import write_if_changed
 
 
-def main():
+def main() -> None:
     """Use the shared emitter's native composition and preserve unchanged mtimes."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)

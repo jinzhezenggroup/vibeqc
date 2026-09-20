@@ -7,14 +7,18 @@ from __future__ import annotations
 
 import os
 import subprocess
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ..batch_benchmark import parse_ptxas_resources
 from ..cuda_adapter import CudaCompilerAdapter
 from ..cuda_target import (
     cuda_target_info,
 )
-from .policy import ScheduleTrial
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from .policy import ScheduleTrial
 
 
 def _compile_trial(

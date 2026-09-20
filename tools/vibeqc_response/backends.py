@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes as ct
 import hashlib
 import time
+import typing
 
 import numpy as np
 from vibeqc.profiles import canonical_hash
@@ -14,7 +15,7 @@ from tools.vibeqc_posthf.reference import immutable
 from tools.vibeqc_posthf.sources import _DOUBLE, pointer
 
 
-def _checked_density(density, nbf):
+def _checked_density(density: typing.Any, nbf: typing.Any) -> typing.Any:
     value = np.asarray(density)
     if value.shape != (nbf, nbf):
         raise ValueError(f"density response must have shape ({nbf},{nbf})")
@@ -33,7 +34,7 @@ class DenseAOResponseBackend:
     never used by a production response path.
     """
 
-    def __init__(self, eri, *, maximum_n=12):
+    def __init__(self, eri: typing.Any, *, maximum_n: typing.Any = 12) -> None:
         value = np.asarray(eri)
         if (
             value.ndim != 4
@@ -65,7 +66,7 @@ class DenseAOResponseBackend:
             "peak_bytes": self.host_workspace_bytes,
         }
 
-    def coulomb_exchange(self, density):
+    def coulomb_exchange(self, density: typing.Any) -> typing.Any:
         """Return ``J[D]`` and ``K[D]`` for one AO density response."""
         started = time.perf_counter()
         d = _checked_density(density, self.nbf)
@@ -88,12 +89,12 @@ class NativeJKBackend:
 
     def __init__(
         self,
-        source,
+        source: typing.Any,
         *,
-        axis_tile=2,
-        budget_bytes=64 << 20,
-        backend="cpu",
-    ):
+        axis_tile: typing.Any = 2,
+        budget_bytes: typing.Any = 64 << 20,
+        backend: typing.Any = "cpu",
+    ) -> None:
         if backend != "cpu":
             raise NotImplementedError(
                 "native direct J/K response is currently CPU-streamed; "
@@ -135,7 +136,7 @@ class NativeJKBackend:
             "peak_bytes": 0,
         }
 
-    def coulomb_exchange(self, density):
+    def coulomb_exchange(self, density: typing.Any) -> typing.Any:
         """Stream ``(pq|rs) D_rs`` and ``(pr|qs) D_rs`` without an AO N^4 cache."""
         started = time.perf_counter()
         d = _checked_density(density, self.nbf)
@@ -168,7 +169,7 @@ class NativeJKBackend:
         )
         return immutable(coulomb), immutable(exchange)
 
-    def validate_reference(self, reference):
+    def validate_reference(self, reference: typing.Any) -> typing.Any:
         """Reject a same-sized but scientifically unrelated reference."""
         if reference.geometry_hash != self.source.geometry_hash:
             raise ValueError("native backend/reference geometry mismatch")
@@ -192,14 +193,14 @@ class CudaDFJKBackend:
 
     def __init__(
         self,
-        source,
+        source: typing.Any,
         *,
-        device_id=0,
-        metric_threshold=1e-10,
-        hamiltonian_id=None,
-        metric=None,
-        reuse_generated_source=True,
-    ):
+        device_id: typing.Any = 0,
+        metric_threshold: typing.Any = 1e-10,
+        hamiltonian_id: typing.Any = None,
+        metric: typing.Any = None,
+        reuse_generated_source: bool = True,
+    ) -> None:
         if type(device_id) is not int or device_id < 0:
             raise ValueError("device_id must be a nonnegative integer")
         if type(reuse_generated_source) is not bool:
@@ -335,7 +336,7 @@ class CudaDFJKBackend:
         }
         self._refresh_resident_statistics()
 
-    def _refresh_resident_statistics(self):
+    def _refresh_resident_statistics(self) -> None:
         if not self._handle:
             return
         counters = (ct.c_uint64 * 7)()
@@ -366,7 +367,7 @@ class CudaDFJKBackend:
             }
         )
 
-    def coulomb_exchange(self, density):
+    def coulomb_exchange(self, density: typing.Any) -> typing.Any:
         """Apply one device-resident RHF DF J/K contraction."""
         started = time.perf_counter()
         d = _checked_density(density, self.nbf)
@@ -394,7 +395,7 @@ class CudaDFJKBackend:
         self._refresh_resident_statistics()
         return immutable(coulomb), immutable(exchange)
 
-    def validate_reference(self, reference):
+    def validate_reference(self, reference: typing.Any) -> typing.Any:
         """Require the exact source geometry/basis and declared DF Hamiltonian."""
         if reference.geometry_hash != self.source.geometry_hash:
             raise ValueError("CUDA DF backend/reference geometry mismatch")
@@ -406,7 +407,7 @@ class CudaDFJKBackend:
             raise ValueError("CUDA DF backend/reference Hamiltonian identity mismatch")
         return self
 
-    def close(self):
+    def close(self) -> None:
         """Release the prepared plan; repeated close is safe."""
         if self._handle:
             if self._resident_source_handoff:
@@ -417,12 +418,12 @@ class CudaDFJKBackend:
                 self.source._library.vibeqc_posthf_rhf_jk_plan_destroy_v1(self._handle)
             self._handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if getattr(self, "_handle", None):
             self.close()

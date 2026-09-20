@@ -7,12 +7,15 @@ import json
 import os
 import re
 import sqlite3
+import typing
 from collections import defaultdict
-from collections.abc import Iterable
 from dataclasses import dataclass
-from pathlib import Path
 
 from _support import cuda_accelerator_metadata, environment_metadata
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
 
 try:
     from benchmarks._retention import raw_output_path
@@ -334,7 +337,7 @@ def summarize_ppps_queue_profile(profile: object) -> dict[str, object]:
     block_threads = (32, 64, 128, 256)
     orientations = ("1110", "1011")
 
-    def primitive_groups(tasks, work):
+    def primitive_groups(tasks: typing.Any, work: typing.Any) -> typing.Any:
         return [
             {
                 "primitive_pairs": index if index < 64 else "64+",

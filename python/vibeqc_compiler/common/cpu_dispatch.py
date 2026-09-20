@@ -6,11 +6,14 @@ import os
 import platform
 import subprocess
 import sys
-from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from .cpu_target import CpuTargetInfo
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from .cpu_target import CpuTargetInfo
 
 
 def normalize_cpu_architecture(value: str) -> str:

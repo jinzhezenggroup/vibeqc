@@ -4,6 +4,7 @@ import json
 import re
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import pytest
@@ -23,11 +24,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture(scope="module")
-def units():
+def units() -> typing.Any:
     return dict(emit_df_shell_units())
 
 
-def specialization(source, declaration):
+def specialization(source: typing.Any, declaration: typing.Any) -> typing.Any:
     """Extract one complete C++ struct, including nested method/loop bodies."""
     begin = source.index(declaration)
     brace = source.index("{", begin)
@@ -39,7 +40,9 @@ def specialization(source, declaration):
     raise AssertionError("unterminated emitted specialization")
 
 
-def test_units_cover_all_classes_once_and_are_deterministic(units):
+def test_units_cover_all_classes_once_and_are_deterministic(
+    units: typing.Any,
+) -> None:
     assert units == dict(emit_df_shell_units())
     assert len(units) == 1 + 4 * len(SHELL_CLASSES)
     registry = units["generated_df_shell_dispatch.hpp"]
@@ -55,7 +58,9 @@ def test_units_cover_all_classes_once_and_are_deterministic(units):
         assert "production" not in source
 
 
-def test_selected_class_math_and_schedules_are_byte_identical(units):
+def test_selected_class_math_and_schedules_are_byte_identical(
+    units: typing.Any,
+) -> None:
     polynomial = emit_df_shell_derivatives_cuda()
     rys = emit_df_rys_shell_cuda()
     for angular in SHELL_CLASSES:
@@ -92,10 +97,12 @@ def test_selected_class_math_and_schedules_are_byte_identical(units):
         )  # Per-TU capabilities have internal linkage.
 
 
-def test_class_local_math_change_does_not_invalidate_neighbors(units, monkeypatch):
+def test_class_local_math_change_does_not_invalidate_neighbors(
+    units: typing.Any, monkeypatch: typing.Any
+) -> None:
     original = df_rys_shell._emit_cooperative_shell
 
-    def changed(angular):
+    def changed(angular: typing.Any) -> typing.Any:
         lines = original(angular)
         return lines + (["// class-local edit"] if angular == (0, 0, 3) else [])
 
@@ -107,16 +114,18 @@ def test_class_local_math_change_does_not_invalidate_neighbors(units, monkeypatc
 
 
 @pytest.mark.parametrize("classes", [[], [(4, 0, 0)], [(0, 0)], [(0, 0, 0)] * 2])
-def test_invalid_subsets_are_rejected(classes):
+def test_invalid_subsets_are_rejected(classes: typing.Any) -> None:
     with pytest.raises(ValueError, match="supported s/p/d/f"):
         select_shell_classes(classes)
 
 
-def test_subset_order_is_canonical():
+def test_subset_order_is_canonical() -> None:
     assert select_shell_classes([(2, 1, 3), (0, 0, 0)]) == ((0, 0, 0), (2, 1, 3))
 
 
-def test_policy_edit_preserves_numerical_source_bytes_and_mtimes(tmp_path):
+def test_policy_edit_preserves_numerical_source_bytes_and_mtimes(
+    tmp_path: typing.Any,
+) -> None:
     manifest = json.loads(
         (
             ROOT / "python/vibeqc_compiler/integral/production_df_derivatives.json"
@@ -154,7 +163,7 @@ def test_policy_edit_preserves_numerical_source_bytes_and_mtimes(tmp_path):
     assert (tmp_path / "generated_df_production.hpp").read_bytes() != original_policy
 
 
-def test_ci_cache_snapshots_version_compiler_and_build_inputs():
+def test_ci_cache_snapshots_version_compiler_and_build_inputs() -> None:
     for workflow in ("ci.yml", "wheels.yml"):
         source = (ROOT / ".github/workflows" / workflow).read_text()
         keys = [line for line in source.splitlines() if "key: ccache-" in line]

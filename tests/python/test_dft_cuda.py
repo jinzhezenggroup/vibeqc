@@ -1,4 +1,5 @@
 import os
+import typing
 
 import pytest
 from vibeqc import Calculator
@@ -19,8 +20,8 @@ pytestmark = pytest.mark.skipif(
     ),
 )
 def test_native_cuda_dft_matches_independently_converged_cpu_endpoint(
-    method, charge, multiplicity
-):
+    method: typing.Any, charge: typing.Any, multiplicity: typing.Any
+) -> None:
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
     options = {
         "method": method,
@@ -45,7 +46,7 @@ def test_native_cuda_dft_matches_independently_converged_cpu_endpoint(
     assert cuda.forces is None
 
 
-def test_cuda_dft_force_request_remains_outside_issue_162():
+def test_cuda_dft_force_request_remains_outside_issue_162() -> None:
     calculator = Calculator(method="lda-rks", basis="sto-3g", device="cuda")
     with pytest.raises(ValueError, match=r"does not support properties.*forces"):
         calculator.singlepoint(
@@ -53,7 +54,7 @@ def test_cuda_dft_force_request_remains_outside_issue_162():
         )
 
 
-def test_native_cuda_dft_ragged_batch_replay_and_failure_isolation():
+def test_native_cuda_dft_ragged_batch_replay_and_failure_isolation() -> None:
     systems = [
         [("He", (0.0, 0.0, 0.0))],
         [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))],

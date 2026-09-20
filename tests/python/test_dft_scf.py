@@ -1,6 +1,7 @@
 """Independent, identically discretized CPU/CUDA semilocal SCF endpoints."""
 
 import ctypes
+import typing
 
 import numpy as np
 import pytest
@@ -9,7 +10,7 @@ from vibeqc_compiler.dft.grid import MolecularGrid
 
 
 @pytest.fixture(params=("cpu", "cuda"))
-def device(request, monkeypatch):
+def device(request: typing.Any, monkeypatch: typing.Any) -> typing.Any:
     """Only an unavailable CUDA context can skip; numerical failures must fail."""
     monkeypatch.setenv("VIBEQC_PROFILE", "off")
     if request.param == "cuda":
@@ -35,7 +36,9 @@ def device(request, monkeypatch):
 
 
 @pytest.mark.parametrize("method", ("lda-uks", "pbe-uks"))
-def test_uks_public_energy_and_spin_contract(method, device):
+def test_uks_public_energy_and_spin_contract(
+    method: typing.Any, device: typing.Any
+) -> None:
     capabilities = method_capabilities(method)
     assert capabilities.available
     assert capabilities.supported_properties == frozenset(("energy",))
@@ -94,8 +97,13 @@ def test_uks_public_energy_and_spin_contract(method, device):
     ),
 )
 def test_native_matches_independent_scf(
-    functional, raw_atoms, charge, multiplicity, basis_name, device
-):
+    functional: typing.Any,
+    raw_atoms: typing.Any,
+    charge: typing.Any,
+    multiplicity: typing.Any,
+    basis_name: typing.Any,
+    device: typing.Any,
+) -> None:
     pyscf = pytest.importorskip("pyscf")
     from pyscf import dft, gto
 

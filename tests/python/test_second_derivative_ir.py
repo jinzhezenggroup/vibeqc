@@ -2,6 +2,7 @@
 
 import copy
 import json
+import typing
 from dataclasses import replace
 
 import pytest
@@ -43,7 +44,9 @@ from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
     ],
 )
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction", "eri"])
-def test_second_order_round_trip_and_first_abi_rejection(family, output, packing):
+def test_second_order_round_trip_and_first_abi_rejection(
+    family: typing.Any, output: typing.Any, packing: typing.Any
+) -> None:
     ir = (
         build_eri_second_ir((2, 1, 0, 1), output=output, packing=packing)
         if family == "eri"
@@ -70,7 +73,7 @@ def test_second_order_round_trip_and_first_abi_rejection(family, output, packing
         replace(ir, derivative=replace(ir.derivative, order=1))
 
 
-def test_strict_second_consumer_decoder_never_defaults_weights_or_direction():
+def test_strict_second_consumer_decoder_never_defaults_weights_or_direction() -> None:
     ir = build_eri_second_ir((1, 0, 0, 0))
     original = integral_to_payload(ir)
     for field in original["contractions"][0]:
@@ -96,7 +99,9 @@ def test_strict_second_consumer_decoder_never_defaults_weights_or_direction():
 
 
 @pytest.mark.parametrize("kind", ["raw_first", "weighted_first", "second_first"])
-def test_mixed_consumers_fail_before_artifact_or_record_access(kind):
+def test_mixed_consumers_fail_before_artifact_or_record_access(
+    kind: typing.Any,
+) -> None:
     """Even manually forged artifacts must reject general multi-consumer IR."""
     ir = build_eri_second_ir((1, 0, 0, 0))
     raw = RawBlock(
@@ -134,7 +139,9 @@ def test_mixed_consumers_fail_before_artifact_or_record_access(kind):
             operation()
 
 
-def test_range_second_intent_retains_omega_but_lowering_does_not_claim_support():
+def test_range_second_intent_retains_omega_but_lowering_does_not_claim_support() -> (
+    None
+):
     operator = four_center_eri_operator(CoulombKernel("long_range", 0.123456789))
     ir = build_eri_second_ir((1, 0, 0, 0), operator=operator)
     payload = integral_to_payload(ir)
@@ -144,7 +151,7 @@ def test_range_second_intent_retains_omega_but_lowering_does_not_claim_support()
         build_second_derivative_kernel(ir, (0,))
 
 
-def test_lowering_requires_explicit_raw_and_bounded_output_selections():
+def test_lowering_requires_explicit_raw_and_bounded_output_selections() -> None:
     ir = build_one_electron_second_ir("kinetic", (1, 2))
     with pytest.raises(ValueError, match="one explicit AO"):
         build_second_derivative_kernel(ir)
@@ -156,7 +163,9 @@ def test_lowering_requires_explicit_raw_and_bounded_output_selections():
         build_second_derivative_kernel(ir, (0,), output_indices=(0,))
 
 
-def test_native_capability_is_separate_from_first_force_and_requires_coordinate_tiles():
+def test_native_capability_is_separate_from_first_force_and_requires_coordinate_tiles() -> (
+    None
+):
     from vibeqc_compiler.integral.second_order_layout import second_coordinate_tiles
 
     raw = build_eri_second_ir((3, 0, 0, 0), output="raw_hessian")

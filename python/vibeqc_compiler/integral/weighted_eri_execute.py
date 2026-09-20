@@ -16,6 +16,7 @@ import sys
 import tempfile
 import threading
 import time
+import typing
 from contextlib import suppress
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
@@ -49,7 +50,6 @@ from .blocks import (
     TensorLayout,
     WeightTile,
 )
-from .ir import IntegralIR
 from .ir_serialization import integral_to_payload
 from .shell_signature import BasisConvention, CenterBinding
 from .shell_spec import ShellClassSpec
@@ -65,6 +65,9 @@ from .weighted_eri_native import (
     weighted_eri_program_identity,
 )
 
+if typing.TYPE_CHECKING:
+    from .ir import IntegralIR
+
 
 @dataclass(frozen=True)
 class CompiledWeightedEri:
@@ -78,7 +81,7 @@ class CompiledWeightedEri:
     backend: str
     program_identity: str
 
-    def validate(self):
+    def validate(self) -> None:
         """Check the mathematical/subset binding before loading a native library.
 
         Frozen dataclasses can still be replaced, and native artifact metadata
@@ -125,7 +128,11 @@ class CompiledWeightedEri:
 
 
 def compile_weighted_eri(
-    integral: IntegralIR, compiler, cache: Path, *, component_indices=None
+    integral: IntegralIR,
+    compiler: typing.Any,
+    cache: Path,
+    *,
+    component_indices: typing.Any = None,
 ) -> CompiledWeightedEri:
     """Compile one explicit range/subset using the common local artifact cache.
 
@@ -232,11 +239,11 @@ class PreparedWeightedEri:
         self,
         artifact: CompiledWeightedEri,
         *,
-        record_capacity=256,
-        tile_capacity=1,
-        budget=None,
-        device_id=0,
-    ):
+        record_capacity: typing.Any = 256,
+        tile_capacity: typing.Any = 1,
+        budget: typing.Any = None,
+        device_id: typing.Any = 0,
+    ) -> None:
         self._lock = threading.RLock()
         self._handle = ct.c_void_p()
         self._library = None
@@ -406,28 +413,28 @@ class PreparedWeightedEri:
             raise
 
     @property
-    def artifact(self):
+    def artifact(self) -> typing.Any:
         """Immutable mathematical/subset identity bound to the native handle."""
         return self._artifact
 
     @property
-    def device_id(self):
+    def device_id(self) -> typing.Any:
         return self._device_id
 
     @property
-    def record_capacity(self):
+    def record_capacity(self) -> typing.Any:
         return self._record_capacity
 
     @property
-    def tile_capacity(self):
+    def tile_capacity(self) -> typing.Any:
         return self._tile_capacity
 
     @property
-    def resource_plan(self):
+    def resource_plan(self) -> typing.Any:
         """The shared planner's immutable estimate for this owner's buffers."""
         return self._resource_plan
 
-    def _call(self, name, *args):
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(1024)
         status = getattr(self._library, name)(*args, error, len(error))
         if status:
@@ -442,7 +449,11 @@ class PreparedWeightedEri:
             )
 
     def contract(
-        self, streams, *, tile_count=None, profile=False
+        self,
+        streams: typing.Any,
+        *,
+        tile_count: typing.Any = None,
+        profile: typing.Any = False,
     ) -> WeightedEriExecution:
         """Contract normalized streams without retaining their primitive products."""
         with self._lock:
@@ -488,7 +499,7 @@ class PreparedWeightedEri:
             }
             started = time.perf_counter()
 
-            def flush(count):
+            def flush(count: typing.Any) -> None:
                 nonlocal chunks
                 self._call(
                     "vibeqc_weighted_run_v2",
@@ -560,7 +571,7 @@ class PreparedWeightedEri:
             }
             return WeightedEriExecution(result, diagnostics)
 
-    def close(self):
+    def close(self) -> None:
         """Release native resources once, with the shared allocation snapshot lock."""
         with self._lock, _PREPARATION_LOCK:
             if self._handle.value:
@@ -570,13 +581,13 @@ class PreparedWeightedEri:
 
     def raw(
         self,
-        primitives,
-        centers,
-        component_indices,
+        primitives: typing.Any,
+        centers: typing.Any,
+        component_indices: typing.Any,
         *,
-        projections=None,
-        adapter_budget_bytes=4 << 20,
-        profile=False,
+        projections: typing.Any = None,
+        adapter_budget_bytes: typing.Any = 4 << 20,
+        profile: typing.Any = False,
     ) -> WeightedEriExecution:
         """Evaluate a bounded selection of raw contracted public shell components.
 
@@ -706,15 +717,15 @@ class PreparedWeightedEri:
             output.setflags(write=False)
             return WeightedEriExecution(output, diagnostics)
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         if not self._handle.value:
             raise RuntimeError("weighted ERI plan is closed")
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         # Explicit close/context management is the reporting boundary. Garbage
         # collection may run after a partial constructor or interpreter teardown.
         with suppress(Exception):

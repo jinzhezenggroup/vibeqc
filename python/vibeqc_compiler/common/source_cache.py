@@ -2,10 +2,11 @@
 
 import os
 import tempfile
+import typing
 from pathlib import Path
 
 
-def cache_source(path, source):
+def cache_source(path: typing.Any, source: typing.Any) -> None:
     """Publish complete bytes; reject a corrupt existing cache entry."""
     if path.exists():
         if path.read_text() != source:

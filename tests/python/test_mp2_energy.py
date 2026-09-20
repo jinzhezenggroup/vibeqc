@@ -4,6 +4,7 @@ Dense arrays occur only in the test source/oracle. No native/GPU claim follows
 from these tests; the actual native source and device gates are separate.
 """
 
+import typing
 from dataclasses import replace
 from itertools import product
 from types import SimpleNamespace
@@ -26,7 +27,7 @@ class FixtureSource:
 
     backend = "pyscf-fixture-test-only"
 
-    def __init__(self, snapshot, ao):
+    def __init__(self, snapshot: typing.Any, ao: typing.Any) -> None:
         self.nbf = snapshot.nmo
         self.geometry_hash = snapshot.geometry_hash
         self.basis_hash = snapshot.basis_hash
@@ -38,33 +39,35 @@ class FixtureSource:
         self.reads = 0
         self.closed = False
 
-    def _check_open(self):
+    def _check_open(self) -> None:
         if self.closed:
             raise RuntimeError("fixture source is closed")
 
-    def requests(self, operator, *, axis_tile, budget_bytes):
+    def requests(
+        self, operator: typing.Any, *, axis_tile: typing.Any, budget_bytes: typing.Any
+    ) -> typing.Any:
         assert operator == "four_center_eri"
         for starts in product(range(0, self.nbf, axis_tile), repeat=4):
             yield starts, tuple(min(axis_tile, self.nbf - b) for b in starts)
 
-    def tile(self, request):
+    def tile(self, request: typing.Any) -> typing.Any:
         self.reads += 1
         starts, sizes = request
         return np.ascontiguousarray(
             self.ao[tuple(slice(b, b + n) for b, n in zip(starts, sizes))]
         )
 
-    def global_offsets(self, request):
+    def global_offsets(self, request: typing.Any) -> typing.Any:
         return request[0]
 
 
-def fixture(name="water"):
+def fixture(name: typing.Any = "water") -> typing.Any:
     metadata, arrays = load_fixture(name)
     snapshot = fixture_snapshot(metadata, arrays)
     return snapshot, FixtureSource(snapshot, arrays["ao"]), metadata, arrays
 
 
-def spin_components(snapshot, mo):
+def spin_components(snapshot: typing.Any, mo: typing.Any) -> typing.Any:
     """Explicit spin deltas and 1/4 prefactor, split by occupied spin labels.
 
     Independently derives OS/SS, without calling the restricted energy program
@@ -84,7 +87,9 @@ def spin_components(snapshot, mo):
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
 @pytest.mark.parametrize("tiles", [(1, 2), (2, 3)])
-def test_independent_molecular_components_and_final_tiles(name, tiles):
+def test_independent_molecular_components_and_final_tiles(
+    name: typing.Any, tiles: typing.Any
+) -> None:
     s, source, meta, arrays = fixture(name)
     with PreparedMP2Energy(
         s, source, occupied_tile=tiles[0], virtual_tile=tiles[1], axis_tile=4
@@ -111,7 +116,7 @@ def test_independent_molecular_components_and_final_tiles(name, tiles):
     assert not source.closed
 
 
-def test_rectangular_equations_exchange_prefactors_and_replay():
+def test_rectangular_equations_exchange_prefactors_and_replay() -> None:
     rng = np.random.default_rng(193)
     shape = (2, 1, 3, 2)
     feeds = {
@@ -153,7 +158,7 @@ def test_rectangular_equations_exchange_prefactors_and_replay():
     assert abs(sum(expected) - 2 * expected[0]) > 0.01
 
 
-def test_budget_before_integrals_exact_boundary_and_tile_storage():
+def test_budget_before_integrals_exact_boundary_and_tile_storage() -> None:
     s, source, *_ = fixture()
     p = PreparedMP2Energy(s, source, axis_tile=4)
     required = p.numeric_capacity_bytes
@@ -169,7 +174,7 @@ def test_budget_before_integrals_exact_boundary_and_tile_storage():
         exact.execute()
 
 
-def test_force_rejection_invalidation_failure_and_neighbors():
+def test_force_rejection_invalidation_failure_and_neighbors() -> None:
     s, source, *_ = fixture("h2")
     p, neighbor = PreparedMP2Energy(s, source), PreparedMP2Energy(s, source)
     with pytest.raises(NotImplementedError, match="energy only"):
@@ -192,7 +197,7 @@ def test_force_rejection_invalidation_failure_and_neighbors():
     neighbor.close()
 
 
-def test_nonfinite_blocks_fail_without_partial_result():
+def test_nonfinite_blocks_fail_without_partial_result() -> None:
     s, source, *_ = fixture("h2")
     with PreparedMP2Energy(s, source) as p:
         p.execute()
@@ -202,7 +207,7 @@ def test_nonfinite_blocks_fail_without_partial_result():
         assert p.state == "failed" and p.last_result is None
 
 
-def test_finite_integrals_with_overflow_do_not_publish_energy():
+def test_finite_integrals_with_overflow_do_not_publish_energy() -> None:
     shape = (1, 1, 1, 1)
     feeds = {
         "g": np.full(shape, 1e200),
@@ -216,7 +221,7 @@ def test_finite_integrals_with_overflow_do_not_publish_energy():
         execute(energy_program(shape), feeds)
 
 
-def test_denominator_and_invalid_reference_preflight():
+def test_denominator_and_invalid_reference_preflight() -> None:
     s, source, *_ = fixture("h2")
     threshold = denominator_check(s, 1e-10)
     with pytest.raises(ValueError, match="near-zero.*global ijab"):
@@ -264,14 +269,14 @@ def test_denominator_and_invalid_reference_preflight():
         {"device_id": -1},
     ],
 )
-def test_invalid_configuration(kw):
+def test_invalid_configuration(kw: typing.Any) -> None:
     s, source, *_ = fixture("h2")
     with pytest.raises(ValueError):
         PreparedMP2Energy(s, source, **kw)
     assert source.reads == 0
 
 
-def test_cuda_source_and_plan_are_not_device_validation():
+def test_cuda_source_and_plan_are_not_device_validation() -> None:
     p = energy_program((2, 1, 3, 2))
     plan = plan_cuda(p, cuda_target_info("sm_80"), max_bytes=1 << 20)
     assert plan.peak_bytes <= 1 << 20

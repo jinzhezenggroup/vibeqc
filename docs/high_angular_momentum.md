@@ -58,7 +58,9 @@ above the execution boundary.
 ## Opt-in generated components
 
 ```python
-from vibeqc_compiler.integral.one_electron_derivatives import build_one_electron_derivative_ir
+from vibeqc_compiler.integral.one_electron_derivatives import (
+    build_one_electron_derivative_ir,
+)
 from vibeqc_compiler.integral.bounded_component import emit_bounded_component
 from vibeqc_compiler.integral.capabilities import query_integral_capability
 

@@ -3,6 +3,7 @@
 import ctypes as ct
 import json
 import time
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -27,7 +28,7 @@ WORKSPACE_BYTES = 4 << 20
 PROVIDER_ALLOWANCE = 96 << 20
 
 
-def compile_cholesky_cuda(compiler, cache):
+def compile_cholesky_cuda(compiler: typing.Any, cache: typing.Any) -> typing.Any:
     """Compile the generic native policy through the shared cache; no GPU probe."""
     root = Path(__file__).resolve().parents[2]
     return compile_runtime(
@@ -40,7 +41,9 @@ def compile_cholesky_cuda(compiler, cache):
     )
 
 
-def cuda_factor_request(nbf, rank_capacity, device_id):
+def cuda_factor_request(
+    nbf: typing.Any, rank_capacity: typing.Any, device_id: typing.Any
+) -> typing.Any:
     """Plan the resident mirror, reusable matrices and cuBLAS allowance exactly."""
     checked_bytes(nbf, "AO dimension")
     checked_bytes(rank_capacity, "rank capacity")
@@ -98,7 +101,14 @@ def cuda_factor_request(nbf, rank_capacity, device_id):
 class _NativePrefix:
     """One shared Context; host and native generations must agree on every call."""
 
-    def __init__(self, artifact, nbf, capacity, device_id, arena):
+    def __init__(
+        self,
+        artifact: typing.Any,
+        nbf: typing.Any,
+        capacity: typing.Any,
+        device_id: typing.Any,
+        arena: typing.Any,
+    ) -> None:
         self._handle = ct.c_void_p()
         metadata = artifact.metadata
         if (
@@ -163,12 +173,14 @@ class _NativePrefix:
                 ct.byref(self._handle),
             )
 
-    def call(self, name, *args):
+    def call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def project(self, column, pivot, rank):
+    def project(
+        self, column: typing.Any, pivot: typing.Any, rank: typing.Any
+    ) -> typing.Any:
         result = np.empty_like(column)
         self.call(
             "posthf_cholesky_project_v1",
@@ -181,7 +193,7 @@ class _NativePrefix:
         )
         return result
 
-    def commit(self, column, rank):
+    def commit(self, column: typing.Any, rank: typing.Any) -> None:
         self.call(
             "posthf_cholesky_commit_v1",
             self._handle,
@@ -190,7 +202,7 @@ class _NativePrefix:
             column.size,
         )
 
-    def jk(self, density, rank):
+    def jk(self, density: typing.Any, rank: typing.Any) -> typing.Any:
         spins = density.shape[0]
         n = density.shape[1]
         result = np.empty((spins + 1, n, n))
@@ -205,12 +217,12 @@ class _NativePrefix:
         )
         return result
 
-    def metrics(self):
+    def metrics(self) -> typing.Any:
         value = _Metrics()
         self.call("posthf_cholesky_metrics_v1", self._handle, ct.byref(value))
         return {name: getattr(value, name) for name, _ in value._fields_}
 
-    def close(self):
+    def close(self) -> None:
         with _PREPARATION_LOCK:
             if self._handle:
                 self._library.posthf_cholesky_destroy_v1(self._handle)
@@ -230,15 +242,15 @@ class CudaIncrementalCholesky(IncrementalCholesky):
 
     def __init__(
         self,
-        columns,
-        artifact,
+        columns: typing.Any,
+        artifact: typing.Any,
         *,
-        rank_capacity,
-        pair_tile=256,
-        export_rank_tile=1,
-        budget=None,
-        device_id=0,
-    ):
+        rank_capacity: typing.Any,
+        pair_tile: typing.Any = 256,
+        export_rank_tile: typing.Any = 1,
+        budget: typing.Any = None,
+        device_id: typing.Any = 0,
+    ) -> None:
         self._native = None
         self._failed = False
         request, arena = cuda_factor_request(
@@ -269,24 +281,24 @@ class CudaIncrementalCholesky(IncrementalCholesky):
             self.close()
             raise
 
-    def _check(self):
+    def _check(self) -> None:
         super()._check()
         if self._failed:
             raise RuntimeError(
                 "CUDA factor commit failed; close and rebuild the provider"
             )
 
-    def _project_column(self, column, pivot):
+    def _project_column(self, column: typing.Any, pivot: typing.Any) -> typing.Any:
         return self._native.project(column, pivot, self.rank)
 
-    def _commit_native_column(self, column):
+    def _commit_native_column(self, column: typing.Any) -> None:
         try:
             self._native.commit(column, self.rank)
         except BaseException:
             self._failed = True
             raise
 
-    def _native_jk(self, density, resource_plan):
+    def _native_jk(self, density: typing.Any, resource_plan: typing.Any) -> typing.Any:
         """Called under the consumer/factor locks after density and budget checks."""
         started = time.perf_counter()
         n = self.space.nbf
@@ -317,7 +329,7 @@ class CudaIncrementalCholesky(IncrementalCholesky):
             },
         )
 
-    def diagnostics(self):
+    def diagnostics(self) -> typing.Any:
         with self._lock:
             result = super().diagnostics()
             result.update(
@@ -327,7 +339,7 @@ class CudaIncrementalCholesky(IncrementalCholesky):
             )
             return result
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             if self._native is not None:
                 self._native.close()

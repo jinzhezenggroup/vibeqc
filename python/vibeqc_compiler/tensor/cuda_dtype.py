@@ -10,6 +10,7 @@ import math
 import os
 import shlex
 import struct
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -26,7 +27,7 @@ class CudaScalar:
     def intrinsic(self, op: str) -> str:
         return f"__{self.prefix}{op}_rn"
 
-    def coefficient(self, pair) -> float:
+    def coefficient(self, pair: typing.Any) -> float:
         """Match interpreter conversion: rational -> FP64 -> declared dtype."""
         try:
             value = float(Fraction(*pair))
@@ -42,7 +43,7 @@ class CudaScalar:
             )
         return value
 
-    def literal(self, pair) -> str:
+    def literal(self, pair: typing.Any) -> str:
         return float(self.coefficient(pair)).hex() + self.suffix
 
     @property
@@ -67,14 +68,14 @@ def scalar_type(dtype: str) -> CudaScalar:
         raise ValueError("CUDA tensors require float32 or float64") from error
 
 
-def program_precision(program) -> str:
+def program_precision(program: typing.Any) -> str:
     dtypes = {node.spec.dtype for node in program.live_nodes}
     if len(dtypes) == 1:
         return "fp32" if dtypes == {"float32"} else "fp64"
     return "typed-fp32-fp64"
 
 
-def compile_options(plan) -> tuple[str, ...]:
+def compile_options(plan: typing.Any) -> tuple[str, ...]:
     """Keep the FP64 baseline; require gradual underflow for FP32 kernels."""
     if any(s.node.spec.dtype == "float32" for s in plan.steps):
         # NVCC_APPEND_FLAGS can override explicit command-line flags. Reject

@@ -9,6 +9,7 @@ Native state/provider binding and complete CPU/CUDA endpoints remain separate.
 
 from __future__ import annotations
 
+import typing
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, replace
 from fractions import Fraction
@@ -60,7 +61,7 @@ class StationaryMeanField:
     topology_policy: str = "stable-explicit-grid-v1"
     dtype: str = "float64"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.point_model not in ("interior-v1", SCF_POINT_MODEL):
             raise UnsupportedMethod("unsupported XC point-model contract")
         if self.hamiltonian not in ("all-electron", "scalar-semilocal-ecp"):
@@ -103,19 +104,21 @@ _ECP_SOURCES = (
 )
 
 
-def _positive(value, name):
+def _positive(value: typing.Any, name: typing.Any) -> typing.Any:
     if type(value) is not int or value < 1:
         raise ValueError(f"{name} must be a positive integer")
     return value
 
 
-def _input(name, indices, *, differentiable=False):
+def _input(
+    name: typing.Any, indices: typing.Any, *, differentiable: typing.Any = False
+) -> typing.Any:
     return input_tensor(
         name, TensorSpec(tuple(indices), role="input", differentiable=differentiable)
     )
 
 
-def _unit_seeded_weight(primal):
+def _unit_seeded_weight(primal: typing.Any) -> typing.Any:
     """Specialize the generated scalar-objective VJP at its exact unit seed.
 
     This is SSA substitution, not another AD rule. Rebuilding through Node's
@@ -151,7 +154,7 @@ class IntegralGradientBlock:
     contraction: Program
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(
             {
                 "plan": self.plan_identity,
@@ -176,7 +179,7 @@ class StationaryGradientPlan:
     method: MethodIR
     mean_field: StationaryMeanField
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.method, MethodIR):
             raise TypeError("stationary gradient requires resolved MethodIR")
         if not isinstance(self.mean_field, StationaryMeanField):
@@ -201,7 +204,7 @@ class StationaryGradientPlan:
             raise UnsupportedMethod("required XC feature derivative is unavailable")
 
     @property
-    def sources(self):
+    def sources(self) -> typing.Any:
         if self.mean_field.hamiltonian == "scalar-semilocal-ecp":
             return (
                 replace(_SOURCES[0], primitive="kinetic_effective_charge_attraction"),
@@ -212,14 +215,14 @@ class StationaryGradientPlan:
         return _SOURCES
 
     @property
-    def source_names(self):
+    def source_names(self) -> typing.Any:
         return tuple(source.name for source in self.sources)
 
     @property
-    def spin_blocks(self):
+    def spin_blocks(self) -> typing.Any:
         return 2 if self.method.spin == "polarized" else 1
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "schema": VERSION,
             "method": self.method.semantic_payload(),
@@ -232,11 +235,11 @@ class StationaryGradientPlan:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         """Mathematics only; backend artifacts and live leases have other owners."""
         return canonical_hash(self.to_payload())
 
-    def require_native_endpoint(self, backend):
+    def require_native_endpoint(self, backend: typing.Any) -> None:
         """A generated plan alone never grants a complete molecular capability."""
         if backend not in ("cpu", "cuda"):
             raise ValueError("unknown stationary-gradient backend")
@@ -245,7 +248,14 @@ class StationaryGradientPlan:
             "binding and independent XC/grid/endpoint qualification (#163 B2.2/C)"
         )
 
-    def integral_block(self, source, *, terms, coordinates=3, max_elements=65536):
+    def integral_block(
+        self,
+        source: typing.Any,
+        *,
+        terms: typing.Any,
+        coordinates: typing.Any = 3,
+        max_elements: typing.Any = 65536,
+    ) -> typing.Any:
         """Generate dL/dI and its contraction with a bounded derivative tile.
 
         L_h = sum_t D_total[t] h[t]
@@ -293,7 +303,9 @@ class StationaryGradientPlan:
             source, self.identity, objective, weights, contraction
         )
 
-    def reduction_program(self, *, atoms, sources=None):
+    def reduction_program(
+        self, *, atoms: typing.Any, sources: typing.Any = None
+    ) -> typing.Any:
         """Generate one complete component sum with an explicit coverage gate.
 
         Inputs are already atom-scattered gradients from each named source.
@@ -320,7 +332,13 @@ class StationaryGradientPlan:
             },
         )
 
-    def reduce_diagnostic(self, components, *, atoms, max_bytes=8 * 1024 * 1024):
+    def reduce_diagnostic(
+        self,
+        components: typing.Any,
+        *,
+        atoms: typing.Any,
+        max_bytes: typing.Any = 8 * 1024 * 1024,
+    ) -> typing.Any:
         """Strict CPU-interpreter diagnostic; never certifies public forces.
 
         The existing interpreter checks shape, FP64 dtype, finite values and

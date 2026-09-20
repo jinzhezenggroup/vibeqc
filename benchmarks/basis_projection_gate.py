@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +33,7 @@ CASES = {
 }
 
 
-def item_record(item, density):
+def item_record(item: typing.Any, density: typing.Any) -> typing.Any:
     """Retain actual target density so degenerate/different roots are visible."""
     return {
         "energy": item.energy,
@@ -48,7 +49,7 @@ def item_record(item, density):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", choices=CASES, default="h2-rhf-small-large")
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
@@ -92,11 +93,11 @@ def main():
     inputs_hash = canonical_hash(inputs)
     runtime = ctypes.CDLL("libcudart.so.12") if args.device == "cuda" else None
 
-    def synchronize():
+    def synchronize() -> None:
         if runtime is not None and runtime.cudaDeviceSynchronize() != 0:
             raise RuntimeError("CUDA synchronization failed")
 
-    def candidate():
+    def candidate() -> typing.Any:
         result = projected_singlepoint(
             target, source, atoms, charge=charge, multiplicity=multiplicity
         )
@@ -107,7 +108,7 @@ def main():
             "stages": result.diagnostics,
         }
 
-    def cold():
+    def cold() -> typing.Any:
         with target.prepare_batch(
             [atoms], charges=[charge], multiplicities=[multiplicity]
         ) as batch:
@@ -134,7 +135,7 @@ def main():
         warm.execute(strict=True)
         warm.set_warm_start_updates(False)
 
-        def replay(side):
+        def replay(side: typing.Any) -> typing.Any:
             if side == "candidate":
                 return candidate()
             item = warm.execute(strict=True).items[0]

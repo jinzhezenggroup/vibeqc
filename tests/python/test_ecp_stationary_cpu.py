@@ -1,5 +1,6 @@
 """CPU ECP stationary gradients: independent full-grid-response and SCF oracles."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -13,7 +14,7 @@ from vibeqc_compiler.dft import NativeAO
 GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
 
 
-def test_ecp_cpu_ao_spatial_jets_do_not_promote_ecp_higher_derivatives():
+def test_ecp_cpu_ao_spatial_jets_do_not_promote_ecp_higher_derivatives() -> None:
     from vibeqc.basis_capabilities import basis_capability
 
     atoms, record, mol = fixture(representation="cartesian")
@@ -36,7 +37,7 @@ def test_ecp_cpu_ao_spatial_jets_do_not_promote_ecp_higher_derivatives():
     )["eligible"]
 
 
-def reference(mol, state, method):
+def reference(mol: typing.Any, state: typing.Any, method: typing.Any) -> typing.Any:
     from pyscf import dft, lib
 
     lib.num_threads(1)
@@ -66,7 +67,9 @@ def reference(mol, state, method):
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
-def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(method, record_property):
+def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(
+    method: typing.Any, record_property: typing.Any
+) -> None:
     spin = int(method.endswith("uks"))
     atoms, record, mol = fixture(spin=spin, representation="cartesian")
     calc = Calculator(
@@ -165,7 +168,7 @@ def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(method, record_pro
             )
 
 
-def test_same_core_count_different_ecp_is_bound_to_actual_energy_owner():
+def test_same_core_count_different_ecp_is_bound_to_actual_energy_owner() -> None:
     import json
 
     atoms, record, _ = fixture(representation="cartesian")

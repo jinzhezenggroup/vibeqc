@@ -5,17 +5,21 @@ schedule is not thereby a measured or promoted production candidate."""
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..cuda_schedule import (
     ScheduleIR,
     ScheduleKind,
 )
-from ..fused_schedule import (
-    FusedShellPlan,
-)
 from ..ir import KernelConsumer
-from ..shell_spec import (
-    ShellClassSpec,
-)
+
+if TYPE_CHECKING:
+    from ..fused_schedule import (
+        FusedShellPlan,
+    )
+    from ..shell_spec import (
+        ShellClassSpec,
+    )
 
 
 def supports_component_lane_rys(

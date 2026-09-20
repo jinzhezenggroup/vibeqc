@@ -10,6 +10,7 @@ from __future__ import annotations
 import ctypes as ct
 import threading
 import time
+import typing
 from dataclasses import dataclass
 from math import prod
 
@@ -45,7 +46,13 @@ class MetricFactor:
     convention: str = "square-symmetric-thresholded-inverse-square-root"
 
     @classmethod
-    def from_source(cls, source, *, relative_threshold=1e-10, budget_bytes=128 << 20):
+    def from_source(
+        cls,
+        source: typing.Any,
+        *,
+        relative_threshold: typing.Any = 1e-10,
+        budget_bytes: typing.Any = 128 << 20,
+    ) -> typing.Any:
         if not 0 < relative_threshold < 1 or not source.naux:
             raise ValueError(
                 "DF requires an auxiliary basis and relative cutoff in (0,1)"
@@ -108,7 +115,7 @@ class MetricFactor:
         )
 
     @property
-    def hamiltonian_id(self):
+    def hamiltonian_id(self) -> typing.Any:
         return "density-fitting:" + self.identity
 
 
@@ -123,14 +130,14 @@ class DFProvider:
 
     def __init__(
         self,
-        snapshot,
-        source,
-        metric,
+        snapshot: typing.Any,
+        source: typing.Any,
+        metric: typing.Any,
         *,
-        budget_bytes=256 << 20,
-        axis_tile=2,
-        auxiliary_tile=3,
-    ):
+        budget_bytes: typing.Any = 256 << 20,
+        axis_tile: typing.Any = 2,
+        auxiliary_tile: typing.Any = 3,
+    ) -> None:
         if (
             type(budget_bytes) is not int
             or budget_bytes < 1
@@ -174,12 +181,12 @@ class DFProvider:
             "endpoint_seconds": 0.0,
         }
 
-    def _check(self):
+    def _check(self) -> None:
         if self._closed:
             raise RuntimeError("DF provider is closed")
         self.source._check_open()
 
-    def _capacity(self, p, q, count):
+    def _capacity(self, p: typing.Any, q: typing.Any, count: typing.Any) -> typing.Any:
         n = self.source.nbf
         tile = min(
             self.axis_tile,
@@ -199,7 +206,14 @@ class DFProvider:
             + 8 * (6 * stage + 3 * count * len(p) * len(q) + 2 * n * (len(p) + len(q)))
         )
 
-    def three_index(self, p, q, *, auxiliary_begin=0, auxiliary_count=None):
+    def three_index(
+        self,
+        p: typing.Any,
+        q: typing.Any,
+        *,
+        auxiliary_begin: typing.Any = 0,
+        auxiliary_count: typing.Any = None,
+    ) -> typing.Any:
         """Return B[Q,p,q]=sum_(mu,nu,P) C[mu,p]C[nu,q]A[mu,nu,P]M^-1/2[P,Q]."""
         with self._lock:
             self._check()
@@ -265,7 +279,7 @@ class DFProvider:
                     )
             return immutable(result.transpose(2, 0, 1))
 
-    def get(self, block):
+    def get(self, block: typing.Any) -> typing.Any:
         """Reconstruct only requested g[p,q,r,s]=sum_Q B[Q,p,q]B[Q,r,s]."""
         with self._lock:
             self._check()
@@ -379,20 +393,20 @@ class DFProvider:
             self.statistics["transformations"] += 1
             return result
 
-    def clear(self):
+    def clear(self) -> None:
         """Release retained transformed MO blocks while keeping the source usable."""
 
         with self._lock:
             self._cache.clear()
             self._retained = 0
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             self.clear()
             self._closed = True
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()

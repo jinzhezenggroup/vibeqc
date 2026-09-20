@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import typing
 from math import isfinite
 from statistics import median
 
@@ -11,14 +12,14 @@ from .timing import interleaved_selection_order, timing_summary
 
 
 def measure_interleaved(
-    evaluate,
-    synchronize,
+    evaluate: typing.Any,
+    synchronize: typing.Any,
     *,
     workload: str,
     inputs_hash: str,
     repeats: int = 5,
-    clock=time.perf_counter,
-    prepare=None,
+    clock: typing.Any = time.perf_counter,
+    prepare: typing.Any = None,
 ) -> list[dict]:
     """Measure identical inputs; evaluate returns serializable result diagnostics.
 

@@ -6,6 +6,7 @@ snapshots. Export is explicit and may transfer the final CUDA matrices.
 """
 
 import ctypes as ct
+import typing
 from hashlib import sha256
 from types import MappingProxyType
 
@@ -18,7 +19,13 @@ from .batch import PreparedBatch
 from .ks import SCF_DOMAIN, resolve_ks_method
 
 
-def _scf_xc_points(library, functional, rho, gradient, tau=None):
+def _scf_xc_points(
+    library: typing.Any,
+    functional: typing.Any,
+    rho: typing.Any,
+    gradient: typing.Any,
+    tau: typing.Any = None,
+) -> typing.Any:
     """Evaluate the exact native semilocal SCF point model."""
     if type(functional) is bool:
         functional = int(functional)
@@ -40,9 +47,10 @@ def _scf_xc_points(library, functional, rho, gradient, tau=None):
         if functional == 2:
             raise ValueError("r2SCAN point evaluation requires tau[2,n]")
         tau = np.zeros_like(rho)
-    tau = np.ascontiguousarray(tau, dtype=np.float64)
-    if tau.shape != rho.shape or np.iscomplexobj(tau):
-        raise ValueError("SCF point evaluator requires tau[2,n]")
+    raw_tau = np.asarray(tau)
+    if np.iscomplexobj(raw_tau) or raw_tau.shape != rho.shape:
+        raise ValueError("SCF point evaluator requires real tau[2,n]")
+    tau = np.ascontiguousarray(raw_tau, dtype=np.float64)
     output = np.empty((rho.shape[1], 11), dtype=np.float64)
     try:
         evaluate = library.vibeqc_xc_point_batch_v2
@@ -79,7 +87,6 @@ def _scf_xc_points(library, functional, rho, gradient, tau=None):
         "tau": immutable(output[:, 9:11].T),
     }
 
-
 class NativeKsSnapshot:
     """Own one native snapshot and check its current batch before consumption."""
 
@@ -103,17 +110,17 @@ class NativeKsSnapshot:
     )
     _fixed = frozenset(__slots__)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed and hasattr(self, name):
             raise AttributeError("native KS snapshot provenance is immutable")
         super().__setattr__(name, value)
 
-    def __delattr__(self, name):
+    def __delattr__(self, name: typing.Any) -> None:
         if name in self._fixed:
             raise AttributeError("native KS snapshot provenance is immutable")
         super().__delattr__(name)
 
-    def __init__(self, batch, index):
+    def __init__(self, batch: typing.Any, index: typing.Any) -> None:
         if not isinstance(batch, PreparedBatch):
             raise TypeError("stationary snapshot requires a native PreparedBatch")
         if type(index) is not int or not 0 <= index < batch.system_count:
@@ -177,7 +184,7 @@ class NativeKsSnapshot:
             self.close()
             raise
 
-    def check_current(self):
+    def check_current(self) -> None:
         """Host-only exact token check; numerical equality cannot renew a lease."""
         self._batch._ensure_open()
         if not self._handle or self._library.vibeqc_ks_snapshot_check_v1(
@@ -187,7 +194,7 @@ class NativeKsSnapshot:
                 "stationary KS snapshot is stale or has no current native owner"
             )
 
-    def decode(self, basis, grid):
+    def decode(self, basis: typing.Any, grid: typing.Any) -> typing.Any:
         """Verify actual AO/grid sources before deriving any Python identities."""
         from vibeqc_compiler.dft.grid import ExplicitGrid
 
@@ -219,7 +226,7 @@ class NativeKsSnapshot:
         ) = self.metadata
         offset = 0
 
-        def take(shape):
+        def take(shape: typing.Any) -> typing.Any:
             nonlocal offset
             count = int(np.prod(shape))
             value = self.values[offset : offset + count].reshape(shape)
@@ -401,14 +408,16 @@ class NativeKsSnapshot:
             _source=self,
         )
 
-    def evaluate_xc_points(self, pbe, rho, gradient):
+    def evaluate_xc_points(
+        self, pbe: typing.Any, rho: typing.Any, gradient: typing.Any
+    ) -> typing.Any:
         """Return SCF-domain point energy and Cartesian first derivatives."""
         self.check_current()
         values = _scf_xc_points(self._library, pbe, rho, gradient)
         self.check_current()
         return values
 
-    def ecp_derivatives(self):
+    def ecp_derivatives(self) -> typing.Any:
         """Backend-specific provider bound to this live owner's exact ECP model.
 
         This explicit diagnostic materializes two atom/xyz/AO-pair arrays.
@@ -444,7 +453,7 @@ class NativeKsSnapshot:
             raise ArithmeticError("nonfinite native ECP derivatives")
         return immutable(output)
 
-    def validate(self, state):
+    def validate(self, state: typing.Any) -> None:
         """Reject copied labels and even self-consistent replacement matrices."""
         self.check_current()
         if state.identity != self._identity:
@@ -455,7 +464,7 @@ class NativeKsSnapshot:
         ):
             raise ValueError("native stationary snapshot content mismatch")
 
-    def close(self):
+    def close(self) -> None:
         if self._handle:
             handle = self._handle
             # Revocation may clear the binding internally; public assignment
@@ -463,6 +472,6 @@ class NativeKsSnapshot:
             object.__setattr__(self, "_handle", 0)
             self._library.vibeqc_ks_snapshot_destroy_v1(handle)
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_handle"):
             self.close()

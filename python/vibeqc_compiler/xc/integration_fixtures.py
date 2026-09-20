@@ -1,6 +1,7 @@
 """Hash-checked fixed-density references; no PySCF import in ordinary tests."""
 
 import json
+import typing
 from hashlib import sha256
 from pathlib import Path
 
@@ -13,7 +14,9 @@ from vibeqc_compiler.dft import ExplicitGrid
 CASES = ("h2", "water", "f_cartesian", "f_spherical")
 
 
-def load_integration_fixture(name, *, directory=None):
+def load_integration_fixture(
+    name: typing.Any, *, directory: typing.Any = None
+) -> typing.Any:
     """Verify input, exporter and every numeric block before use."""
     root = source_root()
     if name not in CASES:
@@ -59,7 +62,7 @@ def load_integration_fixture(name, *, directory=None):
     return meta, arrays, grid
 
 
-def __getattr__(name):
+def __getattr__(name: typing.Any) -> typing.Any:
     """Retain the checkout-only ROOT compatibility attribute without eager IO."""
     if name == "ROOT":
         return source_root()

@@ -9,6 +9,7 @@ physical DAG and its state file re-reproduces on the CPU solver.
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -41,13 +42,13 @@ ROOT = Path(__file__).resolve().parents[1]
 class FixtureProvider(ConventionalProvider):
     """Exact committed MO integrals; exercises the GPU solver without native AO."""
 
-    def __init__(self, snapshot, g):
+    def __init__(self, snapshot: typing.Any, g: typing.Any) -> None:
         self.snapshot = snapshot
         self.g = g
         self.backend = "cpu"
         self.source = SimpleNamespace(_check_open=lambda: None)
 
-    def get(self, block):
+    def get(self, block: typing.Any) -> typing.Any:
         return BlockResult(
             block,
             self.g[np.ix_(*block.slots)],
@@ -57,7 +58,13 @@ class FixtureProvider(ConventionalProvider):
         )
 
 
-def run(output, compiler, cache, *, compile_only=False):
+def run(
+    output: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
+    *,
+    compile_only: typing.Any = False,
+) -> typing.Any:
     output.mkdir(parents=True, exist_ok=True)
     sources = {
         p.relative_to(ROOT).as_posix(): file_hash(p)

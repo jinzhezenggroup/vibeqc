@@ -115,7 +115,7 @@ class XtbParameterSet:
     spin_tables: tuple[str, ...] = ()
     version: str = XTB_PARAMETER_SET_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _require_text(self.identifier, "parameter-set identifier")
         _require_text(self.revision, "parameter-set revision")
         _require_text(self.source, "parameter-set source")
@@ -197,7 +197,7 @@ class XtbPrimitive:
     self_consistent: bool = False
     version: str = "xtb-primitive-v1"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.version != "xtb-primitive-v1":
             raise UnsupportedXtbMethod("unsupported xTB primitive version")
         if self.kind not in _PRIMITIVE_ORDER:
@@ -281,7 +281,7 @@ class XtbMethodSpec:
     requested_products: tuple[str, ...] = ("energy",)
     version: str = XTB_METHOD_CATALOG_VERSION
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _require_text(self.identifier, "xTB method identifier")
         if self.version != XTB_METHOD_CATALOG_VERSION:
             raise UnsupportedXtbMethod("unsupported xTB method manifest version")
@@ -321,7 +321,7 @@ class XtbMethodIR:
     version: str = XTB_METHOD_IR_VERSION
     kind: ClassVar[str] = "xtb_method"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _require_text(self.identifier, "XtbMethodIR identifier")
         if self.version != XTB_METHOD_IR_VERSION:
             raise UnsupportedXtbMethod("unsupported XtbMethodIR version")

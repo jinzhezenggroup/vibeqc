@@ -1,6 +1,7 @@
 """Preserve all workloads/samples when reducing time between paired versions."""
 
 import json
+import typing
 from types import SimpleNamespace
 
 import pytest
@@ -9,7 +10,7 @@ from vibeqc_compiler.common.timing import interleaved_selection_order
 from tools import benchmark_cuda_ownership as benchmark
 
 
-def arguments(tmp_path, scope):
+def arguments(tmp_path: typing.Any, scope: typing.Any) -> typing.Any:
     """Use the complete public DF matrix; no GPU is touched by these driver tests."""
     return SimpleNamespace(
         output=tmp_path, process_scope=scope, samples=5, case=None, domain="df"
@@ -17,11 +18,15 @@ def arguments(tmp_path, scope):
 
 
 @pytest.mark.parametrize("scope", ["inventory", "case"])
-def test_all_cases_have_the_same_five_sample_abba_order(tmp_path, monkeypatch, scope):
+def test_all_cases_have_the_same_five_sample_abba_order(
+    tmp_path: typing.Any, monkeypatch: typing.Any, scope: typing.Any
+) -> None:
     observed = []
     saved = {}
 
-    def measure(args, label, cases, path):
+    def measure(
+        args: typing.Any, label: typing.Any, cases: typing.Any, path: typing.Any
+    ) -> typing.Any:
         observed.append((label, tuple(cases)))
         payload = {
             "source": label,
@@ -66,8 +71,12 @@ def test_all_cases_have_the_same_five_sample_abba_order(tmp_path, monkeypatch, s
         benchmark.collect_runs(arguments(tmp_path, scope))
 
 
-def test_case_aggregation_rejects_changed_source_metadata(tmp_path, monkeypatch):
-    def measure(args, label, cases, path):
+def test_case_aggregation_rejects_changed_source_metadata(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
+    def measure(
+        args: typing.Any, label: typing.Any, cases: typing.Any, path: typing.Any
+    ) -> typing.Any:
         return {
             "source": label + path.parent.name,
             "endpoints": [{"case": cases[0]}],
@@ -79,7 +88,9 @@ def test_case_aggregation_rejects_changed_source_metadata(tmp_path, monkeypatch)
 
 
 @pytest.mark.parametrize("cases", [["unknown"], ["spf/rhf/cartesian/df/batch1"] * 2])
-def test_bad_case_requests_fail_before_launch(tmp_path, monkeypatch, cases):
+def test_bad_case_requests_fail_before_launch(
+    tmp_path: typing.Any, monkeypatch: typing.Any, cases: typing.Any
+) -> None:
     args = arguments(tmp_path, "case")
     args.case = cases
     monkeypatch.setattr(

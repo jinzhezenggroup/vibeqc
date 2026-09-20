@@ -6,12 +6,12 @@ allocation and the existing accuracy/performance acceptance boundaries."""
 
 from __future__ import annotations
 
-import argparse
 import json
 import math
 import sys
 import tempfile
 import time
+import typing
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
@@ -49,6 +49,9 @@ from .policy import (
 )
 from .process import _artifact_size, _compile_trial, _runtime_environment, _tool_version
 from .resources import _resource_rejections, estimate_occupancy
+
+if typing.TYPE_CHECKING:
+    import argparse
 
 
 def _run_autotune(
@@ -458,7 +461,7 @@ def _run_autotune(
                 item: tuple[ScheduleTrial, dict[str, object], dict[str, object]],
                 *,
                 fastest: float = fastest_ms,
-            ):
+            ) -> typing.Any:
                 trial, runtime, candidate = item
                 elapsed_ms = float(runtime["fused_ms"])
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -45,7 +46,7 @@ from tools.vibeqc_validation.schema import (
 )
 
 
-def error(actual, reference):
+def error(actual: typing.Any, reference: typing.Any) -> typing.Any:
     """Apply CG01's elementwise absolute floor and relative scale without averaging."""
     result = block_error(actual, reference, atol=1e-11, rtol=1e-10)
     if not result["passed"]:
@@ -53,7 +54,9 @@ def error(actual, reference):
     return result
 
 
-def fixture_gates(meta, arrays, artifact):
+def fixture_gates(
+    meta: typing.Any, arrays: typing.Any, artifact: typing.Any
+) -> typing.Any:
     """Check every derivative/invariant entry on the identical independent grid."""
     results = {}
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -81,7 +84,7 @@ def fixture_gates(meta, arrays, artifact):
     return results
 
 
-def convergence(meta, arrays):
+def convergence(meta: typing.Any, arrays: typing.Any) -> typing.Any:
     """Report raw density integrals approaching Tr(DS); never renormalize weights."""
     name = meta["inputs"]["name"]
     radius = {"tight": 0.04, "diffuse": 10}.get(name, 1.0)
@@ -123,7 +126,7 @@ def convergence(meta, arrays):
     }
 
 
-def compare_fields(cpu, gpu, density):
+def compare_fields(cpu: typing.Any, gpu: typing.Any, density: typing.Any) -> typing.Any:
     """Check every molecular-grid feature, with bounded independent CPU tiles."""
     errors = {}
     for a, b in zip(
@@ -140,7 +143,7 @@ def compare_fields(cpu, gpu, density):
     return errors
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cuda", action="store_true")
     parser.add_argument(

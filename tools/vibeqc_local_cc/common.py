@@ -1,5 +1,6 @@
 """Shared identity and validation rules for owned local-space records."""
 
+import typing
 from hashlib import sha256
 from numbers import Real
 
@@ -9,7 +10,7 @@ from vibeqc.profiles import canonical_hash
 from tools.vibeqc_posthf.reference import ReferenceSnapshot
 
 
-def checked_reference(snapshot):
+def checked_reference(snapshot: typing.Any) -> typing.Any:
     """Require #147's validated canonical reference and its exact Hamiltonian."""
     if not isinstance(snapshot, ReferenceSnapshot):
         raise TypeError("local spaces require a validated ReferenceSnapshot")
@@ -18,7 +19,9 @@ def checked_reference(snapshot):
     return snapshot.nocc, snapshot.nmo - snapshot.nocc
 
 
-def number(value, name, *, positive=False):
+def number(
+    value: typing.Any, name: typing.Any, *, positive: typing.Any = False
+) -> typing.Any:
     """Reject nonfinite tolerances and implicit string/bool conversions."""
     if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
         raise TypeError(f"{name} must be a real number")
@@ -28,7 +31,7 @@ def number(value, name, *, positive=False):
     return value
 
 
-def fingerprint(metadata, **arrays):
+def fingerprint(metadata: typing.Any, **arrays: typing.Any) -> typing.Any:
     """Hash exact portable values; numerical subspace equivalence is separate."""
     return canonical_hash(
         {
@@ -41,7 +44,7 @@ def fingerprint(metadata, **arrays):
     )
 
 
-def orthogonality(columns, metric=None):
+def orthogonality(columns: typing.Any, metric: typing.Any = None) -> typing.Any:
     """Maximum Gram-matrix error, including the valid empty pair space."""
     if columns.shape[1] == 0:
         return 0.0
@@ -49,7 +52,7 @@ def orthogonality(columns, metric=None):
     return float(np.max(np.abs(gram - np.eye(columns.shape[1]))))
 
 
-def checked_budget(budget_bytes):
+def checked_budget(budget_bytes: typing.Any) -> typing.Any:
     """Bound declared numeric storage before expensive transformations."""
     if type(budget_bytes) is not int or not 0 < budget_bytes < 2**63:
         raise ValueError("numeric budget must be a positive int64 byte count")

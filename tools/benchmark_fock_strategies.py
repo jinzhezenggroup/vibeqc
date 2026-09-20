@@ -16,16 +16,17 @@ import platform
 import statistics
 import subprocess
 import sys
+import typing
 from pathlib import Path
 from time import perf_counter
 
 
-def command(argv, **kwargs):
+def command(argv: typing.Any, **kwargs: typing.Any) -> typing.Any:
     """Capture a checked command without invoking a shell."""
     return subprocess.check_output(argv, text=True, **kwargs).strip()
 
 
-def provenance(root, build):
+def provenance(root: typing.Any, build: typing.Any) -> typing.Any:
     """Freeze source/build/environment inputs used by this worker."""
     cache = (build / "CMakeCache.txt").read_text()
     keys = (
@@ -85,7 +86,7 @@ def provenance(root, build):
     }
 
 
-def worker(args):
+def worker(args: typing.Any) -> None:
     """Time synchronous public endpoints without import/setup clock pollution."""
     sys.path.insert(0, str(args.root / "python"))
     import numpy as np
@@ -116,7 +117,7 @@ def worker(args):
         "max_iterations": 100,
     }
 
-    def encode(result):
+    def encode(result: typing.Any) -> typing.Any:
         items = result.items if hasattr(result, "items") else (result,)
         expected = "cuda" if args.device == "cuda" else "cpu_reference"
         if any(
@@ -136,10 +137,10 @@ def worker(args):
             for item in items
         ]
 
-    def diagnostic(plan, metadata, count):
+    def diagnostic(plan: typing.Any, metadata: typing.Any, count: typing.Any) -> None:
         # Outside the timing interval: retain the selected eigensolver and DF
         # allocation/tiling records without turning on scientific profiling.
-        def optional(query):
+        def optional(query: typing.Any) -> typing.Any:
             try:
                 return {"entries": [d.to_dict() for d in query()], "reason": None}
             except NotImplementedError:
@@ -158,7 +159,7 @@ def worker(args):
             }
         )
 
-    def measure(name, function, metadata):
+    def measure(name: typing.Any, function: typing.Any, metadata: typing.Any) -> None:
         if args.endpoint is not None and args.endpoint != name:
             return
         samples, outputs = [], []
@@ -281,7 +282,7 @@ def worker(args):
     args.output.write_text(json.dumps(record, indent=2, allow_nan=False) + "\n")
 
 
-def compare(base, head):
+def compare(base: typing.Any, head: typing.Any) -> typing.Any:
     """Keep accuracy gates quantitative and overhead ratios reviewable."""
     import numpy as np
 
@@ -352,7 +353,7 @@ def compare(base, head):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", type=Path)
     parser.add_argument(

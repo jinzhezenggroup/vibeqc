@@ -12,7 +12,7 @@ native/public force API, resident GPU response, frozen-core/open-shell/ECP, DF o
 from __future__ import annotations
 
 import time
-from collections.abc import Mapping
+import typing
 from dataclasses import asdict, dataclass, field
 from types import MappingProxyType
 
@@ -50,6 +50,9 @@ from .lambda_equations import PARAMETERS
 from .lambda_response import BoundCCSDResponse
 from .lambda_solver import BoundCCSDLambda, LambdaOptions, _graph_bytes
 from .solver import SolverOptions, solve
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 @dataclass(frozen=True)
@@ -105,7 +108,7 @@ class CCSDGradientOptions:
         default_factory=lambda: GMRESOptions(rtol=0, atol=1e-12)
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in ("max_bytes", "provider_budget_bytes"):
             _checked_bytes(getattr(self, name), name)
             if getattr(self, name) == 0:
@@ -187,7 +190,7 @@ class CCSDGradientResult:
     source_identity: str
     diagnostics: Mapping
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "gradient", _immutable(self.gradient))
         for name in ("physical_components", "integral_components"):
             object.__setattr__(
@@ -207,11 +210,11 @@ class CCSDGradientResult:
         )
 
     @property
-    def forces(self):
+    def forces(self) -> typing.Any:
         return _immutable(-self.gradient)
 
 
-def _validate_source(source):
+def _validate_source(source: typing.Any) -> None:
     if (
         not isinstance(source, NativeSource)
         or source.backend != "cpu-reference-native-shell-tiles"
@@ -236,11 +239,11 @@ def _validate_source(source):
         )
 
 
-def _derivative_bytes(source):
+def _derivative_bytes(source: typing.Any) -> typing.Any:
     return 3 * len(source.atoms) * (2 * source.nbf**2 + source.nbf**4 + 1) * 8
 
 
-def _nuclear_energy(source):
+def _nuclear_energy(source: typing.Any) -> typing.Any:
     result = 0.0
     for i, a in enumerate(source.atoms):
         for b in source.atoms[:i]:
@@ -251,7 +254,7 @@ def _nuclear_energy(source):
     return result
 
 
-def _nuclear_gradient(source):
+def _nuclear_gradient(source: typing.Any) -> typing.Any:
     """Exact Coulomb nuclear energy derivative, with no integral tensor storage."""
     result = np.zeros((len(source.atoms), 3), dtype=np.float64)
     for i, a in enumerate(source.atoms):
@@ -278,7 +281,9 @@ class BoundCCSDGradient:
     as a small-system validation boundary; it is not a production peak-RSS cap.
     """
 
-    def __init__(self, response, provider, *, options=None):
+    def __init__(
+        self, response: typing.Any, provider: typing.Any, *, options: typing.Any = None
+    ) -> None:
         started = time.perf_counter()
         options = CCSDGradientOptions() if options is None else options
         if not isinstance(options, CCSDGradientOptions):
@@ -464,7 +469,7 @@ class BoundCCSDGradient:
         class Transpose:
             dimension = operator.dimension
 
-            def apply(self, vector):
+            def apply(self, vector: typing.Any) -> typing.Any:
                 return owner.operator.apply_transpose(vector)
 
         z_started = time.perf_counter()
@@ -534,7 +539,7 @@ class BoundCCSDGradient:
         )
         self._assert_current()
 
-    def _assert_current(self):
+    def _assert_current(self) -> None:
         self.source._check_open()
         if (
             self.provider._closed
@@ -555,7 +560,7 @@ class BoundCCSDGradient:
                 "CC orbital-response operator identity changed"
             )
 
-    def _run(self, program, feeds):
+    def _run(self, program: typing.Any, feeds: typing.Any) -> typing.Any:
         self._assert_current()
         result = execute(program, feeds, max_bytes=self.options.max_bytes)
         if result.backend != "numpy-cpu-interpreter":
@@ -575,10 +580,10 @@ class BoundCCSDGradient:
         self._assert_current()
         return out
 
-    def _pullback(self, seeds):
+    def _pullback(self, seeds: typing.Any) -> typing.Any:
         return self._run(self.programs.weights, {**self.raw_inputs, **seeds})
 
-    def _generated_orbital_action(self, vector):
+    def _generated_orbital_action(self, vector: typing.Any) -> typing.Any:
         generator = self.operator.problem.layout.generator_matrix(vector)
         out = self._run(
             self.programs.orbital_jvp.program,
@@ -586,7 +591,7 @@ class BoundCCSDGradient:
         )
         return -out["d_fov"].reshape(-1)
 
-    def ao_weights(self, weights=None):
+    def ao_weights(self, weights: typing.Any = None) -> typing.Any:
         weights = self.weights if weights is None else weights
         return self._run(
             self.ao_program,
@@ -596,7 +601,7 @@ class BoundCCSDGradient:
             },
         )
 
-    def ao_one_electron_weights(self, weights=None):
+    def ao_one_electron_weights(self, weights: typing.Any = None) -> typing.Any:
         """Back-transform only O(N^2) h/overlap cotangents."""
         weights = self.weights if weights is None else weights
         return self._run(
@@ -608,7 +613,7 @@ class BoundCCSDGradient:
             },
         )
 
-    def _cuda_eri_shell_gradient(self, eri_mo):
+    def _cuda_eri_shell_gradient(self, eri_mo: typing.Any) -> typing.Any:
         """Stream one generated AO shell-quartet cotangent at a time to #144."""
         from itertools import product
 
@@ -663,7 +668,13 @@ class BoundCCSDGradient:
             "distinct_ao_eri_weight_block_shapes": len(program_cache),
         }
 
-    def _result(self, gradient, physical, integral, diagnostics):
+    def _result(
+        self,
+        gradient: typing.Any,
+        physical: typing.Any,
+        integral: typing.Any,
+        diagnostics: typing.Any,
+    ) -> typing.Any:
         correlation = float(
             self.response.bound._run(self.response.bound.independent.primal)[
                 "correlation_energy"
@@ -737,7 +748,7 @@ class BoundCCSDGradient:
         }
         self._assert_current()
 
-        def contract(weights):
+        def contract(weights: typing.Any) -> typing.Any:
             ao = self.ao_weights(weights)
             with np.errstate(over="raise", invalid="raise"):
                 terms = {
@@ -778,7 +789,7 @@ class BoundCCSDGradient:
         return result
 
     @staticmethod
-    def _accumulate_resources(target, measured):
+    def _accumulate_resources(target: typing.Any, measured: typing.Any) -> None:
         """Aggregate sequential CUDA calls: peak storage, additive transfers/events."""
         for name, value in measured.items():
             if name in ("device_bytes", "host_numeric_bytes"):
@@ -786,7 +797,9 @@ class BoundCCSDGradient:
             else:
                 target[name] = target.get(name, 0) + int(value)
 
-    def _cuda_one_electron(self, ao, *, split=False):
+    def _cuda_one_electron(
+        self, ao: typing.Any, *, split: typing.Any = False
+    ) -> typing.Any:
         kwargs = {
             "device_id": self.options.device_id,
             "schedule": self.options.one_electron_schedule,
@@ -920,7 +933,9 @@ class BoundCCSDGradient:
         raise AssertionError("validated derivative backend became unreachable")
 
 
-def complete_gradient_validation(source, *, options=None) -> CCSDGradientResult:
+def complete_gradient_validation(
+    source: typing.Any, *, options: typing.Any = None
+) -> CCSDGradientResult:
     """Run fresh native HF -> CC -> Lambda -> Z -> complete analytic gradient.
 
     Source is borrowed and remains open. All four solver states have independent
@@ -955,7 +970,7 @@ def complete_gradient_validation(source, *, options=None) -> CCSDGradientResult:
         if not cc.converged:
             raise ImplicitSolveError(f"CC gradient primal failed: {cc.reason}")
 
-        def current_reference():
+        def current_reference() -> typing.Any:
             source._check_open()
             if provider._closed:
                 raise ResponseCompatibilityError("CC gradient provider closed")

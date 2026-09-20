@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -36,7 +37,7 @@ from tools.vibeqc_validation.second_derivatives import (
 
 
 @pytest.fixture(scope="module", params=("cpu", "cuda"))
-def compiler(request, tmp_path_factory):
+def compiler(request: typing.Any, tmp_path_factory: typing.Any) -> typing.Any:
     pytest.importorskip("pyscf")
     cuda = request.param == "cuda"
     if cuda and os.environ.get("VIBEQC_TEST_SECOND_CUDA") != "1":
@@ -54,7 +55,7 @@ def compiler(request, tmp_path_factory):
     return adapter, tmp_path_factory.mktemp(f"second-public-{request.param}")
 
 
-def public_fixture(family, spherical):
+def public_fixture(family: typing.Any, spherical: typing.Any) -> typing.Any:
     """Reuse first-integral normalization fixtures with independent public weights."""
     if family == "eri":
         fixture = make_fixture("dpsp", "spherical" if spherical else "cartesian")
@@ -97,8 +98,8 @@ def public_fixture(family, spherical):
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction", "eri"])
 @pytest.mark.parametrize("spherical", [False, True])
 def test_contracted_public_hvp_matches_three_step_independent_gradient_fd(
-    compiler, family, spherical
-):
+    compiler: typing.Any, family: typing.Any, spherical: typing.Any
+) -> None:
     ir, inputs, centers, primitives, signature, projections, weights = public_fixture(
         family, spherical
     )
@@ -151,7 +152,9 @@ def test_contracted_public_hvp_matches_three_step_independent_gradient_fd(
         )
 
 
-def test_public_coverage_and_composed_budget_fail_before_execution(compiler):
+def test_public_coverage_and_composed_budget_fail_before_execution(
+    compiler: typing.Any,
+) -> None:
     ir, _, centers, primitives, signature, projections, weights = public_fixture(
         "nuclear_attraction", True
     )
@@ -218,7 +221,7 @@ def test_public_coverage_and_composed_budget_fail_before_execution(compiler):
         plan.contract(stream)
 
 
-def test_atom_chain_rule_uses_both_hessian_indices_and_noncontiguous_labels():
+def test_atom_chain_rule_uses_both_hessian_indices_and_noncontiguous_labels() -> None:
     mapping = SecondAtomMap((0, 1, 2, 3), (8, 8, 1, 5))
     random = np.random.default_rng(178)
     matrix = random.normal(size=(12, 12))
@@ -235,12 +238,20 @@ def test_atom_chain_rule_uses_both_hessian_indices_and_noncontiguous_labels():
 
 
 @pytest.mark.parametrize("family", ["nuclear_attraction", "eri"])
-def test_public_hvp_arbitrary_rotation_and_bra_shell_permutation(compiler, family):
+def test_public_hvp_arbitrary_rotation_and_bra_shell_permutation(
+    compiler: typing.Any, family: typing.Any
+) -> None:
     ir, _, centers, primitives, signature, _, weights = public_fixture(family, False)
     direction = np.random.default_rng(18).normal(size=centers.shape)
     artifact = compile_second_derivative(ir, *compiler)
 
-    def run(artifact, primitives, centers, weights, direction):
+    def run(
+        artifact: typing.Any,
+        primitives: typing.Any,
+        centers: typing.Any,
+        weights: typing.Any,
+        direction: typing.Any,
+    ) -> typing.Any:
         layout = TensorLayout(artifact.integral.signature.tensor_indices, weights.shape)
         stream = prepare_second_shell_stream(
             artifact,

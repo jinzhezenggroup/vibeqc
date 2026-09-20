@@ -5,6 +5,7 @@ existing Graph. This module owns their AO contractions, including response
 and explicit geometry sources; it owns no SCF/response solver or AO^4 kernel.
 """
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -20,7 +21,7 @@ from .program import build_program
 from .spec import UnsupportedXC
 
 
-def _pack(spec, features):
+def _pack(spec: typing.Any, features: typing.Any) -> typing.Any:
     """Use the existing scalar ABI without evaluating unused sigma/tau reductions.
 
     Zero placeholders occupy inactive ABI slots only. The typed functional
@@ -48,7 +49,7 @@ def _pack(spec, features):
     return result
 
 
-def _functional_gradient(spec, features):
+def _functional_gradient(spec: typing.Any, features: typing.Any) -> typing.Any:
     gradient = features.get("gradient")
     return (
         gradient
@@ -57,7 +58,7 @@ def _functional_gradient(spec, features):
     )
 
 
-def _weighted_energy(weights, values):
+def _weighted_energy(weights: typing.Any, values: typing.Any) -> typing.Any:
     """Reject overflow in quadrature even when every scalar point is finite."""
     with np.errstate(over="ignore", invalid="ignore"):
         energy = float(weights @ values)
@@ -66,7 +67,7 @@ def _weighted_energy(weights, values):
     return energy
 
 
-def _response_features(reference, linear):
+def _response_features(reference: typing.Any, linear: typing.Any) -> typing.Any:
     """Differentiate nonlinear sigma at the reference, keeping linear fields."""
     result = dict(linear)
     if "gradient" in linear:
@@ -82,7 +83,9 @@ def _response_features(reference, linear):
     return result
 
 
-def density_feature_response(jets, density, delta_density):
+def density_feature_response(
+    jets: typing.Any, density: typing.Any, delta_density: typing.Any
+) -> typing.Any:
     """Legacy full-feature response adapter with one common scientific owner.
 
     The semilocal contraction consumer below prunes tau and LDA gradients;
@@ -108,7 +111,9 @@ class GeometryPartials:
     points: np.ndarray
     weights: np.ndarray
 
-    def directional(self, *, centers, points, weights):
+    def directional(
+        self, *, centers: typing.Any, points: typing.Any, weights: typing.Any
+    ) -> typing.Any:
         """Contract independently supplied basis, grid and measure motion."""
         return float(
             np.sum(self.centers * immutable(centers, shape=self.centers.shape))
@@ -127,7 +132,7 @@ class ContractionProgram:
     program without changing any scientific contraction.
     """
 
-    def __init__(self, spec, observable="potential"):
+    def __init__(self, spec: typing.Any, observable: typing.Any = "potential") -> None:
         self.contract = DiscreteEnergyContract(spec, DerivativeRequest(observable))
         self.program = build_program(
             spec,
@@ -152,10 +157,10 @@ class ContractionProgram:
         )
 
     @property
-    def spec(self):
+    def spec(self) -> typing.Any:
         return self.contract.functional
 
-    def features(self, jets, density):
+    def features(self, jets: typing.Any, density: typing.Any) -> typing.Any:
         """Perform only the ingredient reductions declared by this functional."""
         family = self.contract.ingredients.family
         requested = (
@@ -167,25 +172,33 @@ class ContractionProgram:
         )
         return density_features(jets, density, ingredients=requested)
 
-    def scalar_values(self, features):
+    def scalar_values(self, features: typing.Any) -> typing.Any:
         """Evaluate only declared roots; keep their derivative labels explicit."""
         raw = self.program.evaluate(_pack(self.spec, features))
         return dict(zip(self.program.outputs, raw, strict=True))
 
-    def _gradient(self, rows, npoint):
+    def _gradient(self, rows: typing.Any, npoint: typing.Any) -> typing.Any:
         result = np.zeros((len(self.spec.features), npoint))
         for index in self.contract.ingredients.feature_indices:
             result[index] = rows[(index,)]
         return result
 
-    def potential_tile(self, jets, features, weights):
+    def potential_tile(
+        self, jets: typing.Any, features: typing.Any, weights: typing.Any
+    ) -> typing.Any:
         """Consume complete-density features from a validated collocation owner."""
         if self.contract.request.observable != "potential":
             raise ValueError("potential tile requires a potential request")
         rows = self.scalar_values(features)
         return self.potential_from_rows(jets, features, weights, rows)
 
-    def potential_from_rows(self, jets, features, weights, rows):
+    def potential_from_rows(
+        self,
+        jets: typing.Any,
+        features: typing.Any,
+        weights: typing.Any,
+        rows: typing.Any,
+    ) -> typing.Any:
         """Assemble the unchanged potential after an explicitly planned scalar call."""
         if self.contract.request.observable != "potential":
             raise ValueError("potential rows require a potential request")
@@ -201,8 +214,15 @@ class ContractionProgram:
         }
 
     def evaluate(
-        self, jets, density, weights, *, delta_density=None, ao_atoms=None, natom=None
-    ):
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        *,
+        delta_density: typing.Any = None,
+        ao_atoms: typing.Any = None,
+        natom: typing.Any = None,
+    ) -> typing.Any:
         """Return exactly the requested observable for a complete-density tile.
 
         Geometry requires one extra spatial jet and an explicit AO-to-atom
@@ -275,16 +295,16 @@ class ContractionProgram:
 
     def geometry_from_cartesian_coefficients(
         self,
-        jets,
-        density,
-        weights,
-        energy,
-        rho_coefficients,
-        gradient_coefficients=None,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        energy: typing.Any,
+        rho_coefficients: typing.Any,
+        gradient_coefficients: typing.Any = None,
         *,
-        ao_atoms,
-        natom,
-    ):
+        ao_atoms: typing.Any,
+        natom: typing.Any,
+    ) -> typing.Any:
         """Apply generated AO-jet pullback to an audited point differential.
 
         The point provider supplies dE/drho_s and, for GGA, dE/dgrad(rho_s)
@@ -332,7 +352,16 @@ class ContractionProgram:
                 ]
         return self._geometry(jets, d, weights, coefficients, energy, ao_atoms, natom)
 
-    def _geometry(self, jets, density, weights, coefficients, energy, ao_atoms, natom):
+    def _geometry(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        coefficients: typing.Any,
+        energy: typing.Any,
+        ao_atoms: typing.Any,
+        natom: typing.Any,
+    ) -> typing.Any:
         """Pull back compact AO bilinears, then split translation sources.
 
         A normalized AO depends on r-R_A; ordinary spatial jets therefore

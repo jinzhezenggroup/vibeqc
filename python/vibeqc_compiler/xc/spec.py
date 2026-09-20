@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import asdict, dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -72,7 +73,7 @@ class FunctionalSpec:
     range_omega: Fraction = Fraction(0)
     long_range_exchange: Fraction = Fraction(0)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (
             not isinstance(self.identifier, str)
             or not self.identifier.strip()
@@ -114,12 +115,12 @@ class FunctionalSpec:
             )
 
     @property
-    def features(self):
+    def features(self) -> typing.Any:
         """Feature-major arrays; sigma_ab has no factor two, tau has one-half."""
         return POLARIZED if self.spin == "polarized" else UNPOLARIZED
 
     @property
-    def ingredients(self):
+    def ingredients(self) -> typing.Any:
         if any(
             name.startswith("MGGA") and coefficient
             for name, coefficient in self.components
@@ -132,7 +133,7 @@ class FunctionalSpec:
             return ("rho", "sigma")
         return ("rho",)
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         """Complete identity including parameter/license provenance and units."""
         payload = asdict(self)
         payload["components"] = [[n, str(c)] for n, c in self.components]
@@ -166,11 +167,11 @@ class FunctionalSpec:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
 
 
-def functional(identifier, *, spin="polarized"):
+def functional(identifier: typing.Any, *, spin: typing.Any = "polarized") -> typing.Any:
     """Resolve only explicit audited catalog names; unknown aliases fail closed."""
     if identifier not in CATALOG:
         raise UnsupportedXC(f"unknown functional {identifier!r}")

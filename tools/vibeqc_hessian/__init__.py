@@ -5,6 +5,8 @@ PySCF reference oracles are separate explicitly imported validation modules;
 none of them supplies a state or derivative to the native Hessian calculation.
 """
 
+import typing
+
 from .assembly import assemble_frozen_skeleton, validate_hessian_component
 from .numerical import (
     forces_to_gradient,
@@ -68,7 +70,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name):
+def __getattr__(name: typing.Any) -> typing.Any:
     module = _LAZY.get(name)
     if module is not None:
         import importlib

@@ -7,6 +7,7 @@ Opaque provider interiors remain outside this boundary-only accounting scope.
 """
 
 import json
+import typing
 from dataclasses import asdict, dataclass
 
 from .layout import DenseLayout
@@ -21,13 +22,15 @@ from .resources import (
 )
 
 
-def _text(value, name):
+def _text(value: typing.Any, name: typing.Any) -> typing.Any:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{name} must be a nonempty string")
     return value
 
 
-def _names(values, name, *, unique=True):
+def _names(
+    values: typing.Any, name: typing.Any, *, unique: typing.Any = True
+) -> typing.Any:
     if not isinstance(values, (list, tuple)):
         raise TypeError(f"{name} must be a sequence of names")
     values = tuple(_text(value, name) for value in values)
@@ -36,7 +39,7 @@ def _names(values, name, *, unique=True):
     return values
 
 
-def _keys(payload, expected, name):
+def _keys(payload: typing.Any, expected: typing.Any, name: typing.Any) -> None:
     if not isinstance(payload, dict) or set(payload) != set(expected):
         raise ValueError(f"invalid {name} fields")
 
@@ -51,7 +54,7 @@ class ProgramBuffer:
     layout: DenseLayout | None = None
     itemsize: int | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Reuse #203's checked byte/space ABI instead of another resource model.
         _text(self.space, "buffer space")
         ResourceEstimate(self.name, self.bytes, self.space, 0, 0)
@@ -86,7 +89,7 @@ class PlanCall:
     reads: tuple[str, ...]
     writes: tuple[str, ...]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for field in ("name", "provider", "identity"):
             _text(getattr(self, field), field)
         object.__setattr__(self, "reads", _names(self.reads, "reads", unique=False))
@@ -113,7 +116,7 @@ class ProgramIR:
     outputs: tuple[str, ...]
     schema_version: int = 2
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _text(self.name, "program name")
         if type(self.schema_version) is not int or self.schema_version != 2:
             raise ValueError("unsupported ProgramIR schema")
@@ -147,12 +150,12 @@ class ProgramIR:
         if not set(self.outputs) <= available:
             raise ValueError("missing exported output")
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         """Return detached JSON-compatible data; never executable Python."""
         return json.loads(json.dumps(asdict(self)))
 
     @classmethod
-    def from_payload(cls, payload):
+    def from_payload(cls, payload: typing.Any) -> typing.Any:
         """Strict replay validates dependencies anew; no saved analysis is trusted."""
         _keys(payload, cls.__dataclass_fields__, "ProgramIR")
         data = dict(payload)
@@ -175,10 +178,10 @@ class ProgramIR:
         return cls(**data)
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
 
-    def lifetimes(self, *, retain_temporaries=False):
+    def lifetimes(self, *, retain_temporaries: typing.Any = False) -> typing.Any:
         """Derive inclusive #203 intervals, without assuming buffer alias/reuse.
 
         ``retain_temporaries`` is a diagnostic retain-all comparison, not a
@@ -214,7 +217,7 @@ class ProgramIR:
             for buffer in self.buffers
         )
 
-    def release_after(self, call_name):
+    def release_after(self, call_name: typing.Any) -> typing.Any:
         """Owned non-exported buffers whose final use completes at this call."""
         names = tuple(call.name for call in self.calls)
         if call_name not in names:
@@ -226,7 +229,7 @@ class ProgramIR:
             if estimate.kind == "workspace" and estimate.last_phase == phase
         )
 
-    def resource_request(self, *, retain_temporaries=False):
+    def resource_request(self, *, retain_temporaries: typing.Any = False) -> typing.Any:
         """Feed the existing planner; this does not change any native allocation."""
         estimates = self.lifetimes(retain_temporaries=retain_temporaries)
         return ResourceRequest(

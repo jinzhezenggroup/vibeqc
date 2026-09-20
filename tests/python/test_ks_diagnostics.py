@@ -3,6 +3,7 @@
 import ctypes
 import json
 import os
+import typing
 from dataclasses import FrozenInstanceError
 
 import numpy as np
@@ -14,14 +15,16 @@ H3 = [("H", (0, 0, 0)), ("H", (0.15, 0.13, 1.5)), ("H", (0.6, 0.26, 3.0))]
 
 
 @pytest.fixture(params=("cpu", "cuda"))
-def device(request):
+def device(request: typing.Any) -> typing.Any:
     if request.param == "cuda" and os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1":
         pytest.skip("requires an explicitly Slurm-allocated GPU")
     return request.param
 
 
 @pytest.mark.parametrize("method", ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"))
-def test_physical_components_and_history_match_independent_state(method, device):
+def test_physical_components_and_history_match_independent_state(
+    method: typing.Any, device: typing.Any
+) -> None:
     pyscf = pytest.importorskip("pyscf")
     from pyscf import dft, gto
 
@@ -119,7 +122,9 @@ def test_physical_components_and_history_match_independent_state(method, device)
         diagnostic.grid_points = 0
 
 
-def test_batch_snapshot_history_abi_invalidation_and_old_library(monkeypatch, device):
+def test_batch_snapshot_history_abi_invalidation_and_old_library(
+    monkeypatch: typing.Any, device: typing.Any
+) -> None:
     calculator = Calculator(
         method="pbe-uks",
         device=device,
@@ -194,7 +199,9 @@ def test_batch_snapshot_history_abi_invalidation_and_old_library(monkeypatch, de
         assert batch.execute(strict=True).items[0].ks_diagnostic is None
 
 
-def test_valid_iteration_limit_keeps_its_actual_history(device):
+def test_valid_iteration_limit_keeps_its_actual_history(
+    device: typing.Any,
+) -> None:
     calculator = Calculator(method="pbe-uks", device=device, max_iterations=1)
     with calculator.prepare_batch([H3], multiplicities=[2]) as batch:
         result = batch.execute().items[0]
@@ -208,7 +215,7 @@ def test_valid_iteration_limit_keeps_its_actual_history(device):
         json.dumps(diagnostic.to_payload(), allow_nan=False)
 
 
-def test_hf_has_no_ks_snapshot():
+def test_hf_has_no_ks_snapshot() -> None:
     calculator = Calculator(method="rhf", device="cpu")
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     assert calculator.singlepoint(atoms, properties=("energy",)).ks_diagnostic is None
@@ -222,7 +229,9 @@ def test_hf_has_no_ks_snapshot():
         )
 
 
-def test_cpu_and_old_libraries_report_no_cuda_ks_transport(monkeypatch):
+def test_cpu_and_old_libraries_report_no_cuda_ks_transport(
+    monkeypatch: typing.Any,
+) -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calculator = Calculator(method="lda-rks", device="cpu")
     assert calculator.singlepoint(atoms).ks_transport_diagnostic is None
@@ -247,7 +256,9 @@ def test_cpu_and_old_libraries_report_no_cuda_ks_transport(monkeypatch):
         assert batch.ks_transport_diagnostics == (None,)
 
 
-def test_cuda_ks_transport_covers_setup_replay_and_geometry_rebuild(device):
+def test_cuda_ks_transport_covers_setup_replay_and_geometry_rebuild(
+    device: typing.Any,
+) -> None:
     if device != "cuda":
         pytest.skip("transport ledger is CUDA-only")
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
@@ -296,7 +307,9 @@ def test_cuda_ks_transport_covers_setup_replay_and_geometry_rebuild(device):
             rebuilt.iterations = 0
 
 
-def test_cold_retry_replaces_the_failed_warm_attempt_history(device):
+def test_cold_retry_replaces_the_failed_warm_attempt_history(
+    device: typing.Any,
+) -> None:
     """A normalized virtual determinant forces a retry within a two-step limit."""
     from vibeqc import cross_overlap
 

@@ -7,6 +7,7 @@ Exact factors remain integer numerator/denominator pairs until interpretation.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass, replace
 from fractions import Fraction
 from math import isfinite
@@ -15,7 +16,7 @@ from struct import pack, unpack
 from .types import Index, TensorSpec
 
 
-def rational(value) -> tuple[int, int]:
+def rational(value: typing.Any) -> tuple[int, int]:
     """Accept explicit exact coefficients, never approximate float spelling."""
     if type(value) not in (int, str, Fraction):
         raise TypeError("use an integer, Fraction, or rational string for coefficients")
@@ -23,7 +24,7 @@ def rational(value) -> tuple[int, int]:
     return factor.numerator, factor.denominator
 
 
-def _fraction(pair) -> Fraction:
+def _fraction(pair: typing.Any) -> Fraction:
     if (
         not isinstance(pair, tuple)
         or len(pair) != 2
@@ -37,7 +38,7 @@ def _fraction(pair) -> Fraction:
     return value
 
 
-def _execution_power_exponent(pair, dtype):
+def _execution_power_exponent(pair: typing.Any, dtype: typing.Any) -> typing.Any:
     """The exact binary exponent executed by this dtype, before AD algebra."""
     exponent = _fraction(pair)
     try:
@@ -51,7 +52,7 @@ def _execution_power_exponent(pair, dtype):
     return Fraction(rounded)
 
 
-def _freeze(value):
+def _freeze(value: typing.Any) -> typing.Any:
     """Only JSON data can enter attributes; executable objects cannot."""
     if isinstance(value, (list, tuple)):
         return tuple(_freeze(x) for x in value)
@@ -144,7 +145,9 @@ def _common(inputs: tuple[Node, ...]) -> TensorSpec:
     return spec
 
 
-def _result(inputs, *, indices=None, symmetries=()) -> TensorSpec:
+def _result(
+    inputs: typing.Any, *, indices: typing.Any = None, symmetries: typing.Any = ()
+) -> TensorSpec:
     return _common(inputs).result(
         indices=indices,
         symmetries=symmetries,
@@ -152,7 +155,9 @@ def _result(inputs, *, indices=None, symmetries=()) -> TensorSpec:
     )
 
 
-def _axes(value, rank: int, *, permutation=False) -> tuple[int, ...]:
+def _axes(
+    value: typing.Any, rank: int, *, permutation: typing.Any = False
+) -> tuple[int, ...]:
     value = tuple(value)
     if (
         any(type(i) is not int or not 0 <= i < rank for i in value)
@@ -163,7 +168,9 @@ def _axes(value, rank: int, *, permutation=False) -> tuple[int, ...]:
     return value
 
 
-def _einsum_domains(inputs, labels, output):
+def _einsum_domains(
+    inputs: typing.Any, labels: typing.Any, output: typing.Any
+) -> typing.Any:
     if len(labels) != len(inputs):
         raise ValueError("einsum requires one label list per operand")
     domains = {}
@@ -357,7 +364,13 @@ def _validate(node: Node) -> None:
         raise ValueError(f"declared {node.op} result disagrees with inferred type")
 
 
-def _make(op, inputs, attrs=(), *, indices=None) -> Node:
+def _make(
+    op: typing.Any,
+    inputs: typing.Any,
+    attrs: typing.Any = (),
+    *,
+    indices: typing.Any = None,
+) -> Node:
     inputs = tuple(inputs)
     declared = _result(inputs, indices=indices)
     attrs = dict(attrs)
@@ -370,7 +383,7 @@ def input_tensor(name: str, spec: TensorSpec) -> Node:
     return Node("input", (), spec, (("name", name),))
 
 
-def constant(values, spec: TensorSpec | None = None) -> Node:
+def constant(values: typing.Any, spec: TensorSpec | None = None) -> Node:
     """Define exact scalar or flattened row-major tensor literals."""
     if spec is None:
         spec = TensorSpec(role="constant")
@@ -379,7 +392,7 @@ def constant(values, spec: TensorSpec | None = None) -> Node:
     return Node("constant", (), spec, (("values", tuple(rational(x) for x in values)),))
 
 
-def add(*inputs: Node, coefficients=None) -> Node:
+def add(*inputs: Node, coefficients: typing.Any = None) -> Node:
     """Ordered rational-scaled sum, with no floating-point reassociation."""
     coefficients = (1,) * len(inputs) if coefficients is None else tuple(coefficients)
     return _make(
@@ -422,7 +435,7 @@ def sqrt(value: Node) -> Node:
     return _make("sqrt", (value,))
 
 
-def power(value: Node, exponent) -> Node:
+def power(value: Node, exponent: typing.Any) -> Node:
     """Positive-real-base power with a static exact rational exponent.
 
     Exponents use the same int/Fraction/rational-string spelling as coefficients,
@@ -433,7 +446,7 @@ def power(value: Node, exponent) -> Node:
     return _make("power", (value,), {"exponent": rational(exponent)})
 
 
-def einsum(equation: str, *inputs: Node, coefficient=1) -> Node:
+def einsum(equation: str, *inputs: Node, coefficient: typing.Any = 1) -> Node:
     """Explicit-output Einstein contraction without ellipses or conjugation.
 
     Alphabetic single-character labels are notation only. First-occurrence
@@ -463,7 +476,7 @@ def einsum(equation: str, *inputs: Node, coefficient=1) -> Node:
     )
 
 
-def transpose(value: Node, axes) -> Node:
+def transpose(value: Node, axes: typing.Any) -> Node:
     """Permute logical axes, carrying declared symmetry through the permutation."""
     return _make("transpose", (value,), {"axes": tuple(axes)})
 
@@ -473,23 +486,23 @@ def reshape(value: Node, indices: tuple[Index, ...]) -> Node:
     return _make("reshape", (value,), indices=indices)
 
 
-def slice_tensor(value: Node, ranges) -> Node:
+def slice_tensor(value: Node, ranges: typing.Any) -> Node:
     """Take unit-step, nonnegative half-open local ranges, including empties."""
     return _make("slice", (value,), {"ranges": tuple(tuple(r) for r in ranges)})
 
 
-def gather(value: Node, axis: int, positions) -> Node:
+def gather(value: Node, axis: int, positions: typing.Any) -> Node:
     """Gather local positions, retaining repeated/reordered global coordinates."""
     return _make("gather", (value,), {"axis": axis, "positions": tuple(positions)})
 
 
-def reduce_sum(value: Node, axes) -> Node:
+def reduce_sum(value: Node, axes: typing.Any) -> Node:
     """Sum specified axes; reducing every axis produces a rank-zero scalar."""
     axes = _axes(axes, len(value.spec.indices))
     return _make("reduce", (value,), {"axes": tuple(sorted(axes))})
 
 
-def broadcast(value: Node, indices: tuple[Index, ...], axes) -> Node:
+def broadcast(value: Node, indices: tuple[Index, ...], axes: typing.Any) -> Node:
     """Insert new axes with an explicit input-to-output axis map.
 
     Existing axes retain their populations/ranges. To expand a selected

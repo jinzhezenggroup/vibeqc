@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import subprocess
+import typing
 from pathlib import Path
 from time import perf_counter
 
@@ -16,11 +17,11 @@ from vibeqc.ecp import ecp_integrals
 from vibeqc.profiles import file_hash
 
 
-def maximum(value):
+def maximum(value: typing.Any) -> typing.Any:
     return float(np.max(np.abs(value)))
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", choices=("cpu", "cuda"), required=True)
     parser.add_argument("--output", type=Path, required=True)

@@ -1,5 +1,7 @@
 """Fast directional finite-difference gate for the water MP2 gradient."""
 
+import typing
+
 import numpy as np
 from vibeqc import Calculator
 
@@ -19,7 +21,7 @@ from tools.vibeqc_posthf.sources import NativeSource
 from tools.vibeqc_response import DenseAOResponseBackend, GMRESOptions
 
 
-def _internal_directions(shape):
+def _internal_directions(shape: typing.Any) -> typing.Any:
     """Return two deterministic, translation-free, orthonormal directions."""
     rng = np.random.default_rng(20260914)
     directions = []
@@ -34,7 +36,7 @@ def _internal_directions(shape):
     return directions
 
 
-def test_water_complete_gradient_matches_directional_finite_differences():
+def test_water_complete_gradient_matches_directional_finite_differences() -> None:
     """Keep a two-direction energy-only FD gate on the ordinary CI path.
 
     The exhaustive water Cartesian check remains in test_mp2_gradient.py and is

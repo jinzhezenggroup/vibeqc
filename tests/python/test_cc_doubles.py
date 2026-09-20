@@ -1,5 +1,7 @@
 """Complete physical residuals, independent projections and expanded DAG."""
 
+import typing
+
 import numpy as np
 import pytest
 from vibeqc_compiler.tensor import Program, add, execute
@@ -11,7 +13,9 @@ from tools.vibeqc_cc.oracle import DeterminantOracle, dense_feeds, random_case
 @pytest.mark.parametrize(
     "o,v,seed", [(1, 1, 148), (1, 3, 149), (2, 2, 150), (2, 3, 151), (3, 2, 152)]
 )
-def test_full_residuals_against_determinants_and_expanded_shared(o, v, seed):
+def test_full_residuals_against_determinants_and_expanded_shared(
+    o: typing.Any, v: typing.Any, seed: typing.Any
+) -> None:
     arrays = random_case(o, v, seed)
     f, g, x, y = arrays
     reference = DeterminantOracle(f, g, o).evaluate_full(x, y)
@@ -37,7 +41,7 @@ def test_full_residuals_against_determinants_and_expanded_shared(o, v, seed):
             )
 
 
-def test_zero_amplitudes_and_mutant_pair_and_ladder_terms():
+def test_zero_amplitudes_and_mutant_pair_and_ladder_terms() -> None:
     f, g, x, y = random_case()
     p = build_ccsd_program(2, 2)
     zero = execute(p, dense_feeds(f, g, x * 0, y * 0)).outputs
@@ -63,7 +67,7 @@ def test_zero_amplitudes_and_mutant_pair_and_ladder_terms():
         assert np.max(np.abs(bad - ref)) > 1e-7
 
 
-def test_fock_doubles_has_all_diagonal_and_offdiagonal_terms():
+def test_fock_doubles_has_all_diagonal_and_offdiagonal_terms() -> None:
     f, g, x, y = random_case()
     expected = DeterminantOracle(f, g * 0, 2).evaluate_full(x, y)[2]
     result = execute(build_ccsd_program(2, 2), dense_feeds(f, g * 0, x, y)).outputs[

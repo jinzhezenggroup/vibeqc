@@ -1,6 +1,7 @@
 """Offline basis identity, independent integral/HF and unsupported-domain gates."""
 
 import json
+import typing
 from dataclasses import replace
 from decimal import localcontext
 from pathlib import Path
@@ -30,7 +31,9 @@ from tools.vibeqc_validation.schema import block_error
 ROOT = Path(__file__).resolve().parents[1] / "data/external_basis"
 
 
-def imported(name="sto-3g-ho", representation="cartesian"):
+def imported(
+    name: typing.Any = "sto-3g-ho", representation: typing.Any = "cartesian"
+) -> typing.Any:
     return import_bse(
         ROOT / (name + ".json"),
         source="pinned test data",
@@ -42,12 +45,18 @@ def imported(name="sto-3g-ho", representation="cartesian"):
     )
 
 
-def check(actual, expected, *, atol=1e-11, rtol=1e-10):
+def check(
+    actual: typing.Any,
+    expected: typing.Any,
+    *,
+    atol: typing.Any = 1e-11,
+    rtol: typing.Any = 1e-10,
+) -> None:
     result = block_error(actual, expected, atol=atol, rtol=rtol)
     assert result["passed"], result
 
 
-def unsupported_g_ecp_basis():
+def unsupported_g_ecp_basis() -> typing.Any:
     """Keep an explicit unsupported orbital boundary as f becomes available."""
     basis = imported("def2-tzvp-au")
     element = basis.by_element[79]
@@ -63,7 +72,9 @@ def unsupported_g_ecp_basis():
     )
 
 
-def test_source_hashes_and_complete_canonical_roundtrip(tmp_path):
+def test_source_hashes_and_complete_canonical_roundtrip(
+    tmp_path: typing.Any,
+) -> None:
     metadata = json.loads((ROOT / "manifest.json").read_text())
     for name, checksum in metadata["files"].items():
         assert file_hash(ROOT / name) == checksum
@@ -84,7 +95,7 @@ def test_source_hashes_and_complete_canonical_roundtrip(tmp_path):
         assert other.provenance.checksum == file_hash(ROOT / (name + ".json"))
 
 
-def test_combined_shell_groups_general_columns_and_zero_coefficients_survive():
+def test_combined_shell_groups_general_columns_and_zero_coefficients_survive() -> None:
     oxygen = imported().by_element[8]
     assert [s.angular_momentum for s in oxygen.shells] == [0, 0, 1]
     assert oxygen.shells[1].source_group == oxygen.shells[2].source_group
@@ -97,7 +108,7 @@ def test_combined_shell_groups_general_columns_and_zero_coefficients_survive():
     assert shells[0].primitives[-1].coefficient == 0
 
 
-def test_decimal_precision_does_not_depend_on_decimal_context():
+def test_decimal_precision_does_not_depend_on_decimal_context() -> None:
     value = "0.123456789012345678901234567890123456789"
     with localcontext() as context:
         context.prec = 5
@@ -125,13 +136,15 @@ def test_decimal_precision_does_not_depend_on_decimal_context():
         {"angular_momentum": 2**32},
     ],
 )
-def test_malformed_primitive_and_contraction_records(kwargs):
+def test_malformed_primitive_and_contraction_records(kwargs: typing.Any) -> None:
     arguments = {"angular_momentum": 0, "exponents": ("1",), "coefficients": (("1",),)}
     with pytest.raises(ValueError):
         BasisShell(**(arguments | kwargs))
 
 
-def test_checksums_duplicate_keys_records_and_normalization_are_not_ignored(tmp_path):
+def test_checksums_duplicate_keys_records_and_normalization_are_not_ignored(
+    tmp_path: typing.Any,
+) -> None:
     basis = imported()
     for kwargs in (
         {"normalization": "already-radially-normalized"},
@@ -157,7 +170,9 @@ def test_checksums_duplicate_keys_records_and_normalization_are_not_ignored(tmp_
         replace(basis.by_element[1], ecp_core_electrons=1)
 
 
-def test_ambiguous_combined_and_malformed_ecp_imports(tmp_path):
+def test_ambiguous_combined_and_malformed_ecp_imports(
+    tmp_path: typing.Any,
+) -> None:
     data = json.loads((ROOT / "sto-3g-ho.json").read_text())
     shell = data["elements"]["8"]["electron_shells"][1]
     shell["coefficients"].append(shell["coefficients"][0])
@@ -174,7 +189,9 @@ def test_ambiguous_combined_and_malformed_ecp_imports(tmp_path):
 
 
 @pytest.mark.parametrize("version", [True, 1.0, "1", None])
-def test_schema_version_requires_an_exact_integer(tmp_path, version):
+def test_schema_version_requires_an_exact_integer(
+    tmp_path: typing.Any, version: typing.Any
+) -> None:
     payload = imported().to_payload()
     payload.pop("checksum")
     payload["schema_version"] = version
@@ -186,12 +203,14 @@ def test_schema_version_requires_an_exact_integer(tmp_path, version):
 
 
 @pytest.mark.parametrize("arrays", [("12", [[1, 2]]), ([1, 2], ["12"]), ([1], "1")])
-def test_strings_are_not_primitive_or_contraction_arrays(arrays):
+def test_strings_are_not_primitive_or_contraction_arrays(
+    arrays: typing.Any,
+) -> None:
     with pytest.raises(TypeError, match="arrays"):
         BasisShell(0, *arrays)
 
 
-def test_auxiliary_representation_cannot_be_lost_by_posthf_source():
+def test_auxiliary_representation_cannot_be_lost_by_posthf_source() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     with pytest.raises(ValueError, match="representation conflicts"):
         NativeSource(atoms, auxiliary_basis=imported(representation="spherical"))
@@ -199,7 +218,7 @@ def test_auxiliary_representation_cannot_be_lost_by_posthf_source():
         assert source.nbf == source.naux == 2
 
 
-def test_auxiliary_high_l_and_representation_capability_checks():
+def test_auxiliary_high_l_and_representation_capability_checks() -> None:
     basis = imported("synthetic-fe-h")
     atoms = [("Fe", (0, 0, 0))]
     for auxiliary in (
@@ -220,12 +239,16 @@ def test_auxiliary_high_l_and_representation_capability_checks():
 @pytest.mark.parametrize(
     "kwargs", [{"charge": 0.5}, {"multiplicity": True}, {"charge": 2**32}]
 )
-def test_public_metadata_rejects_noninteger_native_fields(kwargs):
+def test_public_metadata_rejects_noninteger_native_fields(
+    kwargs: typing.Any,
+) -> None:
     with pytest.raises(ValueError, match="integer"):
         Calculator(basis=imported()).basis_metadata([("H", (0, 0, 0))], **kwargs)
 
 
-def test_elements_nuclear_charge_ecp_cores_and_requested_electrons_are_separate():
+def test_elements_nuclear_charge_ecp_cores_and_requested_electrons_are_separate() -> (
+    None
+):
     assert len(SYMBOLS) == 118
     assert Atom.from_value(("Fe", (0, 0, 0))).atomic_number == 26
     assert Atom.from_value(("Og", (0, 0, 0))).atomic_number == 118
@@ -268,8 +291,8 @@ def test_elements_nuclear_charge_ecp_cores_and_requested_electrons_are_separate(
 @pytest.mark.parametrize("backend", ["cpu", "cuda"])
 @pytest.mark.parametrize("role", ["orbital", "auxiliary"])
 def test_realistic_high_l_and_ecp_are_loadable_but_have_precise_missing_routes(
-    backend, role
-):
+    backend: typing.Any, role: typing.Any
+) -> None:
     fe = imported("cc-pvtz-fe")
     for operator in (
         "overlap",
@@ -325,7 +348,7 @@ def test_realistic_high_l_and_ecp_are_loadable_but_have_precise_missing_routes(
     )["eligible"]
 
 
-def test_public_rejections_happen_without_truncating_or_changing_charge():
+def test_public_rejections_happen_without_truncating_or_changing_charge() -> None:
     for basis, atoms, text in (
         (imported("cc-pvtz-fe"), [("Fe", (0, 0, 0))], "l=4"),
         (unsupported_g_ecp_basis(), [("Au", (0, 0, 0))], "ECP.*orbital s/p/d/f"),
@@ -344,8 +367,8 @@ def test_public_rejections_happen_without_truncating_or_changing_charge():
 
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 def test_imported_equivalent_preserves_bundled_energy_forces_and_mathematical_hash(
-    tmp_path, representation
-):
+    tmp_path: typing.Any, representation: typing.Any
+) -> None:
     basis = imported(representation=representation)
     path = tmp_path / "water.json"
     basis.write(path)
@@ -370,7 +393,9 @@ def test_imported_equivalent_preserves_bundled_energy_forces_and_mathematical_ha
     )
 
 
-def test_prepared_snapshot_file_changes_and_auxiliary_model_invalidation(tmp_path):
+def test_prepared_snapshot_file_changes_and_auxiliary_model_invalidation(
+    tmp_path: typing.Any,
+) -> None:
     basis = imported()
     path = tmp_path / "basis.json"
     basis.write(path)
@@ -413,7 +438,7 @@ def test_prepared_snapshot_file_changes_and_auxiliary_model_invalidation(tmp_pat
             prepared.execute()
 
 
-def test_explicit_caller_shell_storage_is_owned():
+def test_explicit_caller_shell_storage_is_owned() -> None:
     primitives = [Primitive(1, 1)]
     shells = [Shell(0, 0, primitives)]
     calculator = Calculator(basis=shells)
@@ -435,7 +460,9 @@ def test_explicit_caller_shell_storage_is_owned():
         "fe_h_ion_spherical",
     ],
 )
-def test_supported_synthetic_transition_metal_ion_matches_independent_scf(case):
+def test_supported_synthetic_transition_metal_ion_matches_independent_scf(
+    case: typing.Any,
+) -> None:
     metadata = json.loads((ROOT / "manifest.json").read_text())
     spec = next(c for c in metadata["cases"] if c["name"] == case)
     basis = imported("synthetic-fe-h", spec["representation"])
@@ -455,7 +482,9 @@ def test_supported_synthetic_transition_metal_ion_matches_independent_scf(case):
 @pytest.mark.parametrize(
     "case", ["water_cartesian", "fe_ion_cartesian", "fe_ion_spherical"]
 )
-def test_independent_overlap_and_kinetic_from_native_ao_quadrature(case):
+def test_independent_overlap_and_kinetic_from_native_ao_quadrature(
+    case: typing.Any,
+) -> None:
     metadata = json.loads((ROOT / "manifest.json").read_text())
     spec = next(c for c in metadata["cases"] if c["name"] == case)
     basis = imported(spec["source"].removesuffix(".json"), spec["representation"])
@@ -488,7 +517,9 @@ def test_independent_overlap_and_kinetic_from_native_ao_quadrature(case):
 
 
 @pytest.mark.parametrize("dtype", [np.int32, np.int64])
-def test_numpy_integer_metadata_preserves_native_occupation_diagnostics(dtype):
+def test_numpy_integer_metadata_preserves_native_occupation_diagnostics(
+    dtype: typing.Any,
+) -> None:
     atoms = [[("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))], [("H", (0, 0, 0))]]
     calculator = Calculator(basis=imported())
     metadata = calculator.basis_metadata(

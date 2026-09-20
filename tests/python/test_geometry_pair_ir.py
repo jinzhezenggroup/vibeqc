@@ -1,5 +1,7 @@
 """GeometryIR / PairIR qualification on the CPU reference and CUDA emitter."""
 
+import typing
+
 import numpy as np
 import pytest
 from vibeqc_compiler.geometry import (
@@ -14,11 +16,11 @@ from vibeqc_compiler.geometry import (
 from vibeqc_compiler.tensor import Program, TensorSpec, execute, input_tensor
 
 
-def _geometry():
+def _geometry() -> typing.Any:
     return GeometryIR((1, 6, 8), parameter_identity="elements-v1")
 
 
-def _coordinates():
+def _coordinates() -> typing.Any:
     return np.array(
         [
             [0.1, -0.2, 0.3],
@@ -29,7 +31,7 @@ def _coordinates():
     )
 
 
-def _energy(pair_program, coordinates):
+def _energy(pair_program: typing.Any, coordinates: typing.Any) -> typing.Any:
     return (
         execute(
             pair_program.program,
@@ -40,7 +42,7 @@ def _energy(pair_program, coordinates):
     )
 
 
-def test_pair_topology_is_canonical_explicit_and_deterministic():
+def test_pair_topology_is_canonical_explicit_and_deterministic() -> None:
     cutoff = PairCutoff(8.0, 6.0)
     topology = PairTopology.complete(4, cutoff=cutoff)
     assert topology.pairs == (
@@ -67,7 +69,7 @@ def test_pair_topology_is_canonical_explicit_and_deterministic():
             PairTopology(4, pairs)
 
 
-def test_geometry_lowering_has_explicit_pair_displacements_and_distances():
+def test_geometry_lowering_has_explicit_pair_displacements_and_distances() -> None:
     geometry = _geometry()
     topology = PairTopology.complete(3)
     context = lower_geometry(geometry, topology)
@@ -97,7 +99,7 @@ def test_geometry_lowering_has_explicit_pair_displacements_and_distances():
     )
 
 
-def test_pair_reductions_are_shared_tensorir_not_method_kernels():
+def test_pair_reductions_are_shared_tensorir_not_method_kernels() -> None:
     context = lower_geometry(_geometry(), PairTopology.complete(3))
     values = input_tensor(
         "q",
@@ -116,7 +118,7 @@ def test_pair_reductions_are_shared_tensorir_not_method_kernels():
     np.testing.assert_array_equal(result["owned"], np.array([3.0, 3.0, 0.0]))
 
 
-def test_inverse_power_energy_is_translation_and_permutation_invariant():
+def test_inverse_power_energy_is_translation_and_permutation_invariant() -> None:
     geometry = _geometry()
     topology = PairTopology.complete(3)
     program = inverse_power_program(geometry, topology, 1, exponent=-1)
@@ -138,7 +140,7 @@ def test_inverse_power_energy_is_translation_and_permutation_invariant():
     )
 
 
-def test_generated_coordinate_jvp_matches_directional_finite_difference():
+def test_generated_coordinate_jvp_matches_directional_finite_difference() -> None:
     program = inverse_power_program(
         _geometry(), PairTopology.complete(3), (1, 2, 3), exponent=-1
     )
@@ -174,7 +176,7 @@ def test_generated_coordinate_jvp_matches_directional_finite_difference():
     assert translated == pytest.approx(0.0, abs=3e-14)
 
 
-def test_generated_coordinate_vjp_matches_finite_difference_and_newton_sum():
+def test_generated_coordinate_vjp_matches_finite_difference_and_newton_sum() -> None:
     program = inverse_power_program(
         _geometry(),
         PairTopology.complete(3),
@@ -202,7 +204,9 @@ def test_generated_coordinate_vjp_matches_finite_difference_and_newton_sum():
     np.testing.assert_allclose(gradient.sum(axis=0), 0.0, rtol=0, atol=3e-14)
 
 
-def test_compiler_identity_invalidates_cutoff_topology_and_parameter_contracts():
+def test_compiler_identity_invalidates_cutoff_topology_and_parameter_contracts() -> (
+    None
+):
     geometry = _geometry()
     topology = PairTopology.complete(3, cutoff=PairCutoff(8.0, 6.0))
     baseline = inverse_power_program(
@@ -243,7 +247,7 @@ def test_compiler_identity_invalidates_cutoff_topology_and_parameter_contracts()
         baseline.validate_execution_identity(cutoff_changed.identity)
 
 
-def test_primal_and_generated_reverse_lower_through_existing_cuda_tensorir():
+def test_primal_and_generated_reverse_lower_through_existing_cuda_tensorir() -> None:
     from vibeqc_compiler.common.cuda_target import CUDA_TARGETS
     from vibeqc_compiler.tensor.cuda_emit import emit_cuda
     from vibeqc_compiler.tensor.cuda_plan import plan_cuda

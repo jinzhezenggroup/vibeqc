@@ -1,6 +1,7 @@
 """Native ragged KS replay, spin normalization and last-good seed isolation."""
 
 import ctypes
+import typing
 
 import numpy as np
 import pytest
@@ -8,7 +9,7 @@ from vibeqc import Calculator, _native
 
 
 @pytest.fixture(params=("cpu", "cuda"))
-def device(request):
+def device(request: typing.Any) -> typing.Any:
     if request.param == "cuda":
         library = _native.load_library()
         descriptor = _native.ContextDescriptor(
@@ -31,7 +32,7 @@ def device(request):
     return request.param
 
 
-def warm_snapshot(prepared, index):
+def warm_snapshot(prepared: typing.Any, index: typing.Any) -> typing.Any:
     """Explicit seed export; normal energy-only execution needs no AO download."""
     state = _native.HfWarmState(ctypes.sizeof(_native.HfWarmState), _native.ABI_VERSION)
     getter = prepared._library.vibeqc_batch_get_hf_warm_state
@@ -50,7 +51,7 @@ def warm_snapshot(prepared, index):
     return density, coordinates, state.energy
 
 
-def restore_snapshots(prepared, snapshots):
+def restore_snapshots(prepared: typing.Any, snapshots: typing.Any) -> typing.Any:
     """Keep the caller-owned arrays alive through the atomic native import."""
     states = (_native.HfWarmState * len(snapshots))()
     for state, snapshot in zip(states, snapshots):
@@ -70,7 +71,9 @@ def restore_snapshots(prepared, snapshots):
 
 
 @pytest.mark.parametrize("method", ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"))
-def test_ragged_replay_geometry_failure_and_frozen_seed(method, device):
+def test_ragged_replay_geometry_failure_and_frozen_seed(
+    method: typing.Any, device: typing.Any
+) -> None:
     unrestricted = method.endswith("uks")
     if unrestricted:
         systems = [
@@ -173,7 +176,7 @@ def test_ragged_replay_geometry_failure_and_frozen_seed(method, device):
         assert imported.energies == pytest.approx(cold.energies, abs=1e-9)
 
 
-def test_nonconverged_batch_does_not_establish_seed(device):
+def test_nonconverged_batch_does_not_establish_seed(device: typing.Any) -> None:
     calculator = Calculator(method="pbe-rks", device=device, max_iterations=1)
     with calculator.prepare_batch(
         [[("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]]
@@ -186,7 +189,7 @@ def test_nonconverged_batch_does_not_establish_seed(device):
         assert not prepared.execute().items[0].warm_start_used
 
 
-def test_batch_scf_query_abi_and_stale_record():
+def test_batch_scf_query_abi_and_stale_record() -> None:
     calculator = Calculator(method="pbe-uks", device="cpu")
     with calculator.prepare_batch(
         [[("H", (0, 0, 0))], [("Li", (0, 0, 0))]], multiplicities=[2, 2]
@@ -233,14 +236,14 @@ def test_batch_scf_query_abi_and_stale_record():
 
 @pytest.mark.parametrize("method,ao_order", (("lda-rks", 0), ("pbe-rks", 1)))
 def test_energy_batch_resolves_only_required_operator_derivatives(
-    monkeypatch, method, ao_order
-):
+    monkeypatch: typing.Any, method: typing.Any, ao_order: typing.Any
+) -> None:
     import vibeqc.calculator as calculator_module
 
     calls = []
     original = calculator_module.require_basis
 
-    def record(*args, **kwargs):
+    def record(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         calls.append((kwargs["operator"], kwargs["derivative_order"]))
         return original(*args, **kwargs)
 
@@ -252,7 +255,9 @@ def test_energy_batch_resolves_only_required_operator_derivatives(
 
 
 @pytest.mark.parametrize("method", ("lda-uks", "pbe-uks"))
-def test_open_shell_large_solver_ragged_replay_and_failure(method, device):
+def test_open_shell_large_solver_ragged_replay_and_failure(
+    method: typing.Any, device: typing.Any
+) -> None:
     """OH uses the >16-AO solver beside an independent one-electron item."""
     systems = [
         [("O", (0, 0, 0)), ("H", (0, 0, 1.8))],
