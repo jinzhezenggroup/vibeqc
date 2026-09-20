@@ -20,6 +20,8 @@ def sha256(path: Path) -> str:
 
 
 def maximum(array: np.ndarray) -> float:
+    if array.size == 0 or not np.isfinite(array).all():
+        raise ValueError("diagnostic differences must be non-empty and finite")
     return float(np.max(np.abs(array)))
 
 
@@ -48,10 +50,15 @@ def residuals(
 
 
 def chunked_maximum_difference(left: Path, right: Path, chunk: int = 1 << 20) -> float:
+    if type(chunk) is not int or chunk <= 0:
+        raise ValueError("comparison chunk must be a positive integer")
     lhs = np.load(left, mmap_mode="r", allow_pickle=False)
+    if lhs.dtype != np.dtype(np.float64) or lhs.size == 0:
+        raise ValueError("reference snapshot must be a non-empty native float64 array")
+    expected_bytes = lhs.size * np.dtype(np.float64).itemsize
+    if right.stat().st_size != expected_bytes:
+        raise ValueError(f"raw snapshot size mismatch for {right.name}")
     rhs = np.memmap(right, dtype=np.float64, mode="r", shape=lhs.shape)
-    if lhs.shape != rhs.shape:
-        raise ValueError(f"shape mismatch for {left.name}: {lhs.shape} != {rhs.shape}")
     result = 0.0
     flat_lhs, flat_rhs = lhs.reshape(-1), rhs.reshape(-1)
     for begin in range(0, flat_lhs.size, chunk):
