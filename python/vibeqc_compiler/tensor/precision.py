@@ -10,8 +10,10 @@ planner, tuner, cache, and evidence pipeline.
 from __future__ import annotations
 
 import typing
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
 
+from .ir import Node, cast
 from .program import Program, _hash
 from .types import checked_size
 
@@ -19,12 +21,45 @@ DTYPES = frozenset(("float32", "float64"))
 STRICT_MATH_MODE = "ieee-rn-no-tf32"
 REDUCTION_OPS = frozenset(("reduce", "einsum"))
 SENSITIVE_OPS = frozenset(("divide", "scaled_bilinear", "log", "sqrt", "power"))
+AUTO_FP32_OPS = frozenset(
+    ("add", "multiply", "transpose", "reshape", "slice", "gather", "broadcast")
+)
 
 
 def _dtype(value: typing.Any, label: str) -> str:
     if value not in DTYPES:
         raise ValueError(f"{label} must be float32 or float64")
     return value
+
+
+@dataclass(frozen=True)
+class PrecisionDirective:
+    """Requested per-value storage, compute, and accumulation precision."""
+
+    storage_dtype: str
+    compute_dtype: str
+    accumulation_dtype: str
+    qualification: str | None = None
+    math_mode: str = STRICT_MATH_MODE
+
+    def __post_init__(self) -> None:
+        for label in ("storage_dtype", "compute_dtype", "accumulation_dtype"):
+            _dtype(getattr(self, label), label)
+        if self.math_mode != STRICT_MATH_MODE:
+            raise ValueError("unsupported TensorIR arithmetic mode")
+        if self.qualification is not None and (
+            not isinstance(self.qualification, str) or not self.qualification.strip()
+        ):
+            raise ValueError("precision qualification must be a nonempty string")
+
+    def to_payload(self) -> dict:
+        return {
+            "storage_dtype": self.storage_dtype,
+            "compute_dtype": self.compute_dtype,
+            "accumulation_dtype": self.accumulation_dtype,
+            "qualification": self.qualification,
+            "math_mode": self.math_mode,
+        }
 
 
 @dataclass(frozen=True)
@@ -162,6 +197,148 @@ class PrecisionSchedule:
         return _hash(self.to_payload())
 
 
+def _sensitivity(op: str) -> str:
+    if op == "cast":
+        return "cast"
+    if op in REDUCTION_OPS:
+        return "reduction"
+    if op in SENSITIVE_OPS:
+        return "sensitive"
+    return "ordinary"
+
+
+def _ensure_dtype(node: Node, dtype: str) -> Node:
+    return node if node.spec.dtype == dtype else cast(node, dtype)
+
+
+def lower_precision(
+    program: Program,
+    directives: Mapping[str, PrecisionDirective],
+    *,
+    strict_audit_dtype: str = "float64",
+) -> Program:
+    """Lower explicit per-value precision requests into a typed cast DAG.
+
+    External input/output dtypes remain unchanged. Current ordinary-stream
+    backends require compute and accumulation dtype to match; unsupported
+    combinations fail closed rather than being silently approximated.
+    Sensitive/reduction FP32 requests require an external qualification id.
+    """
+    if not isinstance(program, Program):
+        raise TypeError("precision lowering requires a TensorIR Program")
+    if not isinstance(directives, Mapping):
+        raise TypeError("precision directives must be a mapping")
+    _dtype(strict_audit_dtype, "strict audit dtype")
+    names = program.debug_names
+    live = {names[node]: node for node in program.live_nodes}
+    normalized: dict[str, PrecisionDirective] = {}
+    for name, directive in directives.items():
+        if not isinstance(name, str) or name not in live:
+            raise ValueError(f"unknown live precision value: {name!r}")
+        if not isinstance(directive, PrecisionDirective):
+            raise TypeError("precision directive values must be PrecisionDirective")
+        node = live[name]
+        if node.op in ("input", "constant", "cast"):
+            raise ValueError("precision directives target computed non-cast values")
+        if directive.compute_dtype != directive.accumulation_dtype:
+            raise ValueError(
+                "separate compute/accumulation dtype lowering is not qualified"
+            )
+        sensitivity = _sensitivity(node.op)
+        if (
+            sensitivity in ("reduction", "sensitive")
+            and any(
+                dtype != "float64"
+                for dtype in (
+                    directive.storage_dtype,
+                    directive.compute_dtype,
+                    directive.accumulation_dtype,
+                )
+            )
+            and directive.qualification is None
+        ):
+            raise ValueError(
+                "sensitive/reduction FP32 lowering requires a qualification id"
+            )
+        normalized[name] = directive
+
+    mapping: dict[Node, Node] = {}
+    for node in program.nodes:
+        if node.op in ("input", "constant"):
+            mapping[node] = node
+            continue
+        if node.op == "cast":
+            mapping[node] = cast(mapping[node.inputs[0]], node.attrs["dtype"])
+            continue
+        directive = normalized.get(names[node])
+        compute_dtype = (
+            node.spec.dtype if directive is None else directive.compute_dtype
+        )
+        storage_dtype = (
+            node.spec.dtype if directive is None else directive.storage_dtype
+        )
+        inputs = tuple(_ensure_dtype(mapping[child], compute_dtype) for child in node.inputs)
+        declared = replace(
+            node.spec,
+            dtype=compute_dtype,
+            role="intermediate",
+        )
+        rebuilt = Node(node.op, inputs, declared, node.attributes)
+        mapping[node] = _ensure_dtype(rebuilt, storage_dtype)
+
+    outputs = {
+        name: _ensure_dtype(mapping[node], node.spec.dtype)
+        for name, node in program.outputs.items()
+    }
+    source_equation = program.provenance.get(
+        "precision_source_equation", program.logical_hash
+    )
+    request = {
+        "schema": "vibeqc.tensor.precision-request.v1",
+        "source_equation": source_equation,
+        "strict_audit_dtype": strict_audit_dtype,
+        "math_mode": STRICT_MATH_MODE,
+        "directives": {
+            name: directive.to_payload()
+            for name, directive in sorted(normalized.items())
+        },
+    }
+    return Program(
+        outputs,
+        tuple(mapping[node] for node in program.definitions),
+        provenance={
+            **program.provenance,
+            "precision_source_equation": source_equation,
+            "precision_request": request,
+            "precision_request_identity": _hash(request),
+        },
+    )
+
+
+def conservative_precision_variants(program: Program) -> tuple[Program, ...]:
+    """Return strict plus one opt-in FP32 ordinary-subgraph candidate.
+
+    Reductions/contractions, quotient-like operations, transcendental
+    operations, inputs, constants, and existing casts retain their source
+    precision. This only generates a benchmark candidate; promotion still
+    belongs to the existing endpoint/numerical evidence gate.
+    """
+    if not isinstance(program, Program):
+        raise TypeError("precision variants require a TensorIR Program")
+    names = program.debug_names
+    directives = {
+        names[node]: PrecisionDirective("float32", "float32", "float32")
+        for node in program.live_nodes
+        if node.spec.dtype == "float64" and node.op in AUTO_FP32_OPS
+    }
+    if not directives:
+        return (program,)
+    lowered = lower_precision(program, directives)
+    if lowered.logical_hash == program.logical_hash:
+        return (program,)
+    return (program, lowered)
+
+
 def describe_precision(
     program: Program, *, strict_audit_dtype: str = "float64"
 ) -> PrecisionSchedule:
@@ -173,14 +350,7 @@ def describe_precision(
     values = []
     casts = []
     for node in program.live_nodes:
-        if node.op == "cast":
-            sensitivity = "cast"
-        elif node.op in REDUCTION_OPS:
-            sensitivity = "reduction"
-        elif node.op in SENSITIVE_OPS:
-            sensitivity = "sensitive"
-        else:
-            sensitivity = "ordinary"
+        sensitivity = _sensitivity(node.op)
         values.append(
             ValuePrecision(
                 names[node],

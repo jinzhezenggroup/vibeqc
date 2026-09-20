@@ -53,9 +53,12 @@ from .optimize import PASSES, optimize, rewrite
 from .packing import PackedLayout
 from .precision import (
     CastBoundary,
+    PrecisionDirective,
     PrecisionSchedule,
     ValuePrecision,
+    conservative_precision_variants,
     describe_precision,
+    lower_precision,
 )
 from .program import Program
 from .types import Index, IndexSpace, Symmetry, TensorSpec
@@ -77,6 +80,7 @@ __all__ = [
     "JVPResult",
     "Node",
     "PackedLayout",
+    "PrecisionDirective",
     "PrecisionSchedule",
     "Program",
     "Symmetry",
@@ -89,6 +93,7 @@ __all__ = [
     "cast",
     "capabilities",
     "constant",
+    "conservative_precision_variants",
     "describe_precision",
     "divide",
     "dot_test",
@@ -100,6 +105,7 @@ __all__ = [
     "jvp",
     "linearize",
     "log",
+    "lower_precision",
     "multiply",
     "optimize",
     "power",

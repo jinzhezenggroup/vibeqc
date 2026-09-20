@@ -8,22 +8,26 @@ from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
+    PrecisionDirective,
     Program,
     TensorSpec,
     add,
     cast,
+    conservative_precision_variants,
     describe_precision,
     execute,
     input_tensor,
     jvp,
     linearize,
+    lower_precision,
     multiply,
+    reduce_sum,
     transpose_program,
     vjp,
 )
 from vibeqc_compiler.tensor.cuda_emit import emit_cuda
-from vibeqc_compiler.tensor.cuda_plan import plan_cuda
-from vibeqc_compiler.tensor.cuda_search import estimate_schedule
+from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+from vibeqc_compiler.tensor.cuda_search import estimate_schedule, plan_schedule_search
 
 
 def _parameter(name: str, *, dtype: str = "float64") -> typing.Any:
@@ -119,3 +123,84 @@ def test_precision_schedule_and_cuda_cost_identity_include_casts() -> None:
     source = emit_cuda(plan)
     assert "__double2float_rn" in source
     assert "static_cast<double>" in source
+
+
+def test_precision_directives_lower_mixed_subgraphs_and_fail_closed() -> None:
+    x = _parameter("x")
+    product = multiply(x, x)
+    reduced = reduce_sum(product, (0,))
+    program = Program({"out": reduced})
+    product_name = program.debug_names[product]
+
+    lowered = lower_precision(
+        program,
+        {
+            product_name: PrecisionDirective(
+                "float32",
+                "float32",
+                "float32",
+            )
+        },
+    )
+    assert lowered.provenance["precision_source_equation"] == program.logical_hash
+    assert any(
+        node.op == "multiply" and node.spec.dtype == "float32"
+        for node in lowered.live_nodes
+    )
+    assert any(
+        node.op == "reduce" and node.spec.dtype == "float64"
+        for node in lowered.live_nodes
+    )
+    assert [(c.source_dtype, c.target_dtype) for c in describe_precision(lowered).casts] == [
+        ("float64", "float32"),
+        ("float32", "float64"),
+    ]
+
+    with pytest.raises(ValueError, match="compute/accumulation"):
+        lower_precision(
+            program,
+            {
+                product_name: PrecisionDirective(
+                    "float32",
+                    "float32",
+                    "float64",
+                )
+            },
+        )
+    reduction_name = program.debug_names[reduced]
+    with pytest.raises(ValueError, match="qualification"):
+        lower_precision(
+            program,
+            {
+                reduction_name: PrecisionDirective(
+                    "float32",
+                    "float32",
+                    "float32",
+                )
+            },
+        )
+
+
+def test_existing_schedule_search_can_cross_precision_variants() -> None:
+    x = _parameter("x")
+    product = multiply(x, x)
+    program = Program({"out": reduce_sum(product, (0,))})
+    variants = conservative_precision_variants(program)
+    assert len(variants) == 2
+    baseline = plan_cuda(program, cuda_target_info("sm_80"))
+    proposals = plan_schedule_search(
+        baseline,
+        (TensorSchedule(),),
+        precision_programs=variants,
+    )
+    assert len(proposals) == 2
+    mixed = [
+        proposal
+        for proposal in proposals
+        if proposal.plan is not None
+        and proposal.plan.program.logical_hash == variants[1].logical_hash
+    ]
+    assert len(mixed) == 1
+    assert mixed[0].plan is not None
+    assert mixed[0].plan.precision == "typed-fp32-fp64"
+    assert mixed[0].plan.precision_schedule.source_equation == program.logical_hash
