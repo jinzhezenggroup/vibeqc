@@ -1,6 +1,8 @@
 """GFN2 CN/repulsion compiler vertical slice qualification (#504)."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -13,6 +15,12 @@ from vibeqc_compiler.geometry import (
     gfn2_geometry,
 )
 from vibeqc_compiler.tensor import execute
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from numpy.typing import ArrayLike
+    from vibeqc_compiler.geometry import Gfn2ShortRangeProgram
 
 # Independent values frozen in xTBloom's mctc-lib/tblite qualification tests.
 CN_ATOMIC_NUMBERS = (11, 1, 8, 1, 9, 1, 1, 8, 7, 1, 1, 17, 5, 5, 7, 13)
@@ -198,7 +206,7 @@ REP_COORDINATES = np.array(
 REP_EXPECTED_ENERGY = 0.49222837261241
 
 
-def _compiled(elements: Any, coordinates: Any) -> Any:
+def _compiled(elements: Iterable[int], coordinates: ArrayLike) -> Gfn2ShortRangeProgram:
     geometry = gfn2_geometry(elements)
     topology = build_gfn2_pair_topology(geometry, coordinates)
     return build_gfn2_short_range_program(
@@ -433,3 +441,13 @@ def test_gfn2_primal_and_generated_vjps_lower_through_shared_cuda_tensorir() -> 
         source = emit_cuda(plan_cuda(program, target))
         assert "tensor_create" in source
         assert "tensor_run" in source
+
+
+def test_gfn2_integration_preserves_existing_d3_and_scf_history_contracts() -> None:
+    from vibeqc_compiler import geometry
+    from vibeqc_compiler.tensor import Index, IndexSpace
+
+    assert geometry.D3CompilerSpec is not None
+    assert callable(geometry.compile_d3_bj)
+    assert callable(geometry.execute_d3_bj)
+    assert Index("step", IndexSpace("diis_history", "history", 2)).extent == 2

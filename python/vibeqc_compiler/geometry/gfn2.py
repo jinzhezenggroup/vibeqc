@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -38,6 +38,14 @@ from .ir import (
     pair_to_atom,
     pair_to_system,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from numpy.typing import ArrayLike
+
+    from vibeqc_compiler.tensor.ad_program import VJPProgram
+    from vibeqc_compiler.tensor.ir import Node
 
 GFN2_SHORT_RANGE_VERSION = "gfn2-short-range-ir-v1"
 GFN2_XTBLOOM_REVISION = "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
@@ -207,7 +215,9 @@ def gfn2_element_parameters(atomic_number: int) -> Gfn2ShortRangeElement:
         ) from error
 
 
-def gfn2_geometry(elements: Any, *, coordinate_name: str = "coordinates") -> GeometryIR:
+def gfn2_geometry(
+    elements: Iterable[int], *, coordinate_name: str = "coordinates"
+) -> GeometryIR:
     elements = tuple(elements)
     for atomic_number in elements:
         gfn2_element_parameters(atomic_number)
@@ -220,7 +230,7 @@ def gfn2_geometry(elements: Any, *, coordinate_name: str = "coordinates") -> Geo
 
 def build_gfn2_pair_topology(
     geometry: GeometryIR,
-    coordinates: Any,
+    coordinates: ArrayLike,
 ) -> PairTopology:
     """Build the exact molecular 25-bohr pair set for one geometry snapshot."""
 
@@ -266,12 +276,12 @@ def _require_gfn2_topology(geometry: GeometryIR, topology: PairTopology) -> None
         raise ValueError("GFN2 short-range topology requires the sharp 25-bohr cutoff")
 
 
-def _pair_constant(context: PairTensorContext, values: Any) -> Any:
-    values = tuple(repr(float(value)) for value in values)
-    if len(values) != len(context.topology.pairs):
+def _pair_constant(context: PairTensorContext, values: Iterable[float]) -> Node:
+    literals = tuple(repr(float(value)) for value in values)
+    if len(literals) != len(context.topology.pairs):
         raise ValueError("GFN2 pair parameter length disagrees with topology")
     return constant(
-        values,
+        literals,
         TensorSpec(
             (context.pair_index,),
             dtype=context.geometry.dtype,
@@ -280,7 +290,7 @@ def _pair_constant(context: PairTensorContext, values: Any) -> Any:
     )
 
 
-def _logistic(argument: Any, one: Any, minus_one: Any) -> Any:
+def _logistic(argument: Node, one: Node, minus_one: Node) -> Node:
     return divide(one, add(one, exp(multiply(minus_one, argument))))
 
 
@@ -317,12 +327,12 @@ class Gfn2ShortRangeProgram:
         if identity != self.identity:
             raise ValueError("stale GFN2 geometry compiler execution state")
 
-    def validate_coordinates(self, coordinates: Any) -> None:
+    def validate_coordinates(self, coordinates: ArrayLike) -> None:
         expected = build_gfn2_pair_topology(self.geometry, coordinates)
         if expected.identity != self.topology.identity:
             raise ValueError("stale GFN2 pair topology for changed coordinates")
 
-    def coordinate_vjp(self, output: str) -> Any:
+    def coordinate_vjp(self, output: str) -> VJPProgram:
         if output not in ("coordination", "repulsion_energy"):
             raise ValueError("unknown GFN2 short-range derivative output")
         return transpose_program(
