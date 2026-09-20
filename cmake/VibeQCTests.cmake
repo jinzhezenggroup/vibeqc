@@ -110,6 +110,9 @@ macro(vibeqc_add_native_tests)
     "${CMAKE_CURRENT_BINARY_DIR}/generated")
   add_test(NAME vibeqc_dft_tests COMMAND vibeqc_dft_tests)
 
+  vibeqc_native_test(vibeqc_d3_atm_reference_tests tests/native/test_d3_atm.cpp NO_VIBEQC)
+  add_dependencies(vibeqc_d3_atm_reference_tests vibeqc_d3_codegen)
+  target_include_directories(vibeqc_d3_atm_reference_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
   vibeqc_native_test(vibeqc_d3_ragged_tests tests/native/test_d3_ragged.cpp)
   add_dependencies(vibeqc_d3_ragged_tests vibeqc)
   target_include_directories(vibeqc_d3_ragged_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -134,6 +137,12 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_uks_state_tests tests/native/test_uks_state.cpp)
 
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_d3_atm_cuda_tests tests/native/test_d3_atm_cuda.cu
+                       NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
+    add_dependencies(vibeqc_d3_atm_cuda_tests vibeqc_d3_codegen)
+    target_include_directories(vibeqc_d3_atm_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    set_target_properties(vibeqc_d3_atm_cuda_tests PROPERTIES CUDA_STANDARD 20)
+
     vibeqc_native_test(vibeqc_d4_reference_cuda_tests tests/native/test_d4_reference_cuda.cu
                        NO_VIBEQC SKIP_77)
     add_dependencies(vibeqc_d4_reference_cuda_tests vibeqc_method_parameters_codegen)
