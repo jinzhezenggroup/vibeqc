@@ -24,7 +24,7 @@ from tools.vibeqc_response.krylov import _vector_norm
 from tools.vibeqc_response.problem import ResponseCompatibilityError
 from tools.vibeqc_validation.schema import canonical_hash
 
-from .complete_gradient import BoundCCSDGradient, CCSDGradientOptions
+from .complete_gradient import BoundCCSDOrbitalResponse, CCSDGradientOptions
 from .gradient_equations import build_fock_weight_program
 from .lambda_equations import PARAMETERS
 from .lambda_solver import _feed_hash
@@ -107,7 +107,7 @@ class BoundCCSDTOrbitalResponse:
         # Reuse the already-qualified #153 raw Hamiltonian, RHF operator,
         # curvature checks and lifetime gates.  Constructing this validation
         # owner does not evaluate nuclear integral derivatives.
-        baseline = BoundCCSDGradient(response.baseline, provider, options=options)
+        baseline = BoundCCSDOrbitalResponse(response.baseline, provider, options=options)
         reference = baseline.reference
         response.bound._assert_current(reference.identity)
         if (
