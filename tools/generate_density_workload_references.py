@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import typing
 from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
@@ -29,7 +30,7 @@ from tools.generate_validation_references import pyscf_molecule
 from tools.generate_xc_integration_references import FUNCTIONALS
 
 
-def workloads():
+def workloads() -> typing.Any:
     """Compact, extended and diffuse inputs with genuine RKS/UKS occupations."""
     water = ((8, (0, 0, 0)), (1, (0, -1.43, 1.11)), (1, (0, 1.43, 1.11)))
     cluster = []
@@ -69,7 +70,7 @@ def workloads():
     )
 
 
-def generate(directory):
+def generate(directory: typing.Any) -> typing.Any:
     """Write immutable reference inputs plus independent full-grid E/V blocks."""
     import pyscf
     from pyscf import dft

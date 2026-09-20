@@ -3,6 +3,7 @@
 import argparse
 import json
 import platform
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +13,7 @@ from tools.generate_validation_references import pyscf_molecule
 from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
-def generate(output, compare=None):
+def generate(output: typing.Any, compare: typing.Any = None) -> typing.Any:
     import pyscf
     from pyscf import ao2mo, cc, fci, scf
     from pyscf.cc import ccsd, rccsd
