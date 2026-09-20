@@ -144,52 +144,61 @@ struct Owner {
         checked_add(p.reference_retained_bytes, checked_add(problem_host_bytes(p), layout.total));
     if (combined > options.max_bytes)
       throw std::length_error("RCCSD CUDA resident state exceeds correlation memory budget");
-    cuda_check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
-    cuda_check(cudaMalloc(reinterpret_cast<void**>(&base), layout.total));
+    try {
+      cuda_check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+      cuda_check(cudaMalloc(reinterpret_cast<void**>(&base), layout.total));
 
-    std::array<double**, 14> fields = {
-        &state.foo,  &state.fov,  &state.fvv,  &state.ovov, &state.ovvo, &state.oovv, &state.ovvv,
-        &state.ovoo, &state.oooo, &state.vvvv, &state.d1,   &state.d2,   &state.t1,   &state.t2};
-    for (std::size_t i = 0; i < host.size(); ++i) {
-      *fields[i] = reinterpret_cast<double*>(base + layout.inputs[i]);
-      const auto amount = host[i]->size() * sizeof(double);
-      if (amount)
-        cuda_check(
-            cudaMemcpyAsync(*fields[i], host[i]->data(), amount, cudaMemcpyHostToDevice, stream));
-      diagnostic.setup_h2d_bytes += amount;
+      std::array<double**, 14> fields = {
+          &state.foo,  &state.fov,  &state.fvv,  &state.ovov, &state.ovvo, &state.oovv, &state.ovvv,
+          &state.ovoo, &state.oooo, &state.vvvv, &state.d1,   &state.d2,   &state.t1,   &state.t2};
+      for (std::size_t i = 0; i < host.size(); ++i) {
+        *fields[i] = reinterpret_cast<double*>(base + layout.inputs[i]);
+        const auto amount = host[i]->size() * sizeof(double);
+        if (amount)
+          cuda_check(
+              cudaMemcpyAsync(*fields[i], host[i]->data(), amount, cudaMemcpyHostToDevice, stream));
+        diagnostic.setup_h2d_bytes += amount;
+      }
+      state.o = p.nocc;
+      state.v = p.nvir;
+      state.stream = stream;
+      state.iteration_arena = reinterpret_cast<double*>(base + layout.iteration);
+      state.replay_arena = reinterpret_cast<double*>(base + layout.replay);
+      state.error = reinterpret_cast<int*>(base + layout.arithmetic);
+      last_t1 = reinterpret_cast<double*>(base + layout.last_t1);
+      last_t2 = reinterpret_cast<double*>(base + layout.last_t2);
+      vectors = reinterpret_cast<double*>(base + layout.vectors);
+      errors = reinterpret_cast<double*>(base + layout.errors);
+      gram = reinterpret_cast<double*>(base + layout.gram);
+      system = reinterpret_cast<double*>(base + layout.system);
+      coefficients = reinterpret_cast<double*>(base + layout.coefficients);
+      r1_partials = reinterpret_cast<double*>(base + layout.r1_partials);
+      r2_partials = reinterpret_cast<double*>(base + layout.r2_partials);
+      scalars = reinterpret_cast<double*>(base + layout.scalars);
+      status = reinterpret_cast<int*>(base + layout.status);
+      arithmetic = reinterpret_cast<int*>(base + layout.arithmetic);
+      cuda_check(cudaMemcpyAsync(last_t1, state.t1, n1 * sizeof(double), cudaMemcpyDeviceToDevice,
+                                 stream));
+      cuda_check(cudaMemcpyAsync(last_t2, state.t2, n2 * sizeof(double), cudaMemcpyDeviceToDevice,
+                                 stream));
+      cuda_check(cudaStreamSynchronize(stream));
+      ++diagnostic.synchronizations;
+      diagnostic.owned_device_bytes = layout.total;
+      diagnostic.numeric_capacity_bytes = std::max(p.provider_peak_bytes, combined);
+    } catch (...) {
+      cleanup();
+      throw;
     }
-    state.o = p.nocc;
-    state.v = p.nvir;
-    state.stream = stream;
-    state.iteration_arena = reinterpret_cast<double*>(base + layout.iteration);
-    state.replay_arena = reinterpret_cast<double*>(base + layout.replay);
-    state.error = reinterpret_cast<int*>(base + layout.arithmetic);
-    last_t1 = reinterpret_cast<double*>(base + layout.last_t1);
-    last_t2 = reinterpret_cast<double*>(base + layout.last_t2);
-    vectors = reinterpret_cast<double*>(base + layout.vectors);
-    errors = reinterpret_cast<double*>(base + layout.errors);
-    gram = reinterpret_cast<double*>(base + layout.gram);
-    system = reinterpret_cast<double*>(base + layout.system);
-    coefficients = reinterpret_cast<double*>(base + layout.coefficients);
-    r1_partials = reinterpret_cast<double*>(base + layout.r1_partials);
-    r2_partials = reinterpret_cast<double*>(base + layout.r2_partials);
-    scalars = reinterpret_cast<double*>(base + layout.scalars);
-    status = reinterpret_cast<int*>(base + layout.status);
-    arithmetic = reinterpret_cast<int*>(base + layout.arithmetic);
-    cuda_check(
-        cudaMemcpyAsync(last_t1, state.t1, n1 * sizeof(double), cudaMemcpyDeviceToDevice, stream));
-    cuda_check(
-        cudaMemcpyAsync(last_t2, state.t2, n2 * sizeof(double), cudaMemcpyDeviceToDevice, stream));
-    cuda_check(cudaStreamSynchronize(stream));
-    ++diagnostic.synchronizations;
-    diagnostic.owned_device_bytes = layout.total;
-    diagnostic.numeric_capacity_bytes = std::max(p.provider_peak_bytes, combined);
   }
 
-  ~Owner() {
+  ~Owner() { cleanup(); }
+
+  void cleanup() noexcept {
     if (stream) cudaStreamSynchronize(stream);
     if (base) cudaFree(base);
     if (stream) cudaStreamDestroy(stream);
+    base = nullptr;
+    stream = nullptr;
   }
 
   template <class Output>
