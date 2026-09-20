@@ -17,7 +17,7 @@ from vibeqc_compiler.xc.spec import FunctionalSpec
 
 from .ks import SCF_DOMAIN, resolve_ks_method
 
-_METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks")
+_METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks", "pbe0-rks", "pbe0-uks")
 _ARRAY_TOLERANCE = 1e-8  # Match the absolute canonicality cap of the #162 handoff.
 _RESIDUAL_TOLERANCE = 1e-8
 
@@ -44,7 +44,7 @@ class StationaryKsIdentity:
 
     def __post_init__(self):
         if self.method not in _METHODS:
-            raise ValueError("stationary derivatives support LDA/PBE RKS/UKS only")
+            raise ValueError("stationary derivatives support LDA/PBE/PBE0 RKS/UKS only")
         for name in (
             "model_identity",
             "geometry_identity",

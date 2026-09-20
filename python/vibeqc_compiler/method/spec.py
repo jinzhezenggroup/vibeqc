@@ -287,8 +287,15 @@ class ExactExchangePrimitive:
 
     @property
     def derivative_capabilities(self):
-        # These are representation/provider requests, not public method guarantees.
-        return ("energy", "fock")
+        # The common full-range ERI first-derivative provider is consumed by the
+        # stationary CPU diagnostic. This does not grant public/CUDA forces.
+        return ("energy", "fock", "eri-first-derivative")
+
+    def fock_coefficient(self, spin):
+        """K coefficient for occupation-weighted restricted or spin densities."""
+        if spin not in _SPINS:
+            raise UnsupportedMethod("unsupported exchange density spin convention")
+        return -self.coefficient / (2 if spin == "unpolarized" else 1)
 
     def semantic_payload(self):
         return {

@@ -53,7 +53,7 @@ constexpr MethodDefinition register_method(std::string_view name, vibeqc_method 
           batch};
 }
 
-constexpr std::array<MethodDefinition, 9> kMethods{{
+constexpr std::array<MethodDefinition, 11> kMethods{{
     register_method("mp2", VIBEQC_METHOD_MP2, VIBEQC_METHOD_FAMILY_PERTURBATION, kEnergyAndForces,
                     detail::validate_mp2_system, detail::prepare_mp2_calculation,
                     detail::prepare_mp2_batch),
@@ -77,6 +77,12 @@ constexpr std::array<MethodDefinition, 9> kMethods{{
                     VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
                     detail::prepare_dft_calculation, detail::prepare_dft_batch),
     register_method("pbe-uks", VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
+                    VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
+                    detail::prepare_dft_calculation, detail::prepare_dft_batch),
+    register_method("pbe0-rks", VIBEQC_METHOD_PBE0_RKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
+                    VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
+                    detail::prepare_dft_calculation, detail::prepare_dft_batch),
+    register_method("pbe0-uks", VIBEQC_METHOD_PBE0_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
                     VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
                     detail::prepare_dft_calculation, detail::prepare_dft_batch),
 }};

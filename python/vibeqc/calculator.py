@@ -36,6 +36,8 @@ _METHODS = {
     "pbe-rks": _native.METHOD_PBE_RKS,
     "lda-uks": _native.METHOD_LDA_UKS,
     "pbe-uks": _native.METHOD_PBE_UKS,
+    "pbe0-rks": _native.METHOD_PBE0_RKS,
+    "pbe0-uks": _native.METHOD_PBE0_UKS,
 }
 
 _HF_METHODS = frozenset((_native.METHOD_RHF, _native.METHOD_UHF))
@@ -428,12 +430,19 @@ class Calculator:
         self._method_name = method.lower()
         self._method = _METHODS[self._method_name]
         self._ks_options = None
-        if self._method_name in ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"):
+        if self._method_name in (
+            "lda-rks",
+            "pbe-rks",
+            "lda-uks",
+            "pbe-uks",
+            "pbe0-rks",
+            "pbe0-uks",
+        ):
             from .ks import resolve_ks_options
 
             self._ks_options = resolve_ks_options(self._method_name, ks_options)
         elif ks_options is not None:
-            raise ValueError("ks_options requires an LDA/PBE RKS/UKS method")
+            raise ValueError("ks_options requires an LDA/PBE/PBE0 RKS/UKS method")
         if self._method == _native.METHOD_MP2:
             if target_accuracy is not None:
                 raise NotImplementedError(
@@ -509,13 +518,24 @@ class Calculator:
             if query is not None:
                 query.argtypes, query.restype = [], ctypes.c_uint32
                 self._ks_options_version = query()
-            if self._ks_options_version != 1:
-                from .ks import resolve_ks_options
+            from .ks import resolve_ks_options
 
-                if self._ks_options != resolve_ks_options(self._method_name):
+            default_ks_options = resolve_ks_options(self._method_name)
+            if self._ks_options_version == 0:
+                if (
+                    self._ks_options != default_ks_options
+                    or self._ks_options.requires_composition_v2
+                ):
                     raise NotImplementedError(
-                        "native library does not support KS model options v1"
+                        "native library does not support KS model options"
                     )
+            elif (
+                self._ks_options_version == 1
+                and self._ks_options.requires_composition_v2
+            ):
+                raise NotImplementedError(
+                    "native library does not support KS composition options v2"
+                )
 
         available = ctypes.c_int32()
         _native.check(
@@ -634,10 +654,15 @@ class Calculator:
             self._correlation_memory_budget_bytes,
             self._mp2_denominator_threshold,
         )
-        if self._ks_options is not None and self._ks_options_version == 1:
+        if self._ks_options is not None and self._ks_options_version >= 1:
             from .ks import native_ks_options
 
-            descriptor.ks_options = ctypes.pointer(native_ks_options(self._ks_options))
+            descriptor.ks_options = ctypes.pointer(
+                native_ks_options(
+                    self._ks_options,
+                    version=1 if self._ks_options_version == 1 else 2,
+                )
+            )
         return descriptor
 
     def _precision_provenance(

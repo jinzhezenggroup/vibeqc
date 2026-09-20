@@ -14,7 +14,7 @@ from vibeqc import (
     ResourceBudget,
     estimate_ks_resources,
 )
-from vibeqc.ks import resolve_ks_options
+from vibeqc.ks import native_ks_options, resolve_ks_options
 from vibeqc_compiler.dft.grid import MolecularGrid
 from vibeqc_compiler.method import MethodSpec, SemilocalXCPrimitive, resolve_method
 from vibeqc_compiler.xc.spec import functional
@@ -55,13 +55,31 @@ def test_functional_composition_resolves_only_required_ingredients():
     assert pbe.to_payload()["scf_domain"].endswith("pbe-spin-c2-1e-18")
 
 
-def test_method_ir_capability_gate_rejects_non_semilocal_graph(monkeypatch):
+def test_named_pbe_selector_cannot_silently_change_to_hybrid(monkeypatch):
     import vibeqc.ks as ks_module
 
     hybrid = resolve_method("PBE0", spin="unpolarized")
     monkeypatch.setattr(ks_module, "resolve_method", lambda *args, **kwargs: hybrid)
-    with pytest.raises(NotImplementedError, match="exactly one supported semilocal"):
+    with pytest.raises(RuntimeError, match="disagrees with native KS selector"):
         ks_module.resolve_ks_options("pbe-rks")
+
+
+@pytest.mark.parametrize(
+    "method,spin,coefficients",
+    (
+        ("pbe0-rks", "unpolarized", (0.75, 1.0, -0.125)),
+        ("pbe0-uks", "polarized", (0.75, 1.0, -0.25)),
+    ),
+)
+def test_pbe0_named_selector_resolves_common_methodir_composition(
+    method, spin, coefficients
+):
+    options = resolve_ks_options(method)
+    assert options.method_ir.identifier == "PBE0"
+    assert options.method_ir.spin == spin
+    assert options.coefficients == coefficients
+    assert options.requires_composition_v2
+    assert len(options.method_ir.primitives) == 2
 
 
 @pytest.mark.parametrize(
@@ -162,6 +180,23 @@ def test_unsupported_compositions_and_policy_fail_before_native_load(monkeypatch
         KsOptions(scf_domain="unversioned-clipping")
     with pytest.raises(ValueError, match="RKS/UKS"):
         Calculator(method="rhf", ks_options=KsOptions())
+
+
+def test_ks_options_v2_suffix_preserves_v1_prefix_and_pbe0_coefficients():
+    from vibeqc import _native
+
+    pure = resolve_ks_options("pbe-rks")
+    hybrid = resolve_ks_options("pbe0-rks")
+    old = native_ks_options(pure, version=1)
+    new = native_ks_options(hybrid, version=2)
+    assert old.struct_size == _native.KsOptionsDescriptor.composition_version.offset
+    assert new.struct_size > old.struct_size
+    assert new.composition_version == 1
+    assert (
+        new.semilocal_exchange_scale,
+        new.semilocal_correlation_scale,
+        new.fock_exchange_coefficient,
+    ) == (0.75, 1.0, -0.125)
 
 
 def test_custom_model_changes_plan_identity_without_materializing_grid(monkeypatch):
@@ -270,6 +305,24 @@ def test_custom_native_grid_matches_independent_scf_and_budget(method, device):
         )
         with pytest.raises(RuntimeError, match="model identity changed"):
             batch.execute(strict=True)
+
+
+def test_older_native_library_cannot_claim_pbe0_without_composition_v2(monkeypatch):
+    from vibeqc import _native
+
+    library = _native.load_library(device="cpu")
+
+    class VersionOne:
+        argtypes = None
+        restype = None
+
+        def __call__(self):
+            return 1
+
+    monkeypatch.setattr(library, "vibeqc_ks_options_version", VersionOne())
+    monkeypatch.setattr(_native, "load_library", lambda **kwargs: library)
+    with pytest.raises(NotImplementedError, match="composition options v2"):
+        Calculator(method="pbe0-rks")
 
 
 def test_older_native_library_cannot_silently_ignore_custom_options(monkeypatch):

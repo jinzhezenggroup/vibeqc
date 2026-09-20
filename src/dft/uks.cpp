@@ -27,15 +27,18 @@ struct SpinEvaluation {
 };
 
 /** The physical operator is independent of extrapolation and occupations.
- * The #202 strategy owns J dispatch; semilocal methods never request K. */
+ * The common strategy owns J/K dispatch and all exact-exchange coefficients. */
 SpinEvaluation evaluate(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                         const dft::MolecularGrid& grid, const Matrix& alpha, const Matrix& beta,
-                        bool pbe, std::size_t tile) {
+                        bool pbe, const ScfOptions& options) {
+  const auto tile = options.xc_tile_points;
   const auto& ints = plan.one_electron();
   const auto jk = plan.build(alpha, beta);
   SpinEvaluation out;
   out.fock = assemble_fock(plan.strategy(), ints.hcore, jk);
-  const auto xc = pbe ? dft::integrate_pbe_uks(basis, grid, alpha, beta, tile)
+  const auto xc = pbe ? dft::integrate_pbe_uks_scaled(basis, grid, alpha, beta, tile,
+                                                      options.semilocal_exchange_scale,
+                                                      options.semilocal_correlation_scale)
                       : dft::integrate_lda_xc_pw_uks(basis, grid, alpha, beta, tile);
   for (std::size_t i = 0; i < alpha.size(); ++i) {
     out.fock.alpha[i] += xc.potential[0][i];
@@ -69,8 +72,11 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   if (options.compute_forces) throw std::invalid_argument("UKS gradients require issue #163");
   if (strategy.backend != FockBackend::Cpu || strategy.spec.spin != FockSpin::Unrestricted ||
       strategy.spec.derivative_order != 0 || !strategy.spec.coulomb.present ||
-      strategy.spec.coulomb.coefficient != 1.0 || strategy.spec.exchange.present)
-    throw std::invalid_argument("UKS requires a CPU Coulomb-only Fock strategy");
+      strategy.spec.coulomb.coefficient != 1.0 ||
+      (strategy.spec.exchange.present &&
+       (strategy.spec.exchange.op != FockOperator::FullRange ||
+        strategy.spec.exchange.approximation != FockApproximation::Exact)))
+    throw std::invalid_argument("UKS requires a CPU full-range exact J/K Fock strategy");
   if (options.xc_density_route != dft::XcDensityRoute::DensityMatrix)
     throw std::invalid_argument("UKS occupied-factor XC has not been implemented");
   const auto& system = plan.system();
@@ -137,8 +143,7 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
       UksState{std::move(alpha), std::move(beta)}, policy,
       [&](const UksState& state, unsigned) {
         const bool stabilized = stabilize_occupations;
-        auto physical =
-            evaluate(plan, basis, grid, state.alpha, state.beta, pbe, options.xc_tile_points);
+        auto physical = evaluate(plan, basis, grid, state.alpha, state.beta, pbe, options);
         ++result.fock_builds;
         Matrix ra = commutator_residual(physical.fock.alpha, state.alpha, ints.overlap, n);
         Matrix rb = commutator_residual(physical.fock.beta, state.beta, ints.overlap, n);
@@ -224,7 +229,7 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   // DIIS/stabilized proposal orbitals are only a convergence device and must
   // never become the derivative-state proof. A small bounded fixed-point
   // correction mirrors the shared final-state policy without another SCF loop.
-  auto final = evaluate(plan, basis, grid, alpha, beta, pbe, options.xc_tile_points);
+  auto final = evaluate(plan, basis, grid, alpha, beta, pbe, options);
   ++result.fock_builds;
   double previous_physical_energy = result.energy;
   result.converged = false;
@@ -246,7 +251,7 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     alpha = std::move(projected_a);
     beta = std::move(projected_b);
 
-    auto next = evaluate(plan, basis, grid, alpha, beta, pbe, options.xc_tile_points);
+    auto next = evaluate(plan, basis, grid, alpha, beta, pbe, options);
     ++result.fock_builds;
     const Matrix ra = commutator_residual(next.fock.alpha, alpha, ints.overlap, n);
     const Matrix rb = commutator_residual(next.fock.beta, beta, ints.overlap, n);

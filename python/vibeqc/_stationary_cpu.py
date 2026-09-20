@@ -40,7 +40,6 @@ from ._dft_gradient import (
     _native_ao_atoms,
     native_ao_geometry_identity,
 )
-from .ks import resolve_ks_method
 
 
 @dataclass(frozen=True)
@@ -206,16 +205,17 @@ def complete_rks_gradient_diagnostic(
     compiler=None,
     execution="reference",
 ):
-    """Consume one live native CPU RKS/UKS state with complete plan-owned sources.
+    """Consume one live native CPU RKS/UKS state with all plan-owned sources.
 
-    Admitted domain: direct real FP64 integer RKS/UKS, canonical
-    LDA or PBE, s/p AOs, native unpruned version-one grid, distinct nuclei and no
+    Admitted domain: direct real FP64 integer RKS/UKS, a validated
+    LDA/PBE-family MethodIR with optional full-range exact exchange, s/p AOs,
+    native unpruned version-one grid, distinct nuclei and no
     point/center collisions. CPU is explicit; CUDA snapshots are rejected.
     Caller chooses an ignored/temporary compilation cache and may supply a
     CppCompilerAdapter; otherwise CXX (or c++) selects the executable. Scientific work is
     full ordered AO pairs/quartets, without screening or symmetry shortcuts.
     Working arrays scale with a point tile times (AO + atom), one primitive
-    record tile, D/W, and seven atom gradients, never coordinate-grid-AO pairs.
+    record tile, D/W, and bounded per-source atom gradients, never coordinate-grid-AO pairs.
     The native state already retains its full discrete grid and dense SCF data.
     execution="native" selects compiled consumers of the same mathematical
     graphs. execution="reference" retains the validated interpreter route.
@@ -245,7 +245,11 @@ def complete_rks_gradient_diagnostic(
     ):
         if type(value) is not int or not 1 <= value <= cap:
             raise ValueError(f"{name} must be an integer in [1,{cap}]")
-    method, functional = resolve_ks_method(state.identity.method)
+    # Consume the exact graph proven by the live snapshot. Re-resolving the
+    # descriptive method alias here would silently discard custom/global-hybrid
+    # coefficients and split energy/Fock semantics from their derivative.
+    method = state._source.method_ir
+    functional = state._source.functional
     plan = StationaryGradientPlan(
         method,
         StationaryMeanField(
@@ -286,9 +290,17 @@ def complete_rks_gradient_diagnostic(
         "integral_term_capacity": integral_terms,
     }
     tensor_consumers = {}
-    # TensorIR AD supplies D, D*D/2, and -W. The runtime never rebuilds these
-    # scientific coefficients from a method-name-specific gradient formula.
-    for source, rank in (("one_electron", 2), ("overlap_pulay", 2), ("coulomb", 4)):
+    # TensorIR AD supplies D, Coulomb D*D/2, exact-exchange same-spin
+    # D[a,c]*D[b,d]*cK/2, and -W. Runtime only binds tuple-indexed state;
+    # it never rebuilds method coefficients from a named-functional formula.
+    integral_sources = [
+        ("one_electron", 2),
+        ("overlap_pulay", 2),
+        ("coulomb", 4),
+    ]
+    if plan.exchange is not None:
+        integral_sources.append(("exact_exchange", 4))
+    for source, rank in integral_sources:
         iterator = product(range(n), repeat=rank)
         while tuples := tuple(islice(iterator, integral_terms)):
             ids = np.asarray(tuples)
@@ -303,6 +315,13 @@ def complete_rks_gradient_diagnostic(
             if source == "overlap_pulay":
                 feeds = {
                     "weighted_density": state.weighted_density[:, ids[:, 0], ids[:, 1]]
+                }
+            elif source == "exact_exchange":
+                # For each ordered ERI (ab|cd), K contracts same-spin
+                # D[a,c] D[b,d]. Cross-spin exchange is deliberately absent.
+                feeds = {
+                    "density_left": state.density[:, ids[:, 0], ids[:, 2]],
+                    "density_right": state.density[:, ids[:, 1], ids[:, 3]],
                 }
             else:
                 feeds = {"density_left": state.density[:, ids[:, 0], ids[:, 1]]}
@@ -319,6 +338,7 @@ def complete_rks_gradient_diagnostic(
                     "one_electron": "kinetic",
                     "overlap_pulay": "overlap",
                     "coulomb": "four_center_eri",
+                    "exact_exchange": "four_center_eri",
                 }[source]
                 owners, values = native.integral(operator, indices, weight)
                 np.add.at(components[source], owners, values)

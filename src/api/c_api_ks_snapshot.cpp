@@ -79,6 +79,9 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
     append(source.weights);
     append(source.grid_owners);
     const bool cpu = identity.determinant.model.backend == vibeqc::scf::FockBackend::Cpu;
+    const auto& exchange = identity.determinant.model.spec.exchange;
+    const bool composition = identity.model.semilocal_exchange_scale != 1 ||
+                             identity.model.semilocal_correlation_scale != 1 || exchange.present;
     // CPU v2 is unchanged. CUDA v3 adds the same actual prescription/measures
     // suffix while retaining its visible device ordinal. Legacy CUDA v1 reads
     // remain supported by Python, but cannot qualify a weight derivative.
@@ -97,8 +100,9 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
         values.push_back(static_cast<double>(source.export_synchronizations));
       }
     }
-    // ECP v4 (CPU) / v5 (CUDA) bind the live Hamiltonian. All-electron
-    // CPU v2 / CUDA v3 retain their exact existing layouts.
+    // ECP v4 (CPU) / v5 (CUDA) bind the live Hamiltonian. Hybrid
+    // composition uses CPU v6, or v7 when combined with ECP. CUDA hybrids
+    // remain fail-closed before snapshot publication.
     const bool ecp = !source.system.ecp_terms.empty();
     if (ecp) {
       for (const auto& atom : source.system.atoms) values.push_back(atom.ecp_core);
@@ -109,8 +113,15 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
               static_cast<double>(term.power), term.exponent, term.coefficient})
           values.push_back(value);
     }
+    if (composition) {
+      values.push_back(identity.model.semilocal_exchange_scale);
+      values.push_back(identity.model.semilocal_correlation_scale);
+      values.push_back(exchange.present ? exchange.coefficient : 0.0);
+    }
+    const auto wire_version =
+        cpu ? (composition ? (ecp ? 7U : 6U) : (ecp ? 4U : 2U)) : (ecp ? 5U : 3U);
     const std::array<std::uint64_t, 16> info{
-        ecp ? (cpu ? 4U : 5U) : (cpu ? 2U : 3U),
+        wire_version,
         n,
         identity.model.spins,
         source.system.atoms.size(),
@@ -211,9 +222,10 @@ vibeqc_status vibeqc_ks_snapshot_ecp_derivatives_v1(vibeqc_batch* batch,
   }
 }
 
-vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, const double* gradient,
-                                       std::size_t point_count, double* values,
-                                       std::size_t value_count) {
+vibeqc_status vibeqc_xc_point_batch_v2(std::uint32_t pbe, double exchange_scale,
+                                       double correlation_scale, const double* rho,
+                                       const double* gradient, std::size_t point_count,
+                                       double* values, std::size_t value_count) {
   constexpr std::size_t stride = 9;
   if (pbe > 1 || !rho || !gradient || !values || point_count == 0 ||
       point_count > std::numeric_limits<std::size_t>::max() / stride ||
@@ -225,7 +237,8 @@ vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, con
     for (std::size_t spin = 0; spin < 2; ++spin)
       for (std::size_t axis = 0; axis < 3; ++axis)
         local_gradient[spin][axis] = gradient[(spin * point_count + point) * 3 + axis];
-    const auto xc = vibeqc::dft::point::evaluate(pbe != 0, local_rho, local_gradient);
+    const auto xc = vibeqc::dft::point::evaluate(pbe != 0, local_rho, local_gradient,
+                                                 exchange_scale, correlation_scale);
     if (!xc.valid) return VIBEQC_STATUS_NUMERICAL_FAILURE;
     double* output = values + stride * point;
     output[0] = xc.energy;
@@ -236,6 +249,12 @@ vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, con
         output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
   }
   return VIBEQC_STATUS_SUCCESS;
+}
+
+vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, const double* gradient,
+                                       std::size_t point_count, double* values,
+                                       std::size_t value_count) {
+  return vibeqc_xc_point_batch_v2(pbe, 1.0, 1.0, rho, gradient, point_count, values, value_count);
 }
 
 void vibeqc_ks_snapshot_destroy_v1(vibeqc_ks_snapshot* snapshot) { delete snapshot; }

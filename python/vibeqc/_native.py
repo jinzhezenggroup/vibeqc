@@ -33,6 +33,8 @@ METHOD_LDA_RKS = 6
 METHOD_PBE_RKS = 7
 METHOD_LDA_UKS = 8
 METHOD_PBE_UKS = 9
+METHOD_PBE0_RKS = 10
+METHOD_PBE0_UKS = 11
 METHOD_FAMILY_HARTREE_FOCK = 1
 METHOD_FAMILY_DENSITY_FUNCTIONAL = 2
 METHOD_FAMILY_COUPLED_CLUSTER = 3
@@ -199,6 +201,11 @@ class KsOptionsDescriptor(ctypes.Structure):
         ("tile_points", ctypes.c_uint64),
         ("element_radii", ctypes.POINTER(ctypes.c_double)),
         ("element_radius_count", ctypes.c_uint32),
+        ("reserved_v1_padding", ctypes.c_uint32),
+        ("composition_version", ctypes.c_uint32),
+        ("semilocal_exchange_scale", ctypes.c_double),
+        ("semilocal_correlation_scale", ctypes.c_double),
+        ("fock_exchange_coefficient", ctypes.c_double),
     ]
 
 
