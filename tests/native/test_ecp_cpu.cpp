@@ -134,7 +134,10 @@ void check_checked_and_failures() {
   rejects([&] { vibeqc::integrals::ecp_integrals(too_large); });
   auto unsupported = system;
   unsupported.shells[0].angular_momentum = 4;
-  rejects([&] { vibeqc::integrals::ecp_integrals(unsupported); });
+  for (auto representation : {VIBEQC_BASIS_CARTESIAN, VIBEQC_BASIS_SPHERICAL}) {
+    unsupported.basis_representation = representation;
+    rejects([&] { vibeqc::integrals::ecp_integrals(unsupported); });
+  }
   for (double poison :
        {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity()}) {
     auto invalid = system;

@@ -40,10 +40,12 @@ EcpData ecp_integrals(const core::System& system, unsigned radial, unsigned angu
   std::vector<AO> aos;
   for (const auto& shell : system.shells) {
     const auto& position = system.atoms[shell.atom_index].position;
-    for (const auto& expansion :
-         molecule::ao_expansions(shell.angular_momentum, system.basis_representation)) {
-      if (expansion.size() > 3)
-        throw std::invalid_argument("ECP AO expansion exceeds validated domain");
+    const auto expansions =
+        molecule::ao_expansions(shell.angular_momentum, system.basis_representation);
+    if (std::any_of(expansions.begin(), expansions.end(),
+                    [](const auto& expansion) { return expansion.size() > 3; }))
+      throw std::invalid_argument("ECP AO expansion exceeds validated domain");
+    for (const auto& expansion : expansions) {
       AO ao{&shell,
             0,
             static_cast<int>(shell.primitives.size()),
