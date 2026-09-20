@@ -74,8 +74,7 @@ def precision_candidates(program: typing.Any) -> tuple[tuple[str, typing.Any], .
             qualification="issue-528-experimental-full-fp32",
         )
         for node in program.live_nodes
-        if node.spec.dtype == "float64"
-        and node.op not in ("input", "constant", "cast")
+        if node.spec.dtype == "float64" and node.op not in ("input", "constant", "cast")
     }
     if directives:
         rows.append(("experimental-full-fp32", lower_precision(program, directives)))
@@ -136,12 +135,8 @@ def run(args: typing.Any) -> typing.Any:
                     compiler,
                     fixtures,
                     args.cache,
-                    schedules=[TensorSchedule()]
-                    if args.precision_candidates
-                    else None,
-                    precision_programs=tuple(
-                        program for _, program in precision_rows
-                    ),
+                    schedules=[TensorSchedule()] if args.precision_candidates else None,
+                    precision_programs=tuple(program for _, program in precision_rows),
                     repeats=args.repeats,
                     maximum_seconds=args.tune_seconds,
                     device=args.device,
