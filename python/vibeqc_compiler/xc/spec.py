@@ -18,6 +18,8 @@ PUBLIC_COMPONENTS = (
     "LDA_C_PW_MOD",
     "GGA_X_PBE",
     "GGA_C_PBE",
+    "MGGA_X_SCAN",
+    "MGGA_C_SCAN",
     "MGGA_X_R2SCAN",
     "MGGA_C_R2SCAN",
 )
@@ -33,6 +35,10 @@ CATALOG = {
     **{name: ((name, Fraction(1)),) for name in PUBLIC_COMPONENTS},
     "LDA_XC_PW": (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
     "PBE": (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+    "SCAN": (
+        ("MGGA_X_SCAN", Fraction(1)),
+        ("MGGA_C_SCAN", Fraction(1)),
+    ),
     "R2SCAN": (
         ("MGGA_X_R2SCAN", Fraction(1)),
         ("MGGA_C_R2SCAN", Fraction(1)),
