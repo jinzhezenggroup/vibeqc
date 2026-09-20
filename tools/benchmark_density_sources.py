@@ -17,6 +17,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import typing
 from contextlib import ExitStack, contextmanager
 from dataclasses import asdict
 from itertools import product
@@ -62,12 +63,12 @@ BUDGETS = (128 << 20, 256 << 20)
 FUNCTIONALS = ("LDA_XC_PW", "PBE")
 
 
-def capture(argv):
+def capture(argv: typing.Any) -> typing.Any:
     """Collect bounded provenance commands without shell interpolation."""
     return subprocess.check_output(argv, text=True, timeout=60, cwd=ROOT).strip()
 
 
-def probe_gpu(nvcc, profile):
+def probe_gpu(nvcc: typing.Any, profile: typing.Any) -> typing.Any:
     """Bind provenance and capability checks to CUDA ordinal zero.
 
     NVML/nvidia-smi ordinals need not match remapped CUDA ordinals. Resolve
@@ -130,7 +131,7 @@ def probe_gpu(nvcc, profile):
     }
 
 
-def gate(actual, expected):
+def gate(actual: typing.Any, expected: typing.Any) -> typing.Any:
     """Fail on any entry outside the existing FP64 gate, including near zero."""
     result = block_error(
         np.atleast_1d(actual), np.atleast_1d(expected), atol=1e-11, rtol=1e-10
@@ -140,7 +141,9 @@ def gate(actual, expected):
     return result
 
 
-def record_worst(errors, key, actual, expected):
+def record_worst(
+    errors: typing.Any, key: typing.Any, actual: typing.Any, expected: typing.Any
+) -> None:
     """Retain the worst scaled whole-block gate across all repeated executions."""
     error = gate(actual, expected)
     if (
@@ -150,7 +153,7 @@ def record_worst(errors, key, actual, expected):
         errors[key] = error
 
 
-def checked_metrics(cuda):
+def checked_metrics(cuda: typing.Any) -> typing.Any:
     """Compare actual native arena/provider ownership with the numeric plan."""
     metrics = cuda.metrics()
     if (
@@ -163,7 +166,7 @@ def checked_metrics(cuda):
     return metrics
 
 
-def feature_cases(artifact, errors):
+def feature_cases(artifact: typing.Any, errors: typing.Any) -> typing.Any:
     """Use saved independent AO/rho/gradient/sigma/tau blocks with partial tiles."""
     rows = []
     for name in NAMES:
@@ -211,19 +214,19 @@ def feature_cases(artifact, errors):
 
 @contextmanager
 def endpoint_owner(
-    basis,
-    grid,
-    artifact,
-    native,
-    ingredients,
-    budget,
-    mode,
+    basis: typing.Any,
+    grid: typing.Any,
+    artifact: typing.Any,
+    native: typing.Any,
+    ingredients: typing.Any,
+    budget: typing.Any,
+    mode: typing.Any,
     *,
-    tile_points=7,
-    orbital_tile=3,
-    region_points=11,
-    orbital_capacity=None,
-):
+    tile_points: typing.Any = 7,
+    orbital_tile: typing.Any = 3,
+    region_points: typing.Any = 11,
+    orbital_capacity: typing.Any = None,
+) -> typing.Any:
     """Compose either existing dense or fixed-mask spatial CUDA ownership."""
     with ExitStack() as stack:
         settings = {
@@ -265,7 +268,14 @@ def endpoint_owner(
         yield cuda, endpoint, spatial
 
 
-def masked_endpoint(basis, grid, source, spatial, spec, layout):
+def masked_endpoint(
+    basis: typing.Any,
+    grid: typing.Any,
+    source: typing.Any,
+    spatial: typing.Any,
+    spec: typing.Any,
+    layout: typing.Any,
+) -> typing.Any:
     """Global-index Python oracle at exactly the prepared fixed AO mask.
 
     This changes only omitted collocation columns, leaving global D and matrix
@@ -288,7 +298,15 @@ def masked_endpoint(basis, grid, source, spatial, spec, layout):
     return energy, potential.mean(axis=0) if layout == "total" else potential
 
 
-def endpoint_cases(artifact, programs, samples, errors, timings, *, spatial=False):
+def endpoint_cases(
+    artifact: typing.Any,
+    programs: typing.Any,
+    samples: typing.Any,
+    errors: typing.Any,
+    timings: typing.Any,
+    *,
+    spatial: typing.Any = False,
+) -> typing.Any:
     """Run five or more interleaved D/C pairs on each identical discrete model."""
     rows = []
     for case in CASES:
@@ -481,7 +499,7 @@ def endpoint_cases(artifact, programs, samples, errors, timings, *, spatial=Fals
     return rows
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, required=True)
     parser.add_argument("--cache", type=Path, required=True)

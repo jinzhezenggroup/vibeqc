@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import typing
 from dataclasses import asdict, replace
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from tools.vibeqc_numerics.audit import ProbeControls, StrictHFAudit, probe_hf
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def run():
+def run() -> typing.Any:
     """Hold geometry/basis fixed while independently sweeping metric truncation."""
     atoms = [("He", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     rows = []
@@ -88,7 +89,7 @@ def run():
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     arguments = parser.parse_args()

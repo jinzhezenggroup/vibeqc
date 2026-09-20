@@ -4,6 +4,7 @@ import importlib
 import os
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ from vibeqc_compiler.common.structure import audit_structure
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_grid_native_generator_matches_jit_policy(tmp_path):
+def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     """Native and JIT builds must compile exactly one scientific grid policy."""
     from vibeqc_compiler.dft.ao_cuda import emit_grid_source
 
@@ -36,11 +37,11 @@ def test_grid_native_generator_matches_jit_policy(tmp_path):
     assert headers[-1] == ROOT / "include/vibeqc/vibeqc.h"
 
 
-def test_dependency_directions():
+def test_dependency_directions() -> None:
     assert audit_structure()["errors"] == []
 
 
-def test_method_composition_is_above_xc_and_dft(tmp_path):
+def test_method_composition_is_above_xc_and_dft(tmp_path: typing.Any) -> None:
     method = tmp_path / "method"
     method.mkdir()
     (method / "ok.py").write_text(
@@ -68,14 +69,18 @@ def test_method_composition_is_above_xc_and_dft(tmp_path):
         ("spatial", "expr", False),
     ],
 )
-def test_ao_lowering_scalar_dependency_is_narrow(tmp_path, module, target, allowed):
+def test_ao_lowering_scalar_dependency_is_narrow(
+    tmp_path: typing.Any, module: typing.Any, target: typing.Any, allowed: typing.Any
+) -> None:
     dft = tmp_path / "dft"
     dft.mkdir()
     (dft / (module + ".py")).write_text(f"import vibeqc_compiler.integral.{target}\n")
     assert (not audit_structure(tmp_path)["errors"]) == allowed
 
 
-def test_installed_package_does_not_consume_neighbor_checkout(tmp_path, monkeypatch):
+def test_installed_package_does_not_consume_neighbor_checkout(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     """A wheel placed under another checkout must use its own bundled inputs."""
     from vibeqc_compiler.common import paths
 
@@ -102,14 +107,16 @@ def test_installed_package_does_not_consume_neighbor_checkout(tmp_path, monkeypa
         "def run():\n    import tools.generate_shell_kernels",
     ],
 )
-def test_generic_code_rejects_upward_dependencies(tmp_path, code):
+def test_generic_code_rejects_upward_dependencies(
+    tmp_path: typing.Any, code: typing.Any
+) -> None:
     common = tmp_path / "common"
     common.mkdir()
     (common / "bad.py").write_text(code + "\n")
     assert audit_structure(tmp_path)["errors"]
 
 
-def test_all_compiler_imports_are_independent_of_runtime_and_references():
+def test_all_compiler_imports_are_independent_of_runtime_and_references() -> None:
     code = f"""
 import importlib, importlib.abc, pkgutil, sys
 sys.path.insert(0, {str(ROOT / "python")!r})
@@ -143,14 +150,18 @@ for item in pkgutil.walk_packages(vibeqc_compiler.__path__, vibeqc_compiler.__na
         ("vibeqc_dft.grid", "dft.grid"),
     ],
 )
-def test_legacy_leaves_share_the_canonical_module(legacy, canonical, monkeypatch):
+def test_legacy_leaves_share_the_canonical_module(
+    legacy: typing.Any, canonical: typing.Any, monkeypatch: typing.Any
+) -> None:
     monkeypatch.syspath_prepend(str(ROOT / "tools"))
     target = importlib.import_module("vibeqc_compiler." + canonical)
     assert importlib.import_module("tools." + legacy) is target
     assert importlib.import_module(legacy) is target
 
 
-def test_checkout_generator_needs_no_installation_or_runtime(tmp_path):
+def test_checkout_generator_needs_no_installation_or_runtime(
+    tmp_path: typing.Any,
+) -> None:
     # Bootstrap the checkout with the existing NumPy dependency, without a
     # native library, editable installation or inherited PYTHONPATH.
     output = tmp_path / "weighted.cuh"
@@ -172,7 +183,9 @@ def test_checkout_generator_needs_no_installation_or_runtime(tmp_path):
     assert output.stat().st_size > 0
 
 
-def test_method_custom_derivatives_may_emit_tensor_graphs_but_not_the_reverse(tmp_path):
+def test_method_custom_derivatives_may_emit_tensor_graphs_but_not_the_reverse(
+    tmp_path: typing.Any,
+) -> None:
     method = tmp_path / "method"
     method.mkdir()
     (method / "rule.py").write_text("from vibeqc_compiler.tensor import Program\n")

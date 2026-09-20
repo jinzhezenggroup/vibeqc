@@ -7,6 +7,7 @@ is retained. This explicit candidate does not register a complete DFT method.
 
 import json
 import threading
+import typing
 from contextlib import ExitStack
 from time import perf_counter
 
@@ -37,7 +38,9 @@ from .program_ir import fixed_density_tile_program
 from .spec import UnsupportedXC, functional
 
 
-def _native_device_xc(program, spatial, density_grid):
+def _native_device_xc(
+    program: typing.Any, spatial: typing.Any, density_grid: typing.Any
+) -> typing.Any:
     """Keep feature validation and execution on the same canonical CUDA route."""
     return (
         spatial is not None
@@ -60,15 +63,15 @@ class PreparedXCContractions:
 
     def __init__(
         self,
-        program,
-        basis,
-        grid,
+        program: typing.Any,
+        basis: typing.Any,
+        grid: typing.Any,
         *,
-        tile_points=64,
-        resource_budget=None,
-        spatial=None,
-        density_grid=None,
-    ):
+        tile_points: typing.Any = 64,
+        resource_budget: typing.Any = None,
+        spatial: typing.Any = None,
+        density_grid: typing.Any = None,
+    ) -> None:
         # Reconfiguration publishes several related fields under this lock.
         # Keep validation, identity capture and resource composition in one
         # snapshot so a consumer cannot bind old quadrature to a new owner.
@@ -89,15 +92,15 @@ class PreparedXCContractions:
 
     def _initialize(
         self,
-        program,
-        basis,
-        grid,
+        program: typing.Any,
+        basis: typing.Any,
+        grid: typing.Any,
         *,
-        tile_points,
-        resource_budget,
-        spatial,
-        density_grid,
-    ):
+        tile_points: typing.Any,
+        resource_budget: typing.Any,
+        spatial: typing.Any,
+        density_grid: typing.Any,
+    ) -> None:
         """Capture the complete borrowed configuration under its spatial lock."""
         if not isinstance(program, NativeContractionProgram) or not isinstance(
             basis, NativeAO
@@ -304,11 +307,11 @@ class PreparedXCContractions:
         self.statistics = {}
 
     @property
-    def tile_program(self):
+    def tile_program(self) -> typing.Any:
         """Immutable boundary-only ProgramIR, or None for unqualified routes."""
         return self._tile_program
 
-    def _density_contract(self):
+    def _density_contract(self) -> typing.Any:
         """Borrow only fixed CUDA topology/code; each call uploads its current D/B."""
         cuda = self.density_grid
         return (
@@ -323,7 +326,7 @@ class PreparedXCContractions:
             )
         )
 
-    def _check(self):
+    def _check(self) -> None:
         if self._closed:
             raise RuntimeError("prepared XC contractions are closed")
         mask = None if self.spatial is None else self.spatial.tasks.identity
@@ -346,7 +349,7 @@ class PreparedXCContractions:
         if self.density_grid is not None:
             self.density_grid._check_open()
 
-    def _collocation(self, density):
+    def _collocation(self, density: typing.Any) -> typing.Any:
         order = self.program.contract.ao_order
         if self.density_grid is not None:
             if self.spatial is None:
@@ -434,7 +437,13 @@ class PreparedXCContractions:
                     tile.features,
                 )
 
-    def _device_xc(self, density, stamp, route, nspin):
+    def _device_xc(
+        self,
+        density: typing.Any,
+        stamp: typing.Any,
+        route: typing.Any,
+        nspin: typing.Any,
+    ) -> typing.Any:
         """Run the audited LDA/PBE potential contract entirely on CUDA tiles."""
         result = {
             "energy": 0.0,
@@ -478,7 +487,14 @@ class PreparedXCContractions:
                 tiles += 1
         return result, tiles, evaluated
 
-    def execute(self, density, *, delta_density=None, stamp=None, route="auto"):
+    def execute(
+        self,
+        density: typing.Any,
+        *,
+        delta_density: typing.Any = None,
+        stamp: typing.Any = None,
+        route: typing.Any = "auto",
+    ) -> typing.Any:
         """Execute fixed-density XC; the optional CUDA owner requires DensitySource.
 
         Supply the current consumer stamp for CUDA D/C collocation. Entire
@@ -759,14 +775,14 @@ class PreparedXCContractions:
             self.statistics["seconds"] = perf_counter() - started
             return result
 
-    def close(self):
+    def close(self) -> None:
         """End this execution lease without closing borrowed basis/spatial owners."""
         with self._lock:
             self._closed = True
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         self._check()
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()

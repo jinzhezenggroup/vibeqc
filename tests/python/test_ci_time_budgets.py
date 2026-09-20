@@ -1,6 +1,7 @@
 """Keep routine feedback bounded without truncating full qualification jobs."""
 
 import re
+import typing
 from pathlib import Path
 
 import pytest
@@ -11,8 +12,8 @@ import pytest
     [("ci.yml", "python", 20), ("cumetal-cuda.yml", "cuda-tests", 30)],
 )
 def test_full_qualification_has_a_separate_finite_budget(
-    filename, job, routine_minutes
-):
+    filename: typing.Any, job: typing.Any, routine_minutes: typing.Any
+) -> None:
     path = Path(__file__).resolve().parents[2] / ".github/workflows" / filename
     section = path.read_text().split(f"\n  {job}:\n", 1)[1]
     match = re.search(
@@ -28,7 +29,7 @@ def test_full_qualification_has_a_separate_finite_budget(
         assert '!= "schedule"' in section and '!= "workflow_dispatch"' in section
 
 
-def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache():
+def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache() -> None:
     path = Path(__file__).resolve().parents[2] / ".github/workflows/ci.yml"
     section = (
         path.read_text()

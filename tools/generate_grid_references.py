@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import typing
 from hashlib import sha256
 from pathlib import Path
 
@@ -24,7 +25,7 @@ from tools.generate_validation_references import pyscf_molecule
 from tools.vibeqc_dft.grid import GridSpec, MolecularGrid
 
 
-def generate(directory):
+def generate(directory: typing.Any) -> typing.Any:
     """Retain all derivative entries, grid data, density/orbital factors and hashes."""
     import pyscf
     from pyscf.dft import gen_grid, numint

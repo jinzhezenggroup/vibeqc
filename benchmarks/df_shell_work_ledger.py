@@ -14,6 +14,7 @@ import json
 import math
 import re
 import sqlite3
+import typing
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -79,7 +80,12 @@ WORK_FIELDS = (
 )
 
 
-def reconstruct_domain(shells, panels, pair_mode, auxiliary_shells=None):
+def reconstruct_domain(
+    shells: typing.Any,
+    panels: typing.Any,
+    pair_mode: typing.Any,
+    auxiliary_shells: typing.Any = None,
+) -> typing.Any:
     """Count implicit signature products using only public host shell metadata.
 
     Each shell row is (angular, primitives, public AO offset, public AO count).
@@ -120,7 +126,9 @@ def reconstruct_domain(shells, panels, pair_mode, auxiliary_shells=None):
     return result
 
 
-def _primitive_work_domains(expected, signature_policy):
+def _primitive_work_domains(
+    expected: typing.Any, signature_policy: typing.Any
+) -> typing.Any:
     """Map host signatures to the actual trace grouping, retaining exact costs.
 
     Angular-only launches report the documented p0_0_0 sentinel: they do not
@@ -137,11 +145,11 @@ def _primitive_work_domains(expected, signature_policy):
     return domains
 
 
-def _active_primitive_bounds(costs, active):
+def _active_primitive_bounds(costs: typing.Any, active: typing.Any) -> typing.Any:
     if active < 0 or active > sum(costs.values()):
         raise ValueError("active shell count exceeds visited shells")
 
-    def bound(reverse):
+    def bound(reverse: typing.Any) -> typing.Any:
         remaining, work = active, 0
         for cost, count in sorted(costs.items(), reverse=reverse):
             used = min(remaining, count)
@@ -152,7 +160,7 @@ def _active_primitive_bounds(costs, active):
     return bound(False), bound(True)
 
 
-def kernel_activity(database_path, record):
+def kernel_activity(database_path: typing.Any, record: typing.Any) -> typing.Any:
     """Read actual Nsight durations, requiring the traced class launch domain.
 
     A signature packet shares one duration among its slices. No per-signature
@@ -230,7 +238,9 @@ def kernel_activity(database_path, record):
     }
 
 
-def reduce_work(record, shells, auxiliary_shells=None):
+def reduce_work(
+    record: typing.Any, shells: typing.Any, auxiliary_shells: typing.Any = None
+) -> typing.Any:
     """Require complete class/signature counters and conserved primitive work."""
     counters = record["counters"]
     if counters.get("shell_work_diagnostics_enabled") != 1:
@@ -436,7 +446,7 @@ def reduce_work(record, shells, auxiliary_shells=None):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trace", type=Path, required=True)
     parser.add_argument("--measurement", type=Path, required=True)
@@ -462,7 +472,9 @@ def main():
     case = benchmark_cases()[CASES[aos]]
     atoms = [Atom.from_value(atom) for atom in case.atoms]
 
-    def shell_rows(path, role, default=None):
+    def shell_rows(
+        path: typing.Any, role: typing.Any, default: typing.Any = None
+    ) -> typing.Any:
         if path is None:
             metadata = (
                 _named_basis_shells(case.vibeqc_basis, atoms)

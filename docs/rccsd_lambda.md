@@ -110,9 +110,14 @@ PYTHONPATH=python:. OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
 from tools.vibeqc_cc import BoundCCSDLambda, LambdaOptions, SolverOptions, solve
 
 # snapshot is the validated RHF ReferenceSnapshot used by this provider.
-cc = solve(snapshot, provider, options=SolverOptions(
-    residual_tolerance=1e-11, energy_tolerance=1e-13,
-))
+cc = solve(
+    snapshot,
+    provider,
+    options=SolverOptions(
+        residual_tolerance=1e-11,
+        energy_tolerance=1e-13,
+    ),
+)
 bound = BoundCCSDLambda(snapshot, cc, options=LambdaOptions())
 lambda_result = bound.solve(reference_identity=snapshot.identity)
 ```

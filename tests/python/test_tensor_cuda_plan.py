@@ -1,5 +1,6 @@
 """CPU proofs of storage invariants and deliberately infeasible CUDA plans."""
 
+import typing
 from dataclasses import replace
 
 import pytest
@@ -28,12 +29,12 @@ from vibeqc_compiler.tensor.cuda_plan import (
 TARGET = cuda_target_info("sm_80")
 
 
-def vector(size=65, dtype="float64"):
+def vector(size: typing.Any = 65, dtype: typing.Any = "float64") -> typing.Any:
     index = Index("i", IndexSpace("axis", "batch", size))
     return input_tensor("x", TensorSpec((index,), dtype=dtype, role="input"))
 
 
-def assert_disjoint_live_allocations(plan):
+def assert_disjoint_live_allocations(plan: typing.Any) -> None:
     """Independently intersect lifetimes and byte ranges for every buffer pair."""
     for i, a in enumerate(plan.steps):
         if a.virtual or not a.node.spec.size:
@@ -49,7 +50,7 @@ def assert_disjoint_live_allocations(plan):
             ), (i, j)
 
 
-def test_reuse_keeps_inputs_and_outputs_and_releases_dead_work():
+def test_reuse_keeps_inputs_and_outputs_and_releases_dead_work() -> None:
     x = vector()
     chain = [x]
     for _ in range(12):
@@ -63,7 +64,7 @@ def test_reuse_keeps_inputs_and_outputs_and_releases_dead_work():
     assert plan.peak_bytes == plan.device_bytes + plan.host_bytes
 
 
-def test_alias_lifetime_follows_materialized_ancestors():
+def test_alias_lifetime_follows_materialized_ancestors() -> None:
     x = vector()
     matrix = broadcast(
         x, (x.spec.indices[0], Index("j", x.spec.indices[0].space)), (0,)
@@ -78,7 +79,7 @@ def test_alias_lifetime_follows_materialized_ancestors():
     assert plan.steps[0].last_use == len(plan.steps)
 
 
-def test_fusion_preserves_checks_before_subsets():
+def test_fusion_preserves_checks_before_subsets() -> None:
     x = vector()
     square = multiply(x, x)
     zero_axis = Index("empty", IndexSpace("empty", "batch", 0))
@@ -91,7 +92,9 @@ def test_fusion_preserves_checks_before_subsets():
     assert not next(s for s in plan.steps if s.node is square).virtual
 
 
-def test_constrained_plan_shrinks_panels_and_rejects_below_indivisible_minimum():
+def test_constrained_plan_shrinks_panels_and_rejects_below_indivisible_minimum() -> (
+    None
+):
     i = Index("i", IndexSpace("rows", "batch", 17))
     j = Index("j", IndexSpace("cols", "batch", 19))
     k = Index("k", IndexSpace("inner", "batch", 23))
@@ -114,7 +117,7 @@ def test_constrained_plan_shrinks_panels_and_rejects_below_indivisible_minimum()
         )
 
 
-def test_reservations_are_real_capacities_and_change_identity():
+def test_reservations_are_real_capacities_and_change_identity() -> None:
     program = Program({"x": vector()})
     plain = plan_cuda(program, TARGET)
     reserved = plan_cuda(
@@ -133,7 +136,7 @@ def test_reservations_are_real_capacities_and_change_identity():
         )
 
 
-def test_recomputation_can_reduce_retention_with_more_work():
+def test_recomputation_can_reduce_retention_with_more_work() -> None:
     x = vector(8192)
     # Breadth/depth scheduling otherwise keeps all these large independent
     # intermediates until their scalar root reductions have executed.
@@ -165,7 +168,7 @@ def test_recomputation_can_reduce_retention_with_more_work():
         ("bik,bkj->bij", "NN"),
     ],
 )
-def test_direct_gemm_flags(equation, expected):
+def test_direct_gemm_flags(equation: typing.Any, expected: typing.Any) -> None:
     from test_tensor_cuda_gemm import node_for
 
     plan = plan_cuda(
@@ -175,7 +178,7 @@ def test_direct_gemm_flags(equation, expected):
     assert plan.panel_bytes == 0
 
 
-def test_invalid_types_overflow_and_float32_admission():
+def test_invalid_types_overflow_and_float32_admission() -> None:
     fp32 = plan_cuda(Program({"x": vector(dtype="float32")}), TARGET)
     assert fp32.precision == "fp32"
     for value in (True, -1, 2**63):
@@ -193,7 +196,7 @@ def test_invalid_types_overflow_and_float32_admission():
         )
 
 
-def test_cublas_retained_storage_cannot_be_hidden_by_zero_user_workspace():
+def test_cublas_retained_storage_cannot_be_hidden_by_zero_user_workspace() -> None:
     from test_tensor_cuda_gemm import node_for
 
     program = Program({"c": node_for("ik,kj->ij", {"i": 3, "j": 5, "k": 7})})

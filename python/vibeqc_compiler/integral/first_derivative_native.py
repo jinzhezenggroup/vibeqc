@@ -5,6 +5,7 @@ Runtime records, normalization, allocation, contraction and atom scatter belong
 to consumers. It imports neither the public runtime nor any independent oracle.
 """
 
+import typing
 from functools import lru_cache
 
 from .expr import Graph
@@ -17,7 +18,14 @@ from .weighted_eri import build_weighted_eri_ir, build_weighted_eri_kernel
 from .weighted_eri_native import emit_weighted_eri_primitive_header
 
 
-def _scalar_function(name, graph, roots, variables, prefix=(), qualifier="static"):
+def _scalar_function(
+    name: typing.Any,
+    graph: typing.Any,
+    roots: typing.Any,
+    variables: typing.Any,
+    prefix: typing.Any = (),
+    qualifier: typing.Any = "static",
+) -> typing.Any:
     emitter = ScalarCEmitter(graph, variables)
     emitter.emit(roots)
     return "\n".join(
@@ -36,7 +44,7 @@ def _scalar_function(name, graph, roots, variables, prefix=(), qualifier="static
 
 
 @lru_cache(maxsize=4)
-def emit_first_derivative_cpu(requests):
+def emit_first_derivative_cpu(requests: typing.Any) -> typing.Any:
     """Emit ordered ``(operator, components)`` kernels and a checked dispatcher.
 
     S/T/V use ordinary unnormalized primitives; attraction has unit positive
@@ -48,7 +56,7 @@ def emit_first_derivative_cpu(requests):
 
 
 @lru_cache(maxsize=4)
-def emit_first_derivative_cuda(requests):
+def emit_first_derivative_cuda(requests: typing.Any) -> typing.Any:
     """Lower the identical primitive graphs to a device-only dispatcher.
 
     Allocation, primitive records, weighting and atom reduction belong to a
@@ -57,7 +65,7 @@ def emit_first_derivative_cuda(requests):
     return _emit_first_derivative(requests, backend="cuda")
 
 
-def _emit_first_derivative(requests, *, backend):
+def _emit_first_derivative(requests: typing.Any, *, backend: typing.Any) -> typing.Any:
     requests = tuple(requests)
     if not requests or len(requests) != len(set(requests)):
         raise ValueError("first derivative kernels require unique nonempty requests")

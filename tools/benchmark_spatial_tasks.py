@@ -15,16 +15,17 @@ import os
 import subprocess
 import sys
 import time
+import typing
 from dataclasses import asdict
 from pathlib import Path
 
 
-def capture(argv):
+def capture(argv: typing.Any) -> typing.Any:
     """Read checked provenance without invoking a shell."""
     return subprocess.check_output(argv, text=True).strip()
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--library", type=Path, required=True)
@@ -107,13 +108,15 @@ def main():
     spec = functional("PBE", spin="polarized")
     consumer, program = FixedDensityXC(spec), build_program(spec, order=1)
 
-    def gate(actual, expected):
+    def gate(actual: typing.Any, expected: typing.Any) -> typing.Any:
         error = block_error(actual, expected, atol=1e-11, rtol=1e-10)
         if not error["passed"]:
             raise AssertionError(error)
         return error
 
-    def reference(basis, grid, density, tiles):
+    def reference(
+        basis: typing.Any, grid: typing.Any, density: typing.Any, tiles: typing.Any
+    ) -> typing.Any:
         """Bounded global-index oracle; zero omitted jets before nonlinear XC."""
         features = {
             "rho": np.zeros((2, len(grid.points))),

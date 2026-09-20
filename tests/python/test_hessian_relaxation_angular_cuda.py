@@ -1,5 +1,10 @@
 """Higher-angular CUDA relaxation against a separate native derivative oracle."""
 
+from __future__ import annotations
+
+import typing
+from typing import NoReturn
+
 import numpy as np
 import test_hessian_relaxation_cuda as _shared
 from vibeqc import Primitive, Shell
@@ -21,7 +26,9 @@ pytestmark = _shared.pytestmark
 compiler = _shared.compiler
 
 
-def test_asymmetric_pd_weighted_gradient_matches_native_derivatives(compiler, tmp_path):
+def test_asymmetric_pd_weighted_gradient_matches_native_derivatives(
+    compiler: typing.Any, tmp_path: typing.Any
+) -> None:
     inputs = fixture_inputs("h2")
     inputs["basis"] += (
         Shell(0, 1, (Primitive(0.8, 1.0),)),
@@ -92,15 +99,15 @@ def test_asymmetric_pd_weighted_gradient_matches_native_derivatives(compiler, tm
 
 
 def test_water_p_shell_complete_hvp_has_no_cpu_relaxation_substitution(
-    compiler, tmp_path, monkeypatch
-):
+    compiler: typing.Any, tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     with NativeSource(**fixture_inputs("water")) as source:
         state = NativeRHFState.from_source(source, cache=tmp_path / "state")
         vector = np.random.default_rng(591).normal(size=(state.nat, 3))
         vector /= np.linalg.norm(vector)
         expected = rhf_hvp(state, vector)
 
-        def forbidden(*args, **kwargs):
+        def forbidden(*args: typing.Any, **kwargs: typing.Any) -> NoReturn:
             raise AssertionError("CUDA relaxation entered CPU substitution")
 
         monkeypatch.setattr(

@@ -14,6 +14,7 @@ import os
 import platform
 import subprocess
 import sys
+import typing
 from hashlib import sha256
 from pathlib import Path
 
@@ -102,7 +103,7 @@ def physical_residual_rms(
 
 
 def independent_uks(
-    inputs: dict, grid, xc_code: str, symmetry: str | None = None
+    inputs: dict, grid: typing.Any, xc_code: str, symmetry: str | None = None
 ) -> dict:
     import pyscf
     from pyscf import dft

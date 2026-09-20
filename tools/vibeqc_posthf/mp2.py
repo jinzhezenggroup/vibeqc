@@ -1,5 +1,6 @@
 """Small canonical RHF MP2 bridge; neither a registered method nor a solver."""
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -19,7 +20,12 @@ class MP2Result:
     hamiltonian_id: str
 
 
-def restricted_mp2(snapshot, provider, *, denominator_threshold=1e-10):
+def restricted_mp2(
+    snapshot: typing.Any,
+    provider: typing.Any,
+    *,
+    denominator_threshold: typing.Any = 1e-10,
+) -> typing.Any:
     """E=sum_ijab t2_ijab [2(ia|jb)-(ib|ja)]; do not clamp denominators.
 
     Small denominators are a diagnosed failure. All occupied and virtual
@@ -71,7 +77,9 @@ def restricted_mp2(snapshot, provider, *, denominator_threshold=1e-10):
     )
 
 
-def spin_orbital_mp2(snapshot, ovov, *, maximum_spin_orbitals=24):
+def spin_orbital_mp2(
+    snapshot: typing.Any, ovov: typing.Any, *, maximum_spin_orbitals: typing.Any = 24
+) -> typing.Any:
     """Independent explicit spin summation, E=1/4 sum |<IJ||AB>|**2/D.
 
     <iσ jτ||aυ bω>=(ia|jb)δσυδτω-(ib|ja)δσωδτυ. This small oracle

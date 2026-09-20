@@ -1,5 +1,6 @@
 """Matrix grouping must preserve arbitrary einsum label and batch placement."""
 
+import typing
 from fractions import Fraction
 from itertools import product
 
@@ -9,7 +10,7 @@ from vibeqc_compiler.tensor import Index, IndexSpace, TensorSpec, einsum, input_
 from vibeqc_compiler.tensor.cuda_gemm import fp64_coefficient, gemm_contract
 
 
-def node_for(expression, dimensions):
+def node_for(expression: typing.Any, dimensions: typing.Any) -> typing.Any:
     """Make explicitly typed operands for an independently written equation."""
     inputs, _ = expression.split("->")
     spaces = {label: IndexSpace(label, "batch", n) for label, n in dimensions.items()}
@@ -43,7 +44,9 @@ def node_for(expression, dimensions):
         (",i->i", {"i": 5}),
     ],
 )
-def test_matrix_coordinates_reconstruct_independent_einsum(expression, dimensions):
+def test_matrix_coordinates_reconstruct_independent_einsum(
+    expression: typing.Any, dimensions: typing.Any
+) -> None:
     node = node_for(expression, dimensions)
     contract = gemm_contract(node)
     assert contract is not None
@@ -62,12 +65,14 @@ def test_matrix_coordinates_reconstruct_independent_einsum(expression, dimension
 
 
 @pytest.mark.parametrize("expression", ["ik,j->i", "ii,ij->j", "ij,jk,kl->il"])
-def test_non_gemm_einsums_explicitly_keep_the_general_path(expression):
+def test_non_gemm_einsums_explicitly_keep_the_general_path(
+    expression: typing.Any,
+) -> None:
     node = node_for(expression, {"i": 3, "j": 3, "k": 3, "l": 3})
     assert gemm_contract(node) is None
 
 
-def test_empty_groups_and_bounded_partial_panel_storage():
+def test_empty_groups_and_bounded_partial_panel_storage() -> None:
     empty = gemm_contract(node_for("ik,kj->ij", {"i": 3, "k": 0, "j": 5}))
     assert empty.panel_bytes(2, 3, 4) == 0
     with pytest.raises(ValueError, match="outside"):
@@ -79,7 +84,7 @@ def test_empty_groups_and_bounded_partial_panel_storage():
         ordinary.panel_bytes(0, 3, 4)
 
 
-def test_coefficient_conversion_does_not_overflow_separate_integer_terms():
+def test_coefficient_conversion_does_not_overflow_separate_integer_terms() -> None:
     assert fp64_coefficient((10**400, 10**400)) == 1.0
     with pytest.raises(ValueError, match="finite FP64"):
         fp64_coefficient((10**400, 1))

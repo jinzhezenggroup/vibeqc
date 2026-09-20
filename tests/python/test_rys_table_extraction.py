@@ -14,7 +14,7 @@ def _cuda_array(name: str, values: list[float]) -> str:
     return f"__device__ double {name}[] = {{" + ",".join(map(str, values)) + "};"
 
 
-def test_extract_fixed_root_tables_uses_gpu4pyscf_offsets():
+def test_extract_fixed_root_tables_uses_gpu4pyscf_offsets() -> None:
     """Keep triangular and interpolation offsets aligned with rys_roots.cu."""
 
     fixed_values = [float(index) for index in range(10)]

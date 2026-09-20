@@ -2,6 +2,7 @@
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -32,7 +33,7 @@ from tools.vibeqc_validation.schema import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load_references(path):
+def load_references(path: typing.Any) -> typing.Any:
     """Fail closed on changed values, reference version or upstream identity."""
     data = json.loads(Path(path).read_text())
     manifest = json.loads((ROOT / "tools/vibeqc_cc/source_manifest.json").read_text())
@@ -57,7 +58,7 @@ def load_references(path):
     return data
 
 
-def equation_artifact(nocc=2, nvir=2):
+def equation_artifact(nocc: typing.Any = 2, nvir: typing.Any = 2) -> typing.Any:
     program = build_program(nocc, nvir)
     return {
         "program": program.to_payload(),
@@ -69,7 +70,7 @@ def equation_artifact(nocc=2, nvir=2):
     }
 
 
-def run(output, references):
+def run(output: typing.Any, references: typing.Any) -> typing.Any:
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     data = load_references(references)
@@ -178,7 +179,7 @@ def run(output, references):
     return records
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--references", type=Path, required=True)

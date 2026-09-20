@@ -1,5 +1,9 @@
 """Generated weighted first-gradient compiler contracts."""
 
+from __future__ import annotations
+
+import typing
+
 import pytest
 from vibeqc_compiler.integral.first_gradient import (
     FirstGradientTerm,
@@ -13,7 +17,7 @@ from vibeqc_compiler.integral.one_electron_derivatives import (
 from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 
 
-def test_weighted_gradient_source_is_generic_and_accumulates_atomic_output():
+def test_weighted_gradient_source_is_generic_and_accumulates_atomic_output() -> None:
     ir = build_one_electron_derivative_ir("overlap", (0, 0))
     terms = (FirstGradientTerm((FirstGradientWeight(1, (0, 1)),), -1.0),)
     identity = first_gradient_identity(ir, (0,), terms)
@@ -24,7 +28,7 @@ def test_weighted_gradient_source_is_generic_and_accumulates_atomic_output():
     assert "rhf" not in source.lower()
 
 
-def test_two_matrix_weight_product_is_declared_not_method_coded():
+def test_two_matrix_weight_product_is_declared_not_method_coded() -> None:
     ir = build_weighted_eri_ir((0, 0, 0, 0))
     terms = (
         FirstGradientTerm(
@@ -48,11 +52,11 @@ def test_two_matrix_weight_product_is_declared_not_method_coded():
         FirstGradientWeight(7, (2, 3)),
     ],
 )
-def test_weight_contract_accepts_supported_slots(weight):
+def test_weight_contract_accepts_supported_slots(weight: typing.Any) -> None:
     assert weight.matrix_slot in range(8)
 
 
-def test_invalid_weight_contract_fails_closed():
+def test_invalid_weight_contract_fails_closed() -> None:
     with pytest.raises(ValueError):
         FirstGradientWeight(8, (0, 1))
     with pytest.raises(ValueError):

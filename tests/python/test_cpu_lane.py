@@ -2,6 +2,7 @@
 
 import platform
 import shutil
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -30,11 +31,11 @@ from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def _x86():
+def _x86() -> typing.Any:
     return platform.machine().lower() in ("x86_64", "amd64")
 
 
-def _has_flag(flag):
+def _has_flag(flag: typing.Any) -> typing.Any:
     try:
         text = Path("/proc/cpuinfo").read_text().lower()
     except OSError:
@@ -43,14 +44,14 @@ def _has_flag(flag):
 
 
 @pytest.fixture(scope="module")
-def compiler():
+def compiler() -> typing.Any:
     executable = shutil.which("c++")
     if executable is None:
         pytest.skip("CPU C++ compiler required")
     return CppCompilerAdapter(Path(executable))
 
 
-def test_cpu_lane_schedule_and_sources_are_target_explicit():
+def test_cpu_lane_schedule_and_sources_are_target_explicit() -> None:
     ir = build_weighted_eri_ir((1, 0, 0, 0))
     scalar = default_cpu_schedule(GENERIC_CPU_TARGET)
     avx2 = default_cpu_schedule(AVX2_FMA_TARGET)
@@ -80,7 +81,9 @@ def test_cpu_lane_schedule_and_sources_are_target_explicit():
 
 
 @pytest.mark.skipif(not _x86(), reason="initial SIMD targets are x86_64")
-def test_scalar_avx2_avx512_candidates_compile(compiler, tmp_path):
+def test_scalar_avx2_avx512_candidates_compile(
+    compiler: typing.Any, tmp_path: typing.Any
+) -> None:
     ir = build_weighted_eri_ir((1, 0, 0, 0))
     artifacts = []
     for target in (GENERIC_CPU_TARGET, AVX2_FMA_TARGET, AVX512F_FMA_TARGET):
@@ -100,7 +103,9 @@ def test_scalar_avx2_avx512_candidates_compile(compiler, tmp_path):
 
 
 @pytest.mark.skipif(not _has_flag("avx2"), reason="AVX2 execution unavailable")
-def test_avx2_full_shell_tail_matches_independent_native_oracle(compiler, tmp_path):
+def test_avx2_full_shell_tail_matches_independent_native_oracle(
+    compiler: typing.Any, tmp_path: typing.Any
+) -> None:
     ir = build_weighted_eri_ir((1, 0, 0, 0))
     targets = [GENERIC_CPU_TARGET, AVX2_FMA_TARGET]
     if _has_flag("avx512f") and _has_flag("fma"):
@@ -209,27 +214,31 @@ def test_avx2_full_shell_tail_matches_independent_native_oracle(compiler, tmp_pa
         "@override.rsp",
     ],
 )
-def test_cpu_target_rejects_unqualified_compiler_options(option):
+def test_cpu_target_rejects_unqualified_compiler_options(
+    option: typing.Any,
+) -> None:
     with pytest.raises(ValueError, match="compiler options"):
         replace(GENERIC_CPU_TARGET, compiler_options=(option,))
 
 
 @pytest.mark.parametrize("lanes", [True, 1.0, 4.0, 8.0])
-def test_cpu_target_and_schedule_require_integer_lanes(lanes):
+def test_cpu_target_and_schedule_require_integer_lanes(lanes: typing.Any) -> None:
     with pytest.raises(ValueError, match="lanes"):
         replace(GENERIC_CPU_TARGET, vector_lanes=lanes)
     with pytest.raises(ValueError, match="lanes"):
         CpuScheduleIR(vector_lanes=lanes)
 
 
-def test_simd_target_requires_matching_isa_flags():
+def test_simd_target_requires_matching_isa_flags() -> None:
     with pytest.raises(ValueError, match="compiler options"):
         replace(AVX2_FMA_TARGET, compiler_options=())
     with pytest.raises(ValueError, match="compiler options"):
         replace(AVX2_FMA_TARGET, compiler_options=AVX512F_FMA_TARGET.compiler_options)
 
 
-def test_strict_lane_execution_rejects_nonfinite_primitive(compiler, tmp_path):
+def test_strict_lane_execution_rejects_nonfinite_primitive(
+    compiler: typing.Any, tmp_path: typing.Any
+) -> None:
     from vibeqc_compiler.integral.cpu_lane_execute import (
         FirstDerivativeCpuLaneEvaluator,
     )

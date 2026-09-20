@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import typing
 
 import torch
 
-from .batch import PreparedBatch
 from .calculator import Calculator
 from .elements import checked_integer
 
+if typing.TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def _validated_atomic_numbers(coordinates, atomic_numbers):
+    from .batch import PreparedBatch
+
+
+def _validated_atomic_numbers(
+    coordinates: typing.Any, atomic_numbers: typing.Any
+) -> typing.Any:
     """Preserve molecular identity before any transfer or native evaluation."""
     if not isinstance(coordinates, torch.Tensor) or not coordinates.is_floating_point():
         raise TypeError("coordinates must be a real floating-point tensor")
@@ -25,7 +31,7 @@ def _validated_atomic_numbers(coordinates, atomic_numbers):
     )
 
 
-def _require_first_order_backward():
+def _require_first_order_backward() -> None:
     """Reject differentiable backward before detached forces lose Hessian terms.
 
     Checking grad mode also covers functional Hessian/HVP APIs whose default
@@ -41,8 +47,13 @@ def _require_first_order_backward():
 class _EnergyFunction(torch.autograd.Function):
     @staticmethod
     def forward(  # type: ignore[override]
-        ctx, coordinates, atomic_numbers, calculator, charge, multiplicity
-    ):
+        ctx: typing.Any,
+        coordinates: typing.Any,
+        atomic_numbers: typing.Any,
+        calculator: typing.Any,
+        charge: typing.Any,
+        multiplicity: typing.Any,
+    ) -> typing.Any:
         if coordinates.device.type != "cpu":
             # The C ABI can accept device buffers in a later version; the MVP
             # makes this transfer explicit instead of hiding it in native code.
@@ -66,7 +77,7 @@ class _EnergyFunction(torch.autograd.Function):
         return coordinates.new_tensor(result.energy)
 
     @staticmethod
-    def backward(ctx, grad_output):  # type: ignore[override]
+    def backward(ctx: typing.Any, grad_output: typing.Any) -> typing.Any:  # type: ignore[override]
         _require_first_order_backward()
         (forces,) = ctx.saved_tensors
         # Native forces are -dE/dR, while autograd requests dE/dR.
@@ -107,14 +118,14 @@ def energy(
 class _BatchedEnergyFunction(torch.autograd.Function):
     @staticmethod
     def forward(  # type: ignore[override]
-        ctx,
-        calculator,
-        prepared_batch,
-        atomic_numbers,
-        charges,
-        multiplicities,
-        *coordinates,
-    ):
+        ctx: typing.Any,
+        calculator: typing.Any,
+        prepared_batch: typing.Any,
+        atomic_numbers: typing.Any,
+        charges: typing.Any,
+        multiplicities: typing.Any,
+        *coordinates: typing.Any,
+    ) -> typing.Any:
         if not coordinates:
             raise ValueError("batched energy requires at least one system")
         reference = coordinates[0]
@@ -165,7 +176,7 @@ class _BatchedEnergyFunction(torch.autograd.Function):
         )
 
     @staticmethod
-    def backward(ctx, grad_output):  # type: ignore[override]
+    def backward(ctx: typing.Any, grad_output: typing.Any) -> typing.Any:  # type: ignore[override]
         _require_first_order_backward()
         coordinate_gradients = tuple(
             -force * grad_output[index] for index, force in enumerate(ctx.saved_tensors)

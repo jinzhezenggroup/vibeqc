@@ -9,6 +9,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,7 +21,7 @@ from vibeqc.autotune import source_identity
 from tools.vibeqc_validation.schema import file_hash
 
 
-def summarize_profiles(directory):
+def summarize_profiles(directory: typing.Any) -> typing.Any:
     """Read exact transfer bytes and kernel durations from each captured window."""
     records = []
     for path in sorted(directory.glob("profile-*.sqlite.gz")):
@@ -68,7 +69,7 @@ def summarize_profiles(directory):
     }
 
 
-def main():
+def main() -> None:
     """Require native/source agreement without creating a GPU execution context."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)

@@ -2,6 +2,7 @@
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -24,7 +25,7 @@ from tools.vibeqc_validation.schema import canonical_hash
 class _SavedProvider(ConventionalProvider):
     """Validation-only replay of immutable explicitly indexed saved MO blocks."""
 
-    def __init__(self, snapshot, inputs):
+    def __init__(self, snapshot: typing.Any, inputs: typing.Any) -> None:
         self.snapshot = snapshot
         self.backend = "cpu"
         self.source = SimpleNamespace(_check_open=lambda: None)
@@ -33,7 +34,7 @@ class _SavedProvider(ConventionalProvider):
             for k in ("ovov", "ovvo", "oovv", "ovvv", "ovoo", "oooo", "vvvv")
         }
 
-    def get(self, block):
+    def get(self, block: typing.Any) -> typing.Any:
         return BlockResult(
             block,
             self.blocks[block.slots],
@@ -43,7 +44,7 @@ class _SavedProvider(ConventionalProvider):
         )
 
 
-def replay(path):
+def replay(path: typing.Any) -> typing.Any:
     record = json.loads(Path(path).read_text())
     if record.get("record_hash") != canonical_hash(
         {k: v for k, v in record.items() if k != "record_hash"}

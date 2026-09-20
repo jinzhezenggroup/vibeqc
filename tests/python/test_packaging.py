@@ -2,13 +2,16 @@
 
 import re
 import shutil
+import typing
 from pathlib import Path
 
 import pytest
 from vibeqc import _cuda_runtime, _native
 
 
-def test_installed_package_library_finds_wheel_layout(tmp_path, monkeypatch):
+def test_installed_package_library_finds_wheel_layout(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     package = tmp_path / "vibeqc"
     library = package / "lib" / "libvibeqc.so"
     library.parent.mkdir(parents=True)
@@ -18,7 +21,9 @@ def test_installed_package_library_finds_wheel_layout(tmp_path, monkeypatch):
     assert _native._installed_package_library() == library
 
 
-def test_native_candidates_prefer_override_then_bundled(tmp_path, monkeypatch):
+def test_native_candidates_prefer_override_then_bundled(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     explicit = tmp_path / "explicit" / "libvibeqc.so"
     explicit.parent.mkdir(parents=True)
     explicit.touch()
@@ -32,7 +37,9 @@ def test_native_candidates_prefer_override_then_bundled(tmp_path, monkeypatch):
     assert _native._candidate_paths()[:2] == [explicit, bundled]
 
 
-def test_cuda_runtime_search_finds_pypi_provider_dirs(tmp_path, monkeypatch):
+def test_cuda_runtime_search_finds_pypi_provider_dirs(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     site_packages = tmp_path / "site-packages"
     cublas = site_packages / "nvidia" / "cublas" / "lib"
     cusolver = site_packages / "nvidia" / "cusolver" / "lib"
@@ -49,7 +56,9 @@ def test_cuda_runtime_search_finds_pypi_provider_dirs(tmp_path, monkeypatch):
     assert cusolver.resolve() in search_dirs
 
 
-def test_cuda_runtime_preload_uses_curated_sonames_not_driver(tmp_path, monkeypatch):
+def test_cuda_runtime_preload_uses_curated_sonames_not_driver(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     provider = tmp_path / "lib"
     provider.mkdir()
     sonames = [group[0] for group in _cuda_runtime._CUDA_RUNTIME_LIBRARY_GROUPS]
@@ -58,7 +67,7 @@ def test_cuda_runtime_preload_uses_curated_sonames_not_driver(tmp_path, monkeypa
 
     loaded = []
 
-    def fake_cdll(path, *, mode):
+    def fake_cdll(path: typing.Any, *, mode: typing.Any) -> typing.Any:
         loaded.append((Path(path).name, mode))
         return object()
 
@@ -71,14 +80,16 @@ def test_cuda_runtime_preload_uses_curated_sonames_not_driver(tmp_path, monkeypa
     assert "libcuda.so.1" not in sonames
 
 
-def test_cuda_runtime_preload_is_noop_off_linux(monkeypatch):
+def test_cuda_runtime_preload_is_noop_off_linux(monkeypatch: typing.Any) -> None:
     monkeypatch.setattr(_cuda_runtime.sys, "platform", "darwin")
 
     assert _cuda_runtime._runtime_search_dirs() == []
     assert _cuda_runtime.preload_cuda_runtime_libraries() == ()
 
 
-def test_cuda_runtime_preload_falls_through_loader_errors(tmp_path, monkeypatch):
+def test_cuda_runtime_preload_falls_through_loader_errors(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     broken = tmp_path / "broken"
     working = tmp_path / "working"
     broken.mkdir()
@@ -88,7 +99,7 @@ def test_cuda_runtime_preload_falls_through_loader_errors(tmp_path, monkeypatch)
     (working / soname).touch()
     attempts = []
 
-    def fake_cdll(path, *, mode):
+    def fake_cdll(path: typing.Any, *, mode: typing.Any) -> typing.Any:
         attempts.append((Path(path), mode))
         if Path(path).parent == broken:
             raise OSError("broken provider")
@@ -106,18 +117,20 @@ def test_cuda_runtime_preload_falls_through_loader_errors(tmp_path, monkeypatch)
     assert _cuda_runtime.preload_cuda_runtime_libraries() == ()
 
 
-def test_cuda_runtime_loader_install_is_idempotent():
+def test_cuda_runtime_loader_install_is_idempotent() -> None:
     installed = _native.load_library
     _cuda_runtime.install_native_loader()
 
     assert _native.load_library is installed
 
 
-def test_package_installs_cuda_runtime_wrapper():
+def test_package_installs_cuda_runtime_wrapper() -> None:
     assert getattr(_native.load_library, "_vibeqc_cuda_runtime_loader", False)
 
 
-def test_wheel_compiler_templates_include_local_dependencies(tmp_path, monkeypatch):
+def test_wheel_compiler_templates_include_local_dependencies(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     """Exercise JIT source preparation using only the declared wheel payload."""
     tomllib = pytest.importorskip("tomllib")
     from vibeqc_compiler.common import paths
@@ -154,7 +167,7 @@ def test_wheel_compiler_templates_include_local_dependencies(tmp_path, monkeypat
                 ), (source, name)
 
 
-def test_project_metadata_declares_cuda_runtime_providers():
+def test_project_metadata_declares_cuda_runtime_providers() -> None:
     import tomllib
 
     root = Path(__file__).resolve().parents[2]
@@ -171,7 +184,7 @@ def test_project_metadata_declares_cuda_runtime_providers():
     assert project["project"]["optional-dependencies"]["cuda12"] == []
 
 
-def test_cibuildwheel_uses_base_dependencies_for_provider_smoke():
+def test_cibuildwheel_uses_base_dependencies_for_provider_smoke() -> None:
     root = Path(__file__).resolve().parents[2]
     workflow = (root / ".github/workflows/wheels.yml").read_text()
     assert "CIBW_TEST_EXTRAS" not in workflow

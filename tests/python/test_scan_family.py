@@ -1,5 +1,8 @@
 """SCAN/SCAN0 MethodIR, Libxc scalar and alpha-cutoff gates."""
 
+from __future__ import annotations
+
+import typing
 from fractions import Fraction
 
 import numpy as np
@@ -19,7 +22,7 @@ TAU = SIGMA / (8 * N) + 0.8 * N ** (5 / 3)
 UNPOLARIZED = np.array([[N, SIGMA, TAU]]).T
 
 
-def test_scan_and_scan0_resolve_typed_tau_graphs():
+def test_scan_and_scan0_resolve_typed_tau_graphs() -> None:
     scan = resolve_method("SCAN")
     assert len(scan.primitives) == 1
     assert isinstance(scan.primitives[0], SemilocalXCPrimitive)
@@ -79,7 +82,7 @@ ORACLES = {
 }
 
 
-def test_scan_scalar_values_match_pyscf_libxc_oracle():
+def test_scan_scalar_values_match_pyscf_libxc_oracle() -> None:
     for name, (expected_p, expected_u) in ORACLES.items():
         p_spec = resolve_method(name, spin="polarized").primitives[0].functional
         u_spec = resolve_method(name, spin="unpolarized").primitives[0].functional
@@ -89,13 +92,13 @@ def test_scan_scalar_values_match_pyscf_libxc_oracle():
         np.testing.assert_allclose(actual_u, expected_u, rtol=2e-12, atol=2e-13)
 
 
-def _feature_at_alpha(alpha):
+def _feature_at_alpha(alpha: typing.Any) -> typing.Any:
     k_factor = 3 / 10 * (6 * np.pi**2) ** (2 / 3)
     tau = SIGMA / (8 * N) + alpha * k_factor * 2 ** (-2 / 3) * N ** (5 / 3)
     return np.array([[N, SIGMA, tau]]).T
 
 
-def test_scan_alpha_one_cutoff_matches_pinned_libxc_values():
+def test_scan_alpha_one_cutoff_matches_pinned_libxc_values() -> None:
     expected = {
         0.99: [
             -0.3257599186396406,

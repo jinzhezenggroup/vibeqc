@@ -8,6 +8,7 @@ tensor cache). Without that window the device tests are skipped, never faked.
 """
 
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +21,7 @@ from tools.vibeqc_cc.gpu_solver import PreparedGPUSolver, solve_gpu
 from tools.vibeqc_cc.solver import SolverOptions
 
 
-def test_gpu_solver_plans_compose_under_budget():
+def test_gpu_solver_plans_compose_under_budget() -> None:
     from tools.vibeqc_cc.gpu_state import solver_plans
 
     s, _p, _meta, _ = fixture_problem("h2o")
@@ -34,7 +35,7 @@ def test_gpu_solver_plans_compose_under_budget():
     assert diag["combined_peak_bytes"] == primary.peak_bytes + replay.peak_bytes
 
 
-def test_gpu_solver_requires_explicit_compiler_and_cache():
+def test_gpu_solver_requires_explicit_compiler_and_cache() -> None:
     s, p, _meta, _ = fixture_problem("h2")
     with pytest.raises(TypeError, match="CudaCompilerAdapter"):
         solve_gpu(s, p, compiler=None, cache=Path("."))
@@ -47,7 +48,9 @@ def test_gpu_solver_requires_explicit_compiler_and_cache():
         )
 
 
-def test_gpu_budget_rejection_precedes_integral_reads(monkeypatch, tmp_path):
+def test_gpu_budget_rejection_precedes_integral_reads(
+    monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     """An impossible composed budget must not trigger AO-to-MO preparation."""
     s, p, _, _ = fixture_problem()
     monkeypatch.setattr(
@@ -63,22 +66,26 @@ def test_gpu_budget_rejection_precedes_integral_reads(monkeypatch, tmp_path):
         )
 
 
-def test_replay_preparation_failure_releases_primary(monkeypatch, tmp_path):
+def test_replay_preparation_failure_releases_primary(
+    monkeypatch: typing.Any, tmp_path: typing.Any
+) -> None:
     """Retaining a failed constructor traceback must not retain device memory."""
     from tools.vibeqc_cc import gpu_solver
 
     closed = []
 
     class Executor:
-        def __init__(self, plan, artifact, *, device):
+        def __init__(
+            self, plan: typing.Any, artifact: typing.Any, *, device: typing.Any
+        ) -> None:
             if closed:
                 raise RuntimeError("replay allocation failed")
             closed.append(False)
 
-        def __enter__(self):
+        def __enter__(self) -> typing.Any:
             return self
 
-        def __exit__(self, *unused):
+        def __exit__(self, *unused: object) -> None:
             closed[0] = True
 
     monkeypatch.setattr(gpu_solver, "compile_cuda", lambda *args: None)
@@ -99,7 +106,9 @@ def test_replay_preparation_failure_releases_primary(monkeypatch, tmp_path):
     reason="requires explicitly allocated GPU validation window",
 )
 @pytest.mark.parametrize("name", ["h2", "h2o", "ch4"])
-def test_real_device_gpu_solver_converges_and_replays(name, tmp_path):
+def test_real_device_gpu_solver_converges_and_replays(
+    name: typing.Any, tmp_path: typing.Any
+) -> None:
     from vibeqc.profiles import find_nvcc
 
     s, p, meta, _ = fixture_problem(name)
@@ -146,7 +155,9 @@ def test_real_device_gpu_solver_converges_and_replays(name, tmp_path):
     os.environ.get("VIBEQC_CC_CUDA_TEST") != "1",
     reason="requires explicitly allocated GPU validation window",
 )
-def test_real_device_gpu_nonconvergence_is_an_explicit_failure_state(tmp_path):
+def test_real_device_gpu_nonconvergence_is_an_explicit_failure_state(
+    tmp_path: typing.Any,
+) -> None:
     from vibeqc.profiles import find_nvcc
 
     s, p, _meta, _ = fixture_problem("ch4")
@@ -170,7 +181,9 @@ def test_real_device_gpu_nonconvergence_is_an_explicit_failure_state(tmp_path):
     os.environ.get("VIBEQC_CC_CUDA_TEST") != "1",
     reason="requires explicitly allocated GPU validation window",
 )
-def test_real_device_gpu_overflow_retains_serializable_failure(tmp_path):
+def test_real_device_gpu_overflow_retains_serializable_failure(
+    tmp_path: typing.Any,
+) -> None:
     """Native arithmetic failure returns the last finite input for replay."""
     from vibeqc.profiles import find_nvcc
 

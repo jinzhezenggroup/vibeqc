@@ -1,5 +1,8 @@
 """P86-family MethodIR and independent Libxc scalar gates."""
 
+from __future__ import annotations
+
+import typing
 from fractions import Fraction
 
 import numpy as np
@@ -15,14 +18,14 @@ POLARIZED = np.array([[0.3, 0.2, 0.015, 0.003, 0.01, 0.0, 0.0]]).T
 UNPOLARIZED = np.array([[0.5, 0.031, 0.0]]).T
 
 
-def test_b3p86_gaussian_alias_preserves_semantics():
+def test_b3p86_gaussian_alias_preserves_semantics() -> None:
     reference = resolve_method("B3P86")
     named = resolve_method("B3P86G")
     assert named.identity == reference.identity
     assert named.manifest_identity != reference.manifest_identity
 
 
-def test_b3p86_vwn5_is_scientifically_distinct():
+def test_b3p86_vwn5_is_scientifically_distinct() -> None:
     assert resolve_method("B3P86").identity != resolve_method("B3P86V5").identity
 
 
@@ -30,7 +33,9 @@ def test_b3p86_vwn5_is_scientifically_distinct():
     "name,exchange",
     [("BP86", Fraction(0)), ("B3P86", Fraction(1, 5)), ("B3P86V5", Fraction(1, 5))],
 )
-def test_p86_family_uses_typed_semilocal_and_exact_exchange(name, exchange):
+def test_p86_family_uses_typed_semilocal_and_exact_exchange(
+    name: typing.Any, exchange: typing.Any
+) -> None:
     graph = resolve_method(name)
     assert isinstance(graph.primitives[0], SemilocalXCPrimitive)
     if exchange:
@@ -84,7 +89,7 @@ ORACLES = {
 
 
 @pytest.mark.parametrize("name", ORACLES)
-def test_p86_family_scalar_values_match_pyscf_libxc_oracle(name):
+def test_p86_family_scalar_values_match_pyscf_libxc_oracle(name: typing.Any) -> None:
     expected_p, expected_u = ORACLES[name]
     p_spec = resolve_method(name, spin="polarized").primitives[0].functional
     u_spec = resolve_method(name, spin="unpolarized").primitives[0].functional

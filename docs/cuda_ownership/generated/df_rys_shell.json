@@ -1,0 +1,8 @@
+{
+  "name": "df_rys_shell",
+  "outputs": [
+    "generated/generated_df_rys_shell.cuh",
+    "generated/generated_df_rys_policy.hpp"
+  ],
+  "owner": "python/vibeqc_compiler/integral/df_rys_shell.py"
+}

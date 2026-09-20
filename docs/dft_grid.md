@@ -144,8 +144,9 @@ for CPU fixed-input consumers (#235 A).
 ```python
 from vibeqc_compiler.dft import GridSpec, PreparedGrid
 
-with PreparedGrid(atoms, basis="sto-3g", spec=GridSpec(),
-                  tile_points=251, budget_bytes=256 << 20) as grid:
+with PreparedGrid(
+    atoms, basis="sto-3g", spec=GridSpec(), tile_points=251, budget_bytes=256 << 20
+) as grid:
     first = grid.integrate(density)  # spin electron counts and integrated tau
     grid.reconfigure(coordinates=new_coordinates)
     moved = grid.integrate(new_density)

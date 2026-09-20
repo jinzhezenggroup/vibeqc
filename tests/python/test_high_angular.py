@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess
 import time
+import typing
 
 import numpy as np
 import pytest
@@ -27,7 +28,7 @@ from vibeqc_compiler.integral.one_electron_values import evaluate_one_electron_p
 from tools.vibeqc_posthf.sources import NativeSource
 
 
-def test_capabilities_are_backend_operator_and_derivative_specific():
+def test_capabilities_are_backend_operator_and_derivative_specific() -> None:
     shells = [Shell(0, 4, (Primitive(0.7, 1),))]
     atoms = [("He", (0, 0, 0))]
     for role in ("orbital", "auxiliary"):
@@ -70,7 +71,9 @@ def test_capabilities_are_backend_operator_and_derivative_specific():
 
 @pytest.mark.parametrize("angular", [(4, 0), (0, 4), (4, 2), (4, 4)])
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
-def test_g_one_electron_all_components_libcint(family, angular):
+def test_g_one_electron_all_components_libcint(
+    family: typing.Any, angular: typing.Any
+) -> None:
     from test_one_electron_derivatives import (
         test_all_cartesian_derivatives_match_independent_libcint as derivatives,
     )
@@ -83,7 +86,7 @@ def test_g_one_electron_all_components_libcint(family, angular):
 
 
 @pytest.mark.parametrize("angular", [(4, 0), (4, 4), (4, 0, 0), (0, 0, 4), (2, 1, 4)])
-def test_g_df_independent_derivatives(angular):
+def test_g_df_independent_derivatives(angular: typing.Any) -> None:
     from test_df_derivatives import (
         test_physical_value_dag_derivatives_match_libcint as check,
     )
@@ -92,7 +95,9 @@ def test_g_df_independent_derivatives(angular):
 
 
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
-def test_g_contracted_raw_blocks_and_spherical_order(representation):
+def test_g_contracted_raw_blocks_and_spherical_order(
+    representation: typing.Any,
+) -> None:
     gto = pytest.importorskip("pyscf.gto")
     atoms = [("He", (0.2, -0.3, 0.1)), ("H", (-0.4, 0.15, 1.2))]
     basis = [
@@ -151,7 +156,7 @@ def test_g_contracted_raw_blocks_and_spherical_order(representation):
         )
 
 
-def molecular_basis(tmp_path, representation):
+def molecular_basis(tmp_path: typing.Any, representation: typing.Any) -> typing.Any:
     data = {
         "elements": {},
         "name": "heh-g-regression",
@@ -183,7 +188,7 @@ def molecular_basis(tmp_path, representation):
 
 
 @pytest.mark.parametrize("distance", [0.0, 1e-8, 3.0, 5.0, 12.0, 50.0])
-def test_native_gggg_boys_regimes(distance):
+def test_native_gggg_boys_regimes(distance: typing.Any) -> None:
     gto = pytest.importorskip("pyscf.gto")
     atoms = [("He", (0.0, 0.0, 0.0)), ("H", (distance, 0.0, 0.0))]
     basis = [Shell(0, 4, (Primitive(0.8, 1),)), Shell(1, 4, (Primitive(0.35, 1),))]
@@ -208,7 +213,9 @@ def test_native_gggg_boys_regimes(distance):
     reason="opt-in CPU g molecular endpoint",
 )
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
-def test_loaded_g_rhf_energy_and_forces(tmp_path, representation):
+def test_loaded_g_rhf_energy_and_forces(
+    tmp_path: typing.Any, representation: typing.Any
+) -> None:
     from pyscf import gto, scf
 
     atoms = [("He", (0.1, -0.2, -0.7)), ("H", (-0.2, 0.1, 0.7))]
@@ -252,7 +259,7 @@ def test_loaded_g_rhf_energy_and_forces(tmp_path, representation):
 
 
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
-def test_g_auxiliary_df_rhf_force_path(representation):
+def test_g_auxiliary_df_rhf_force_path(representation: typing.Any) -> None:
     pytest.importorskip("pyscf")
     from pyscf import gto, scf
 
@@ -305,7 +312,9 @@ def test_g_auxiliary_df_rhf_force_path(representation):
     "family",
     ["overlap", "kinetic", "nuclear_attraction", "coulomb_metric", "three_center_eri"],
 )
-def test_bounded_g_component_compiled_arithmetic(tmp_path, backend, family):
+def test_bounded_g_component_compiled_arithmetic(
+    tmp_path: typing.Any, backend: typing.Any, family: typing.Any
+) -> None:
     if backend == "cuda" and os.environ.get("VIBEQC_HIGH_L_CUDA_TEST") != "1":
         pytest.skip("opt-in allocated CUDA device")
     compiler = shutil.which("nvcc" if backend == "cuda" else "c++")
@@ -432,7 +441,9 @@ extern "C" int launch(const double* x, double* y) {{
             )
 
 
-def test_bounded_four_center_cpu_codegen_compiles_and_executes(tmp_path):
+def test_bounded_four_center_cpu_codegen_compiles_and_executes(
+    tmp_path: typing.Any,
+) -> None:
     """Lower one ERI component through the shared compiler DAG to native C++."""
 
     compiler = shutil.which("c++")

@@ -5,8 +5,8 @@ mathematical and schedule identities selected by policy."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from dataclasses import replace
+from typing import TYPE_CHECKING
 
 from ..benchmark import (
     emit_shell_class_benchmark_cuda,
@@ -21,8 +21,12 @@ from ..cuda_schedule import (
 from ..cuda_target import cuda_target_info, normalize_cuda_architecture
 from ..fused_schedule import build_fused_shell_plan
 from ..ir import KernelConsumer, build_integral_ir
-from ..shell_spec import ShellClassSpec
 from .policy import ScheduleTrial
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from ..shell_spec import ShellClassSpec
 
 
 def _class_name(spec: ShellClassSpec) -> str:

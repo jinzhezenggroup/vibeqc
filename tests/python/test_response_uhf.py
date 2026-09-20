@@ -1,5 +1,6 @@
 """Independent tests for the shared UHF response contract and operator."""
 
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -19,7 +20,7 @@ from tools.vibeqc_response import (
 )
 
 
-def _symmetric_eri(seed=179, nbf=4):
+def _symmetric_eri(seed: typing.Any = 179, nbf: typing.Any = 4) -> typing.Any:
     """Build a tiny chemists-ERI tensor with the required permutation symmetry."""
     rng = np.random.default_rng(seed)
     factors = rng.normal(scale=0.2, size=(nbf, nbf, nbf + 1))
@@ -27,7 +28,7 @@ def _symmetric_eri(seed=179, nbf=4):
     return np.einsum("pqP,rsP->pqrs", factors, factors, optimize=True)
 
 
-def _reference():
+def _reference() -> typing.Any:
     """Create a canonical two-spin fixture with distinct alpha/beta rotations."""
     nbf = 4
     overlap = np.eye(nbf)
@@ -52,7 +53,7 @@ def _reference():
     )
 
 
-def _expm_small(matrix, terms=18):
+def _expm_small(matrix: typing.Any, terms: typing.Any = 18) -> typing.Any:
     """Evaluate a tiny rotation exponential without depending on SciPy."""
     result = np.eye(matrix.shape[0])
     term = result.copy()
@@ -62,7 +63,12 @@ def _expm_small(matrix, terms=18):
     return result
 
 
-def _finite_action(reference, backend, vector, step=1e-6):
+def _finite_action(
+    reference: typing.Any,
+    backend: typing.Any,
+    vector: typing.Any,
+    step: typing.Any = 1e-6,
+) -> typing.Any:
     """Differentiate the UHF orbital gradient with an independent rotation.
 
     The fixture supplies canonical Focks.  We therefore construct a rotated
@@ -77,13 +83,13 @@ def _finite_action(reference, backend, vector, step=1e-6):
     alpha_occ, _ = layout.spaces("alpha")
     beta_occ, _ = layout.spaces("beta")
 
-    def density(coefficients, occupied):
+    def density(coefficients: typing.Any, occupied: typing.Any) -> typing.Any:
         return coefficients[:, occupied] @ coefficients[:, occupied].T
 
     base_alpha = density(reference.coefficients_alpha, alpha_occ)
     base_beta = density(reference.coefficients_beta, beta_occ)
 
-    def gradient(sign):
+    def gradient(sign: typing.Any) -> typing.Any:
         alpha = reference.coefficients_alpha @ _expm_small(
             -sign * step * alpha_generator
         )
@@ -110,7 +116,7 @@ def _finite_action(reference, backend, vector, step=1e-6):
     return (gradient(1.0) - gradient(-1.0)) / (2.0 * step)
 
 
-def test_uhf_matrix_free_action_matches_finite_rotation_and_transpose():
+def test_uhf_matrix_free_action_matches_finite_rotation_and_transpose() -> None:
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
     problem = UHFResponseOperator.build_problem(reference, backend)
@@ -124,7 +130,7 @@ def test_uhf_matrix_free_action_matches_finite_rotation_and_transpose():
     assert operator.dot_identity(left, right) < 1e-12
 
 
-def test_uhf_multirhs_and_recycling_reuse_the_shared_krylov_interface():
+def test_uhf_multirhs_and_recycling_reuse_the_shared_krylov_interface() -> None:
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
     problem = UHFResponseOperator.build_problem(reference, backend)
@@ -142,7 +148,9 @@ def test_uhf_multirhs_and_recycling_reuse_the_shared_krylov_interface():
 
 
 @pytest.mark.parametrize("backend_class", [CudaDFJKBackend, CudaDirectJKBackend])
-def test_uhf_response_rejects_an_unvalidated_cuda_backend(backend_class):
+def test_uhf_response_rejects_an_unvalidated_cuda_backend(
+    backend_class: typing.Any,
+) -> None:
     """The RHF-only CUDA DF plan cannot be promoted as UHF evidence."""
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
@@ -153,7 +161,7 @@ def test_uhf_response_rejects_an_unvalidated_cuda_backend(backend_class):
         UHFResponseOperator(problem, cuda_backend)
 
 
-def test_uhf_problem_rejects_stale_spin_reference_even_at_matching_dimension():
+def test_uhf_problem_rejects_stale_spin_reference_even_at_matching_dimension() -> None:
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
     problem = UHFResponseOperator.build_problem(reference, backend)
@@ -163,7 +171,7 @@ def test_uhf_problem_rejects_stale_spin_reference_even_at_matching_dimension():
         problem.assert_compatible(other)
 
 
-def test_uhf_operator_rejects_a_different_backend_with_matching_dimensions():
+def test_uhf_operator_rejects_a_different_backend_with_matching_dimensions() -> None:
     """A changed ERI Hamiltonian must not inherit an old recycle-space key."""
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
@@ -173,13 +181,13 @@ def test_uhf_operator_rejects_a_different_backend_with_matching_dimensions():
         UHFResponseOperator(problem, changed)
 
 
-def test_uhf_snapshot_rejects_reported_unconverged_residual():
+def test_uhf_snapshot_rejects_reported_unconverged_residual() -> None:
     """Canonical-looking orbitals cannot override a failed SCF diagnostic."""
     with pytest.raises(ValueError, match="scf_residual exceeds"):
         replace(_reference(), scf_residual=1e-4)
 
 
-def test_one_electron_doublet_has_a_zero_sized_beta_response_block():
+def test_one_electron_doublet_has_a_zero_sized_beta_response_block() -> None:
     """A physically valid N-beta=0 reference keeps its active alpha block."""
     reference = replace(
         _reference(),
@@ -202,7 +210,7 @@ def test_one_electron_doublet_has_a_zero_sized_beta_response_block():
     )
 
 
-def test_native_one_electron_uhf_export_accepts_an_empty_beta_spin():
+def test_native_one_electron_uhf_export_accepts_an_empty_beta_spin() -> None:
     """Export a real N-beta=0 SCF state through the response boundary."""
     from tools.vibeqc_posthf.export import export_uhf
     from tools.vibeqc_posthf.sources import NativeSource
@@ -240,7 +248,7 @@ def test_native_one_electron_uhf_export_accepts_an_empty_beta_spin():
             assert all(item.residual_norm == 0.0 for item in result.results)
 
 
-def test_native_open_shell_uhf_export_builds_a_response_problem():
+def test_native_open_shell_uhf_export_builds_a_response_problem() -> None:
     """Export Li doublet UHF from native SCF into the shared response layer."""
     from tools.vibeqc_posthf.export import export_uhf
     from tools.vibeqc_posthf.sources import NativeSource

@@ -9,6 +9,7 @@ authorized to substitute these blocks for its declared Hamiltonian.
 import json
 import threading
 import time
+import typing
 from dataclasses import dataclass
 from math import prod
 
@@ -53,7 +54,13 @@ class LowRankProvider:
     Recreate this view after refinement and rebuild dependent solver residuals.
     """
 
-    def __init__(self, factor, snapshot=None, *, budget=None):
+    def __init__(
+        self,
+        factor: typing.Any,
+        snapshot: typing.Any = None,
+        *,
+        budget: typing.Any = None,
+    ) -> None:
         if not isinstance(factor, IncrementalCholesky):
             raise TypeError("an incremental Coulomb factorization is required")
         self._factor = factor
@@ -81,14 +88,14 @@ class LowRankProvider:
                 raise ValueError("exact reference and target raw Coulomb source differ")
 
     @property
-    def factor(self):
+    def factor(self) -> typing.Any:
         return self._factor
 
     @property
-    def snapshot(self):
+    def snapshot(self) -> typing.Any:
         return self._snapshot
 
-    def _check(self):
+    def _check(self) -> None:
         if self._closed:
             raise RuntimeError("low-rank consumer is closed")
         if self.factor.identity != self._identity:
@@ -97,11 +104,11 @@ class LowRankProvider:
             )
 
     @property
-    def hamiltonian_id(self):
+    def hamiltonian_id(self) -> typing.Any:
         self._check()
         return self.factor.hamiltonian_id
 
-    def _plan(self, observable, elements):
+    def _plan(self, observable: typing.Any, elements: typing.Any) -> typing.Any:
         """Compose the single shared factor owner with one consumer operation."""
         request = ResourceRequest(
             "low_rank_consumer",
@@ -143,13 +150,13 @@ class LowRankProvider:
         plan.require_feasible()
         return plan
 
-    def _physical_factors(self):
+    def _physical_factors(self) -> typing.Any:
         for rank in range(self.factor.rank):
             yield self.factor.space.unpack(
                 self.factor.factor_tile(rank, 1, identity=self._identity)[0]
             )
 
-    def jk(self, density):
+    def jk(self, density: typing.Any) -> typing.Any:
         """Contract finite real symmetric densities without constructing AO**4."""
         with self._lock, self.factor._lock:
             self._check()
@@ -194,7 +201,7 @@ class LowRankProvider:
             )
             return result
 
-    def get(self, block):
+    def get(self, block: typing.Any) -> typing.Any:
         """Return chemists' MOBlock with distinct reference/approximation identities."""
         with self._lock, self.factor._lock:
             self._check()
@@ -244,13 +251,13 @@ class LowRankProvider:
                 },
             )
 
-    def close(self):
+    def close(self) -> None:
         with self._lock:
             self._closed = True
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         self._check()
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()

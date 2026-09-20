@@ -8,6 +8,7 @@ the existing exact FockPlan.solve, with its own fresh convergence history.
 
 import math
 import time
+import typing
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -31,7 +32,7 @@ class RefinementStage:
     maximum_rank: int | None = None
     residual_tolerance: float = 1e-5
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (
             isinstance(self.threshold, (bool, str))
             or not math.isfinite(self.threshold)
@@ -60,7 +61,7 @@ class RefinedRHFResult:
     diagnostics: dict
 
 
-def _validate_target(factor, target):
+def _validate_target(factor: typing.Any, target: typing.Any) -> typing.Any:
     """Require the same unscreened Coulomb operator, AO basis and ensemble."""
     if not isinstance(target, FockPlan):
         raise TypeError("exact cleanup requires the existing FockPlan")
@@ -88,16 +89,16 @@ def _validate_target(factor, target):
 
 
 def solve_refined_rhf(
-    factor,
-    target,
-    stages,
+    factor: typing.Any,
+    target: typing.Any,
+    stages: typing.Any,
     *,
-    damping=0.25,
-    compute_forces=True,
-    max_iterations=100,
-    energy_tolerance=1e-10,
-    density_tolerance=1e-8,
-):
+    damping: typing.Any = 0.25,
+    compute_forces: typing.Any = True,
+    max_iterations: typing.Any = 100,
+    energy_tolerance: typing.Any = 1e-10,
+    density_tolerance: typing.Any = 1e-8,
+) -> typing.Any:
     """Build a staged low-rank seed and reconverge the original target RHF.
 
     The caller owns ``factor`` and ``target``. Stages tighten monotonically and
@@ -151,7 +152,7 @@ def solve_refined_rhf(
         orthogonalizer = (vectors / np.sqrt(values)) @ vectors.T
         nocc = source.electron_count // 2
 
-        def occupied_density(fock):
+        def occupied_density(fock: typing.Any) -> typing.Any:
             _, coefficients = np.linalg.eigh(orthogonalizer @ fock @ orthogonalizer)
             occupied = orthogonalizer @ coefficients[:, :nocc]
             density = 2 * occupied @ occupied.T

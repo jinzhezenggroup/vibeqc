@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import typing
 from pathlib import Path
 
 # These are implementation boundaries, independent of #231's scientific CUDA
@@ -606,7 +607,7 @@ def audit_scf_structure(root: Path = ROOT) -> dict:
     return {"modules": modules, "edges": edges, "errors": errors}
 
 
-def main():
+def main() -> typing.Any:
     """Return failure for a dependency violation; expose an optional JSON inventory."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true")

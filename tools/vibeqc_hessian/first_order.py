@@ -7,6 +7,7 @@ molecular ERI Jacobian.
 """
 
 import shutil
+import typing
 from itertools import product
 from pathlib import Path
 
@@ -34,7 +35,7 @@ RHF_FIRST_ERI_TERMS = (
 )
 
 
-def checked_direction(direction, natoms):
+def checked_direction(direction: typing.Any, natoms: typing.Any) -> typing.Any:
     """Own a finite real Cartesian direction; do not normalize its magnitude."""
     value = np.asarray(direction)
     if (
@@ -49,7 +50,9 @@ def checked_direction(direction, natoms):
     return value
 
 
-def _checked_ao_weight(value, nbf, name):
+def _checked_ao_weight(
+    value: typing.Any, nbf: typing.Any, name: typing.Any
+) -> typing.Any:
     array = np.asarray(value)
     if (
         array.shape != (nbf, nbf)
@@ -66,7 +69,7 @@ def _checked_ao_weight(value, nbf, name):
 class _FirstDerivativeProvider:
     """Shared bounded CPU evaluator for matrix and weighted scalar consumers."""
 
-    def __init__(self, state):
+    def __init__(self, state: typing.Any) -> None:
         if not isinstance(state, NativeRHFState):
             raise TypeError("generated Hessian sources require NativeRHFState")
         state.validate()
@@ -79,7 +82,9 @@ class _FirstDerivativeProvider:
         self.primitives = state.primitives
         self.coords = state.coords
 
-    def raw_tiles(self, ir, slots, atom_indices):
+    def raw_tiles(
+        self, ir: typing.Any, slots: typing.Any, atom_indices: typing.Any
+    ) -> typing.Any:
         angular = ir.signature.angular
         count = ir.signature.component_count
         component_shape = ir.signature.component_shape
@@ -112,12 +117,14 @@ class _FirstDerivativeProvider:
                 )
 
 
-def generated_first_order(state):
+def generated_first_order(state: typing.Any) -> typing.Any:
     """Return frozen-Fock and overlap derivatives in (atom,xyz,AO,AO) order."""
     return _generated_first_order(state)
 
 
-def generated_directional_first_order(state, direction):
+def generated_directional_first_order(
+    state: typing.Any, direction: typing.Any
+) -> typing.Any:
     """Contract a direction shell-locally into H1(v)/S1(v), each (AO,AO).
 
     The same generated primitive derivatives supply the full and directional
@@ -131,7 +138,9 @@ def generated_directional_first_order(state, direction):
     return _generated_first_order(state, checked_direction(direction, state.nat))
 
 
-def _generated_first_order(state, direction=None):
+def _generated_first_order(
+    state: typing.Any, direction: typing.Any = None
+) -> typing.Any:
     provider = _FirstDerivativeProvider(state)
     shells, offsets = provider.shells, provider.offsets
     density = state.P0
@@ -142,7 +151,14 @@ def _generated_first_order(state, direction=None):
     if direction is not None and not np.any(direction):
         return frozen, overlap
 
-    def accumulate(out, atoms, derivative, u, v, coefficient=1.0):
+    def accumulate(
+        out: typing.Any,
+        atoms: typing.Any,
+        derivative: typing.Any,
+        u: typing.Any,
+        v: typing.Any,
+        coefficient: typing.Any = 1.0,
+    ) -> None:
         if direction is not None:
             out[u, v] += coefficient * np.einsum(
                 "ca,ca->", derivative, direction[list(atoms)]
@@ -193,8 +209,10 @@ def _generated_first_order(state, direction=None):
 
 
 def generated_rhf_relaxation_contraction(
-    state, density_response, energy_weighted_density_response
-):
+    state: typing.Any,
+    density_response: typing.Any,
+    energy_weighted_density_response: typing.Any,
+) -> typing.Any:
     """Return the first-integral part of a complete RHF molecular HVP.
 
     For a solved directional response this contracts, for every output nuclear
@@ -220,7 +238,9 @@ def generated_rhf_relaxation_contraction(
     density = state.P0
     result = np.zeros((state.nat, 3), dtype=np.float64)
 
-    def accumulate(atoms, derivative, coefficient):
+    def accumulate(
+        atoms: typing.Any, derivative: typing.Any, coefficient: typing.Any
+    ) -> None:
         if coefficient == 0:
             return
         for center, atom in enumerate(atoms):

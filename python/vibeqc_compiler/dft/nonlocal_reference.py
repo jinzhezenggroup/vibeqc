@@ -8,6 +8,7 @@ the diagnostic memory bound explicit.
 from __future__ import annotations
 
 import math
+import typing
 from functools import wraps
 
 import numpy as np
@@ -15,16 +16,16 @@ import numpy as np
 from vibeqc_compiler.common.nonlocal_correlation import NonlocalCorrelationSpec
 
 
-def _real_array(value, name):
+def _real_array(value: typing.Any, name: typing.Any) -> typing.Any:
     raw = np.asarray(value)
     if np.iscomplexobj(raw):
         raise ValueError(f"{name} must be real")
     return np.asarray(raw, dtype=np.float64)
 
 
-def _finite_arithmetic(function):
+def _finite_arithmetic(function: typing.Any) -> typing.Any:
     @wraps(function)
-    def checked(*args, **kwargs):
+    def checked(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         with np.errstate(over="raise", invalid="raise", divide="raise"):
             result = function(*args, **kwargs)
         if not np.isfinite(result).all():
@@ -34,7 +35,9 @@ def _finite_arithmetic(function):
     return checked
 
 
-def _validated_arrays(coords, weights, density, gradient):
+def _validated_arrays(
+    coords: typing.Any, weights: typing.Any, density: typing.Any, gradient: typing.Any
+) -> typing.Any:
     coords = _real_array(coords, "coordinates")
     weights = _real_array(weights, "weights")
     density = _real_array(density, "density")
@@ -61,7 +64,9 @@ def _validated_arrays(coords, weights, density, gradient):
     return coords, weights, density, gradient
 
 
-def _local_scales(density, gradient, spec):
+def _local_scales(
+    density: typing.Any, gradient: typing.Any, spec: typing.Any
+) -> typing.Any:
     if not isinstance(spec, NonlocalCorrelationSpec):
         raise TypeError("spec requires NonlocalCorrelationSpec")
     b = float(spec.b)
@@ -86,7 +91,14 @@ def _local_scales(density, gradient, spec):
     return omega, kappa, float(beta)
 
 
-def _pair_kernel(r2, wi, wj, ki, kj, spec):
+def _pair_kernel(
+    r2: typing.Any,
+    wi: typing.Any,
+    wj: typing.Any,
+    ki: typing.Any,
+    kj: typing.Any,
+    spec: typing.Any,
+) -> typing.Any:
     if spec.variant == "rvv10":
         # Sabatini et al., PRB 87, 041108 (2013), Eqs. (4)-(6).
         # Restore the kappa**(-3/2) factors to the ordinary density measure.
@@ -98,8 +110,13 @@ def _pair_kernel(r2, wi, wj, ki, kj, spec):
 
 @_finite_arithmetic
 def nonlocal_kernel_matrix_reference(
-    coords, density, gradient, spec, *, max_points=512
-):
+    coords: typing.Any,
+    density: typing.Any,
+    gradient: typing.Any,
+    spec: typing.Any,
+    *,
+    max_points: typing.Any = 512,
+) -> typing.Any:
     """Materialize the small-grid pair kernel for symmetry diagnostics only."""
     coords = _real_array(coords, "coordinates")
     density = _real_array(density, "density")
@@ -120,14 +137,14 @@ def nonlocal_kernel_matrix_reference(
 
 @_finite_arithmetic
 def nonlocal_energy_density_reference(
-    coords,
-    weights,
-    density,
-    gradient,
-    spec,
+    coords: typing.Any,
+    weights: typing.Any,
+    density: typing.Any,
+    gradient: typing.Any,
+    spec: typing.Any,
     *,
-    tile_size=256,
-):
+    tile_size: typing.Any = 256,
+) -> typing.Any:
     """Return VV10-family nonlocal correlation energy per electron on the grid."""
     coords, weights, density, gradient = _validated_arrays(
         coords, weights, density, gradient
@@ -160,14 +177,14 @@ def nonlocal_energy_density_reference(
 
 @_finite_arithmetic
 def nonlocal_energy_reference(
-    coords,
-    weights,
-    density,
-    gradient,
-    spec,
+    coords: typing.Any,
+    weights: typing.Any,
+    density: typing.Any,
+    gradient: typing.Any,
+    spec: typing.Any,
     *,
-    tile_size=256,
-):
+    tile_size: typing.Any = 256,
+) -> typing.Any:
     """Evaluate the fixed-grid VV10/rVV10 nonlocal correlation energy in Eh."""
     _, weights, density, _ = _validated_arrays(coords, weights, density, gradient)
     eps = nonlocal_energy_density_reference(
@@ -183,14 +200,14 @@ def nonlocal_energy_reference(
 
 @_finite_arithmetic
 def nonlocal_feature_derivatives_reference(
-    coords,
-    weights,
-    density,
-    gradient,
-    spec,
+    coords: typing.Any,
+    weights: typing.Any,
+    density: typing.Any,
+    gradient: typing.Any,
+    spec: typing.Any,
     *,
-    tile_size=256,
-):
+    tile_size: typing.Any = 256,
+) -> typing.Any:
     """Return fixed-grid derivatives dE/d(rho,sigma) before quadrature weights."""
     coords, weights, density, gradient = _validated_arrays(
         coords, weights, density, gradient
@@ -246,12 +263,12 @@ def nonlocal_feature_derivatives_reference(
 
 @_finite_arithmetic
 def assemble_nonlocal_potential_reference(
-    jets,
-    weights,
-    density_gradient,
-    vrho,
-    vsigma,
-):
+    jets: typing.Any,
+    weights: typing.Any,
+    density_gradient: typing.Any,
+    vrho: typing.Any,
+    vsigma: typing.Any,
+) -> typing.Any:
     """Assemble the total-density AO matrix for a fixed-grid VV10 potential."""
     jets = _real_array(jets, "jets")
     weights = _real_array(weights, "weights")

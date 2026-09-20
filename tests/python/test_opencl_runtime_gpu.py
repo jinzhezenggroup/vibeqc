@@ -2,6 +2,7 @@
 
 import ctypes as c
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -26,13 +27,13 @@ __kernel void scale(__global const double* input, __global double* output, ulong
 
 
 @pytest.fixture
-def runtime():
+def runtime() -> typing.Any:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     with OpenCLRuntime(library=os.environ.get("VIBEQC_OPENCL_LIBRARY")) as context:
         yield context
 
 
-def test_transfers_bounds_and_context_ownership(runtime):
+def test_transfers_bounds_and_context_ownership(runtime: typing.Any) -> None:
     data = np.arange(17, dtype=np.float64)
     buffer = runtime.allocate(data.nbytes)
     runtime.write(buffer, data.tobytes())
@@ -53,7 +54,9 @@ def test_transfers_bounds_and_context_ownership(runtime):
         runtime.read(buffer, 8)
 
 
-def test_compile_failure_releases_failed_program_and_retains_diagnostics(runtime):
+def test_compile_failure_releases_failed_program_and_retains_diagnostics(
+    runtime: typing.Any,
+) -> None:
     before = len(runtime._resources)
     with pytest.raises(OpenCLError) as failed:
         runtime.compile("__kernel void broken( { definitely invalid")
@@ -66,8 +69,8 @@ def test_compile_failure_releases_failed_program_and_retains_diagnostics(runtime
 
 
 def test_cross_queue_events_retain_buffers_and_execute_partial_workgroups(
-    runtime, monkeypatch
-):
+    runtime: typing.Any, monkeypatch: typing.Any
+) -> None:
     program = runtime.compile(SOURCE)
     executable = runtime.link((program,))
     data = np.arange(17, dtype=np.float64)
@@ -82,7 +85,7 @@ def test_cross_queue_events_retain_buffers_and_execute_partial_workgroups(
     flushed = []
     native_flush = runtime.api.clFlush
 
-    def flush(queue):
+    def flush(queue: typing.Any) -> typing.Any:
         flushed.append(queue)
         return native_flush(queue)
 
@@ -107,7 +110,9 @@ def test_cross_queue_events_retain_buffers_and_execute_partial_workgroups(
         runtime.release(item)
 
 
-def test_unsupported_graphs_and_invalid_launches_fail_before_enqueue(runtime):
+def test_unsupported_graphs_and_invalid_launches_fail_before_enqueue(
+    runtime: typing.Any,
+) -> None:
     target = runtime.target_info()
     assert target.backend == "opencl" and target.maximum_resident_workgroups is None
     with pytest.raises(UnsupportedBackendFeature, match="GEMM"):
@@ -132,8 +137,8 @@ def test_unsupported_graphs_and_invalid_launches_fail_before_enqueue(runtime):
 
 @pytest.mark.parametrize("count,workgroup", [(1, 16), (17, 32), (8197, 64)])
 def test_fp64_reduction_stays_on_device_across_partial_levels(
-    runtime, count, workgroup
-):
+    runtime: typing.Any, count: typing.Any, workgroup: typing.Any
+) -> None:
     data = np.arange(count, dtype=np.float64) - 11
     source = runtime.allocate(data.nbytes)
     runtime.write(source, data.tobytes())
@@ -145,12 +150,14 @@ def test_fp64_reduction_stays_on_device_across_partial_levels(
     runtime.release(source)
 
 
-def test_close_attempts_all_releases_after_vendor_finish_error(runtime, monkeypatch):
+def test_close_attempts_all_releases_after_vendor_finish_error(
+    runtime: typing.Any, monkeypatch: typing.Any
+) -> None:
     buffer = runtime.allocate(8)
     released = []
     native_release = runtime.api.clReleaseMemObject
 
-    def release(handle):
+    def release(handle: typing.Any) -> typing.Any:
         released.append(handle)
         return native_release(handle)
 
@@ -165,14 +172,14 @@ def test_close_attempts_all_releases_after_vendor_finish_error(runtime, monkeypa
 
 
 def test_reduction_terminal_execution_error_releases_intermediates(
-    runtime, monkeypatch
-):
+    runtime: typing.Any, monkeypatch: typing.Any
+) -> None:
     source = runtime.allocate(17 * 8)
     runtime.write(source, np.arange(17, dtype=np.float64).tobytes())
     before = set(runtime._resources)
     native_wait = runtime.api.clWaitForEvents
 
-    def fail_after_completion(count, events):
+    def fail_after_completion(count: typing.Any, events: typing.Any) -> typing.Any:
         assert native_wait(count, events) == 0
         return -14
 

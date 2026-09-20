@@ -6,7 +6,7 @@ import json
 import os
 import shutil
 import tempfile
-from collections.abc import Mapping, Sequence
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -42,6 +42,9 @@ from .cpu_schedule import (
 )
 from .expr import AlgebraForm, AlgebraFusion, AlgebraOrdering, PowerLowering
 from .ir_serialization import integral_from_payload, integral_to_payload
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 
 def _required_int(payload: Mapping[str, object], key: str) -> int:
@@ -169,7 +172,7 @@ class CompiledFirstDerivativeCpuBundle:
                 ) from exc
 
     @property
-    def integral(self):
+    def integral(self) -> typing.Any:
         return self.candidates[0].integral
 
     @property
@@ -329,11 +332,11 @@ def _default_bundle_targets(compiler: CppCompilerAdapter) -> tuple[CpuTargetInfo
 
 
 def compile_first_derivative_cpu_bundle(
-    integral,
-    compiler,
-    cache,
+    integral: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
     *,
-    component_indices,
+    component_indices: typing.Any,
     targets: Sequence[CpuTargetInfo] | None = None,
     schedules: Mapping[str, CpuScheduleIR] | None = None,
 ) -> CompiledFirstDerivativeCpuBundle:
@@ -376,7 +379,7 @@ class FirstDerivativeCpuDispatchEvaluator:
         forced_target: str | None = None,
         record_capacity: int = 128,
         budget_bytes: int = 1 << 20,
-    ):
+    ) -> None:
         if not isinstance(bundle, CompiledFirstDerivativeCpuBundle):
             raise TypeError("CPU dispatch evaluator requires a compiled bundle")
         bundle.validate()
@@ -423,5 +426,5 @@ class FirstDerivativeCpuDispatchEvaluator:
             },
         }
 
-    def contract(self, primitives, centers):
+    def contract(self, primitives: typing.Any, centers: typing.Any) -> typing.Any:
         return self.selected.contract(primitives, centers)

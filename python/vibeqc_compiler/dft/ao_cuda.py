@@ -5,6 +5,8 @@ coefficients. The shared scalar DAG differentiates Gaussian polynomial factors
 at build time; CUDA traversal, maps, buffers and matrix calls remain runtime.
 """
 
+import typing
+
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.integral.cuda import CudaEmitter
@@ -14,7 +16,7 @@ from .ao import jet_indices
 from .feature_policy import emit_feature_policy
 
 
-def axis_expression(power, derivative):
+def axis_expression(power: typing.Any, derivative: typing.Any) -> typing.Any:
     """Return exp(+a*x*x) d^d[x^l exp(-a*x*x)] as a scalar polynomial.
 
     Keeping the exponential outside avoids division by an underflowed radial
@@ -36,7 +38,7 @@ def axis_expression(power, derivative):
     return graph, root
 
 
-def emit_grid_policy():
+def emit_grid_policy() -> typing.Any:
     """Emit through-f/order-three AO factors and spin feature contractions.
 
     The same policy serves dense and selected-column execution. Adding an AO
@@ -70,7 +72,7 @@ def emit_grid_policy():
     return "\n".join(lines)
 
 
-def emit_grid_source(*, native_ks=False):
+def emit_grid_source(*, native_ks: typing.Any = False) -> typing.Any:
     """Compose one AO policy with the grid runtime and optional resident KS glue.
 
     The native library additionally instantiates its borrowed-buffer XC kernels.

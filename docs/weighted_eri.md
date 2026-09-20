@@ -19,7 +19,7 @@ source emission alone does not select a production route.
 | Direct HF psss force | Handwritten weighted PA/PQ dot products, F0/F1/F2 once per primitive pair product | Default remains handwritten; `VIBEQC_PSSS_WEIGHTED=generated` substitutes only its primitive weighted expression |
 | Direct HF psss resident force | Resident bra pairs and primitive-length descriptors | `VIBEQC_PSSS_RESIDENT_BRA`; the generated expression uses the same resident pairs and canonical-orientation scales |
 | Bounded direct psss force | Lossless paged exact-class consumer | `VIBEQC_BOUNDED_DIRECT_STREAMING=force` or topology limits; uses the same weighted expression, retains page traversal |
-| Direct HF ssss force | Handwritten low-order expression | Remains a future migration candidate; generated Fock support is a separate consumer |
+| Direct HF ssss force | Handwritten cache-specialized low-order expression | Native remains the production default; the generated `sm_120` force consumer is compiled for A/B and selected only with `VIBEQC_SSSS_FORCE=generated` until #356's complete endpoint gate passes |
 | Direct HF psps/ppss | Common generated production kernels | Already migrated before this issue; manifest, signature policies and queues are retained |
 | Other direct HF classes | Manifest-selected generated kernels plus validated native fallbacks | Registry selects by architecture, consumer and class; no manifest rows added here |
 | External psss weights | Generated precontracted Hermite DAG | One primitive record carries all x/y/z weights; optional independent fallback |

@@ -7,18 +7,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cache
+from typing import TYPE_CHECKING
 
 from ..cuda_schedule import (
     ScheduleIR,
     ScheduleKind,
     tuning_schedule_candidates,
 )
-from ..cuda_target import CudaTargetInfo
 from ..ir import IntegralIR, KernelConsumer, build_integral_ir
 from ..production import load_production_kernel_selections
-from ..shell_spec import ShellClassSpec
 from .analysis import StaticAlgebraModel, _integral_signature, static_algebra_model
 from .shared import _PRODUCTION_MANIFEST_PATH
+
+if TYPE_CHECKING:
+    from ..cuda_target import CudaTargetInfo
+    from ..shell_spec import ShellClassSpec
 
 
 @dataclass(frozen=True, slots=True)

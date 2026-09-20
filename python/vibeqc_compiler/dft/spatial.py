@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import math
+import typing
 from dataclasses import asdict, dataclass, field
 from hashlib import sha256
 
@@ -31,7 +32,7 @@ from .envelopes import ao_region_envelopes, derivative_domain
 from .grid import ExplicitGrid, checked_int
 
 
-def _indices(values):
+def _indices(values: typing.Any) -> typing.Any:
     """Own irreversibly immutable native int64 maps, without float conversion."""
     raw = np.asarray(values)
     if raw.ndim != 1 or (
@@ -47,7 +48,7 @@ def _indices(values):
     return np.frombuffer(array.tobytes(), dtype=np.int64).reshape(array.shape)
 
 
-def _ao_shell_map(basis):
+def _ao_shell_map(basis: typing.Any) -> typing.Any:
     """Derive topology from the existing public shell representation only."""
     sizes = [
         2 * s.angular_momentum + 1
@@ -61,7 +62,7 @@ def _ao_shell_map(basis):
     return result
 
 
-def _generation(basis, grid, policy):
+def _generation(basis: typing.Any, grid: typing.Any, policy: typing.Any) -> typing.Any:
     return canonical_hash(
         {
             "schema": "vibeqc.spatial-tasks.v1",
@@ -92,7 +93,7 @@ class SpatialPolicy:
     cutoff: float = 0.0
     version: int = 1
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         checked_int(self.region_points, "spatial region points")
         checked_int(self.version, "spatial policy version", high=1)
         object.__setattr__(self, "derivatives", derivative_domain(self.derivatives))
@@ -128,7 +129,7 @@ class SpatialTask:
     generation_id: str
     identity: str = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for name in ("point_ids", "active_shell_ids", "ao_ids"):
             indices = _indices(getattr(self, name))
             if len(np.unique(indices)) != len(indices):
@@ -164,7 +165,7 @@ class SpatialTask:
         )
 
     @property
-    def numeric_bytes(self):
+    def numeric_bytes(self) -> typing.Any:
         return sum(
             a.nbytes
             for a in (
@@ -188,7 +189,7 @@ class SpatialTasks:
     generation_id: str
     resource_plan: object
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         tasks = tuple(self.tasks)
         if not isinstance(self.policy, SpatialPolicy) or any(
             not isinstance(t, SpatialTask) for t in tasks
@@ -196,7 +197,7 @@ class SpatialTasks:
             raise TypeError("spatial inventory requires typed policy and tasks")
         object.__setattr__(self, "tasks", tasks)
 
-    def validate(self, basis, grid):
+    def validate(self, basis: typing.Any, grid: typing.Any) -> None:
         """Validate a task inventory before preparing an execution owner.
 
         This includes O(points) map validation; a prepared owner may retain the
@@ -262,11 +263,11 @@ class SpatialTasks:
             )
 
     @property
-    def numeric_bytes(self):
+    def numeric_bytes(self) -> typing.Any:
         return sum(task.numeric_bytes for task in self.tasks)
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         """Bind actual point/mask membership as well as the construction policy.
 
         A caller-supplied conservative task inventory may retain extra AOs.
@@ -280,7 +281,9 @@ class SpatialTasks:
         )
 
 
-def spatial_resource_request(basis, grid, policy):
+def spatial_resource_request(
+    basis: typing.Any, grid: typing.Any, policy: typing.Any
+) -> typing.Any:
     """Preflight O(points + regions*AO) metadata through the existing planner.
 
     Retained maps are conservatively sized for all AOs in every region.
@@ -334,7 +337,13 @@ def spatial_resource_request(basis, grid, policy):
     )
 
 
-def build_spatial_tasks(basis, grid, *, policy=None, budget=None):
+def build_spatial_tasks(
+    basis: typing.Any,
+    grid: typing.Any,
+    *,
+    policy: typing.Any = None,
+    budget: typing.Any = None,
+) -> typing.Any:
     """Build deterministic local-dense candidates from an explicit quadrature.
 
     Screening-off changes only point order. Screened tasks omit an AO only

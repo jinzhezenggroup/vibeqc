@@ -9,12 +9,14 @@ and returns the occupied-major/virtual-minor layout consumed by
 
 from __future__ import annotations
 
+import typing
+
 import numpy as np
 
 __all__ = ["build_rhf_nuclear_rhs", "metric_density_response_mo"]
 
 
-def _finite_matrix(values, *, name: str, nmo: int) -> np.ndarray:
+def _finite_matrix(values: typing.Any, *, name: str, nmo: int) -> np.ndarray:
     array = np.asarray(values, dtype=np.float64)
     if array.shape != (nmo, nmo):
         raise ValueError(f"{name} must have shape ({nmo}, {nmo}), got {array.shape}")
@@ -23,7 +25,7 @@ def _finite_matrix(values, *, name: str, nmo: int) -> np.ndarray:
     return array
 
 
-def _orbital_energies(values, *, nmo: int) -> np.ndarray:
+def _orbital_energies(values: typing.Any, *, nmo: int) -> np.ndarray:
     array = np.asarray(values, dtype=np.float64)
     if array.shape != (nmo,):
         raise ValueError(
@@ -34,7 +36,9 @@ def _orbital_energies(values, *, nmo: int) -> np.ndarray:
     return array
 
 
-def metric_density_response_mo(overlap_derivative_mo, *, nocc: int) -> np.ndarray:
+def metric_density_response_mo(
+    overlap_derivative_mo: typing.Any, *, nocc: int
+) -> np.ndarray:
     """Return the known MO density connection ``-1/2 (S_R D + D S_R)``.
 
     ``D`` is the closed-shell occupation matrix with value 2 on occupied
@@ -57,10 +61,10 @@ def metric_density_response_mo(overlap_derivative_mo, *, nocc: int) -> np.ndarra
 
 
 def build_rhf_nuclear_rhs(
-    frozen_fock_derivative_mo,
-    overlap_derivative_mo,
-    metric_fock_response_mo,
-    orbital_energies,
+    frozen_fock_derivative_mo: typing.Any,
+    overlap_derivative_mo: typing.Any,
+    metric_fock_response_mo: typing.Any,
+    orbital_energies: typing.Any,
     *,
     nocc: int,
 ) -> np.ndarray:

@@ -15,7 +15,7 @@ from vibeqc_compiler.method.matrix_function_cuda import (
 from tools.generate_df_kernels import write_if_changed
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()

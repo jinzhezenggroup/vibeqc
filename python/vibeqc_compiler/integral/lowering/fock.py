@@ -6,17 +6,12 @@ and component-lane implementations are delegated to their dedicated modules."""
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from ..cuda_schedule import (
     PairOrientation,
     PairStorage,
     ScheduleKind,
-)
-from ..fused_schedule import (
-    FusedShellPlan,
-)
-from ..shell_spec import (
-    ShellClassSpec,
 )
 from .algebra import _emit_triple_pair_matchings
 from .common import (
@@ -30,6 +25,14 @@ from .fock_tiled import (
     _emit_subgroup_fock_consumer_cuda,
 )
 from .selection import _supports_rys_component_lane_fock
+
+if TYPE_CHECKING:
+    from ..fused_schedule import (
+        FusedShellPlan,
+    )
+    from ..shell_spec import (
+        ShellClassSpec,
+    )
 
 
 def _emit_shell_class_fock_cuda(

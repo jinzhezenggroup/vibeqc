@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/df_jk_kernels.hpp",
+  "role": "runtime",
+  "subsystem": "scf_tensor",
+  "reason": "DF runtime storage/launch boundary extracted without changing arithmetic or ownership.",
+  "regions": []
+}

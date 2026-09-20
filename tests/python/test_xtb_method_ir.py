@@ -1,6 +1,7 @@
 """Canonical XtbMethodSpec -> XtbMethodIR composition gates for #503."""
 
 import json
+import typing
 from dataclasses import replace
 
 import pytest
@@ -15,7 +16,7 @@ from vibeqc_compiler.method import (
 )
 
 
-def test_gfn2_manifest_resolves_complete_canonical_graph():
+def test_gfn2_manifest_resolves_complete_canonical_graph() -> None:
     method = resolve_xtb_method(
         "GFN2-xTB",
         requested_products=("nuclear-gradient", "energy"),
@@ -79,7 +80,7 @@ def test_gfn2_manifest_resolves_complete_canonical_graph():
     }
 
 
-def test_equivalent_manifests_have_stable_semantic_identity():
+def test_equivalent_manifests_have_stable_semantic_identity() -> None:
     equivalent_parameters = XtbParameterSet(
         identifier=GFN2_PARAMETER_SET.identifier,
         revision=GFN2_PARAMETER_SET.revision,
@@ -114,7 +115,7 @@ def test_equivalent_manifests_have_stable_semantic_identity():
     assert left.manifest_identity != right.manifest_identity
 
 
-def test_parameter_provenance_reference_and_products_change_identity():
+def test_parameter_provenance_reference_and_products_change_identity() -> None:
     baseline = resolve_xtb_method("GFN2-xTB")
 
     revised_parameters = replace(
@@ -134,7 +135,7 @@ def test_parameter_provenance_reference_and_products_change_identity():
     assert gradient.identity != baseline.identity
 
 
-def test_runtime_requirements_do_not_smuggle_scc_policy_into_ir():
+def test_runtime_requirements_do_not_smuggle_scc_policy_into_ir() -> None:
     payload = resolve_xtb_method("GFN2-xTB").to_payload()
     encoded = json.dumps(payload, sort_keys=True).lower()
 
@@ -153,7 +154,7 @@ def test_runtime_requirements_do_not_smuggle_scc_policy_into_ir():
         assert forbidden not in encoded
 
 
-def test_gfn2_parameter_manifest_fails_closed():
+def test_gfn2_parameter_manifest_fails_closed() -> None:
     wrong_name = replace(GFN2_PARAMETER_SET, identifier="gfn2-like")
     with pytest.raises(UnsupportedXtbMethod, match="identified gfn2-xtb"):
         resolve_xtb_method(XtbMethodSpec("bad-name", "gfn2", wrong_name))
@@ -181,7 +182,9 @@ def test_gfn2_parameter_manifest_fails_closed():
         ({"basis_tables": ("slater-exponents", "slater-exponents")}, "duplicate"),
     ],
 )
-def test_ambiguous_parameter_manifests_are_rejected_at_construction(kwargs, match):
+def test_ambiguous_parameter_manifests_are_rejected_at_construction(
+    kwargs: typing.Any, match: typing.Any
+) -> None:
     payload = {
         "identifier": "test",
         "revision": "test-v1",
@@ -196,7 +199,7 @@ def test_ambiguous_parameter_manifests_are_rejected_at_construction(kwargs, matc
         XtbParameterSet(**payload)
 
 
-def test_gfn1_is_an_extension_point_not_claimed_capability():
+def test_gfn1_is_an_extension_point_not_claimed_capability() -> None:
     spec = XtbMethodSpec(
         "GFN1-extension-only",
         "gfn1",
@@ -206,7 +209,7 @@ def test_gfn1_is_an_extension_point_not_claimed_capability():
         resolve_xtb_method(spec)
 
 
-def test_unknown_products_and_names_fail_closed():
+def test_unknown_products_and_names_fail_closed() -> None:
     with pytest.raises(UnsupportedXtbMethod, match="unknown xTB method"):
         resolve_xtb_method("gfn2-xtb")
     with pytest.raises(UnsupportedXtbMethod, match="unsupported compiler products"):
@@ -225,7 +228,7 @@ def test_unknown_products_and_names_fail_closed():
         )
 
 
-def test_incomplete_direct_ir_is_rejected():
+def test_incomplete_direct_ir_is_rejected() -> None:
     complete = resolve_xtb_method("GFN2-xTB")
     with pytest.raises(UnsupportedXtbMethod, match="complete canonical"):
         XtbMethodIR(
@@ -238,7 +241,7 @@ def test_incomplete_direct_ir_is_rejected():
         )
 
 
-def test_catalog_is_read_only_and_payload_is_json_serializable():
+def test_catalog_is_read_only_and_payload_is_json_serializable() -> None:
     with pytest.raises(TypeError):
         XTB_METHOD_CATALOG["GFN2-xTB"] = XTB_METHOD_CATALOG["GFN2-xTB"]
 
@@ -259,7 +262,9 @@ def test_catalog_is_read_only_and_payload_is_json_serializable():
         {"derivative_capabilities": ("energy",)},
     ],
 )
-def test_direct_gfn2_graph_cannot_change_audited_primitive_semantics(changes):
+def test_direct_gfn2_graph_cannot_change_audited_primitive_semantics(
+    changes: typing.Any,
+) -> None:
     method = resolve_xtb_method("GFN2-xTB")
     primitives = (*method.primitives[:-1], replace(method.primitives[-1], **changes))
     with pytest.raises(UnsupportedXtbMethod, match="audited primitive semantics"):

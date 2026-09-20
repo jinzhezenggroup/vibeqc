@@ -7,7 +7,7 @@ remaining template preserves byte-identical generated CUDA and ABI layouts."""
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from ..capabilities import CAPABILITY_MIXED_FOCK
 from ..cuda_schedule import (
@@ -16,7 +16,6 @@ from ..cuda_schedule import (
     ScheduleIR,
     ScheduleKind,
 )
-from ..cuda_target import CudaTargetInfo
 from ..fused_schedule import (
     FusedShellPlan,
     build_fused_shell_plan,
@@ -49,6 +48,11 @@ from .force_rys_thread import _emit_rys_thread_force_consumer_cuda
 from .force_rys_uniform import _emit_rys_uniform_warp_force_consumer_cuda
 from .force_subgroup import _emit_subgroup_force_consumer_cuda
 from .shared import _AXIS_INDEX
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from ..cuda_target import CudaTargetInfo
 
 
 def emit_shell_class_fused_cuda(

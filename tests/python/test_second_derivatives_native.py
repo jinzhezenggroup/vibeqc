@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -39,7 +40,7 @@ EXPONENTS = (0.6, 0.8, 1.1, 0.9)
 
 
 @pytest.fixture(scope="module", params=("cpu", "cuda"))
-def compiler(request, tmp_path_factory):
+def compiler(request: typing.Any, tmp_path_factory: typing.Any) -> typing.Any:
     """Compile with the common adapter; every actual CUDA call requires Slurm."""
     cuda = request.param == "cuda"
     if cuda and os.environ.get("VIBEQC_TEST_SECOND_CUDA") != "1":
@@ -57,7 +58,7 @@ def compiler(request, tmp_path_factory):
     return adapter, tmp_path_factory.mktemp(f"second-runtime-{request.param}")
 
 
-def fixture(family, output):
+def fixture(family: typing.Any, output: typing.Any) -> typing.Any:
     """Asymmetric primitive fixtures with distinct packed signed weights."""
     ir = (
         build_eri_second_ir((2, 1, 0, 1), output=output)
@@ -84,7 +85,9 @@ def fixture(family, output):
 
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction", "eri"])
 @pytest.mark.parametrize("output", ["raw_hessian", "weighted_hessian", "weighted_hvp"])
-def test_native_tiles_match_independent_analytic_hessian(compiler, family, output):
+def test_native_tiles_match_independent_analytic_hessian(
+    compiler: typing.Any, family: typing.Any, output: typing.Any
+) -> None:
     pytest.importorskip("pyscf")
     ir, indices, outputs, primitive = fixture(family, output)
     artifact = compile_second_derivative(
@@ -135,7 +138,9 @@ def test_native_tiles_match_independent_analytic_hessian(compiler, family, outpu
         assert not result.values.flags.writeable
 
 
-def test_failed_late_chunk_native_errors_empty_replay_and_budget(compiler):
+def test_failed_late_chunk_native_errors_empty_replay_and_budget(
+    compiler: typing.Any,
+) -> None:
     ir, indices, outputs, primitive = fixture("eri", "weighted_hvp")
     artifact = compile_second_derivative(
         ir, *compiler, component_indices=indices, output_indices=outputs
@@ -211,7 +216,7 @@ def test_failed_late_chunk_native_errors_empty_replay_and_budget(compiler):
     plan.close()
 
 
-def test_explicit_fifteenth_moment_native_hvp(compiler):
+def test_explicit_fifteenth_moment_native_hvp(compiler: typing.Any) -> None:
     ir = build_eri_second_ir((3, 3, 3, 3))
     kernel = build_second_derivative_kernel(ir, (0,), output_indices=(0,))
     artifact = compile_second_derivative(
@@ -230,7 +235,9 @@ def test_explicit_fifteenth_moment_native_hvp(compiler):
         )
 
 
-def test_native_svec_preserves_offdiagonal_inner_product_factors(compiler):
+def test_native_svec_preserves_offdiagonal_inner_product_factors(
+    compiler: typing.Any,
+) -> None:
     pytest.importorskip("pyscf")
     from vibeqc_compiler.integral.second_order_layout import HessianLayout
 
@@ -264,7 +271,9 @@ def test_native_svec_preserves_offdiagonal_inner_product_factors(compiler):
         )
 
 
-def test_native_ffff_hvp_against_independent_libcint(compiler):
+def test_native_ffff_hvp_against_independent_libcint(
+    compiler: typing.Any,
+) -> None:
     pytest.importorskip("pyscf")
     ir = build_eri_second_ir((3, 3, 3, 3))
     artifact = compile_second_derivative(

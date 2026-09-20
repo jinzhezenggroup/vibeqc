@@ -1,5 +1,6 @@
 """Analytical symmetric AO-pair coordinates without a dense orbit table."""
 
+import typing
 from dataclasses import dataclass
 from math import isqrt, sqrt
 
@@ -20,38 +21,38 @@ class PairSpace:
 
     nbf: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if type(self.nbf) is not int or self.nbf < 1:
             raise ValueError("positive integer AO dimension required")
         checked_index(self.size, "symmetric AO pair count")
 
     @property
-    def size(self):
+    def size(self) -> typing.Any:
         return self.nbf * (self.nbf + 1) // 2
 
     @property
-    def convention(self):
+    def convention(self) -> typing.Any:
         return "real-symmetric-lower-row-svec-v1"
 
-    def index(self, mu, nu):
+    def index(self, mu: typing.Any, nu: typing.Any) -> typing.Any:
         """Map either ordering of a real symmetric AO pair to its coordinate."""
         if any(type(i) is not int or not 0 <= i < self.nbf for i in (mu, nu)):
             raise ValueError("AO pair index outside the basis")
         mu, nu = max(mu, nu), min(mu, nu)
         return mu * (mu + 1) // 2 + nu
 
-    def pair(self, index):
+    def pair(self, index: typing.Any) -> typing.Any:
         """Invert triangular indexing exactly, including large integer indices."""
         if type(index) is not int or not 0 <= index < self.size:
             raise ValueError("packed pair index outside the basis")
         mu = (isqrt(8 * index + 1) - 1) // 2
         return mu, index - mu * (mu + 1) // 2
 
-    def scale(self, index):
+    def scale(self, index: typing.Any) -> typing.Any:
         mu, nu = self.pair(index)
         return 1.0 if mu == nu else sqrt(2.0)
 
-    def pack(self, matrix):
+    def pack(self, matrix: typing.Any) -> typing.Any:
         """Pack a finite symmetric FP64 matrix; reject a lossy projection."""
         matrix = np.asarray(matrix)
         if (
@@ -68,7 +69,7 @@ class PairSpace:
             out[begin + mu] = matrix[mu, mu]
         return out
 
-    def unpack(self, packed):
+    def unpack(self, packed: typing.Any) -> typing.Any:
         """Recover both AO matrix triangles with the inverse svec factors."""
         packed = np.asarray(packed)
         if (

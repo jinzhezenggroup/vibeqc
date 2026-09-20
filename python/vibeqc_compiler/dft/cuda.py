@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes as ct
 import threading
+import typing
 from contextlib import contextmanager
 from pathlib import Path
 from time import perf_counter
@@ -53,16 +54,22 @@ class DeviceGridTask:
     the view's local potential and call scatter without host arrays.
     """
 
-    def __init__(self, owner, view):
+    def __init__(self, owner: typing.Any, view: typing.Any) -> None:
         self._owner, self._view, self._active = owner, view, True
 
     @property
-    def view(self):
+    def view(self) -> typing.Any:
         if not self._active:
             raise RuntimeError("expired device grid task lease")
         return self._view
 
-    def scatter(self, local=None, *, reset=False, download=False):
+    def scatter(
+        self,
+        local: typing.Any = None,
+        *,
+        reset: typing.Any = False,
+        download: typing.Any = False,
+    ) -> typing.Any:
         """Accumulate symmetric spin-local matrices through the explicit AO map.
 
         A device failure may partially update the global matrix. Retry with
@@ -87,7 +94,7 @@ class DeviceGridTask:
         )
         return None if result is None else immutable(result)
 
-    def density_jets(self, jets):
+    def density_jets(self, jets: typing.Any) -> typing.Any:
         """Borrow [spin,4,point,active AO] D-contracted jets within this lease.
 
         Only requested jet slots are valid. Call before xc(), which reuses
@@ -106,7 +113,15 @@ class DeviceGridTask:
         )
         return output
 
-    def xc(self, weights, functional, *, restricted=False, reset=False, download=False):
+    def xc(
+        self,
+        weights: typing.Any,
+        functional: typing.Any,
+        *,
+        restricted: typing.Any = False,
+        reset: typing.Any = False,
+        download: typing.Any = False,
+    ) -> typing.Any:
         """Evaluate native LDA/PBE XC and scatter its local spin potentials.
 
         AO jets and density features remain device-resident. Only the tile's
@@ -139,7 +154,7 @@ class DeviceGridTask:
         return immutable(integrals), potential
 
 
-def compile_cuda(compiler, cache):
+def compile_cuda(compiler: typing.Any, cache: typing.Any) -> typing.Any:
     """Compile the device runtime without running a GPU or importing PySCF."""
     source, identity, headers = emit_grid_source()
     folder = Path(cache).resolve() / "source" / identity
@@ -184,7 +199,7 @@ class CudaGrid:
         )
     )
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed and name in self.__dict__:
             raise AttributeError(
                 "CUDA scientific topology is immutable; prepare a new owner"
@@ -192,42 +207,42 @@ class CudaGrid:
         super().__setattr__(name, value)
 
     @property
-    def source_stamp(self):
+    def source_stamp(self) -> typing.Any:
         """Read-only identity of the successfully uploaded current source."""
         return self._source_stamp
 
     @property
-    def source_kind(self):
+    def source_kind(self) -> typing.Any:
         """Selected route; reset to the empty D state when an upload fails."""
         return self._source_kind
 
     @property
-    def fallback_reason(self):
+    def fallback_reason(self) -> typing.Any:
         """Explicit availability decision; no matrix approximation is implied."""
         return self._fallback_reason
 
     @property
-    def source_statistics(self):
+    def source_statistics(self) -> typing.Any:
         """Detached identity, packing and upload diagnostics."""
         return dict(self._source_statistics)
 
     def __init__(
         self,
-        basis,
-        artifact,
+        basis: typing.Any,
+        artifact: typing.Any,
         *,
-        order=1,
-        tile_points=256,
-        budget_bytes=None,
-        device_id=0,
-        grid=None,
-        active_ao_capacity=None,
-        orbital_capacity=None,
-        orbital_tile=32,
-        ingredients=None,
-        resource_budget=None,
-        basis_generation=0,
-    ):
+        order: typing.Any = 1,
+        tile_points: typing.Any = 256,
+        budget_bytes: typing.Any = None,
+        device_id: typing.Any = 0,
+        grid: typing.Any = None,
+        active_ao_capacity: typing.Any = None,
+        orbital_capacity: typing.Any = None,
+        orbital_tile: typing.Any = 32,
+        ingredients: typing.Any = None,
+        resource_budget: typing.Any = None,
+        basis_generation: typing.Any = 0,
+    ) -> None:
         self._lock = threading.RLock()
         self._handle = ct.c_void_p()
         self._density_ready = False
@@ -400,18 +415,18 @@ class CudaGrid:
                 ct.byref(self._handle),
             )
 
-    def _call(self, name, *args):
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def _check_open(self):
+    def _check_open(self) -> None:
         if not self._handle:
             raise RuntimeError("CUDA grid plan is closed")
         if self._borrowed:
             raise RuntimeError("CUDA grid buffers are leased to a task consumer")
 
-    def set_density(self, density):
+    def set_density(self, density: typing.Any) -> None:
         """Validate and replace both spin matrices; no old-density reuse is implicit."""
         with self._lock:
             self._check_open()
@@ -424,7 +439,9 @@ class CudaGrid:
             self._call("grid_cuda_density_v1", self._handle, pointer(d), d.size)
             self._density_ready = True
 
-    def set_source(self, source, *, stamp, route="auto"):
+    def set_source(
+        self, source: typing.Any, *, stamp: typing.Any, route: typing.Any = "auto"
+    ) -> None:
         """Upload one checked current D/B pair; never reconstruct D on tile replay.
 
         DensitySource performs external-factor validation before this boundary.
@@ -516,14 +533,14 @@ class CudaGrid:
 
     def evaluate(
         self,
-        points,
+        points: typing.Any,
         *,
-        features=True,
-        download_jets=False,
-        ao_ids=None,
-        download_features=True,
-        stamp=None,
-    ):
+        features: typing.Any = True,
+        download_jets: typing.Any = False,
+        ao_ids: typing.Any = None,
+        download_features: typing.Any = True,
+        stamp: typing.Any = None,
+    ) -> typing.Any:
         """Return one detached result tile; no downstream CPU arithmetic fallback."""
         raw = np.asarray(points)
         if raw.ndim != 2 or raw.shape[1] != 3 or len(raw) > self.plan.tile_points:
@@ -614,7 +631,9 @@ class CudaGrid:
             return result
 
     @contextmanager
-    def _task(self, points, ao_ids, *, stamp=None):
+    def _task(
+        self, points: typing.Any, ao_ids: typing.Any, *, stamp: typing.Any = None
+    ) -> typing.Any:
         """Evaluate local features and lend their current private device view."""
         self.evaluate(points, ao_ids=ao_ids, download_features=False, stamp=stamp)
         view = GridTaskView()
@@ -628,7 +647,9 @@ class CudaGrid:
             self._borrowed = False
 
     @contextmanager
-    def task(self, points, ao_ids, *, stamp=None):
+    def task(
+        self, points: typing.Any, ao_ids: typing.Any, *, stamp: typing.Any = None
+    ) -> typing.Any:
         """Evaluate full features and lend device buffers with no array D2H.
 
         Consumers enqueue on ``lease.view.stream`` and finish while the lease
@@ -645,7 +666,14 @@ class CudaGrid:
                 yield lease
 
     @contextmanager
-    def xc_task(self, points, ao_ids, functional, *, stamp=None):
+    def xc_task(
+        self,
+        points: typing.Any,
+        ao_ids: typing.Any,
+        functional: typing.Any,
+        *,
+        stamp: typing.Any = None,
+    ) -> typing.Any:
         """Lend the minimal prepared feature layout required by native CUDA XC."""
         if functional not in ("LDA_XC_PW", "PBE"):
             raise ValueError("native CUDA XC supports LDA_XC_PW or PBE")
@@ -659,7 +687,7 @@ class CudaGrid:
             with self._task(points, ao_ids, stamp=stamp) as lease:
                 yield lease
 
-    def metrics(self):
+    def metrics(self) -> typing.Any:
         """Synchronized cumulative timings, owned allocations and loaded versions."""
         with self._lock:
             self._check_open()
@@ -675,7 +703,7 @@ class CudaGrid:
                 "cublas_version": versions[2],
             }
 
-    def close(self):
+    def close(self) -> None:
         with self._lock, _PREPARATION_LOCK:
             if self._borrowed:
                 raise RuntimeError("CUDA grid buffers are leased to a task consumer")
@@ -683,12 +711,12 @@ class CudaGrid:
                 self._library.grid_cuda_destroy_v1(self._handle)
                 self._handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()

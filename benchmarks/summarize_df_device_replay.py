@@ -4,10 +4,11 @@ import argparse
 import hashlib
 import json
 import sqlite3
+import typing
 from pathlib import Path
 
 
-def summarize(directory):
+def summarize(directory: typing.Any) -> typing.Any:
     """Retain raw timing samples and trace hashes; distinguish capture scopes."""
     components = {
         path.name: json.loads(path.read_text())
@@ -66,7 +67,7 @@ def summarize(directory):
     return {"components": components, "profiles": profiles}
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     args = parser.parse_args()

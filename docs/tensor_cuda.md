@@ -33,8 +33,12 @@ from vibeqc_compiler.tensor.examples import example_cases
 case = example_cases()[1]
 target = cuda_target_info("sm_120")  # choose the actual allocated architecture
 compiler = CudaCompilerAdapter(Path("/path/to/nvcc"), target)
-plan = plan_cuda(case.program, target, max_bytes=256 * 1024**2,
-                 reservations=Reservations(t=4096, r=4096, diis=16384))
+plan = plan_cuda(
+    case.program,
+    target,
+    max_bytes=256 * 1024**2,
+    reservations=Reservations(t=4096, r=4096, diis=16384),
+)
 artifact = compile_cuda(plan, compiler, Path("build/tensor-cuda-cache"))
 with PreparedCuda(plan, artifact, device=0) as prepared:
     first = prepared.execute(case.inputs)
@@ -74,11 +78,11 @@ capture. Each complete endpoint still makes one native call.
 
 ```python
 with PreparedCuda(plan, artifact, execution_mode="cuda-graph") as prepared:
-    prepared.execute(feeds)              # ordinary warmup
-    prepared.execute(feeds)              # capture, instantiate, execute
-    result = prepared.execute(new_feeds) # replay with refreshed numeric inputs
+    prepared.execute(feeds)  # ordinary warmup
+    prepared.execute(feeds)  # capture, instantiate, execute
+    result = prepared.execute(new_feeds)  # replay with refreshed numeric inputs
     print(result.backend, result.metrics["graph_captures"])
-    prepared.invalidate_graph()          # next call warms up before recapture
+    prepared.invalidate_graph()  # next call warms up before recapture
 ```
 
 The pure CaptureContract reuses specialization records and existing artifact

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -69,14 +70,14 @@ from tools.vibeqc_validation.schema import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def fixture(nocc: int, nvir: int, *, seed: int = 151):
+def fixture(nocc: int, nvir: int, *, seed: int = 151) -> typing.Any:
     """Fixed scalar-energy fragment with realistic unconverged amplitudes."""
     occupied = IndexSpace("occupied", "occupied", nocc)
     virtual = IndexSpace("virtual", "virtual", nvir)
     i, j = Index("i", occupied), Index("j", occupied)
     a, b, e = Index("a", virtual), Index("b", virtual), Index("e", virtual)
 
-    def parameter(name, indices):
+    def parameter(name: typing.Any, indices: typing.Any) -> typing.Any:
         return input_tensor(
             name,
             TensorSpec(
@@ -118,7 +119,9 @@ def fixture(nocc: int, nvir: int, *, seed: int = 151):
     return program, feeds, tangents
 
 
-def cpu_references(program, feeds, tangents, cotangent):
+def cpu_references(
+    program: typing.Any, feeds: typing.Any, tangents: typing.Any, cotangent: typing.Any
+) -> typing.Any:
     """Generate programs and check them against the interpreter/FD references."""
     forward = linearize(program, list(tangents), outputs=["energy"])
     reverse = transpose_program(program, ["energy"], inputs=list(tangents))
@@ -184,7 +187,13 @@ def cpu_references(program, feeds, tangents, cotangent):
     )
 
 
-def _plan(generated, target, *, max_bytes, recompute):
+def _plan(
+    generated: typing.Any,
+    target: typing.Any,
+    *,
+    max_bytes: typing.Any,
+    recompute: typing.Any,
+) -> typing.Any:
     schedule = TensorSchedule(
         views=True,
         fuse=True,
@@ -197,12 +206,12 @@ def _plan(generated, target, *, max_bytes, recompute):
     return plan_cuda(generated.program, target, schedule=schedule, max_bytes=max_bytes)
 
 
-def _recomputation_count(plan):
+def _recomputation_count(plan: typing.Any) -> typing.Any:
     counts = Counter(step.node for step in plan.steps)
     return sum(count - 1 for count in counts.values() if count > 1)
 
 
-def run(args):
+def run(args: typing.Any) -> typing.Any:
     nvcc = args.nvcc or find_nvcc()
     if nvcc is None:
         raise ValueError("provide --nvcc or VIBEQC_NVCC")

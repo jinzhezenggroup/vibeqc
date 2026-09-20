@@ -2,6 +2,7 @@
 
 import json
 import os
+import typing
 
 import numpy as np
 import pytest
@@ -16,8 +17,11 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("method", ["rhf", "uhf"])
 @pytest.mark.parametrize("budget", [0, 12 << 20, 16 << 20])
 def test_occupied_scf_matches_dense_across_warm_replays(
-    method, budget, monkeypatch, tmp_path
-):
+    method: typing.Any,
+    budget: typing.Any,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
     """Policy changes rebuild captured shapes; imported warm D seeds dense K."""
     assert os.environ.get("SLURM_JOB_ID")
     # The smaller positive allowance covers the complete three-item plan and

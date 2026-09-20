@@ -10,11 +10,14 @@ from __future__ import annotations
 
 import math
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from fractions import Fraction
 from functools import cache
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
 
 Coefficient = Fraction | float
 Scalar = int | float | Fraction

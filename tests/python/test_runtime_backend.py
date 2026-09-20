@@ -1,5 +1,6 @@
 """Synthetic legality/identity gates are independent of optional SDK hardware."""
 
+import typing
 from dataclasses import replace
 
 import pytest
@@ -15,7 +16,9 @@ from vibeqc_compiler.integral.runtime_backend import (
 
 
 @pytest.mark.parametrize("subgroup", [8, 16, 32, 64])
-def test_synthetic_subgroups_and_partial_final_workgroups(subgroup):
+def test_synthetic_subgroups_and_partial_final_workgroups(
+    subgroup: typing.Any,
+) -> None:
     target = RuntimeCapabilities("synthetic", True, 256, 32768, subgroup)
     shape = ExecutionShape(2 * subgroup, 128, subgroup)
     shape.validate_for(target)
@@ -26,7 +29,9 @@ def test_synthetic_subgroups_and_partial_final_workgroups(subgroup):
         replace(shape, local_bytes=32769).validate_for(target)
 
 
-def test_unknown_subgroup_and_optional_graphs_do_not_preclude_scalar_execution():
+def test_unknown_subgroup_and_optional_graphs_do_not_preclude_scalar_execution() -> (
+    None
+):
     generic = TargetInfo("opencl", "queried device", None, 256, None)
     TargetScheduleShape(17, None).validate_for(generic)
     with pytest.raises(ValueError, match="subgroup"):
@@ -47,14 +52,18 @@ def test_unknown_subgroup_and_optional_graphs_do_not_preclude_scalar_execution()
 
 
 @pytest.mark.parametrize("value", [0, -1, True, 1.5])
-def test_invalid_runtime_extents_fail_before_submission(value):
+def test_invalid_runtime_extents_fail_before_submission(
+    value: typing.Any,
+) -> None:
     target = RuntimeCapabilities("opencl", True, 1024, 0)
     with pytest.raises(ValueError):
         ExecutionShape(value).validate_for(target)
 
 
 @pytest.mark.parametrize("value", [0, 1, "false", None])
-def test_capabilities_and_requirements_reject_truthy_nonbooleans(value):
+def test_capabilities_and_requirements_reject_truthy_nonbooleans(
+    value: typing.Any,
+) -> None:
     with pytest.raises(ValueError, match="boolean capability"):
         RuntimeCapabilities("opencl", value, 256, 32768)
     target = RuntimeCapabilities("opencl", True, 256, 32768)
@@ -62,7 +71,7 @@ def test_capabilities_and_requirements_reject_truthy_nonbooleans(value):
         ExecutionShape(32, requires_graphs=value).validate_for(target)
 
 
-def test_executable_identity_changes_without_changing_scientific_identity():
+def test_executable_identity_changes_without_changing_scientific_identity() -> None:
     identity = CompiledArtifactIdentity(
         "opencl",
         "uuid",
@@ -98,7 +107,9 @@ def test_executable_identity_changes_without_changing_scientific_identity():
     "operation,shape",
     [("gemm", (3, 4, 5)), ("symmetric_eigh", (4,)), ("cholesky", (4,))],
 )
-def test_missing_vendor_library_never_reports_cpu_success(operation, shape):
+def test_missing_vendor_library_never_reports_cpu_success(
+    operation: typing.Any, shape: typing.Any
+) -> None:
     request = LibraryRequest(operation, shape, workspace_limit_bytes=8192)
     provider = UnsupportedLibraryProvider(
         "opencl", "no native library provider configured"
@@ -108,8 +119,8 @@ def test_missing_vendor_library_never_reports_cpu_success(operation, shape):
 
 
 def test_atomic_local_executable_cache_rejects_corruption_and_wrong_identity(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     import json
 
     from vibeqc import profiles
@@ -132,7 +143,7 @@ def test_atomic_local_executable_cache_rejects_corruption_and_wrong_identity(
     assert cache.load(identity) == b"local compiler artifact"
     original = path.read_bytes()
 
-    def fail_replace(*_):
+    def fail_replace(*_: typing.Any) -> typing.Any:
         raise OSError("simulated publication failure")
 
     with monkeypatch.context() as patch:
@@ -156,7 +167,9 @@ def test_atomic_local_executable_cache_rejects_corruption_and_wrong_identity(
             cache.load(identity)
 
 
-def test_cache_rejects_shared_write_directories_and_symlink_records(tmp_path):
+def test_cache_rejects_shared_write_directories_and_symlink_records(
+    tmp_path: typing.Any,
+) -> None:
     from vibeqc_compiler.integral.artifact_cache import LocalArtifactCache
 
     shared = tmp_path / "shared"

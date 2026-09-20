@@ -1,6 +1,9 @@
 """Legacy large benchmark evidence must stay hash-bound and explicitly reviewed."""
 
+from __future__ import annotations
+
 import json
+import typing
 from pathlib import Path
 
 import pytest
@@ -23,7 +26,7 @@ REVIEW_PATH = "benchmarks/legacy-evidence-review.json"
 DOCUMENT = "docs/legacy-review.md"
 
 
-def policy(threshold=16):
+def policy(threshold: typing.Any = 16) -> typing.Any:
     return {
         "schema": "vibeqc.retention-policy.v1",
         "review_size_bytes": 1 << 20,
@@ -33,7 +36,9 @@ def policy(threshold=16):
     }
 
 
-def review_for(data=b"large-record", threshold=8):
+def review_for(
+    data: typing.Any = b"large-record", threshold: typing.Any = 8
+) -> typing.Any:
     path = RESULT_ROOT + "legacy/result.json"
     review = {
         "schema": "vibeqc.legacy-large-evidence-review.v1",
@@ -61,13 +66,15 @@ def review_for(data=b"large-record", threshold=8):
     return path, review, blobs
 
 
-def checked_blobs(data=b"large-record", threshold=8):
+def checked_blobs(
+    data: typing.Any = b"large-record", threshold: typing.Any = 8
+) -> typing.Any:
     path, review, blobs = review_for(data, threshold)
     blobs[REVIEW_PATH] = json.dumps(review).encode()
     return path, review, blobs
 
 
-def test_valid_large_review_covers_exact_retained_bytes():
+def test_valid_large_review_covers_exact_retained_bytes() -> None:
     path, review, blobs = review_for(threshold=8)
     assert large_legacy_review_errors(blobs, review, 8) == []
     complete = {**blobs, REVIEW_PATH: json.dumps(review).encode()}
@@ -83,7 +90,9 @@ def test_valid_large_review_covers_exact_retained_bytes():
     "damage",
     ["hash", "bytes", "missing-row", "family", "classification", "role", "document"],
 )
-def test_large_review_fails_closed_on_stale_or_incomplete_identity(damage):
+def test_large_review_fails_closed_on_stale_or_incomplete_identity(
+    damage: typing.Any,
+) -> None:
     path, review, blobs = review_for(threshold=8)
     row = review["files"][0]
     if damage == "hash":
@@ -109,7 +118,7 @@ def test_large_review_fails_closed_on_stale_or_incomplete_identity(damage):
     assert path in blobs
 
 
-def test_policy_requires_review_file_and_matching_threshold():
+def test_policy_requires_review_file_and_matching_threshold() -> None:
     _, review, blobs = review_for(threshold=8)
     errors = check(blobs, policy(8))
     assert any("missing legacy large-evidence review" in error for error in errors)
@@ -118,7 +127,7 @@ def test_policy_requires_review_file_and_matching_threshold():
     assert any("threshold differs" in error for error in check(blobs, rules))
 
 
-def test_new_unreviewed_large_file_is_rejected_without_deletion_credit():
+def test_new_unreviewed_large_file_is_rejected_without_deletion_credit() -> None:
     _, review, blobs = checked_blobs(threshold=8)
     blobs[RESULT_ROOT + "new/large.json"] = b"new-large"
     errors = check(blobs, policy(8))
@@ -126,7 +135,7 @@ def test_new_unreviewed_large_file_is_rejected_without_deletion_credit():
     assert large_legacy_review_errors(blobs, review, 8)
 
 
-def test_reference_inputs_are_an_explicit_supported_classification():
+def test_reference_inputs_are_an_explicit_supported_classification() -> None:
     path, review, blobs = review_for(threshold=8)
     review["files"][0]["classification"] = "test-reference-input"
     review["files"][0]["role"] = "reference-input"
@@ -137,7 +146,7 @@ def test_reference_inputs_are_an_explicit_supported_classification():
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_checked_in_large_review_covers_every_large_result():
+def test_checked_in_large_review_covers_every_large_result() -> None:
     blobs = tracked_blobs(REPOSITORY_ROOT)
     rules = json.loads(blobs[POLICY_PATH])
     assert check(blobs, rules) == []
@@ -150,7 +159,7 @@ def test_checked_in_large_review_covers_every_large_result():
     ]
 
 
-def test_retention_488_snapshot_binds_removed_checkout_bytes():
+def test_retention_488_snapshot_binds_removed_checkout_bytes() -> None:
     manifest = (
         REPOSITORY_ROOT / "benchmarks/results/retention-488/snapshot.manifest.json"
     )
@@ -178,7 +187,7 @@ def test_retention_488_snapshot_binds_removed_checkout_bytes():
         RESULT_ROOT + "run/case.journal.jsonl.gz",
     ],
 )
-def test_execution_flow_streams_are_transient(path):
+def test_execution_flow_streams_are_transient(path: typing.Any) -> None:
     assert classify(path) == "transient"
     rules = {
         "schema": "vibeqc.retention-policy.v1",
@@ -188,11 +197,11 @@ def test_execution_flow_streams_are_transient(path):
     assert check({path: b"execution-flow"}, rules)
 
 
-def test_generic_jsonl_is_not_blanket_transient():
+def test_generic_jsonl_is_not_blanket_transient() -> None:
     assert classify(RESULT_ROOT + "run/scientific-samples.jsonl") == "accepted-evidence"
 
 
-def test_checked_in_results_have_no_execution_flow_streams():
+def test_checked_in_results_have_no_execution_flow_streams() -> None:
     blobs = tracked_blobs(REPOSITORY_ROOT)
     endings = (
         ".progress.jsonl",

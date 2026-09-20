@@ -2,6 +2,7 @@
 
 import json
 import time
+import typing
 from collections import OrderedDict
 from contextlib import nullcontext
 from dataclasses import asdict, dataclass, fields
@@ -20,7 +21,9 @@ from .doubles import build_ccsd_program
 from .equations import amplitude_layouts
 
 
-def _provider_blocks(provider, snapshot, names):
+def _provider_blocks(
+    provider: typing.Any, snapshot: typing.Any, names: typing.Any
+) -> typing.Any:
     """Dry-run the complete CPU cache transition before any AO conversion.
 
     This internal adapter mirrors #147's pin/LRU retention under its reentrant
@@ -84,7 +87,7 @@ class SolverOptions:
     diis_size: int = 6
     max_bytes: int = 256 << 20
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for key in ("max_iterations", "max_bytes", "diis_size"):
             v = getattr(self, key)
             if type(v) is not int or v < (0 if key == "diis_size" else 1):
@@ -115,7 +118,7 @@ class SolverOptions:
             raise ValueError("invalid CCSD denominator/damping/level shift")
 
 
-def _ccsd_programs(nocc, nvir):
+def _ccsd_programs(nocc: typing.Any, nvir: typing.Any) -> typing.Any:
     """Shared primal/recheck identities for solving and bound response admission."""
     full_program = build_ccsd_program(nocc, nvir, form="optimized")
     program = Program(
@@ -146,7 +149,14 @@ class PreparedCCSD:
     Python/BLAS RSS. Preflight occurs before any integral read.
     """
 
-    def __init__(self, snapshot, provider, options=None, t1=None, t2=None):
+    def __init__(
+        self,
+        snapshot: typing.Any,
+        provider: typing.Any,
+        options: typing.Any = None,
+        t1: typing.Any = None,
+        t2: typing.Any = None,
+    ) -> None:
         self.options = SolverOptions() if options is None else options
         if not isinstance(self.options, SolverOptions):
             raise TypeError("options must be SolverOptions")
@@ -162,7 +172,7 @@ class PreparedCCSD:
         o, v = snapshot.nocc, snapshot.nmo - snapshot.nocc
         self.program, self.reference_program = _ccsd_programs(o, v)
 
-        def retained(p):
+        def retained(p: typing.Any) -> typing.Any:
             return sum(n.spec.size * n.spec.itemsize for n in p.live_nodes) + sum(
                 n.spec.size * n.spec.itemsize for n in p.outputs.values()
             )
@@ -222,12 +232,14 @@ class PreparedCCSD:
             else (np.array(t1, copy=True), np.array(t2, copy=True))
         )
 
-    def validate_amplitudes(self, t1, t2):
+    def validate_amplitudes(self, t1: typing.Any, t2: typing.Any) -> None:
         execute(
             self.amplitude_check, {"t1": t1, "t2": t2}, max_bytes=self.options.max_bytes
         )
 
-    def evaluate(self, t1, t2, *, independent=False):
+    def evaluate(
+        self, t1: typing.Any, t2: typing.Any, *, independent: typing.Any = False
+    ) -> typing.Any:
         if getattr(self.provider, "_closed", False):
             raise RuntimeError("CCSD integral provider is closed")
         if self.provider.snapshot.identity != self.snapshot.identity:
@@ -239,12 +251,12 @@ class PreparedCCSD:
             max_bytes=self.options.max_bytes,
         ).outputs
 
-    def pack(self, t1, t2):
+    def pack(self, t1: typing.Any, t2: typing.Any) -> typing.Any:
         return np.concatenate(
             [layout.pack(a) for layout, a in zip(self.layouts, (t1, t2))]
         )
 
-    def unpack(self, vector):
+    def unpack(self, vector: typing.Any) -> typing.Any:
         split = self.layouts[0].size
         return self.layouts[0].unpack(vector[:split]), self.layouts[1].unpack(
             vector[split:]
@@ -254,12 +266,12 @@ class PreparedCCSD:
 class _DIIS:
     """Independent CC history of actual (amplitude, physical residual) pairs."""
 
-    def __init__(self, size):
+    def __init__(self, size: typing.Any) -> None:
         self.size = size
         self.vectors, self.errors = [], []
         self.restarts = 0
 
-    def update(self, vector, error):
+    def update(self, vector: typing.Any, error: typing.Any) -> typing.Any:
         if not self.size:
             return vector
         self.vectors.append(vector.copy())
@@ -314,10 +326,10 @@ class CCSDResult:
     replay_inputs: dict
 
     @property
-    def converged(self):
+    def converged(self) -> typing.Any:
         return self.status == "converged"
 
-    def write(self, path):
+    def write(self, path: typing.Any) -> None:
         """Save successful or failed finite state and enough input to replay it."""
         record = {
             "schema": "vibeqc.ccsd.result",
@@ -339,7 +351,14 @@ class CCSDResult:
         )
 
 
-def solve(snapshot, provider, *, options=None, t1=None, t2=None):
+def solve(
+    snapshot: typing.Any,
+    provider: typing.Any,
+    *,
+    options: typing.Any = None,
+    t1: typing.Any = None,
+    t2: typing.Any = None,
+) -> typing.Any:
     """Solve conventional RCCSD from an owned RHF reference and CPU provider.
 
     Supply both real FP64 T1/T2 arrays or neither (the default is an MP2-like

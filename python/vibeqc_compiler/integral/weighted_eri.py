@@ -8,6 +8,7 @@ physical atom accumulation is a later consumer operation.
 
 from __future__ import annotations
 
+import typing
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import product
@@ -31,7 +32,7 @@ CENTERS = ("first", "second", "third", "fourth")
 def build_weighted_eri_ir(
     angular: tuple[int, int, int, int],
     *,
-    memory_budget_bytes=4 * 1024**2,
+    memory_budget_bytes: typing.Any = 4 * 1024**2,
     operator: OperatorSpec = FOUR_CENTER_ERI_OPERATOR,
 ) -> IntegralIR:
     """Describe a full Cartesian shell tile with arbitrary ordered weights.
@@ -61,7 +62,7 @@ def build_weighted_eri_ir(
     )
 
 
-def canonical_range_weighted_eri_ir(integral):
+def canonical_range_weighted_eri_ir(integral: typing.Any) -> typing.Any:
     """Validate the public request, retaining unit factors in the native consumer."""
     if not integral.operator.range_separated or integral.recurrence != "subset_wick":
         raise ValueError(

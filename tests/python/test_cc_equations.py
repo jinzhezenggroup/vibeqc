@@ -1,5 +1,7 @@
 """RCCSD A: independent fermion algebra, off-shell and per-group gates."""
 
+import typing
+
 import numpy as np
 import pytest
 from vibeqc_compiler.tensor import Program, execute, optimize
@@ -8,14 +10,16 @@ from tools.vibeqc_cc import amplitude_layouts, build_program
 from tools.vibeqc_cc.oracle import DeterminantOracle, dense_feeds, random_case
 
 
-def check(actual, expected):
+def check(actual: typing.Any, expected: typing.Any) -> None:
     np.testing.assert_allclose(actual, expected, atol=1e-11, rtol=1e-10)
 
 
 @pytest.mark.parametrize(
     "o,v,seed", [(1, 1, 148), (1, 3, 149), (2, 2, 150), (2, 3, 151)]
 )
-def test_random_unconverged_against_exact_fermionic_projection(o, v, seed):
+def test_random_unconverged_against_exact_fermionic_projection(
+    o: typing.Any, v: typing.Any, seed: typing.Any
+) -> None:
     f, g, t1, t2 = random_case(o, v, seed)
     reference = DeterminantOracle(f, g, o)
     energy, singles = reference.evaluate(t1, t2)
@@ -29,7 +33,7 @@ def test_random_unconverged_against_exact_fermionic_projection(o, v, seed):
     assert program.logical_hash == build_program(o, v).logical_hash
 
 
-def test_homogeneous_groups_against_independent_polynomial_projections():
+def test_homogeneous_groups_against_independent_polynomial_projections() -> None:
     f, g, x, y = random_case()
     o, v = x.shape
     # f-only and g-only Hamiltonians separate the one-/two-body contributions.
@@ -61,7 +65,7 @@ def test_homogeneous_groups_against_independent_polynomial_projections():
         assert np.max(np.abs(value)) > 1e-6, key
 
 
-def test_missing_disconnected_terms_and_exchange_factors_are_detected():
+def test_missing_disconnected_terms_and_exchange_factors_are_detected() -> None:
     f, g, t1, t2 = random_case()
     result = execute(build_program(2, 2), dense_feeds(f, g, t1, t2)).outputs
     e, r = DeterminantOracle(f, g, 2).evaluate(t1, t2)
@@ -91,7 +95,7 @@ def test_missing_disconnected_terms_and_exchange_factors_are_detected():
         assert np.max(np.abs(result[key])) > 1e-8
 
 
-def test_zero_amplitudes_and_full_offdiagonal_fock():
+def test_zero_amplitudes_and_full_offdiagonal_fock() -> None:
     f, g, x, y = random_case()
     p = build_program(2, 2)
     zero = execute(p, dense_feeds(f, g, x * 0, y * 0)).outputs
@@ -115,7 +119,7 @@ def test_zero_amplitudes_and_full_offdiagonal_fock():
         assert np.max(np.abs(actual)) > 1e-3
 
 
-def test_packed_metric_pair_symmetry_and_invalid_inputs():
+def test_packed_metric_pair_symmetry_and_invalid_inputs() -> None:
     one, two = amplitude_layouts(2, 3)
     assert one.size == 6 and two.size == 21
     f, g, x, y = random_case(2, 3)
@@ -149,7 +153,7 @@ def test_packed_metric_pair_symmetry_and_invalid_inputs():
         build_program(1, 0)
 
 
-def test_total_energy_cancellation_cannot_hide_component_failure():
+def test_total_energy_cancellation_cannot_hide_component_failure() -> None:
     f, g, x, y = random_case()
     program = build_program(2, 2)
     initial = execute(program, dense_feeds(f, g, x, y)).outputs
@@ -166,7 +170,9 @@ def test_total_energy_cancellation_cannot_hide_component_failure():
 
 
 @pytest.mark.parametrize("key", ["foo", "fvv", "ovov", "oovv", "ovvv", "ovoo", "ovvo"])
-def test_declared_fock_and_eri_symmetries_reject_corruption(key):
+def test_declared_fock_and_eri_symmetries_reject_corruption(
+    key: typing.Any,
+) -> None:
     feeds = dense_feeds(*random_case())
     corrupt = feeds[key].copy()
     index = (0,) * (corrupt.ndim - 1) + (1,)

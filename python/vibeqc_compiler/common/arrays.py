@@ -1,9 +1,11 @@
 """Owned immutable finite FP64 arrays shared by method and grid consumers."""
 
+import typing
+
 import numpy as np
 
 
-def immutable(value, *, shape=None):
+def immutable(value: typing.Any, *, shape: typing.Any = None) -> typing.Any:
     """Copy finite real FP64 values into irreversibly read-only storage."""
     raw = np.asarray(value)
     if np.iscomplexobj(raw):

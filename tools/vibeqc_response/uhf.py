@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import typing
 from dataclasses import dataclass, field
 from hashlib import sha256
 
@@ -16,7 +17,9 @@ from .direct_cuda import CudaDirectJKBackend
 from .problem import ResponseCompatibilityError
 
 
-def _symmetric_matrix(value, nbf, name, tolerance):
+def _symmetric_matrix(
+    value: typing.Any, nbf: typing.Any, name: typing.Any, tolerance: typing.Any
+) -> typing.Any:
     """Return one finite symmetric AO matrix in the common UHF basis."""
     array = immutable(value, shape=(nbf, nbf))
     if np.max(np.abs(array - array.T)) > tolerance:
@@ -56,7 +59,7 @@ class UHFReferenceSnapshot:
     validation_tolerance: float = 1e-8
     identity: str = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.precision != "float64":
             raise ValueError("UHF response requires real FP64 reference buffers")
         if self.representation not in ("cartesian", "real_spherical"):
@@ -188,11 +191,11 @@ class UHFReferenceSnapshot:
         )
 
     @property
-    def nbf(self):
+    def nbf(self) -> typing.Any:
         """Number of AOs and canonical MOs in each spin channel."""
         return self.overlap.shape[0]
 
-    def nocc(self, spin):
+    def nocc(self, spin: typing.Any) -> typing.Any:
         """Return the occupied alpha or beta orbital count."""
         if spin not in ("alpha", "beta"):
             raise ValueError("spin must be alpha or beta")
@@ -208,7 +211,7 @@ class UHFSpinRotationLayout:
     beta_occupied: tuple[int, ...]
     beta_virtual: tuple[int, ...]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for spin in ("alpha", "beta"):
             occupied = tuple(getattr(self, f"{spin}_occupied"))
             virtual = tuple(getattr(self, f"{spin}_virtual"))
@@ -228,7 +231,7 @@ class UHFSpinRotationLayout:
                 raise ValueError(f"{spin} rotation spaces must be contiguous from zero")
 
     @classmethod
-    def from_reference(cls, reference):
+    def from_reference(cls, reference: typing.Any) -> typing.Any:
         """Build spin layouts from a canonical UHF reference."""
         return cls(
             tuple(range(reference.nocc("alpha"))),
@@ -237,24 +240,24 @@ class UHFSpinRotationLayout:
             tuple(range(reference.nocc("beta"), reference.nbf)),
         )
 
-    def spaces(self, spin):
+    def spaces(self, spin: typing.Any) -> typing.Any:
         """Return the occupied and virtual MO indices for one spin block."""
         if spin not in ("alpha", "beta"):
             raise ValueError("spin must be alpha or beta")
         return getattr(self, f"{spin}_occupied"), getattr(self, f"{spin}_virtual")
 
-    def block_dimension(self, spin):
+    def block_dimension(self, spin: typing.Any) -> typing.Any:
         """Return the number of independent rotations in one spin block."""
         occupied, virtual = self.spaces(spin)
         return len(occupied) * len(virtual)
 
     @property
-    def dimension(self):
+    def dimension(self) -> typing.Any:
         """Total alpha-plus-beta vector size."""
         return self.block_dimension("alpha") + self.block_dimension("beta")
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         """Hash the spin-resolved parameterization and ordering convention."""
         return canonical_hash(
             {
@@ -265,7 +268,7 @@ class UHFSpinRotationLayout:
             }
         )
 
-    def validate_vector(self, values):
+    def validate_vector(self, values: typing.Any) -> typing.Any:
         """Validate and freeze one alpha-then-beta response vector."""
         array = np.asarray(values)
         if array.shape != (self.dimension,):
@@ -276,7 +279,7 @@ class UHFSpinRotationLayout:
             raise ValueError("UHF response vectors must be finite real FP64 values")
         return immutable(array)
 
-    def split(self, values):
+    def split(self, values: typing.Any) -> typing.Any:
         """Unpack alpha/beta occupied-virtual matrices from a response vector."""
         vector = self.validate_vector(values)
         alpha_dimension = self.block_dimension("alpha")
@@ -286,7 +289,7 @@ class UHFSpinRotationLayout:
             alpha_dimension:
         ].reshape(beta_shape)
 
-    def pack(self, alpha, beta):
+    def pack(self, alpha: typing.Any, beta: typing.Any) -> typing.Any:
         """Pack alpha/beta occupied-virtual matrices in canonical vector order."""
         blocks = []
         for spin, value in (("alpha", alpha), ("beta", beta)):
@@ -297,7 +300,7 @@ class UHFSpinRotationLayout:
             blocks.append(array.reshape(-1))
         return self.validate_vector(np.concatenate(blocks))
 
-    def density_matrix(self, spin, values):
+    def density_matrix(self, spin: typing.Any, values: typing.Any) -> typing.Any:
         """Return the spin-density response ``sym_ov(x_spin)`` in MO space."""
         alpha, beta = self.split(values)
         rotations = {"alpha": alpha, "beta": beta}
@@ -307,7 +310,7 @@ class UHFSpinRotationLayout:
         matrix[np.ix_(virtual, occupied)] = rotations[spin].T
         return matrix
 
-    def generator_matrix(self, spin, values):
+    def generator_matrix(self, spin: typing.Any, values: typing.Any) -> typing.Any:
         """Return the skew orbital generator for a finite UHF rotation."""
         alpha, beta = self.split(values)
         rotations = {"alpha": alpha, "beta": beta}
@@ -328,7 +331,7 @@ class UHFResponseProblem:
     perturbation_labels: tuple[str, ...] = ()
     identity: str = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.reference, UHFReferenceSnapshot):
             raise TypeError("UHF response requires UHFReferenceSnapshot")
         if not isinstance(self.layout, UHFSpinRotationLayout):
@@ -362,7 +365,13 @@ class UHFResponseProblem:
         )
 
     @classmethod
-    def from_reference(cls, reference, *, operator_identity, perturbation_labels=()):
+    def from_reference(
+        cls,
+        reference: typing.Any,
+        *,
+        operator_identity: typing.Any,
+        perturbation_labels: typing.Any = (),
+    ) -> typing.Any:
         """Bind a converged UHF reference to a concrete response backend."""
         return cls(
             reference,
@@ -372,16 +381,16 @@ class UHFResponseProblem:
         )
 
     @property
-    def dimension(self):
+    def dimension(self) -> typing.Any:
         """Combined alpha/beta vector dimension."""
         return self.layout.dimension
 
     @property
-    def compatibility_identity(self):
+    def compatibility_identity(self) -> typing.Any:
         """Compatibility identity used by Krylov recycling."""
         return self.identity
 
-    def validate_rhs(self, values):
+    def validate_rhs(self, values: typing.Any) -> typing.Any:
         """Normalize a single or multiple finite UHF RHS vectors."""
         array = np.asarray(values)
         if array.ndim == 1:
@@ -396,7 +405,7 @@ class UHFResponseProblem:
             raise ValueError("UHF RHS values must be finite real FP64")
         return immutable(array)
 
-    def assert_compatible(self, other):
+    def assert_compatible(self, other: typing.Any) -> None:
         """Reject stale alpha/beta recycle spaces before any projection."""
         if not isinstance(other, UHFResponseProblem) or self.identity != other.identity:
             raise ResponseCompatibilityError(
@@ -404,7 +413,7 @@ class UHFResponseProblem:
             )
 
 
-def uhf_operator_identity(backend):
+def uhf_operator_identity(backend: typing.Any) -> typing.Any:
     """Return the identity for a generic UHF Coulomb/exchange backend."""
     return canonical_hash(
         {
@@ -420,7 +429,7 @@ def uhf_operator_identity(backend):
 class UHFResponseOperator:
     """Matrix-free UHF Jacobian with Coulomb spin coupling and spin exchange."""
 
-    def __init__(self, problem, backend):
+    def __init__(self, problem: typing.Any, backend: typing.Any) -> None:
         if not isinstance(problem, UHFResponseProblem):
             raise TypeError("expected UHFResponseProblem")
         if isinstance(backend, (CudaDFJKBackend, CudaDirectJKBackend)):
@@ -445,7 +454,13 @@ class UHFResponseOperator:
         }
 
     @classmethod
-    def build_problem(cls, reference, backend, *, perturbation_labels=()):
+    def build_problem(
+        cls,
+        reference: typing.Any,
+        backend: typing.Any,
+        *,
+        perturbation_labels: typing.Any = (),
+    ) -> typing.Any:
         """Create one UHF response problem for a verified generic J/K backend."""
         if not isinstance(reference, UHFReferenceSnapshot):
             raise TypeError("UHFResponseOperator requires UHFReferenceSnapshot")
@@ -456,11 +471,11 @@ class UHFResponseOperator:
         )
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         """The bound UHF operator identity."""
         return self.problem.operator_identity
 
-    def apply(self, vector):
+    def apply(self, vector: typing.Any) -> typing.Any:
         """Apply the coupled alpha/beta UHF response Jacobian.
 
         The native UHF Fock equations define Coulomb from the total density and
@@ -502,12 +517,12 @@ class UHFResponseOperator:
         )
         return self.problem.layout.pack(*response)
 
-    def apply_transpose(self, vector):
+    def apply_transpose(self, vector: typing.Any) -> typing.Any:
         """Apply the transpose in the real canonical spin-orbital gauge."""
         self.statistics["transpose_actions"] += 1
         return self.apply(vector)
 
-    def apply_many(self, matrix):
+    def apply_many(self, matrix: typing.Any) -> typing.Any:
         """Apply the response action to every RHS column."""
         values = self.problem.validate_rhs(matrix)
         return immutable(
@@ -516,14 +531,14 @@ class UHFResponseOperator:
             )
         )
 
-    def dot_identity(self, left, right):
+    def dot_identity(self, left: typing.Any, right: typing.Any) -> typing.Any:
         """Return the Euclidean transpose-identity defect."""
         return abs(
             float(np.dot(self.apply(left), right))
             - float(np.dot(left, self.apply_transpose(right)))
         )
 
-    def to_dense(self):
+    def to_dense(self) -> typing.Any:
         """Materialize a tiny diagnostic response matrix through JVP columns."""
         if self.dimension == 0:
             return immutable(np.empty((0, 0), dtype=np.float64))

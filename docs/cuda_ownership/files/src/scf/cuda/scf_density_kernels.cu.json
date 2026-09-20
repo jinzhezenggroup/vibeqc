@@ -1,0 +1,20 @@
+{
+  "path": "src/scf/cuda/scf_density_kernels.cu",
+  "role": "runtime",
+  "subsystem": "scf_tensor",
+  "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+  "regions": [
+    {
+      "start": "__global__ void build_density_kernel",
+      "stop": "__device__ double warm_density_block_sum",
+      "role": "scientific",
+      "reason": "Existing occupied-orbital density and symmetry-breaking frontier guess equations."
+    },
+    {
+      "start": "__global__ void build_weighted_density_kernel",
+      "stop": "__global__ void sum_uhf_spin_matrices_kernel",
+      "role": "scientific",
+      "reason": "Existing energy-weighted density used by stationary Pulay forces."
+    }
+  ]
+}

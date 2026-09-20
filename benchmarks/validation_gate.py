@@ -10,6 +10,7 @@ import signal
 import subprocess
 import sys
 import time
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,7 +43,7 @@ from tools.vibeqc_validation.schema import (
 )
 
 
-def _cuda():
+def _cuda() -> typing.Any:
     """Probe only inside Slurm and synchronize the runtime's assigned device.
 
     No environment rewriting is permitted: the scheduler's local ordinal zero
@@ -64,7 +65,7 @@ def _cuda():
     if driver.cuInit(0) != 0 or driver.cuDeviceGetName(name, len(name), 0) != 0:
         raise RuntimeError("cannot identify CUDA device")
 
-    def synchronize():
+    def synchronize() -> None:
         if runtime.cudaDeviceSynchronize() != 0:
             raise RuntimeError("CUDA synchronization failed")
 
@@ -77,7 +78,7 @@ def _cuda():
     }, synchronize
 
 
-def _provenance(record):
+def _provenance(record: typing.Any) -> None:
     metadata = environment_metadata(distributions={"numpy": ("numpy",)})
     record["revision"] = metadata["git"]["commit"]
     record["environment"] = metadata
@@ -111,7 +112,13 @@ def _provenance(record):
             record["build"] = {"cache_sha256": file_hash(cache), "settings": settings}
 
 
-def hf_evidence(*, case="h2", device="cpu", repeats=5, check_fd=False):
+def hf_evidence(
+    *,
+    case: typing.Any = "h2",
+    device: typing.Any = "cpu",
+    repeats: typing.Any = 5,
+    check_fd: typing.Any = False,
+) -> typing.Any:
     """Demonstrate the full envelope with existing native HF energy/force calls.
 
     A/B uses two identical native configurations as a protocol control, so no
@@ -177,7 +184,7 @@ def hf_evidence(*, case="h2", device="cpu", repeats=5, check_fd=False):
     calculator = Calculator(device=device, **options)
     expected_backend = "cuda" if device == "cuda" else "cpu_reference"
 
-    def diagnostics(item):
+    def diagnostics(item: typing.Any) -> typing.Any:
         if not item.converged or item.executed_backend != expected_backend:
             raise RuntimeError("HF did not converge on the requested backend")
         return {
@@ -189,7 +196,7 @@ def hf_evidence(*, case="h2", device="cpu", repeats=5, check_fd=False):
             "backend_selected": item.executed_backend,
         }
 
-    def single(coordinates):
+    def single(coordinates: typing.Any) -> typing.Any:
         return calculator.singlepoint(
             list(zip(inputs["atomic_numbers"], coordinates, strict=True)),
             charge=inputs["charge"],
@@ -198,7 +205,7 @@ def hf_evidence(*, case="h2", device="cpu", repeats=5, check_fd=False):
 
     try:
 
-        def cold(_selection):
+        def cold(_selection: typing.Any) -> typing.Any:
             # Includes native context/plan creation and destruction on every call.
             return diagnostics(single(inputs["coordinates"]))
 
@@ -220,7 +227,7 @@ def hf_evidence(*, case="h2", device="cpu", repeats=5, check_fd=False):
             batch.execute(strict=True)
             batch.set_warm_start_updates(False)
 
-            def replay(_selection):
+            def replay(_selection: typing.Any) -> typing.Any:
                 return diagnostics(
                     batch.execute([inputs["coordinates"]], strict=True).items[0]
                 )
@@ -239,12 +246,12 @@ def hf_evidence(*, case="h2", device="cpu", repeats=5, check_fd=False):
                 {**inputs, "coordinates": changed.tolist()}
             )
 
-            def reset_geometry(_selection):
+            def reset_geometry(_selection: typing.Any) -> None:
                 # Reset outside the measured region so every sample measures
                 # one changed-geometry execution from the frozen post-cold dm0.
                 batch.execute([inputs["coordinates"]], strict=True)
 
-            def changed_geometry(_selection):
+            def changed_geometry(_selection: typing.Any) -> typing.Any:
                 return diagnostics(batch.execute([changed], strict=True).items[0])
 
             record["timings"] += measure_interleaved(
@@ -304,7 +311,7 @@ def hf_evidence(*, case="h2", device="cpu", repeats=5, check_fd=False):
         )
         if check_fd:
 
-            def energy(xyz, policy):
+            def energy(xyz: typing.Any, policy: typing.Any) -> typing.Any:
                 # Same calculator fixes method, screening, and convergence at
                 # all steps; the policy hash documents those settings.
                 return single(xyz).energy
@@ -320,7 +327,7 @@ def hf_evidence(*, case="h2", device="cpu", repeats=5, check_fd=False):
     return record
 
 
-def command_evidence(args):
+def command_evidence(args: typing.Any) -> typing.Any:
     """Wrap an existing tier command, retaining original evidence attachments.
 
     The caller selects the tier; CUDA compilation never probes a GPU. Missing
@@ -423,7 +430,7 @@ def command_evidence(args):
     return record
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="mode", required=True)
     hf = commands.add_parser(

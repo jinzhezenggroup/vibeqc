@@ -7,6 +7,7 @@ sink; the common finish() recovers the auxiliary center by translation. Root
 eligibility is mathematical availability, never automatic production promotion.
 """
 
+import typing
 from itertools import product
 
 from .cuda import CudaEmitter
@@ -63,14 +64,14 @@ RYS_SHELL_CLASSES = tuple(
 from .df_shell_derivatives import select_shell_classes
 
 
-def shell_rys_roots(angular):
+def shell_rys_roots(angular: typing.Any) -> typing.Any:
     """Bound eligibility to the declared full-range first-derivative family."""
     if tuple(angular) not in RYS_SHELL_CLASSES:
         raise ValueError("Rys shell class is not generated")
     return (sum(angular) + 1) // 2 + 1
 
 
-def build_df_rys_component_ir(components):
+def build_df_rys_component_ir(components: typing.Any) -> typing.Any:
     """Contract one Cartesian component through shared Gaussian-moment IR.
 
     The node is u=t², not t or u/(1-u). Exponents and external response weights
@@ -86,7 +87,7 @@ def build_df_rys_component_ir(components):
     state_sets = [set() for _ in range(3)]
     moment_cache = {}
 
-    def moment(axis, powers):
+    def moment(axis: typing.Any, powers: typing.Any) -> typing.Any:
         key = (axis, powers)
         if key in moment_cache:
             return moment_cache[key]
@@ -148,13 +149,13 @@ def build_df_rys_component_ir(components):
     return graph, tuple(outputs), sum(map(len, state_sets))
 
 
-def build_df_rys_sss_ir():
+def build_df_rys_sss_ir() -> typing.Any:
     """Compatibility entry point; SSS uses the same parameterized derivative IR."""
     graph, outputs, _ = build_df_rys_component_ir(("", "", ""))
     return graph, outputs
 
 
-def shell_rys_work_model(angular):
+def shell_rys_work_model(angular: typing.Any) -> typing.Any:
     """Report root work and per-active-component recurrence work before CSE."""
     roots = shell_rys_roots(angular)
     components = tuple(product(*(cartesian_components(l) for l in angular)))
@@ -183,7 +184,7 @@ def shell_rys_work_model(angular):
     }
 
 
-def emit_df_rys_policy_cpp(*, classes=None):
+def emit_df_rys_policy_cpp(*, classes: typing.Any = None) -> typing.Any:
     """Expose generated availability without importing CUDA into host policy."""
     selected = select_shell_classes(classes)
     storage = "inline" if classes is None else "static"
@@ -206,10 +207,10 @@ template<unsigned A,unsigned B,unsigned C>
 
 def emit_df_rys_shell_cuda(
     *,
-    classes=None,
-    shell_header="generated_df_shell_derivatives.cuh",
-    policy_header="generated_df_rys_policy.hpp",
-):
+    classes: typing.Any = None,
+    shell_header: typing.Any = "generated_df_shell_derivatives.cuh",
+    policy_header: typing.Any = "generated_df_rys_policy.hpp",
+) -> typing.Any:
     """Emit the complete bounded family against the unchanged packet/sink ABI.
 
     Delivered low-angular winners retain pruned component moments in registers.
@@ -295,7 +296,7 @@ def emit_df_rys_shell_cuda(
     return "\n".join(lines)
 
 
-def build_df_rys_shared_axis_ir(angular):
+def build_df_rys_shared_axis_ir(angular: typing.Any) -> typing.Any:
     """Share the existing moment IR over one rectangular root/axis cache.
 
     Raising B follows from raised A plus (A-B) times the base state, so only
@@ -345,7 +346,7 @@ def build_df_rys_shared_axis_ir(angular):
     return graph, tuple(outputs), len(states)
 
 
-def _emit_cooperative_shell(angular):
+def _emit_cooperative_shell(angular: typing.Any) -> typing.Any:
     """Lower the shared root/axis graph into the existing shell packet ABI."""
     parameters = ",".join(map(str, angular))
     roots = shell_rys_roots(angular)

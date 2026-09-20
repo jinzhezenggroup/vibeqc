@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import typing
 from math import exp, pi, sqrt
 
 import numpy as np
 
 
-def primitive_variables(exponents, centers, maximum_order: int) -> dict[str, float]:
+def primitive_variables(
+    exponents: typing.Any, centers: typing.Any, maximum_order: int
+) -> dict[str, float]:
     """Bind raw and geometry-factored DAGs to the same unnormalized primitive.
 
     Boys moments are integrated with a separate 64-point Gauss-Legendre rule.

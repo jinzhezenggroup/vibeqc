@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
-from ..fused_schedule import (
-    FusedShellPlan,
-)
+from typing import TYPE_CHECKING
+
 from ..rys import (
     build_rys_force_program,
     emit_rys2_roots_cuda,
     emit_rys3_roots_cuda,
     emit_rys_force_root_body_cuda,
 )
-from ..shell_spec import (
-    ShellClassSpec,
-)
 from .common import _emitted_component_names, _generic_task_component_setup
+
+if TYPE_CHECKING:
+    from ..fused_schedule import (
+        FusedShellPlan,
+    )
+    from ..shell_spec import (
+        ShellClassSpec,
+    )
 
 
 def _emit_rys_thread_force_consumer_cuda(
