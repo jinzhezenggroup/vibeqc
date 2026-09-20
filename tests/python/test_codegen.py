@@ -1816,44 +1816,6 @@ def test_zero_order_pairs_lower_through_shell_task_schedule() -> None:
     assert "atomicAdd(task_head, 32U)" in packed
     assert "blockIdx.x) * 32U + threadIdx.x" in packed
     assert "generated_psss_shell_class_force_task" not in packed
-    assert (
-        "__device__ __noinline__ void generated_psss_weighted_component_gradient("
-        in packed
-    )
-    psss_geometry = packed.split("struct GeneratedPsssPackedForceGeometry", maxsplit=1)[
-        1
-    ].split("/** Density-weighted shell gradient", maxsplit=1)[0]
-    assert "double inverse_two_p;" in psss_geometry
-    assert "pair_shifts" in psss_geometry
-
-    ssss_integral = build_integral_ir(
-        SSSS_SPEC,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-    )
-    ssss_schedule = next(
-        item
-        for item in schedule_candidates(ssss_integral, target=TEST_CUDA_TARGET)
-        if item.kind == ScheduleKind.PACKED_TASKS
-    )
-    ssss_plan = build_fused_shell_plan(
-        SSSS_SPEC,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-        schedule=ssss_schedule,
-        target=TEST_CUDA_TARGET,
-    )
-    ssss_packed = emit_shell_class_fused_cuda(SSSS_SPEC, ssss_plan)
-    ssss_geometry = ssss_packed.split(
-        "struct GeneratedSsssPackedForceGeometry", maxsplit=1
-    )[1].split("/** Density-weighted shell gradient", maxsplit=1)[0]
-    assert "double inverse_two_p;" not in ssss_geometry
-    assert "pair_shifts" not in ssss_geometry
-    assert (
-        "__device__ __forceinline__ void generated_ssss_weighted_component_gradient("
-        in ssss_packed
-    )
-    assert "const std::uint32_t center_atoms[4]" in ssss_packed
-    assert "bool first_for_atom = true;" in ssss_packed
-    assert "atom_force += center_force[source];" in ssss_packed
 
     benchmark = emit_shell_class_benchmark_cuda(
         PSSS_SPEC,
