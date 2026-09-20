@@ -79,9 +79,7 @@ def _run(
         if result.forces is None:
             raise RuntimeError("CuMetal force endpoint returned no forces")
         finite_forces = all(
-            math.isfinite(component)
-            for force in result.forces
-            for component in force
+            math.isfinite(component) for force in result.forces for component in force
         )
         if not finite_forces:
             raise RuntimeError("CuMetal endpoint returned non-finite forces")
