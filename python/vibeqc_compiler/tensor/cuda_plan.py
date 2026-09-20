@@ -53,6 +53,18 @@ def aligned(size: int) -> int:
     )
 
 
+def _index_table_length(node: Node) -> int | None:
+    """Count static table elements without allocating the table's host payload."""
+    if node.op in ("gather", "indexed_gather"):
+        return len(node.attrs["positions"])
+    if node.op == "segment_sum":
+        return len(node.attrs["offsets"])
+    if node.op == "scatter_add":
+        count = len(node.attrs["positions"])
+        return node.spec.shape[node.attrs["axis"]] + 1 + count if count else 0
+    return None
+
+
 def _index_table_values(node: Node) -> tuple[int, ...] | None:
     """Return the device table for one static indexed/ragged primitive.
 
@@ -204,11 +216,11 @@ class TensorPlan:
         total = 0
         for step_index, _ in self.index_tables:
             node = self.steps[step_index].node
-            values = _index_table_values(node)
-            if values is None:  # pragma: no cover - planner constructs table owners
+            count = _index_table_length(node)
+            if count is None:  # pragma: no cover - planner constructs table owners
                 raise AssertionError(f"unexpected index-table owner: {node.op}")
             total = checked_size(
-                total + aligned(len(values) * 8),
+                total + aligned(count * 8),
                 "index table bytes",
             )
         return total
@@ -496,11 +508,11 @@ def plan_cuda(
     offsets, active, free, capacity = {}, {}, [], 0
     tables = []
     for i, (node, _) in enumerate(nodes):
-        values = _index_table_values(node)
-        if values is not None:
+        count = _index_table_length(node)
+        if count is not None:
             tables.append((i, capacity))
             capacity = checked_size(
-                capacity + aligned(len(values) * 8),
+                capacity + aligned(count * 8),
                 "index table bytes",
             )
     steps, flops, traffic = [], 0, 0
