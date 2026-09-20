@@ -107,6 +107,61 @@ def test_preview_does_not_advertise_array_namespace_conformance() -> None:
     assert not hasattr(value, "__array_namespace__")
 
 
+
+def test_declared_preview_surfaces_execute_through_tensorir() -> None:
+    ao = IndexSpace("ao", "ao", 2)
+    spec = _matrix_spec(ao)
+    program = trace(
+        lambda x, y: {
+            "add": x + y,
+            "subtract": x - y,
+            "divide": x / y,
+            "scale": x / Fraction(2),
+            "negative": -x,
+            "power": xp.pow(x, 2),
+            "exp": xp.exp(x),
+            "log": xp.log(x),
+            "sqrt": xp.sqrt(x),
+            "permute": xp.permute_dims(x, (1, 0)),
+            "matmul": xp.matmul(x, y),
+        },
+        {"x": spec, "y": spec},
+    )
+    x = np.array([[1.0, 2.0], [3.0, 4.0]])
+    y = np.array([[2.0, 1.0], [1.0, 2.0]])
+    outputs = execute(program, {"x": x, "y": y}).outputs
+
+    np.testing.assert_allclose(outputs["add"], x + y)
+    np.testing.assert_allclose(outputs["subtract"], x - y)
+    np.testing.assert_allclose(outputs["divide"], x / y)
+    np.testing.assert_allclose(outputs["scale"], x / 2)
+    np.testing.assert_allclose(outputs["negative"], -x)
+    np.testing.assert_allclose(outputs["power"], x**2)
+    np.testing.assert_allclose(outputs["exp"], np.exp(x))
+    np.testing.assert_allclose(outputs["log"], np.log(x))
+    np.testing.assert_allclose(outputs["sqrt"], np.sqrt(x))
+    np.testing.assert_allclose(outputs["permute"], x.T)
+    np.testing.assert_allclose(outputs["matmul"], x @ y)
+
+
+def test_preview_unsupported_conveniences_fail_closed() -> None:
+    ao = IndexSpace("ao", "ao", 2)
+    vector_spec = TensorSpec((Index("p", ao),), role="input")
+    matrix_spec = _matrix_spec(ao)
+    vector = input_array("vector", vector_spec)
+    matrix = input_array("matrix", matrix_spec)
+
+    with pytest.raises(TypeError, match="scalar / VibeArray"):
+        xp.divide(1, vector)
+    with pytest.raises(ValueError, match="dtype conversions"):
+        xp.sum(vector, dtype="float32")
+    with pytest.raises(ValueError, match="keepdims=False"):
+        xp.sum(vector, keepdims=True)
+    with pytest.raises(ValueError, match="rank-2"):
+        xp.matmul(vector, vector)
+    with pytest.raises(TypeError, match="add left operand"):
+        xp.add(1, matrix)
+
 def test_scf_density_expression_has_same_tensorir_identity() -> None:
     batch = IndexSpace("batch", "batch", 2)
     spin = IndexSpace("spin", "spin", 1)
