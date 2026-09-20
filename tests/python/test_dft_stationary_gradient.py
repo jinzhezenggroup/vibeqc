@@ -326,9 +326,7 @@ def test_stationary_contract_rejects_inconsistent_orbital_state(
         )
 
 
-def test_stationary_contract_requires_weighted_density_and_true_residual() -> (
-    None
-):
+def test_stationary_contract_requires_weighted_density_and_true_residual() -> None:
     value = state()
     with pytest.raises(ValueError, match="weighted density"):
         StationaryDerivativeContract(value.identity)._validate_arrays(

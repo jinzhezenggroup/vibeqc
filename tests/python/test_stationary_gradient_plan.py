@@ -246,9 +246,7 @@ def test_tiled_ordered_quartets_sum_to_the_unsplit_result() -> None:
     np.testing.assert_allclose(actual, expected, atol=2e-13, rtol=2e-13)
 
 
-def test_complete_reduction_requires_all_sources_once_and_preserves_inputs() -> (
-    None
-):
+def test_complete_reduction_requires_all_sources_once_and_preserves_inputs() -> None:
     p = plan()
     components = {
         name: np.arange(6, dtype=float).reshape(2, 3) + i + 1

@@ -39,9 +39,7 @@ def native(tmp_path_factory: typing.Any) -> typing.Any:
 
 
 @pytest.mark.parametrize("case", _GOLDENS, ids=lambda case: case["name"])
-def test_independent_simple_dftd3_golden(
-    native: typing.Any, case: typing.Any
-) -> None:
+def test_independent_simple_dftd3_golden(native: typing.Any, case: typing.Any) -> None:
     spec = make_spec(**case["parameters"])
     energy, gradient = native.evaluate(spec, case["numbers"], case["positions"])
     assert energy == pytest.approx(case["energy"], abs=2e-14, rel=0)

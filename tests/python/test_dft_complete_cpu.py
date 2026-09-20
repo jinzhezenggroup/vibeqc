@@ -616,9 +616,7 @@ def test_compiler_source_publication_is_atomic(
     path.write_text("old complete source")
     replace_file = module.os.replace
 
-    def check_then_publish(
-        temporary: typing.Any, destination: typing.Any
-    ) -> None:
+    def check_then_publish(temporary: typing.Any, destination: typing.Any) -> None:
         assert path.read_text() == "old complete source"
         assert temporary.read_text() == "new complete source"
         if fail_publication:
