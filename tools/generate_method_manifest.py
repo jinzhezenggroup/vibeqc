@@ -229,7 +229,7 @@ def emit_cpp(methods: list[dict]) -> str:
         "};",
         "",
         f"inline constexpr std::array<MethodManifestEntry, {len(methods)}> "
-        "kMethodManifest{{",
+        "kMethodManifest{",
     ]
     for method in methods:
         reason = method.get("unavailable_reason", "")
