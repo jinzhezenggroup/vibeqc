@@ -37,9 +37,14 @@ class NonlocalGeometry:
     quadrature_identity: str
     spec_identity: str
     density_identity: str
+    coefficient: Fraction
     backend: str = "cpu-reference"
 
     def __post_init__(self) -> None:
+        if not isinstance(self.coefficient, Fraction) or self.coefficient <= 0:
+            raise ValueError(
+                "nonlocal geometry coefficient requires a positive Fraction"
+            )
         centers = immutable(self.centers)
         points = immutable(self.points)
         weights = immutable(self.weights)
@@ -72,9 +77,23 @@ class NonlocalGeometry:
         return value
 
     def validate_replay(
-        self, basis: typing.Any, grid: typing.Any, density: typing.Any
+        self,
+        basis: typing.Any,
+        grid: typing.Any,
+        density: typing.Any,
+        *,
+        spec: NonlocalCorrelationSpec,
+        coefficient: Fraction,
     ) -> ExplicitGrid:
-        """Revalidate the basis, density, and quadrature identities before reuse."""
+        """Revalidate the current kernel, coefficient, basis, density and grid."""
+        if not isinstance(spec, NonlocalCorrelationSpec):
+            raise TypeError("nonlocal geometry replay requires NonlocalCorrelationSpec")
+        if not isinstance(coefficient, Fraction) or coefficient <= 0:
+            raise ValueError("nonlocal replay coefficient requires a positive Fraction")
+        if spec.identity != self.spec_identity:
+            raise ValueError("nonlocal geometry/specification identity mismatch")
+        if coefficient != self.coefficient:
+            raise ValueError("nonlocal geometry/coefficient identity mismatch")
         if not isinstance(basis, NativeAO):
             raise TypeError("nonlocal geometry replay requires NativeAO")
         if basis.identity != self.basis_identity:
@@ -412,4 +431,5 @@ class FixedDensityNonlocalCorrelation:
             quadrature_identity=grid.identity,
             spec_identity=self.spec.identity,
             density_identity=density_identity,
+            coefficient=self.coefficient,
         )

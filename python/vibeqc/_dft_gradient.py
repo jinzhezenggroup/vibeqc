@@ -14,6 +14,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft.ao import NativeAO
 from vibeqc_compiler.dft.grid import ExplicitGrid, MolecularGrid, checked_int
 from vibeqc_compiler.dft.nonlocal_integration import NonlocalGeometry
+from vibeqc_compiler.method.nonlocal_correlation import NonlocalCorrelationPrimitive
 from vibeqc_compiler.xc.contractions import ContractionProgram, GeometryPartials
 from vibeqc_compiler.xc.grid_response import grid_response_tiles
 from vibeqc_compiler.xc.spec import FunctionalSpec
@@ -467,6 +468,7 @@ def resolve_nonlocal_nuclear_sources(
     grid: typing.Any,
     density: typing.Any,
     *,
+    primitive: NonlocalCorrelationPrimitive,
     tile_points: typing.Any = 256,
 ) -> dict[str, np.ndarray]:
     """Resolve the three VV10 sources on one validated physical grid branch."""
@@ -475,7 +477,13 @@ def resolve_nonlocal_nuclear_sources(
     if not isinstance(grid, MolecularGrid):
         raise TypeError("nonlocal stationary sources require MolecularGrid")
     checked_int(tile_points, "nonlocal grid-response tile points")
-    explicit = geometry.validate_replay(basis, grid, density)
+    if not isinstance(primitive, NonlocalCorrelationPrimitive):
+        raise TypeError(
+            "nonlocal stationary sources require the current nonlocal primitive"
+        )
+    explicit = geometry.validate_replay(
+        basis, grid, density, spec=primitive.spec, coefficient=primitive.coefficient
+    )
     owners = np.asarray(explicit.owners)
     point = np.zeros_like(geometry.centers)
     np.add.at(point, owners, geometry.points)

@@ -86,3 +86,22 @@ The focused DFT/VV10 regression set passes 194 tests with ruff clean.
 
 Agent: Agent D
 Model: GPT-5.6 Sol
+
+## Review correction: bind replay to the current primitive
+
+The geometry record's kernel hash was initially only recorded, not checked
+against the current method. The runtime resolver now requires the current
+`NonlocalCorrelationPrimitive` and passes its kernel specification and exact
+coefficient to the compiler-owned replay validator. The geometry snapshot also
+retains the explicit coefficient. VV10/rVV10, b/C, and coefficient changes reject
+before geometric sources can be consumed. The compiler `dft` package depends
+only on the common specification type, not on MethodIR or public runtime.
+
+The pre-fix independent review reproduced VV10 partials being accepted by an
+rVV10 diagnostic assembly on the same basis/grid/density. Added regressions
+exercise both variant directions, parameter changes, non-unit coefficient replay,
+and rejection when the expected primitive is omitted. No derivative equation,
+finite-difference threshold or public capability is changed.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

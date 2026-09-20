@@ -18,6 +18,7 @@ from vibeqc_compiler.dft import (
 from vibeqc_compiler.dft.fixtures import basis_arguments
 from vibeqc_compiler.method import (
     MethodSpec,
+    NonlocalCorrelationPrimitive,
     UnsupportedMethod,
     original_nonlocal_correlation,
     resolve_method,
@@ -166,16 +167,22 @@ def test_complete_nonlocal_nuclear_sources_match_rebuilt_molecular_grid(
     executor = FixedDensityNonlocalCorrelation(
         original_nonlocal_correlation(variant), max_points=100
     )
+    primitive = NonlocalCorrelationPrimitive(executor.spec, executor.coefficient)
     direction = np.random.default_rng(4911).normal(size=(2, 3)) * 0.05
     with NativeAO(**args) as basis:
         geometry = executor.geometry(basis, grid, density, tile_points=5)
         integral = executor.integrate(basis, grid, density, tile_points=5)
         components = resolve_nonlocal_nuclear_sources(
-            geometry, basis, grid, density, tile_points=5
+            geometry, basis, grid, density, primitive=primitive, tile_points=5
         )
         with pytest.raises(ValueError, match="density identity"):
             resolve_nonlocal_nuclear_sources(
-                geometry, basis, grid, density * 1.0001, tile_points=5
+                geometry,
+                basis,
+                grid,
+                density * 1.0001,
+                primitive=primitive,
+                tile_points=5,
             )
         displaced_atoms = list(args["atoms"])
         z, position = displaced_atoms[0]
@@ -186,7 +193,7 @@ def test_complete_nonlocal_nuclear_sources_match_rebuilt_molecular_grid(
         stale = MolecularGrid(tuple(displaced_atoms), grid_spec)
         with pytest.raises(ValueError, match="grid identity"):
             resolve_nonlocal_nuclear_sources(
-                geometry, basis, stale, density, tile_points=5
+                geometry, basis, stale, density, primitive=primitive, tile_points=5
             )
     assert geometry.grid_identity == integral.grid_identity == grid.identity
     assert (
