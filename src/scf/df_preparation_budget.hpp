@@ -87,8 +87,7 @@ struct DfResolvedBudget {
 };
 
 inline std::size_t df_budget_bytes(long double bytes) noexcept {
-  constexpr long double maximum =
-      static_cast<long double>(std::numeric_limits<std::size_t>::max());
+  constexpr long double maximum = static_cast<long double>(std::numeric_limits<std::size_t>::max());
   return bytes >= maximum ? std::numeric_limits<std::size_t>::max()
                           : static_cast<std::size_t>(std::max<long double>(0, bytes));
 }
@@ -118,10 +117,7 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
   const long double value_demand =
       16.0L * mib + sizeof(double) * (4.0L * n * n * a + batch * (8.0L + 2.0L * diis) * n * n);
   const long double response_demand =
-      workload.forces
-          ? 8.0L * mib +
-                sizeof(double) * 3.0L * atoms * (n * n + a * a + n * a)
-          : 0.0L;
+      workload.forces ? 8.0L * mib + sizeof(double) * 3.0L * atoms * (n * n + a * a + n * a) : 0.0L;
   const auto workload_target =
       std::clamp(df_budget_bytes(value_demand + response_demand), min_auto, max_auto);
 
@@ -136,10 +132,9 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
   } else if (resource.live) {
     const auto fractional = resource.total_bytes / 8U;
     result.reserved_headroom_bytes = std::max(min_headroom, fractional);
-    const auto after_absolute =
-        resource.free_bytes > result.reserved_headroom_bytes
-            ? resource.free_bytes - result.reserved_headroom_bytes
-            : resource.free_bytes / 2U;
+    const auto after_absolute = resource.free_bytes > result.reserved_headroom_bytes
+                                    ? resource.free_bytes - result.reserved_headroom_bytes
+                                    : resource.free_bytes / 2U;
     const auto available = after_absolute - after_absolute / 4U;
     result.total_bytes = std::min(workload_target, available);
   } else {

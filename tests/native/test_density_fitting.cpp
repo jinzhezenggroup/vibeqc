@@ -1070,15 +1070,14 @@ int main() {
                      " bytes; status=" + std::to_string(replay[0].status))
                         .c_str());
             for (const auto& item : prepared_cache) {
-              require(item && item->one_electron_gradient_system.has_value() &&
-                          item->one_electron_gradient_budget ==
-                              item->resolved_budget.response_bytes &&
-                          item->resolved_budget.requested_bytes == budget &&
-                          item->resolved_budget.value_bytes +
-                                  item->resolved_budget.response_bytes <=
-                              item->resolved_budget.total_bytes &&
-                          (!budget || item->resolved_budget.total_bytes == budget),
-                      "generated DF cache retained the previous response budget");
+              require(
+                  item && item->one_electron_gradient_system.has_value() &&
+                      item->one_electron_gradient_budget == item->resolved_budget.response_bytes &&
+                      item->resolved_budget.requested_bytes == budget &&
+                      item->resolved_budget.value_bytes + item->resolved_budget.response_bytes <=
+                          item->resolved_budget.total_bytes &&
+                      (!budget || item->resolved_budget.total_bytes == budget),
+                  "generated DF cache retained the previous response budget");
             }
             if (initial_forces.empty()) initial_forces = replay[0].scf.forces;
             require_matrix_close(replay[0].scf.forces, initial_forces, 5.0e-9,

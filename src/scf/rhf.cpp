@@ -179,8 +179,12 @@ DfResourceEnvelope df_resource_envelope(int device_id) noexcept {
 
 DfBudgetWorkload df_budget_workload(const core::System& orbital, const core::System& auxiliary,
                                     std::size_t batch, unsigned diis_history, bool forces) {
-  return {molecule::ao_count(orbital), molecule::ao_count(auxiliary), orbital.atoms.size(),
-          std::max<std::size_t>(1, batch), diis_history, forces};
+  return {molecule::ao_count(orbital),
+          molecule::ao_count(auxiliary),
+          orbital.atoms.size(),
+          std::max<std::size_t>(1, batch),
+          diis_history,
+          forces};
 }
 
 DfResolvedBudget resolve_df_budget_for_workload(DfBudgetWorkload workload, int device_id,
@@ -212,8 +216,7 @@ DfResolvedBudget resolve_df_budget_for_workload(DfBudgetWorkload workload, int d
 DfResolvedBudget resolve_df_budget_for_system(const core::System& orbital,
                                               const core::System& auxiliary, int device_id,
                                               std::size_t requested, bool forces,
-                                              std::size_t batch = 1U,
-                                              unsigned diis_history = 0U) {
+                                              std::size_t batch = 1U, unsigned diis_history = 0U) {
   return resolve_df_budget_for_workload(
       df_budget_workload(orbital, auxiliary, batch, diis_history, forces), device_id, requested);
 }
@@ -309,8 +312,8 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
 
 [[maybe_unused]] DensityFittingScfData prepare_density_fitting_data(
     const core::System& system, const core::System& auxiliary_system, double relative_threshold,
-    int cuda_device_id = -1, std::size_t output_budget_bytes = 0U,
-    bool include_derivatives = true, unsigned diis_history = 0U) {
+    int cuda_device_id = -1, std::size_t output_budget_bytes = 0U, bool include_derivatives = true,
+    unsigned diis_history = 0U) {
   // A non-negative device selects the CUDA Cartesian evaluator for the raw
   // metric/three-center tensors.  The default keeps CPU-reference callers
   // entirely on the existing oracle path.
@@ -320,9 +323,9 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
         "DF metric relative threshold must lie strictly between zero and one");
   }
   DensityFittingScfData data;
-  data.resolved_budget = resolve_df_budget_for_system(
-      system, auxiliary_system, cuda_device_id, output_budget_bytes, include_derivatives, 1U,
-      diis_history);
+  data.resolved_budget =
+      resolve_df_budget_for_system(system, auxiliary_system, cuda_device_id, output_budget_bytes,
+                                   include_derivatives, 1U, diis_history);
   trace_df_resolved_budget(data.resolved_budget);
 #if !VIBEQC_HAS_CUDA
   (void)output_budget_bytes;
@@ -351,7 +354,8 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
     // Do not build complete raw metric/three-center tensors just to discard
     // them before plan creation; retaining only dimensions and one-electron
     // response data keeps setup peak bounded by the resolved resource envelope.
-    if (data.resolved_budget.value_bytes != 0U || requested_df_pair_storage() == DfPairStorage::SymmetricLower) {
+    if (data.resolved_budget.value_bytes != 0U ||
+        requested_df_pair_storage() == DfPairStorage::SymmetricLower) {
       integrals::DensityFittingIntegralData metadata;
       metadata.nbf = molecule::ao_count(system);
       metadata.naux = molecule::ao_count(auxiliary_system);
@@ -1236,8 +1240,8 @@ DensityFittingTilePlan plan_cuda_density_fitting_tiles(
  * The same capacity was charged as fixed storage during tile selection. An
  * actual value allowance cannot silently borrow its response owner. */
 void reserve_cuda_df_diis(CudaDensityFittingJkPlan* plan, std::size_t nbf,
-                           const ScfOptions& options, const DfResolvedBudget& resolved,
-                           std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics) {
+                          const ScfOptions& options, const DfResolvedBudget& resolved,
+                          std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics) {
   const auto bytes = density_fitting_scf_diis_device_bytes(
       cuda_density_fitting_jk_plan_batch_size(plan), nbf, options.diis_history);
   const auto budget = resolved.value_bytes;
@@ -1390,9 +1394,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
   }
   const auto& resolved = data.front().resolved_budget;
   const auto planning_budget = resolved.value_bytes;
-  if (std::any_of(data.begin(), data.end(), [&](const auto& item) {
-        return item.resolved_budget != resolved;
-      }))
+  if (std::any_of(data.begin(), data.end(),
+                  [&](const auto& item) { return item.resolved_budget != resolved; }))
     throw std::invalid_argument("CUDA density-fitting batch has mixed resource-policy identity");
   const std::size_t nbf = data.front().raw.nbf;
   const std::size_t naux = data.front().raw.naux;
@@ -2194,7 +2197,8 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
             density_fitting_auxiliary_for_geometry(auxiliary_template, systems[source]);
         prepared = prepare_density_fitting_data(
             systems[source], auxiliary, options.density_fitting_relative_threshold, device_id,
-                  options.density_fitting_memory_budget_bytes, options.compute_forces, options.diis_history);
+            options.density_fitting_memory_budget_bytes, options.compute_forces,
+            options.diis_history);
       }
       if (source_indices.empty()) {
         nbf = prepared.raw.nbf;
@@ -2662,7 +2666,8 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
             density_fitting_auxiliary_for_geometry(auxiliary_template, systems[source]);
         prepared = prepare_density_fitting_data(
             systems[source], auxiliary, options.density_fitting_relative_threshold, device_id,
-                  options.density_fitting_memory_budget_bytes, options.compute_forces, options.diis_history);
+            options.density_fitting_memory_budget_bytes, options.compute_forces,
+            options.diis_history);
       }
       if (source_indices.empty()) {
         nbf = prepared.raw.nbf;
