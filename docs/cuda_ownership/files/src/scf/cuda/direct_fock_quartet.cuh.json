@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/direct_fock_quartet.cuh",
+  "role": "scientific",
+  "subsystem": "direct_integrals",
+  "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+  "regions": []
+}

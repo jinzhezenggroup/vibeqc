@@ -87,6 +87,7 @@
 #include "scf/generated_shell_task.hpp"
 #include "scf/mean_field.hpp"
 #include "scf/rhf.hpp"
+#include "scf/solver/iteration_control.hpp"
 #include "tensor/metrics.hpp"
 
 namespace vibeqc::scf {
@@ -832,6 +833,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       }
     }
     plan.resident_psss_bra_primitive_pairs = 0;
+    plan.generated_ssss_force = cuda_policy::generated_ssss_force_requested();
     plan.generated_psss_weighted = cuda_policy::generated_psss_weighted_requested();
     plan.one_electron_value_mapping = cuda_policy::one_electron_value_mapping_requested();
     const bool resident_psss_enabled = resident_psss_bra_requested();
@@ -2888,11 +2890,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   }
   if (cuda_error == cudaSuccess && split_provider_iteration) {
     std::vector<std::uint8_t> host_active(batch_size, 1U);
-    for (std::uint32_t iteration = 0; iteration < options.max_iterations; ++iteration) {
+    solver::run_bounded_iterations(options.max_iterations, [&](unsigned) {
       cuda_error = plan.graphs.launch_iteration(resources.stream_);
-      if (cuda_error != cudaSuccess) break;
+      if (cuda_error != cudaSuccess) return false;
       status = launch_iteration_eigensolver(ordinary_eigensolver_family);
-      if (status != VIBEQC_STATUS_SUCCESS) break;
+      if (status != VIBEQC_STATUS_SUCCESS) return false;
       cuda_error = plan.graphs.launch_post_eigensolver(resources.stream_);
       if (cuda_error == cudaSuccess) {
         cuda_error = cudaMemcpyAsync(host_active.data(), active, batch_size * sizeof(std::uint8_t),
@@ -2901,12 +2903,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       if (cuda_error == cudaSuccess) {
         cuda_error = cudaStreamSynchronize(resources.stream_);
       }
-      if (cuda_error != cudaSuccess ||
-          std::none_of(host_active.begin(), host_active.end(),
-                       [](std::uint8_t value) { return value != 0; })) {
-        break;
-      }
-    }
+      return cuda_error == cudaSuccess &&
+             std::any_of(host_active.begin(), host_active.end(),
+                         [](std::uint8_t value) { return value != 0; });
+    });
     if (status != VIBEQC_STATUS_SUCCESS) {
       fill_global_failure(outputs, status);
       return outputs;
@@ -3129,10 +3129,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // reports an honest non-convergence instead of a clamped success. Each item
     // leaves the loop on its own convergence, so a stagnating item is promoted
     // without holding back or dictating the precision of its neighbors.
-    for (std::uint32_t refinement = 0; refinement < options.max_iterations; ++refinement) {
+    solver::run_bounded_iterations(options.max_iterations, [&](unsigned) {
       if (std::none_of(host_refinement_active.begin(), host_refinement_active.end(),
                        [](std::uint8_t value) { return value != 0; })) {
-        break;
+        return false;
       }
       status = launch_iteration_pre_eigensolver(false);
       if (status == VIBEQC_STATUS_SUCCESS) {
@@ -3141,15 +3141,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       if (status == VIBEQC_STATUS_SUCCESS) {
         status = launch_iteration_post_eigensolver(false, false);
       }
-      if (status != VIBEQC_STATUS_SUCCESS) break;
+      if (status != VIBEQC_STATUS_SUCCESS) return false;
       cuda_error =
           cudaMemcpyAsync(host_refinement_active.data(), active, batch_size * sizeof(std::uint8_t),
                           cudaMemcpyDeviceToHost, resources.stream_);
       if (cuda_error == cudaSuccess) {
         cuda_error = cudaStreamSynchronize(resources.stream_);
       }
-      if (cuda_error != cudaSuccess) break;
-    }
+      return cuda_error == cudaSuccess &&
+             std::any_of(host_refinement_active.begin(), host_refinement_active.end(),
+                         [](std::uint8_t value) { return value != 0; });
+    });
     if (status != VIBEQC_STATUS_SUCCESS || cuda_error != cudaSuccess) {
       fill_global_failure(outputs,
                           status != VIBEQC_STATUS_SUCCESS ? status : cuda_status(cuda_error));
@@ -3452,21 +3454,23 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           unrestricted ? total_weighted_density : weighted_density, active, forces);
     }
   }
+  // Compile the generated ssss force consumer so complete endpoint A/B runs
+  // can select it without rebuilding the library, but keep the tuned native
+  // route as the production default until #356's endpoint gate passes.
   const std::uint64_t explicit_generated_force_shell_class_mask =
-      generated::enabled_shell_class_mask() & host_present_shell_class_mask;
-  // Fock-only AOT entries (currently ssss/psss) are deliberately not added
-  // to the force queue.  The force dispatcher is a separate registry and
-  // returns ``cudaErrorNotSupported`` for classes without a validated force
-  // consumer.  Keep these classes on the exact handwritten low-order page
-  // kernel below until an independently validated generated force entry is
-  // promoted.
+      generated::enabled_shell_class_mask() & host_present_shell_class_mask &
+      ~(plan.generated_ssss_force ? 0U : (std::uint64_t{1} << kSsssShellClass));
+  // Fock-only AOT entries (currently psss) are deliberately not added to the
+  // force queue. The force dispatcher is a separate registry and returns
+  // ``cudaErrorNotSupported`` for classes without a validated force consumer.
   const bool bounded_resident_psss_force_enabled =
       bounded_direct_streaming && plan.resident_psss_task_count != 0U &&
       plan.resident_psss_bra_primitive_pairs != 0U &&
       plan.resident_psss_bra_primitive_pairs <= kResidentPsssMaximumBraPrimitivePairs;
   const std::uint64_t bounded_native_paged_force_shell_class_mask =
       (bounded_direct_streaming
-           ? host_present_shell_class_mask & kBoundedNativePagedForceShellClassMask
+           ? host_present_shell_class_mask & kBoundedNativePagedForceShellClassMask &
+                 ~explicit_generated_force_shell_class_mask
            : 0U) &
       ~(bounded_resident_psss_force_enabled ? (std::uint64_t{1} << kPsssShellClass) : 0U);
   const std::uint64_t selected_force_shell_class_mask =

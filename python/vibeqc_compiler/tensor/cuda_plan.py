@@ -24,10 +24,11 @@ from .cuda_gemm import gemm_contract
 from .cuda_layout import LayoutDecision, conversion_bytes, select_layouts
 from .ir import TRANSCENDENTALS, Node
 from .layout import DenseLayout
+from .precision import PrecisionSchedule, describe_precision
 from .program import Program, _hash
 from .types import checked_size
 
-PLAN_SCHEMA = 3
+PLAN_SCHEMA = 4
 ALIGNMENT = 256
 INT_MAX = 2**31 - 1
 MIN_PROVIDER_BYTES = 96 * 1024**2
@@ -153,6 +154,10 @@ class TensorPlan:
         return program_precision(self.program)
 
     @property
+    def precision_schedule(self) -> PrecisionSchedule:
+        return describe_precision(self.program)
+
+    @property
     def allocation_bytes(self) -> int:
         # Error flag has a full alignment unit to keep every segment aligned.
         return (
@@ -198,6 +203,7 @@ class TensorPlan:
             for step in self.steps
             if step.gemm == "packed"
         )
+        precision = self.precision_schedule
         total = checked_size(
             self.estimated_traffic_bytes + input_bytes + output_bytes + conversion,
             "tensor semantic traffic bytes",
@@ -206,6 +212,9 @@ class TensorPlan:
             "schema": "vibeqc.tensor.cuda.semantic-traffic.v1",
             "logical_tensor_bytes": self.estimated_traffic_bytes,
             "layout_conversion_bytes": conversion,
+            "precision_cast_read_bytes": precision.cast_read_bytes,
+            "precision_cast_write_bytes": precision.cast_write_bytes,
+            "precision_cast_simultaneous_bytes": precision.maximum_cast_live_bytes,
             "host_to_device_bytes": input_bytes,
             "device_to_host_bytes": output_bytes,
             "total_bytes": total,
@@ -239,7 +248,9 @@ class TensorPlan:
             "layout_identity": self.layout_identity,
             "equation": self.program.logical_hash,
             "precision": self.precision,
-            "arithmetic": "per-node dtype; RN; fp32 SGEMM pedantic; no implicit casts",
+            "precision_schedule": self.precision_schedule.to_payload(),
+            "precision_schedule_identity": self.precision_schedule.identity,
+            "arithmetic": "explicit casts only; per-node dtype; RN; fp32 SGEMM pedantic; no TF32 or implicit casts",
             "fp32_flush_to_zero": False,
             "target": self.target.to_payload(),
             "schedule": asdict(self.schedule),
@@ -423,10 +434,15 @@ def plan_cuda(
     offsets, active, free, capacity = {}, {}, [], 0
     tables = []
     for i, (node, _) in enumerate(nodes):
-        if node.op == "gather":
+        values = None
+        if node.op in ("gather", "indexed_gather", "scatter_add"):
+            values = node.attrs["positions"]
+        elif node.op == "segment_sum":
+            values = node.attrs["offsets"]
+        if values is not None:
             tables.append((i, capacity))
             capacity = checked_size(
-                capacity + aligned(len(node.attrs["positions"]) * 8),
+                capacity + aligned(len(values) * 8),
                 "index table bytes",
             )
     steps, flops, traffic = [], 0, 0
@@ -477,7 +493,12 @@ def plan_cuda(
             for child, labels in zip(node.inputs, node.attrs["labels"], strict=True):
                 domains.update(zip(labels, child.spec.shape, strict=True))
             flops += len(node.inputs) * prod(domains.values())
-        elif node.op not in VIEWS and node.op not in ("input", "constant", "gather"):
+        elif node.op not in VIEWS and node.op not in (
+            "input",
+            "constant",
+            "gather",
+            "indexed_gather",
+        ):
             flops += sum(child.spec.size for child in node.inputs)
         steps.append(
             Step(

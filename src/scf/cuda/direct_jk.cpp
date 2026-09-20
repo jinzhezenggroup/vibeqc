@@ -332,11 +332,12 @@ int cuda_direct_jk_device(const CudaDirectJkPlan* plan) noexcept {
   return plan ? plan->device_id : -1;
 }
 
-vibeqc_status enqueue_cuda_direct_jk_device(CudaDirectJkPlan* plan, FockBuildSpec spec,
-                                            const double* density, const double* beta,
-                                            std::size_t elements, double* coulomb,
-                                            double* alpha_exchange, double* beta_exchange,
-                                            int* numerical_error, std::string& detail) {
+static vibeqc_status enqueue_cuda_direct_jk_device_impl(CudaDirectJkPlan* plan, FockBuildSpec spec,
+                                                        const double* density, const double* beta,
+                                                        std::size_t elements, double* coulomb,
+                                                        double* alpha_exchange,
+                                                        double* beta_exchange, int* numerical_error,
+                                                        bool mixed_j, std::string& detail) {
   return direct_jk_guard(plan, detail, [&] {
     direct_jk_require(plan != nullptr, "null direct J/K plan");
     spec = direct_jk_strategy(plan, spec, 0, plan->diagnostic.batch_size);
@@ -389,10 +390,11 @@ vibeqc_status enqueue_cuda_direct_jk_device(CudaDirectJkPlan* plan, FockBuildSpe
         direct_jk_check(cudaGetLastError());
       }
     if (spec.coulomb.present || spec.exchange.present) {
-      launch_independent_jk_kernel(
-          static_cast<unsigned>(elements), kIndependentJkThreads, 0, plan->stream, plan->batch, 0,
-          spec.coulomb.present, spec.exchange.present, unrestricted, plan->screening_tolerance,
-          plan->bounds, density, beta, coulomb, alpha_exchange, beta_exchange);
+      launch_independent_jk_kernel(static_cast<unsigned>(elements), kIndependentJkThreads, 0,
+                                   plan->stream, plan->batch, 0, spec.coulomb.present,
+                                   spec.exchange.present, unrestricted, mixed_j,
+                                   plan->screening_tolerance, plan->bounds, density, beta, coulomb,
+                                   alpha_exchange, beta_exchange);
       direct_jk_check(cudaGetLastError());
       for (const auto* output : outputs)
         if (output) {
@@ -401,6 +403,26 @@ vibeqc_status enqueue_cuda_direct_jk_device(CudaDirectJkPlan* plan, FockBuildSpe
         }
     }
   });
+}
+
+vibeqc_status enqueue_cuda_direct_jk_device(CudaDirectJkPlan* plan, FockBuildSpec spec,
+                                            const double* density, const double* beta,
+                                            std::size_t elements, double* coulomb,
+                                            double* alpha_exchange, double* beta_exchange,
+                                            int* numerical_error, std::string& detail) {
+  return enqueue_cuda_direct_jk_device_impl(plan, spec, density, beta, elements, coulomb,
+                                            alpha_exchange, beta_exchange, numerical_error, false,
+                                            detail);
+}
+
+vibeqc_status enqueue_cuda_direct_jk_device_mixed_j(CudaDirectJkPlan* plan, FockBuildSpec spec,
+                                                    const double* density, const double* beta,
+                                                    std::size_t elements, double* coulomb,
+                                                    double* alpha_exchange, double* beta_exchange,
+                                                    int* numerical_error, std::string& detail) {
+  return enqueue_cuda_direct_jk_device_impl(plan, spec, density, beta, elements, coulomb,
+                                            alpha_exchange, beta_exchange, numerical_error, true,
+                                            detail);
 }
 
 static vibeqc_status execute_cuda_direct_jk_range(
@@ -418,11 +440,11 @@ static vibeqc_status execute_cuda_direct_jk_range(
     if (spec.coulomb.present || spec.exchange.present) {
       DirectJkDownloadFence fence{plan->stream};
       direct_jk_upload_density(*plan, density, beta, offset);
-      launch_independent_jk_kernel(static_cast<unsigned>(density.size()), kIndependentJkThreads, 0,
-                                   plan->stream, plan->batch, begin, spec.coulomb.present,
-                                   spec.exchange.present, unrestricted, plan->screening_tolerance,
-                                   plan->bounds, plan->density, plan->beta, plan->coulomb,
-                                   plan->alpha_exchange, plan->beta_exchange);
+      launch_independent_jk_kernel(
+          static_cast<unsigned>(density.size()), kIndependentJkThreads, 0, plan->stream,
+          plan->batch, begin, spec.coulomb.present, spec.exchange.present, unrestricted, false,
+          plan->screening_tolerance, plan->bounds, plan->density, plan->beta, plan->coulomb,
+          plan->alpha_exchange, plan->beta_exchange);
       direct_jk_check(cudaGetLastError());
       auto download = [&](std::vector<double>& out, const double* input) {
         if (!out.empty())

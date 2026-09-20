@@ -8,12 +8,13 @@ library integration, stable task/ABI structures and failure diagnostics.
 Operator-specific primitive/AO traversal and contraction glue is a migration
 target even when its scalar arithmetic is already generated.
 
-`cuda_ownership.json` is the versioned semantic ledger and the only
+`cuda_ownership/` is the versioned semantic ledger and the only
 repository-tracked current ownership source. It records current defaults,
 generated capabilities, missing replacement capabilities, evidence and retirement
-conditions. The mechanically derived current report is generated on demand and
-in CI rather than committed, so unrelated CUDA branches do not all rewrite one
-large snapshot. A generic runtime primitive is not a duplicate
+conditions. The ledger is sharded by generated family, subsystem and native source file; the
+reporter discovers those shards deterministically, so unrelated CUDA branches do
+not rewrite one aggregate semantic ledger. The mechanically derived current report
+is generated on demand and in CI rather than committed. A generic runtime primitive is not a duplicate
 scientific implementation. A retained production exception must be measured and tracked; calling it
 "reference" does not make it an independent oracle. CPU and external independent
 references remain outside the maintained CUDA counts.
@@ -185,7 +186,7 @@ DF integral recurrence.
 
 | #231 work items | Delivered behavior and review surface |
 | --- | --- |
-| 1–3: inventory, reproducible report, migration ledger | Complete file/region and generated-family inventory, checked source anchors, current defaults, evidence and retirement conditions in `cuda_ownership.json`; the current report is generated reproducibly from that ledger and source tree. |
+| 1–3: inventory, reproducible report, migration ledger | Complete file/region and generated-family inventory, checked source anchors, current defaults, evidence and retirement conditions in `cuda_ownership/`; the current report is generated reproducibly from that ledger and source tree. |
 | 4: reduce operator-specific glue | Shared AO-pair and rank-generic Gaussian products, bounded strided ranges, subgroup reductions and generic stores/scatter; generated policies supply operator semantics. |
 | 5: one-electron values | Phase 1 promoted shared generated S/T/V values after the 20-case comparison and removed the handwritten double-value kernel and dispatches. |
 | 6: DF values and derivatives | Phase 2 unifies bulk/source/weighted mathematics and removes the old CUDA coordinate response after independent numerical, resource and full endpoint gates. |
@@ -222,7 +223,7 @@ python tools/compare_cuda_ownership.py \
 
 The current report is not tracked in Git. CI regenerates
 `.artifacts/cuda-ownership-current.json` from the checked-out source and
-`docs/cuda_ownership.json`, validates it, and uploads it as a workflow artifact.
+`docs/cuda_ownership/`, validates it, and uploads it as a workflow artifact.
 For local review, generate the same file with
 `python tools/report_cuda_ownership.py --check --output .artifacts/cuda-ownership-current.json`.
 Historical baselines and benchmark evidence remain versioned where their exact

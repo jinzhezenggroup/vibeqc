@@ -1056,8 +1056,8 @@ int main() {
                                     bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);
             if (budget != 0 && budget <= 8U * 1024U * 1024U) {
               // These budgets cannot fit the solver owners and DIIS
-              // together with this sp batch's source/SCF buffers in the
-              // existing half-budget value-plan partition.
+              // together with this sp batch's source/SCF buffers under the
+              // resolved hard-cap value allowance.
               // A stale default cache used to bypass that active limit.
               require(replay.size() == 2 && replay[0].status == VIBEQC_STATUS_OUT_OF_MEMORY &&
                           replay[1].status == VIBEQC_STATUS_OUT_OF_MEMORY && !cached.plan,
@@ -1070,10 +1070,14 @@ int main() {
                      " bytes; status=" + std::to_string(replay[0].status))
                         .c_str());
             for (const auto& item : prepared_cache) {
-              require(item && item->one_electron_gradient_system.has_value() &&
-                          item->one_electron_gradient_budget ==
-                              (budget ? budget / 2 : 128U * 1024U * 1024U),
-                      "generated DF cache retained the previous response budget");
+              require(
+                  item && item->one_electron_gradient_system.has_value() &&
+                      item->one_electron_gradient_budget == item->resolved_budget.response_bytes &&
+                      item->resolved_budget.requested_bytes == budget &&
+                      item->resolved_budget.value_bytes + item->resolved_budget.response_bytes <=
+                          item->resolved_budget.total_bytes &&
+                      (!budget || item->resolved_budget.total_bytes == budget),
+                  "generated DF cache retained the previous response budget");
             }
             if (initial_forces.empty()) initial_forces = replay[0].scf.forces;
             require_matrix_close(replay[0].scf.forces, initial_forces, 5.0e-9,

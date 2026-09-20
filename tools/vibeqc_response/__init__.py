@@ -22,6 +22,7 @@ from .krylov import (
     solve,
     solve_many,
 )
+from .native_ks import NativeRKSResponse
 from .operators import (
     CPKSResponseOperator,
     DenseMatrixResponseOperator,
@@ -57,6 +58,7 @@ __all__ = [
     "KrylovRecycleSpace",
     "MultiRHSResult",
     "NativeJKBackend",
+    "NativeRKSResponse",
     "RHFResponseOperator",
     "ResponseCompatibilityError",
     "ResponseProblem",

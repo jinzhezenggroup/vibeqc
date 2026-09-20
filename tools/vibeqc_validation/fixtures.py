@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import typing
 from copy import deepcopy
 from pathlib import Path
 
@@ -201,7 +202,7 @@ def mathematical_hash(inputs: dict) -> str:
     """
     annotations = {"name", "basis_name", "seed", "rng", "center_case"}
 
-    def numbers(value):
+    def numbers(value: typing.Any) -> typing.Any:
         # JSON 1 and 1.0 (also -0.0 and 0) describe the same mathematical
         # number. Convert exactly integral floats to integers without rounding
         # fractional values or passing large integer dimensions through float.

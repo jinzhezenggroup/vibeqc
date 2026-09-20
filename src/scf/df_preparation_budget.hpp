@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 
 namespace vibeqc::scf {
@@ -9,7 +10,7 @@ namespace vibeqc::scf {
 /** Host live-set bound for one source-backed CUDA DF preparation item.
  * The caller selects the actual derivative exporter. Generated one-electron
  * response retains geometry instead of coordinate-major AO derivative arrays.
- * Zero-budget compatibility preparation is outside this bounded source path.
+ * CPU/reference preparation remains outside this bounded CUDA source path.
  */
 struct DfPreparationShape {
   std::size_t cartesian_nbf{}, public_nbf{}, atoms{};
@@ -53,16 +54,148 @@ inline DfPreparationStorage df_preparation_storage(DfPreparationShape shape) noe
           df_preparation_bytes(metadata)};
 }
 
-/** Energy owns the whole positive value allowance. Forces reserve the other
- * half for sequential DF/one-electron response; zero keeps legacy defaults.
- * Clamp positive subdivisions so a tiny request cannot become unbounded zero.
- */
-inline std::size_t df_value_budget(std::size_t requested, bool forces) noexcept {
-  return requested && forces ? std::max<std::size_t>(1, requested / 2) : requested;
+/** Workload dimensions used by the DF resource resolver. They are deliberately
+ * execution dimensions, not scientific controls, and therefore do not alter
+ * integral mathematics or numerical thresholds. */
+struct DfBudgetWorkload {
+  std::size_t nbf{}, naux{}, atoms{}, batch{1}, diis_history{};
+  bool forces{};
+};
+
+/** Optional live device envelope. A false live flag is the deterministic
+ * CPU/probe-failure path; callers must not synthesize guessed free memory. */
+struct DfResourceEnvelope {
+  std::size_t free_bytes{}, total_bytes{};
+  bool live{};
+};
+
+/** Fully resolved owner contract. The resolved bytes are replay/cache identity
+ * for the prepared execution owner even though they are not scientific identity.
+ * A positive requested_bytes is always a hard upper bound on total_bytes. */
+struct DfResolvedBudget {
+  static constexpr std::uint32_t policy_version = 1;
+  std::size_t requested_bytes{};
+  std::size_t total_bytes{};
+  std::size_t value_bytes{};
+  std::size_t response_bytes{};
+  std::size_t reserved_headroom_bytes{};
+  std::size_t observed_free_bytes{};
+  std::size_t observed_total_bytes{};
+  bool live_resource{};
+  bool feasible{true};
+  bool operator==(const DfResolvedBudget&) const = default;
+};
+
+inline std::size_t df_budget_bytes(long double bytes) noexcept {
+  constexpr long double maximum = static_cast<long double>(std::numeric_limits<std::size_t>::max());
+  return bytes >= maximum ? std::numeric_limits<std::size_t>::max()
+                          : static_cast<std::size_t>(std::max<long double>(0, bytes));
 }
 
+/** Resolve one value/response allowance without a fixed-size magic default.
+ *
+ * Automatic mode uses a bounded workload target, then leaves both an absolute
+ * and fractional device reservation when live free-memory is available. If the
+ * probe is unavailable, the same dimensions deterministically resolve to a
+ * conservative 32 MiB..1 GiB envelope. Force response and value ownership are
+ * proportional to their estimated staged work, not an unconditional 50/50.
+ */
+inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceEnvelope resource,
+                                          std::size_t requested_bytes) noexcept {
+  constexpr std::size_t mib = 1024U * 1024U;
+  constexpr std::size_t min_auto = 32U * mib;
+  constexpr std::size_t max_auto = 1024U * mib;
+  constexpr std::size_t min_headroom = 256U * mib;
+
+  const long double n = static_cast<long double>(std::max<std::size_t>(1, workload.nbf));
+  const long double a = static_cast<long double>(std::max<std::size_t>(1, workload.naux));
+  const long double atoms = static_cast<long double>(std::max<std::size_t>(1, workload.atoms));
+  const long double batch = static_cast<long double>(std::max<std::size_t>(1, workload.batch));
+  const long double diis =
+      static_cast<long double>(std::min<std::size_t>(workload.diis_history, 12U));
+
+  const long double value_demand =
+      16.0L * mib + sizeof(double) * (4.0L * n * n * a + batch * (8.0L + 2.0L * diis) * n * n);
+  const long double response_demand =
+      workload.forces ? 8.0L * mib + sizeof(double) * 3.0L * atoms * (n * n + a * a + n * a) : 0.0L;
+  const auto workload_target =
+      std::clamp(df_budget_bytes(value_demand + response_demand), min_auto, max_auto);
+
+  DfResolvedBudget result;
+  result.requested_bytes = requested_bytes;
+  result.live_resource = resource.live;
+  result.observed_free_bytes = resource.live ? resource.free_bytes : 0U;
+  result.observed_total_bytes = resource.live ? resource.total_bytes : 0U;
+
+  if (requested_bytes != 0U) {
+    result.total_bytes = requested_bytes;
+  } else if (resource.live) {
+    const auto fractional = resource.total_bytes / 8U;
+    const auto desired_headroom = std::max(min_headroom, fractional);
+    // When the desired reservation exceeds free memory, the existing fallback
+    // retains half that free envelope. Report that actual reservation, not an
+    // impossible amount larger than the observed free-memory capacity.
+    result.reserved_headroom_bytes = resource.free_bytes > desired_headroom
+                                         ? desired_headroom
+                                         : resource.free_bytes - resource.free_bytes / 2U;
+    const auto after_absolute = resource.free_bytes - result.reserved_headroom_bytes;
+    const auto available = after_absolute - after_absolute / 4U;
+    result.total_bytes = std::min(workload_target, available);
+  } else {
+    result.total_bytes = workload_target;
+  }
+
+  if (!workload.forces) {
+    result.value_bytes = result.total_bytes;
+    // A resolved zero is exhaustion, never a feasible implementation default.
+    result.feasible = result.total_bytes != 0U;
+    return result;
+  }
+  if (result.total_bytes < 2U) {
+    result.value_bytes = result.total_bytes;
+    result.feasible = false;
+    return result;
+  }
+
+  const long double demand = value_demand + response_demand;
+  long double response_fraction = demand > 0.0L ? response_demand / demand : 0.5L;
+  response_fraction = std::clamp(response_fraction, 0.20L, 0.70L);
+  auto response =
+      static_cast<std::size_t>(static_cast<long double>(result.total_bytes) * response_fraction);
+  response = std::clamp<std::size_t>(response, 1U, result.total_bytes - 1U);
+  result.response_bytes = response;
+  result.value_bytes = result.total_bytes - response;
+  return result;
+}
+
+/** Partition an already resolved envelope; zero remaining bytes is exhaustion,
+ * never a new automatic request. Preserve the original probe/headroom identity. */
+inline DfResolvedBudget resolve_df_subbudget(DfBudgetWorkload workload,
+                                             const DfResolvedBudget& envelope,
+                                             std::size_t retained_bytes) noexcept {
+  auto result = envelope;
+  result.total_bytes = result.value_bytes = result.response_bytes = 0;
+  result.feasible = false;
+  if (!envelope.feasible || retained_bytes >= envelope.total_bytes) return result;
+  const auto remaining = envelope.total_bytes - retained_bytes;
+  const auto split = resolve_df_budget(workload, {}, remaining);
+  result.total_bytes = split.total_bytes;
+  result.value_bytes = split.value_bytes;
+  result.response_bytes = split.response_bytes;
+  result.feasible = split.feasible;
+  return result;
+}
+
+/** Compatibility helpers for explicit-only callers. Zero no longer means a
+ * hidden implementation default; production resolves zero with workload and
+ * resource information through resolve_df_budget. */
+inline std::size_t df_value_budget(std::size_t requested, bool forces) noexcept {
+  if (!requested || !forces) return requested;
+  return resolve_df_budget({1, 1, 1, 1, 0, true}, {}, requested).value_bytes;
+}
 inline std::size_t df_force_budget(std::size_t requested) noexcept {
-  return requested ? std::max<std::size_t>(1, requested / 2) : 128U * 1024U * 1024U;
+  if (!requested) return 0U;
+  return resolve_df_budget({1, 1, 1, 1, 0, true}, {}, requested).response_bytes;
 }
 
 }  // namespace vibeqc::scf

@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from . import _generated_methods as _method_manifest
 from . import _native
 from .accuracy import AccuracyAssessment, ResolvedModel, TargetAccuracy
 from .basis import BasisProvenance, BasisSet, BasisShell, ElementBasis, load_basis
@@ -28,21 +29,8 @@ if TYPE_CHECKING:
 
     from .ks_diagnostics import KsDiagnostic, KsTransportDiagnostic
 
-_METHODS = {
-    "rhf": _native.METHOD_RHF,
-    "uhf": _native.METHOD_UHF,
-    "wb97m-v": _native.METHOD_WB97M_V,
-    "ccsd(t)": _native.METHOD_RCCSD_T,
-    "mp2": _native.METHOD_MP2,
-    "lda-rks": _native.METHOD_LDA_RKS,
-    "pbe-rks": _native.METHOD_PBE_RKS,
-    "lda-uks": _native.METHOD_LDA_UKS,
-    "pbe-uks": _native.METHOD_PBE_UKS,
-    "r2scan-rks": _native.METHOD_R2SCAN_RKS,
-    "r2scan-uks": _native.METHOD_R2SCAN_UKS,
-}
-
-_HF_METHODS = frozenset((_native.METHOD_RHF, _native.METHOD_UHF))
+_METHODS = _method_manifest.METHOD_NAME_TO_ID
+_HF_METHODS = _method_manifest.HF_METHOD_IDS
 
 
 @dataclass(frozen=True)
@@ -513,6 +501,11 @@ class Calculator:
             and self._precision_mode != _native.PRECISION_FP64
         ):
             raise ValueError("canonical MP2 requires precision='fp64'")
+        if (
+            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
+            and self._precision_mode != _native.PRECISION_FP64
+        ):
+            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._library = _native.load_library(device=device, device_id=self._device_id)
         self._ks_options_version = 0
         if self._ks_options is not None:
@@ -540,9 +533,14 @@ class Calculator:
                 f"method {method!r} is reserved but not implemented"
             )
         self._capabilities = method_capabilities(self._method_name)
+        from ._cpu_force_resources import qualified_basis
+
         if (
             self._capabilities.family == "density_functional"
-            and self._device_name == "cuda"
+            and (
+                self._device_name == "cuda"
+                or (self._device_name == "cpu" and qualified_basis(self._basis))
+            )
             and not (
                 isinstance(self._basis, BasisSet)
                 and any(element.ecp_core_electrons for element in self._basis.elements)
@@ -552,18 +550,11 @@ class Calculator:
                     for shell in element.shells
                 )
             )
-            and self._method
-            in (
-                _native.METHOD_LDA_RKS,
-                _native.METHOD_PBE_RKS,
-                _native.METHOD_LDA_UKS,
-                _native.METHOD_PBE_UKS,
-            )
+            and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):
-            # #163 C2 is a Python public capability layered on the native KS
-            # prepared owner plus the compiler-owned CUDA gradient consumer.
-            # Keep the backend-neutral C registry conservative: CPU/native-C
-            # callers do not inherit a force capability they cannot execute.
+            # Python public capability layered on the native KS prepared owner
+            # plus the backend's compiled stationary gradient consumer.
+            # Keep the backend-neutral C registry conservative.
             # ECP promotion is bounded to Cartesian/real-spherical s/p records. The shared
             # nine-source consumer also enforces shape, byte and work caps;
             # higher-angular ECP domains remain energy-only.
@@ -573,8 +564,13 @@ class Calculator:
                 | {"forces"},
             )
         if self._capabilities.family == "density_functional":
-            if self._precision_mode != _native.PRECISION_FP64:
-                raise NotImplementedError("DFT supports explicit FP64 precision only")
+            if (
+                self._precision_mode == _native.PRECISION_AUTO
+                and self._device_name != "cuda"
+            ):
+                raise NotImplementedError(
+                    "DFT automatic precision currently requires CUDA"
+                )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError("DFT supports conventional Coulomb only")
             if auxiliary_basis is not None:
@@ -854,13 +850,8 @@ class Calculator:
         # HF's native default uses the orbital system as the auxiliary system.
         # An AUTO provider may choose a backend, but never changes this model.
         auxiliary = metadata.get("auxiliary", orbital) if fitted else None
-        method_names = {
-            _native.METHOD_RHF: "rhf",
-            _native.METHOD_UHF: "uhf",
-            _native.METHOD_MP2: "mp2",
-        }
         try:
-            resolved_method = method_names[self._method]
+            resolved_method = _method_manifest.METHOD_ID_TO_NAME[self._method]
         except KeyError as error:
             raise NotImplementedError(
                 "accuracy model is unavailable for this method"
@@ -1076,6 +1067,10 @@ class Calculator:
                 method=self._method_name,
                 basis=self._basis,
                 backend=self._device_name,
+                precision={
+                    _native.PRECISION_FP64: "fp64",
+                    _native.PRECISION_AUTO: "auto",
+                }[self._precision_mode],
                 basis_representation=self._representation_name,
                 diis_history=self._diis_history,
                 max_iterations=self._max_iterations,
@@ -1100,7 +1095,7 @@ class Calculator:
             systems,
             charges=charges,
             multiplicities=multiplicities,
-            method={_native.METHOD_RHF: "rhf", _native.METHOD_UHF: "uhf"}[self._method],
+            method=_method_manifest.METHOD_ID_TO_NAME[self._method],
             basis=self._basis,
             auxiliary_basis=self._auxiliary_basis,
             backend=self._device_name,
@@ -1270,11 +1265,7 @@ class Calculator:
             resource_plan = self.estimate_resources(
                 [native_atoms], charges=[charge], multiplicities=[multiplicity]
             ).require_feasible()
-        if (
-            compute_forces
-            and self._capabilities.family == "density_functional"
-            and self._device_name == "cuda"
-        ):
+        if compute_forces and self._capabilities.family == "density_functional":
             # Reuse the prepared-batch owner because the stationary snapshot ABI
             # is intentionally tied to a live native owner.  This avoids a second
             # scientific implementation in the single-system path.

@@ -1,6 +1,7 @@
-"""Bounded, opt-in selection using complete FP64 TensorIR endpoints.
+"""Bounded, opt-in selection from a strict FP64 baseline.
 
-No candidate becomes the default merely because it compiles or saves FLOPs.
+No schedule or precision candidate becomes the default merely because it
+compiles, saves bytes, or saves FLOPs.
 Selection requires CPU/baseline parity and paired timing evidence on every
 provided fixture. Rejected candidates and all raw samples remain in evidence.
 """
@@ -38,6 +39,7 @@ from .cuda_search import (
     require_compiled_resources,
 )
 from .interpreter import execute
+from .precision import describe_precision
 
 if typing.TYPE_CHECKING:
     from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
@@ -155,6 +157,7 @@ def tune_cuda(
     *,
     schedules: typing.Any = None,
     search_space: TensorScheduleSpace | None = None,
+    precision_programs: typing.Any = None,
     search_limits: TensorSearchLimits = DEFAULT_SEARCH_LIMITS,
     screening: TensorScreeningPolicy | None = DEFAULT_SCREENING_POLICY,
     repeats: int = 8,
@@ -171,6 +174,9 @@ def tune_cuda(
     Set screening=None to fully qualify every compiled candidate as before.
     A finite Slurm allocation remains the hard timeout for device work; this
     deadline stops further work. The CPU interpreter is a tuning oracle only.
+    Precision variants are opt-in typed TensorIR programs that must preserve
+    the baseline ABI and scientific source identity; they use this same search,
+    compilation cache, numerical gate, and endpoint evidence path.
     """
     if baseline.precision != "fp64":
         raise ValueError(
@@ -182,8 +188,20 @@ def tune_cuda(
         raise TypeError("screening must be TensorScreeningPolicy or None")
     if schedules is not None and search_space is not None:
         raise ValueError("provide schedules or search_space, not both")
+    precision_programs = (
+        (baseline.program,)
+        if precision_programs is None
+        else tuple(islice(precision_programs, search_limits.maximum_candidates + 1))
+    )
+    if not 1 <= len(precision_programs) <= search_limits.maximum_candidates:
+        raise ValueError(
+            "precision variant count exceeds the candidate limit or is empty"
+        )
+    maximum_schedules = max(
+        1, search_limits.maximum_candidates // len(precision_programs)
+    )
     schedules = (
-        candidate_schedules(search_space, maximum=search_limits.maximum_candidates)
+        candidate_schedules(search_space, maximum=maximum_schedules)
         if schedules is None
         else tuple(islice(schedules, search_limits.maximum_candidates + 1))
     )
@@ -211,7 +229,12 @@ def tune_cuda(
         if time.monotonic() - started >= maximum_seconds:
             raise TimeoutError("tuning deadline exhausted")
 
-    search = plan_schedule_search(baseline, schedules, search_limits)
+    search = plan_schedule_search(
+        baseline,
+        schedules,
+        search_limits,
+        precision_programs=precision_programs,
+    )
     compile_shortlist = _static_compile_shortlist(
         search, search_limits.maximum_compilations
     )
@@ -259,6 +282,9 @@ def tune_cuda(
             "baseline": reference_cuda.identity,
             "fixtures": feed_identities,
             "schedules": [asdict(s) for s in schedules],
+            "precision_schedules": [
+                describe_precision(program).identity for program in precision_programs
+            ],
             "search_limits": asdict(search_limits),
             "screening": asdict(screening) if screening is not None else None,
             "screening_active": screening_active,
@@ -631,8 +657,9 @@ def _promotion_profiles(
     to #136's existing executable key and the candidate's complete evidence hash;
     they must not be treated as a general promotion to unmeasured inputs/targets.
     """
+    precision = plan.precision_schedule
     identity = CompilationIdentity(
-        plan.program.logical_hash,
+        precision.source_equation,
         canonical_hash(
             {
                 k: v
@@ -654,7 +681,10 @@ def _promotion_profiles(
         workload = WorkloadSignature(
             "tensor-cuda-endpoint",
             (
-                ("equation", plan.program.logical_hash),
+                ("equation", precision.source_equation),
+                ("precision_schedule", precision.identity),
+                ("math_mode", precision.math_mode),
+                ("strict_audit_dtype", precision.strict_audit_dtype),
                 ("max_bytes", plan.max_bytes),
                 ("reservations", canonical_hash(asdict(plan.reservations))),
                 ("input_layout", canonical_hash(layout)),
@@ -696,7 +726,12 @@ def _promotion_profiles(
             name=f"tensor-{plan.identity[:12]}-{domain[:12]}",
             identity=identity,
             artifact_key=artifact.metadata["key"],
-            schedule_hash=canonical_hash(asdict(plan.schedule)),
+            schedule_hash=canonical_hash(
+                {
+                    "schedule": asdict(plan.schedule),
+                    "precision_schedule": precision.identity,
+                }
+            ),
             profile_hash=evidence_hash,
             correctness=correctness,
             performance=performance,

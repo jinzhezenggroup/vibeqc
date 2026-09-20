@@ -101,6 +101,37 @@ explicit handoff from ordinary energy execution. The existing public
 `matrix_d2h_bytes` total still includes snapshot matrices, so legacy transport
 accounting remains conservative without an ABI change.
 
+## CUDA KS iteration residency
+
+Native CUDA LDA/PBE direct all-electron RKS has an explicitly selectable
+ordinary-stream device-control prototype. With \`VIBEQC_CUDA_KS_CHUNK=2\`, an
+eligible owner can submit a bounded two-iteration chunk and synchronize once at
+the chunk boundary rather than unconditionally fencing after every iteration.
+Each completed physical iteration still writes one compact scalar diagnostic
+row, and the device applies the unchanged energy-change, density-change,
+physical-residual, electron-count and maximum-iteration gates before admitting
+the next iteration.
+
+Near a convergence gate the selected path submits one iteration to bound
+speculation. Direct J/XC do not yet have an active-mask seam, so an unexpected
+terminal state in the first slot may enqueue at most one unused J/XC
+evaluation; downstream Fock, DIIS, eigensolver, density, warm-state and history
+updates for that slot are masked. Ragged batch items retain independent state
+and streams.
+
+The production default remains the established one-iteration host-controlled
+route. \`VIBEQC_CUDA_KS_CHUNK=1\` (also \`0\`, \`off\` or \`none\`) selects that
+baseline explicitly. \`VIBEQC_CUDA_KS_CHUNK=2\` is an opt-in qualification
+selector for direct all-electron RKS only. UKS keeps its occupation
+stabilization and bounded final-closure host policy; ECP RKS keeps the strict
+physical final closure required by #586. CUDA Graphs are not required.
+
+RTX 5090 / CUDA 12.9 cold, warm and changed-geometry A/B measurements preserved
+identical energies and iteration counts but found no reproducible endpoint
+benefit; PBE cold was materially slower with two-slot submission. The chunked
+route is therefore not auto-promoted. See the
+[iteration-residency decision](../.agents/notes/implemented/performance/2026-09-20-cuda-ks-iteration-chunks.md).
+
 ## Native CPU stationary-gradient diagnostic
 
 `vibeqc._stationary_cpu.complete_rks_gradient_diagnostic` is an internal,

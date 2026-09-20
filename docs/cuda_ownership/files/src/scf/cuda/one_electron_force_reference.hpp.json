@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/one_electron_force_reference.hpp",
+  "reason": "Borrowed packed metadata and narrow host launch ABI; no allocation, graph state or numerical formulas.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

@@ -10,6 +10,7 @@
 #include "api/ks_snapshot.hpp"
 #include "dft/xc.hpp"
 #include "dft/xc_point.hpp"
+#include "dft/xc_point_response.hpp"
 #include "integrals/ecp.hpp"
 #include "integrals/ecp_cuda.hpp"
 #include "methods/dft_method.hpp"
@@ -18,6 +19,7 @@ struct vibeqc_ks_snapshot {
   std::size_t index{};
   vibeqc::dft::CudaKsFinalStateToken token;
   std::vector<double> values;
+  double energy{};
 };
 
 namespace {
@@ -53,6 +55,7 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
       return status;
     }
     const auto& state = source.state;
+    result->energy = state.components.total();
     const auto& identity = state.identity;
     const auto n = state.orbitals.at(0).values.size();
     auto& values = result->values;
@@ -210,6 +213,36 @@ vibeqc_status vibeqc_ks_snapshot_ecp_derivatives_v1(vibeqc_batch* batch,
   } catch (...) {
     return vibeqc::api::map_exception(&batch->context->last_detail);
   }
+}
+
+vibeqc_status vibeqc_ks_snapshot_energy_v1(const vibeqc_batch* batch,
+                                           const vibeqc_ks_snapshot* snapshot, double* energy) {
+  if (!batch || !snapshot || !energy) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  std::lock_guard<std::recursive_mutex> lock(batch->context->mutex);
+  const auto status = check_current(*batch, *snapshot);
+  if (status == VIBEQC_STATUS_SUCCESS) *energy = snapshot->energy;
+  return status;
+}
+
+/** Private restricted SCF-domain response bridge. Rows contain the directional
+ * derivative of (v_rho, v_grad[3]) for total density, before AO assembly. */
+vibeqc_status vibeqc_xc_rks_response_batch_v1(std::uint32_t pbe, const double* rho,
+                                              const double* gradient, const double* delta_rho,
+                                              const double* delta_gradient, std::size_t point_count,
+                                              double* values, std::size_t value_count) {
+  constexpr std::size_t stride = 4;
+  if (pbe > 1 || !rho || !gradient || !delta_rho || !delta_gradient || !values ||
+      point_count == 0 || point_count > std::numeric_limits<std::size_t>::max() / stride ||
+      value_count != stride * point_count)
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  for (std::size_t point = 0; point < point_count; ++point) {
+    const auto xc = vibeqc::dft::point::restricted_response(
+        pbe != 0, rho[point], gradient + 3 * point, delta_rho[point], delta_gradient + 3 * point);
+    if (!xc.valid) return VIBEQC_STATUS_NUMERICAL_FAILURE;
+    values[stride * point] = xc.rho[0];
+    for (unsigned k = 0; k < 3; ++k) values[stride * point + 1 + k] = xc.gradient[0][k];
+  }
+  return VIBEQC_STATUS_SUCCESS;
 }
 
 vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, const double* gradient,

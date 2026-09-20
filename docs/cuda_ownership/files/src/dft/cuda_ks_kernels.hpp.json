@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/cuda_ks_kernels.hpp",
+  "reason": "Native KS scalar diagnostic, physical-Fock and occupation-stabilization launch contracts; no mathematical bodies.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "xc"
+}

@@ -1,0 +1,4 @@
+{
+  "schema": "vibeqc.cuda-ownership.v1",
+  "classification_status": "Reviewed source regions; operator-specific scientific glue is counted conservatively with its owning function."
+}
