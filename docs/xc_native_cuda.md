@@ -58,6 +58,12 @@ consumer; no separate singular sigma chain rule or CPU XC call is inserted.
 Matrix assembly applies weights once, retains both differentiated AO legs, and
 does not double the scalar term. All symmetric matrix cross terms are retained.
 
+The resident contraction block is currently compiler-emitted maintained CUDA
+text, not a complete typed grid/XC IR lowering. The native header's runtime-only
+ownership classification does not remove this remaining scientific-text owner.
+See the [ownership decision](../.agents/notes/implemented/architecture/2026-09-20-resident-xc-emitted-text.md)
+for the preserved native/JIT boundary and the condition for replacing it.
+
 RKS input is the total density. The point layer receives half in each spin and
 the returned single potential uses the corresponding total-density chain rule.
 UKS input is `[alpha,beta,AO,AO]` with independent spin densities and potentials.
