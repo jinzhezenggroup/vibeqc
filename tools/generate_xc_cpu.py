@@ -33,7 +33,9 @@ from vibeqc_compiler.xc.expressions import (
 from vibeqc_compiler.xc.spec import functional
 
 
-def build_roots(spec: Any, outputs: Any, *, production: bool = False) -> tuple[Any, Any, str]:
+def build_roots(
+    spec: Any, outputs: Any, *, production: bool = False
+) -> tuple[Any, Any, str]:
     """Build derivative roots and the exact emitted-expression identity."""
 
     graph, energy, variables = energy_expression(spec, production=production)
