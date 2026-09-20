@@ -105,9 +105,8 @@ double owner_partition(const double* point, const core::System& system, std::siz
 
 void validate_grid_spec(const GridSpec& spec) {
   if ((spec.version != 1 && spec.version != 2) || !spec.radial_points || spec.radial_points > 512 ||
-      !spec.angular_polar ||
-      spec.angular_polar > 256 || spec.angular_azimuth < 3 || spec.angular_azimuth > 1024 ||
-      !spec.partition_iterations || spec.partition_iterations > 5 ||
+      !spec.angular_polar || spec.angular_polar > 256 || spec.angular_azimuth < 3 ||
+      spec.angular_azimuth > 1024 || !spec.partition_iterations || spec.partition_iterations > 5 ||
       !std::isfinite(spec.coincident_tolerance) || spec.coincident_tolerance < 0.0)
     throw std::invalid_argument("unsupported DFT grid prescription/version");
   for (double radius : spec.element_radii)

@@ -1,7 +1,7 @@
 """Explicit KS composition/grid identity, native snapshots and budget shapes."""
 
-import os
 import json
+import os
 import typing
 from dataclasses import replace
 from fractions import Fraction
@@ -19,13 +19,13 @@ from vibeqc import (
     estimate_ks_resources,
 )
 from vibeqc.ks import native_ks_options, resolve_ks_options
+from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft.grid import (
     GRID_POLICY_RADII_SOURCE,
     GRID_POLICY_UPSTREAM_REVISION,
     MolecularGrid,
     grid_policy_provenance,
 )
-from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.method import MethodSpec, SemilocalXCPrimitive, resolve_method
 from vibeqc_compiler.xc.spec import functional
 
@@ -73,12 +73,20 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned():
     derivative_profile = GridPolicy().profile("pbe-rks", derivative_order=1)
 
     assert lda.grid.version == pbe.grid.version == tight.grid.version == 2
-    assert (lda.grid.radial_points, lda.grid.angular_polar, lda.grid.angular_azimuth) == (
+    assert (
+        lda.grid.radial_points,
+        lda.grid.angular_polar,
+        lda.grid.angular_azimuth,
+    ) == (
         48,
         16,
         32,
     )
-    assert (pbe.grid.radial_points, pbe.grid.angular_polar, pbe.grid.angular_azimuth) == (
+    assert (
+        pbe.grid.radial_points,
+        pbe.grid.angular_polar,
+        pbe.grid.angular_azimuth,
+    ) == (
         56,
         18,
         36,
@@ -87,7 +95,11 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned():
     assert derivative_profile.pruning == "none"
     assert derivative_profile.screening == "none"
     assert derivative_profile.topology == "atom-radial-polar-azimuth"
-    assert (tight.grid.radial_points, tight.grid.angular_polar, tight.grid.angular_azimuth) == (
+    assert (
+        tight.grid.radial_points,
+        tight.grid.angular_polar,
+        tight.grid.angular_azimuth,
+    ) == (
         72,
         24,
         48,

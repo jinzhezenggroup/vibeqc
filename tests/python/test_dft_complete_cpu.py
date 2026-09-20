@@ -154,9 +154,7 @@ def test_production_grid_transition_metal_energy_and_force():
     atoms = [("Fe", (0.05, -0.02, 0.03)), ("H", (0.17, 0.11, 2.25))]
     charge, multiplicity = 25, 1
     basis_definition = imported("synthetic-fe-h")
-    calc = production_calculator(
-        "lda-rks", basis=basis_definition, max_iterations=250
-    )
+    calc = production_calculator("lda-rks", basis=basis_definition, max_iterations=250)
     with (
         calc.prepare_batch(
             [atoms], charges=[charge], multiplicities=[multiplicity]

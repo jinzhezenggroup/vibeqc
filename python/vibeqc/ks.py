@@ -11,7 +11,6 @@ from dataclasses import asdict, dataclass, field, replace
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft.grid import (
     GridPolicy,
-    GridProfile,
     GridSpec,
     checked_int,
     grid_policy_provenance,
