@@ -403,8 +403,13 @@ def plan_schedule_search(
                 plan.target.maximum_registers_per_thread,
             ):
                 reasons.append("estimated register pressure exceeds target policy")
-            if estimates["resident_blocks_upper_bound"] < limits.minimum_resident_blocks:
-                reasons.append("estimated occupancy cannot satisfy resident-block policy")
+            if (
+                estimates["resident_blocks_upper_bound"]
+                < limits.minimum_resident_blocks
+            ):
+                reasons.append(
+                    "estimated occupancy cannot satisfy resident-block policy"
+                )
             candidates.append(
                 ScheduleCandidate(
                     requested,
