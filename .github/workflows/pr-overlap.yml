@@ -30,10 +30,17 @@ jobs:
           gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" \
             --jq '.[].filename' | sort -u > "$current_files"
 
-          mapfile -t open_prs < <(
-            gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" \
-              --jq '.[].number' | grep -vx "$PR_NUMBER" || true
-          )
+          open_numbers="$(mktemp)"
+          if ! gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" \
+            --jq '.[].number' > "$open_numbers"; then
+            rm -f "$open_numbers" "$current_files"
+            echo "::warning title=PR overlap unavailable::Unable to enumerate open PRs; overlap status is unknown."
+            echo "## PR overlap report" >> "$GITHUB_STEP_SUMMARY"
+            echo "Open-PR enumeration failed. Overlap status is unknown; no clean result is claimed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          mapfile -t open_prs < <(grep -vx -- "$PR_NUMBER" "$open_numbers" || true)
+          rm -f "$open_numbers"
 
           hotspot_re='^(docs/cuda_ownership\.json|cmake/VibeQCGeneratedSources\.cmake|include/vibeqc/vibeqc\.h|python/vibeqc/_native\.py|python/vibeqc/calculator\.py|python/vibeqc_compiler/tensor/types\.py|python/vibeqc_compiler/method/stationary_cuda\.py|src/methods/registry\.cpp|src/methods/dft_method\.cpp|src/dft/cuda_ks\.cpp|pyproject\.toml)$'
 
