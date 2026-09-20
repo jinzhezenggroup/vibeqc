@@ -657,8 +657,9 @@ def _promotion_profiles(
     to #136's existing executable key and the candidate's complete evidence hash;
     they must not be treated as a general promotion to unmeasured inputs/targets.
     """
+    precision = plan.precision_schedule
     identity = CompilationIdentity(
-        plan.program.logical_hash,
+        precision.source_equation,
         canonical_hash(
             {
                 k: v
@@ -680,7 +681,10 @@ def _promotion_profiles(
         workload = WorkloadSignature(
             "tensor-cuda-endpoint",
             (
-                ("equation", plan.program.logical_hash),
+                ("equation", precision.source_equation),
+                ("precision_schedule", precision.identity),
+                ("math_mode", precision.math_mode),
+                ("strict_audit_dtype", precision.strict_audit_dtype),
                 ("max_bytes", plan.max_bytes),
                 ("reservations", canonical_hash(asdict(plan.reservations))),
                 ("input_layout", canonical_hash(layout)),
@@ -722,7 +726,12 @@ def _promotion_profiles(
             name=f"tensor-{plan.identity[:12]}-{domain[:12]}",
             identity=identity,
             artifact_key=artifact.metadata["key"],
-            schedule_hash=canonical_hash(asdict(plan.schedule)),
+            schedule_hash=canonical_hash(
+                {
+                    "schedule": asdict(plan.schedule),
+                    "precision_schedule": precision.identity,
+                }
+            ),
             profile_hash=evidence_hash,
             correctness=correctness,
             performance=performance,

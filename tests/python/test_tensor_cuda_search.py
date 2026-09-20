@@ -647,6 +647,19 @@ def test_promotion_profiles_use_shared_selector_and_reject_unmeasured_layout(
         assert any(
             feature in reason for reason in decision.evaluations[0].promotion_failures
         )
+    for feature in ("precision_schedule", "math_mode", "strict_audit_dtype"):
+        changed = replace(
+            workload,
+            features=tuple(
+                (key, "unqualified" if key == feature else value)
+                for key, value in workload.features
+            ),
+        )
+        decision = select_specialization(workload=changed, **options)
+        assert decision.status == "unsupported"
+        assert any(
+            feature in reason for reason in decision.evaluations[0].eligibility_failures
+        )
     missing_target = replace(target, features=())
     assert (
         select_specialization(
