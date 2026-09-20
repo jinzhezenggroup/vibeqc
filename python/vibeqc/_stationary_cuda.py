@@ -595,9 +595,7 @@ def complete_rks_cuda_gradient_diagnostic(
                 spin_blocks=plan.spin_blocks,
             )
         )
-        sources.reset(
-            spec.coincident_tolerance, state.density, state.weighted_density
-        )
+        sources.reset(spec.coincident_tolerance, state.density, state.weighted_density)
         ao = stack.enter_context(
             CudaGrid(
                 basis,
@@ -620,9 +618,7 @@ def complete_rks_cuda_gradient_diagnostic(
             iterator = product(range(n), repeat=rank)
             while tuples := tuple(islice(iterator, integral_terms)):
                 for indices in tuples:
-                    sources.integral(
-                        _SOURCE_NAMES.index(source), operator, indices
-                    )
+                    sources.integral(_SOURCE_NAMES.index(source), operator, indices)
                     if source == "one_electron":
                         for a in range(na):
                             sources.integral(

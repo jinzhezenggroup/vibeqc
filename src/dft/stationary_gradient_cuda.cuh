@@ -66,7 +66,8 @@ void upload(Owner& p, T* out, const T* in, size_t n, cudaStream_t stream) {
 }
 __global__ void primitive_kernel(unsigned kind, unsigned source, const double* records,
                                  const int64_t* maps, size_t count, const double* density,
-                                 const double* weighted_density, size_t n, double* output, int* error);
+                                 const double* weighted_density, size_t n, double* output,
+                                 int* error);
 __global__ void primitive_reduce(const double* input, const int64_t* maps, size_t count, size_t na,
                                  double* output, int* error);
 __global__ void validate_centers(const double* centers, size_t na, double tolerance, int* error);
@@ -139,8 +140,7 @@ int stationary_reset(void* pointer, const double* centers, const int64_t* ao_ato
     upload(*p, p->centers, centers, 3 * p->atoms, stream);
     upload(*p, p->ao_atoms, ao_atoms, p->aos, stream);
     upload(*p, p->density, density, p->spin_blocks * p->aos * p->aos, stream);
-    upload(*p, p->weighted_density, weighted_density,
-           p->spin_blocks * p->aos * p->aos, stream);
+    upload(*p, p->weighted_density, weighted_density, p->spin_blocks * p->aos * p->aos, stream);
     validate_centers<<<1, 1, 0, stream>>>(p->centers, p->atoms, tolerance, p->context.error);
     ++p->launches;
     p->pair_visits += p->atoms * (p->atoms - 1) / 2;
@@ -159,9 +159,9 @@ int stationary_records(void* pointer, unsigned kind, unsigned source, const doub
     auto stream = p->context.stream;
     upload(*p, p->record, records, count * record_stride, stream);
     upload(*p, p->maps, maps, count * map_stride, stream);
-    primitive_kernel<<<blocks(count, 64), 64, 0, stream>>>(
-        kind, source, p->record, p->maps, count, p->density, p->weighted_density, p->aos,
-        p->primitive, p->context.error);
+    primitive_kernel<<<blocks(count, 64), 64, 0, stream>>>(kind, source, p->record, p->maps, count,
+                                                           p->density, p->weighted_density, p->aos,
+                                                           p->primitive, p->context.error);
     primitive_reduce<<<blocks(3 * p->atoms, 64), 64, 0, stream>>>(
         p->primitive, p->maps, count, p->atoms, p->sources + source * 3 * p->atoms,
         p->context.error);

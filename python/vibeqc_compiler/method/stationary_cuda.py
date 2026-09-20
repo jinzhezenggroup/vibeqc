@@ -39,7 +39,11 @@ def _fraction(value: typing.Any) -> Fraction:
         return value
     if type(value) is int:
         return Fraction(value, 1)
-    if isinstance(value, tuple) and len(value) == 2 and all(type(v) is int for v in value):
+    if (
+        isinstance(value, tuple)
+        and len(value) == 2
+        and all(type(v) is int for v in value)
+    ):
         return Fraction(*value)
     raise TypeError("stationary CUDA weight lowering requires exact rational constants")
 
@@ -78,7 +82,9 @@ def _weight_expression(
         elif node.op == "constant":
             raw = node.attrs["values"]
             if node.spec.shape or len(raw) != 1:
-                raise ValueError("stationary CUDA weight lowering requires scalar constants")
+                raise ValueError(
+                    "stationary CUDA weight lowering requires scalar constants"
+                )
             values[node] = _literal(raw[0])
         elif node.op == "reduce":
             operand = values[node.inputs[0]]
@@ -87,7 +93,9 @@ def _weight_expression(
             values[node] = "(" + " + ".join(operand) + ")"
         elif node.op == "einsum":
             operands = [values[item] for item in node.inputs]
-            if node.spec.shape != (1,) or any(not isinstance(item, str) for item in operands):
+            if node.spec.shape != (1,) or any(
+                not isinstance(item, str) for item in operands
+            ):
                 raise ValueError("unsupported stationary CUDA weight einsum")
             coefficient = _fraction(node.attrs["coefficient"])
             factors = [typing.cast("str", item) for item in operands]
@@ -105,7 +113,9 @@ def _weight_expression(
 def emit_stationary_weight_cuda(plan: typing.Any) -> str:
     """Emit pointwise device weights directly from StationaryGradientPlan TensorIR."""
     if not isinstance(plan, StationaryGradientPlan):
-        raise TypeError("stationary CUDA weight lowering requires StationaryGradientPlan")
+        raise TypeError(
+            "stationary CUDA weight lowering requires StationaryGradientPlan"
+        )
     functions = [
         "namespace vibeqc_stationary_cuda {",
         f"// stationary-plan: {plan.identity}",
@@ -115,32 +125,38 @@ def emit_stationary_weight_cuda(plan: typing.Any) -> str:
     for source in _FUSED_WEIGHT_SOURCES:
         expression, identity, arity = _weight_expression(plan, source)
         symbol = f"stationary_weight_{source}"
-        functions.extend((
-            f"// stationary-weight-program-{source}: {identity}",
-            f"__device__ inline double {symbol}(const double* density, const double* weighted_density, size_t n, const int64_t* ao) {{",
-            f"  return {expression};",
-            "}",
-        ))
+        functions.extend(
+            (
+                f"// stationary-weight-program-{source}: {identity}",
+                f"__device__ inline double {symbol}(const double* density, const double* weighted_density, size_t n, const int64_t* ao) {{",
+                f"  return {expression};",
+                "}",
+            )
+        )
         slot = STATIONARY_RUNTIME_SOURCE_NAMES.index(source)
         checks = " || ".join(
             f"ao[{i}] < 0 || ao[{i}] >= int64_t(n)" for i in range(arity)
         )
-        dispatch.extend((
-            f"    case {slot}:",
-            f"      if ({checks}) return false;",
-            f"      value = {symbol}(density, weighted_density, n, ao);",
-            "      return isfinite(value);",
-        ))
-    functions.extend((
-        "__device__ inline bool stationary_source_weight(unsigned source, const double* density, const double* weighted_density, size_t n, const int64_t* ao, double& value) {",
-        "  switch (source) {",
-        *dispatch,
-        "    default: return false;",
-        "  }",
-        "}",
-        "}  // namespace vibeqc_stationary_cuda",
-        "",
-    ))
+        dispatch.extend(
+            (
+                f"    case {slot}:",
+                f"      if ({checks}) return false;",
+                f"      value = {symbol}(density, weighted_density, n, ao);",
+                "      return isfinite(value);",
+            )
+        )
+    functions.extend(
+        (
+            "__device__ inline bool stationary_source_weight(unsigned source, const double* density, const double* weighted_density, size_t n, const int64_t* ao, double& value) {",
+            "  switch (source) {",
+            *dispatch,
+            "    default: return false;",
+            "  }",
+            "}",
+            "}  // namespace vibeqc_stationary_cuda",
+            "",
+        )
+    )
     return "\n".join(functions)
 
 
