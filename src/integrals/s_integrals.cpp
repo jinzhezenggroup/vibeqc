@@ -12,6 +12,7 @@
 #include "generated_one_electron_st_cpu.hpp"
 #include "integrals/ecp.hpp"
 #include "integrals/generated_df_cpu.hpp"
+#include "integrals/range_moments.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/raw_source.hpp"
 
@@ -220,29 +221,28 @@ struct CoulombAuxiliary {
   }
 };
 
-CoulombAuxiliary fill_coulomb(unsigned maximum_angular, double exponent, const Vec3& product,
-                              const Vec3& center) {
+CoulombAuxiliary fill_coulomb_recurrence(unsigned maximum_angular, double exponent,
+                                         const Vec3& product, const Vec3& center,
+                                         const std::vector<Jet>& radial) {
+  if (radial.size() != static_cast<std::size_t>(maximum_angular) + 1)
+    throw std::invalid_argument("Coulomb radial moment count does not match angular order");
   CoulombAuxiliary auxiliary;
   auxiliary.dim = maximum_angular + 1;
   const std::size_t size =
       static_cast<std::size_t>(auxiliary.dim) * auxiliary.dim * auxiliary.dim * auxiliary.dim;
-  auxiliary.data.assign(size, Jet(0.0, product[0].derivative.size()));
+  auxiliary.data.assign(size, Jet(0.0, radial.front().derivative.size()));
 
   const Vec3 pc{product[0] - center[0], product[1] - center[1], product[2] - center[2]};
-  const std::vector<Jet> boys =
-      boys_values(maximum_angular, exponent * distance_squared(product, center));
   double factor = 1.0;
   for (unsigned n = 0; n <= maximum_angular; ++n) {
-    auxiliary.at(n, 0, 0, 0) = factor * boys[n];
+    auxiliary.at(n, 0, 0, 0) = factor * radial[n];
     factor *= -2.0 * exponent;
   }
 
   for (unsigned v = 1; v <= maximum_angular; ++v) {
     for (unsigned n = 0; n + v <= maximum_angular; ++n) {
       Jet value = pc[2] * auxiliary.at(n + 1, 0, 0, v - 1);
-      if (v > 1) {
-        value = value + static_cast<double>(v - 1) * auxiliary.at(n + 1, 0, 0, v - 2);
-      }
+      if (v > 1) value = value + static_cast<double>(v - 1) * auxiliary.at(n + 1, 0, 0, v - 2);
       auxiliary.at(n, 0, 0, v) = std::move(value);
     }
   }
@@ -250,9 +250,7 @@ CoulombAuxiliary fill_coulomb(unsigned maximum_angular, double exponent, const V
     for (unsigned u = 1; u + v <= maximum_angular; ++u) {
       for (unsigned n = 0; n + u + v <= maximum_angular; ++n) {
         Jet value = pc[1] * auxiliary.at(n + 1, 0, u - 1, v);
-        if (u > 1) {
-          value = value + static_cast<double>(u - 1) * auxiliary.at(n + 1, 0, u - 2, v);
-        }
+        if (u > 1) value = value + static_cast<double>(u - 1) * auxiliary.at(n + 1, 0, u - 2, v);
         auxiliary.at(n, 0, u, v) = std::move(value);
       }
     }
@@ -262,15 +260,39 @@ CoulombAuxiliary fill_coulomb(unsigned maximum_angular, double exponent, const V
       for (unsigned t = 1; t + u + v <= maximum_angular; ++t) {
         for (unsigned n = 0; n + t + u + v <= maximum_angular; ++n) {
           Jet value = pc[0] * auxiliary.at(n + 1, t - 1, u, v);
-          if (t > 1) {
-            value = value + static_cast<double>(t - 1) * auxiliary.at(n + 1, t - 2, u, v);
-          }
+          if (t > 1) value = value + static_cast<double>(t - 1) * auxiliary.at(n + 1, t - 2, u, v);
           auxiliary.at(n, t, u, v) = std::move(value);
         }
       }
     }
   }
   return auxiliary;
+}
+
+CoulombAuxiliary fill_coulomb(unsigned maximum_angular, double exponent, const Vec3& product,
+                              const Vec3& center) {
+  return fill_coulomb_recurrence(
+      maximum_angular, exponent, product, center,
+      boys_values(maximum_angular, exponent * distance_squared(product, center)));
+}
+
+CoulombAuxiliary fill_range_coulomb(unsigned maximum_angular, double exponent, const Vec3& product,
+                                    const Vec3& center, CoulombRange range, double omega) {
+  if (range == CoulombRange::Full)
+    throw std::invalid_argument("range ERI helper requires short- or long-range operator");
+  if (product[0].derivative.size() != 0 || center[0].derivative.size() != 0)
+    throw std::logic_error("value-only range ERI helper cannot publish nuclear derivatives");
+  if (maximum_angular > 13)
+    throw std::invalid_argument("range ERI angular order exceeds validated radial moments");
+
+  std::array<double, 14> moments{};
+  if (!range_moments(maximum_angular, exponent * distance_squared(product, center).value, exponent,
+                     range, omega, moments.data()))
+    throw std::invalid_argument("invalid range-separated ERI radial inputs");
+  std::vector<Jet> radial;
+  radial.reserve(static_cast<std::size_t>(maximum_angular) + 1);
+  for (unsigned n = 0; n <= maximum_angular; ++n) radial.emplace_back(moments[n], 0);
+  return fill_coulomb_recurrence(maximum_angular, exponent, product, center, radial);
 }
 
 // Retained as the structurally independent S/T oracle and the explicit g-shell
@@ -453,6 +475,58 @@ Jet primitive_eri_cartesian(double alpha, const Vec3& a,
   }
   const double prefactor = 2.0 * std::pow(std::numbers::pi, 2.5) / (p * q * std::sqrt(p + q));
   return prefactor * value;
+}
+
+double primitive_range_eri_cartesian(double alpha, const Vec3& a,
+                                     const molecule::CartesianComponent& angular_a, double beta,
+                                     const Vec3& b, const molecule::CartesianComponent& angular_b,
+                                     double gamma, const Vec3& c,
+                                     const molecule::CartesianComponent& angular_c, double delta,
+                                     const Vec3& d, const molecule::CartesianComponent& angular_d,
+                                     CoulombRange range, double omega) {
+  const double p = alpha + beta;
+  const double q = gamma + delta;
+  const double rho = p * q / (p + q);
+  const Vec3 product_p = product_center(alpha, a, beta, b);
+  const Vec3 product_q = product_center(gamma, c, delta, d);
+  std::array<HermiteCoefficients, 3> first_coefficients{
+      fill_hermite(angular_a[0], angular_b[0], product_p[0], a[0], b[0], alpha, beta),
+      fill_hermite(angular_a[1], angular_b[1], product_p[1], a[1], b[1], alpha, beta),
+      fill_hermite(angular_a[2], angular_b[2], product_p[2], a[2], b[2], alpha, beta)};
+  std::array<HermiteCoefficients, 3> second_coefficients{
+      fill_hermite(angular_c[0], angular_d[0], product_q[0], c[0], d[0], gamma, delta),
+      fill_hermite(angular_c[1], angular_d[1], product_q[1], c[1], d[1], gamma, delta),
+      fill_hermite(angular_c[2], angular_d[2], product_q[2], c[2], d[2], gamma, delta)};
+  const unsigned maximum = angular_a[0] + angular_a[1] + angular_a[2] + angular_b[0] +
+                           angular_b[1] + angular_b[2] + angular_c[0] + angular_c[1] +
+                           angular_c[2] + angular_d[0] + angular_d[1] + angular_d[2];
+  const CoulombAuxiliary auxiliary =
+      fill_range_coulomb(maximum, rho, product_p, product_q, range, omega);
+
+  Jet value(0.0, 0);
+  for (unsigned t = 0; t <= angular_a[0] + angular_b[0]; ++t) {
+    for (unsigned u = 0; u <= angular_a[1] + angular_b[1]; ++u) {
+      for (unsigned v = 0; v <= angular_a[2] + angular_b[2]; ++v) {
+        const Jet first = first_coefficients[0].at(angular_a[0], angular_b[0], t) *
+                          first_coefficients[1].at(angular_a[1], angular_b[1], u) *
+                          first_coefficients[2].at(angular_a[2], angular_b[2], v);
+        for (unsigned tau = 0; tau <= angular_c[0] + angular_d[0]; ++tau) {
+          for (unsigned nu = 0; nu <= angular_c[1] + angular_d[1]; ++nu) {
+            for (unsigned phi = 0; phi <= angular_c[2] + angular_d[2]; ++phi) {
+              const double sign = ((tau + nu + phi) & 1U) == 0 ? 1.0 : -1.0;
+              value = value + sign * first *
+                                  second_coefficients[0].at(angular_c[0], angular_d[0], tau) *
+                                  second_coefficients[1].at(angular_c[1], angular_d[1], nu) *
+                                  second_coefficients[2].at(angular_c[2], angular_d[2], phi) *
+                                  auxiliary.at(0, t + tau, u + nu, v + phi);
+            }
+          }
+        }
+      }
+    }
+  }
+  const double prefactor = 2.0 * std::pow(std::numbers::pi, 2.5) / (p * q * std::sqrt(p + q));
+  return prefactor * value.value;
 }
 
 struct AoView {
@@ -1326,6 +1400,67 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
     return spherical;
   }
   return out;
+}
+
+std::vector<double> build_range_eri(const core::System& system, CoulombRange range, double omega) {
+  if (range == CoulombRange::Full || !std::isfinite(omega) || omega < 0.0)
+    throw std::invalid_argument("range ERI requires a finite nonnegative short/long omega");
+
+  const std::size_t cartesian_nbf = molecule::cartesian_ao_count(system);
+  const std::size_t n2 = checked_product(cartesian_nbf, cartesian_nbf);
+  std::vector<double> eri(checked_product(n2, n2), 0.0);
+  const std::vector<AoView> aos = expand_cartesian_aos(system);
+  std::vector<Vec3> atom_coordinates;
+  atom_coordinates.reserve(system.atoms.size());
+  for (const auto& atom : system.atoms)
+    atom_coordinates.push_back(
+        {Jet(atom.position[0], 0), Jet(atom.position[1], 0), Jet(atom.position[2], 0)});
+
+  for (std::size_t i = 0; i < cartesian_nbf; ++i) {
+    const AoView& ao_i = aos[i];
+    const Vec3& a = atom_coordinates[ao_i.shell->atom_index];
+    for (std::size_t j = 0; j <= i; ++j) {
+      const AoView& ao_j = aos[j];
+      const Vec3& b = atom_coordinates[ao_j.shell->atom_index];
+      for (std::size_t k = 0; k < cartesian_nbf; ++k) {
+        const AoView& ao_k = aos[k];
+        const Vec3& c = atom_coordinates[ao_k.shell->atom_index];
+        for (std::size_t l = 0; l <= k; ++l) {
+          if (i * (i + 1) / 2 + j < k * (k + 1) / 2 + l) continue;
+          const AoView& ao_l = aos[l];
+          const Vec3& d = atom_coordinates[ao_l.shell->atom_index];
+          double value = 0.0;
+          const double component_factor =
+              ao_i.component_normalization * ao_j.component_normalization *
+              ao_k.component_normalization * ao_l.component_normalization;
+          for (const core::Primitive& pi : ao_i.shell->primitives)
+            for (const core::Primitive& pj : ao_j.shell->primitives)
+              for (const core::Primitive& pk : ao_k.shell->primitives)
+                for (const core::Primitive& pl : ao_l.shell->primitives) {
+                  const double weight = component_factor * pi.coefficient * pj.coefficient *
+                                        pk.coefficient * pl.coefficient;
+                  value += weight * primitive_range_eri_cartesian(
+                                        pi.exponent, a, ao_i.angular, pj.exponent, b, ao_j.angular,
+                                        pk.exponent, c, ao_k.angular, pl.exponent, d, ao_l.angular,
+                                        range, omega);
+                }
+          if (!std::isfinite(value))
+            throw std::runtime_error("nonfinite range-separated ERI value");
+          for (const auto& indices : std::array<std::array<std::size_t, 4>, 8>{{{i, j, k, l},
+                                                                                {j, i, k, l},
+                                                                                {i, j, l, k},
+                                                                                {j, i, l, k},
+                                                                                {k, l, i, j},
+                                                                                {l, k, i, j},
+                                                                                {k, l, j, i},
+                                                                                {l, k, j, i}}})
+            eri[eri_index(indices[0], indices[1], indices[2], indices[3], cartesian_nbf)] = value;
+        }
+      }
+    }
+  }
+  if (system.basis_representation != VIBEQC_BASIS_SPHERICAL) return eri;
+  return transform_eri(eri.data(), cartesian_nbf, spherical_expansions(system));
 }
 
 std::array<double, 12> contract_weighted_eri_shell_derivative(

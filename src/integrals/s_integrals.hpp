@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "core/types.hpp"
+#include "integrals/range_moments.hpp"
 
 namespace vibeqc::integrals {
 
@@ -64,6 +65,15 @@ struct EspIntegralData {
  */
 IntegralData build_integrals(const core::System& system, bool include_derivatives = true,
                              bool include_eri = true);
+
+/** Evaluate value-only short-/long-range two-electron integrals in the public AO basis.
+ *
+ * This CPU reference path reuses the #166 positive-interval radial moments, so
+ * short range is evaluated directly rather than as Coulomb-minus-long-range.
+ * It deliberately exposes values only; analytic range-separated derivatives
+ * remain owned by the weighted derivative provider.
+ */
+std::vector<double> build_range_eri(const core::System& system, CoulombRange range, double omega);
 
 /** Evaluate analytic AO ESP matrices on explicit probe points. */
 EspIntegralData build_esp_integrals(const core::System& system, std::span<const double> points_xyz);

@@ -14,6 +14,7 @@ for _name, _path in (
     ("vibeqc_compiler.integral", _compiler_root / "integral"),
     ("vibeqc_compiler.xc", _compiler_root / "xc"),
     ("vibeqc_compiler.dft", _compiler_root / "dft"),
+    ("vibeqc_compiler.method", _compiler_root / "method"),
 ):
     _module = _compiler_types.ModuleType(_name)
     _module.__path__ = [str(_path)]
@@ -26,11 +27,19 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft.feature_policy import emit_feature_policy
 from vibeqc_compiler.integral.expr import AlgebraForm
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
+from vibeqc_compiler.method.spec import (
+    RangeSeparatedExchangePrimitive,
+    SemilocalXCPrimitive,
+    resolve_method,
+)
 from vibeqc_compiler.xc.expressions import (
     energy_expression,
     lda_xc_pw_unpolarized_tail_expression,
 )
-from vibeqc_compiler.xc.spec import functional
+from vibeqc_compiler.xc.rsh_expressions import (
+    energy_expression as rsh_energy_expression,
+)
+from vibeqc_compiler.xc.spec import SPECIAL_EXPRESSION_COMPONENTS, functional
 
 
 def build_roots(
@@ -38,7 +47,19 @@ def build_roots(
 ) -> tuple[Any, Any, str]:
     """Build derivative roots and the exact emitted-expression identity."""
 
-    graph, energy, variables = energy_expression(spec, production=production)
+    special = any(
+        name in SPECIAL_EXPRESSION_COMPONENTS
+        for name, coefficient in spec.components
+        if coefficient
+    )
+    if special:
+        if production:
+            raise ValueError(
+                "special XC expressions do not define the semilocal production transform"
+            )
+        graph, energy, variables = rsh_energy_expression(spec)
+    else:
+        graph, energy, variables = energy_expression(spec, production=production)
     derivatives = {(): energy}
     for output in outputs:
         for depth in range(1, len(output) + 1):
@@ -163,6 +184,62 @@ def emit_r2scan_polarized() -> str:
     return "\n".join(lines)
 
 
+def emit_cam_b3lyp_polarized() -> str:
+    """Emit the semilocal CAM-B3LYP primitive and its MethodIR-owned RSH constants."""
+
+    method = resolve_method("CAM-B3LYP", spin="polarized")
+    semilocal = next(
+        primitive.functional
+        for primitive in method.primitives
+        if isinstance(primitive, SemilocalXCPrimitive)
+    )
+    exchange = [
+        primitive
+        for primitive in method.primitives
+        if isinstance(primitive, RangeSeparatedExchangePrimitive)
+    ]
+    if len(exchange) != 2 or {primitive.operator for primitive in exchange} != {
+        "short-range",
+        "long-range",
+    }:
+        raise RuntimeError("CAM-B3LYP MethodIR lost its canonical SR/LR exchange pair")
+    short = next(
+        primitive for primitive in exchange if primitive.operator == "short-range"
+    )
+    long = next(
+        primitive for primitive in exchange if primitive.operator == "long-range"
+    )
+    if short.omega != long.omega:
+        raise RuntimeError("CAM-B3LYP MethodIR has inconsistent SR/LR omega")
+
+    outputs = ((), *((i,) for i in range(5)))
+    graph, roots, expression_hash = build_roots(semilocal, outputs)
+    emitter = ScalarCEmitter(graph, {name: name for name in semilocal.features})
+    emitter.emit(roots)
+    references = [emitter.reference(root) for root in roots]
+    return "\n".join(
+        [
+            "struct CamB3lypPolarizedValue {",
+            "  double energy_density;",
+            "  double feature_derivative[5];",
+            "};",
+            f'inline constexpr const char* kCamB3lypSemilocalExpressionIdentity = "{expression_hash}";',
+            f'inline constexpr const char* kCamB3lypMethodIdentity = "{method.identity}";',
+            f"inline constexpr double kCamB3lypOmega = {float(short.omega).hex()};",
+            f"inline constexpr double kCamB3lypShortExchange = {float(short.coefficient).hex()};",
+            f"inline constexpr double kCamB3lypLongExchange = {float(long.coefficient).hex()};",
+            "inline CamB3lypPolarizedValue cam_b3lyp_polarized(",
+            "    double rho_a, double rho_b, double sigma_aa, double sigma_ab, double sigma_bb) {",
+            "  const double tau_a = 0.0;",
+            "  const double tau_b = 0.0;",
+            *emitter.lines,
+            "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};",
+            "}",
+            "",
+        ]
+    )
+
+
 def emit_pbe_polarized() -> str:
     spec = functional("PBE", spin="polarized")
     outputs = ((), *((i,) for i in range(5)))
@@ -199,6 +276,7 @@ def main() -> None:
         emit_lda_xc_pw()
         + emit_lda_xc_pw_polarized()
         + emit_pbe_polarized()
+        + emit_cam_b3lyp_polarized()
         + emit_r2scan_polarized()
         + emit_feature_policy()
         + "}  // namespace vibeqc::dft::generated\n",

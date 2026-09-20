@@ -84,6 +84,26 @@ SpinXcIntegral integrate_pbe_uks_scaled(const AoBasis& basis, const MolecularGri
                                         const std::vector<double>& beta_density,
                                         std::size_t tile_points, double exchange_scale,
                                         double correlation_scale);
+/** CAM-B3LYP semilocal MethodIR primitive on its audited interior-v1 domain.
+ * SR/LR exact exchange is owned by the common Fock providers, not this object.
+ */
+struct CamB3lypPointValue {
+  double energy{};
+  double rho[2]{};
+  double gradient[2][3]{};
+};
+
+CamB3lypPointValue evaluate_cam_b3lyp_point(const double rho[2], const double (&gradient)[2][3]);
+
+XcIntegral integrate_cam_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& density,
+                                   std::size_t tile_points = 256, XcDensitySource source = {});
+
+SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                       const std::vector<double>& alpha_density,
+                                       const std::vector<double>& beta_density,
+                                       std::size_t tile_points = 256);
+
 struct R2scanPointValue {
   double energy{};
   double rho[2]{};
