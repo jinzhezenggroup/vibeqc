@@ -39,7 +39,12 @@ esac
         "TEST_MODE": mode,
     }
     result = subprocess.run(
-        ["bash", str(script)], env=env, capture_output=True, text=True, timeout=10
+        ["bash", str(script)],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
     )
     return result, summary.read_text() if summary.exists() else ""
 
