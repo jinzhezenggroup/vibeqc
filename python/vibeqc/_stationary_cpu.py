@@ -222,6 +222,8 @@ def _admit_work(
     max_grid_points: int,
     max_grid_pair_visits: int,
     max_ecp_pair_samples: int,
+    *,
+    has_exact_exchange: bool = False,
 ) -> dict[str, int]:
     """Metadata-only admission; no derivative compiler, provider or allocations.
 
@@ -240,7 +242,15 @@ def _admit_work(
         )
     primitive_sum = sum(int(row[2]) for row in aos)
     pairs = natom * (natom - 1) // 2
-    records = primitive_sum**4 + (natom + 2) * primitive_sum**2 + pairs
+    # Coulomb always consumes one ordered ERI-derivative traversal. A global
+    # hybrid consumes the same four-center derivative provider a second time
+    # with exact-exchange weights, so admission must reserve both traversals.
+    eri_derivative_sources = 2 if has_exact_exchange else 1
+    records = (
+        eri_derivative_sources * primitive_sum**4
+        + (natom + 2) * primitive_sum**2
+        + pairs
+    )
     points = len(state.grid.points)
     visits = (2 if execution == "native" else 3 * natom) * pairs * points
     validations = ((points + tile_points - 1) // tile_points) * pairs
@@ -372,6 +382,7 @@ def complete_rks_gradient_diagnostic(
         max_grid_points,
         max_grid_pair_visits,
         max_ecp_pair_samples,
+        has_exact_exchange=len(state._source.method_ir.primitives) == 2,
     )
     if max_host_bytes is not None:
         from ._cpu_force_resources import cpu_force_inventory
