@@ -126,8 +126,6 @@ extend-select = [
   "RET502",
   "RET503",
   "PLW2901",
-  "PT011",
-  "PT012",
   "RUF102",
   "RUF103",
   "RUF104",
