@@ -16,25 +16,32 @@ def budget_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     source = directory / "probe.cpp"
     source.write_text(
         '#include "scf/df_preparation_budget.hpp"\n'
-        '#include <cstdlib>\n#include <iostream>\n'
-        'int main(int argc, char** argv) {\n'
-        '  if (argc != 4) return 2;\n'
-        '  using namespace vibeqc::scf;\n'
-        '  const auto free = std::strtoull(argv[1], nullptr, 10);\n'
-        '  const bool force = std::strtoul(argv[2], nullptr, 10);\n'
-        '  const auto requested = std::strtoull(argv[3], nullptr, 10);\n'
-        '  const auto r = resolve_df_budget({24, 60, 5, 2, 6, force},\n'
-        '      {free, 8ULL << 30, true}, requested);\n'
+        "#include <cstdlib>\n#include <iostream>\n"
+        "int main(int argc, char** argv) {\n"
+        "  if (argc != 4) return 2;\n"
+        "  using namespace vibeqc::scf;\n"
+        "  const auto free = std::strtoull(argv[1], nullptr, 10);\n"
+        "  const bool force = std::strtoul(argv[2], nullptr, 10);\n"
+        "  const auto requested = std::strtoull(argv[3], nullptr, 10);\n"
+        "  const auto r = resolve_df_budget({24, 60, 5, 2, 6, force},\n"
+        "      {free, 8ULL << 30, true}, requested);\n"
         '  std::cout << r.feasible << " " << r.total_bytes << " "\n'
         '            << r.value_bytes << " " << r.response_bytes;\n'
-        '}\n'
+        "}\n"
     )
     executable = directory / "probe"
     root = Path(__file__).resolve().parents[2]
     subprocess.run(
         [
-            compiler, "-std=c++20", "-Wall", "-Wextra", "-Werror",
-            "-I" + str(root / "src"), str(source), "-o", str(executable),
+            compiler,
+            "-std=c++20",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-I" + str(root / "src"),
+            str(source),
+            "-o",
+            str(executable),
         ],
         check=True,
     )
@@ -43,7 +50,9 @@ def budget_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.mark.parametrize("free", [0, 1])
 @pytest.mark.parametrize("force", [False, True])
-def test_exhausted_automatic_envelope(budget_probe: Path, free: int, force: bool) -> None:
+def test_exhausted_automatic_envelope(
+    budget_probe: Path, free: int, force: bool
+) -> None:
     result = subprocess.check_output(
         [str(budget_probe), str(free), str(int(force)), "0"], text=True
     )
