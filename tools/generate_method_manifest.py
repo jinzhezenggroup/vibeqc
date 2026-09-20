@@ -153,7 +153,12 @@ def emit_python(methods: list[dict]) -> str:
     for method in methods:
         lines.append(f"METHOD_{method['symbol']} = {method['abi_id']}")
 
-    lines.extend(["", "METHOD_METADATA = MappingProxyType({"])
+    lines.extend(["", "METHOD_CONSTANTS = MappingProxyType({"])
+    for method in methods:
+        lines.append(
+            f'    "METHOD_{method["symbol"]}": METHOD_{method["symbol"]},'
+        )
+    lines.extend(["})", "", "METHOD_METADATA = MappingProxyType({"])
     for method in methods:
         method_aliases = tuple(method.get("aliases", []))
         lines.append(
