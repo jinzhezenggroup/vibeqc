@@ -230,6 +230,27 @@ int grid_cuda_create_v1(int device, int major, int minor, const size_t* dimensio
 }
 void grid_cuda_destroy_v1(void* pointer) { delete static_cast<GridPlan*>(pointer); }
 
+int grid_cuda_centers_v1(void* pointer, const double* centers, size_t elements, char* error,
+                         size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer || !centers) throw std::invalid_argument("null CUDA grid centers");
+    auto& p = *static_cast<GridPlan*>(pointer);
+    auto& ctx = p.context;
+    std::lock_guard<std::mutex> lock(ctx.mutex);
+    ctx.check_device();
+    if (elements != 3 * p.natom) throw std::invalid_argument("CUDA grid center size mismatch");
+    for (size_t i = 0; i < elements; ++i)
+      if (!std::isfinite(centers[i])) throw std::invalid_argument("nonfinite CUDA grid center");
+    p.view_ready = p.features_ready = p.density_jets_ready = false;
+    p.density_ready = p.orbital_ready = p.use_orbitals = false;
+    ++p.generation;
+    ctx.section(true, ctx.metrics.input_ms, [&] {
+      cuda_check(cudaMemcpyAsync(p.basis, centers, elements * sizeof(double),
+                                 cudaMemcpyHostToDevice, ctx.stream));
+    });
+  });
+}
+
 int grid_cuda_density_v1(void* pointer, const double* density, size_t elements, char* error,
                          size_t size) {
   return guarded(error, size, [&] {

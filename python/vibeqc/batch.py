@@ -363,6 +363,7 @@ class PreparedBatch:
         if not systems:
             raise ValueError("a batch requires at least one system")
         self._last_statuses = None
+        self._stationary_cuda_executions: dict[int, typing.Any] = {}
         self._restart_indices = set()
         self._projection_indices = set()
         self.projection_diagnostics = None
@@ -601,9 +602,16 @@ class PreparedBatch:
         from vibeqc_compiler.dft import NativeAO
 
         from ._dft_gradient import StationaryKsState
-        from ._stationary_cuda import complete_rks_cuda_gradient_diagnostic
+        from ._stationary_cuda import (
+            PreparedStationaryCudaExecution,
+            complete_rks_cuda_gradient_diagnostic,
+        )
 
         calculator = self._calculator
+        prepared = self._stationary_cuda_executions.get(index)
+        if prepared is None:
+            prepared = PreparedStationaryCudaExecution()
+            self._stationary_cuda_executions[index] = prepared
         with NativeAO(
             atoms,
             basis=calculator._basis,
@@ -628,6 +636,7 @@ class PreparedBatch:
                             "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cuda"
                         )
                     ),
+                    prepared=prepared,
                 )
                 # StationaryGradientPlan publishes +dE/dR. Public API is force.
                 return -np.asarray(result.gradient).copy(), dict(result.work)
@@ -1414,6 +1423,10 @@ class PreparedBatch:
         )
 
     def close(self) -> None:
+        for owner in self._stationary_cuda_executions.values():
+            with suppress(Exception):
+                owner.close()
+        self._stationary_cuda_executions.clear()
         if self._batch.value:
             self._library.vibeqc_batch_destroy(self._batch)
             self._batch = ctypes.c_void_p()

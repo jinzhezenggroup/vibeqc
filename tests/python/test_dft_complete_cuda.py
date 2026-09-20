@@ -526,6 +526,92 @@ def test_public_cuda_calculator_forces_match_independent_gradient(
     np.testing.assert_allclose(public.forces, -gradient, atol=1e-7, rtol=0)
 
 
+def test_public_cuda_prepared_force_replay_retains_execution(
+    monkeypatch: typing.Any,
+) -> None:
+    """#663: warm and moved force replays reuse every generated CUDA owner."""
+    import vibeqc._stationary_cuda as stationary
+    from test_dft_complete_cpu import ATOMS
+
+    calc = _calculator("pbe-rks")
+    xyz = np.asarray([position for _, position in ATOMS], dtype=np.float64)
+    moved = xyz.copy()
+    moved[1, 0] += 2.0e-3
+    with calc.prepare_batch([ATOMS], warm_start=True) as batch:
+        first = batch.execute(strict=True, properties=("energy", "forces"))
+        owner = batch._stationary_cuda_executions[0]
+        identity = owner.identity
+        resident = (
+            id(owner.sources),
+            id(owner.grid),
+            tuple((name, id(value)) for name, value in sorted(owner.tensors.items())),
+        )
+        assert owner._executions == 1
+        assert not first.items[0].forces is None
+
+        def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+            raise AssertionError("warm force replay rebuilt generated CUDA execution")
+
+        with monkeypatch.context() as patch:
+            for name in (
+                "emit_first_derivative_cuda",
+                "compile_stationary_cuda",
+                "compile_grid",
+                "compile_cuda",
+                "_CudaSources",
+                "CudaGrid",
+                "PreparedCuda",
+            ):
+                patch.setattr(stationary, name, forbidden)
+
+            second = batch.execute(strict=True, properties=("energy", "forces"))
+            np.testing.assert_allclose(
+                second.items[0].forces, first.items[0].forces, atol=1e-9, rtol=0
+            )
+            assert owner.identity == identity
+            assert resident == (
+                id(owner.sources),
+                id(owner.grid),
+                tuple(
+                    (name, id(value))
+                    for name, value in sorted(owner.tensors.items())
+                ),
+            )
+
+            changed = batch.execute(
+                coordinates=(moved,), strict=True, properties=("energy", "forces")
+            )
+            assert not np.array_equal(changed.items[0].forces, first.items[0].forces)
+            assert owner._geometry_rebinds == 1
+            assert owner._executions == 3
+
+            finish = owner.sources.finish
+            calls = 0
+
+            def fail_once() -> typing.Any:
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    raise RuntimeError("injected prepared force failure")
+                return finish()
+
+            patch.setattr(owner.sources, "finish", fail_once)
+            failed = batch.execute(
+                coordinates=(moved,), properties=("energy", "forces")
+            )
+            assert not failed.items[0].succeeded
+            assert owner._failed
+            recovered = batch.execute(
+                coordinates=(moved,), strict=True, properties=("energy", "forces")
+            )
+            assert recovered.items[0].succeeded
+            np.testing.assert_allclose(
+                recovered.items[0].forces, changed.items[0].forces, atol=1e-9, rtol=0
+            )
+            assert owner._geometry_rebinds == 2
+            assert not owner._failed
+
+
 def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
     """C2: rebuilt owners get fresh forces and a bad neighbor cannot poison them."""
     from test_dft_complete_cpu import ATOMS
