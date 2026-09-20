@@ -38,7 +38,9 @@ CASES = {
     96: "water-tetramer-def2-svp-spherical",
     192: "water-octamer-s4-def2-svp-spherical",
     384: "water-hexadecamer-2s4-def2-svp-spherical",
+    648: "water-27mer-3x3x3-def2-svp-spherical",
     768: "water-32mer-4s4-def2-svp-spherical",
+    864: "water-36mer-3x3x4-def2-svp-spherical",
 }
 
 
