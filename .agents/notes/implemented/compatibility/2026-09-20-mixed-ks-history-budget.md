@@ -21,14 +21,22 @@ identity and capacity behavior. Reject CPU AUTO and unknown precision modes.
 
 The concurrent ECP RKS final-closure condition is preserved alongside the mixed-J
 transition: UKS and ECP RKS both retain the strict physical-state closure gate.
+AUTO also remains on the host-controlled KS path when the experimental
+`VIBEQC_CUDA_KS_CHUNK=2` mode is selected, so device chunking cannot bypass the
+FP32 mixed-J stage or its independent FP64 refinement.
 
 ## Evidence
 
-Ten new capacity/identity/argument-propagation regressions fail before the repair
-and pass after it. Combined resource suites: 21 passed, seven opt-in real-device
-tests skipped. The CUDA KS host translation unit passes C++20 syntax compilation
-with CUDA headers. These results do not substitute for exact-head GPU numerical
-qualification of the mixed-J implementation; the PR remains draft for that gate.
+The capacity/identity/argument-propagation regressions pass together with the
+existing KS resource and chunk-control suites: 27 passed, seven opt-in tests
+skipped. Ruff, clang-format and diff checks are clean.
+
+On the merged scientific tree `f03ed249` (latest master `6efda7f4`), a full CUDA
+13.0 / RTX 5090 (`sm_120`) monolithic build of `vibeqc_dft_api_tests` completed
+and the real-device endpoint suite exited successfully. LDA/PBE RKS/UKS AUTO
+all executed FP32 mixed-J work followed by strict FP64 refinement, including with
+`VIBEQC_CUDA_KS_CHUNK=2` requested. PBE RKS H2 remained
+`-1.152064375339672 Eh`.
 
 ## Invariants
 
