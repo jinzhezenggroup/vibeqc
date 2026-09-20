@@ -383,8 +383,7 @@ def ks_resource_request(
 
             library = _native.load_library(device="cpu")
         if library is not None:
-            default_model = resolve_ks_options(method)
-            if model != default_model or model.requires_composition_v2:
+            if model.requires_composition_v2 or model != resolve_ks_options(method):
                 options_version = getattr(library, "vibeqc_ks_options_version", None)
                 if options_version is not None:
                     options_version.argtypes, options_version.restype = (

@@ -510,6 +510,17 @@ def test_resolved_ks_options_preserve_catalog_identity(method: str) -> None:
     assert second.functional is first.functional
 
 
+@pytest.mark.parametrize("method", ("pbe0-rks", "pbe0-uks"))
+def test_named_hybrid_resource_planning_preserves_explicit_grid(method: str) -> None:
+    options = KsOptions(grid=CUSTOM, tile_points=31)
+    resolved = resolve_ks_options(method, options)
+    assert resolved.requires_composition_v2
+    assert (
+        estimate_ks_resources([H2], method=method, ks_options=options).identity
+        == estimate_ks_resources([H2], method=method, ks_options=resolved).identity
+    )
+
+
 @pytest.mark.parametrize("spin", ("unpolarized", "polarized"))
 def test_budgeted_custom_hybrid_preserves_resolved_methodir(spin: str) -> None:
     method = "pbe-rks" if spin == "unpolarized" else "pbe-uks"
