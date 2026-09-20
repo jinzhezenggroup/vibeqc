@@ -284,6 +284,113 @@ macro(vibeqc_configure_cuda_backend target)
   else()
     target_sources(${target} PRIVATE src/scf/aot_shell_registry_stub.cpp)
   endif()
+  if(VIBEQC_ENABLE_STATIONARY_FORCE_AOT)
+    set(VIBEQC_STATIONARY_AOT_DIRECTORY
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/stationary_force")
+    set(_vibeqc_stationary_architectures)
+    foreach(_vibeqc_stationary_arch IN LISTS _vibeqc_cuda_compile_architectures)
+      string(REGEX REPLACE "-(real|virtual)$" "" _vibeqc_stationary_arch
+             "${_vibeqc_stationary_arch}")
+      list(APPEND _vibeqc_stationary_architectures
+           "sm_${_vibeqc_stationary_arch}")
+    endforeach()
+    list(REMOVE_DUPLICATES _vibeqc_stationary_architectures)
+    set(_vibeqc_stationary_architecture_args)
+    foreach(_vibeqc_stationary_arch IN LISTS _vibeqc_stationary_architectures)
+      list(APPEND _vibeqc_stationary_architecture_args
+           --architecture "${_vibeqc_stationary_arch}")
+    endforeach()
+    set(_vibeqc_stationary_compile_architecture_args)
+    foreach(_vibeqc_stationary_arch IN LISTS _vibeqc_cuda_compile_architectures)
+      list(APPEND _vibeqc_stationary_compile_architecture_args
+           --compile-architecture "${_vibeqc_stationary_arch}")
+    endforeach()
+    # Generated source weights are plan-bound after #665/#689. Keep RKS and
+    # UKS artifacts distinct so one-spin D/W lowering cannot serve two-spin work.
+    set(_vibeqc_stationary_functionals 0 0 1 1 2 2)
+    set(_vibeqc_stationary_spins
+        unpolarized polarized unpolarized polarized unpolarized polarized)
+    set(_vibeqc_stationary_names
+        lda_rks lda_uks pbe_rks pbe_uks r2scan_rks r2scan_uks)
+    foreach(_vibeqc_stationary_functional _vibeqc_stationary_spin
+            _vibeqc_stationary_name IN ZIP_LISTS
+            _vibeqc_stationary_functionals _vibeqc_stationary_spins
+            _vibeqc_stationary_names)
+      set(_vibeqc_stationary_source
+          "${VIBEQC_STATIONARY_AOT_DIRECTORY}/vibeqc_stationary_${_vibeqc_stationary_name}.cu")
+      set(_vibeqc_stationary_manifest
+          "${CMAKE_CURRENT_BINARY_DIR}/vibeqc_stationary_${_vibeqc_stationary_name}.json")
+      vibeqc_register_generated_sources(
+        NAME "vibeqc_stationary_${_vibeqc_stationary_name}_codegen"
+        GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_stationary_force_aot.py"
+        OUTPUTS "${_vibeqc_stationary_source}"
+        DEPENDS
+          "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/stationary_gradient_cuda.cuh"
+          ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+        ARGS
+          --output "${_vibeqc_stationary_source}"
+          --functional "${_vibeqc_stationary_functional}"
+          --spin "${_vibeqc_stationary_spin}"
+          --iterations 3
+        COMMENT
+          "Generating ${_vibeqc_stationary_name} stationary CUDA AOT source")
+      set(_vibeqc_stationary_target
+          "vibeqc_stationary_${_vibeqc_stationary_name}")
+      add_library(${_vibeqc_stationary_target} SHARED
+                  "${_vibeqc_stationary_source}")
+      add_dependencies(${_vibeqc_stationary_target}
+                       "vibeqc_stationary_${_vibeqc_stationary_name}_codegen")
+      target_include_directories(${_vibeqc_stationary_target} PRIVATE
+          "${CMAKE_CURRENT_SOURCE_DIR}/src")
+      target_compile_definitions(${_vibeqc_stationary_target} PRIVATE
+          VIBEQC_HAS_CUDA=1)
+      target_compile_options(${_vibeqc_stationary_target} PRIVATE
+          $<$<COMPILE_LANGUAGE:CUDA>:--fmad=false>
+          $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+      set_target_properties(${_vibeqc_stationary_target} PROPERTIES
+          CUDA_ARCHITECTURES "${_vibeqc_cuda_compile_architectures}"
+          CUDA_STANDARD 20
+          CUDA_STANDARD_REQUIRED ON
+          POSITION_INDEPENDENT_CODE ON
+          JOB_POOL_COMPILE vibeqc_cuda_compile
+          OUTPUT_NAME "vibeqc_stationary_${_vibeqc_stationary_name}")
+      if(VIBEQC_PYTHON_WHEEL)
+        vibeqc_attach_cuda_implib(${_vibeqc_stationary_target})
+      else()
+        target_link_libraries(${_vibeqc_stationary_target} PRIVATE
+                              CUDA::cudart CUDA::cublas)
+      endif()
+      add_custom_command(
+        OUTPUT "${_vibeqc_stationary_manifest}"
+        COMMAND "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/write_stationary_aot_manifest.py"
+                --library "$<TARGET_FILE:${_vibeqc_stationary_target}>"
+                --source "${_vibeqc_stationary_source}"
+                --output "${_vibeqc_stationary_manifest}"
+                --functional "${_vibeqc_stationary_functional}"
+                --spin "${_vibeqc_stationary_spin}"
+                --iterations 3
+                ${_vibeqc_stationary_architecture_args}
+                ${_vibeqc_stationary_compile_architecture_args}
+        DEPENDS
+          ${_vibeqc_stationary_target}
+          "${_vibeqc_stationary_source}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tools/write_stationary_aot_manifest.py"
+          ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+        COMMENT
+          "Recording ${_vibeqc_stationary_name} stationary CUDA AOT identity"
+        VERBATIM)
+      add_custom_target(
+        "${_vibeqc_stationary_target}_manifest" ALL
+        DEPENDS "${_vibeqc_stationary_manifest}")
+      install(TARGETS ${_vibeqc_stationary_target}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+      install(FILES "${_vibeqc_stationary_manifest}"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    endforeach()
+  endif()
+
   if(VIBEQC_PYTHON_WHEEL)
     vibeqc_attach_cuda_implib(${target})
   else()

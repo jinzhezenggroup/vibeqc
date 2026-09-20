@@ -78,6 +78,9 @@
     "tools/generate_scf_array_native.py",
     "cmake/VibeQCGfn2Runtime.cmake",
     "tools/xtb/resolve-openblas-wheel.py",
-    "tools/xtb/scipy_openblas32_manifest.json"
+    "tools/xtb/scipy_openblas32_manifest.json",
+    "tools/generate_stationary_force_aot.py",
+    "tools/write_stationary_aot_manifest.py"
+
   ]
 }

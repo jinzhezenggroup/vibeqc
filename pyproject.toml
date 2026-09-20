@@ -87,6 +87,7 @@ wheel.py-api = "py3"
 [tool.scikit-build.cmake.define]
 VIBEQC_ENABLE_CUDA = { env = "VIBEQC_ENABLE_CUDA", default = "ON" }
 VIBEQC_ENABLE_AOT_SHELLS = { env = "VIBEQC_ENABLE_AOT_SHELLS", default = "ON" }
+VIBEQC_ENABLE_STATIONARY_FORCE_AOT = { env = "VIBEQC_ENABLE_STATIONARY_FORCE_AOT", default = "ON" }
 VIBEQC_CUDA_ARCHITECTURES = { env = "VIBEQC_CUDA_ARCHITECTURES", default = "" }
 
 # Keep wheel production aligned with xTBloom's proven cibuildwheel path. Because

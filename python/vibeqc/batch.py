@@ -630,6 +630,7 @@ class PreparedBatch:
                     raise NotImplementedError(
                         "public CUDA DFT forces require a qualified CUDA owner"
                     )
+                native_library = Path(str(self._library._name)).resolve()
                 kwargs = {
                     "compiler": self._stationary_cuda_compiler(),
                     "cache": Path(
@@ -637,6 +638,8 @@ class PreparedBatch:
                             "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cuda"
                         )
                     ),
+                    "aot_directory": native_library.parent,
+                    "native_grid_library": native_library,
                 }
                 try:
                     result = complete_rks_cuda_gradient_diagnostic(

@@ -24,7 +24,8 @@ from types import MappingProxyType
 import numpy as np
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.common.provenance import file_hash
+from vibeqc_compiler.common.cuda_runtime import CudaArtifact
+from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from vibeqc_compiler.dft.cuda import (
     CudaGrid,
     GridTaskView,
@@ -37,6 +38,8 @@ from vibeqc_compiler.integral.first_derivative_native import emit_first_derivati
 from vibeqc_compiler.method.stationary_cuda import (
     STATIONARY_RUNTIME_SOURCE_NAMES,
     compile_stationary_cuda,
+    load_stationary_aot_artifact,
+    qualified_sp_requests,
 )
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
@@ -103,16 +106,7 @@ def _layout(basis: typing.Any) -> typing.Any:
     if any(int(r[3]) != 1 for r in aos):
         raise NotImplementedError("CUDA diagnostic requires single-component AOs")
     components = tuple("".join(a * int(l) for a, l in zip("xyz", r[4:7])) for r in aos)
-    domain = sorted(set(components))
-    requests = tuple(
-        [
-            (op, c)
-            for op in ("overlap", "kinetic", "nuclear_attraction")
-            for c in product(domain, repeat=2)
-        ]
-        + [("four_center_eri", c) for c in product(domain, repeat=4)]
-        + [("nuclear", ())]
-    )
+    requests = qualified_sp_requests()
     return primitives, aos, components, requests
 
 
@@ -387,6 +381,27 @@ class _CudaSources:
             self.close()
 
 
+def _native_grid_artifact(library: typing.Any, architecture: str) -> CudaArtifact:
+    """Bind the already built native CUDA grid code without recompilation."""
+    path = Path(library).resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"native CUDA library not found: {path}")
+    digest = file_hash(path)
+    identity = {
+        "schema": "vibeqc.native-grid-aot.v1",
+        "target": {"architecture": architecture},
+    }
+    return CudaArtifact(
+        path,
+        {
+            "identity": identity,
+            "binary_sha256": digest,
+            "key": canonical_hash({"identity": identity, "binary_sha256": digest}),
+            "artifact_kind": "native-build-aot",
+        },
+    )
+
+
 class PreparedStationaryCudaTopologyMismatch(ValueError):
     """Retained execution is incompatible with the requested scientific topology."""
 
@@ -414,6 +429,8 @@ class PreparedStationaryCudaExecution:
         tensor_plans: typing.Any,
         compiler: typing.Any,
         cache: typing.Any,
+        aot_directory: typing.Any = None,
+        native_grid_library: typing.Any = None,
         requests: typing.Any,
         functional: int,
         ecp: bool,
@@ -446,6 +463,10 @@ class PreparedStationaryCudaExecution:
             ),
             device,
             repr(compiler.target.to_payload()),
+            None if aot_directory is None else str(Path(aot_directory).resolve()),
+            None
+            if native_grid_library is None
+            else str(Path(native_grid_library).resolve()),
             repr(spec),
             spec.partition_iterations,
             tile_points,
@@ -494,15 +515,32 @@ class PreparedStationaryCudaExecution:
 
         started = perf_counter()
         cache = Path(cache)
-        stationary_artifact = compile_stationary_cuda(
-            emit_first_derivative_cuda(requests),
-            functional=functional,
-            plan=plan,
-            iterations=spec.partition_iterations,
-            compiler=compiler,
-            cache=cache,
+        stationary_artifact = (
+            compile_stationary_cuda(
+                emit_first_derivative_cuda(requests),
+                functional=functional,
+                plan=plan,
+                iterations=spec.partition_iterations,
+                compiler=compiler,
+                cache=cache,
+            )
+            if aot_directory is None or ecp
+            else load_stationary_aot_artifact(
+                aot_directory,
+                functional=functional,
+                spin=contract.spin,
+                plan=plan,
+                architecture=compiler.target.architecture,
+                iterations=spec.partition_iterations,
+            )
         )
-        grid_artifact = compile_grid(compiler, cache)
+        grid_artifact = (
+            compile_grid(compiler, cache)
+            if native_grid_library is None
+            else _native_grid_artifact(
+                native_grid_library, compiler.target.architecture
+            )
+        )
         tensor_artifacts = {
             name: compile_cuda(value, compiler, cache)
             for name, value in tensor_plans.items()
@@ -642,6 +680,8 @@ def _complete_rks_cuda_gradient_diagnostic(
     *,
     compiler: typing.Any,
     cache: typing.Any,
+    aot_directory: typing.Any = None,
+    native_grid_library: typing.Any = None,
     tile_points: typing.Any = 256,
     integral_terms: typing.Any = 32,
     primitive_tile: typing.Any = 128,
@@ -848,15 +888,32 @@ def _complete_rks_cuda_gradient_diagnostic(
     cache = Path(cache)
     spec = state._source.grid_spec
     if prepared is None:
-        artifact = compile_stationary_cuda(
-            emit_first_derivative_cuda(requests),
-            functional=functional,
-            plan=plan,
-            iterations=spec.partition_iterations,
-            compiler=compiler,
-            cache=cache,
+        artifact = (
+            compile_stationary_cuda(
+                emit_first_derivative_cuda(requests),
+                functional=functional,
+                plan=plan,
+                iterations=spec.partition_iterations,
+                compiler=compiler,
+                cache=cache,
+            )
+            if aot_directory is None or ecp
+            else load_stationary_aot_artifact(
+                aot_directory,
+                functional=functional,
+                spin=contract.spin,
+                plan=plan,
+                architecture=compiler.target.architecture,
+                iterations=spec.partition_iterations,
+            )
         )
-        grid_artifact = compile_grid(compiler, cache)
+        grid_artifact = (
+            compile_grid(compiler, cache)
+            if native_grid_library is None
+            else _native_grid_artifact(
+                native_grid_library, compiler.target.architecture
+            )
+        )
         artifacts = [artifact, grid_artifact]
     else:
         prepared.ensure(
@@ -867,6 +924,8 @@ def _complete_rks_cuda_gradient_diagnostic(
             tensor_plans=tensor_plans,
             compiler=compiler,
             cache=cache,
+            aot_directory=aot_directory,
+            native_grid_library=native_grid_library,
             requests=requests,
             functional=functional,
             ecp=ecp,
@@ -1095,6 +1154,15 @@ def _complete_rks_cuda_gradient_diagnostic(
         snapshot_export="explicit native CUDA final-state export; W/frame validation is host work",
         host_scope="snapshot validation; primitive enumeration/record packing; one D/W owner upload; final TensorIR reduction; immutable result copies",
         endpoint_seconds=perf_counter() - started,
+        stationary_artifact_kind=artifact.metadata.get("artifact_kind", "runtime-jit"),
+        stationary_runtime_module_load=True,
+        stationary_driver_ptx_jit_possible=artifact.metadata.get(
+            "driver_ptx_jit_possible", True
+        ),
+        stationary_driver_ptx_jit_required=artifact.metadata.get(
+            "driver_ptx_jit_required", False
+        ),
+        grid_artifact_kind=grid_artifact.metadata.get("artifact_kind", "runtime-jit"),
         artifacts=tuple(
             {
                 "library": str(a.library),
@@ -1121,6 +1189,8 @@ def complete_rks_cuda_gradient_diagnostic(
     *,
     compiler: typing.Any,
     cache: typing.Any,
+    aot_directory: typing.Any = None,
+    native_grid_library: typing.Any = None,
     tile_points: typing.Any = 256,
     integral_terms: typing.Any = 32,
     primitive_tile: typing.Any = 128,
@@ -1136,6 +1206,8 @@ def complete_rks_cuda_gradient_diagnostic(
     kwargs = {
         "compiler": compiler,
         "cache": cache,
+        "aot_directory": aot_directory,
+        "native_grid_library": native_grid_library,
         "tile_points": tile_points,
         "integral_terms": integral_terms,
         "primitive_tile": primitive_tile,
