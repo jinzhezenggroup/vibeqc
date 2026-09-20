@@ -9,6 +9,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -49,7 +50,7 @@ SCF_OPTIONS = {
 }
 
 
-def fixtures():
+def fixtures() -> typing.Any:
     """Verify every archived input before accepting independent oracle arrays."""
     manifest = json.loads((DATA / "manifest.json").read_text())
     for name, digest in manifest["files"].items():
@@ -60,7 +61,7 @@ def fixtures():
     return manifest, arrays
 
 
-def basis_for(spec):
+def basis_for(spec: typing.Any) -> typing.Any:
     """Load the exact local source and explicitly select the oracle convention."""
     return import_bse(
         DATA / spec["source"],
@@ -73,7 +74,14 @@ def basis_for(spec):
     )
 
 
-def check_result(result, spec, arrays, device, *, changed=False):
+def check_result(
+    result: typing.Any,
+    spec: typing.Any,
+    arrays: typing.Any,
+    device: typing.Any,
+    *,
+    changed: typing.Any = False,
+) -> typing.Any:
     """Gate independent total energy/force values and the actual native backend."""
     expected_backend = "cuda" if device == "cuda" else "cpu_reference"
     assert result.converged and result.executed_backend == expected_backend
@@ -105,7 +113,9 @@ def check_result(result, spec, arrays, device, *, changed=False):
     }
 
 
-def case_endpoints(spec, arrays, devices, samples):
+def case_endpoints(
+    spec: typing.Any, arrays: typing.Any, devices: typing.Any, samples: typing.Any
+) -> typing.Any:
     """Interleave complete plan construction, cold execution and retained replays."""
     started = time.perf_counter()
     basis = basis_for(spec)
@@ -226,7 +236,9 @@ def case_endpoints(spec, arrays, devices, samples):
     return record
 
 
-def ragged_endpoints(manifest, arrays, device, samples):
+def ragged_endpoints(
+    manifest: typing.Any, arrays: typing.Any, device: typing.Any, samples: typing.Any
+) -> typing.Any:
     """Preserve order, independent ions, basis metadata and isolated shape failures."""
     records = []
     for representation in ("cartesian", "spherical"):
@@ -275,7 +287,7 @@ def ragged_endpoints(manifest, arrays, device, samples):
     return records
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cuda", action="store_true")
     parser.add_argument("--samples", type=int, default=5)

@@ -3,6 +3,7 @@
 import copy
 import math
 import sqlite3
+import typing
 from collections import Counter
 from itertools import product
 
@@ -16,7 +17,9 @@ from benchmarks.df_shell_work_ledger import (
 
 
 @pytest.mark.parametrize("pair_mode", [0, 1, 2])
-def test_reconstruction_matches_explicit_shell_visits(pair_mode):
+def test_reconstruction_matches_explicit_shell_visits(
+    pair_mode: typing.Any,
+) -> None:
     # The same angular class has different contraction lengths, and a p shell
     # crosses the panel boundary. Enumerate actual shell IDs independently of
     # the reducer's grouped combinatorics.
@@ -34,7 +37,7 @@ def test_reconstruction_matches_explicit_shell_visits(pair_mode):
 
 
 @pytest.fixture
-def sss_record():
+def sss_record() -> typing.Any:
     """One active coincident SSS task, two primitives per shell, one component.
 
     Each of its eight primitive products stores nine polynomial coefficients
@@ -90,7 +93,9 @@ def sss_record():
     }
 
 
-def test_work_ledger_preserves_counts_groups_and_domain_hash(sss_record):
+def test_work_ledger_preserves_counts_groups_and_domain_hash(
+    sss_record: typing.Any,
+) -> None:
     result = reduce_work(sss_record, [(0, 2, 0, 1)])
     assert result["totals"]["primitive_products"] == 8
     assert result["totals"]["convolution_iterations"] == 48
@@ -101,7 +106,9 @@ def test_work_ledger_preserves_counts_groups_and_domain_hash(sss_record):
     assert result == reduce_work(copy.deepcopy(sss_record), [(0, 2, 0, 1)])
 
 
-def test_rys_work_conserves_primitive_domain_and_rejects_wrong_root_count(sss_record):
+def test_rys_work_conserves_primitive_domain_and_rejects_wrong_root_count(
+    sss_record: typing.Any,
+) -> None:
     """Changing lowering must conserve tasks and explicitly account for its roots."""
     for prefix in ("shell_000_work_", "shell_000_p2_2_2_work_"):
         for field in (
@@ -146,14 +153,18 @@ def test_rys_work_conserves_primitive_domain_and_rejects_wrong_root_count(sss_re
         ("folding_shared_atomics", 1.5, "nonnegative"),
     ],
 )
-def test_reject_tampered_scientific_counts(sss_record, field, value, message):
+def test_reject_tampered_scientific_counts(
+    sss_record: typing.Any, field: typing.Any, value: typing.Any, message: typing.Any
+) -> None:
     for prefix in ("shell_000_work_", "shell_000_p2_2_2_work_"):
         sss_record["counters"][prefix + field] = value
     with pytest.raises(ValueError, match=message):
         reduce_work(sss_record, [(0, 2, 0, 1)])
 
 
-def test_reject_missing_or_disagreeing_diagnostic_rows(sss_record):
+def test_reject_missing_or_disagreeing_diagnostic_rows(
+    sss_record: typing.Any,
+) -> None:
     incomplete = copy.deepcopy(sss_record)
     del incomplete["counters"]["shell_000_p2_2_2_work_folding_direct_stores"]
     with pytest.raises(ValueError, match="incomplete"):
@@ -163,7 +174,9 @@ def test_reject_missing_or_disagreeing_diagnostic_rows(sss_record):
         reduce_work(sss_record, [(0, 2, 0, 1)])
 
 
-def test_reject_diagnostic_domain_different_from_host(sss_record):
+def test_reject_diagnostic_domain_different_from_host(
+    sss_record: typing.Any,
+) -> None:
     with pytest.raises(ValueError, match="signature domain"):
         reduce_work(sss_record, [(0, 3, 0, 1)])
     sss_record["counters"]["shell_primitive_products"] = 7
@@ -171,7 +184,9 @@ def test_reject_diagnostic_domain_different_from_host(sss_record):
         reduce_work(sss_record, [(0, 2, 0, 1)])
 
 
-def test_nsight_activity_must_match_class_launch_domain(tmp_path, sss_record):
+def test_nsight_activity_must_match_class_launch_domain(
+    tmp_path: typing.Any, sss_record: typing.Any
+) -> None:
     path = tmp_path / "profile.sqlite"
     with sqlite3.connect(path) as db:
         db.execute("CREATE TABLE StringIds(id INTEGER, value TEXT)")
@@ -208,7 +223,9 @@ def test_nsight_activity_must_match_class_launch_domain(tmp_path, sss_record):
 
 
 @pytest.mark.parametrize("pair_mode", (0, 1, 2))
-def test_unequal_auxiliary_f_shell_domain_and_partial_panels(pair_mode):
+def test_unequal_auxiliary_f_shell_domain_and_partial_panels(
+    pair_mode: typing.Any,
+) -> None:
     orbital = [(0, 2, 0, 1), (1, 1, 1, 3), (0, 1, 4, 1)]
     auxiliary = [(0, 1, 0, 1), (3, 2, 1, 7), (2, 1, 8, 5)]
     panels = [(0, 4, 1), (4, 9, 2)]
@@ -228,8 +245,11 @@ def test_unequal_auxiliary_f_shell_domain_and_partial_panels(pair_mode):
 
 @pytest.mark.parametrize("states,valid", ((48, True), (47, False), (49, False)))
 def test_shared_recurrence_work_is_counted_once_per_primitive(
-    sss_record, monkeypatch, states, valid
-):
+    sss_record: typing.Any,
+    monkeypatch: typing.Any,
+    states: typing.Any,
+    valid: typing.Any,
+) -> None:
     from vibeqc_compiler.integral.df_rys_shell import shell_rys_work_model
 
     # A toy lowering moves the six SSS component states into a shared cache;
@@ -267,7 +287,9 @@ def test_shared_recurrence_work_is_counted_once_per_primitive(
 
 
 @pytest.mark.parametrize("primitive_delta", (-1, 0, 1))
-def test_angular_group_zero_signature_is_a_sentinel(sss_record, primitive_delta):
+def test_angular_group_zero_signature_is_a_sentinel(
+    sss_record: typing.Any, primitive_delta: typing.Any
+) -> None:
     counters = sss_record["counters"]
     counters["shell_primitive_signature_policy"] = 0
     for key in list(counters):
@@ -284,7 +306,9 @@ def test_angular_group_zero_signature_is_a_sentinel(sss_record, primitive_delta)
 
 
 @pytest.mark.parametrize("policy", (0, 1, 2))
-def test_sparse_angular_work_bounds_use_host_primitive_costs(policy):
+def test_sparse_angular_work_bounds_use_host_primitive_costs(
+    policy: typing.Any,
+) -> None:
     from benchmarks.df_shell_work_ledger import (
         _active_primitive_bounds,
         _primitive_work_domains,

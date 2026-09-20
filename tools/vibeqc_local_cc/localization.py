@@ -6,6 +6,7 @@ metric. They are population operators, not positive atomic probabilities.
 """
 
 import time
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -44,7 +45,7 @@ class OccupiedLocalization:
     ao_atoms: tuple[int, ...]
     method: str = "pipek_mezey_mulliken"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.reference_id or self.method != "pipek_mezey_mulliken":
             raise ValueError("invalid occupied-localization identity")
         u = immutable(self.rotation)
@@ -78,7 +79,7 @@ class OccupiedLocalization:
             number(getattr(self, name), name)
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         """Tie local pair labels to this specific occupied gauge and reference."""
         return fingerprint(
             {
@@ -90,7 +91,7 @@ class OccupiedLocalization:
         )
 
 
-def population_operators(snapshot, ao_atoms):
+def population_operators(snapshot: typing.Any, ao_atoms: typing.Any) -> typing.Any:
     """Project symmetrized AO Mulliken partitions into the occupied metric."""
     no, _ = checked_reference(snapshot)
     atoms = tuple(ao_atoms)
@@ -112,7 +113,7 @@ def population_operators(snapshot, ao_atoms):
     return operators
 
 
-def _gradient(operators):
+def _gradient(operators: typing.Any) -> typing.Any:
     # d/dtheta sum q_ii^2 at theta=0 for each occupied Jacobi rotation.
     diagonal = np.diagonal(operators, axis1=1, axis2=2)
     gradient = 4 * np.einsum(
@@ -122,14 +123,14 @@ def _gradient(operators):
 
 
 def localize_occupied(
-    snapshot,
-    ao_atoms,
+    snapshot: typing.Any,
+    ao_atoms: typing.Any,
     *,
-    tolerance=1e-10,
-    max_sweeps=200,
-    initial_rotation=None,
-    budget_bytes=128 << 20,
-):
+    tolerance: typing.Any = 1e-10,
+    max_sweeps: typing.Any = 200,
+    initial_rotation: typing.Any = None,
+    budget_bytes: typing.Any = 128 << 20,
+) -> typing.Any:
     """Maximize the PM objective by analytic two-orbital Jacobi rotations.
 
     Failure to reach the gradient gate raises explicitly. The initial rotation

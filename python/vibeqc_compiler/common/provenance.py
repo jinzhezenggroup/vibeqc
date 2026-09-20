@@ -10,10 +10,11 @@ import os
 import shutil
 import subprocess
 import tempfile
+import typing
 from pathlib import Path
 
 
-def canonical_hash(value) -> str:
+def canonical_hash(value: typing.Any) -> str:
     """Hash portable JSON with no non-finite numbers or path-dependent encoding."""
     return hashlib.sha256(
         json.dumps(

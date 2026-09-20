@@ -9,6 +9,7 @@ from __future__ import annotations
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -45,7 +46,13 @@ from tools.vibeqc_validation.schema import (
 )
 
 
-def run(args, name, spin, variant, device):
+def run(
+    args: typing.Any,
+    name: typing.Any,
+    spin: typing.Any,
+    variant: typing.Any,
+    device: typing.Any,
+) -> typing.Any:
     """Record each candidate's independent numerical and resource evidence."""
     start = perf_counter()
     program = build_program(functional(name, spin=spin), order=args.order)
@@ -176,7 +183,7 @@ def run(args, name, spin, variant, device):
             weights = np.linspace(0.5, 1.5, len(program.outputs))[:, None]
             input_hash = canonical_hash(features.tolist())
 
-            def workflow(callback, values):
+            def workflow(callback: typing.Any, values: typing.Any) -> typing.Any:
                 result = np.zeros(len(program.outputs))
                 for begin in range(0, values.shape[1], args.tile_points):
                     result += np.sum(
@@ -272,7 +279,7 @@ def run(args, name, spin, variant, device):
     return record
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--tier",

@@ -7,6 +7,7 @@ Changed-geometry warm replays always supply the changed coordinates explicitly.
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -32,7 +33,7 @@ from tools.vibeqc_validation.f_shell_numerics import numerical_error
 from tools.vibeqc_validation.schema import file_hash
 
 
-def endpoint(config):
+def endpoint(config: typing.Any) -> typing.Any:
     """Execute cold, fixed warm, changed cold, and explicit changed warm phases."""
     from vibeqc import Calculator
 
@@ -82,7 +83,7 @@ def endpoint(config):
     ) as prepared:
         phases["prepare_ms"] = (time.perf_counter() - start) * 1000
 
-        def execute(coordinates=None):
+        def execute(coordinates: typing.Any = None) -> typing.Any:
             start = time.perf_counter()
             result = prepared.execute(coordinates, strict=True)
             elapsed = (time.perf_counter() - start) * 1000
@@ -117,7 +118,7 @@ def endpoint(config):
     return phases
 
 
-def require_equal(actual, reference):
+def require_equal(actual: typing.Any, reference: typing.Any) -> typing.Any:
     """Compare ragged force batches per molecule, plus all molecular energies."""
     checks = [
         numerical_error(
@@ -136,7 +137,7 @@ def require_equal(actual, reference):
     return checks
 
 
-def cross_schedule_checks(runs):
+def cross_schedule_checks(runs: typing.Any) -> typing.Any:
     """Gate identical physics across fixed/resident/pages and mixed batches.
 
     The first molecule has identical coordinates in every batch size, while
@@ -159,7 +160,7 @@ def cross_schedule_checks(runs):
             for phase in ("cold", "changed_geometry"):
                 checks.extend(require_equal(samples[phase], same_batch[phase]))
 
-                def first(result):
+                def first(result: typing.Any) -> typing.Any:
                     return {
                         "energies": result["energies"][:1],
                         "forces": result["forces"][:1],
@@ -171,7 +172,7 @@ def cross_schedule_checks(runs):
     return checks
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--worker")
     parser.add_argument("--output", type=Path)

@@ -1,6 +1,7 @@
 """Matrix-free RHF response actions against explicit and finite-rotation oracles."""
 
 import os
+import typing
 from dataclasses import replace
 
 import numpy as np
@@ -25,7 +26,9 @@ from tools.vibeqc_response import (
 
 
 @pytest.mark.parametrize("name", ["h2", "water"])
-def test_matrix_free_jvp_matches_explicit_mo_matrix_and_transpose_identity(name):
+def test_matrix_free_jvp_matches_explicit_mo_matrix_and_transpose_identity(
+    name: typing.Any,
+) -> None:
     meta, arrays = load_fixture(name)
     snapshot = fixture_snapshot(meta, arrays)
     try:
@@ -63,7 +66,7 @@ def test_matrix_free_jvp_matches_explicit_mo_matrix_and_transpose_identity(name)
 
 
 @pytest.mark.parametrize("name", ["h2", "water"])
-def test_finite_orbital_rotation_matches_jvp(name):
+def test_finite_orbital_rotation_matches_jvp(name: typing.Any) -> None:
     meta, arrays = load_fixture(name)
     snapshot = fixture_snapshot(meta, arrays)
     backend = DenseAOResponseBackend(arrays["ao"])
@@ -75,7 +78,7 @@ def test_finite_orbital_rotation_matches_jvp(name):
     np.testing.assert_allclose(finite, operator.apply(vector), atol=3e-8, rtol=3e-8)
 
 
-def test_native_backend_rejects_nonconventional_source():
+def test_native_backend_rejects_nonconventional_source() -> None:
     meta, arrays = load_fixture("h2")
     del arrays
     try:
@@ -89,7 +92,7 @@ def test_native_backend_rejects_nonconventional_source():
         source.close()
 
 
-def test_native_backend_rejects_same_sized_unrelated_reference():
+def test_native_backend_rejects_same_sized_unrelated_reference() -> None:
     meta, arrays = load_fixture("h2")
     snapshot = fixture_snapshot(meta, arrays)
     try:
@@ -106,7 +109,7 @@ def test_native_backend_rejects_same_sized_unrelated_reference():
         source.close()
 
 
-def test_native_rhf_multirhs_residuals_permutation_and_recycling():
+def test_native_rhf_multirhs_residuals_permutation_and_recycling() -> None:
     # LiH keeps the routine PR gate nontrivial without making every feedback
     # cycle pay for the much larger water response solve. Nightly/manual full
     # CI retains the original water-sized stress case.
@@ -163,7 +166,9 @@ def test_native_rhf_multirhs_residuals_permutation_and_recycling():
 
 
 @pytest.mark.parametrize("mismatch", ["threshold", "auxiliary", "label"])
-def test_cuda_df_metric_preflight_rejects_stale_identity_without_device(mismatch):
+def test_cuda_df_metric_preflight_rejects_stale_identity_without_device(
+    mismatch: typing.Any,
+) -> None:
     """Metric identity errors must fail even with a CPU-only native library."""
     from tools.vibeqc_posthf.df import MetricFactor
     from tools.vibeqc_response import CudaDFJKBackend

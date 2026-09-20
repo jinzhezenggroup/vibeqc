@@ -9,6 +9,7 @@ and the tile sum equals :func:`triples_energy` to machine precision.
 No DIIS, no approximated denominator, no GPU dependency here.
 """
 
+import typing
 from fractions import Fraction
 
 import numpy as np
@@ -63,17 +64,19 @@ class TileSpec:
 
     __slots__ = ("a_end", "a_start", "nvir")
 
-    def __init__(self, a_start, a_end, nvir):
+    def __init__(
+        self, a_start: typing.Any, a_end: typing.Any, nvir: typing.Any
+    ) -> None:
         if not (0 <= a_start < a_end <= nvir):
             raise ValueError(f"invalid a-chunk [{a_start}, {a_end}) for nvir={nvir}")
         self.a_start = a_start
         self.a_end = a_end
         self.nvir = nvir
 
-    def __repr__(self):
+    def __repr__(self) -> typing.Any:
         return f"TileSpec(a=[{self.a_start},{self.a_end})/{self.nvir})"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> typing.Any:
         if not isinstance(other, TileSpec):
             return NotImplemented
         return (self.a_start, self.a_end, self.nvir) == (
@@ -82,22 +85,22 @@ class TileSpec:
             other.nvir,
         )
 
-    def __hash__(self):
+    def __hash__(self) -> typing.Any:
         return hash((self.a_start, self.a_end, self.nvir))
 
     @property
-    def vir_subblock_size(self):
+    def vir_subblock_size(self) -> typing.Any:
         return self.a_end
 
     @property
-    def ntriples(self):
+    def ntriples(self) -> typing.Any:
         """Count of ``a>=b>=c`` triples processed in this tile."""
         n = 0
         for a in range(self.a_start, self.a_end):
             n += (a + 1) * (a + 2) // 2
         return n
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Any:
         """Yield each ``(a,b,c)`` triple with ``a>=b>=c`` in this tile."""
         for a in range(self.a_start, self.a_end):
             for b in range(a + 1):
@@ -119,7 +122,9 @@ class TriplesTileEnumerator:
         the full ``nocc`` range.
     """
 
-    def __init__(self, nocc, nvir, *, vir_chunk_size=None):
+    def __init__(
+        self, nocc: typing.Any, nvir: typing.Any, *, vir_chunk_size: typing.Any = None
+    ) -> None:
         if any(type(n) is not int or n < 1 for n in (nocc, nvir)):
             raise ValueError("triples require nonempty occupied and virtual spaces")
         if vir_chunk_size is None:
@@ -130,7 +135,7 @@ class TriplesTileEnumerator:
         self.nvir = nvir
         self.vir_chunk_size = vir_chunk_size
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Any:
         """Yield :class:`TileSpec` for each a-chunk."""
         nvir = self.nvir
         chunk = self.vir_chunk_size
@@ -138,10 +143,10 @@ class TriplesTileEnumerator:
             a_end = min(a_start + chunk, nvir)
             yield TileSpec(a_start, a_end, nvir)
 
-    def __len__(self):
+    def __len__(self) -> typing.Any:
         return (self.nvir + self.vir_chunk_size - 1) // self.vir_chunk_size
 
-    def tiles(self):
+    def tiles(self) -> typing.Any:
         return list(self)
 
 
@@ -151,19 +156,19 @@ class TriplesTileEnumerator:
 
 
 def tile_triples_energy(
-    tile,
-    nocc,
-    ovvv,
-    ovoo,
-    ovov,
-    fov,
-    t1,
-    t2,
-    eps_o,
-    eps_v,
+    tile: typing.Any,
+    nocc: typing.Any,
+    ovvv: typing.Any,
+    ovoo: typing.Any,
+    ovov: typing.Any,
+    fov: typing.Any,
+    t1: typing.Any,
+    t2: typing.Any,
+    eps_o: typing.Any,
+    eps_v: typing.Any,
     *,
-    denominator_threshold=1e-10,
-):
+    denominator_threshold: typing.Any = 1e-10,
+) -> typing.Any:
     """CPU reference: (T) contribution of a single tile.
 
     Identical to :func:`triples_energy` but restricted to virtual triples
@@ -200,17 +205,17 @@ def tile_triples_energy(
 
 
 def tile_triples_energy_masked(
-    tile,
-    nocc,
-    ovvv_full,
-    ovoo_full,
-    ovov_full,
-    fov_full,
-    t1_full,
-    t2_full,
-    eps_o,
-    eps_v,
-):
+    tile: typing.Any,
+    nocc: typing.Any,
+    ovvv_full: typing.Any,
+    ovoo_full: typing.Any,
+    ovov_full: typing.Any,
+    fov_full: typing.Any,
+    t1_full: typing.Any,
+    t2_full: typing.Any,
+    eps_o: typing.Any,
+    eps_v: typing.Any,
+) -> typing.Any:
     """CPU reference for per-tile comparison: zero out triples outside the tile.
 
     Unlike :func:`tile_triples_energy` which only loops over the tile's
@@ -259,7 +264,7 @@ def tile_triples_energy_masked(
 # ---------------------------------------------------------------------------
 
 
-def _t_views_tile(nodes):
+def _t_views_tile(nodes: typing.Any) -> typing.Any:
     return {
         "t1T": transpose(nodes["t1"], (1, 0)),
         "t2T": transpose(nodes["t2"], (2, 3, 0, 1)),
@@ -270,7 +275,7 @@ def _t_views_tile(nodes):
     }
 
 
-def _fix_tile(node, *selections):
+def _fix_tile(node: typing.Any, *selections: typing.Any) -> typing.Any:
     axes = []
     for axis, pos in selections:
         node = gather(node, axis, [pos])
@@ -278,7 +283,9 @@ def _fix_tile(node, *selections):
     return reduce_sum(node, tuple(sorted(axes)))
 
 
-def _w_node_tile(v, a, b, c):
+def _w_node_tile(
+    v: typing.Any, a: typing.Any, b: typing.Any, c: typing.Any
+) -> typing.Any:
     ab = _fix_tile(v["vvov"], (0, a), (1, b))
     cc = _fix_tile(v["t2T"], (0, c))
     w1 = einsum("if,fkj->ijk", ab, cc)
@@ -288,7 +295,9 @@ def _w_node_tile(v, a, b, c):
     return add(w1, w2, coefficients=(1, -1))
 
 
-def _v_node_tile(v, a, b, c):
+def _v_node_tile(
+    v: typing.Any, a: typing.Any, b: typing.Any, c: typing.Any
+) -> typing.Any:
     ab = _fix_tile(v["vvoo"], (0, a), (1, b))
     cc = _fix_tile(v["t1T"], (0, c))
     v1 = einsum("ij,k->ijk", ab, cc)
@@ -298,14 +307,21 @@ def _v_node_tile(v, a, b, c):
     return add(v1, v2, coefficients=(1, 1))
 
 
-def _r3_node_tile(w):
+def _r3_node_tile(w: typing.Any) -> typing.Any:
     return add(
         *(transpose(w, perm) for _, perm in R3),
         coefficients=tuple(c for c, _ in R3),
     )
 
 
-def _d3_node_tile(nodes, ijk, a, b, c, fac):
+def _d3_node_tile(
+    nodes: typing.Any,
+    ijk: typing.Any,
+    a: typing.Any,
+    b: typing.Any,
+    c: typing.Any,
+    fac: typing.Any,
+) -> typing.Any:
     e0 = broadcast(nodes["eps_o"], ijk, (0,))
     e1 = broadcast(nodes["eps_o"], ijk, (1,))
     e2 = broadcast(nodes["eps_o"], ijk, (2,))
@@ -318,7 +334,9 @@ def _d3_node_tile(nodes, ijk, a, b, c, fac):
     return add(eijk, broadcast(ev, ijk, ()), coefficients=(fac, -fac))
 
 
-def build_tile_triples_program(nocc, nvir, *, vir_chunk=None):
+def build_tile_triples_program(
+    nocc: typing.Any, nvir: typing.Any, *, vir_chunk: typing.Any = None
+) -> typing.Any:
     """Lower the (T) inventory for a tile to unshared TensorIR.
 
     ``nvir`` is the full virtual population.  The tile covers triangular
@@ -342,13 +360,13 @@ def build_tile_triples_program(nocc, nvir, *, vir_chunk=None):
     label_vir = IndexSpace("tile_virtual", "virtual", a_end)
     sum_vir = IndexSpace("full_virtual", "virtual", nvir)
 
-    def O(name):
+    def O(name: typing.Any) -> typing.Any:
         return Index(name, occ)
 
-    def V(name):
+    def V(name: typing.Any) -> typing.Any:
         return Index(name, label_vir)
 
-    def F(name):
+    def F(name: typing.Any) -> typing.Any:
         return Index(name, sum_vir)
 
     common = {
@@ -430,7 +448,7 @@ def build_tile_triples_program(nocc, nvir, *, vir_chunk=None):
     )
 
 
-def _tile_input_feeds(arrays, a_end):
+def _tile_input_feeds(arrays: typing.Any, a_end: typing.Any) -> typing.Any:
     """Extract exact-shape TensorIR feeds for a prefix-bounded tile.
 
     Label axes use ``[0, a_end)``.  The W1 ``f`` summation stays full:
@@ -457,20 +475,20 @@ def _tile_input_feeds(arrays, a_end):
 
 
 def tile_triples_energy_tensorir(
-    nocc,
-    nvir,
-    ovvv,
-    ovoo,
-    ovov,
-    fov,
-    t1,
-    t2,
-    eps_o,
-    eps_v,
+    nocc: typing.Any,
+    nvir: typing.Any,
+    ovvv: typing.Any,
+    ovoo: typing.Any,
+    ovov: typing.Any,
+    fov: typing.Any,
+    t1: typing.Any,
+    t2: typing.Any,
+    eps_o: typing.Any,
+    eps_v: typing.Any,
     *,
-    vir_chunk=None,
-    denominator_threshold=1e-10,
-):
+    vir_chunk: typing.Any = None,
+    denominator_threshold: typing.Any = 1e-10,
+) -> typing.Any:
     """Build and execute the tile TensorIR lowering; returns the E_T scalar."""
     _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
     _check_denominators(eps_o, eps_v, denominator_threshold)

@@ -1,5 +1,7 @@
 """Failed preparation releases owned handles even while its traceback is retained."""
 
+import typing
+
 import pytest
 from vibeqc import Calculator, ResourceBudget, _native
 from vibeqc.batch import PreparedBatch
@@ -15,8 +17,8 @@ from vibeqc.resources import ResourceAllocationError
     ],
 )
 def test_preparation_failure_releases_native_owners(
-    monkeypatch, resource_aware, failure
-):
+    monkeypatch: typing.Any, resource_aware: typing.Any, failure: typing.Any
+) -> None:
     calculator = Calculator(
         device="cpu", resource_budget=ResourceBudget() if resource_aware else None
     )
@@ -25,7 +27,7 @@ def test_preparation_failure_releases_native_owners(
     prepared = PreparedBatch.__new__(PreparedBatch)
     allocated = []
 
-    def failed_prepare(*args):
+    def failed_prepare(*args: typing.Any) -> typing.Any:
         status = native_prepare(*args)
         assert status == _native.STATUS_SUCCESS
         assert prepared._context.value and prepared._batch.value

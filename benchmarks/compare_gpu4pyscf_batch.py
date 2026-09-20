@@ -18,13 +18,16 @@ import hashlib
 import json
 import statistics
 import time
-from collections.abc import Iterator, Sequence
+import typing
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from vibeqc import Calculator, load_basis
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
 
 try:  # Keep both direct CLI execution and shared benchmark-module imports.
     from _cases import benchmark_cases
@@ -49,7 +52,9 @@ VIBEQC_ENGINE = "vibeqc"
 GPU4PYSCF_ENGINE = "gpu4pyscf"
 
 
-def load_comparison_basis(path, case, *, role, compute_forces):
+def load_comparison_basis(
+    path: typing.Any, case: typing.Any, *, role: typing.Any, compute_forces: typing.Any
+) -> typing.Any:
     """Share one explicit canonical snapshot between both benchmark engines.
 
     Preserve general-contraction columns and every shell. Reject incompatible
@@ -129,7 +134,7 @@ def fixed_warm_start_policy() -> dict[str, str]:
     }
 
 
-def convergence_payload(result) -> list[dict[str, object]]:
+def convergence_payload(result: typing.Any) -> list[dict[str, object]]:
     """Serialize one VibeQC replay's per-system convergence diagnostics."""
 
     return [
@@ -422,7 +427,7 @@ def nvtx_range(cupy_module: Any, label: str) -> Iterator[None]:
         nvtx.RangePop()
 
 
-def scaled_geometries(atoms, batch_size: int):
+def scaled_geometries(atoms: typing.Any, batch_size: int) -> typing.Any:
     """Create nearby fixed-topology geometries without changing the centroid."""
 
     coordinates = np.asarray([position for _, position in atoms], dtype=np.float64)

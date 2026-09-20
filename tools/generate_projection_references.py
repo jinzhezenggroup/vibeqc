@@ -3,6 +3,7 @@
 import argparse
 import json
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,7 +15,7 @@ import numpy as np
 from tools.generate_validation_references import pyscf_molecule
 
 
-def overlap_inputs(same_geometry):
+def overlap_inputs(same_geometry: typing.Any) -> typing.Any:
     """Non-native fixture input values preserve unsorted shell/atom ownership."""
     target_atoms = [["H", [0.1, -0.2, 0.3]], ["H", [0.9, 0.5, -0.4]]]
     source_atoms = (
@@ -49,11 +50,13 @@ def overlap_inputs(same_geometry):
     }
 
 
-def overlap_reference(inputs, target_rep, source_rep):
+def overlap_reference(
+    inputs: typing.Any, target_rep: typing.Any, source_rep: typing.Any
+) -> typing.Any:
     """Libcint rectangular integrals with independent public-AO normalization."""
     from pyscf import gto
 
-    def molecule(geometry, shells):
+    def molecule(geometry: typing.Any, shells: typing.Any) -> typing.Any:
         shells = sorted(shells, key=lambda s: (s["atom_index"], s["angular_momentum"]))
         mol, scales, _ = pyscf_molecule(
             {
@@ -75,7 +78,9 @@ def overlap_reference(inputs, target_rep, source_rep):
     if source_rep == "spherical":
         expected = expected @ (sm.cart2sph_coeff() / ss[:, None])
 
-    def permutation(original, ordered, representation):
+    def permutation(
+        original: typing.Any, ordered: typing.Any, representation: typing.Any
+    ) -> typing.Any:
         counts = [
             2 * s["angular_momentum"] + 1
             if representation == "spherical"
@@ -99,7 +104,7 @@ def overlap_reference(inputs, target_rep, source_rep):
     ]
 
 
-def main():
+def main() -> None:
     import pyscf
     from pyscf import gto, scf
 

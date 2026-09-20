@@ -5,6 +5,7 @@ evaluates the scalar discrete XC energy. It never calls the generated geometry
 pullback under test and is not a production molecular-gradient implementation.
 """
 
+import typing
 from dataclasses import dataclass
 from itertools import pairwise
 
@@ -15,7 +16,7 @@ from vibeqc_compiler.xc.contractions import ContractionProgram
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 
-def h2_overlap(basis):
+def h2_overlap(basis: typing.Any) -> typing.Any:
     """Analytic s-Gaussian metric for the two-AO H2 diagnostic fixture only.
 
     Integrate the actual normalized packed primitives; no SCF state or
@@ -58,27 +59,27 @@ class DirectionalFiniteDifference:
     stable_pair: tuple[int, int]
 
     @property
-    def stable_estimate(self):
+    def stable_estimate(self) -> typing.Any:
         i, j = self.stable_pair
         return 0.5 * (self.estimates[i] + self.estimates[j])
 
     @property
-    def spread(self):
+    def spread(self) -> typing.Any:
         i, j = self.stable_pair
         return abs(self.estimates[i] - self.estimates[j])
 
 
 def finite_difference_xc_directional(
-    functional,
-    basis_arguments,
-    points,
-    weights,
-    density,
-    motion,
+    functional: typing.Any,
+    basis_arguments: typing.Any,
+    points: typing.Any,
+    weights: typing.Any,
+    density: typing.Any,
+    motion: typing.Any,
     *,
-    steps=(1e-3, 3e-4, 1e-4),
-    point_energy=None,
-):
+    steps: typing.Any = (1e-3, 3e-4, 1e-4),
+    point_energy: typing.Any = None,
+) -> typing.Any:
     """Re-evaluate scalar XC energy on independently displaced inputs.
 
     An optional point-energy callback may supply an independently audited
@@ -156,7 +157,9 @@ def finite_difference_xc_directional(
     )
 
 
-def _direction_domain(value, direction, name):
+def _direction_domain(
+    value: typing.Any, direction: typing.Any, name: typing.Any
+) -> typing.Any:
     array = np.asarray(value)
     delta = np.asarray(direction)
     if (

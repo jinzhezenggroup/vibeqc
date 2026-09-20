@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,9 @@ import pytest
 from benchmarks.df_progress_ledger import read_progress, summarize_progress
 
 
-def test_live_journal_survives_process_exit_without_destructors(tmp_path):
+def test_live_journal_survives_process_exit_without_destructors(
+    tmp_path: typing.Any,
+) -> None:
     compiler = shutil.which("c++")
     if not compiler:
         pytest.skip("C++ compiler unavailable")
@@ -61,7 +64,9 @@ int main() {
     assert read_progress(path)["truncated_tail"]
 
 
-def test_progress_rejects_capture_as_execution_and_scope_corruption(tmp_path):
+def test_progress_rejects_capture_as_execution_and_scope_corruption(
+    tmp_path: typing.Any,
+) -> None:
     path = tmp_path / "trace.jsonl"
     begin = {
         "schema": "vibeqc.df_progress",
@@ -77,7 +82,7 @@ def test_progress_rejects_capture_as_execution_and_scope_corruption(tmp_path):
     }
     end = dict(begin, time_ns=20, event="END", status="graph_constructed")
 
-    def write(*rows):
+    def write(*rows: typing.Any) -> None:
         path.write_text("".join(json.dumps(r) + "\n" for r in rows))
 
     write(begin, end)
@@ -93,7 +98,7 @@ def test_progress_rejects_capture_as_execution_and_scope_corruption(tmp_path):
         read_progress(path)
 
 
-def test_killed_native_probe_retains_completed_rows(tmp_path):
+def test_killed_native_probe_retains_completed_rows(tmp_path: typing.Any) -> None:
     from benchmarks.issue308_stage_probe import completed_native_rows
 
     path = tmp_path / "native.jsonl"

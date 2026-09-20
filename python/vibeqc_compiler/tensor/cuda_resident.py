@@ -19,6 +19,7 @@ import json
 import os
 import tempfile
 import time
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -38,7 +39,14 @@ from vibeqc_compiler.tensor.cuda_resident_emit import resident_source
 RESIDENT_SCHEMA = "vibeqc.tensor.resident/1"
 
 
-def compile_resident(plan, compiler, cache, *, extension="", dependencies=()):
+def compile_resident(
+    plan: typing.Any,
+    compiler: typing.Any,
+    cache: typing.Any,
+    *,
+    extension: typing.Any = "",
+    dependencies: typing.Any = (),
+) -> typing.Any:
     """Compile/cache the verified ordinary TU plus the resident ABI.
 
     The wrapped generated source is re-hashed from the ordinary cache entry,
@@ -71,7 +79,7 @@ def compile_resident(plan, compiler, cache, *, extension="", dependencies=()):
     # repository-relative name (``src/tensor/cuda_resident.cuh``).
     from vibeqc_compiler.common.paths import PACKAGE as _PKG
 
-    def _logical_name(path):
+    def _logical_name(path: typing.Any) -> typing.Any:
         # Is it under the installed package tree?
         try:
             rel = Path(os.path.relpath(path, _PKG)).as_posix()
@@ -177,7 +185,7 @@ class DeviceTensor:
     name: str
     generation: int
 
-    def _step(self):
+    def _step(self) -> typing.Any:
         owner = self.owner
         if (
             not owner._pointer
@@ -191,18 +199,18 @@ class DeviceTensor:
             raise ValueError("unknown resident output") from error
 
     @property
-    def shape(self):
+    def shape(self) -> typing.Any:
         return self._step().node.spec.shape
 
     @property
-    def dtype(self):
+    def dtype(self) -> typing.Any:
         return np.dtype(self._step().node.spec.dtype)
 
-    def to_host(self):
+    def to_host(self) -> typing.Any:
         return self.owner.download(self)
 
 
-def _check_lease(owner, value):
+def _check_lease(owner: typing.Any, value: typing.Any) -> None:
     """Validate a DeviceTensor lease: owner + readiness + generation.
 
     Raises RuntimeError when the lease is stale (generation mismatch or the
@@ -228,7 +236,14 @@ class PreparedResident(PreparedCuda):
     one named output requested by the caller.
     """
 
-    def __init__(self, plan, artifact, *, device=0, resource_plan=None):
+    def __init__(
+        self,
+        plan: typing.Any,
+        artifact: typing.Any,
+        *,
+        device: typing.Any = 0,
+        resource_plan: typing.Any = None,
+    ) -> None:
         super().__init__(plan, artifact, device=device, resource_plan=resource_plan)
         lib = self._library
         lib.resident_abi.restype = ctypes.c_int
@@ -266,11 +281,11 @@ class PreparedResident(PreparedCuda):
             "synchronizations": 0,
         }
 
-    def _invalidate(self):
+    def _invalidate(self) -> None:
         self._ready = False
         self._generation += 1
 
-    def upload(self, feeds):
+    def upload(self, feeds: typing.Any) -> None:
         """Upload all or selected named inputs once; reject invalid tensors first."""
         with self._lock:
             if not self._pointer:
@@ -310,7 +325,7 @@ class PreparedResident(PreparedCuda):
                 self.transfers["h2d_bytes"] += array.nbytes
                 self.transfers["synchronizations"] += 1
 
-    def run(self, *, profile=False):
+    def run(self, *, profile: typing.Any = False) -> typing.Any:
         """Evaluate the whole program; download only a 4-byte error status."""
         with self._lock:
             if not self._pointer:
@@ -343,7 +358,7 @@ class PreparedResident(PreparedCuda):
                 for name in self._output_slots
             }, metrics
 
-    def download(self, value, name=None):
+    def download(self, value: typing.Any, name: typing.Any = None) -> typing.Any:
         """Download exactly one named output the caller asked for.
 
         ``_check_lease`` validates ownership, readiness and the precise
@@ -382,9 +397,9 @@ class PreparedResident(PreparedCuda):
             self.transfers["synchronizations"] += 1
             return output
 
-    def copy_input(self, name, host_array):
+    def copy_input(self, name: typing.Any, host_array: typing.Any) -> None:
         """Upload one named input into an already-running resident owner."""
         self.upload({name: host_array})
 
-    def execute(self, feeds, *, profile=False):
+    def execute(self, feeds: typing.Any, *, profile: typing.Any = False) -> typing.Any:
         raise RuntimeError("use explicit upload/run/download on a resident owner")

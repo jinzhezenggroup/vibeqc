@@ -1,5 +1,6 @@
 """Metric projected virtual spaces and spin-adapted pair-natural orbitals."""
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -15,7 +16,13 @@ from .common import (
 )
 
 
-def spectral_selection(values, threshold, *, cluster_tolerance=1e-12, retain_all=False):
+def spectral_selection(
+    values: typing.Any,
+    threshold: typing.Any,
+    *,
+    cluster_tolerance: typing.Any = 1e-12,
+    retain_all: typing.Any = False,
+) -> typing.Any:
     """Retain whole adjacent eigenvalue clusters when any member passes.
 
     Values are ascending. A threshold close to any eigenvalue is reported as
@@ -54,7 +61,7 @@ class ProjectedVirtualSpace:
     rank_crossing: bool
     cluster_tolerance: float
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         q, values = immutable(self.columns), immutable(self.gram_eigenvalues)
         if q.ndim != 2 or not q.shape[0] or not q.shape[1] or orthogonality(q) > 1e-8:
             raise ValueError("invalid projected virtual metric basis")
@@ -79,16 +86,16 @@ class ProjectedVirtualSpace:
         object.__setattr__(self, "source_ao_indices", indices)
 
     @property
-    def rank(self):
+    def rank(self) -> typing.Any:
         return self.columns.shape[1]
 
     @property
-    def projector(self):
+    def projector(self) -> typing.Any:
         """Orthogonal virtual-coordinate projector, independent of column phases."""
         return immutable(self.columns @ self.columns.T)
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return fingerprint(
             {
                 "reference": self.reference_id,
@@ -101,14 +108,14 @@ class ProjectedVirtualSpace:
 
 
 def projected_virtual_space(
-    snapshot,
-    ao_indices=None,
+    snapshot: typing.Any,
+    ao_indices: typing.Any = None,
     *,
-    relative_threshold=1e-10,
-    absolute_threshold=1e-12,
-    cluster_tolerance=1e-12,
-    budget_bytes=128 << 20,
-):
+    relative_threshold: typing.Any = 1e-10,
+    absolute_threshold: typing.Any = 1e-12,
+    cluster_tolerance: typing.Any = 1e-12,
+    budget_bytes: typing.Any = 128 << 20,
+) -> typing.Any:
     """Project selected AOs with (1-Cocc Cocc^T S), then remove metric nullspace.
 
     In the validated canonical virtual basis this projection is Cvirt^T S E.
@@ -150,7 +157,7 @@ def projected_virtual_space(
     )
 
 
-def pair_density(amplitudes, *, diagonal_pair):
+def pair_density(amplitudes: typing.Any, *, diagonal_pair: typing.Any) -> typing.Any:
     """Restricted PNO density D=(tildeT^T T+tildeT T^T)/(1+delta_ij).
 
     T is the unantisymmetrized restricted MP2 pair amplitude in one orthonormal
@@ -183,7 +190,7 @@ class PairSpace:
     rank_crossing: bool
     keep_full_space: bool
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         q, eigenvalues = immutable(self.columns), immutable(self.occupation_eigenvalues)
         pair, retained = tuple(self.pair), tuple(self.retained_indices)
         if (
@@ -241,21 +248,21 @@ class PairSpace:
             object.__setattr__(self, name, value)
 
     @property
-    def rank(self):
+    def rank(self) -> typing.Any:
         return self.columns.shape[1]
 
     @property
-    def projector(self):
+    def projector(self) -> typing.Any:
         return immutable(self.columns @ self.columns.T)
 
     @property
-    def discarded_weight(self):
+    def discarded_weight(self) -> typing.Any:
         mask = np.ones(len(self.occupation_eigenvalues), dtype=bool)
         mask[list(self.retained_indices)] = False
         return float(np.sum(self.occupation_eigenvalues[mask]))
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         """Projector identity excludes arbitrary PNO signs/column rotations."""
         return fingerprint(
             {
@@ -272,11 +279,11 @@ class PairSpace:
         )
 
     @property
-    def gauge_identity(self):
+    def gauge_identity(self) -> typing.Any:
         """Amplitude coordinates additionally depend on the chosen column gauge."""
         return fingerprint({"projector": self.identity}, columns=self.columns)
 
-    def overlap(self, other):
+    def overlap(self, other: typing.Any) -> typing.Any:
         """Pair-to-pair virtual overlap needed by later coupled local equations."""
         if (
             not isinstance(other, PairSpace)
@@ -290,16 +297,16 @@ class PairSpace:
 
 
 def make_pair_space(
-    snapshot,
-    localization,
-    domain,
-    pair,
-    local_amplitudes,
+    snapshot: typing.Any,
+    localization: typing.Any,
+    domain: typing.Any,
+    pair: typing.Any,
+    local_amplitudes: typing.Any,
     *,
-    occupation_threshold=1e-7,
-    cluster_tolerance=1e-12,
-    keep_full_space=False,
-):
+    occupation_threshold: typing.Any = 1e-7,
+    cluster_tolerance: typing.Any = 1e-12,
+    keep_full_space: typing.Any = False,
+) -> typing.Any:
     """Construct PNOs from canonical-MP2 amplitudes rotated to localized occupieds."""
     no, nv = checked_reference(snapshot)
     if (

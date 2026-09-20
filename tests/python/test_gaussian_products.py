@@ -4,13 +4,14 @@ import ctypes
 import math
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import pytest
 
 
 @pytest.fixture(scope="module")
-def product_probe(tmp_path_factory):
+def product_probe(tmp_path_factory: typing.Any) -> typing.Any:
     """A separable policy has a closed-form tensor-product sum as its oracle.
 
     Unequal primitive and sparse-term lengths exercise recursion, empty factors,
@@ -88,8 +89,8 @@ extern "C" double probe(unsigned rank, unsigned lane, unsigned lanes, bool empty
 @pytest.mark.parametrize("rank,empty", [(2, False), (3, False), (3, True)])
 @pytest.mark.parametrize("lanes", [1, 2, 3, 32, 64])
 def test_lane_partitions_preserve_complete_sparse_product(
-    product_probe, rank, empty, lanes
-):
+    product_probe: typing.Any, rank: typing.Any, empty: typing.Any, lanes: typing.Any
+) -> None:
     offsets = (0, 9, 16, 16 if empty else 21)
     terms = (2, 3, 1)
     expected = math.prod(

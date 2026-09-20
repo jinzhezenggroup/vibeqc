@@ -4,6 +4,7 @@ This module belongs to the optional reference tools. Native generated execution
 does not import NumPy quadrature, SciPy or PySCF to evaluate its primitives.
 """
 
+import typing
 from math import pi, prod, sqrt
 
 import numpy as np
@@ -13,8 +14,12 @@ from .weighted_eri import primitive_variables
 
 
 def second_primitive_variables(
-    kernel, exponents, centers, weights=None, direction=None
-):
+    kernel: typing.Any,
+    exponents: typing.Any,
+    centers: typing.Any,
+    weights: typing.Any = None,
+    direction: typing.Any = None,
+) -> typing.Any:
     """Bind bounded moderate-argument fixtures with independent GL64 moments."""
     count = len(kernel.integral.operator.centers)
     centers = np.asarray(centers, dtype=float)
@@ -95,13 +100,19 @@ def second_primitive_variables(
     return values
 
 
-def evaluate_second_primitive(kernel, exponents, centers, weights=None, direction=None):
+def evaluate_second_primitive(
+    kernel: typing.Any,
+    exponents: typing.Any,
+    centers: typing.Any,
+    weights: typing.Any = None,
+    direction: typing.Any = None,
+) -> typing.Any:
     """Interpret only the selected coordinate outputs of a small fixture."""
     values = second_primitive_variables(kernel, exponents, centers, weights, direction)
     return np.array([kernel.graph.evaluate(root, values) for root in kernel.outputs])
 
 
-def _gaussian_squared_norm(exponent, component):
+def _gaussian_squared_norm(exponent: typing.Any, component: typing.Any) -> typing.Any:
     """Closed Gaussian moments remove Libcint's radial normalization exactly."""
     return (pi / (2 * exponent)) ** 1.5 * prod(
         prod(range(1, 2 * component.count(axis), 2))
@@ -110,7 +121,13 @@ def _gaussian_squared_norm(exponent, component):
     )
 
 
-def libcint_one_electron_hessian(family, angular, exponents, centers, charge=1.0):
+def libcint_one_electron_hessian(
+    family: typing.Any,
+    angular: typing.Any,
+    exponents: typing.Any,
+    centers: typing.Any,
+    charge: typing.Any = 1.0,
+) -> typing.Any:
     """Independent AA/AB/BB analytic blocks; recover the external nuclear index.
 
     Both electronic-coordinate derivatives change sign under a Gaussian-center
@@ -168,7 +185,9 @@ def libcint_one_electron_hessian(family, angular, exponents, centers, charge=1.0
     return result / (scales[:n, None] * scales[None, n:])
 
 
-def libcint_eri_hessian(angular, exponents, centers):
+def libcint_eri_hessian(
+    angular: typing.Any, exponents: typing.Any, centers: typing.Any
+) -> typing.Any:
     """Independent analytic ERI Hessian in original center and AO-slot order.
 
     Libcint supplies same-center, same-pair and cross-pair blocks. Exact ERI
@@ -232,7 +251,9 @@ def libcint_eri_hessian(angular, exponents, centers):
     return result
 
 
-def contracted_public_first_gradient(family, inputs, centers, weights):
+def contracted_public_first_gradient(
+    family: typing.Any, inputs: typing.Any, centers: typing.Any, weights: typing.Any
+) -> typing.Any:
     """Independent Libcint first gradients for contracted Cartesian/spherical FD.
 
     The caller holds the public cotangent fixed while displacing mathematical
@@ -271,7 +292,9 @@ def contracted_public_first_gradient(family, inputs, centers, weights):
     return np.sum(gradient * weights, axis=(2, 3))
 
 
-def normalized_cartesian_rotation(angular, rotation):
+def normalized_cartesian_rotation(
+    angular: typing.Any, rotation: typing.Any
+) -> typing.Any:
     """Independent polynomial rotation in the unit-Cartesian shell convention.
 
     Expand each rotated coordinate monomial directly, then apply the ratio of
@@ -307,7 +330,13 @@ def normalized_cartesian_rotation(angular, rotation):
     return result
 
 
-def libcint_primitive_gradient(family, angular, exponents, centers, charge=1.0):
+def libcint_primitive_gradient(
+    family: typing.Any,
+    angular: typing.Any,
+    exponents: typing.Any,
+    centers: typing.Any,
+    charge: typing.Any = 1.0,
+) -> typing.Any:
     """Unnormalized primitive first derivatives for independent directional FD."""
     from pyscf import gto
 

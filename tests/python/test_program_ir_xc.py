@@ -1,6 +1,7 @@
 """Actual dense native CPU XC tile ownership, not a modeled allocator speedup."""
 
 import shutil
+import typing
 import weakref
 from pathlib import Path
 
@@ -20,7 +21,9 @@ from vibeqc_compiler.xc.prepared import PreparedXCContractions
 from vibeqc_compiler.xc.program_ir import fixed_density_tile_program
 
 
-def describe(name="PBE", spin="polarized", **changes):
+def describe(
+    name: typing.Any = "PBE", spin: typing.Any = "polarized", **changes: typing.Any
+) -> typing.Any:
     options = {
         "nao": 12,
         "tile_points": 7,
@@ -38,7 +41,9 @@ def describe(name="PBE", spin="polarized", **changes):
 
 @pytest.mark.parametrize("name,jets", [("LDA_XC_PW", 1), ("PBE", 4)])
 @pytest.mark.parametrize("spin,nspin", [("unpolarized", 1), ("polarized", 2)])
-def test_fixed_density_description_is_bound_to_real_contract(name, jets, spin, nspin):
+def test_fixed_density_description_is_bound_to_real_contract(
+    name: typing.Any, jets: typing.Any, spin: typing.Any, nspin: typing.Any
+) -> None:
     p = describe(name, spin)
     assert ProgramIR.from_payload(p.to_payload()) == p
     sizes = {buffer.name: buffer.bytes for buffer in p.buffers}
@@ -65,12 +70,12 @@ def test_fixed_density_description_is_bound_to_real_contract(name, jets, spin, n
         {"native_identity": None},
     ],
 )
-def test_invalid_tile_boundaries(changes):
+def test_invalid_tile_boundaries(changes: typing.Any) -> None:
     with pytest.raises(ValueError):
         describe(**changes)
 
 
-def test_provider_and_shape_changes_invalidate_graph_identity():
+def test_provider_and_shape_changes_invalidate_graph_identity() -> None:
     for changes in (
         {"nao": 13},
         {"tile_points": 8},
@@ -82,7 +87,9 @@ def test_provider_and_shape_changes_invalidate_graph_identity():
 
 
 @pytest.mark.parametrize("name,gradient", [("LDA_XC_PW", False), ("PBE", True)])
-def test_packed_feature_program_records_real_cross_subsystem_layouts(name, gradient):
+def test_packed_feature_program_records_real_cross_subsystem_layouts(
+    name: typing.Any, gradient: typing.Any
+) -> None:
     p = describe(name, "polarized", packed_features=True)
     assert tuple(call.name for call in p.calls) == (
         "collocation",
@@ -108,14 +115,14 @@ def test_packed_feature_program_records_real_cross_subsystem_layouts(name, gradi
     assert ProgramIR.from_payload(p.to_payload()) == p
 
 
-def test_packed_feature_program_rejects_unpolarized_and_non_boolean_selection():
+def test_packed_feature_program_rejects_unpolarized_and_non_boolean_selection() -> None:
     with pytest.raises(ValueError, match="polarized"):
         describe("PBE", "unpolarized", packed_features=True)
     with pytest.raises(ValueError, match="bool"):
         describe("PBE", "polarized", packed_features=1)
 
 
-def test_non_potential_contracts_remain_outside_phase_a():
+def test_non_potential_contracts_remain_outside_phase_a() -> None:
     with pytest.raises(TypeError):
         fixed_density_tile_program(
             None,
@@ -139,14 +146,18 @@ def test_non_potential_contracts_remain_outside_phase_a():
 
 
 @pytest.fixture(scope="module")
-def native_factory(tmp_path_factory):
+def native_factory(tmp_path_factory: typing.Any) -> typing.Any:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("native XC requires c++")
     cache = tmp_path_factory.mktemp("programir-native")
     programs = {}
 
-    def make(name, spin="polarized", observable="potential"):
+    def make(
+        name: typing.Any,
+        spin: typing.Any = "polarized",
+        observable: typing.Any = "potential",
+    ) -> typing.Any:
         key = name, spin, observable
         if key not in programs:
             programs[key] = NativeContractionProgram(
@@ -163,22 +174,25 @@ def native_factory(tmp_path_factory):
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
 @pytest.mark.parametrize("case", ["h2", "f_spherical"])
 def test_native_cpu_releases_previous_tile_before_next_ao_allocation(
-    native_factory, monkeypatch, name, case
-):
+    native_factory: typing.Any,
+    monkeypatch: typing.Any,
+    name: typing.Any,
+    case: typing.Any,
+) -> None:
     meta, data, grid = load_integration_fixture(case)
     program = native_factory(name)
     refs, observed = [], []
     with NativeAO(**basis_arguments(meta)) as basis:
         old_ao, old_xc = basis.evaluate, program.potential_from_rows
 
-        def collocate(*args, **kwargs):
+        def collocate(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
             # Weak references do not themselves extend an allocation lifetime.
             observed.append(tuple(label for label, ref in refs if ref() is not None))
             jets = old_ao(*args, **kwargs)
             refs.append(("jets", weakref.ref(jets)))
             return jets
 
-        def contract(*args, **kwargs):
+        def contract(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
             result = old_xc(*args, **kwargs)
             for key in ("potential", "electrons"):
                 refs.append((key, weakref.ref(result[key])))
@@ -228,8 +242,8 @@ def test_native_cpu_releases_previous_tile_before_next_ao_allocation(
 
 
 def test_feature_block_matches_public_features_and_native_scalar_consumes_owner(
-    native_factory, monkeypatch
-):
+    native_factory: typing.Any, monkeypatch: typing.Any
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     program = native_factory("PBE")
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -254,7 +268,7 @@ def test_feature_block_matches_public_features_and_native_scalar_consumes_owner(
         seen = []
         original = program._scalar.evaluate_matrix
 
-        def evaluate_matrix(values):
+        def evaluate_matrix(values: typing.Any) -> typing.Any:
             seen.append(values)
             return original(values)
 
@@ -267,7 +281,9 @@ def test_feature_block_matches_public_features_and_native_scalar_consumes_owner(
         assert np.shares_memory(seen[0], block.scalar)
 
 
-def test_other_native_observables_do_not_advertise_programir(native_factory):
+def test_other_native_observables_do_not_advertise_programir(
+    native_factory: typing.Any,
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with (
         NativeAO(**basis_arguments(meta)) as basis,

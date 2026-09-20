@@ -11,6 +11,7 @@ import os
 import platform
 import statistics
 import subprocess
+import typing
 from dataclasses import replace
 from pathlib import Path
 from time import perf_counter
@@ -23,7 +24,7 @@ from vibeqc.ecp import ecp_integrals
 from vibeqc.profiles import file_hash
 
 
-def timed(call, repeats):
+def timed(call: typing.Any, repeats: typing.Any) -> typing.Any:
     result = call()
     samples = []
     for _ in range(repeats):
@@ -33,7 +34,7 @@ def timed(call, repeats):
     return result, {"median_ms": statistics.median(samples), "samples_ms": samples}
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", choices=("cpu", "cuda"), required=True)
     parser.add_argument("--output", type=Path, required=True)

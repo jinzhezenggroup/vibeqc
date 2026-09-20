@@ -5,13 +5,14 @@ CC facade. It constructs fermionic operators with explicit bit-string signs,
 then applies terminating exponential series. No PySCF or equation inventory.
 """
 
+import typing
 from itertools import combinations, product
 from math import comb
 
 import numpy as np
 
 
-def _excite(bits, p, q):
+def _excite(bits: typing.Any, p: typing.Any, q: typing.Any) -> typing.Any:
     if not bits & (1 << q):
         return None
     sign = (-1) ** ((bits & ((1 << q) - 1)).bit_count())
@@ -25,7 +26,14 @@ def _excite(bits, p, q):
 class DeterminantOracle:
     """Fixed Nalpha=Nbeta sector, alpha spatial orbitals before beta orbitals."""
 
-    def __init__(self, fock, eri, nocc, *, max_determinants=128):
+    def __init__(
+        self,
+        fock: typing.Any,
+        eri: typing.Any,
+        nocc: typing.Any,
+        *,
+        max_determinants: typing.Any = 128,
+    ) -> None:
         n = len(fock)
         if not 0 < nocc < n or comb(n, nocc) ** 2 > max_determinants:
             raise ValueError("determinant oracle is restricted to tiny test systems")
@@ -75,7 +83,7 @@ class DeterminantOracle:
         self.reference_energy = H[self.ref, self.ref]
         self.hnormal = H - self.reference_energy * np.eye(dim)
 
-    def cluster(self, t1, t2):
+    def cluster(self, t1: typing.Any, t2: typing.Any) -> typing.Any:
         """Construct the cluster operator, also usable for excitation-norm tests."""
         o, v = t1.shape
         T = np.zeros_like(self.hnormal)
@@ -86,11 +94,11 @@ class DeterminantOracle:
 
         return T
 
-    def transformed(self, t1, t2):
+    def transformed(self, t1: typing.Any, t2: typing.Any) -> typing.Any:
         """Apply Hbar_N to the reference, without assuming a residual formula."""
         T = self.cluster(t1, t2)
 
-        def exponential(vector, sign):
+        def exponential(vector: typing.Any, sign: typing.Any) -> typing.Any:
             term = vector.copy()
             result = term.copy()
             # T strictly raises the number of virtual electrons. Nilpotence
@@ -102,18 +110,20 @@ class DeterminantOracle:
 
         return exponential(self.hnormal @ exponential(self.ket, 1), -1)
 
-    def evaluate(self, t1, t2):
+    def evaluate(self, t1: typing.Any, t2: typing.Any) -> typing.Any:
         """Return <Phi|Hbar_N|Phi> and each alpha single projection."""
         vector = self.transformed(t1, t2)
         return float(vector[self.ref]), self.bras @ vector
 
-    def evaluate_full(self, t1, t2):
+    def evaluate_full(self, t1: typing.Any, t2: typing.Any) -> typing.Any:
         """Also return the normalized opposite-spin doubles projections."""
         vector = self.transformed(t1, t2)
         return float(vector[self.ref]), self.bras @ vector, self.double_bras @ vector
 
 
-def random_case(nocc=2, nvir=2, seed=148):
+def random_case(
+    nocc: typing.Any = 2, nvir: typing.Any = 2, seed: typing.Any = 148
+) -> typing.Any:
     """Eightfold symmetric, signed ERIs; non-diagonal F; pair-symmetric t2."""
     rng = np.random.default_rng(seed)
     n = nocc + nvir
@@ -129,7 +139,9 @@ def random_case(nocc=2, nvir=2, seed=148):
     return f, g, t1, t2
 
 
-def dense_feeds(f, g, t1, t2):
+def dense_feeds(
+    f: typing.Any, g: typing.Any, t1: typing.Any, t2: typing.Any
+) -> typing.Any:
     """Test-only dense-to-block adapter; provider execution uses explicit MOBlock."""
     o = t1.shape[0]
     slices = {"o": slice(0, o), "v": slice(o, None)}
@@ -139,7 +151,9 @@ def dense_feeds(f, g, t1, t2):
     return feeds
 
 
-def homogeneous_groups(f, g, x, y):
+def homogeneous_groups(
+    f: typing.Any, g: typing.Any, x: typing.Any, y: typing.Any
+) -> typing.Any:
     """Independently isolate amplitude polynomial degrees at finite points.
 
     This is exact polynomial interpolation for CC singles (degree <=3), not

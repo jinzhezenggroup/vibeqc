@@ -1,6 +1,9 @@
 """Independent retained Libxc gates for the default second-order XC API."""
 
+from __future__ import annotations
+
 import json
+import typing
 from fractions import Fraction
 from pathlib import Path
 
@@ -17,7 +20,7 @@ DATA = json.loads(FIXTURE.read_text())
 @pytest.mark.parametrize(
     "case", DATA["cases"], ids=lambda case: case["name"] + "-" + case["spin"]
 )
-def test_default_feature_hessian_matches_independent_libxc(case):
+def test_default_feature_hessian_matches_independent_libxc(case: typing.Any) -> None:
     assert DATA["schema"] == "vibeqc.independent-semilocal-hessian.v1"
     assert DATA["libxc"] == "7.0.0"
     name, spin = case["name"], case["spin"]

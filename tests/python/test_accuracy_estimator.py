@@ -1,6 +1,7 @@
 """Empirical predictors must remain scoped estimates and expose holdout misses."""
 
 import json
+import typing
 from dataclasses import replace
 
 import pytest
@@ -28,7 +29,7 @@ FEATURES = HFErrorFeatures(
 DOMAIN = HFCalibrationDomain(FEATURES.basis_family_id)
 
 
-def sample(family, **kwargs):
+def sample(family: typing.Any, **kwargs: typing.Any) -> typing.Any:
     """Synthetic observations exercise failure logic independently of fitting."""
     return HFCalibrationSample(
         family,
@@ -41,13 +42,13 @@ def sample(family, **kwargs):
     )
 
 
-def estimator():
+def estimator() -> typing.Any:
     return EmpiricalHFEstimator.fit(
         DOMAIN, (sample("molecule-a"), sample("molecule-b"))
     )
 
 
-def test_empirical_prediction_never_becomes_a_certified_or_observed_pass():
+def test_empirical_prediction_never_becomes_a_certified_or_observed_pass() -> None:
     predictor = estimator()
     evidence = predictor.predict(
         MODEL, FEATURES, energy_reference_norm=1, force_reference_norm=1
@@ -78,7 +79,9 @@ def test_empirical_prediction_never_becomes_a_certified_or_observed_pass():
         {"backend": "cuda"},
     ],
 )
-def test_out_of_domain_inputs_are_rejected_even_for_tiny_residuals(changes):
+def test_out_of_domain_inputs_are_rejected_even_for_tiny_residuals(
+    changes: typing.Any,
+) -> None:
     features = (
         replace(FEATURES, physical_residual=1e-30, **changes)
         if "physical_residual" not in changes
@@ -90,7 +93,9 @@ def test_out_of_domain_inputs_are_rejected_even_for_tiny_residuals(changes):
         )
 
 
-def test_holdout_reports_failed_coverage_missed_tolerances_and_overconservatism():
+def test_holdout_reports_failed_coverage_missed_tolerances_and_overconservatism() -> (
+    None
+):
     predictor = estimator()
     rows = (
         sample("heldout-good", energy_error=1e-9, force_error=1e-9),
@@ -109,7 +114,7 @@ def test_holdout_reports_failed_coverage_missed_tolerances_and_overconservatism(
         predictor.evaluate_holdout((sample("molecule-a"),))
 
 
-def test_missing_separation_is_only_allowed_for_a_single_atom():
+def test_missing_separation_is_only_allowed_for_a_single_atom() -> None:
     # Synthetic atomic features isolate the domain gate: an isolated carbon
     # atom has no internuclear distance, unlike the two-centre fixture above.
     atomic_model = replace(MODEL, electron_count=6)
@@ -128,7 +133,9 @@ def test_missing_separation_is_only_allowed_for_a_single_atom():
         EmpiricalHFEstimator.fit(DOMAIN, (sample("molecule-a"), missing))
 
 
-def test_training_rejects_single_family_duplicates_and_unsupported_observations():
+def test_training_rejects_single_family_duplicates_and_unsupported_observations() -> (
+    None
+):
     with pytest.raises(ValueError, match="two molecular families"):
         EmpiricalHFEstimator.fit(DOMAIN, (sample("one"),))
     with pytest.raises(ValueError, match="duplicate"):
@@ -138,7 +145,7 @@ def test_training_rejects_single_family_duplicates_and_unsupported_observations(
         EmpiricalHFEstimator.fit(DOMAIN, (sample("one"), invalid))
 
 
-def test_saved_model_cannot_change_domain_or_evidence_kind_without_detection():
+def test_saved_model_cannot_change_domain_or_evidence_kind_without_detection() -> None:
     predictor = estimator()
     record = json.loads(json.dumps(predictor.to_dict()))
     assert EmpiricalHFEstimator.from_dict(record) == predictor

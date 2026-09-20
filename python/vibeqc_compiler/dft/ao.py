@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes as ct
 import threading
+import typing
 from dataclasses import asdict
 from hashlib import sha256
 
@@ -18,11 +19,11 @@ DOUBLE = ct.POINTER(ct.c_double)
 SIZE = ct.POINTER(ct.c_size_t)
 
 
-def pointer(array):
+def pointer(array: typing.Any) -> typing.Any:
     return array.ctypes.data_as(DOUBLE)
 
 
-def jet_indices(order):
+def jet_indices(order: typing.Any) -> typing.Any:
     """Multi-indices in libcint/CCA order; ordinary derivatives, no factorials.
 
     A mixed xy slot occurs once. Contracting a full symmetric Hessian therefore
@@ -64,7 +65,7 @@ class NativeAO:
         )
     )
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed and name in self.__dict__:
             raise AttributeError(
                 "AO scientific state is immutable; prepare a new basis"
@@ -73,13 +74,13 @@ class NativeAO:
 
     def __init__(
         self,
-        atoms,
-        basis="sto-3g",
+        atoms: typing.Any,
+        basis: typing.Any = "sto-3g",
         *,
-        representation="cartesian",
-        charge=0,
-        multiplicity=1,
-    ):
+        representation: typing.Any = "cartesian",
+        charge: typing.Any = 0,
+        multiplicity: typing.Any = 1,
+    ) -> None:
         # Native preparation is explicit; importing AO jet semantics is pure.
         from vibeqc import Calculator, Primitive, Shell, _native
 
@@ -210,21 +211,21 @@ class NativeAO:
             }
         )
 
-    def _call(self, name, *args):
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
     def evaluate(
         self,
-        points,
-        order=1,
+        points: typing.Any,
+        order: typing.Any = 1,
         *,
-        ao_begin=0,
-        ao_count=None,
-        ao_ids=None,
-        budget_bytes=64 << 20,
-    ):
+        ao_begin: typing.Any = 0,
+        ao_count: typing.Any = None,
+        ao_ids: typing.Any = None,
+        budget_bytes: typing.Any = 64 << 20,
+    ) -> typing.Any:
         """Return owned [jet,point,AO] data for a slice or sorted active AO map.
 
         Selected columns are evaluated directly in native code, including
@@ -300,19 +301,19 @@ class NativeAO:
             )
             return immutable(result)
 
-    def close(self):
+    def close(self) -> None:
         """Release only this basis; previously returned detached jets survive."""
         with self._lock:
             if self._handle:
                 self._library.vibeqc_grid_basis_destroy_v1(self._handle)
                 self._handle = ct.c_void_p()
 
-    def __enter__(self):
+    def __enter__(self) -> typing.Any:
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *_: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if hasattr(self, "_lock"):
             self.close()

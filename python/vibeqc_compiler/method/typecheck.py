@@ -8,6 +8,7 @@ representability.
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 
 from vibeqc_compiler.common.provenance import canonical_hash
@@ -26,7 +27,9 @@ class MethodTypeError(UnsupportedMethod):
     """A representable MethodIR is illegal for the requested execution type."""
 
 
-def _unique_tuple(values, name, *, allow_empty=False):
+def _unique_tuple(
+    values: typing.Any, name: typing.Any, *, allow_empty: typing.Any = False
+) -> typing.Any:
     if not isinstance(values, tuple) or (not values and not allow_empty):
         qualifier = (
             "an immutable tuple" if allow_empty else "a nonempty immutable tuple"
@@ -50,7 +53,7 @@ class FeatureType:
     shape: tuple[int, ...]
     spin: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.ingredient not in ("rho", "sigma", "tau"):
             raise MethodTypeError(f"unknown MethodIR ingredient {self.ingredient!r}")
         if self.dtype not in _DTYPES:
@@ -66,7 +69,7 @@ class FeatureType:
                 "feature shape must be a nonempty positive integer tuple"
             )
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "ingredient": self.ingredient,
             "dtype": self.dtype,
@@ -86,7 +89,7 @@ class BackendCapability:
     ingredients: tuple[str, ...]
     operators: tuple[str, ...]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.backend, str) or not self.backend:
             raise ValueError("backend capability requires a nonempty name")
         for field in (
@@ -130,7 +133,7 @@ class TypedMethodIR:
     derivative_order: int
     features: tuple[FeatureType, ...]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.method, MethodIR):
             raise TypeError("typed method requires MethodIR")
         if not isinstance(self.backend, str) or not self.backend:
@@ -179,7 +182,7 @@ class TypedMethodIR:
                     f"logical shape {shape!r}"
                 )
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         return {
             "method_identity": self.method.identity,
             "backend": self.backend,
@@ -189,7 +192,7 @@ class TypedMethodIR:
         }
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
 
 

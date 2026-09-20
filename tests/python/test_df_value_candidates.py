@@ -2,6 +2,7 @@
 
 import ctypes
 import subprocess
+import typing
 
 import numpy as np
 import pytest
@@ -16,7 +17,7 @@ from tools.vibeqc_validation.df_values import make_df_value_fixture
 
 
 @pytest.fixture(scope="module")
-def evaluator(tmp_path_factory):
+def evaluator(tmp_path_factory: typing.Any) -> typing.Any:
     """Execute emitted FP64 arithmetic on the host without a GPU dependency."""
     path = tmp_path_factory.mktemp("value_candidates")
     (path / "cuda_runtime.h").write_text("")
@@ -75,7 +76,7 @@ extern "C" void probe(unsigned math,const Input* in,double* out,unsigned count) 
     ]
     library.probe.restype = None
 
-    def evaluate(math, fixture):
+    def evaluate(math: typing.Any, fixture: typing.Any) -> typing.Any:
         out = np.empty(len(fixture.records))
         library.probe(math, fixture.records.ctypes.data, out.ctypes.data, len(out))
         return fixture.contract(out)
@@ -85,7 +86,9 @@ extern "C" void probe(unsigned math,const Input* in,double* out,unsigned count) 
 
 @pytest.mark.parametrize("angular", VALUE_CLASSES + ((1, 1, 1), (2, 2, 2)))
 @pytest.mark.parametrize("variant", ("asymmetric", "coincident"))
-def test_value_lowerings_against_libcint(evaluator, angular, variant):
+def test_value_lowerings_against_libcint(
+    evaluator: typing.Any, angular: typing.Any, variant: typing.Any
+) -> None:
     """Signed contractions, every component, spherical projection and fallback."""
     pytest.importorskip("pyscf")
     fixture = make_df_value_fixture(

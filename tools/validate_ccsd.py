@@ -2,6 +2,7 @@
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -32,7 +33,7 @@ from tools.vibeqc_validation.schema import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run(output):
+def run(output: typing.Any) -> typing.Any:
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     reference_path = ROOT / "tests/reference_data/cc/rccsd-b.json"

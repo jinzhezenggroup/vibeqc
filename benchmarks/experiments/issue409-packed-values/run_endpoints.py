@@ -25,7 +25,7 @@ from _retention import raw_output_path
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def main():
+def main() -> None:
     """Keep the existing endpoint admission and numerical gates authoritative."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=raw_output_path, required=True)
@@ -90,7 +90,7 @@ def main():
         "checks": [],
     }
 
-    def save():
+    def save() -> None:
         (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     save()

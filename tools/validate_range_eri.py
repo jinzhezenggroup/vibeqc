@@ -14,6 +14,7 @@ import platform
 import subprocess
 import sys
 import time
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,12 +48,12 @@ from vibeqc_compiler.integral.weighted_eri_inputs import prepare_weighted_eri_st
 from vibeqc_validation.publication import publish
 
 
-def command(*argv):
+def command(*argv: typing.Any) -> typing.Any:
     """Read finite source/toolchain probes without a shell."""
     return subprocess.check_output(argv, cwd=ROOT, text=True, timeout=30).strip()
 
 
-def cpu_model(cpuinfo_path=Path("/proc/cpuinfo")):
+def cpu_model(cpuinfo_path: typing.Any = Path("/proc/cpuinfo")) -> typing.Any:
     """Keep completed evidence publishable when Linux model metadata is absent.
 
     Missing/unreadable procfs and CPUs with different field names do not
@@ -71,7 +72,7 @@ def cpu_model(cpuinfo_path=Path("/proc/cpuinfo")):
     return fallback
 
 
-def run(args):
+def run(args: typing.Any) -> typing.Any:
     """Measure explicit operator endpoints without changing a production profile."""
     if args.backend == "cuda" and not os.environ.get("SLURM_JOB_ID"):
         raise ValueError("range CUDA evidence must run inside Slurm")
@@ -132,7 +133,9 @@ def run(args):
                 "component_indices": list(artifact.component_indices),
             }
 
-            def prepare(centers, fixture=fixture):
+            def prepare(
+                centers: typing.Any, fixture: typing.Any = fixture
+            ) -> typing.Any:
                 return prepare_weighted_eri_stream(
                     fixture["request"],
                     fixture["primitives"],
@@ -339,7 +342,7 @@ def run(args):
         "resources.json retains shared numeric plans verified against native storage. Process-wide peak memory, Python metadata, caller streams and native call stacks/CUDA context are excluded."
     )
 
-    def save(name, value):
+    def save(name: typing.Any, value: typing.Any) -> None:
         (args.output / name).write_text(
             json.dumps(value, sort_keys=True, indent=2, allow_nan=False) + "\n"
         )
@@ -413,7 +416,7 @@ def run(args):
     return 0 if passed else 1
 
 
-def main():
+def main() -> typing.Any:
     """Select one explicit backend and a new untracked run directory."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backend", choices=("cpu", "cuda"), required=True)

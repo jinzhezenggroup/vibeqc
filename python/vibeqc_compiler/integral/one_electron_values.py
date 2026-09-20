@@ -10,6 +10,7 @@ external nuclear center. No device schedule or runtime AD objects enter here.
 from __future__ import annotations
 
 import math
+import typing
 from dataclasses import dataclass
 from functools import cache
 from itertools import product
@@ -36,7 +37,9 @@ _FAMILIES = (
 )
 
 
-def build_one_electron_value_ir(family, angular, *, charge=1.0):
+def build_one_electron_value_ir(
+    family: typing.Any, angular: typing.Any, *, charge: typing.Any = 1.0
+) -> typing.Any:
     """Declare one Cartesian s/p/d/f/g pair and its raw two-index value block.
 
     Attraction has a third, independent mathematical center with positive
@@ -91,7 +94,9 @@ class OneElectronComponentKernel:
     pair_geometry: tuple[tuple[str, Expr], ...]
 
 
-def build_one_electron_component_kernel(integral, components, *, graph=None):
+def build_one_electron_component_kernel(
+    integral: typing.Any, components: typing.Any, *, graph: typing.Any = None
+) -> typing.Any:
     """Generate only recurrence ancestors needed by one S/T/V component.
 
     Kinetic raising may need an internal ket power of six for a public g
@@ -150,7 +155,9 @@ def build_one_electron_component_kernel(integral, components, *, graph=None):
     states = set()
 
     @cache
-    def hermite(axis, i, j, t):
+    def hermite(
+        axis: typing.Any, i: typing.Any, j: typing.Any, t: typing.Any
+    ) -> typing.Any:
         if i < 0 or j < 0 or t < 0 or t > i + j:
             return zero
         states.add((axis, i, j, t))
@@ -170,7 +177,7 @@ def build_one_electron_component_kernel(integral, components, *, graph=None):
 
     prefactor = decay * graph.power(math.pi * inverse_p, 1.5)
 
-    def overlap(first, second):
+    def overlap(first: typing.Any, second: typing.Any) -> typing.Any:
         return prefactor * graph.multiply_many(
             hermite(k, i, j, 0) for k, (i, j) in enumerate(zip(first, second))
         )
@@ -235,7 +242,9 @@ def build_one_electron_component_kernel(integral, components, *, graph=None):
     )
 
 
-def evaluate_one_electron_primitive(kernel, exponents, centers):
+def evaluate_one_electron_primitive(
+    kernel: typing.Any, exponents: typing.Any, centers: typing.Any
+) -> typing.Any:
     """CPU interpreter for one unnormalized primitive value in atomic units.
 
     Attraction positions include independent A/B/C; S/T positions include A/B.

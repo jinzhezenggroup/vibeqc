@@ -8,6 +8,7 @@ is also checked against the committed inputs without importing PySCF.
 """
 
 import json
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -17,7 +18,7 @@ from vibeqc_compiler.tensor import Program, dot_test, execute, jvp
 INPUT_NAMES = ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v")
 
 
-def _random_case(nocc, nvir, seed):
+def _random_case(nocc: typing.Any, nvir: typing.Any, seed: typing.Any) -> typing.Any:
     rng = np.random.default_rng(seed)
     ovvv = rng.normal(size=(nocc, nvir, nvir, nvir))
     ovoo = rng.normal(size=(nocc, nvir, nocc, nocc))
@@ -35,7 +36,9 @@ def _random_case(nocc, nvir, seed):
 
 
 @pytest.mark.parametrize("term", ["w1", "w2", "v1", "v2"])
-def test_numerator_inventory_matches_pinned_source_and_execution(term):
+def test_numerator_inventory_matches_pinned_source_and_execution(
+    term: typing.Any,
+) -> None:
     """Audit each term against explicit source-index loops, before spin sums.
 
     Unequal occupied/virtual sizes expose contracted-axis swaps, and isolated
@@ -108,7 +111,9 @@ def test_numerator_inventory_matches_pinned_source_and_execution(term):
         (5, 2, 9),
     ],
 )
-def test_reference_fullsum_tensorir_agree(o, v, seed):
+def test_reference_fullsum_tensorir_agree(
+    o: typing.Any, v: typing.Any, seed: typing.Any
+) -> None:
     from tools.vibeqc_cc import triples_energy, triples_energy_tensorir, triples_fullsum
 
     arrays = _random_case(o, v, seed)
@@ -119,20 +124,20 @@ def test_reference_fullsum_tensorir_agree(o, v, seed):
     np.testing.assert_allclose(tensorir, reference, atol=1e-11, rtol=1e-10)
 
 
-def test_reference_matches_verbatim_slow_kernel_shapes():
+def test_reference_matches_verbatim_slow_kernel_shapes() -> None:
     """The triangular reference reproduces the literal ccsd_t_slow 36-entry
     table, so it must be symmetric under simultaneous (a,b,c) permutation.
     An independent re-implementation here rebuilds the table from the source
     einsum strings and compares it against the module's SLOW_TABLE."""
     from tools.vibeqc_cc.triples import _LABELS, OP, SLOW_TABLE, VP
 
-    def inv(p):
+    def inv(p: typing.Any) -> typing.Any:
         out = [0, 0, 0]
         for i, x in enumerate(p):
             out[x] = i
         return tuple(out)
 
-    def compose(p, q):
+    def compose(p: typing.Any, q: typing.Any) -> typing.Any:
         return tuple(p[i] for i in q)
 
     # The S3-derived pairing that the fullsum oracle relies on must reproduce
@@ -151,7 +156,7 @@ def test_reference_matches_verbatim_slow_kernel_shapes():
 # r3 coefficients exercised on an explicit cubic tensor (issue's (4,1,1,-2,-2,-2)).
 
 
-def _explicit_r3(w):
+def _explicit_r3(w: typing.Any) -> typing.Any:
     return (
         4 * w
         + w.transpose(1, 2, 0)
@@ -162,7 +167,7 @@ def _explicit_r3(w):
     )
 
 
-def test_r3_coefficients_one_term_at_a_time():
+def test_r3_coefficients_one_term_at_a_time() -> None:
     from tools.vibeqc_cc.triples import R3, r3
 
     rng = np.random.default_rng(3)
@@ -180,7 +185,7 @@ def test_r3_coefficients_one_term_at_a_time():
         assert not np.allclose(wrong, expected)
 
 
-def test_triangular_virtual_multiplicity_against_fullsum():
+def test_triangular_virtual_multiplicity_against_fullsum() -> None:
     """The 36-term contraction is symmetric under simultaneous (a,b,c)
     permutation, so the ordered full sum equals 6 times the triangular sum
     after each triangle is re-weighted by 6/2/1.  Fullsum already checks this
@@ -197,7 +202,7 @@ def test_triangular_virtual_multiplicity_against_fullsum():
     assert _degeneracy(2, 1, 0) == 1
 
 
-def test_explicit_degenerate_and_double_indices_numerically():
+def test_explicit_degenerate_and_double_indices_numerically() -> None:
     """Construct all four degeneracy classes on a small (2,2) case and confirm
     the audited triangle vs the independent full sum at each block weight.
 
@@ -222,7 +227,9 @@ def test_explicit_degenerate_and_double_indices_numerically():
 
 
 @pytest.mark.parametrize("o,v", [(2, 3), (3, 3)])
-def test_t1_zero_removes_v_and_t2_zero_keeps_w_only(o, v):
+def test_t1_zero_removes_v_and_t2_zero_keeps_w_only(
+    o: typing.Any, v: typing.Any
+) -> None:
     from tools.vibeqc_cc import triples_energy, triples_fullsum
 
     ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = _random_case(o, v, 11)
@@ -246,7 +253,7 @@ def test_t1_zero_removes_v_and_t2_zero_keeps_w_only(o, v):
     assert abs(v_only) < 1e-12
 
 
-def test_two_electron_triples_are_zero():
+def test_two_electron_triples_are_zero() -> None:
     """A two-electron reference has no genuine triples: (1,1) (T) vanishes.
 
     CCSD already equals FCI for two electrons in any basis, so the (T)
@@ -264,7 +271,7 @@ def test_two_electron_triples_are_zero():
 # ------------------------------ TensorIR + AD ------------------------------
 
 
-def test_tensorir_program_roundtrip_and_replay():
+def test_tensorir_program_roundtrip_and_replay() -> None:
     from tools.vibeqc_cc import build_triples_program, triples_energy_tensorir
 
     o, v = 2, 2
@@ -289,7 +296,7 @@ def test_tensorir_program_roundtrip_and_replay():
     assert program.logical_hash == build_triples_program(o, v).logical_hash
 
 
-def test_tensorir_program_is_differentiable():
+def test_tensorir_program_is_differentiable() -> None:
     from tools.vibeqc_cc import build_triples_program, triples_energy
 
     o, v = 2, 2
@@ -320,7 +327,7 @@ def test_tensorir_program_is_differentiable():
     plus["t1"][0, 0] += h
     minus["t1"][0, 0] -= h
 
-    def energy(feeds_map):
+    def energy(feeds_map: typing.Any) -> typing.Any:
         return triples_energy(
             o,
             v,
@@ -346,7 +353,9 @@ def test_tensorir_program_is_differentiable():
 )
 @pytest.mark.parametrize("name", INPUT_NAMES)
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
-def test_nonfinite_inputs_fail_closed(engine, name, value):
+def test_nonfinite_inputs_fail_closed(
+    engine: typing.Any, name: typing.Any, value: typing.Any
+) -> None:
     """Invalid amplitudes, integrals or energies must not yield a (T) result."""
     from tools import vibeqc_cc
 
@@ -362,7 +371,9 @@ def test_nonfinite_inputs_fail_closed(engine, name, value):
 @pytest.mark.parametrize(
     "threshold", [np.float32(1e-4), np.float64(1e-10), np.int64(1)]
 )
-def test_numpy_scalar_denominator_thresholds(engine, threshold):
+def test_numpy_scalar_denominator_thresholds(
+    engine: typing.Any, threshold: typing.Any
+) -> None:
     """NumPy-derived tolerances obey the same gate as Python scalar values."""
     from tools import vibeqc_cc
 
@@ -379,14 +390,14 @@ def test_numpy_scalar_denominator_thresholds(engine, threshold):
     "threshold",
     [True, np.bool_(True), np.float64(np.nan), np.float32(np.inf), np.int64(0), -1.0],
 )
-def test_invalid_denominator_thresholds(threshold):
+def test_invalid_denominator_thresholds(threshold: typing.Any) -> None:
     from tools.vibeqc_cc import triples_energy
 
     with pytest.raises(ValueError, match="threshold must be a positive finite number"):
         triples_energy(2, 2, *_random_case(2, 2, 34), denominator_threshold=threshold)
 
 
-def test_invalid_inputs_rejected():
+def test_invalid_inputs_rejected() -> None:
     from tools.vibeqc_cc import build_triples_program, triples_energy
 
     arrays = _random_case(2, 2, 31)
@@ -405,7 +416,7 @@ def test_invalid_inputs_rejected():
         build_triples_program(2, 0)
 
 
-def test_degenerate_denominators_fail_closed():
+def test_degenerate_denominators_fail_closed() -> None:
     """Noncanonical (crossing) or near-degenerate (T) denominators are rejected
     explicitly rather than silently dividing into NaN (issue #150 step 7)."""
     from tools.vibeqc_cc import triples_energy, triples_fullsum
@@ -473,7 +484,7 @@ GROUND_TRUTH = {
 ENDPOINTS = Path(__file__).resolve().parents[1] / "reference_data/cc/endpoints"
 
 
-def _endpoint_feeds(name):
+def _endpoint_feeds(name: typing.Any) -> typing.Any:
     with np.load(ENDPOINTS / f"{name}.npz", allow_pickle=False) as data:
         eps = data["eps"]
         occ = data["occ"]
@@ -500,7 +511,7 @@ def _endpoint_feeds(name):
 
 
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4"])
-def test_pinned_ground_truth_regression(name):
+def test_pinned_ground_truth_regression(name: typing.Any) -> None:
     from tools.vibeqc_cc import triples_energy, triples_energy_tensorir, triples_fullsum
 
     expected_nocc, expected_nvir, expected = GROUND_TRUTH[name]
@@ -519,7 +530,7 @@ def test_pinned_ground_truth_regression(name):
         np.testing.assert_allclose(fullsum, expected, atol=1e-9, rtol=0)
 
 
-def test_committed_production_reference_provenance():
+def test_committed_production_reference_provenance() -> None:
     """Keep the independent reference tied to its source and endpoint arrays."""
     from tools.cc_endpoint_fixtures import array_hash
     from tools.vibeqc_validation.schema import canonical_hash
@@ -549,7 +560,7 @@ def test_committed_production_reference_provenance():
         assert row["et_agreement"] <= 1e-9
 
 
-def test_reference_generator_requires_direct_energy_agreement():
+def test_reference_generator_requires_direct_energy_agreement() -> None:
     """Being close to the same target does not imply mutual 1e-9 agreement."""
     from tools.generate_cc_triples_references import _check_energies
 

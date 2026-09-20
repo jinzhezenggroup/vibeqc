@@ -1,5 +1,8 @@
 """PW91-family MethodIR and independent Libxc scalar gates."""
 
+from __future__ import annotations
+
+import typing
 from fractions import Fraction
 
 import numpy as np
@@ -19,14 +22,16 @@ UNPOLARIZED = np.array([[0.5, 0.031, 0.0]]).T
     "alias,canonical",
     [("PW91PW91", "PW91"), ("X3LYPG", "X3LYP")],
 )
-def test_pw91_family_aliases_preserve_semantics(alias, canonical):
+def test_pw91_family_aliases_preserve_semantics(
+    alias: typing.Any, canonical: typing.Any
+) -> None:
     reference = resolve_method(canonical)
     named = resolve_method(alias)
     assert named.identity == reference.identity
     assert named.manifest_identity != reference.manifest_identity
 
 
-def test_x3lyp_vwn5_is_scientifically_distinct():
+def test_x3lyp_vwn5_is_scientifically_distinct() -> None:
     assert resolve_method("X3LYP").identity != resolve_method("X3LYP5").identity
 
 
@@ -39,7 +44,9 @@ def test_x3lyp_vwn5_is_scientifically_distinct():
         ("X3LYP5", Fraction(109, 500)),
     ],
 )
-def test_pw91_family_uses_typed_semilocal_and_exact_exchange(name, exchange):
+def test_pw91_family_uses_typed_semilocal_and_exact_exchange(
+    name: typing.Any, exchange: typing.Any
+) -> None:
     graph = resolve_method(name)
     assert isinstance(graph.primitives[0], SemilocalXCPrimitive)
     if exchange:
@@ -106,7 +113,7 @@ ORACLES = {
 
 
 @pytest.mark.parametrize("name", ORACLES)
-def test_pw91_family_scalar_values_match_pyscf_libxc_oracle(name):
+def test_pw91_family_scalar_values_match_pyscf_libxc_oracle(name: typing.Any) -> None:
     expected_p, expected_u = ORACLES[name]
     p_spec = resolve_method(name, spin="polarized").primitives[0].functional
     u_spec = resolve_method(name, spin="unpolarized").primitives[0].functional

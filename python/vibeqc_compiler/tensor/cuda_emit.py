@@ -7,6 +7,7 @@ including general einsums and denominators, executes on the allocated GPU.
 
 from __future__ import annotations
 
+import typing
 from math import prod
 
 from .cuda_dtype import scalar_type
@@ -16,17 +17,17 @@ from .ir import TRANSCENDENTALS
 from .scaled_arithmetic import emit_scaled_bilinear
 
 
-def _integer(value):
+def _integer(value: typing.Any) -> typing.Any:
     return f"{value}LL"
 
 
-def _coordinate(linear, shape, axis):
+def _coordinate(linear: typing.Any, shape: typing.Any, axis: typing.Any) -> typing.Any:
     # Empty kernels/accessors are never executed, but CUDA still compiles
     # their bodies. Avoid constant division by zero even in unreachable code.
     return f"(({linear}) / {_integer(max(1, prod(shape[axis + 1 :])))} % {_integer(max(1, shape[axis]))})"
 
 
-def _flat(coordinates, shape):
+def _flat(coordinates: typing.Any, shape: typing.Any) -> typing.Any:
     return (
         " + ".join(
             f"({coord}) * {_integer(stride)}"
@@ -36,7 +37,7 @@ def _flat(coordinates, shape):
     )
 
 
-def _physical_index(layout, logical="z"):
+def _physical_index(layout: typing.Any, logical: typing.Any = "z") -> typing.Any:
     if layout.is_c_contiguous:
         return logical
     return (
@@ -48,7 +49,7 @@ def _physical_index(layout, logical="z"):
     )
 
 
-def _logical_index(layout, physical="z"):
+def _logical_index(layout: typing.Any, physical: typing.Any = "z") -> typing.Any:
     if layout.is_c_contiguous:
         return physical
     shape = tuple(layout.shape[axis] for axis in layout.order)
@@ -58,15 +59,17 @@ def _logical_index(layout, physical="z"):
     return _flat(coordinates, layout.shape)
 
 
-def _name(prefix, base):
+def _name(prefix: typing.Any, base: typing.Any) -> typing.Any:
     return f"{prefix}{base}"
 
 
-def _read(operand, index, prefix=""):
+def _read(
+    operand: typing.Any, index: typing.Any, prefix: typing.Any = ""
+) -> typing.Any:
     return f"{_name(prefix, f'read_{operand}')}(p, {index}, error)"
 
 
-def _value(plan, i, prefix=""):
+def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.Any:
     """Emit scalar evaluation with each original arithmetic error boundary."""
     step = plan.steps[i]
     node, a, args = step.node, step.node.attrs, step.inputs
@@ -152,10 +155,33 @@ return finite({mul}(finite(value, error, {i}), {scalar.literal(a["coefficient"])
         )
     elif node.op == "broadcast":
         index = _flat([c[axis] for axis in a["axes"]], source_shape)
-    elif node.op == "gather":
+    elif node.op in ("gather", "indexed_gather"):
         table = dict(plan.index_tables)[i]
         c[a["axis"]] = f"reinterpret_cast<const I*>(p + {table})[{c[a['axis']]}]"
         index = _flat(c, source_shape)
+    elif node.op == "scatter_add":
+        table = dict(plan.index_tables)[i]
+        axis = a["axis"]
+        target = c[axis]
+        source = list(c)
+        source[axis] = "r"
+        return f"""{ty} value = {scalar.zero};
+{reduction_pragma}for (I r = 0; r < {_integer(source_shape[axis])}; ++r)
+    if (reinterpret_cast<const I*>(p + {table})[r] == {target})
+        value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
+return finite(value, error, {i});"""
+    elif node.op == "segment_sum":
+        table = dict(plan.index_tables)[i]
+        axis = a["axis"]
+        segment = c[axis]
+        source = list(c)
+        source[axis] = "r"
+        return f"""{ty} value = {scalar.zero};
+const I begin = reinterpret_cast<const I*>(p + {table})[{segment}];
+const I end = reinterpret_cast<const I*>(p + {table})[{segment} + 1];
+{reduction_pragma}for (I r = begin; r < end; ++r)
+    value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
+return finite(value, error, {i});"""
     elif node.op == "reduce":
         reduction_shape = tuple(source_shape[axis] for axis in a["axes"])
         source, cursor = [], 0
@@ -174,7 +200,7 @@ return finite(value, error, {i});"""
     return f"return {_read(child, index, prefix)};"
 
 
-def _arithmetic_error_expression(plan, legacy):
+def _arithmetic_error_expression(plan: typing.Any, legacy: typing.Any) -> typing.Any:
     """Extend diagnostics only for new graphs; keep legacy emitted bytes intact.
 
     Zero is success, +[1,n] is nonfinite, -[1,n] is division by zero,
@@ -190,7 +216,7 @@ def _arithmetic_error_expression(plan, legacy):
     )
 
 
-def _group_map(g, labels):
+def _group_map(g: typing.Any, labels: typing.Any) -> typing.Any:
     coordinates = {}
     for group, value in (
         (g.batch_labels, "batch"),
@@ -208,7 +234,9 @@ def _group_map(g, labels):
     )
 
 
-def _packing_kernels(plan, i, prefix=""):
+def _packing_kernels(
+    plan: typing.Any, i: typing.Any, prefix: typing.Any = ""
+) -> typing.Any:
     step = plan.steps[i]
     g = gemm_contract(step.node)
     scalar = scalar_type(step.node.spec.dtype)
@@ -279,7 +307,7 @@ __global__ void {_name(prefix, f"scatter_{i}")}(unsigned char* p, const {ty}* c,
 """
 
 
-def _launch(plan, i, prefix=""):
+def _launch(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.Any:
     step, threads = plan.steps[i], plan.schedule.threads
     node = step.node
     scalar = scalar_type(node.spec.dtype)
@@ -403,11 +431,16 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
             initialize.append(
                 f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, {prefix}constant_{i}, {node.spec.size * node.spec.itemsize}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
-        if node.op == "gather" and node.attrs["positions"]:
-            values = ", ".join(_integer(v) for v in node.attrs["positions"])
-            parts.append(f"static const I {prefix}positions_{i}[] = {{{values}}};")
+        table_values = None
+        if node.op in ("gather", "indexed_gather", "scatter_add"):
+            table_values = node.attrs["positions"]
+        elif node.op == "segment_sum":
+            table_values = node.attrs["offsets"]
+        if table_values:
+            values = ", ".join(_integer(v) for v in table_values)
+            parts.append(f"static const I {prefix}index_data_{i}[] = {{{values}}};")
             initialize.append(
-                f"cuda_check(cudaMemcpyAsync(ctx->arena + {tables[i]}, {prefix}positions_{i}, {len(node.attrs['positions']) * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
+                f"cuda_check(cudaMemcpyAsync(ctx->arena + {tables[i]}, {prefix}index_data_{i}, {len(table_values) * 8}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
         body = (
             _value(plan, i, prefix)

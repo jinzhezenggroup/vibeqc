@@ -1,6 +1,7 @@
 """CPU CCSD convergence, independent endpoints and explicit failure states."""
 
 import json
+import typing
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -18,14 +19,14 @@ from tools.vibeqc_posthf.sources import NativeSource
 class FixtureProvider(ConventionalProvider):
     """Test-only exact MO inputs: exercises the solver without native libraries."""
 
-    def __init__(self, snapshot, g):
+    def __init__(self, snapshot: typing.Any, g: typing.Any) -> None:
         self.snapshot = snapshot
         self.g = g
         self.backend = "cpu"
         self.calls = 0
         self.source = SimpleNamespace(_check_open=lambda: None)
 
-    def get(self, block):
+    def get(self, block: typing.Any) -> typing.Any:
         self.calls += 1
         return BlockResult(
             block,
@@ -36,7 +37,7 @@ class FixtureProvider(ConventionalProvider):
         )
 
 
-def fixture_problem(name="h2"):
+def fixture_problem(name: typing.Any = "h2") -> typing.Any:
     meta, a = load(name)
     # Geometry/basis identity is irrelevant to this supplied-integral unit test;
     # the real native-provider tests below verify that boundary independently.
@@ -50,7 +51,9 @@ def fixture_problem(name="h2"):
 
 
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4"])
-def test_same_C_solver_against_pinned_ccsd_and_two_electron_fci(name):
+def test_same_C_solver_against_pinned_ccsd_and_two_electron_fci(
+    name: typing.Any,
+) -> None:
     s, p, meta, a = fixture_problem(name)
     result = solve(
         s, p, options=SolverOptions(residual_tolerance=1e-10, energy_tolerance=1e-12)
@@ -71,7 +74,9 @@ def test_same_C_solver_against_pinned_ccsd_and_two_electron_fci(name):
 
 
 @pytest.mark.parametrize("shift,damping,diis", [(0.4, 0.15, 6), (0.0, 0.2, 0)])
-def test_shift_damping_and_diis_do_not_change_target_root(shift, damping, diis):
+def test_shift_damping_and_diis_do_not_change_target_root(
+    shift: typing.Any, damping: typing.Any, diis: typing.Any
+) -> None:
     s, p, meta, _ = fixture_problem()
     result = solve(
         s, p, options=SolverOptions(level_shift=shift, damping=damping, diis_size=diis)
@@ -81,8 +86,8 @@ def test_shift_damping_and_diis_do_not_change_target_root(shift, damping, diis):
 
 
 def test_preflight_failure_happens_before_integrals_and_iteration_failures_replay(
-    tmp_path, monkeypatch
-):
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
     s, p, _meta, a = fixture_problem()
     from tools.vibeqc_cc import evaluate
 
@@ -140,7 +145,7 @@ def test_preflight_failure_happens_before_integrals_and_iteration_failures_repla
     original = PreparedCCSD.evaluate
     calls = 0
 
-    def bad(self, *args, **kwargs):
+    def bad(self: typing.Any, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         nonlocal calls
         calls += 1
         if calls == 2:
@@ -153,11 +158,15 @@ def test_preflight_failure_happens_before_integrals_and_iteration_failures_repla
     nonfinite.write(tmp_path / "nonfinite.json")
 
 
-def test_false_shared_residual_cannot_bypass_expanded_acceptance(monkeypatch):
+def test_false_shared_residual_cannot_bypass_expanded_acceptance(
+    monkeypatch: typing.Any,
+) -> None:
     s, p, _meta, _ = fixture_problem()
     original = PreparedCCSD.evaluate
 
-    def wrong_shared(self, *args, **kwargs):
+    def wrong_shared(
+        self: typing.Any, *args: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
         result = original(self, *args, **kwargs)
         if not kwargs.get("independent", False):
             result["singles_residual"] *= 0
@@ -170,7 +179,7 @@ def test_false_shared_residual_cannot_bypass_expanded_acceptance(monkeypatch):
     assert result.history[-1]["independent_r2_max"] > 1e-9
 
 
-def test_prepared_ccsd_rejects_ks_reference():
+def test_prepared_ccsd_rejects_ks_reference() -> None:
     s, p, _meta, _ = fixture_problem()
     ks = replace(
         s,
@@ -183,7 +192,9 @@ def test_prepared_ccsd_rejects_ks_reference():
         PreparedCCSD(ks, p)
 
 
-def test_nonfinite_initial_equation_has_no_fabricated_energy_and_replays(tmp_path):
+def test_nonfinite_initial_equation_has_no_fabricated_energy_and_replays(
+    tmp_path: typing.Any,
+) -> None:
     s, p, _meta, a = fixture_problem()
     result = solve(
         s, p, t1=np.full_like(a["t1"], 1e150), t2=np.full_like(a["t2"], 1e150)
@@ -195,7 +206,9 @@ def test_nonfinite_initial_equation_has_no_fabricated_energy_and_replays(tmp_pat
     assert replay(tmp_path / "overflow.json").status == "nonfinite"
 
 
-def test_collective_provider_budget_rejects_before_any_read_and_accepts_cache_hits():
+def test_collective_provider_budget_rejects_before_any_read_and_accepts_cache_hits() -> (
+    None
+):
     s, _p, _meta, a = fixture_problem()
     source = SimpleNamespace(
         nbf=s.nmo,
@@ -237,7 +250,7 @@ def test_collective_provider_budget_rejects_before_any_read_and_accepts_cache_hi
 
 
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4"])
-def test_fresh_native_HF_to_converged_CCSD(name):
+def test_fresh_native_HF_to_converged_CCSD(name: typing.Any) -> None:
     meta, a = load(name)
     try:
         source = NativeSource(**source_arguments(meta["inputs"]))

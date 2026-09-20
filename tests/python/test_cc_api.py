@@ -5,6 +5,7 @@ with no native libraries and no GPU. The CUDA backend of the same facade is
 covered by the real-device tests in ``test_cc_gpu_solver.py``.
 """
 
+import typing
 from types import SimpleNamespace
 
 import numpy as np
@@ -22,13 +23,13 @@ from tools.vibeqc_posthf.providers import BlockResult, ConventionalProvider
 class FixtureProvider(ConventionalProvider):
     """Test-only exact MO inputs: exercises the API without native libraries."""
 
-    def __init__(self, snapshot, g):
+    def __init__(self, snapshot: typing.Any, g: typing.Any) -> None:
         self.snapshot = snapshot
         self.g = g
         self.backend = "cpu"
         self.source = SimpleNamespace(_check_open=lambda: None)
 
-    def get(self, block):
+    def get(self, block: typing.Any) -> typing.Any:
         return BlockResult(
             block,
             self.g[np.ix_(*block.slots)],
@@ -38,7 +39,7 @@ class FixtureProvider(ConventionalProvider):
         )
 
 
-def fixture_problem(name="h2"):
+def fixture_problem(name: typing.Any = "h2") -> typing.Any:
     meta, a = load(name)
     source = SimpleNamespace(
         electron_count=int(a["occ"].sum()),
@@ -49,7 +50,7 @@ def fixture_problem(name="h2"):
     return s, FixtureProvider(s, a["g"]), meta, a
 
 
-def test_capabilities_are_energy_only_and_not_a_native_batch():
+def test_capabilities_are_energy_only_and_not_a_native_batch() -> None:
     caps = method_capabilities("rccsd")
     assert caps.method == "rccsd"
     assert caps.family == "coupled_cluster"
@@ -61,7 +62,7 @@ def test_capabilities_are_energy_only_and_not_a_native_batch():
 
 
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4"])
-def test_energy_cpu_converges_to_pinned_endpoint(name):
+def test_energy_cpu_converges_to_pinned_endpoint(name: typing.Any) -> None:
     s, p, meta, a = fixture_problem(name)
     result = energy(s, p)
     assert result.backend == "cpu"
@@ -78,7 +79,7 @@ def test_energy_cpu_converges_to_pinned_endpoint(name):
     np.testing.assert_allclose(result.t2, a["t2"], atol=1e-8, rtol=1e-8)
 
 
-def test_energy_rejects_forces_and_unknown_backend():
+def test_energy_rejects_forces_and_unknown_backend() -> None:
     s, p, _meta, _ = fixture_problem()
     with pytest.raises(NotImplementedError, match="energy only"):
         energy(s, p, compute_forces=True)
@@ -90,7 +91,7 @@ def test_energy_rejects_forces_and_unknown_backend():
         energy(s, p, backend="cuda-resident")
 
 
-def test_nonconvergence_is_a_failed_energy_result_not_an_exception():
+def test_nonconvergence_is_a_failed_energy_result_not_an_exception() -> None:
     s, p, _meta, _ = fixture_problem()
     from tools.vibeqc_cc import SolverOptions
 
@@ -100,7 +101,7 @@ def test_nonconvergence_is_a_failed_energy_result_not_an_exception():
     assert result.total_energy is not None  # last finite state retained
 
 
-def test_batch_isolates_failure_and_preserves_input_order():
+def test_batch_isolates_failure_and_preserves_input_order() -> None:
     s, p, _meta, _ = fixture_problem("h2")
     problems = [
         (s, p),
@@ -114,6 +115,6 @@ def test_batch_isolates_failure_and_preserves_input_order():
     assert result.items[2].converged
 
 
-def _load_g(name):
+def _load_g(name: typing.Any) -> typing.Any:
     _, a = load(name)
     return a["g"]

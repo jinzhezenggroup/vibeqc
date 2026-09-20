@@ -3,6 +3,7 @@
 import json
 import subprocess
 import sys
+import typing
 from dataclasses import replace
 from pathlib import Path
 
@@ -37,7 +38,9 @@ from vibeqc_compiler.tensor import (
 from tools.vibeqc_validation.schema import validate_evidence
 
 
-def test_cli_exports_replayable_examples_and_shared_evidence(tmp_path):
+def test_cli_exports_replayable_examples_and_shared_evidence(
+    tmp_path: typing.Any,
+) -> None:
     root = Path(__file__).resolve().parents[2]
     script = root / "tools/tensor_ir_examples.py"
     help_result = subprocess.run(
@@ -84,7 +87,9 @@ def test_cli_exports_replayable_examples_and_shared_evidence(tmp_path):
         )
 
 
-def test_integral_raw_tile_to_tensor_weights_and_back_has_explicit_order_and_sign():
+def test_integral_raw_tile_to_tensor_weights_and_back_has_explicit_order_and_sign() -> (
+    None
+):
     """Exchange a bounded two-center tile; no shell semantics enter TensorIR."""
     signature = ShellSignature(
         (BasisShell(0, 0, 1), BasisShell(1, 1, 1)),

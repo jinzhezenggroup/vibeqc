@@ -1,6 +1,7 @@
 """Generic DF gradient ABI and independent full public-AO libcint response."""
 
 import ctypes
+import typing
 
 import numpy as np
 from vibeqc import _native
@@ -28,19 +29,19 @@ class DfGradientResources(ctypes.Structure):
 
 
 def execute_df_gradient(
-    orbital,
-    auxiliary,
-    atoms,
-    bar_a,
-    bar_m,
+    orbital: typing.Any,
+    auxiliary: typing.Any,
+    atoms: typing.Any,
+    bar_a: typing.Any,
+    bar_m: typing.Any,
     *,
-    schedule=0,
-    maximum_bytes=128 << 20,
-    maximum_tile_elements=0,
-    device_id=0,
-    charge=0,
-    multiplicity=1,
-):
+    schedule: typing.Any = 0,
+    maximum_bytes: typing.Any = 128 << 20,
+    maximum_tile_elements: typing.Any = 0,
+    device_id: typing.Any = 0,
+    charge: typing.Any = 0,
+    multiplicity: typing.Any = 1,
+) -> typing.Any:
     """Keep weights fixed while measuring the standalone synchronous bridge."""
     if type(device_id) is not int or device_id < 0:
         raise ValueError("device_id must be a nonnegative integer")
@@ -115,7 +116,9 @@ def execute_df_gradient(
         library.vibeqc_context_destroy(context)
 
 
-def reference_df_matrices(orbital_inputs, auxiliary_inputs):
+def reference_df_matrices(
+    orbital_inputs: typing.Any, auxiliary_inputs: typing.Any
+) -> typing.Any:
     """All physical-atom derivatives, including independent auxiliary centers.
 
     Libcint differentiates its own electron coordinates. Moving a basis center
@@ -124,7 +127,7 @@ def reference_df_matrices(orbital_inputs, auxiliary_inputs):
     """
     from pyscf import gto
 
-    def molecule_and_transform(inputs):
+    def molecule_and_transform(inputs: typing.Any) -> typing.Any:
         # PySCF groups shells by atom/angular momentum. Recover the requested
         # public AO order explicitly so auxiliary shell permutations are real
         # input changes, rather than accidental changes to the oracle's weights.

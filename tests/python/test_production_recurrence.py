@@ -133,7 +133,7 @@ def _structural_rys_manifest(
     )
 
 
-def test_production_selection_preserves_explicit_integral_ir():
+def test_production_selection_preserves_explicit_integral_ir() -> None:
     """Carry non-final translation recovery through production emission."""
 
     spec = DPDS_SPEC
@@ -170,7 +170,7 @@ def test_production_selection_preserves_explicit_integral_ir():
 
 def test_force_only_rys3_manifest_reaches_every_production_emitter(
     tmp_path: Path,
-):
+) -> None:
     """Keep the row-level recurrence when shards and profiles are emitted."""
 
     manifest = tmp_path / "rys3.json"
@@ -188,7 +188,9 @@ def test_force_only_rys3_manifest_reaches_every_production_emitter(
     assert "generated_sm120_ppps_rys3_force_task" in profile_shard
 
 
-def test_rys3_rejects_a_fock_consumer_at_manifest_boundary(tmp_path: Path):
+def test_rys3_rejects_a_fock_consumer_at_manifest_boundary(
+    tmp_path: Path,
+) -> None:
     """Reject unsupported mixed Rys/Fock rows before CUDA source generation."""
 
     manifest = tmp_path / "rys3_fock.json"
@@ -200,7 +202,7 @@ def test_rys3_rejects_a_fock_consumer_at_manifest_boundary(tmp_path: Path):
 
 def test_mixed_dppp_rys4_manifest_emits_rys_force_and_existing_fock(
     tmp_path: Path,
-):
+) -> None:
     """Use Rys4 only for force while preserving the accepted direct Fock."""
 
     manifest = tmp_path / "rys4.json"
@@ -220,7 +222,7 @@ def test_mixed_dppp_rys4_manifest_emits_rys_force_and_existing_fock(
     assert "generated_sm120_dppp_shell_class_fock_rhf_kernel" in profile_shard
 
 
-def test_rys4_manifest_rejects_noncooperative_schedule(tmp_path: Path):
+def test_rys4_manifest_rejects_noncooperative_schedule(tmp_path: Path) -> None:
     """Fail at the manifest boundary instead of inside the CUDA emitter."""
 
     manifest = tmp_path / "rys4_thread_tasks.json"
@@ -241,7 +243,7 @@ def test_rys4_manifest_rejects_noncooperative_schedule(tmp_path: Path):
         load_production_kernel_selections(manifest, "sm_120")
 
 
-def test_scalar_rys3_accepts_structurally_legal_f_shell(tmp_path: Path):
+def test_scalar_rys3_accepts_structurally_legal_f_shell(tmp_path: Path) -> None:
     """Accept FSSS from root count and scalar-backend shape, not a name list."""
 
     manifest = tmp_path / "fsss_scalar_rys3.json"
@@ -267,7 +269,9 @@ def test_scalar_rys3_accepts_structurally_legal_f_shell(tmp_path: Path):
     assert "generated_sm120_fsss_rys3_force_task" in shard
 
 
-def test_uniform_warp_rys4_accepts_structurally_legal_f_shell(tmp_path: Path):
+def test_uniform_warp_rys4_accepts_structurally_legal_f_shell(
+    tmp_path: Path,
+) -> None:
     """Allow an f-shell Rys4 program when its mapping needs no d-only decoder."""
 
     manifest = tmp_path / "fpps_uniform_rys4.json"
@@ -293,7 +297,7 @@ def test_uniform_warp_rys4_accepts_structurally_legal_f_shell(tmp_path: Path):
     assert "generated_sm120_fpps_rys4_uniform_warp_batch" in shard
 
 
-def test_component_lane_rys4_rejects_f_shell_decoder_gap(tmp_path: Path):
+def test_component_lane_rys4_rejects_f_shell_decoder_gap(tmp_path: Path) -> None:
     """Keep the current runtime-indexed s/p/d table limit structural."""
 
     manifest = tmp_path / "fpps_component_rys4.json"
@@ -315,7 +319,7 @@ def test_component_lane_rys4_rejects_f_shell_decoder_gap(tmp_path: Path):
         load_production_kernel_selections(manifest, "sm_120")
 
 
-def test_manifest_rys_root_count_comes_from_integral_ir(tmp_path: Path):
+def test_manifest_rys_root_count_comes_from_integral_ir(tmp_path: Path) -> None:
     """Reject a fixed-root count mismatch before considering CUDA mapping."""
 
     manifest = tmp_path / "fsss_wrong_roots.json"
@@ -336,7 +340,7 @@ def test_manifest_rys_root_count_comes_from_integral_ir(tmp_path: Path):
         load_production_kernel_selections(manifest, "sm_120")
 
 
-def test_existing_production_rows_default_to_subset_wick():
+def test_existing_production_rows_default_to_subset_wick() -> None:
     """Keep only explicitly promoted force rows on fixed-root Rys."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -408,7 +412,7 @@ def test_existing_production_rows_default_to_subset_wick():
 @pytest.mark.parametrize("shell_class", ("dsps", "dpps"))
 def test_three_root_classes_accept_shared_scalar_thread_backend(
     tmp_path: Path, shell_class: str
-):
+) -> None:
     """Prove that one generator-level scalar Rys3 path covers both classes."""
 
     component_count = {"dsps": 18, "dpps": 54}[shell_class]
@@ -449,7 +453,7 @@ def test_three_root_classes_accept_shared_scalar_thread_backend(
     assert f"generated_sm120_{shell_class}_shell_class_fock_rhf_kernel" in shard
 
 
-def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
+def test_production_dsps_promotes_scalar_force_but_retains_component_fock() -> None:
     """Keep the measured force promotion independent of the value consumer."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -470,7 +474,9 @@ def test_production_dsps_promotes_scalar_force_but_retains_component_fock():
 
 
 @pytest.mark.parametrize("shell_class", ("dsds", "ddss"))
-def test_production_rys3_component_force_uses_subgroup_fock(shell_class: str):
+def test_production_rys3_component_force_uses_subgroup_fock(
+    shell_class: str,
+) -> None:
     """Keep the shared Rys3 value schedule explicit for d-shell pairs."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -500,7 +506,7 @@ def test_production_rys3_component_force_uses_subgroup_fock(shell_class: str):
 )
 def test_production_rys3_uniform_force_keeps_independent_fock_schedule(
     shell_class: str, fock_block_threads: int
-):
+) -> None:
     """Allow each accepted value path to use its independently tuned mapping."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -550,7 +556,7 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
     fock_schedule: str,
     fock_block_threads: int,
     explicit_fock_schedule: bool,
-):
+) -> None:
     """Keep each accepted Rys4 Fock mapping explicit or intentionally shared."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -599,7 +605,7 @@ def test_production_rys4_force_retains_explicit_fock_schedule(
     )
 
 
-def test_production_dddp_rys5_retains_explicit_fock_schedule():
+def test_production_dddp_rys5_retains_explicit_fock_schedule() -> None:
     """Keep the measured DDDP value worker independent of Rys5 force."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -625,7 +631,7 @@ def test_production_dddp_rys5_retains_explicit_fock_schedule():
     assert "kGeneratedSm120DddpFockBlockThreads = 128U" in shard
 
 
-def test_production_dddd_rys5_retains_native_fock_schedule():
+def test_production_dddd_rys5_retains_native_fock_schedule() -> None:
     """Promote only DDDD force while preserving its accepted value worker."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -663,7 +669,7 @@ def test_production_dddd_rys5_retains_native_fock_schedule():
 )
 def test_production_packed_streaming_fock_uses_profiled_lane_local_state(
     shell_class: str, lane_local: bool
-):
+) -> None:
     """Keep lane-private packed state limited to the profiled winners."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -697,7 +703,7 @@ def test_production_packed_streaming_fock_uses_profiled_lane_local_state(
         assert "stream_tasks, primitive_pairs" in streaming_worker
 
 
-def test_production_mixed_fock_uses_compact_fp32_geometry():
+def test_production_mixed_fock_uses_compact_fp32_geometry() -> None:
     """Keep mixed Coulomb evaluation off the FP64 geometry conversion path."""
 
     repository_root = Path(__file__).resolve().parents[2]
@@ -718,7 +724,9 @@ def test_production_mixed_fock_uses_compact_fp32_geometry():
     assert "GeneratedSm120DppsPrimitiveGeometry" not in mixed_source
 
 
-def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path):
+def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(
+    tmp_path: Path,
+) -> None:
     """Emit resident Rys3 beside, rather than instead of, ppps force/Fock."""
 
     manifest = tmp_path / "resident.json"
@@ -779,7 +787,9 @@ def test_ppps_resident_option_keeps_ordinary_fock_force_fallback(tmp_path: Path)
     assert "return cudaErrorNotSupported;" not in registry_source
 
 
-def test_ppps_resident_registry_falls_back_when_not_selected(tmp_path: Path):
+def test_ppps_resident_registry_falls_back_when_not_selected(
+    tmp_path: Path,
+) -> None:
     """Keep the API safe for profiles that do not compile a resident route."""
 
     manifest = tmp_path / "ordinary.json"
@@ -790,7 +800,9 @@ def test_ppps_resident_registry_falls_back_when_not_selected(tmp_path: Path):
     assert "return cudaErrorNotSupported;" in registry_source
 
 
-def test_multi_profile_resident_registry_tracks_each_profile(tmp_path: Path):
+def test_multi_profile_resident_registry_tracks_each_profile(
+    tmp_path: Path,
+) -> None:
     """Select the resident function pointer together with the CUDA profile."""
 
     schedule = {
@@ -839,7 +851,9 @@ def test_multi_profile_resident_registry_tracks_each_profile(tmp_path: Path):
     assert "vibeqc_launch_sm120_ppps_resident" in source
 
 
-def test_multi_profile_registry_dispatches_dpps_mixed_fock(tmp_path: Path):
+def test_multi_profile_registry_dispatches_dpps_mixed_fock(
+    tmp_path: Path,
+) -> None:
     """Carry the mixed capability and wrapper through profile namespacing."""
 
     manifest = tmp_path / "mixed.json"
@@ -893,7 +907,7 @@ def test_multi_profile_registry_dispatches_dpps_mixed_fock(tmp_path: Path):
 
 def test_manifest_capabilities_control_optional_production_wrappers(
     tmp_path: Path,
-):
+) -> None:
     """Keep optional wrappers opt-in and independent of shell-name heuristics."""
 
     manifest = tmp_path / "capabilities.json"
@@ -935,7 +949,7 @@ def test_manifest_capabilities_control_optional_production_wrappers(
 
 def test_multi_profile_registry_keeps_fock_only_force_symbols_dormant(
     tmp_path: Path,
-):
+) -> None:
     """Do not make fixed topology reserve force tasks for Fock-only rows."""
 
     manifest = tmp_path / "fock-only.json"

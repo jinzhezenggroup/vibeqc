@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import typing
 from contextlib import nullcontext
 from dataclasses import dataclass, field, replace
 
@@ -14,7 +15,7 @@ from tools.vibeqc_posthf.reference import immutable
 from .problem import ResponseCompatibilityError, ResponseSolveError
 
 
-def _vector_norm(value):
+def _vector_norm(value: typing.Any) -> typing.Any:
     """Scale before squaring so finite tiny/large vectors cannot look solved."""
     values = np.asarray(value, dtype=np.float64)
     scale = float(np.max(np.abs(values), initial=0.0))
@@ -29,7 +30,7 @@ def _vector_norm(value):
     return result
 
 
-def _relative_residual(residual_norm, rhs_norm):
+def _relative_residual(residual_norm: typing.Any, rhs_norm: typing.Any) -> typing.Any:
     """Return ``||r|| / ||b||`` with an explicit zero-RHS convention.
 
     A zero RHS has no scale, so its relative residual is zero for an exactly
@@ -42,7 +43,9 @@ def _relative_residual(residual_norm, rhs_norm):
     return 0.0 if residual_norm == 0.0 else float("inf")
 
 
-def _orthonormal_basis(matrix, *, tolerance=1e-12, max_columns=None):
+def _orthonormal_basis(
+    matrix: typing.Any, *, tolerance: typing.Any = 1e-12, max_columns: typing.Any = None
+) -> typing.Any:
     """Return an orthonormal basis for the finite column range of ``matrix``."""
     value = np.asarray(matrix, dtype=np.float64)
     if value.ndim != 2 or not np.isfinite(value).all():
@@ -59,7 +62,13 @@ def _orthonormal_basis(matrix, *, tolerance=1e-12, max_columns=None):
     return left[:, :rank], rank
 
 
-def _orthogonalize_against(vectors, value, *, reorthogonalize=2, tolerance=1e-14):
+def _orthogonalize_against(
+    vectors: typing.Any,
+    value: typing.Any,
+    *,
+    reorthogonalize: typing.Any = 2,
+    tolerance: typing.Any = 1e-14,
+) -> typing.Any:
     """Modified Gram-Schmidt with reorthogonalization and an explicit breakdown."""
     work = np.asarray(value, dtype=np.float64).copy()
     coefficients = np.zeros(vectors.shape[1])
@@ -74,7 +83,7 @@ def _orthogonalize_against(vectors, value, *, reorthogonalize=2, tolerance=1e-14
     return work, coefficients, _vector_norm(work)
 
 
-def _initial_block_basis(matrix, *, tolerance):
+def _initial_block_basis(matrix: typing.Any, *, tolerance: typing.Any) -> typing.Any:
     """Orthonormalize RHS columns without an absolute rank cutoff.
 
     The scalar SVD helper intentionally treats tiny singular values as
@@ -99,7 +108,7 @@ def _initial_block_basis(matrix, *, tolerance):
     return np.column_stack(columns), len(columns)
 
 
-def _single_workspace_bytes(n, options):
+def _single_workspace_bytes(n: typing.Any, options: typing.Any) -> typing.Any:
     """Bound solver-owned numeric buffers, including publication and LAPACK work.
 
     Reserve Arnoldi storage, overlapping old/new/immutable basis copies,
@@ -116,7 +125,9 @@ def _single_workspace_bytes(n, options):
     )
 
 
-def _block_workspace_bytes(n, nrhs, options, max_columns):
+def _block_workspace_bytes(
+    n: typing.Any, nrhs: typing.Any, options: typing.Any, max_columns: typing.Any
+) -> typing.Any:
     """Bound live Arnoldi/SVD buffers and every published per-RHS basis.
 
     SVD and least-squares input/output arrays can coexist with the old basis,
@@ -133,7 +144,13 @@ def _block_workspace_bytes(n, nrhs, options, max_columns):
     )
 
 
-def _workspace_failure(n, nrhs, required, *, reason="workspace_limit"):
+def _workspace_failure(
+    n: typing.Any,
+    nrhs: typing.Any,
+    required: typing.Any,
+    *,
+    reason: typing.Any = "workspace_limit",
+) -> typing.Any:
     """Explicit nonconverged results for a preflight workspace rejection."""
     zero = immutable(np.zeros(n))
     return tuple(
@@ -171,7 +188,7 @@ class GMRESOptions:
     stagnation_window: int = 25
     stagnation_tolerance: float = 1e-14
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not np.isfinite(self.rtol) or not 0 <= self.rtol < 1:
             raise ValueError("rtol must be finite and in [0,1)")
         if not np.isfinite(self.atol) or self.atol < 0:
@@ -191,14 +208,16 @@ class GMRESOptions:
             raise ValueError("breakdown_tolerance must be finite and nonnegative")
 
     @property
-    def workspace_bytes(self):
+    def workspace_bytes(self) -> typing.Any:
         return (self.restart + 1) ** 2 * 8 + (self.restart + 1) * 8
 
 
 class DiagonalPreconditioner:
     """Separate diagonal preconditioner with an explicit nonzero gate."""
 
-    def __init__(self, diagonal, *, relative_threshold=1e-14):
+    def __init__(
+        self, diagonal: typing.Any, *, relative_threshold: typing.Any = 1e-14
+    ) -> None:
         value = np.asarray(diagonal, dtype=np.float64)
         if value.ndim != 1 or not np.isfinite(value).all():
             raise ValueError("preconditioner diagonal must be a finite vector")
@@ -214,7 +233,7 @@ class DiagonalPreconditioner:
         self.diagonal = immutable(value)
         self.inverse = immutable(1.0 / value)
 
-    def apply(self, vector):
+    def apply(self, vector: typing.Any) -> typing.Any:
         value = np.asarray(vector, dtype=np.float64)
         if value.shape != self.diagonal.shape:
             raise ValueError("preconditioner vector shape mismatch")
@@ -241,7 +260,7 @@ class SolveResult:
     rank: int = 0
     basis: np.ndarray = field(default_factory=lambda: np.empty((0, 0)))
 
-    def require_converged(self):
+    def require_converged(self) -> typing.Any:
         """Raise with the complete diagnostic if the solve did not converge."""
         if not self.converged:
             raise ResponseSolveError(self)
@@ -261,16 +280,16 @@ class MultiRHSResult:
     rank_deficient_rhs: bool
 
     @property
-    def converged(self):
+    def converged(self) -> typing.Any:
         return all(result.converged for result in self.results)
 
     @property
-    def solution(self):
+    def solution(self) -> typing.Any:
         if not self.results:
             return np.empty((0, 0))
         return np.column_stack([result.solution for result in self.results])
 
-    def require_converged(self):
+    def require_converged(self) -> typing.Any:
         """Raise the first nonconverged result with its actual residual."""
         for result in self.results:
             result.require_converged()
@@ -282,39 +301,46 @@ class _HostKrylovEngine:
 
     resident = False
 
-    def __init__(self, dimension):
+    def __init__(self, dimension: typing.Any) -> None:
         self.dimension = dimension
 
-    def reset(self):
+    def reset(self) -> None:
         return None
 
-    def from_host(self, values):
+    def from_host(self, values: typing.Any) -> typing.Any:
         return np.asarray(values, dtype=np.float64).copy()
 
-    def zeros(self):
+    def zeros(self) -> typing.Any:
         return np.zeros(self.dimension)
 
-    def copy(self, value):
+    def copy(self, value: typing.Any) -> typing.Any:
         return np.asarray(value, dtype=np.float64).copy()
 
-    def scale(self, value, alpha):
+    def scale(self, value: typing.Any, alpha: typing.Any) -> typing.Any:
         return np.asarray(value, dtype=np.float64) * float(alpha)
 
-    def subtract(self, left, right):
+    def subtract(self, left: typing.Any, right: typing.Any) -> typing.Any:
         return np.asarray(left, dtype=np.float64) - np.asarray(right, dtype=np.float64)
 
-    def norm(self, value):
+    def norm(self, value: typing.Any) -> typing.Any:
         return _vector_norm(value)
 
-    def apply(self, operator, value):
+    def apply(self, operator: typing.Any, value: typing.Any) -> typing.Any:
         return np.asarray(operator.apply(value), dtype=np.float64)
 
-    def precondition(self, preconditioner, value):
+    def precondition(self, preconditioner: typing.Any, value: typing.Any) -> typing.Any:
         if preconditioner is None:
             return self.copy(value)
         return np.asarray(preconditioner.apply(value), dtype=np.float64)
 
-    def orthogonalize(self, basis, value, *, reorthogonalize, tolerance):
+    def orthogonalize(
+        self,
+        basis: typing.Any,
+        value: typing.Any,
+        *,
+        reorthogonalize: typing.Any,
+        tolerance: typing.Any,
+    ) -> typing.Any:
         matrix = (
             np.column_stack(basis)
             if basis
@@ -327,31 +353,37 @@ class _HostKrylovEngine:
             tolerance=tolerance,
         )
 
-    def combination(self, base, basis, coefficients, preconditioner):
+    def combination(
+        self,
+        base: typing.Any,
+        basis: typing.Any,
+        coefficients: typing.Any,
+        preconditioner: typing.Any,
+    ) -> typing.Any:
         direction = np.zeros(self.dimension)
         for coefficient, vector in zip(coefficients, basis, strict=True):
             direction += float(coefficient) * np.asarray(vector, dtype=np.float64)
         direction = self.precondition(preconditioner, direction)
         return np.asarray(base, dtype=np.float64) + direction
 
-    def to_host(self, value):
+    def to_host(self, value: typing.Any) -> typing.Any:
         return np.asarray(value, dtype=np.float64).copy()
 
-    def stack_host(self, values):
+    def stack_host(self, values: typing.Any) -> typing.Any:
         if not values:
             return np.empty((self.dimension, 0))
         return np.column_stack([self.to_host(value) for value in values])
 
 
 def _solve_single(
-    operator,
-    rhs,
-    options,
+    operator: typing.Any,
+    rhs: typing.Any,
+    options: typing.Any,
     *,
-    initial_guess=None,
-    preconditioner=None,
-    collect_basis=True,
-):
+    initial_guess: typing.Any = None,
+    preconditioner: typing.Any = None,
+    collect_basis: typing.Any = True,
+) -> typing.Any:
     """Restarted GMRES with one control flow and pluggable vector residency."""
     b_host = np.asarray(rhs, dtype=np.float64)
     if b_host.ndim != 1 or not np.isfinite(b_host).all():
@@ -402,7 +434,7 @@ def _solve_single(
     history = []
     total_steps = 0
 
-    def apply(value):
+    def apply(value: typing.Any) -> typing.Any:
         nonlocal operator_actions, operator_seconds
         begin = time.perf_counter()
         result = engine.apply(operator, value)
@@ -410,13 +442,19 @@ def _solve_single(
         operator_actions += 1
         return result
 
-    def true_residual_norm(candidate):
+    def true_residual_norm(candidate: typing.Any) -> typing.Any:
         image = apply(candidate)
         return engine.norm(engine.subtract(b, image))
 
     def publish(
-        solution, converged, residual_norm, iterations, reason, basis, rhs_norm
-    ):
+        solution: typing.Any,
+        converged: typing.Any,
+        residual_norm: typing.Any,
+        iterations: typing.Any,
+        reason: typing.Any,
+        basis: typing.Any,
+        rhs_norm: typing.Any,
+    ) -> typing.Any:
         return SolveResult(
             immutable(engine.to_host(solution)),
             converged,
@@ -576,7 +614,13 @@ def _solve_single(
 class KrylovRecycleSpace:
     """Reference-bound retained Krylov vectors with explicit reset/transport."""
 
-    def __init__(self, problem, *, max_vectors=8, max_bytes=8 << 20):
+    def __init__(
+        self,
+        problem: typing.Any,
+        *,
+        max_vectors: typing.Any = 8,
+        max_bytes: typing.Any = 8 << 20,
+    ) -> None:
         if type(max_vectors) is not int or max_vectors < 1:
             raise ValueError("max_vectors must be positive")
         if type(max_bytes) is not int or max_bytes < 1:
@@ -588,11 +632,11 @@ class KrylovRecycleSpace:
         self.generation = 0
 
     @property
-    def key(self):
+    def key(self) -> typing.Any:
         return self.problem.compatibility_identity
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(
             {
                 "problem": self.key,
@@ -602,17 +646,17 @@ class KrylovRecycleSpace:
         )
 
     @property
-    def storage_bytes(self):
+    def storage_bytes(self) -> typing.Any:
         """Bytes held by the independently retained immutable vectors."""
         return sum(vector.nbytes for vector in self._vectors)
 
-    def projection_bytes(self, dimension):
+    def projection_bytes(self, dimension: typing.Any) -> typing.Any:
         """Reserve the output guess and one scaled retained-vector temporary."""
         if type(dimension) is not int or dimension < 0:
             raise ValueError("dimension must be a nonnegative integer")
         return 2 * dimension * 8
 
-    def update_bytes(self, dimension):
+    def update_bytes(self, dimension: typing.Any) -> typing.Any:
         """Bound replacement vectors and Gram-Schmidt publication temporaries.
 
         Existing vectors are charged separately by ``storage_bytes``. The
@@ -624,14 +668,14 @@ class KrylovRecycleSpace:
         capacity = min(self.max_vectors, dimension, self.max_bytes // (dimension * 8))
         return (capacity + 3) * dimension * 8
 
-    def assert_compatible(self, problem):
+    def assert_compatible(self, problem: typing.Any) -> None:
         """Fail closed on a changed reference/model/operator/layout."""
         if problem.compatibility_identity != self.key:
             raise ResponseCompatibilityError(
                 "stale Krylov subspace: reference/model/operator compatibility key changed"
             )
 
-    def initial_guess(self, problem, rhs):
+    def initial_guess(self, problem: typing.Any, rhs: typing.Any) -> typing.Any:
         """Project one RHS onto the already orthonormal retained vectors."""
         self.assert_compatible(problem)
         b = np.asarray(rhs, dtype=np.float64)
@@ -644,7 +688,7 @@ class KrylovRecycleSpace:
             guess += vector * np.dot(vector, b)
         return guess
 
-    def update(self, problem, result):
+    def update(self, problem: typing.Any, result: typing.Any) -> typing.Any:
         """Publish a bounded orthonormal replacement after a successful solve."""
         self.assert_compatible(problem)
         if not result.converged:
@@ -675,7 +719,7 @@ class KrylovRecycleSpace:
         self.generation += 1
         return self
 
-    def reset(self, problem=None):
+    def reset(self, problem: typing.Any = None) -> typing.Any:
         """Discard all vectors; optionally bind a fresh compatible problem."""
         if problem is not None:
             self.problem = problem
@@ -683,7 +727,7 @@ class KrylovRecycleSpace:
         self.generation += 1
         return self
 
-    def transport(self, problem, transform):
+    def transport(self, problem: typing.Any, transform: typing.Any) -> typing.Any:
         """Explicitly transport vectors to a new problem under a caller map."""
         if not callable(transform):
             raise TypeError("transport requires an explicit callable")
@@ -713,7 +757,7 @@ class KrylovRecycleSpace:
         return replacement
 
 
-def hashlib_sha(value):
+def hashlib_sha(value: typing.Any) -> typing.Any:
     """Stable hash for a retained vector without importing a public helper."""
     import hashlib
 
@@ -723,16 +767,16 @@ def hashlib_sha(value):
 
 
 def solve(
-    operator,
-    rhs,
+    operator: typing.Any,
+    rhs: typing.Any,
     *,
-    options=None,
-    initial_guess=None,
-    recycle=None,
-    preconditioner=None,
-    raise_on_failure=False,
-    collect_basis=True,
-):
+    options: typing.Any = None,
+    initial_guess: typing.Any = None,
+    recycle: typing.Any = None,
+    preconditioner: typing.Any = None,
+    raise_on_failure: typing.Any = False,
+    collect_basis: typing.Any = True,
+) -> typing.Any:
     """Solve one RHS with bounded true-residual GMRES."""
     options = GMRESOptions() if options is None else options
     b = np.asarray(rhs)
@@ -794,7 +838,9 @@ def solve(
     return result
 
 
-def _block_solve(operator, rhs, options):
+def _block_solve(
+    operator: typing.Any, rhs: typing.Any, options: typing.Any
+) -> typing.Any:
     """Block GMRES with block-Arnoldi expansion and true residuals.
 
     Resident vector execution qualifies scalar/recycled GMRES only. The block
@@ -954,15 +1000,15 @@ def _block_solve(operator, rhs, options):
 
 
 def solve_many(
-    operator,
-    rhs,
+    operator: typing.Any,
+    rhs: typing.Any,
     *,
-    strategy="sequential",
-    options=None,
-    recycle=None,
-    preconditioner=None,
-    raise_on_failure=False,
-):
+    strategy: typing.Any = "sequential",
+    options: typing.Any = None,
+    recycle: typing.Any = None,
+    preconditioner: typing.Any = None,
+    raise_on_failure: typing.Any = False,
+) -> typing.Any:
     """Compare sequential, blocked and recycled multi-RHS response solves."""
     if strategy not in ("sequential", "blocked", "recycled"):
         raise ValueError("strategy must be sequential, blocked or recycled")

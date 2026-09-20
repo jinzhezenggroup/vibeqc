@@ -1,0 +1,7 @@
+{
+  "path": "src/runtime/cuda_resources.cuh",
+  "reason": "Shared CUDA device scope, owned stream/event/buffer lifetime and checked allocation primitives; no scientific equations.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

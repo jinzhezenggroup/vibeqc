@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 
 import numpy as np
@@ -9,7 +10,7 @@ import numpy as np
 from vibeqc_compiler.common.arrays import immutable
 
 
-def spin_densities(density, nao):
+def spin_densities(density: typing.Any, nao: typing.Any) -> typing.Any:
     """Return [alpha,beta,AO,AO]; RHF input is total D and splits equally.
 
     D need not be an SCF solution or positive semidefinite. Negative diagnostic
@@ -26,7 +27,7 @@ def spin_densities(density, nao):
     return immutable(0.5 * (d + d.swapaxes(1, 2)))
 
 
-def requested_ingredients(ingredients=None):
+def requested_ingredients(ingredients: typing.Any = None) -> typing.Any:
     """Validate the common CPU/CUDA feature request, preserving output order."""
     requested = (
         ("rho", "gradient", "sigma", "tau")
@@ -42,7 +43,7 @@ def requested_ingredients(ingredients=None):
     return requested
 
 
-def _feature_request(jets, ingredients):
+def _feature_request(jets: typing.Any, ingredients: typing.Any) -> typing.Any:
     """Share the requested jet domain, independently of the contraction route."""
     requested = requested_ingredients(ingredients)
     need_gradient = "gradient" in requested or "sigma" in requested
@@ -68,13 +69,15 @@ DENSITY_FEATURE_SCALAR_ROWS = (
 )
 
 
-def _sigma(gradient):
+def _sigma(gradient: typing.Any) -> typing.Any:
     return np.stack(
         [np.sum(gradient[a] * gradient[b], axis=1) for a, b in ((0, 0), (0, 1), (1, 1))]
     )
 
 
-def _density_feature_arrays(jets, density, ingredients):
+def _density_feature_arrays(
+    jets: typing.Any, density: typing.Any, ingredients: typing.Any
+) -> typing.Any:
     jets, requested, need_gradient = _feature_request(jets, ingredients)
     d = spin_densities(density, jets.shape[2])
     value, derivatives = jets[0], jets[1:4]
@@ -102,7 +105,9 @@ def _density_feature_arrays(jets, density, ingredients):
     return requested, np.asarray(rho), np.asarray(gradient), np.asarray(tau)
 
 
-def _publish(requested, rho, gradient, tau):
+def _publish(
+    requested: typing.Any, rho: typing.Any, gradient: typing.Any, tau: typing.Any
+) -> typing.Any:
     """Build nonlinear sigma only after each complete spin gradient is reduced."""
     values = {"rho": rho, "gradient": gradient, "tau": tau}
     if "sigma" in requested:
@@ -118,7 +123,7 @@ class DensityFeatureBlock:
     gradient: np.ndarray | None
     requested: tuple[str, ...]
 
-    def features(self):
+    def features(self) -> typing.Any:
         result = {}
         if "rho" in self.requested:
             result["rho"] = self.scalar[:2]
@@ -131,7 +136,9 @@ class DensityFeatureBlock:
         return result
 
 
-def density_feature_block(jets, density, *, ingredients=None):
+def density_feature_block(
+    jets: typing.Any, density: typing.Any, *, ingredients: typing.Any = None
+) -> typing.Any:
     """Produce one canonical C-order scalar feature owner for compiled consumers."""
     requested, rho, gradient, tau = _density_feature_arrays(jets, density, ingredients)
     npoint = np.asarray(jets).shape[1]
@@ -150,7 +157,9 @@ def density_feature_block(jets, density, *, ingredients=None):
     return DensityFeatureBlock(scalar, owned_gradient, requested)
 
 
-def density_features(jets, density, *, ingredients=None):
+def density_features(
+    jets: typing.Any, density: typing.Any, *, ingredients: typing.Any = None
+) -> typing.Any:
     """Contract rho, grad(rho), sigma(aa,ab,bb), tau=1/2 sum D gradχ·gradχ.
 
     rho/tau have shape [spin,point], gradient [spin,point,xyz], and sigma
@@ -166,7 +175,9 @@ def density_features(jets, density, *, ingredients=None):
     return _publish(requested, rho, gradient, tau)
 
 
-def _spin_orbitals(coefficients, occupations, nao):
+def _spin_orbitals(
+    coefficients: typing.Any, occupations: typing.Any, nao: typing.Any
+) -> typing.Any:
     """Own two real C/f blocks; spin channels may have different orbital counts."""
     if len(coefficients) != 2 or len(occupations) != 2:
         raise ValueError("orbitals require two spin blocks")
@@ -179,7 +190,13 @@ def _spin_orbitals(coefficients, occupations, nao):
     return c, occ
 
 
-def orbital_features(jets, coefficients, occupations, *, ingredients=None):
+def orbital_features(
+    jets: typing.Any,
+    coefficients: typing.Any,
+    occupations: typing.Any,
+    *,
+    ingredients: typing.Any = None,
+) -> typing.Any:
     """Independent occupied-orbital summation, with per-spin occupations.
 
     Coefficients are [spin,AO,orbital]; fractional/non-SCF orbital populations

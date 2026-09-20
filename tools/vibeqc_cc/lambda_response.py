@@ -6,6 +6,7 @@ raw-Hamiltonian pullback, orbital-response or nuclear-force implementation.
 
 from __future__ import annotations
 
+import typing
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -30,7 +31,7 @@ _WEIGHT_ATOL = 1e-12
 _WEIGHT_RTOL = 1e-10
 
 
-def _tensor(value, spec, label):
+def _tensor(value: typing.Any, spec: typing.Any, label: typing.Any) -> typing.Any:
     value = _array(value, spec.shape, label)
     for symmetry in spec.symmetries:
         if not np.allclose(
@@ -64,7 +65,7 @@ class CCSDParameterWeight:
     logical_reserved_host_bytes: int
     provenance: Mapping
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "values",
@@ -114,7 +115,7 @@ class BoundCCSDResponse:
         result: CCSDLambdaResult,
         *,
         max_bytes: int | None = None,
-    ):
+    ) -> None:
         if not isinstance(bound, BoundCCSDLambda) or not isinstance(
             result, CCSDLambdaResult
         ):
@@ -209,7 +210,7 @@ class BoundCCSDResponse:
     def parameters(self) -> tuple[str, ...]:
         return PARAMETERS
 
-    def _prepare(self, parameter):
+    def _prepare(self, parameter: typing.Any) -> typing.Any:
         shared = build_parameter_vjp(self.bound.programs.primal, parameter)
         independent = build_parameter_vjp(self.bound.independent.primal, parameter)
         spec = next(

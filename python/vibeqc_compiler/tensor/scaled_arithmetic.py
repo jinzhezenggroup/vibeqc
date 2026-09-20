@@ -8,12 +8,14 @@ an arbitrary-precision oracle or a correctly-rounded rational implementation.
 
 from __future__ import annotations
 
+import typing
+
 import numpy as np
 
 from .cuda_dtype import scalar_type
 
 
-def _product(left, right):
+def _product(left: typing.Any, right: typing.Any) -> typing.Any:
     """Dekker product/residual on normalized FP32/FP64 mantissas."""
     precision = np.finfo(left.dtype).nmant + 1
     splitter = left.dtype.type((1 << ((precision + 1) // 2)) + 1)
@@ -27,7 +29,14 @@ def _product(left, right):
     return product, error
 
 
-def scaled_bilinear_value(a, b, c, d, e, f):
+def scaled_bilinear_value(
+    a: typing.Any,
+    b: typing.Any,
+    c: typing.Any,
+    d: typing.Any,
+    e: typing.Any,
+    f: typing.Any,
+) -> typing.Any:
     """Evaluate one fused bilinear quotient in the operands' real dtype.
 
     Inputs are finite, equally shaped FP32 or FP64 arrays. Zero denominators

@@ -3,6 +3,7 @@
 import copy
 import json
 import os
+import typing
 
 import pytest
 
@@ -13,7 +14,7 @@ from benchmarks.df_component_ledger import (
 )
 
 
-def actual_calls(components, reason):
+def actual_calls(components: typing.Any, reason: typing.Any) -> typing.Any:
     """Work-elimination tests count leaves from either qualified provider."""
     return sum(
         components[key].get(reason, {}).get("calls", 0)
@@ -21,7 +22,7 @@ def actual_calls(components, reason):
     )
 
 
-def host_record():
+def host_record() -> typing.Any:
     base = {"reason": "overlap", "item": 0, "nbf": 2, "finished": True, "failed": False}
     return {
         "schema": "vibeqc.df_host_trace",
@@ -35,7 +36,9 @@ def host_record():
     }
 
 
-def test_host_ledger_counts_actual_leaves_and_keeps_clocks_separate(tmp_path):
+def test_host_ledger_counts_actual_leaves_and_keeps_clocks_separate(
+    tmp_path: typing.Any,
+) -> None:
     record = host_record()
     path = tmp_path / "host.jsonl"
     path.write_text(json.dumps(record) + "\n")
@@ -62,7 +65,9 @@ def test_host_ledger_counts_actual_leaves_and_keeps_clocks_separate(tmp_path):
 @pytest.mark.parametrize(
     "reason", ("overlap", "iteration", "final_fock", "seed_validation")
 )
-def test_device_solver_reasons_separate_setup_and_finalization(tmp_path, reason):
+def test_device_solver_reasons_separate_setup_and_finalization(
+    tmp_path: typing.Any, reason: typing.Any
+) -> None:
     """Adding cold setup calls must not inflate the final-provider ablation."""
     record = host_record()
     record["regions"][1]["reason"] = reason
@@ -76,7 +81,9 @@ def test_device_solver_reasons_separate_setup_and_finalization(tmp_path, reason)
 
 
 @pytest.mark.parametrize("suffix", ("", "\n{"))
-def test_host_trace_rejects_missing_record_terminator(tmp_path, suffix):
+def test_host_trace_rejects_missing_record_terminator(
+    tmp_path: typing.Any, suffix: typing.Any
+) -> None:
     """Even valid JSON must carry the writer's final record terminator."""
     path = tmp_path / "interrupted.host.jsonl"
     path.write_text(json.dumps(host_record()) + suffix)
@@ -95,7 +102,9 @@ def test_host_trace_rejects_missing_record_terminator(tmp_path, suffix):
         ("reason", "invented"),
     ],
 )
-def test_partial_or_mistimed_host_records_cannot_pass(key, value):
+def test_partial_or_mistimed_host_records_cannot_pass(
+    key: typing.Any, value: typing.Any
+) -> None:
     record = copy.deepcopy(host_record())
     record["regions"][1][key] = value
     with pytest.raises(ValueError):
@@ -105,8 +114,11 @@ def test_partial_or_mistimed_host_records_cannot_pass(key, value):
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 @pytest.mark.parametrize("device", ("cpu", "cuda"))
 def test_native_solver_calls_include_warm_preparation_and_finalization(
-    tmp_path, monkeypatch, method, device
-):
+    tmp_path: typing.Any,
+    monkeypatch: typing.Any,
+    method: typing.Any,
+    device: typing.Any,
+) -> None:
     """Actual leaves detect reintroduced warm guesses, retaining other solves.
 
     Both spin modes still require actual physical-F validation; removing
@@ -188,8 +200,12 @@ def test_native_solver_calls_include_warm_preparation_and_finalization(
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 @pytest.mark.parametrize("budget", (0, 8 << 20))
 def test_overlap_cache_survives_output_replans_and_isolates_changed_items(
-    tmp_path, monkeypatch, method, representation, budget
-):
+    tmp_path: typing.Any,
+    monkeypatch: typing.Any,
+    method: typing.Any,
+    representation: typing.Any,
+    budget: typing.Any,
+) -> None:
     """Same-sized neighbors keep separate X; geometry and failures cannot alias it."""
     if os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1":
         pytest.skip("requires an explicitly Slurm-allocated GPU")
@@ -210,7 +226,12 @@ def test_overlap_cache_survives_output_replans_and_isolates_changed_items(
     )
     sequence = 0
 
-    def traced(batch, coordinates=None, properties=("energy", "forces"), strict=True):
+    def traced(
+        batch: typing.Any,
+        coordinates: typing.Any = None,
+        properties: typing.Any = ("energy", "forces"),
+        strict: typing.Any = True,
+    ) -> typing.Any:
         nonlocal sequence
         path = tmp_path / f"step-{sequence}.jsonl"
         sequence += 1
@@ -221,7 +242,7 @@ def test_overlap_cache_survives_output_replans_and_isolates_changed_items(
             monkeypatch.delenv("VIBEQC_DF_HOST_TRACE")
         return result, aggregate_host(read_host_trace(path))
 
-    def overlap_calls(summary):
+    def overlap_calls(summary: typing.Any) -> typing.Any:
         return actual_calls(summary, "overlap")
 
     with calculator.prepare_batch([atoms, atoms]) as batch:
@@ -267,8 +288,11 @@ def test_overlap_cache_survives_output_replans_and_isolates_changed_items(
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 def test_prepared_single_overlap_survives_energy_force_dispatch(
-    tmp_path, monkeypatch, method, representation
-):
+    tmp_path: typing.Any,
+    monkeypatch: typing.Any,
+    method: typing.Any,
+    representation: typing.Any,
+) -> None:
     """The C prepared single owner retains X across all output selections.
 
     Its API has no warm-density input: core guesses remain necessary while
@@ -351,8 +375,11 @@ def test_prepared_single_overlap_survives_energy_force_dispatch(
 @pytest.mark.parametrize("spin", ("restricted", "unrestricted"))
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 def test_independent_fock_overlap_owners_distinguish_same_size_basis(
-    tmp_path, monkeypatch, spin, representation
-):
+    tmp_path: typing.Any,
+    monkeypatch: typing.Any,
+    spin: typing.Any,
+    representation: typing.Any,
+) -> None:
     """Equal AO counts cannot let distinct basis owners share an orthogonalizer."""
     if os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1":
         pytest.skip("requires an explicitly Slurm-allocated GPU")
@@ -377,7 +404,7 @@ def test_independent_fock_overlap_owners_distinguish_same_size_basis(
     ):
         sequence = 0
 
-        def traced(plan, **kwargs):
+        def traced(plan: typing.Any, **kwargs: typing.Any) -> typing.Any:
             nonlocal sequence
             path = tmp_path / f"independent-{sequence}.jsonl"
             sequence += 1

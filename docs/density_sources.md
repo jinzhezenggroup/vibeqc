@@ -43,13 +43,17 @@ from vibeqc_compiler.dft import DensitySource
 # basis.identity includes coordinates, normalized basis, AO representation,
 # atom order, charge and spin policy. D is this producer state's density.
 current = DensitySource(
-    D, basis_identity=basis.identity,
-    basis_generation=3, density_generation=17,
+    D,
+    basis_identity=basis.identity,
+    basis_generation=3,
+    density_generation=17,
 )
 candidate_stamp = current.stamp  # capture with C/f at their production time
 checked = current.with_orbitals(C_spin, f_spin, stamp=candidate_stamp)
 features = checked.features(
-    jets, stamp=current.stamp, route="orbitals",
+    jets,
+    stamp=current.stamp,
+    route="orbitals",
     ingredients=("rho", "gradient", "sigma"),
 )
 ```
@@ -246,12 +250,22 @@ failures invalidate old executions and clear source diagnostics.
 
 ```python
 with PreparedSpatialGrid(
-    basis, grid, backend="cuda", artifact=artifact,
-    policy=policy, orbital_capacity=(na, nb), orbital_tile=3,
-    ingredients=("rho", "gradient", "sigma"), resource_budget=budget,
+    basis,
+    grid,
+    backend="cuda",
+    artifact=artifact,
+    policy=policy,
+    orbital_capacity=(na, nb),
+    orbital_tile=3,
+    ingredients=("rho", "gradient", "sigma"),
+    resource_budget=budget,
 ) as spatial:
     with PreparedXCContractions(
-        native_pbe, basis, grid, spatial=spatial, resource_budget=budget,
+        native_pbe,
+        basis,
+        grid,
+        spatial=spatial,
+        resource_budget=budget,
     ) as endpoint:
         result = endpoint.execute(source, stamp=current_stamp, route="orbitals")
 ```

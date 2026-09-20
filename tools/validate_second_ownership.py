@@ -9,6 +9,7 @@ import argparse
 import os
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,7 +74,7 @@ int main() {
 """
 
 
-def main():
+def main() -> typing.Any:
     """Compile finite fixtures, then execute only inside the declared backend."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backend", choices=("cpu", "cuda"), required=True)

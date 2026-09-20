@@ -7,6 +7,7 @@ Reference generation is separate and requires pinned PySCF only when invoked.
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
+import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -51,7 +52,7 @@ TARGET = TargetAccuracy(
 CONTROLS = ProbeControls(energy_tolerance=1e-12, density_tolerance=1e-10)
 
 
-def load_references(path=REFERENCES):
+def load_references(path: typing.Any = REFERENCES) -> typing.Any:
     record = json.loads(path.read_text())
     digest = record.pop("record_hash")
     if (
@@ -69,7 +70,9 @@ def load_references(path=REFERENCES):
     return record
 
 
-def agreement(energy, forces, model, reference):
+def agreement(
+    energy: typing.Any, forces: typing.Any, model: typing.Any, reference: typing.Any
+) -> typing.Any:
     """Observed #173 comparisons are distinct from solver convergence."""
     if energy is None or forces is None:
         return {"status": "unavailable", "reason": "failed solve"}
@@ -90,7 +93,13 @@ def agreement(energy, forces, model, reference):
     return assessment.to_dict()
 
 
-def run(output, *, repeats=3, names=None, environment_note=None):
+def run(
+    output: typing.Any,
+    *,
+    repeats: typing.Any = 3,
+    names: typing.Any = None,
+    environment_note: typing.Any = None,
+) -> typing.Any:
     """Measure equal controls and record information available to each baseline."""
     if type(repeats) is not int or repeats < 1:
         raise ValueError("repeats must be positive")

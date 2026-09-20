@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import math
+import typing
 from pathlib import Path
 
 from vibeqc_compiler.method.correction import CorrectionProvenance, CorrectionResult
@@ -15,11 +16,11 @@ ANGSTROM_TO_BOHR = 1.8897261254578281
 _DATA = Path(__file__).resolve().parents[2] / "external/r2scan3c/gcp-r2scan3c-h-ar.json"
 
 
-def _load():
+def _load() -> typing.Any:
     return json.loads(_DATA.read_text())
 
 
-def _aaux(x, n=8):
+def _aaux(x: typing.Any, n: typing.Any = 8) -> typing.Any:
     ex = math.exp(-x)
     rx = 1.0 / x
     out = [0.0] * (n + 1)
@@ -29,7 +30,7 @@ def _aaux(x, n=8):
     return out
 
 
-def _bint(x, n=8):
+def _bint(x: typing.Any, n: typing.Any = 8) -> typing.Any:
     out = [0.0] * (n + 1)
     if abs(x) < 1.0e-6:
         for k in range(0, n + 1, 2):
@@ -43,7 +44,7 @@ def _bint(x, n=8):
     return out
 
 
-def _baux(x, n=8):
+def _baux(x: typing.Any, n: typing.Any = 8) -> typing.Any:
     ep, em, rx = math.exp(x), math.exp(-x), 1.0 / x
     out = []
     for k in range(n + 1):
@@ -59,7 +60,13 @@ def _baux(x, n=8):
     return out
 
 
-def _overlap(r, shell_a, shell_b, za, zb):
+def _overlap(
+    r: typing.Any,
+    shell_a: typing.Any,
+    shell_b: typing.Any,
+    za: typing.Any,
+    zb: typing.Any,
+) -> typing.Any:
     same = abs(za - zb) < 0.1
     key = shell_a * shell_b
     if key == 1:
@@ -106,7 +113,9 @@ def _overlap(r, shell_a, shell_b, za, zb):
     return s, ds
 
 
-def evaluate_r2scan3c_gcp(atomic_numbers, coordinates_bohr):
+def evaluate_r2scan3c_gcp(
+    atomic_numbers: typing.Any, coordinates_bohr: typing.Any
+) -> typing.Any:
     """Return the pinned H-Ar gCP energy and Cartesian gradient in atomic units."""
 
     data = _load()

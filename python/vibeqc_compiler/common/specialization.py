@@ -9,12 +9,14 @@ No method policy, empirical thresholds, device probing or compilation lives here
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
 from dataclasses import asdict, dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from .backend import TargetInfo
 from .provenance import canonical_hash
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 FeatureValue = bool | int | float | str
 Features = tuple[tuple[str, FeatureValue], ...]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import typing
 from dataclasses import asdict, dataclass
 
 
@@ -31,7 +32,7 @@ def nvrtc_cache_key(specification: NvrtcCacheSpec) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def integral_cache_key(integral) -> str:
+def integral_cache_key(integral: typing.Any) -> str:
     """Hash versioned scientific intent through the existing content-addressing scheme.
 
     This identity includes physical bindings, external charges, tensor strides,

@@ -7,12 +7,13 @@ No GPU4PySCF data or scientific CUDA is copied.
 """
 
 import argparse
+import typing
 from pathlib import Path
 
 import mpmath as mp
 
 
-def generate():
+def generate() -> typing.Any:
     """Return deterministic rounded coefficients for nodes u=t² and weights."""
     degree, intervals, width = 17, 24, 2
     rows = []
@@ -68,7 +69,7 @@ The degree-17 Chebyshev interpolants cover [0,48] in two-unit intervals.
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",

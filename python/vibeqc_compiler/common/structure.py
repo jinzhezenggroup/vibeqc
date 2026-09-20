@@ -2,6 +2,7 @@
 
 import ast
 import importlib.util
+import typing
 from pathlib import Path
 
 from .paths import PACKAGE
@@ -78,14 +79,14 @@ def audit_structure(package: Path = PACKAGE) -> dict:
         # Track whether each import lives inside an explicit operation. Class
         # bodies and conditionals at module scope still execute during import.
         def visit(
-            node,
-            lazy=False,
+            node: typing.Any,
+            lazy: typing.Any = False,
             *,
-            parent=parent,
-            relative=relative,
-            owner=owner,
-            name=name,
-        ):
+            parent: typing.Any = parent,
+            relative: typing.Any = relative,
+            owner: typing.Any = owner,
+            name: typing.Any = name,
+        ) -> None:
             lazy = lazy or isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
             if isinstance(node, ast.ImportFrom):
                 target = node.module or ""

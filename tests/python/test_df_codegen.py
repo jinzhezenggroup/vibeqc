@@ -1,6 +1,7 @@
 """Raw DF mathematics, normalization, and independent reference contracts."""
 
 import math
+import typing
 from itertools import product
 
 import pytest
@@ -15,7 +16,7 @@ from vibeqc_compiler.integral.ir_serialization import integral_from_payload
 from vibeqc_compiler.integral.shell_spec import cartesian_components
 
 
-def test_raw_df_operator_roles_domain_and_permutations():
+def test_raw_df_operator_roles_domain_and_permutations() -> None:
     for family, count in (
         (OperatorFamily.COULOMB_METRIC, 2),
         (OperatorFamily.THREE_CENTER_ERI, 3),
@@ -47,7 +48,9 @@ def test_raw_df_operator_roles_domain_and_permutations():
         build_df_value_ir("overlap", (0, 0))
 
 
-def test_cuda_df_inventory_retains_all_operator_signatures_and_exact_root_counts():
+def test_cuda_df_inventory_retains_all_operator_signatures_and_exact_root_counts() -> (
+    None
+):
     from vibeqc_compiler.integral.df_cuda import df_program_inventory
 
     inventory = df_program_inventory()
@@ -64,7 +67,7 @@ def test_cuda_df_inventory_retains_all_operator_signatures_and_exact_root_counts
         build_df_value_ir("coulomb_metric", (0, 0), recurrence="rys2")
 
 
-def test_metric_ss_and_pp_are_coulomb_integrals_at_coincident_centers():
+def test_metric_ss_and_pp_are_coulomb_integrals_at_coincident_centers() -> None:
     p, q = 0.7, 1.3
     prefactor = 2 * math.pi**2.5 / (p * q * math.sqrt(p + q))
     centers = ((0, 0, 0), (0, 0, 0))
@@ -88,7 +91,9 @@ def test_metric_ss_and_pp_are_coulomb_integrals_at_coincident_centers():
 
 
 @pytest.mark.parametrize("angular", [(1, 3), (2, 1, 3)])
-def test_df_translation_and_only_declared_exchange_symmetry(angular):
+def test_df_translation_and_only_declared_exchange_symmetry(
+    angular: typing.Any,
+) -> None:
     family = "coulomb_metric" if len(angular) == 2 else "three_center_eri"
     exponents = (0.6, 0.8, 1.0)[: len(angular)]
     centers = ((0.13, -0.31, 0.24), (-0.43, 0.27, 0.51), (0.68, -0.14, -0.22))[
@@ -129,7 +134,9 @@ def test_df_translation_and_only_declared_exchange_symmetry(angular):
         ((3, 3, 3), -0.1296430096520732),
     ],
 )
-def test_raw_df_values_match_independent_libcint_vertical_slices(angular, reference):
+def test_raw_df_values_match_independent_libcint_vertical_slices(
+    angular: typing.Any, reference: typing.Any
+) -> None:
     """Pin int2c2e/int3c2e values with unit Cartesian primitive normalization.
 
     PySCF/libcint reference geometry and basis exactly match the inputs below;
@@ -154,7 +161,9 @@ def test_raw_df_values_match_independent_libcint_vertical_slices(angular, refere
     assert value == pytest.approx(reference, abs=2e-12, rel=2e-12)
 
 
-def test_pruned_rys_axis_moments_include_all_same_and_cross_coordinate_pairings():
+def test_pruned_rys_axis_moments_include_all_same_and_cross_coordinate_pairings() -> (
+    None
+):
     graph, root = build_df_axis_moment(1, 1, 1)
     variables = {
         "mean_0": 0.2,

@@ -1,6 +1,7 @@
 """Opt-in A1 tile numerics on an allocated GPU; not public-method acceptance."""
 
 import os
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -24,7 +25,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def cuda_setup(tmp_path_factory):
+def cuda_setup(tmp_path_factory: typing.Any) -> typing.Any:
     # Explicit allocation identity for Slurm or an authorized platform Notebook.
     # This test neither acquires resources nor manufactures a Slurm job identity.
     assert os.environ.get("SLURM_JOB_ID") or os.environ.get(
@@ -40,7 +41,9 @@ def cuda_setup(tmp_path_factory):
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
 @pytest.mark.parametrize("tiles", [(1, 2), (2, 3)])
-def test_native_cuda_tile_components_replay_and_failures(cuda_setup, name, tiles):
+def test_native_cuda_tile_components_replay_and_failures(
+    cuda_setup: typing.Any, name: typing.Any, tiles: typing.Any
+) -> None:
     compiler, cache, artifact = cuda_setup
     meta, a = load_fixture(name)
     s = fixture_snapshot(meta, a)

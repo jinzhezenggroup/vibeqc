@@ -15,26 +15,34 @@ remain distinct approximations and cannot be relabeled as identical models.
 
 ```python
 from vibeqc import (
-    Calculator, ObservableTarget, TargetAccuracy,
+    Calculator,
+    ObservableTarget,
+    TargetAccuracy,
     compare_observables,
 )
 
 atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
-target = TargetAccuracy((
-    ObservableTarget("energy", "absolute", "Eh", absolute=1e-6),
-    ObservableTarget("forces", "max_abs", "Eh/bohr", absolute=1e-7),
-))
+target = TargetAccuracy(
+    (
+        ObservableTarget("energy", "absolute", "Eh", absolute=1e-6),
+        ObservableTarget("forces", "max_abs", "Eh/bohr", absolute=1e-7),
+    )
+)
 calc = Calculator(energy_tolerance=1e-6, target_accuracy=target)
 model = calc.resolved_model(atoms)
 result = calc.singlepoint(atoms)
 assert result.accuracy.status == "unverified"
 
 # A fully relaxed audit runs the requested target again with tighter numerics.
-strict = Calculator(energy_tolerance=1e-13, density_tolerance=1e-11,
-                    screening_tolerance=1e-14)
+strict = Calculator(
+    energy_tolerance=1e-13, density_tolerance=1e-11, screening_tolerance=1e-14
+)
 reference = strict.singlepoint(atoms)
 report = compare_observables(
-    model, calc.resolved_model(atoms), strict.resolved_model(atoms), target,
+    model,
+    calc.resolved_model(atoms),
+    strict.resolved_model(atoms),
+    target,
     {"energy": result.energy, "forces": result.forces},
     {"energy": reference.energy, "forces": reference.forces},
     scope="relaxed_target",
@@ -109,12 +117,13 @@ from vibeqc import AccuracyAssessment
 from vibeqc.accuracy_estimator import EmpiricalHFEstimator
 from tools.vibeqc_numerics.audit import error_features
 
-estimator = EmpiricalHFEstimator.from_dict(json.loads(
-    Path("benchmarks/results/accuracy-173/cpu/estimator.json").read_text()
-))
+estimator = EmpiricalHFEstimator.from_dict(
+    json.loads(Path("benchmarks/results/accuracy-173/cpu/estimator.json").read_text())
+)
 features = error_features(source, probe, physical_audit)
 evidence = estimator.predict(
-    probe.model, features,
+    probe.model,
+    features,
     energy_reference_norm=abs(reference.energy),
     force_reference_norm=abs(reference.forces).max(),
 )

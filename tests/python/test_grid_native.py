@@ -1,6 +1,7 @@
 """Independent Decimal/FD gates for the bounded native Becke adjoint."""
 
 import ctypes as ct
+import typing
 from decimal import Decimal, localcontext
 from pathlib import Path
 
@@ -16,14 +17,16 @@ OWNERS = np.array([0, 1, 2], dtype=np.int64)
 SEEDS = np.array([0.3, -0.2, 0.7])
 
 
-def native(tmp_path, **kwargs):
+def native(tmp_path: typing.Any, **kwargs: typing.Any) -> typing.Any:
     return NativeGridContraction(
         compiler=CppCompilerAdapter(Path("c++")), cache=tmp_path, **kwargs
     )
 
 
 @pytest.mark.parametrize("iterations", [1, 3, 5])
-def test_independent_decimal_fd_translation_permutation_and_tiles(tmp_path, iterations):
+def test_independent_decimal_fd_translation_permutation_and_tiles(
+    tmp_path: typing.Any, iterations: typing.Any
+) -> None:
     executor = native(tmp_path, iterations=iterations)
     gradient = executor.contract(POINTS, CENTERS, OWNERS, SEEDS)
     derivative = np.sum(gradient * DC)
@@ -31,7 +34,9 @@ def test_independent_decimal_fd_translation_permutation_and_tiles(tmp_path, iter
         context.prec = 60
         h = Decimal("1e-16")
 
-        def moved(values, motion, sign):
+        def moved(
+            values: typing.Any, motion: typing.Any, sign: typing.Any
+        ) -> typing.Any:
             return [
                 [Decimal(str(x)) + sign * h * Decimal(str(dx)) for x, dx in zip(row, d)]
                 for row, d in zip(values, motion)
@@ -94,7 +99,9 @@ def test_independent_decimal_fd_translation_permutation_and_tiles(tmp_path, iter
 
 
 @pytest.mark.parametrize("iterations", [1, 3, 5])
-def test_saturated_exact_zero_and_single_zero_factor(tmp_path, iterations):
+def test_saturated_exact_zero_and_single_zero_factor(
+    tmp_path: typing.Any, iterations: typing.Any
+) -> None:
     executor = native(tmp_path, iterations=iterations)
     centers = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
     points = np.array([[-1.0, 0.0, 0.0], [3.0, 0.0, 0.0]])
@@ -109,7 +116,9 @@ def test_saturated_exact_zero_and_single_zero_factor(tmp_path, iterations):
     )
 
 
-def test_native_bounds_invalid_inputs_and_transactional_late_failure(tmp_path):
+def test_native_bounds_invalid_inputs_and_transactional_late_failure(
+    tmp_path: typing.Any,
+) -> None:
     executor = native(tmp_path)
     with pytest.raises(ValueError, match="budget"):
         native(tmp_path, max_bytes=1).contract(POINTS, CENTERS, OWNERS, SEEDS)
@@ -165,7 +174,9 @@ def test_native_bounds_invalid_inputs_and_transactional_late_failure(tmp_path):
     assert np.isfinite(executor.contract(POINTS, CENTERS, OWNERS, SEEDS)).all()
 
 
-def test_one_rounded_zero_factor_keeps_nonzero_product_derivative(tmp_path):
+def test_one_rounded_zero_factor_keeps_nonzero_product_derivative(
+    tmp_path: typing.Any,
+) -> None:
     """A single zero factor can have a nonzero tangent before saturation.
 
     The final pair value rounds to zero at iteration one, but its derivative
@@ -183,7 +194,9 @@ def test_one_rounded_zero_factor_keeps_nonzero_product_derivative(tmp_path):
         context.prec = 70
         h = Decimal("1e-20")
 
-        def moved(values, directions, sign):
+        def moved(
+            values: typing.Any, directions: typing.Any, sign: typing.Any
+        ) -> typing.Any:
             return [
                 [Decimal(str(x)) + sign * h * Decimal(str(dx)) for x, dx in zip(row, d)]
                 for row, d in zip(values, directions)

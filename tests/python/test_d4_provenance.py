@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import typing
 from pathlib import Path
 
 import pytest
@@ -16,7 +17,7 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def test_generated_table_matches_manifest():
+def test_generated_table_matches_manifest() -> None:
     folder = ROOT / "src/dft/dispersion"
     manifest = json.loads((folder / "d4_manifest.json").read_text())
     assert manifest["reference_model"] == "gfn2"
@@ -26,7 +27,7 @@ def test_generated_table_matches_manifest():
     assert digest(folder / manifest["output"]) == manifest["output_sha256"]
 
 
-def test_independent_oracle_assets_match_manifest():
+def test_independent_oracle_assets_match_manifest() -> None:
     manifest = json.loads((ROOT / "tests/data/d4/oracle_manifest.json").read_text())
     assert manifest["oracle_version"] == "dftd4 version 4.2.0"
     assert manifest["reference_model"] == "gfn2"
@@ -42,7 +43,7 @@ def test_independent_oracle_assets_match_manifest():
     )
 
 
-def load_generator():
+def load_generator() -> typing.Any:
     path = ROOT / "tools/parameters/generate_d4.py"
     spec = importlib.util.spec_from_file_location("d4_parameter_generator", path)
     module = importlib.util.module_from_spec(spec)
@@ -50,7 +51,7 @@ def load_generator():
     return module
 
 
-def test_packing_refuses_nonsymmetric_matrix():
+def test_packing_refuses_nonsymmetric_matrix() -> None:
     gen = load_generator()
     refs = [
         {"coordination_number": float(i), "charge": 0.0, "gaussian_count": 1}
@@ -63,13 +64,13 @@ def test_packing_refuses_nonsymmetric_matrix():
     assert "kReferenceCount * (kReferenceCount + 1) / 2" in packed
 
 
-def test_exporter_rejects_nonfinite_table_values():
+def test_exporter_rejects_nonfinite_table_values() -> None:
     gen = load_generator()
     with pytest.raises(gen.D4DataError, match="NaN or infinity"):
         gen.format_double(float("nan"))
 
 
-def test_migration_records_original_source_blobs():
+def test_migration_records_original_source_blobs() -> None:
     manifest = json.loads(
         (ROOT / "src/dft/dispersion/xtbloom_manifest.json").read_text()
     )
@@ -84,7 +85,7 @@ def test_migration_records_original_source_blobs():
     )
 
 
-def test_eeq_tables_and_charge_parameters_match_pinned_manifest():
+def test_eeq_tables_and_charge_parameters_match_pinned_manifest() -> None:
     folder = ROOT / "src/dft/dispersion"
     manifest = json.loads((folder / "d4_eeq_manifest.json").read_text())
     assert manifest["reference_model"] == "eeq"
@@ -114,7 +115,7 @@ def test_eeq_tables_and_charge_parameters_match_pinned_manifest():
     )
 
 
-def test_independent_eeq_oracle_assets_match_manifest():
+def test_independent_eeq_oracle_assets_match_manifest() -> None:
     manifest = json.loads((ROOT / "tests/data/d4/eeq_oracle_manifest.json").read_text())
     assert manifest["oracle_version"] == "dftd4 version 4.2.0"
     assert manifest["cases"] == [

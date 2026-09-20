@@ -13,6 +13,7 @@ import json
 import os
 import statistics
 import time
+import typing
 
 import numpy as np
 from _cases import benchmark_cases
@@ -91,7 +92,7 @@ def main() -> None:
     # and allocator in the measured process. Synchronize all owning streams.
     runtime = ctypes.CDLL("libcudart.so.12")
 
-    def cuda_call(name):
+    def cuda_call(name: typing.Any) -> None:
         function = getattr(runtime, name)
         function.restype = ctypes.c_int
         function.argtypes = []

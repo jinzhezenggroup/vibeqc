@@ -6,6 +6,7 @@ common Graph. Pair/product reductions retain O(point_tile * atom) storage;
 no coordinate-by-grid Jacobian or SCF iteration tape is constructed.
 """
 
+import typing
 from dataclasses import dataclass
 from functools import lru_cache
 from hashlib import sha256
@@ -27,12 +28,12 @@ class GridResponseProgram:
     roots: tuple
     identity: str
 
-    def evaluate(self, **variables):
+    def evaluate(self, **variables: typing.Any) -> typing.Any:
         return evaluate_array_graph(self.graph, self.roots, variables)
 
 
 @lru_cache(maxsize=8, typed=True)
-def grid_response_program(kind, iterations=3):
+def grid_response_program(kind: typing.Any, iterations: typing.Any = 3) -> typing.Any:
     """Generate local mathematics once, not one graph per nuclear coordinate."""
     checked_int(iterations, "partition iterations", high=5)
     graph = Graph()
@@ -80,7 +81,7 @@ def grid_response_program(kind, iterations=3):
     return GridResponseProgram(graph, roots, identity)
 
 
-def _norm(delta, motion):
+def _norm(delta: typing.Any, motion: typing.Any) -> typing.Any:
     # Homogeneity permits a frozen common scale in primal and JVP. This avoids
     # squaring huge/tiny unscaled coordinates without inventing a distance floor.
     scale = np.max(np.abs(delta), axis=-1)
@@ -104,14 +105,14 @@ class PartitionResponse:
 
 
 def partition_response(
-    points,
-    centers,
+    points: typing.Any,
+    centers: typing.Any,
     *,
-    point_motion,
-    center_motion,
-    iterations=3,
-    coincident_tolerance=1e-12,
-):
+    point_motion: typing.Any,
+    center_motion: typing.Any,
+    iterations: typing.Any = 3,
+    coincident_tolerance: typing.Any = 1e-12,
+) -> typing.Any:
     """Differentiate point AND every partition-center dependence exactly once.
 
     This first smooth-branch consumer rejects coincident atom centers (including
@@ -239,7 +240,9 @@ class GridResponseTile:
     branch_identity: str
 
 
-def grid_response_tiles(grid, center_motion, *, tile_points=256):
+def grid_response_tiles(
+    grid: typing.Any, center_motion: typing.Any, *, tile_points: typing.Any = 256
+) -> typing.Any:
     """Stream owner-point motion and complete partition-weight motion in Bohr.
 
     Element radial scales and topology are fixed. The output can contract with

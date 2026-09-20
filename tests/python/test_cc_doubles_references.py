@@ -1,5 +1,6 @@
 """PySCF physical doubles reconstruction and independent shared intermediates."""
 
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -16,7 +17,7 @@ DATA = Path(__file__).resolve().parents[1] / "reference_data/cc/rccsd-b.json"
 @pytest.mark.parametrize(
     "case", load_references(DATA)["cases"], ids=lambda c: c["name"]
 )
-def test_pinned_doubles_and_each_shared_intermediate(case):
+def test_pinned_doubles_and_each_shared_intermediate(case: typing.Any) -> None:
     f, g, x, y = (np.array(case["inputs"][k]) for k in ("fock", "eri", "t1", "t2"))
     for form in ("expanded", "shared", "optimized"):
         result = execute(
@@ -41,7 +42,9 @@ def test_pinned_doubles_and_each_shared_intermediate(case):
             )
 
 
-def test_full_evidence_fixes_oracle_and_execution_identity(tmp_path):
+def test_full_evidence_fixes_oracle_and_execution_identity(
+    tmp_path: typing.Any,
+) -> None:
     from tools.validate_ccsd import run
     from tools.vibeqc_validation.schema import file_hash
 

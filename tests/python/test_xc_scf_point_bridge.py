@@ -8,7 +8,7 @@ from vibeqc import _native
 from vibeqc._ks_snapshot import _scf_xc_points
 
 
-def test_scf_point_bridge_matches_independent_domain_fixture():
+def test_scf_point_bridge_matches_independent_domain_fixture() -> None:
     data = np.loadtxt(Path(__file__).resolve().parents[1] / "data/xc/scf_domain.tsv")
     library = _native.load_library(device="cpu")
     for pbe in (False, True):
@@ -29,7 +29,7 @@ def test_scf_point_bridge_matches_independent_domain_fixture():
         assert np.all(np.abs(packed - expected) <= tolerance)
 
 
-def test_scf_point_bridge_rejects_layout_and_invalid_domain():
+def test_scf_point_bridge_rejects_layout_and_invalid_domain() -> None:
     library = _native.load_library(device="cpu")
     with pytest.raises(ValueError, match=r"rho\[2,n\]"):
         _scf_xc_points(library, False, np.ones((3, 2)), np.zeros((2, 2, 3)))

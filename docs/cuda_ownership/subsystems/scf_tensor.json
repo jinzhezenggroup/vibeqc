@@ -1,0 +1,12 @@
+{
+  "current_default": "native RHF/UHF/DF density, J/K, energy and force contractions and DIIS Gram/solve/extrapolation; direct J/K host adapters in cuda/direct_jk.cpp remain native after leaving the CUDA-only source census",
+  "evidence": [
+    "docs/architecture.md",
+    "benchmarks/results/issues388-391-df/README.md"
+  ],
+  "generated_capability": "TensorIR owns general contractions/AD; current native SCF bridges remain concrete",
+  "missing_capability": "integration of method equations into shared generated tensor execution, including DIIS circular-history Gram construction, normalization, dependent-history retirement and Fock extrapolation",
+  "owner": "scf_tensor",
+  "retirement_condition": "retain native scientific adapters until generated method endpoint passes; preserve generic solver/BLAS runtime. Retire native DIIS numerical regions only after a compiler-owned replacement passes independent RHF/UHF, inactive/wrapped/retired/ragged history, scratch-capacity, convergence and complete-endpoint gates. Serial DIIS remains the Direct/KS schedule and an explicit DF control; cooperative DF retains a bounded warp fallback when partial scratch is unavailable.",
+  "status": "native_baseline"
+}

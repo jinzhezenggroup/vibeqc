@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import typing
 import uuid
 
 import numpy as np
@@ -10,7 +11,9 @@ import numpy as np
 from .reference import ReferenceSnapshot
 
 
-def conventional_fock(source, density, *, axis_tile=2):
+def conventional_fock(
+    source: typing.Any, density: typing.Any, *, axis_tile: typing.Any = 2
+) -> typing.Any:
     """Contract the physical unscreened F[D] in one streamed AO-tile pass."""
     _, h = source.one_electron()
     f = h.copy()
@@ -26,16 +29,16 @@ def conventional_fock(source, density, *, axis_tile=2):
 
 
 def export_rhf(
-    source,
+    source: typing.Any,
     *,
-    backend="cpu",
-    device_id=0,
-    metric=None,
-    generation_id=None,
-    max_iterations=100,
-    tolerance=1e-11,
-    axis_tile=2,
-):
+    backend: typing.Any = "cpu",
+    device_id: typing.Any = 0,
+    metric: typing.Any = None,
+    generation_id: typing.Any = None,
+    max_iterations: typing.Any = 100,
+    tolerance: typing.Any = 1e-11,
+    axis_tile: typing.Any = 2,
+) -> typing.Any:
     """Run native RHF and canonicalize its final physical Fock on the host.
 
     The existing HF implementation owns its original calculation memory. This
@@ -72,7 +75,7 @@ def export_rhf(
             raw.shape
         )
 
-        def build(d):
+        def build(d: typing.Any) -> typing.Any:
             j = np.einsum("uvP,wxP,wx->uv", b, b, d, optimize=True)
             k = np.einsum("uwP,vxP,wx->uv", b, b, d, optimize=True)
             return h + j - 0.5 * k
@@ -125,7 +128,7 @@ def export_rhf(
     }
 
 
-def _canonical_orbitals(overlap, fock):
+def _canonical_orbitals(overlap: typing.Any, fock: typing.Any) -> typing.Any:
     """Canonicalize one symmetric AO Fock matrix in the shared AO metric."""
     eigenvalues, eigenvectors = np.linalg.eigh(overlap)
     if eigenvalues[0] <= 1e-10:
@@ -139,7 +142,13 @@ def _canonical_orbitals(overlap, fock):
     return energies, coefficients
 
 
-def conventional_uhf_fock(source, alpha_density, beta_density, *, axis_tile=2):
+def conventional_uhf_fock(
+    source: typing.Any,
+    alpha_density: typing.Any,
+    beta_density: typing.Any,
+    *,
+    axis_tile: typing.Any = 2,
+) -> typing.Any:
     """Contract the direct UHF Focks with total-density J and spin-local K."""
     _, hcore = source.one_electron()
     alpha = hcore.copy()
@@ -163,13 +172,13 @@ def conventional_uhf_fock(source, alpha_density, beta_density, *, axis_tile=2):
 
 
 def export_uhf(
-    source,
+    source: typing.Any,
     *,
-    generation_id=None,
-    max_iterations=100,
-    tolerance=1e-11,
-    axis_tile=2,
-):
+    generation_id: typing.Any = None,
+    max_iterations: typing.Any = 100,
+    tolerance: typing.Any = 1e-11,
+    axis_tile: typing.Any = 2,
+) -> typing.Any:
     """Export a converged CPU direct-UHF solution as a response snapshot.
 
     The bridge deliberately restricts this first UHF endpoint to the direct

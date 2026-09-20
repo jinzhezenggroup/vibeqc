@@ -3,6 +3,7 @@
 import json
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -12,7 +13,7 @@ def _read(relative: str) -> str:
     return (ROOT / relative).read_text()
 
 
-def test_generated_commands_are_centralized():
+def test_generated_commands_are_centralized() -> None:
     """Project declarations should use the shared generated-source helper."""
     helper = _read("cmake/VibeQCGenerated.cmake")
     assert helper.count("add_custom_command(") == 1
@@ -24,7 +25,9 @@ def test_generated_commands_are_centralized():
         assert "add_custom_command(" not in _read(relative)
 
 
-def test_generated_command_preserves_list_valued_arguments(tmp_path):
+def test_generated_command_preserves_list_valued_arguments(
+    tmp_path: typing.Any,
+) -> None:
     """A multi-SM generator request must arrive as one semicolon-delimited value."""
     generator = tmp_path / "record_args.py"
     generator.write_text(
@@ -54,7 +57,7 @@ def test_generated_command_preserves_list_valued_arguments(tmp_path):
     ]
 
 
-def test_production_sources_are_explicit_and_component_owned():
+def test_production_sources_are_explicit_and_component_owned() -> None:
     """Do not trade a monolithic list for implicit recursive source globbing."""
     sources = _read("cmake/VibeQCSources.cmake")
     assert "file(GLOB" not in sources
@@ -67,7 +70,7 @@ def test_production_sources_are_explicit_and_component_owned():
         assert f"function({owner}" in sources
 
 
-def test_top_level_is_composition_only_for_sources_and_codegen():
+def test_top_level_is_composition_only_for_sources_and_codegen() -> None:
     cmake = _read("CMakeLists.txt")
     for module in (
         "VibeQCGeneratedSources.cmake",

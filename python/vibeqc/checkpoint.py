@@ -17,6 +17,7 @@ import os
 import struct
 import tempfile
 import time
+import typing
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,7 +58,7 @@ class CheckpointManifest:
     blobs: tuple[dict, ...]
     schema_version: int = 1
 
-    def to_dict(self):
+    def to_dict(self) -> typing.Any:
         return deepcopy(
             {
                 "schema": "vibeqc.hf_checkpoint",
@@ -69,24 +70,26 @@ class CheckpointManifest:
         )
 
 
-def _json(value):
+def _json(value: typing.Any) -> typing.Any:
     return json.dumps(
         value, sort_keys=True, separators=(",", ":"), allow_nan=False
     ).encode("utf-8")
 
 
-def _integer(value, name, maximum, minimum=0):
+def _integer(
+    value: typing.Any, name: typing.Any, maximum: typing.Any, minimum: typing.Any = 0
+) -> typing.Any:
     if type(value) is not int or not minimum <= value <= maximum:
         raise CheckpointError(f"invalid {name}")
     return value
 
 
-def _keys(value, keys, name):
+def _keys(value: typing.Any, keys: typing.Any, name: typing.Any) -> None:
     if not isinstance(value, dict) or set(value) != set(keys.split()):
         raise CheckpointError(f"unknown or missing required {name} fields")
 
 
-def _unique_object(pairs):
+def _unique_object(pairs: typing.Any) -> typing.Any:
     result = {}
     for key, value in pairs:
         if key in result:
@@ -95,7 +98,7 @@ def _unique_object(pairs):
     return result
 
 
-def _hash(value):
+def _hash(value: typing.Any) -> typing.Any:
     return (
         isinstance(value, str)
         and len(value) == 64
@@ -103,7 +106,7 @@ def _hash(value):
     )
 
 
-def _controls(calc):
+def _controls(calc: typing.Any) -> typing.Any:
     return {
         "max_iterations": calc._max_iterations,
         "energy_tolerance": calc._energy_tolerance,
@@ -123,7 +126,7 @@ def _controls(calc):
     }
 
 
-def _provider(model):
+def _provider(model: typing.Any) -> typing.Any:
     return (
         "vibeqc.hf.ri-pseudoinverse/v1"
         if model.approximation == "density_fitting"
@@ -131,7 +134,7 @@ def _provider(model):
     )
 
 
-def _validate_controls(controls):
+def _validate_controls(controls: typing.Any) -> None:
     """Keep source provenance strict without changing target solver controls."""
     _keys(
         controls,
@@ -173,23 +176,25 @@ def _validate_controls(controls):
         raise CheckpointError("inconsistent source precision policy")
 
 
-def _check_batch(batch):
+def _check_batch(batch: typing.Any) -> None:
     batch._ensure_open()
     if batch._calculator._model_signature() != batch._model_signature:
         raise CheckpointError("prepared model identity changed; prepare a new batch")
 
 
-def _descriptor():
+def _descriptor() -> typing.Any:
     return _native.HfWarmState(
         struct_size=ctypes.sizeof(_native.HfWarmState), abi_version=_native.ABI_VERSION
     )
 
 
-def _pointer(array):
+def _pointer(array: typing.Any) -> typing.Any:
     return array.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
 
 
-def _resource_check(batch, numeric_bytes, largest_density):
+def _resource_check(
+    batch: typing.Any, numeric_bytes: typing.Any, largest_density: typing.Any
+) -> typing.Any:
     """Charge staging and source-metric validation above the current HF plan.
 
     The conservative host bound includes owned arrays, native candidate copies,
@@ -207,7 +212,9 @@ def _resource_check(batch, numeric_bytes, largest_density):
     return extra
 
 
-def _parse_manifest(raw, payload_bytes, max_bytes):
+def _parse_manifest(
+    raw: typing.Any, payload_bytes: typing.Any, max_bytes: typing.Any
+) -> typing.Any:
     try:
         doc = json.loads(
             raw,
@@ -356,7 +363,13 @@ def _parse_manifest(raw, payload_bytes, max_bytes):
         raise CheckpointError(f"invalid checkpoint manifest: {error}") from error
 
 
-def _read(path, max_bytes, *, retain=True, batch=None):
+def _read(
+    path: typing.Any,
+    max_bytes: typing.Any,
+    *,
+    retain: typing.Any = True,
+    batch: typing.Any = None,
+) -> typing.Any:
     _integer(max_bytes, "checkpoint byte limit", 2**63 - 1, _HEADER.size)
     arrays = {}
     with open(path, "rb") as stream:
@@ -408,7 +421,9 @@ def _read(path, max_bytes, *, retain=True, batch=None):
     return manifest, arrays, size
 
 
-def inspect_checkpoint(path, *, max_bytes=256 << 20):
+def inspect_checkpoint(
+    path: typing.Any, *, max_bytes: typing.Any = 256 << 20
+) -> typing.Any:
     """Verify schema, lengths and checksums without initializing any runtime.
 
     Physical/target validation happens only on load into a prepared object.
@@ -417,7 +432,9 @@ def inspect_checkpoint(path, *, max_bytes=256 << 20):
     return _read(path, max_bytes, retain=False)[0]
 
 
-def save_checkpoint(batch, path, *, max_bytes=256 << 20):
+def save_checkpoint(
+    batch: typing.Any, path: typing.Any, *, max_bytes: typing.Any = 256 << 20
+) -> typing.Any:
     """Write, fsync, verify and atomically replace a single portable HF file."""
     start = time.perf_counter()
     _check_batch(batch)
@@ -558,7 +575,14 @@ def save_checkpoint(batch, path, *, max_bytes=256 << 20):
     return report
 
 
-def load_checkpoint(batch, path, *, allow_warm=False, strict=True, max_bytes=256 << 20):
+def load_checkpoint(
+    batch: typing.Any,
+    path: typing.Any,
+    *,
+    allow_warm: typing.Any = False,
+    strict: typing.Any = True,
+    max_bytes: typing.Any = 256 << 20,
+) -> typing.Any:
     """Validate a complete file, classify each slot, then atomically import seeds.
 
     Cross-basis/orbital transport is deliberately rejected. Changed-geometry

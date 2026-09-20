@@ -1,6 +1,7 @@
 """Small host-driver generation around separately compiled production kernels."""
 
 import re
+import typing
 from pathlib import Path
 
 from .f_shell import f_shell_plan, source_audit
@@ -10,7 +11,7 @@ def emit_numerical_driver(
     name: str,
     architecture: str = "sm_120",
     *,
-    plan=None,
+    plan: typing.Any = None,
     source: str | None = None,
     consumer: str | None = None,
 ) -> str:

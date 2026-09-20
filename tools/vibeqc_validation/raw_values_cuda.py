@@ -1,7 +1,16 @@
 """Shared finite CUDA numerical-driver protocol for raw integral families."""
 
+import typing
 
-def emit_raw_value_driver(architecture, *, header, kernel, magic, width):
+
+def emit_raw_value_driver(
+    architecture: typing.Any,
+    *,
+    header: typing.Any,
+    kernel: typing.Any,
+    magic: typing.Any,
+    width: typing.Any,
+) -> typing.Any:
     """Retain compiler/device resources, finite fixtures, and synchronized samples."""
     if len(magic) != 8 or width < 1:
         raise ValueError("raw fixture magic/width are invalid")

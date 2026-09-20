@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/df_packed_values.cu",
+  "role": "performance_exception",
+  "subsystem": "scf_tensor",
+  "reason": "Explicit experimental exact packed-value layout and FP64 occupied projection; preserves existing DF tensor equations and has no automatic promotion. Evidence: benchmarks/results/issue409-packed-values/README.md. Retire if no complete endpoint/capacity domain qualifies, or when compiler-owned triangular gathering passes the same numerical, resource and endpoint gates.",
+  "regions": []
+}

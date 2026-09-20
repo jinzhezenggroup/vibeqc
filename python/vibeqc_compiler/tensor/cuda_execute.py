@@ -18,6 +18,7 @@ import subprocess
 import tempfile
 import threading
 import time
+import typing
 from collections.abc import Mapping
 from contextlib import nullcontext
 from dataclasses import dataclass
@@ -31,7 +32,6 @@ from vibeqc_compiler.common.capture import (
     CaptureContract,
     _GraphMetrics,
 )
-from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_runtime import (
     _PREPARATION_LOCK,
     CudaArtifact,
@@ -58,6 +58,14 @@ from .cuda_gemm import gemm_contract
 from .cuda_plan import VALIDATION_CHUNK, TensorPlan
 from .cuda_resources import parse_resources
 
+if typing.TYPE_CHECKING:
+    from typing_extensions import Self
+
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.resources import ResourcePlan
+
+    from .ir import Node
+
 # Allocation snapshots for provider accounting must not race another owned
 # handle's creation/destruction. Executions themselves remain independent.
 
@@ -67,7 +75,7 @@ class CudaExecution:
     """Detached named outputs and complete execution/profiling measurements."""
 
     outputs: dict[str, np.ndarray]
-    metrics: dict
+    metrics: dict[str, typing.Any]
     backend: str = "cuda-fp64-ordinary-stream"
 
 
@@ -204,7 +212,13 @@ def compile_cuda(
     return CudaArtifact(library, metadata)
 
 
-def tensor_capture_contract(plan, artifact, device, *, resource_plan=None):
+def tensor_capture_contract(
+    plan: TensorPlan,
+    artifact: CudaArtifact,
+    device: Mapping[str, typing.Any],
+    *,
+    resource_plan: ResourcePlan | None = None,
+) -> CaptureContract:
     """Qualify only the fixed-topology, device-only emitted launch sequence."""
     launches = 1  # per-run arithmetic-error reset
     for step in plan.steps:
@@ -218,6 +232,8 @@ def tensor_capture_contract(plan, artifact, device, *, resource_plan=None):
             launches += 1
             continue
         g = gemm_contract(step.node)
+        if g is None:
+            raise ValueError("GEMM capture step requires a contraction node")
         if not g.k:
             launches += 1
         elif step.gemm.startswith("direct-"):
@@ -284,10 +300,10 @@ class PreparedCuda:
         artifact: CudaArtifact,
         *,
         device: int = 0,
-        resource_plan=None,
-        resource_owner=None,
+        resource_plan: ResourcePlan | None = None,
+        resource_owner: str | None = None,
         execution_mode: str = "ordinary",
-    ):
+    ) -> None:
         if execution_mode not in ("ordinary", "cuda-graph"):
             raise ValueError("execution_mode must be ordinary or cuda-graph")
         self.execution_mode = execution_mode
@@ -302,6 +318,8 @@ class PreparedCuda:
         self.resource_plan = resource_plan
         self.resource_owner = resource_owner
         if resource_plan is not None:
+            if resource_owner is None:
+                raise ValueError("resource plan requires a named owner")
             resource_plan.require_feasible()
             request = next(
                 (r for r in resource_plan.requests if r.name == resource_owner), None
@@ -439,7 +457,7 @@ class PreparedCuda:
                 self.close()
                 raise RuntimeError(error.value.decode())
 
-    def invalidate_graph(self):
+    def invalidate_graph(self) -> None:
         """Discard replay state without changing buffers or the immutable plan.
 
         Shape/schedule/artifact/device changes require a new PreparedCuda owner.
@@ -464,8 +482,10 @@ class PreparedCuda:
                 self._graph_needs_setup = True
                 self.graph_status = "invalidated; warmup required"
 
-    def _validate(self, value, node):
+    def _validate(self, value: np.ndarray, node: Node) -> None:
         """Bound validation scratch even for transposed symmetry partners."""
+        if self._mask is None:
+            raise RuntimeError("tensor validation scratch is closed")
         flat = value.reshape(-1)
         for start in range(0, flat.size, VALIDATION_CHUNK):
             chunk = flat[start : start + VALIDATION_CHUNK]
@@ -500,7 +520,11 @@ class PreparedCuda:
                     )
 
     def execute(
-        self, feeds: Mapping, *, profile: bool = False, diagnostics: bool = False
+        self,
+        feeds: Mapping[str, typing.Any],
+        *,
+        profile: bool = False,
+        diagnostics: bool = False,
     ) -> CudaExecution:
         """Stage/validate feeds, then make one native call for the whole program.
 
@@ -646,7 +670,7 @@ class PreparedCuda:
             )
             return CudaExecution(outputs, metrics, backend)
 
-    def close(self):
+    def close(self) -> None:
         """Release resources once; cannot race an execution using their pointers."""
         with self._lock:
             if self._pointer:
@@ -655,12 +679,12 @@ class PreparedCuda:
                 self._pointer = ctypes.c_void_p()
             self._inputs, self._scratch, self._mask = [], [], None
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *unused):
+    def __exit__(self, *unused: object) -> None:
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         if getattr(self, "_pointer", None):
             self.close()

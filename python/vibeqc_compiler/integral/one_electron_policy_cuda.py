@@ -6,12 +6,14 @@ semantics into the compiler. Native traversal knows no S/T/V formulas, nuclear
 charge convention or number of scientific channels.
 """
 
+import typing
+
 from .cuda import CudaEmitter
 from .expr import Graph
 from .one_electron_values import build_one_electron_value_ir
 
 
-def one_electron_policy_inventory():
+def one_electron_policy_inventory() -> typing.Any:
     """Version the normalized contraction/output ABI independently of scalars."""
     return {
         "schema": "vibeqc.one_electron_pair_policy",
@@ -26,7 +28,7 @@ def one_electron_policy_inventory():
     }
 
 
-def emit_one_electron_policy_cuda():
+def emit_one_electron_policy_cuda() -> typing.Any:
     """Emit operator composition for all supported Cartesian/spherical shells.
 
     No shell-specific glue is emitted: component dispatch is shared with the

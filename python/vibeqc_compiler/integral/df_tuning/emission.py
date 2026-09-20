@@ -1,5 +1,7 @@
 """Instantiate the exact native production packet kernel for one typed trial."""
 
+import typing
+
 from .policy import DfDerivativeTrial
 
 API = r"""#pragma once
@@ -15,7 +17,7 @@ struct Candidate { const char* key; unsigned a,b,c,variant; Launch launch; };
 """
 
 
-def emit_candidate(trial: DfDerivativeTrial):
+def emit_candidate(trial: DfDerivativeTrial) -> typing.Any:
     """Emit only one packet instantiation, sharing all equations and scheduling."""
     a, b, c = trial.angular
     arguments = f"{a},{b},{c},{trial.variant},{str(trial.lowering == 'rys').lower()}"
@@ -46,7 +48,7 @@ cudaError_t {trial.symbol}(DfShellBasisView first,DfShellBasisView second,
 """
 
 
-def emit_driver(trials):
+def emit_driver(trials: typing.Any) -> typing.Any:
     """Register every runnable object in one executable and one GPU allocation."""
     lines = ['#include "df_benchmark_driver.hpp"', "namespace vibeqc::df_benchmark {"]
     signature = (

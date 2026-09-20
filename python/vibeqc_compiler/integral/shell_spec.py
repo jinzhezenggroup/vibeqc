@@ -9,11 +9,14 @@ tables or index arithmetic by hand to CUDA.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from functools import cached_property, reduce
 from itertools import product
 from operator import mul
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
 
 AXES = ("x", "y", "z")
 _AXIS_INDEX = {axis: index for index, axis in enumerate(AXES)}
