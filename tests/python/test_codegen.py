@@ -3253,6 +3253,7 @@ def test_production_manifest_drives_generated_registry_and_shards(
     specifications = load_production_manifest(manifest)
     fock_specifications = load_production_fock_manifest(manifest)
     assert tuple(spec.name for spec in specifications) == (
+        "ssss",
         "dppp",
         "dpdp",
         "dddp",
@@ -3340,7 +3341,7 @@ def test_production_manifest_drives_generated_registry_and_shards(
     }
     assert tuple(selection.consumers for selection in selections) == tuple(
         (KernelConsumer.FOCK,)
-        if selection.spec.name in ("ssss", "psss")
+        if selection.spec.name == "psss"
         else (
             (KernelConsumer.FORCE,)
             if selection.spec.name == "fpps"
@@ -3801,7 +3802,7 @@ def test_fixed_generated_task_arena_has_a_memory_admission_limit() -> None:
 
 
 def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
-    """Do not call the force registry for Fock-only ssss/psss entries."""
+    """Do not call the force registry for the remaining Fock-only psss entry."""
 
     source = _direct_cuda_source()
     begin = source.index(
@@ -3813,6 +3814,47 @@ def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
     assert "selected_shell_kernels(bounded_force_kernel_count)" in mask_source
     assert "~kBoundedNativePagedForceShellClassMask" in mask_source
     assert "cudaErrorNotSupported" in mask_source
+
+
+def test_ssss_force_candidate_keeps_native_default_until_endpoint_gate() -> None:
+    """Compile generated ssss for A/B while retaining the tuned native default."""
+
+    manifest = load_production_kernel_selections(
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json",
+        "sm_120",
+    )
+    ssss = next(selection for selection in manifest if selection.spec.name == "ssss")
+    assert KernelConsumer.FORCE in ssss.consumers
+
+    types_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_gradient_types.cuh"
+    ).read_text(encoding="utf-8")
+    gradient_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order01_gradient.cuh"
+    ).read_text(encoding="utf-8")
+    low_order_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
+    ).read_text(encoding="utf-8")
+    assert "SsssWeightedGradient" in types_source
+    assert "contracted_eri_cartesian_source_ssss_weighted_gradient" in gradient_source
+    assert "contract_two_electron_force_ssss_task" in low_order_source
+
+    policy = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text(
+        encoding="utf-8"
+    )
+    driver = _direct_cuda_source()
+    assert 'selected("VIBEQC_SSSS_FORCE", "generated")' in policy
+    assert (
+        "plan.generated_ssss_force = cuda_policy::generated_ssss_force_requested();"
+        in driver
+    )
+    assert "plan.generated_ssss_force ? 0U" in driver
+    assert "std::uint64_t{1} << kSsssShellClass" in driver
+    assert "~explicit_generated_force_shell_class_mask" in driver
 
 
 def test_bounded_psss_resident_path_is_allocated_and_disjoint_from_page_fallback() -> (

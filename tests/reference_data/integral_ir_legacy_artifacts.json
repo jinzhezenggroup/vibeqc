@@ -2,7 +2,7 @@
   "baseline_revision": "2414c57dbc7a11c7cd33e3f81fad333be44422e4",
   "generator_abi": 1,
   "manifest_schema": 2,
-  "manifest_sha256": "9e9052733c9fc47892fb9c275e7c9470dc4faa19cdf3a1c2087698f707f209ac",
+  "manifest_sha256": "98bc9a72edfe19fbc7991a91862393b65a9e7e89ce0d8c5338cdae0eb9d143cd",
   "architectures": [
     "sm_120",
     "sm_90"
@@ -511,12 +511,12 @@
     "sm_90/vibeqc_generated_shell_sm90_shard_1.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_2.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_3.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
-    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "105a887ac9df47f9365f8bd8c7b822757029a16eeb0ea5898be24f8104a97bf2",
+    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "21840cac66f4820457458d0ac420bcf12617d31f949fa46c0fc2b45b1c0e80bc",
     "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "431aee70d4cd1765d80515f1fbc2b3c22e3cd807559fbdeedb11dbd1ba838430",
     "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "c1b4fb292de92db453e2449b0251058c3e68ec5eb09920a602f909981b52e888",
     "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "576a7b4cb9ad4abb0e157872c75860dc3f572e9b39afab9ef5f77a40fddf0507",
-    "vibeqc_generated_shell_registry.hpp": "930aecf979b40f243af6fabd1b1513b072197acdab02f7ccad59e6a3738b4753",
-    "vibeqc_generated_shell_registry.cu": "e71b4fa1f946a9b6af26e81f9803c920c96aa844b983769d7993478c0c47d287"
+    "vibeqc_generated_shell_registry.hpp": "51ed327a1aef3d85580bd178474bdf80fa5eaac5ed2762eb0702abf8a47bd428",
+    "vibeqc_generated_shell_registry.cu": "207c71f8077aa7817d155f9de76f2370e5a6f1eebb01106944464b0e50bd70e9"
   },
   "artifact_corrections": [
     {
@@ -536,6 +536,16 @@
         "sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
         "sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
         "sm_120/vibeqc_generated_shell_sm120_shard_3.cu",
+        "vibeqc_generated_shell_registry.cu"
+      ]
+    },
+    {
+      "issue": 356,
+      "reason": "Compile the sm_120 ssss force consumer as an opt-in endpoint candidate. The manifest, ssss shard, public registry header, and launch registry change intentionally; runtime keeps the tuned native force path as default until #356's complete endpoint gate passes.",
+      "paths": [
+        "python/vibeqc_compiler/integral/production_shell_classes.json",
+        "sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
+        "vibeqc_generated_shell_registry.hpp",
         "vibeqc_generated_shell_registry.cu"
       ]
     }
