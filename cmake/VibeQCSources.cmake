@@ -53,7 +53,8 @@ function(vibeqc_add_dft_sources target)
       src/dft/cuda_xc.cpp
       src/dft/cuda_ks.cpp
       src/dft/cuda_ks_kernels.cu
-      src/dft/dispersion/d3_cuda.cu)
+      src/dft/dispersion/d3_cuda.cu
+      src/dft/dispersion/d4_cuda.cu)
   endif()
 endfunction()
 

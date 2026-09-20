@@ -141,6 +141,22 @@ macro(vibeqc_add_native_tests)
       vibeqc_d4_reference_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
     set_target_properties(vibeqc_d4_reference_cuda_tests PROPERTIES CUDA_STANDARD 20)
 
+    vibeqc_native_test(vibeqc_d4_schedule_cuda_tests tests/native/test_d4_schedule_cuda.cu
+                       LIBRARIES CUDA::cudart SKIP_77)
+    add_dependencies(vibeqc_d4_schedule_cuda_tests vibeqc_method_parameters_codegen)
+    target_include_directories(
+      vibeqc_d4_schedule_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    set_target_properties(vibeqc_d4_schedule_cuda_tests PROPERTIES CUDA_STANDARD 20
+                          BUILD_RPATH "$<TARGET_FILE_DIR:CUDA::cudart>")
+
+    add_executable(vibeqc_d4_schedule_probe EXCLUDE_FROM_ALL benchmarks/d4_cuda_schedule_probe.cu)
+    target_link_libraries(vibeqc_d4_schedule_probe PRIVATE vibeqc CUDA::cudart)
+    target_include_directories(vibeqc_d4_schedule_probe PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    add_dependencies(vibeqc_d4_schedule_probe vibeqc_method_parameters_codegen)
+    set_target_properties(vibeqc_d4_schedule_probe PROPERTIES CUDA_STANDARD 20
+                          BUILD_RPATH "$<TARGET_FILE_DIR:CUDA::cudart>")
+
     vibeqc_native_test(vibeqc_d4_eeq_cuda_tests tests/native/test_d4_eeq_cuda.cu
                        NO_VIBEQC SKIP_77)
     add_dependencies(vibeqc_d4_eeq_cuda_tests vibeqc_method_parameters_codegen)
