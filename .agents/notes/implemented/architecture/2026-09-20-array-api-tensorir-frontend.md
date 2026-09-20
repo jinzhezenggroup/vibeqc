@@ -26,10 +26,14 @@ The owner may depend on itself and TensorIR only. It exposes a bounded symbolic
 existing TensorIR primitives and `Program`. There is no parallel array IR and
 no frontend-only runtime node.
 
-The first subset is intentionally smaller than the Array API standard and does
-not claim versioned conformance. Unsupported implicit broadcasting, dtype
-promotion, dynamic shapes, Python control flow, and approximate float scalar
-spelling fail explicitly. General einsum remains a VibeQC extension.
+The first subset is intentionally smaller than the Array API standard and is
+only Array-API-shaped. It does not implement `__array_namespace__` or claim a
+version: the standard treats that method as a compliance-discovery signal and
+requires the returned namespace to expose the standard top-level API. The
+protocol is deferred until conformance is actually tested. Unsupported implicit
+broadcasting, dtype promotion, dynamic shapes, Python control flow, and
+approximate float scalar spelling fail explicitly. General einsum remains a
+VibeQC extension.
 
 Higher-level physics stays with its existing owners: MethodIR, IntegralIR,
 ProgramIR, stationary/implicit solves, providers, SCF policy and eigensolvers
@@ -53,6 +57,10 @@ DLPack are follow-on interoperability work, not frontend dependencies.
 - **Permit NumPy-like implicit coercions immediately.** Equal shapes do not make
   AO and orbital populations interchangeable, and approximate float spelling
   must not bypass TensorIR's exact-coefficient contract.
+- **Expose `__array_namespace__` for the preview subset.** Array-consuming
+  libraries use that attribute to detect compliant arrays, so returning an
+  intentionally incomplete namespace would create a false interoperability
+  claim.
 
 ## Invariants
 
@@ -67,6 +75,8 @@ DLPack are follow-on interoperability work, not frontend dependencies.
   Python once per TensorIR node.
 - Generic compiler code does not gain SCF/method policy or mandatory external
   framework dependencies through this frontend.
+- `__array_namespace__` stays absent until a declared standard version passes
+  a conformance matrix; explicit namespace import is the preview entry point.
 
 ## Evidence
 

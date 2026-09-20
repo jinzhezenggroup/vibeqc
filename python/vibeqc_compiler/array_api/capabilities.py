@@ -27,7 +27,9 @@ def capabilities() -> dict[str, object]:
     """Return a detached capability description for diagnostics/tests."""
     return {
         "frontend_version": FRONTEND_VERSION,
-        "array_api_conformance": "bounded-internal-subset",
+        "surface": "array-api-shaped-internal-preview",
+        "array_api_version": None,
+        "array_namespace_protocol": False,
         "implicit_broadcast": False,
         "dtype_promotion": False,
         "dynamic_shapes": False,

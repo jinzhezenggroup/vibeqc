@@ -5,8 +5,13 @@ purpose is developer ergonomics and interoperability: normal array expressions
 are captured once and lowered to the existing TensorIR.  TensorIR remains the
 scientific IR and keeps the stronger quantum-chemistry type system.
 
-The frontend does **not** currently claim full Array API conformance.  It fails
-closed outside the declared subset.
+The frontend does **not** currently claim Array API conformance. It provides an
+Array-API-shaped internal preview and fails closed outside the declared subset.
+In particular, `VibeArray` deliberately does not implement
+`__array_namespace__` yet: the Array API standard uses that method as a
+compliance discovery signal and requires the returned namespace to provide the
+standard's top-level API. Advertising the protocol for this bounded subset
+would therefore misidentify a preview object as conforming.
 
 ## Layering
 
@@ -62,9 +67,10 @@ Exact scalar spelling accepts `int`, `Fraction`, or a rational string.
 Python floating-point spellings such as `0.5` are deliberately rejected so a
 frontend convenience cannot weaken TensorIR scientific identity.
 
-`VibeArray.__array_namespace__()` returns the internal namespace, but a
-versioned `api_version` request currently fails explicitly.  Versioned
-conformance will only be advertised after a dedicated conformance matrix exists.
+Compiler code imports `vibeqc_compiler.array_api.namespace` explicitly.
+`__array_namespace__` and a versioned Array API declaration will only be added
+after a dedicated conformance matrix proves that the advertised namespace meets
+the corresponding standard version.
 
 ## Example
 

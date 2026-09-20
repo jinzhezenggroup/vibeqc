@@ -33,17 +33,6 @@ class VibeArray:
     def ndim(self) -> int:
         return len(self.node.spec.indices)
 
-    def __array_namespace__(self, *, api_version: str | None = None) -> typing.Any:
-        """Return the bounded namespace without claiming versioned conformance."""
-        if api_version is not None:
-            raise ValueError(
-                "versioned Array API conformance is not advertised by this "
-                "compiler-internal frontend"
-            )
-        from . import namespace
-
-        return namespace
-
     def __bool__(self) -> bool:
         raise TypeError("symbolic VibeArray values cannot drive Python control flow")
 

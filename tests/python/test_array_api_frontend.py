@@ -100,13 +100,11 @@ def test_float_scalar_and_python_control_flow_are_rejected() -> None:
         bool(value)
 
 
-def test_array_namespace_is_internal_and_version_request_fails_closed() -> None:
+def test_preview_does_not_advertise_array_namespace_conformance() -> None:
     ao = IndexSpace("ao", "ao", 1)
     value = input_array("x", TensorSpec((Index("p", ao),), role="input"))
     assert isinstance(value, VibeArray)
-    assert value.__array_namespace__() is xp
-    with pytest.raises(ValueError, match="versioned Array API conformance"):
-        value.__array_namespace__(api_version="2025.12")
+    assert not hasattr(value, "__array_namespace__")
 
 
 def test_scf_density_expression_has_same_tensorir_identity() -> None:
@@ -153,7 +151,9 @@ def test_scf_density_expression_has_same_tensorir_identity() -> None:
 
 def test_capability_report_does_not_claim_full_conformance() -> None:
     report = capabilities()
-    assert report["array_api_conformance"] == "bounded-internal-subset"
+    assert report["surface"] == "array-api-shaped-internal-preview"
+    assert report["array_api_version"] is None
+    assert report["array_namespace_protocol"] is False
     assert report["implicit_broadcast"] is False
     assert report["dtype_promotion"] is False
     assert "einsum_extension" in report["functions"]
