@@ -33,6 +33,13 @@ the generated explicit response matrix. Publish the decomposed raw h/g/S
 weights and total orbital stationarity only after all identity and residual
 checks pass.
 
+The #155 A owner is response-only: it replays raw MO weights, constructs and
+qualifies the RHF response operator, and builds the independent orbital matrix,
+but stops before any Z solve. It does not construct AO derivative programs,
+reserve complete-gradient derivative memory, or expose a nuclear-gradient
+method. The CCSD(T) layer supplies the total RHS and performs the one required
+Z solve only after triples and denominator sources have been combined.
+
 ## Canonical and degeneracy boundary
 
 The denominator semantics in this slice are explicitly canonical RHF. The raw
