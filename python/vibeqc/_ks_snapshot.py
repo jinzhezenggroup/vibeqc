@@ -87,6 +87,7 @@ def _scf_xc_points(
         "tau": immutable(output[:, 9:11].T),
     }
 
+
 class NativeKsSnapshot:
     """Own one native snapshot and check its current batch before consumption."""
 

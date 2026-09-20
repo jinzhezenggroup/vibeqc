@@ -85,9 +85,7 @@ def lda_xc_pw_unpolarized_tail_expression() -> typing.Any:
     )
 
 
-def energy_expression(
-    spec: typing.Any, *, production: bool = False
-) -> typing.Any:
+def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.Any:
     """Return the energy DAG and ordered feature variables.
 
     Production mode adds only versioned endpoint continuations used by native
@@ -129,9 +127,7 @@ def energy_expression(
             return value.pow(2 / 3)
         cutoff = F("1e-18")
         t = value / cutoff
-        extension = F("1e-12") * t * (
-            F(14, 9) + t * (F(-7, 9) + t * F(2, 9))
-        )
+        extension = F("1e-12") * t * (F(14, 9) + t * (F(-7, 9) + t * F(2, 9)))
         return graph.select_le(value, cutoff, extension, value.pow(2 / 3))
 
     def production_channel(term: typing.Any, density: typing.Any) -> typing.Any:

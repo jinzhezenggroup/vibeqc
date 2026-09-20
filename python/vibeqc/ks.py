@@ -93,7 +93,9 @@ class KsOptions:
 def resolve_ks_method(method: typing.Any) -> typing.Any:
     """Resolve one native KS name through MethodIR and project its semilocal node."""
     if method not in _NATIVE_KS_METHODS:
-        raise ValueError("KS options require a supported native semilocal RKS/UKS method")
+        raise ValueError(
+            "KS options require a supported native semilocal RKS/UKS method"
+        )
     identifier, spin = _NATIVE_KS_METHODS[method]
     method_ir = resolve_method(identifier, spin=spin)
     if len(method_ir.primitives) != 1 or not isinstance(
