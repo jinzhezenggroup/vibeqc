@@ -57,7 +57,7 @@ def load_fixture(name, *, spin="polarized", domain="typical"):
                 correlation = "GGA_C_PBE" if name == "PBE" else "LDA_C_PW"
                 expected += arrays[f"{tag}_{correlation}"]
                 oracle += " + Libxc 7.0.0 correlation"
-        if name == "MGGA_X_R2SCAN" and spin == "polarized":
+        if name in ("MGGA_X_SCAN", "MGGA_X_R2SCAN") and spin == "polarized":
             # Exchange is exactly spin separable: a-channel variables are
             # (rho_a, sigma_aa, tau_a), b-channel variables are
             # (rho_b, sigma_bb, tau_b), and sigma_ab is absent. Libxc's
