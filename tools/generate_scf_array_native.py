@@ -76,6 +76,19 @@ def _validate_common(program: typing.Any, output_name: str) -> typing.Any:
         raise ValueError("SCF Array output domains changed")
     labels = contraction.attrs["labels"]
     output = contraction.attrs["output"]
+    # This native schedule is specialized to row-major AO/orbital storage.
+    # Matching domain kinds alone cannot authorize a different operand layout.
+    expected_labels = ((0, 1, 2, 3), (0, 1, 3), (0, 1, 4, 3))
+    if labels != expected_labels or output != (0, 1, 2, 4):
+        raise ValueError("SCF Array contraction label topology changed")
+    if tuple(_kind_signature(node) for node in contraction.inputs) != (
+        ("batch", "spin", "ao", "orbital"),
+        ("batch", "spin", "orbital"),
+        ("batch", "spin", "ao", "orbital"),
+    ):
+        raise ValueError("SCF Array operand layout changed")
+    if contraction.inputs[0] is not contraction.inputs[2]:
+        raise ValueError("SCF Array coefficients must share one input topology")
     domains: dict[int, str] = {}
     for operand, operand_labels in zip(contraction.inputs, labels, strict=True):
         if len(operand_labels) != len(operand.spec.indices):

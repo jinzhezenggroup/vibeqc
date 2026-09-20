@@ -133,3 +133,7 @@ array syntax part of mathematical IR identity.
 
 The design rationale, rejected alternatives and invariants are retained in the
 [Array API frontend architecture note](../.agents/notes/implemented/architecture/2026-09-20-array-api-tensorir-frontend.md).
+
+The native cutover is a checked specialization, not a general C++ graph emitter.
+Its topology, FP64 order and source-identity contract are recorded in the
+[native specialization note](../.agents/notes/implemented/architecture/2026-09-20-native-array-scf-specialization.md).
