@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import typing
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
@@ -25,7 +27,9 @@ _FIXTURES = json.loads(
 _PBE = [case for case in _FIXTURES if case["name"].startswith("pbe-bj-two-body/")]
 
 
-def _ragged(cases):
+def _ragged(
+    cases: typing.Iterable[typing.Mapping[str, typing.Any]],
+) -> tuple[tuple[int, ...], tuple[int, ...], np.ndarray]:
     elements = []
     offsets = [0]
     coordinates = []
@@ -72,7 +76,7 @@ def test_ragged_d3_pair_ir_matches_independent_system_goldens() -> None:
     for first, second in compiled.pair_state.topology.pairs:
         assert any(
             begin <= first < second < end
-            for begin, end in zip(offsets[:-1], offsets[1:], strict=True)
+            for begin, end in pairwise(offsets)
         )
 
 
