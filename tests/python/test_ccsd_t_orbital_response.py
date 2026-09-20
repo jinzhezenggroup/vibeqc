@@ -20,7 +20,10 @@ from tools.vibeqc_cc import (
 )
 from tools.vibeqc_cc.gradient_equations import build_fock_weight_program
 from tools.vibeqc_cc.oracle import random_case
-from tools.vibeqc_cc.triples_orbital_response import _minimum_same_space_gap
+from tools.vibeqc_cc.triples_orbital_response import (
+    _minimum_same_space_gap,
+    _same_space_fock_cotangent,
+)
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import ConventionalProvider
 from tools.vibeqc_response.problem import ResponseCompatibilityError
@@ -135,6 +138,7 @@ def test_total_ccsdt_orbital_rhs_and_raw_weights_decompose(
         "direct_triples",
         "delta_lambda",
         "triples_denominator",
+        "same_space_canonicalization",
     )
     for field in (
         "hcore",
@@ -287,3 +291,56 @@ def test_response_state_is_immutable_and_does_not_claim_forces(
 def test_degenerate_same_space_gap_is_explicitly_out_of_scope() -> None:
     assert _minimum_same_space_gap(np.array([-1.0, 0.5]), 1) == float("inf")
     assert _minimum_same_space_gap(np.array([-1.0, -1.0, 0.5]), 2) == 0.0
+
+
+@pytest.mark.parametrize("o,v", ((2, 2), (2, 3)))
+def test_same_space_canonicalization_cotangent_cancels_generated_stationarity(
+    o: int, v: int
+) -> None:
+    n = o + v
+    _, g, _, _ = random_case(o, v, 159)
+    rotation = np.eye(n)
+    fock_without_h = _direct_fields(
+        np.zeros((n, n)), g, rotation, o
+    )["fock"]
+    energies = np.linspace(-1.4, 0.8, n)
+    h = np.diag(energies) - fock_without_h
+    np.testing.assert_allclose(
+        _direct_fields(h, g, rotation, o)["fock"],
+        np.diag(energies),
+        atol=2e-12,
+        rtol=0,
+    )
+
+    target = np.zeros((n, n))
+    for start, stop, value in ((0, o, 0.37), (o, n, -0.23)):
+        if stop - start >= 2:
+            target[start, start + 1] = value
+            target[start + 1, start] = -value
+
+    bar_fock = _same_space_fock_cotangent(target, energies, o)
+    np.testing.assert_allclose(bar_fock, bar_fock.T, atol=0, rtol=0)
+    np.testing.assert_array_equal(bar_fock[:o, o:], 0.0)
+    np.testing.assert_array_equal(bar_fock[o:, :o], 0.0)
+
+    generated = execute(
+        build_fock_weight_program(o, v),
+        {
+            "h": h,
+            "g": g,
+            "rotation": rotation,
+            "bar_fock": bar_fock,
+        },
+    ).outputs["stationarity"]
+    np.testing.assert_allclose(
+        generated[:o, :o],
+        -target[:o, :o],
+        atol=3e-11,
+        rtol=3e-11,
+    )
+    np.testing.assert_allclose(
+        generated[o:, o:],
+        -target[o:, o:],
+        atol=3e-11,
+        rtol=3e-11,
+    )
