@@ -161,11 +161,36 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
         "accumulation_workspace_bytes": 0,
         "included_in_arena_bytes": True,
     }
+    schedule = plan.batch_schedule
+    by_op = {step.op: step for step in schedule.ragged_steps}
+    scatter = by_op["scatter_add"]
+    assert scatter.lowering == "inverted-segments"
+    assert scatter.scan_work == 15
+    assert scatter.scheduled_work == 5
+    assert scatter.avoided_scan_work == 10
+    assert scatter.max_degree == 2
+    assert scatter.degree_histogram == ((1, 1), (2, 2))
+    assert schedule.scan_work == 25
+    assert schedule.scheduled_work == 15
+    assert schedule.avoided_scan_work == 10
     first_materialized = min(step.offset for step in plan.steps if step.offset >= 0)
     assert first_materialized >= plan.index_table_bytes
     assert "index_data_" in source
     assert "reinterpret_cast<const I*>" in source
-    assert "for (I r =" in source
+    assert "const I* topology" in source
+    assert "const I r = topology[" in source
+    assert "{0LL, 2LL, 3LL, 5LL, 0LL, 1LL, 2LL, 3LL, 4LL}" in source
+    assert "if (reinterpret_cast<const I*>" not in source
+
+
+def test_batch_schedule_tracks_homogeneous_batch_domains() -> None:
+    batch = _index("systems", "batch", 4)
+    x = input_tensor("x", TensorSpec((batch,), role="input"))
+    program = Program({"out": indexed_gather(x, 0, (3, 1, 1, 0), batch)})
+    schedule = plan_cuda(program, TARGET).batch_schedule
+    assert schedule.batch_domains == (("systems", 4),)
+    assert schedule.ragged_steps[0].lowering == "direct-index"
+    assert schedule.ragged_steps[0].degree_histogram == ((0, 1), (1, 2), (2, 1))
 
 
 def test_changed_ragged_topology_changes_program_and_plan_identity() -> None:
