@@ -4,6 +4,8 @@ The normalized native basis remains the only source of primitive and public AO
 coefficients. Scalar DAGs own Gaussian factors and feature algebra; bounded AO/
 feature traversal and local XC contractions are emitted here. Maps, buffers,
 matrix calls and host/runtime orchestration remain native.
+
+Rationale: .agents/notes/implemented/architecture/2026-09-20-cuda-grid-emitted-traversal.md
 """
 
 import typing
