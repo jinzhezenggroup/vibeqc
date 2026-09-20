@@ -287,30 +287,13 @@ def grid_policy_provenance(spec: GridSpec) -> dict[str, typing.Any]:
     if spec.version != 2:
         raise ValueError("unsupported grid policy version")
 
-    # A concrete v2 spec may be reconstructed by users or deserialization. Only
-    # exact semantic matches to a canonical resolver output may claim the pinned
-    # xTBloom policy source; changed points/radii/topology remain explicit.
+    # Version identifies the representation, not the source of user data.
+    # Only exact prescribed resolver outputs may claim the pinned policy source.
     for accuracy in ("standard", "tight"):
         policy = GridPolicy(accuracy)
-        for method in ("lda-rks", "pbe-rks"):
-            if spec == policy.resolve(method):
-                profile = policy.profile(method)
-                return {
-                    **policy.provenance,
-                    "contract": "production-grid-v2",
-                    "canonical": True,
-                    "profile": profile.name,
-                }
-    return {
-        "policy_version": 2,
-        "contract": "explicit-grid-v2",
-        "canonical": False,
-        "radii_source": "explicit-grid-spec",
-        "element_radii_identity": canonical_hash(spec.element_radii),
-        "pruning": spec.pruning,
-        "partition": spec.partition,
-        "topology": spec.ordering,
-    }
+        if any(spec == policy.resolve(method) for method in ("lda", "pbe")):
+            return policy.provenance
+    return {"policy_version": 2, "contract": "explicit-grid-v2"}
 
 
 

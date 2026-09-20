@@ -112,9 +112,8 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned() -> Non
     assert lda.identity != pbe.identity
     assert pbe.identity != tight.identity
     assert pbe.to_payload()["grid"]["version"] == 2
+    assert pbe.to_payload()["grid_provenance"] == GridPolicy().provenance
     assert pbe.to_payload()["grid_provenance"] == grid_policy_provenance(pbe.grid)
-    assert pbe.to_payload()["grid_provenance"]["contract"] == "production-grid-v2"
-    assert pbe.to_payload()["grid_provenance"]["profile"] == "gga-standard-v2"
     assert GridSpec(**pbe.to_payload()["grid"]) == pbe.grid
     changed_provenance = json.loads(json.dumps(pbe.to_payload()))
     changed_provenance["grid_provenance"]["upstream_revision"] = "different"
@@ -136,10 +135,7 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned() -> Non
     )
     for custom in (custom_points, custom_radii):
         provenance = grid_policy_provenance(custom)
-        assert provenance["contract"] == "explicit-grid-v2"
-        assert provenance["canonical"] is False
-        assert provenance["radii_source"] == "explicit-grid-spec"
-        assert "upstream_revision" not in provenance
+        assert provenance == {"policy_version": 2, "contract": "explicit-grid-v2"}
         resolved_custom = resolve_ks_options("pbe-rks", KsOptions(grid=custom))
         assert resolved_custom.to_payload()["grid_provenance"] == provenance
         assert resolved_custom.identity != pbe.identity
