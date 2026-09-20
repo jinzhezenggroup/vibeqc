@@ -74,10 +74,7 @@ def test_ragged_d3_pair_ir_matches_independent_system_goldens() -> None:
         )
 
     for first, second in compiled.pair_state.topology.pairs:
-        assert any(
-            begin <= first < second < end
-            for begin, end in pairwise(offsets)
-        )
+        assert any(begin <= first < second < end for begin, end in pairwise(offsets))
 
 
 def test_ragged_d3_batch_rebuild_boundary_is_explicit() -> None:
