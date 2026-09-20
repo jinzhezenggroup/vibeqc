@@ -600,7 +600,7 @@ class NativeSource:
         if (
             not _valid_cuda_device(device_id)
             or type(schedule) is not int
-            or schedule not in (0, 1, 2)
+            or schedule not in (0, 1, 2, 3)
             or not _valid_size_t_budget(stage_budget_bytes)
         ):
             raise ValueError(

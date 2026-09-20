@@ -144,6 +144,69 @@ def test_generated_weights_and_all_coordinate_components_have_independent_oracle
     np.testing.assert_array_equal(execute(replay, feeds).outputs["gradient"], gradient)
 
 
+@pytest.mark.parametrize(
+    "spin,expected_factor",
+    [("unpolarized", Fraction(-1, 16)), ("polarized", Fraction(-1, 8))],
+)
+def test_exact_exchange_weights_are_same_spin_and_use_methodir_fraction(
+    spin: typing.Any, expected_factor: typing.Any
+) -> None:
+    """Independent scalar K oracle: 1/2*cK and no alpha/beta cross terms."""
+    p = plan(spin, method="PBE0")
+    rng = np.random.default_rng(165)
+    tuples = list(product(range(3), repeat=4))
+    density = rng.normal(size=(p.spin_blocks, 3, 3))
+    density += density.transpose(0, 2, 1)
+    left = np.array([[row[a, c] for a, b, c, d in tuples] for row in density])
+    right = np.array([[row[b, d] for a, b, c, d in tuples] for row in density])
+    feeds = {
+        "density_left": left,
+        "density_right": right,
+        "integral_derivatives": rng.normal(size=(len(tuples), 5)),
+    }
+    block = p.integral_block("exact_exchange", terms=len(tuples), coordinates=5)
+    actual = execute(block.weights, feeds).outputs["weights"]
+    expected = np.array(
+        [
+            float(expected_factor)
+            * sum(float(left[s, t]) * float(right[s, t]) for s in range(p.spin_blocks))
+            for t in range(len(tuples))
+        ]
+    )
+    np.testing.assert_allclose(actual, expected, atol=2e-14, rtol=2e-14)
+    np.testing.assert_allclose(
+        execute(block.contraction, feeds).outputs["gradient"],
+        expected @ feeds["integral_derivatives"],
+        atol=2e-13,
+        rtol=2e-13,
+    )
+    if p.spin_blocks == 2:
+        cross_spin = float(expected_factor) * (left[0] * right[1] + left[1] * right[0])
+        assert not np.allclose(actual, expected + cross_spin)
+
+
+def test_exact_exchange_fraction_and_zero_exchange_recover_expected_plans() -> None:
+    pbe = plan(method="PBE")
+    pbe0 = plan(method="PBE0")
+    assert "exact_exchange" not in pbe.source_names
+    assert "exact_exchange" in pbe0.source_names
+
+    custom = MethodSpec(
+        "half-hybrid",
+        (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+        exact_exchange=Fraction(1, 2),
+    )
+    hybrid = plan(method=custom)
+    assert hybrid.exchange.fock_coefficient("unpolarized") == Fraction(-1, 4)
+    assert hybrid.exchange.fock_coefficient("polarized") == Fraction(-1, 2)
+
+    semilocal_only = MethodSpec(
+        "same-semilo-no-k",
+        (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+    )
+    assert "exact_exchange" not in plan(method=semilocal_only).source_names
+
+
 @pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
 def test_tau_semilocal_method_reuses_stationary_source_inventory(
     spin: typing.Any,
@@ -280,14 +343,26 @@ def test_unsupported_envelope_is_not_silently_substituted(
         StationaryMeanField(**{"point_model": SCF_POINT_MODEL, **change})
 
 
-def test_unavailable_primitive_or_native_backend_cannot_inherit_force_support() -> None:
-    with pytest.raises(UnsupportedMethod, match="primitive"):
-        plan(method="PBE0")
+def test_global_hybrid_plan_adds_exact_exchange_without_granting_public_forces() -> (
+    None
+):
+    hybrid = plan(method="PBE0")
+    assert hybrid.source_names == (
+        "one_electron",
+        "coulomb",
+        "exact_exchange",
+        "xc_ao",
+        "xc_grid",
+        "xc_weight",
+        "overlap_pulay",
+        "nuclear",
+    )
+    assert hybrid.exchange.coefficient == Fraction(1, 4)
     for backend in ("cpu", "cuda"):
         with pytest.raises(NotImplementedError, match="qualification"):
-            plan().require_native_endpoint(backend)
+            hybrid.require_native_endpoint(backend)
     with pytest.raises(ValueError, match="backend"):
-        plan().require_native_endpoint("silently-use-pyscf")
+        hybrid.require_native_endpoint("silently-use-pyscf")
 
 
 def test_budget_shape_dtype_and_nonfinite_fail_before_publishing() -> None:
@@ -324,6 +399,9 @@ def test_same_tensor_graph_has_deterministic_cuda_source_and_separate_schedule_i
         for source in ("one_electron", "coulomb", "overlap_pulay")
     ]
     programs.append(p.reduction_program(atoms=2))
+    hybrid = plan("polarized", method="PBE0")
+    programs.append(hybrid.integral_block("exact_exchange", terms=5).contraction)
+    programs.append(hybrid.reduction_program(atoms=2))
     target = cuda_target_info("sm_80")
     for program in programs:
         schedule = TensorSchedule(direct_gemm=False)
@@ -353,6 +431,20 @@ def test_missing_xc_derivative_rule_rejects_plan(monkeypatch: typing.Any) -> Non
     )
     with pytest.raises(UnsupportedMethod, match="derivative is unavailable"):
         plan()
+
+
+def test_missing_exact_exchange_derivative_rule_rejects_hybrid_plan(
+    monkeypatch: typing.Any,
+) -> None:
+    from vibeqc_compiler.method import ExactExchangePrimitive
+
+    monkeypatch.setattr(
+        ExactExchangePrimitive,
+        "derivative_capabilities",
+        property(lambda self: ("energy", "fock")),
+    )
+    with pytest.raises(UnsupportedMethod, match="exchange ERI derivative"):
+        plan(method="PBE0")
 
 
 def test_source_generation_does_not_import_public_runtime_or_reference_frameworks() -> (

@@ -59,7 +59,13 @@ def rewrite(program: Program, pass_name: str) -> Program:
     if pass_name not in PASSES:
         raise ValueError(f"unsupported tensor rewrite: {pass_name}")
     if pass_name == "dead_nodes":
-        return Program(program.outputs, provenance=program.provenance)
+        live = set(program.live_nodes)
+        definitions = tuple(node for node in program.definitions if node in live)
+        return Program(
+            program.outputs,
+            definitions=definitions,
+            provenance=program.provenance,
+        )
     replacements, interned, hashes = {}, {}, {}
     for node in program.nodes:
         inputs = tuple(replacements[n] for n in node.inputs)

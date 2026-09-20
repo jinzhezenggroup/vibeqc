@@ -209,6 +209,10 @@ jobs:
           python3 tools/validate_xc.py --tier cuda-compile
           --functionals PBE --nvcc "$CUDACXX"
           --cache build/xc-cache --output build/xc-compile
+      - name: Compile generated r2SCAN stationary CUDA consumer
+        run: >-
+          python3 tools/validate_stationary_cuda_compile.py
+          --nvcc "$CUDACXX" --cache build/stationary-cuda-compile
       - name: Preserve generated XC resource reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -227,7 +231,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [core, posthf, compiler-heavy]
+        shard: [core, posthf, compiler-heavy, ecp-forces]
     runs-on: ubuntu-24.04
     # Full nightly/manual qualification includes expensive Hessian and Au replay.
     # Keep routine PR/push feedback capped separately; do not truncate that tier.
@@ -387,9 +391,13 @@ jobs:
           slow_paths=(
             tests/python/test_cc_complete_gradient.py
             tests/python/test_cc_triples_response.py
+            tests/python/test_ccsd_t_gradient_validation.py
             tests/python/test_dft_complete_cpu.py
             tests/python/test_ecp_stationary_cpu.py
             tests/python/test_ecp_public_cpu.py
+            tests/python/test_ecp_spd_cartesian_cpu.py
+            tests/python/test_ecp_spd_spherical_cpu.py
+            tests/python/test_ecp_stuttgart_dft.py
             tests/python/test_ecp_f.py
             tests/python/test_ecp_f_projector.py
             tests/python/test_ecp_heavy.py
@@ -415,9 +423,9 @@ jobs:
               test_targets=(
                 tests/python/test_cc_complete_gradient.py
                 tests/python/test_cc_triples_response.py
+                tests/python/test_ccsd_t_gradient_validation.py
                 tests/python/test_dft_complete_cpu.py
                 tests/python/test_ecp_stationary_cpu.py
-                tests/python/test_ecp_public_cpu.py
                 tests/python/test_ecp_f.py
                 tests/python/test_ecp_f_projector.py
                 tests/python/test_ecp_heavy.py
@@ -428,10 +436,22 @@ jobs:
                 tests/python/test_response_operator.py
               )
               ;;
+            ecp-forces)
+              # Full d-force qualification exceeded the 20-minute job cap when
+              # serialized in one file. Keep every case, split representations
+              # across loadfile workers, and retain the existing job time cap.
+              test_targets=(
+                tests/python/test_ecp_public_cpu.py
+                tests/python/test_ecp_spd_cartesian_cpu.py
+                tests/python/test_ecp_spd_spherical_cpu.py
+                tests/python/test_ecp_stuttgart_dft.py
+              )
+              ;;
             compiler-heavy)
               test_targets=(
                 tests/python/test_codegen.py
                 tests/python/test_d3_geometry_ir.py
+                tests/python/test_d3_generated_ragged.py
                 tests/python/test_high_angular.py
                 tests/python/test_one_electron_derivatives.py
                 tests/python/test_range_separation.py
@@ -554,6 +574,10 @@ jobs:
             file: coverage/coverage-python-compiler-heavy.xml
             flag: python
             name: code-coverage/python-compiler-heavy
+          - artifact: coverage-report-python-ecp-forces
+            file: coverage/coverage-python-ecp-forces.xml
+            flag: python
+            name: code-coverage/python-ecp-forces
     runs-on: ubuntu-24.04
     # Keep OIDC away from jobs that build or execute pull-request code. This
     # job checks out source metadata and consumes coverage artifacts only.

@@ -25,6 +25,8 @@ _METHODS = (
     "lda-uks",
     "pbe-uks",
     "r2scan-uks",
+    "pbe0-rks",
+    "pbe0-uks",
 )
 _ARRAY_TOLERANCE = 1e-8  # Match the absolute canonicality cap of the #162 handoff.
 _RESIDUAL_TOLERANCE = 1e-8
@@ -53,7 +55,7 @@ class StationaryKsIdentity:
     def __post_init__(self) -> None:
         if self.method not in _METHODS:
             raise ValueError(
-                "stationary derivatives support LDA/PBE/r2SCAN RKS/UKS only"
+                "stationary derivatives support LDA/PBE/r2SCAN/PBE0 RKS/UKS only"
             )
         for name in (
             "model_identity",
@@ -213,7 +215,7 @@ class StationaryDerivativeContract:
             "force_capability": "unsupported",
         }
 
-    def validate(self, state: typing.Any) -> typing.Any:
+    def validate(self, state: typing.Any) -> None:
         """Require both numerical consistency and the live native #162 proof."""
         from ._ks_snapshot import NativeKsSnapshot
 

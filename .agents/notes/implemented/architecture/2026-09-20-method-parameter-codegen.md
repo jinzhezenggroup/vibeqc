@@ -40,3 +40,14 @@ CMake/Python inventory.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Superseded editable-source layer
+
+The [pinned-catalog source decision](2026-09-20-pinned-dispersion-catalog-sources.md)
+supersedes the JSON-editing instructions above after #676. The JSON is now a
+generated intermediate from verified upstream snapshots and explicit local
+overrides. The typed Python/C++ lowering and runtime-free ownership described
+here remain unchanged; this historical decision is retained rather than rewritten.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

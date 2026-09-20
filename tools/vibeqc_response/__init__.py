@@ -19,6 +19,7 @@ from .krylov import (
     KrylovRecycleSpace,
     MultiRHSResult,
     SolveResult,
+    resident_vector_slots,
     solve,
     solve_many,
 )
@@ -37,6 +38,7 @@ from .problem import (
     RotationLayout,
 )
 from .resident_cuda import CudaResidentRHFResponse
+from .spin_cuda import CudaSpinJKBackend
 from .uhf import (
     UHFReferenceSnapshot,
     UHFResponseOperator,
@@ -51,6 +53,7 @@ __all__ = [
     "CudaDFJKBackend",
     "CudaDirectJKBackend",
     "CudaResidentRHFResponse",
+    "CudaSpinJKBackend",
     "DenseAOResponseBackend",
     "DenseMatrixResponseOperator",
     "DiagonalPreconditioner",
@@ -75,6 +78,7 @@ __all__ = [
     "UKSResponseOperator",
     "explicit_rhf_response_matrix",
     "finite_rotation_jvp",
+    "resident_vector_slots",
     "solve",
     "solve_many",
 ]

@@ -425,14 +425,17 @@ typedef struct vibeqc_system_descriptor {
   vibeqc_basis_representation basis_representation;
 } vibeqc_system_descriptor;
 
-/** Native semilocal KS model snapshot, copied during preparation. The method
- * identifier fixes unit LDA_X+LDA_C_PW or GGA_X_PBE+GGA_C_PBE composition.
- * No exact exchange, pruning or implicit functional alias is supported. */
+/** Native KS model snapshot, copied during preparation. Method selectors choose
+ * the audited LDA/PBE component family and spin; the optional v2 suffix supplies
+ * resolved composition. Legacy prefixes retain unit semilocal XC and no K. */
 typedef struct vibeqc_ks_options {
   uint32_t struct_size;
   uint32_t abi_version;
   /** Version 1: semilocal-scaled-v1/pbe-spin-c2-1e-18. */
   uint32_t scf_domain_version;
+  /** Grid contract version. Version 1 is the deterministic reference
+   * prescription with unit-radius fallback. Version 2 is a fully resolved
+   * production prescription with sourced element radii. */
   uint32_t grid_version;
   uint32_t radial_points;
   uint32_t angular_polar;
@@ -440,13 +443,24 @@ typedef struct vibeqc_ks_options {
   uint32_t partition_iterations;
   double coincident_tolerance;
   uint64_t tile_points;
-  /** Optional positive finite radii [0..118] in Bohr, indexed by atomic
-   * number; slot zero is unused. NULL/zero means unit radii for all elements. */
+  /** Radii [0..118] in Bohr, indexed by atomic number; slot zero is unused.
+   * Version 1 accepts NULL/zero as the historical unit-radius fallback.
+   * Version 2 requires a positive finite entry for every element actually
+   * materialized; zero/missing entries fail closed. */
   const double* element_radii;
   uint32_t element_radius_count;
+  uint32_t reserved_v1_padding;
+  /** Optional v2 suffix: 0 retains legacy defaults; 1 uses the coefficients
+   * below. Scaled composition is CPU PBE-family only. Full-range exact J has cJ=1.
+   * PBE0 is X=3/4, C=1, cK=-1/8 (RKS total D) or -1/4 (UKS spin D).
+   * Values are supplied by resolved MethodIR, never inferred from a name. */
+  uint32_t composition_version;
+  double semilocal_exchange_scale;
+  double semilocal_correlation_scale;
+  double fock_exchange_coefficient;
 } vibeqc_ks_options;
 
-/** Pure capability query. Version 1 accepts the complete options above. */
+/** Pure capability query. Version 2 accepts both the v1 prefix and v2 suffix. */
 VIBEQC_API uint32_t vibeqc_ks_options_version(void);
 
 typedef struct vibeqc_method_descriptor {
@@ -811,7 +825,8 @@ typedef struct vibeqc_one_electron_gradient_resources {
  * Off-diagonal ownership combines W_ij+W_ji, including nonsymmetric weights.
  * Output is a 3*Natom energy gradient in atom/xyz order; nuclear repulsion is
  * excluded. schedule=0 selects AO threads, 1 shell-pair warps, 2 serial per-system
- * diagnostics. maximum_bytes independently bounds numeric host/device staging.
+ * diagnostics, and 3 AO-pair warps with lanes owning nuclear centers. maximum_bytes
+ * independently bounds numeric host/device staging.
  * A CUDA context is required; failures do not silently fall back to CPU.
  * Optional resources must carry the current struct_size/abi_version.
  */

@@ -402,11 +402,11 @@ def test_stationary_state_requires_finite_scalar_physical_residual(
         replace(state(), physical_residual=residual)
 
 
-@pytest.mark.parametrize("method", ["b3lyp-rks", "pbe0-rks", "pbe-rhf"])
+@pytest.mark.parametrize("method", ["b3lyp-rks", "pbe-rhf"])
 def test_stationary_contract_rejects_unsupported_method_domain(
     method: typing.Any,
 ) -> None:
-    with pytest.raises(ValueError, match="LDA/PBE/r2SCAN RKS/UKS"):
+    with pytest.raises(ValueError, match="LDA/PBE/r2SCAN/PBE0 RKS/UKS"):
         replace(identity(), method=method)
 
 

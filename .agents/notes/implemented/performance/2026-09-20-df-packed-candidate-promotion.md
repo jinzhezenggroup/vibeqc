@@ -63,3 +63,9 @@ with numerical parity, semantic work, memory and fallback evidence retained unde
 
 Agent: ChatGPT (VibeQC PR review)
 Model: GPT-6 Astra Pro
+
+## Superseded dispatch boundary
+
+The benchmark-specific exception is retired by
+`2026-09-20-df-packed-explicit-qualification.md`. The historical reasoning above
+is retained; its narrow automatic selector no longer describes current dispatch.

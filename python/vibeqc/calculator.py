@@ -479,12 +479,27 @@ class Calculator:
             raise ValueError("density_fitting_memory_budget_bytes must be non-negative")
         self._method_name = method.lower()
         self._method = _METHODS[self._method_name]
+        precision_modes = {
+            "fp64": _native.PRECISION_FP64,
+            "auto": _native.PRECISION_AUTO,
+        }
+        try:
+            self._precision_mode = precision_modes[str(precision).lower()]
+        except KeyError as error:
+            raise ValueError("precision must be 'fp64' or 'auto'") from error
+        if (
+            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
+            and self._precision_mode != _native.PRECISION_FP64
+        ):
+            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._ks_options = None
         if self._method_name in (
             "lda-rks",
             "pbe-rks",
             "lda-uks",
             "pbe-uks",
+            "pbe0-rks",
+            "pbe0-uks",
             "r2scan-rks",
             "r2scan-uks",
         ):
@@ -492,7 +507,7 @@ class Calculator:
 
             self._ks_options = resolve_ks_options(self._method_name, ks_options)
         elif ks_options is not None:
-            raise ValueError("ks_options requires a supported semilocal RKS/UKS method")
+            raise ValueError("ks_options requires a supported RKS/UKS method")
         if self._method in _CORRELATED_METHODS:
             if target_accuracy is not None:
                 raise NotImplementedError(
@@ -595,24 +610,11 @@ class Calculator:
                 )
         elif self._screening_tolerance <= 0.0:
             raise ValueError("screening_tolerance must be positive")
-        precision_modes = {
-            "fp64": _native.PRECISION_FP64,
-            "auto": _native.PRECISION_AUTO,
-        }
-        try:
-            self._precision_mode = precision_modes[str(precision).lower()]
-        except KeyError as error:
-            raise ValueError("precision must be 'fp64' or 'auto'") from error
         if (
             self._method in _CORRELATED_METHODS
             and self._precision_mode != _native.PRECISION_FP64
         ):
             raise ValueError("canonical correlated methods require precision='fp64'")
-        if (
-            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
-            and self._precision_mode != _native.PRECISION_FP64
-        ):
-            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._library = _native.load_library(device=device, device_id=self._device_id)
         self._ks_options_version = 0
         if self._ks_options is not None:
@@ -620,13 +622,23 @@ class Calculator:
             if query is not None:
                 query.argtypes, query.restype = [], ctypes.c_uint32
                 self._ks_options_version = query()
-            if self._ks_options_version != 1:
-                from .ks import resolve_ks_options
+            from .ks import resolve_ks_options
 
-                if self._ks_options != resolve_ks_options(self._method_name):
+            if self._ks_options_version == 0:
+                if (
+                    self._ks_options.requires_composition_v2
+                    or self._ks_options != resolve_ks_options(self._method_name)
+                ):
                     raise NotImplementedError(
-                        "native library does not support KS model options v1"
+                        "native library does not support KS model options"
                     )
+            elif (
+                self._ks_options_version == 1
+                and self._ks_options.requires_composition_v2
+            ):
+                raise NotImplementedError(
+                    "native library does not support KS composition options v2"
+                )
 
         available = ctypes.c_int32()
         _native.check(
@@ -649,7 +661,8 @@ class Calculator:
                 or (self._device_name == "cpu" and qualified_basis(self._basis))
             )
             and not (
-                isinstance(self._basis, BasisSet)
+                self._device_name == "cuda"
+                and isinstance(self._basis, BasisSet)
                 and any(element.ecp_core_electrons for element in self._basis.elements)
                 and any(
                     shell.angular_momentum > 1
@@ -657,12 +670,14 @@ class Calculator:
                     for shell in element.shells
                 )
             )
+            and self._ks_options is not None
+            and self._ks_options.coefficients == (1.0, 1.0, 0.0)
             and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):
             # Python public capability layered on the native KS prepared owner
             # plus the backend's compiled stationary gradient consumer.
             # Keep the backend-neutral C registry conservative.
-            # ECP promotion is bounded to Cartesian/real-spherical s/p records. The shared
+            # ECP promotion admits s/p/d on CPU and s/p on CUDA, in both layouts. The shared
             # nine-source consumer also enforces shape, byte and work caps;
             # higher-angular ECP domains remain energy-only.
             self._capabilities = replace(
@@ -760,10 +775,15 @@ class Calculator:
             self._correlation_memory_budget_bytes,
             self._mp2_denominator_threshold,
         )
-        if self._ks_options is not None and self._ks_options_version == 1:
+        if self._ks_options is not None and self._ks_options_version >= 1:
             from .ks import native_ks_options
 
-            descriptor.ks_options = ctypes.pointer(native_ks_options(self._ks_options))
+            descriptor.ks_options = ctypes.pointer(
+                native_ks_options(
+                    self._ks_options,
+                    version=1 if self._ks_options_version == 1 else 2,
+                )
+            )
         if self._method == _native.METHOD_RCCSD:
             descriptor.ccsd_max_iterations = self._ccsd_max_iterations
             descriptor.ccsd_diis_history = self._ccsd_diis_history

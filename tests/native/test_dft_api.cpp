@@ -111,7 +111,7 @@ vibeqc_method_descriptor lda_method() {
 }
 
 void ks_option_snapshot() {
-  require(vibeqc_ks_options_version() == 1, "KS option version unavailable");
+  require(vibeqc_ks_options_version() == 2, "KS option version unavailable");
   Fixture fixture;
   auto method = lda_method();
   std::array<double, 119> radii;
@@ -174,6 +174,50 @@ void ks_option_snapshot() {
               std::abs(result.energy - (-1.121017859421488)) < 2e-12,
           "legacy KS default model changed");
   vibeqc_calculation_destroy(calculation);
+}
+
+void pbe0_composition_snapshot() {
+  Fixture fixture;
+  auto method = lda_method();
+  method.method = VIBEQC_METHOD_PBE0_RKS;
+  vibeqc_ks_options options{};
+  options.struct_size = sizeof(options);
+  options.abi_version = VIBEQC_ABI_VERSION;
+  options.scf_domain_version = 1;
+  options.grid_version = 1;
+  options.radial_points = 64;
+  options.angular_polar = 12;
+  options.angular_azimuth = 24;
+  options.partition_iterations = 3;
+  options.coincident_tolerance = 1e-12;
+  options.tile_points = 256;
+  options.composition_version = 1;
+  options.semilocal_exchange_scale = 0.75;
+  options.semilocal_correlation_scale = 1.0;
+  options.fock_exchange_coefficient = -0.125;
+  method.ks_options = &options;
+
+  vibeqc_calculation* calculation = nullptr;
+  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+              VIBEQC_STATUS_SUCCESS,
+          "PBE0 RKS explicit composition preparation failed");
+  vibeqc_result_descriptor result{
+      sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, nullptr, 0, 0, 0.0, 0.0, 0,
+      VIBEQC_BACKEND_CPU_REFERENCE};
+  require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
+              result.converged && std::abs(result.energy - (-1.1543107969377155)) < 2e-12,
+          "PBE0 RKS explicit composition energy changed");
+  vibeqc_calculation_destroy(calculation);
+
+  method.ks_options = nullptr;
+  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+              VIBEQC_STATUS_NOT_IMPLEMENTED,
+          "PBE0 RKS silently inferred composition without the v2 suffix");
+  method.ks_options = &options;
+  options.fock_exchange_coefficient = -0.25;
+  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+              VIBEQC_STATUS_INVALID_ARGUMENT,
+          "PBE0 RKS accepted an unrestricted exchange coefficient");
 }
 
 void warm_preparation_failure(bool retained_plan) {
@@ -288,6 +332,7 @@ void warm_execution_allocation_failure() {
 int main() {
   try {
     ks_option_snapshot();
+    pbe0_composition_snapshot();
     warm_preparation_failure(false);
     warm_preparation_failure(true);
     warm_execution_allocation_failure();
@@ -295,12 +340,13 @@ int main() {
         sizeof(vibeqc_method_capabilities_descriptor), VIBEQC_ABI_VERSION, 0, 0, 0, 0, 0};
     for (vibeqc_method registered :
          {VIBEQC_METHOD_LDA_RKS, VIBEQC_METHOD_PBE_RKS, VIBEQC_METHOD_R2SCAN_RKS,
-          VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_R2SCAN_UKS}) {
+          VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_R2SCAN_UKS,
+          VIBEQC_METHOD_PBE0_RKS, VIBEQC_METHOD_PBE0_UKS}) {
       require(vibeqc_method_get_capabilities(registered, &capabilities) == VIBEQC_STATUS_SUCCESS &&
                   capabilities.family == VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL &&
                   capabilities.supported_properties == VIBEQC_PROPERTY_ENERGY &&
                   capabilities.available == 1 && capabilities.supports_batch == 1,
-              "registered semilocal KS capabilities are incorrect");
+              "registered KS capabilities are incorrect");
     }
 
     Fixture fixture;
