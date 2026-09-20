@@ -75,10 +75,15 @@ used. A native failure poisons the source transaction; reads fail until reset.
 The public diagnostic discards the owner and publishes no partial result.
 
 `result.work` records exact source launches, primitive/point/pair counts,
-source H2D/D2H, snapshot export counters, streams, grid allocation/timing metrics,
+source H2D/D2H bytes and call counts, explicit source-stream synchronization
+counts, snapshot export counters, streams, grid allocation/timing metrics,
 TensorIR execution/transfer totals, declared numeric bounds, endpoint time and
-the paths/hashes of every loaded generated artifact. The reused grid/TensorIR
-ABIs do not expose a complete endpoint kernel-launch count; source launches
+the paths/hashes of every loaded generated artifact. `work["timeline"]` is an
+exclusive host-wall timeline: its phase durations sum to `endpoint_seconds`
+without overlap and without introducing CUDA synchronization. Transfer bytes,
+launch counts, TensorIR device timings and grid timings are separate attribution
+metrics and must not be added to those wall phases. The reused grid/TensorIR
+ABIs still do not expose a complete endpoint kernel-launch count; source launches
 must not be presented as the endpoint total. No speedup is claimed.
 
 ## Example and qualification
@@ -126,6 +131,11 @@ python tools/run_stationary_cuda_validation.py --full-fd -k reconverged
 python tools/run_stationary_cuda_validation.py --sanitizer memcheck -k 'analytic or source_failure'
 python tools/run_stationary_cuda_validation.py --sanitizer initcheck -k 'analytic or source_failure'
 python tools/run_stationary_cuda_validation.py --cpu-regression
+
+# Issue #662: cold/artifact-warm/same-state/changed-geometry evidence.
+# Invoke this command inside the allocated Slurm shell used by the project.
+python tools/benchmark_stationary_cuda_timeline.py \
+  --output build/issue662-stationary-timeline.json
 ```
 
 The opt-in device suite compares H2 and asymmetric s/p water, LDA and PBE,
@@ -138,6 +148,10 @@ device, stale/replaced state, late failure, recovery, empty tiles, exact-zero
 products and vacuum tails. CPU scientific/interpreter entrypoints are blocked
 during complete CUDA execution. Sanitizer runs are separately invoked/counted.
 Evidence is retained locally in ignored `build-cuda/stationary-evidence/`.
+The #662 benchmark additionally records three default AO-size fixtures, RKS/UKS,
+state-export time and the complete diagnostic timeline in one JSON schema. A
+method that is still outside the checked-out branch's CUDA force capability is
+retained as an explicit `unsupported` row rather than silently omitted.
 `--library`, `--cache` and `--evidence` select explicit local paths; the existing
 Slurm profile environment selects partition and GPU request. CPU regression
 runs locally without reserving a GPU.

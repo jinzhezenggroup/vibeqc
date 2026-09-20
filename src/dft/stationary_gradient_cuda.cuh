@@ -19,6 +19,7 @@ struct Owner {
       *sources{};
   int64_t *maps{}, *ao_atoms{}, *point_atoms{};
   uint64_t uploads{}, downloads{}, launches{}, primitive_count{}, point_count{}, pair_visits{};
+  uint64_t h2d_calls{}, d2h_calls{}, synchronizations{}, primitive_batches{}, geometry_batches{};
 };
 // Caps make all products below representable before any allocation or pointer
 // dereference. The fixed worker count bounds O(worker*natom) adjoint scratch.
@@ -53,7 +54,9 @@ void finished(Owner& p, cudaStream_t stream) {
   cuda_check(cudaGetLastError());
   cuda_check(
       cudaMemcpyAsync(&failure, p.context.error, sizeof(int), cudaMemcpyDeviceToHost, stream));
+  ++p.d2h_calls;
   cuda_check(cudaStreamSynchronize(stream));
+  ++p.synchronizations;
   p.downloads += sizeof(int);
   if (failure) throw std::runtime_error("nonfinite or invalid stationary CUDA source");
 }
@@ -61,6 +64,7 @@ template <class T>
 void upload(Owner& p, T* out, const T* in, size_t n, cudaStream_t stream) {
   if (n && !in) throw std::invalid_argument("null stationary source");
   cuda_check(cudaMemcpyAsync(out, in, n * sizeof(T), cudaMemcpyHostToDevice, stream));
+  ++p.h2d_calls;
   p.uploads += n * sizeof(T);
 }
 __global__ void primitive_kernel(unsigned kind, const double* records, size_t count, double* output,
@@ -157,6 +161,7 @@ int stationary_records(void* pointer, unsigned kind, unsigned source, const doub
         p->context.error);
     p->launches += 2;
     p->primitive_count += count;
+    ++p->primitive_batches;
     finished(*p, stream);
   });
 }
@@ -186,11 +191,12 @@ int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, co
       p->launches += 2;
       p->point_count += view->npoint;
       p->pair_visits += view->npoint * p->atoms * (p->atoms - 1);
+      ++p->geometry_batches;
       finished(*p, stream);
     } catch (...) {
       // Even an upload/launch failure must drain the borrowed stream before
       // our arena can be freed or the grid owner can reuse its leased buffers.
-      cudaStreamSynchronize(stream);
+      if (cudaStreamSynchronize(stream) == cudaSuccess) ++p->synchronizations;
       throw;
     }
   });
@@ -206,6 +212,7 @@ int stationary_finish(void* pointer, double* output, size_t count, char* error, 
     // Host output is touched only after every device source passed its gate.
     std::vector<double> candidate(count);
     cuda_check(cudaMemcpy(candidate.data(), p->sources, count * 8, cudaMemcpyDeviceToHost));
+    ++p->d2h_calls;
     p->downloads += count * 8;
     for (double v : candidate)
       if (!std::isfinite(v)) throw std::runtime_error("nonfinite gradient");
@@ -214,12 +221,21 @@ int stationary_finish(void* pointer, double* output, size_t count, char* error, 
 }
 int stationary_metrics(void* pointer, uint64_t* output, size_t count) {
   auto* p = static_cast<vibeqc_stationary_cuda::Owner*>(pointer);
-  if (!p || !output || count != 8) return 1;
-  const uint64_t values[]{p->bytes,           p->uploads,
-                          p->downloads,       p->launches,
-                          p->primitive_count, p->point_count,
-                          p->pair_visits,     reinterpret_cast<uintptr_t>(p->context.stream)};
-  std::copy(values, values + 8, output);
+  if (!p || !output || count != 13) return 1;
+  const uint64_t values[]{p->bytes,
+                          p->uploads,
+                          p->downloads,
+                          p->launches,
+                          p->primitive_count,
+                          p->point_count,
+                          p->pair_visits,
+                          reinterpret_cast<uintptr_t>(p->context.stream),
+                          p->h2d_calls,
+                          p->d2h_calls,
+                          p->synchronizations,
+                          p->primitive_batches,
+                          p->geometry_batches};
+  std::copy(values, values + 13, output);
   return 0;
 }
 void stationary_destroy(void* pointer) {
