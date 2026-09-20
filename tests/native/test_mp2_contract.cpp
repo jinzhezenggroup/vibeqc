@@ -206,6 +206,48 @@ void provider_and_reference() {
           "CPU reference budget omitted simultaneous Cartesian/spherical tensors");
 }
 
+void conventional_energy_batch_fallback_matches() {
+  auto system = h2();
+  system.shells.push_back({0, 1, {{0.7, 1.0}}});
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
+          "p-shell MP2 fixture normalization");
+  vibeqc::scf::ScfOptions options;
+  options.export_physical_reference = true;
+  options.compute_forces = false;
+  options.screening_tolerance = 0;
+  options.energy_tolerance = options.density_tolerance = 1e-11;
+  options.reference_memory_budget_bytes = 256ULL << 20;
+  const auto hf = vibeqc::scf::run_rhf(system, options);
+  require(hf.converged && hf.reference, "p-shell MP2 reference");
+  const auto& ref = *hf.reference;
+  vibeqc::posthf::RawSource source(system);
+  vibeqc::posthf::NativeBlockProvider provider(source, ref, 256ULL << 20);
+  constexpr unsigned tile = 2;
+  const auto kernel = vibeqc::mp2::generated::cpu_plan(tile);
+  const auto reserve = kernel.numeric_bytes + 32ULL * tile * tile + 16ULL * tile + 64;
+  const auto tight_budget = provider.batch_bytes({1, tile, 1, tile}, 1) + reserve;
+  const auto roomy =
+      vibeqc::mp2::conventional_energy(ref, source, 256ULL << 20, 1e-10, tile, false, 0);
+  const auto tight =
+      vibeqc::mp2::conventional_energy(ref, source, tight_budget, 1e-10, tile, false, 0);
+  require(roomy.tiles > 1 && roomy.tiles == tight.tiles, "complete MP2 tile sequence changed");
+  require(std::abs(roomy.opposite_spin - tight.opposite_spin) < 1e-13 &&
+              std::abs(roomy.same_spin - tight.same_spin) < 1e-13,
+          "memory-bounded fallback changed MP2 energy");
+  require(roomy.provider_work.source_reads < tight.provider_work.source_reads &&
+              roomy.provider_work.transform_fmas == tight.provider_work.transform_fmas,
+          "batching did not reduce source work while retaining transforms");
+  require(tight.numeric_capacity_bytes <= tight_budget, "tight numeric budget exceeded");
+  bool rejected = false;
+  try {
+    (void)vibeqc::mp2::conventional_energy(ref, source, tight_budget - 1, 1e-10, tile, false, 0);
+  } catch (const std::length_error&) {
+    rejected = true;
+  }
+  require(rejected, "one-byte-below the single-request budget was accepted");
+}
+
 void conventional_energy_reuses_ao_scans() {
   const auto system = h2();
   vibeqc::scf::ScfOptions options;
@@ -417,6 +459,7 @@ int main() {
     generated_equations();
     provider_and_reference();
     conventional_energy_reuses_ao_scans();
+    conventional_energy_batch_fallback_matches();
     shell_local_weighted_eri_derivative();
     cuda_shell_derivative_stub_is_transactional();
     streamed_one_electron_derivative();
