@@ -60,6 +60,7 @@ from .cuda_resources import parse_resources
 
 if TYPE_CHECKING:
     from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.resources import ResourcePlan
 
 # Allocation snapshots for provider accounting must not race another owned
 # handle's creation/destruction. Executions themselves remain independent.
@@ -287,8 +288,8 @@ class PreparedCuda:
         artifact: CudaArtifact,
         *,
         device: int = 0,
-        resource_plan: object | None = None,
-        resource_owner: object | None = None,
+        resource_plan: ResourcePlan | None = None,
+        resource_owner: str | None = None,
         execution_mode: str = "ordinary",
     ) -> None:
         if execution_mode not in ("ordinary", "cuda-graph"):
@@ -305,6 +306,8 @@ class PreparedCuda:
         self.resource_plan = resource_plan
         self.resource_owner = resource_owner
         if resource_plan is not None:
+            if resource_owner is None:
+                raise ValueError("resource plan requires a named owner")
             resource_plan.require_feasible()
             request = next(
                 (r for r in resource_plan.requests if r.name == resource_owner), None
