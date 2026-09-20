@@ -71,9 +71,14 @@ int main() {
       if (VIBEQC_TEST_POINT_EVALUATE(pbe, rho, gradient).valid)
         throw std::runtime_error("negative density was clipped");
       rho[0] = 0.0;
+      gradient[0][0] = std::numeric_limits<double>::denorm_min();
+      const auto underflow_vacuum = VIBEQC_TEST_POINT_EVALUATE(pbe, rho, gradient);
+      if (!underflow_vacuum.valid || underflow_vacuum.energy != 0.0 ||
+          underflow_vacuum.rho[0] != 0.0 || underflow_vacuum.rho[1] != 0.0)
+        throw std::runtime_error("subnormal vacuum gradient was not canonicalized");
       gradient[0][0] = 1.0e-30;
       if (VIBEQC_TEST_POINT_EVALUATE(pbe, rho, gradient).valid)
-        throw std::runtime_error("vacuum with nonzero gradient was accepted");
+        throw std::runtime_error("normal vacuum gradient was accepted");
       gradient[0][0] = 0.0;
       rho[0] = std::numeric_limits<double>::infinity();
       if (VIBEQC_TEST_POINT_EVALUATE(pbe, rho, gradient).valid)

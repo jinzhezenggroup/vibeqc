@@ -11,7 +11,12 @@ from dataclasses import asdict, dataclass, field, replace
 from fractions import Fraction
 
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.dft.grid import GridSpec, checked_int
+from vibeqc_compiler.dft.grid import (
+    GridPolicy,
+    GridSpec,
+    checked_int,
+    grid_policy_provenance,
+)
 from vibeqc_compiler.method import (
     ExactExchangePrimitive,
     MethodIR,
@@ -47,7 +52,8 @@ class KsOptions:
 
     functional: FunctionalSpec | None = None
     composition: MethodIR | None = None
-    grid: GridSpec = field(default_factory=GridSpec)
+    grid: GridSpec | None = None
+    grid_accuracy: str = "standard"
     tile_points: int = 256
     scf_domain: str = SCF_DOMAIN
     _method_ir: MethodIR | None = field(default=None, init=False, repr=False)
@@ -61,8 +67,10 @@ class KsOptions:
             raise TypeError("KS composition must be a resolved MethodIR")
         if self.functional is not None and self.composition is not None:
             raise ValueError("provide KS functional or composition, not both")
-        if not isinstance(self.grid, GridSpec):
-            raise TypeError("KS grid must be a GridSpec")
+        if self.grid is not None and not isinstance(self.grid, GridSpec):
+            raise TypeError("KS grid must be a GridSpec or None")
+        if self.grid_accuracy not in ("standard", "tight"):
+            raise ValueError("KS grid_accuracy must be 'standard' or 'tight'")
         checked_int(self.tile_points, "KS XC tile points")
         if self.scf_domain != SCF_DOMAIN:
             raise NotImplementedError("unsupported native KS tail/spin domain policy")
@@ -94,10 +102,13 @@ class KsOptions:
         """Keep composition provenance and the effective SCF domain explicit."""
         if self.functional is None:
             raise ValueError("resolve KS options against a method first")
+        if self.grid is None:
+            raise ValueError("resolve KS grid policy against a method first")
         payload = {
             "functional": self.functional.to_payload(),
             "scf_domain": self.scf_domain,
             "grid": asdict(self.grid),
+            "grid_provenance": grid_policy_provenance(self.grid),
             "tile_points": self.tile_points,
             "required_ao_order": self.ao_order,
             "required_ingredients": self.functional.ingredients,
@@ -256,7 +267,23 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
                 "KS FunctionalSpec does not match the method's supported composition/spin"
             )
 
-    result = replace(options, functional=resolved, composition=None)
+    grid = options.grid
+    if grid is None:
+        if method in ("r2scan-rks", "r2scan-uks"):
+            # The v2 policy has no qualified meta-GGA profile. Preserve the
+            # existing explicit v1 default rather than assigning a GGA grid.
+            if options.grid_accuracy != "standard":
+                raise NotImplementedError(
+                    "r2SCAN grid accuracy profiles require an explicit GridSpec"
+                )
+            grid = GridSpec()
+        elif ks_coefficients(method_ir)[2] != 0.0:
+            raise NotImplementedError(
+                "global-hybrid grid policy requires an explicit GridSpec"
+            )
+        else:
+            grid = GridPolicy(options.grid_accuracy).resolve(method, derivative_order=0)
+    result = replace(options, functional=resolved, composition=None, grid=grid)
     object.__setattr__(result, "_method_ir", method_ir)
     return result
 
@@ -268,9 +295,12 @@ def native_ks_options(options: typing.Any, *, version: int = 2) -> typing.Any:
     from . import _native
 
     grid = options.grid
+    if grid is None:
+        raise ValueError("native KS options require a resolved GridSpec")
     radii = None
     if grid.element_radii:
-        radii = (ctypes.c_double * 119)(*[1.0] * 119)
+        fill = 0.0 if grid.version >= 2 else 1.0
+        radii = (ctypes.c_double * 119)(*[fill] * 119)
         for z, radius in grid.element_radii:
             radii[z] = radius
     if version not in (1, 2):

@@ -29,6 +29,45 @@ J. Chem. Phys. 88, 2547 (1988), with no heteronuclear radius correction.
 Radius overrides change the radial grid, not the partition. All these choices
 participate in the identity; an opaque accuracy level is insufficient.
 
+## Production grid policy
+
+`GridSpec(version=1)` remains the exact reference/fixture contract above. Production
+KS defaults are resolved separately by the compiler-side `GridPolicy` into a
+fully explicit `GridSpec(version=2)` before native execution. Modern LDA and
+PBE/GGA use a 54×16×32 standard profile. `grid_accuracy="tight"`, and
+the fixed-topology first-derivative profile, use 64×20×40 for LDA and 72×24×48
+for GGA. Partition iterations remain three; pruning and screening remain
+explicitly disabled so derivative topology does not change under response.
+
+Production radii are pinned xTBloom GFN1 covalent radii from
+`external/xtbloom-d3/covalent_radii.json`. Source hash/upstream revision provenance
+is attached only when the complete concrete v2 spec exactly matches a canonical
+`GridPolicy` result. A user-constructed or deserialized v2 spec whose points,
+radii or topology differ is identified as `explicit-grid-v2` and does not claim
+xTBloom upstream provenance. The pinned table currently covers atomic numbers
+1–86. A version-2 grid must carry a positive radius for every element it uses;
+unsupported elements fail closed instead of silently receiving 1 Bohr.
+LDA and PBE/GGA are the qualified version-2 policy families. Explicit
+`GridPolicy.resolve` requests for meta-GGA/r2SCAN, VV10 or hybrids fail closed
+until separately qualified. The KS options resolver preserves the already
+qualified r2SCAN RKS/UKS default as `GridSpec(version=1)` when no explicit grid
+is supplied and `grid_accuracy="standard"`. A nonstandard r2SCAN accuracy
+profile requires an explicit `GridSpec`; this compatibility path does not
+qualify r2SCAN for the version-2 production policy.
+
+The resolved version, point counts, partition controls and complete radius table
+enter the KS calculation payload and native snapshot identity. Serialization
+therefore preserves the resolved contract rather than only an accuracy label.
+Native descriptors that omit KS options retain the historical v1 behavior only
+as an ABI/reference compatibility boundary; they are not a second production
+policy. Production point counts are guarded by `benchmarks/grid_policy_convergence.py`:
+independent PySCF SCF plus analytic grid-response gradients first verify that a
+96×32×64 v2 reference is stable against 120×40×80, then bound standard/tight
+energy and force error together with their deterministic point-count cost. The
+PBE gate also retains the historical 48×16×32 candidate as a negative cost/accuracy
+control; the promoted 54×16×32 profile adds radial resolution without the prior
+18×36 angular-work expansion. See the [#596 grid-policy decision](../.agents/notes/implemented/architecture/2026-09-20-production-grid-policy.md).
+
 `MolecularGrid` retains radial/angular topology and streams bounded tiles. It
 computes normalized ownership using log products. Coincident atoms share
 ownership, avoiding duplicate molecular measure. Points move with their owning

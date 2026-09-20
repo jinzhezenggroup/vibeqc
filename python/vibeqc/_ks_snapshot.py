@@ -121,6 +121,7 @@ class NativeKsSnapshot:
         "export_work",
         "functional",
         "grid",
+        "grid_provenance",
         "grid_spec",
         "hamiltonian",
         "metadata",
@@ -277,7 +278,7 @@ class NativeKsSnapshot:
             take((npoint,)),
         )
         if self.metadata[0] in (2, 3, 4, 5, 6, 7):
-            from vibeqc_compiler.dft.grid import GridSpec
+            from vibeqc_compiler.dft.grid import GridSpec, grid_policy_provenance
 
             version, radial, polar, azimuth, iterations, tolerance = take((6,))
             radii = take((119,))
@@ -292,9 +293,11 @@ class NativeKsSnapshot:
                     (z, float(r)) for z, r in enumerate(radii) if z and r
                 ),
             )
+            self.grid_provenance = grid_policy_provenance(self.grid_spec)
             self.atomic_weights = take((npoint,))
         else:
             self.grid_spec = None  # CUDA v1 has no prescription suffix.
+            self.grid_provenance = None
             self.atomic_weights = None
         self.export_work = MappingProxyType(
             dict(zip(("d2h_bytes", "reads", "synchronizations"), map(int, take((3,)))))
@@ -403,6 +406,11 @@ class NativeKsSnapshot:
                     "functional": spec.identity,
                     "scf_domain": SCF_DOMAIN,
                     "grid": grid.identity,
+                    **(
+                        {"grid_provenance": self.grid_provenance}
+                        if self.grid_provenance is not None
+                        else {}
+                    ),
                     "basis": basis_identity,
                     **composition_identity,
                     **(

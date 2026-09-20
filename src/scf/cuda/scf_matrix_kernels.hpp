@@ -18,6 +18,13 @@ void launch_copy_selected_matrices_kernel(dim3 grid, dim3 block, std::size_t sha
                                           const std::uint8_t* selected, const double* source,
                                           double* destination);
 
+/** Extract matrix diagonals for selected systems. */
+void launch_extract_matrix_diagonals_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                            cudaStream_t stream, std::int32_t batch_size,
+                                            std::int32_t matrices_per_system, std::int32_t nbf,
+                                            const std::uint8_t* selected, const double* matrices,
+                                            double* diagonals);
+
 /** Preserve launch geometry, stream and per-item state routing. */
 void launch_build_orthogonalizer_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                         cudaStream_t stream, std::int32_t batch_size,
