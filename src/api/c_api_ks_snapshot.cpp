@@ -245,6 +245,36 @@ vibeqc_status vibeqc_xc_rks_response_batch_v1(std::uint32_t pbe, const double* r
   return VIBEQC_STATUS_SUCCESS;
 }
 
+vibeqc_status vibeqc_xc_uks_response_batch_v1(std::uint32_t pbe, const double* rho,
+                                              const double* gradient, const double* delta_rho,
+                                              const double* delta_gradient, std::size_t point_count,
+                                              double* values, std::size_t value_count) {
+  constexpr std::size_t stride = 8;
+  if (pbe > 1 || !rho || !gradient || !delta_rho || !delta_gradient || !values ||
+      point_count == 0 || point_count > std::numeric_limits<std::size_t>::max() / stride ||
+      value_count != stride * point_count)
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  for (std::size_t point = 0; point < point_count; ++point) {
+    double local_rho[2], local_delta_rho[2], local_gradient[2][3], local_delta_gradient[2][3];
+    for (unsigned s = 0; s < 2; ++s) {
+      local_rho[s] = rho[s * point_count + point];
+      local_delta_rho[s] = delta_rho[s * point_count + point];
+      for (unsigned k = 0; k < 3; ++k) {
+        local_gradient[s][k] = gradient[(s * point_count + point) * 3 + k];
+        local_delta_gradient[s][k] = delta_gradient[(s * point_count + point) * 3 + k];
+      }
+    }
+    const auto xc = vibeqc::dft::point::unrestricted_response(
+        pbe != 0, local_rho, local_gradient, local_delta_rho, local_delta_gradient);
+    if (!xc.valid) return VIBEQC_STATUS_NUMERICAL_FAILURE;
+    for (unsigned s = 0; s < 2; ++s) {
+      values[stride * point + s] = xc.rho[s];
+      for (unsigned k = 0; k < 3; ++k) values[stride * point + 2 + 3 * s + k] = xc.gradient[s][k];
+    }
+  }
+  return VIBEQC_STATUS_SUCCESS;
+}
+
 vibeqc_status vibeqc_xc_point_batch_v1(std::uint32_t pbe, const double* rho, const double* gradient,
                                        std::size_t point_count, double* values,
                                        std::size_t value_count) {

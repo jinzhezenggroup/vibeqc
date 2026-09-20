@@ -455,21 +455,72 @@ class NativeKsSnapshot:
         Inputs use total density and Cartesian gradient, with no sigma division
         or low-density clipping. This CPU bridge does not qualify UKS or CUDA.
         """
+        return self._evaluate_response_points(
+            pbe, rho, gradient, delta_rho, delta_gradient, spins=1
+        )
+
+    def evaluate_uks_response_points(
+        self,
+        pbe: bool,
+        rho: typing.Any,
+        gradient: typing.Any,
+        delta_rho: typing.Any,
+        delta_gradient: typing.Any,
+    ) -> typing.Any:
+        """Return both spin potentials for a physical UKS density direction.
+
+        Spin-major inputs preserve cross-spin correlation. Empty spins require
+        zero directions; the singular exchange Hessian normal to that boundary
+        is never silently regularized. This bridge executes on CPU only.
+        """
+        return self._evaluate_response_points(
+            pbe, rho, gradient, delta_rho, delta_gradient, spins=2
+        )
+
+    def _evaluate_response_points(
+        self,
+        pbe: bool,
+        rho: typing.Any,
+        gradient: typing.Any,
+        delta_rho: typing.Any,
+        delta_gradient: typing.Any,
+        *,
+        spins: int,
+    ) -> typing.Any:
+        """Common checked CPU wire protocol for restricted and spin directions."""
         self.check_current()
-        if self.backend != "cpu" or self.metadata[2] != 1:
-            raise NotImplementedError("native point response requires CPU RKS")
+        if self.backend != "cpu" or self.metadata[2] != spins:
+            raise NotImplementedError(
+                "native point response requires matching CPU spin state"
+            )
+        # The snapshot's functional wire code is not a boolean: newer SCF
+        # methods (for example r2SCAN=2) must never be interpreted as PBE.
+        if self.metadata[6] not in (0, 1):
+            raise NotImplementedError("native point response supports LDA/PBE only")
         if type(pbe) is not bool or pbe != bool(self.metadata[6]):
             raise ValueError("native response functional mismatch")
         values = [np.asarray(x) for x in (rho, gradient, delta_rho, delta_gradient)]
-        n = values[0].size
+        n = values[0].size // spins
+        rho_shape = (n,) if spins == 1 else (2, n)
+        gradient_shape = (*rho_shape, 3)
         if n == 0 or any(
             x.shape != shape or np.iscomplexobj(x) or not np.isfinite(x).all()
-            for x, shape in zip(values, ((n,), (n, 3), (n,), (n, 3)), strict=True)
+            for x, shape in zip(
+                values,
+                (rho_shape, gradient_shape, rho_shape, gradient_shape),
+                strict=True,
+            )
         ):
-            raise ValueError("RKS point response requires finite rho[n], gradient[n,3]")
+            raise ValueError(
+                "point response requires finite density and Cartesian gradient spin arrays"
+            )
         values = [np.ascontiguousarray(x, dtype=np.float64) for x in values]
-        output = np.empty((n, 4), dtype=np.float64)
-        evaluate = self._library.vibeqc_xc_rks_response_batch_v1
+        output = np.empty((n, 4 * spins), dtype=np.float64)
+        evaluate = (
+            self._library.vibeqc_xc_rks_response_batch_v1
+            if spins == 1
+            else self._library.vibeqc_xc_uks_response_batch_v1
+        )
         pointer = ct.POINTER(ct.c_double)
         evaluate.argtypes = [
             ct.c_uint32,
@@ -494,8 +545,10 @@ class NativeKsSnapshot:
         )
         self.check_current()
         return {
-            "rho": immutable(output[:, 0][None, :]),
-            "gradient": immutable(output[:, 1:][None, :, :]),
+            "rho": immutable(output[:, :spins].T),
+            "gradient": immutable(
+                output[:, spins:].reshape(n, spins, 3).transpose(1, 0, 2)
+            ),
         }
 
     def ecp_derivatives(self) -> typing.Any:

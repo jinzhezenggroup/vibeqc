@@ -8,6 +8,7 @@
 #include "methods/hf_method.hpp"
 #include "methods/method.hpp"
 #include "methods/mp2_method.hpp"
+#include "methods/rccsd_method.hpp"
 #include "runtime/provider_registry.hpp"
 
 namespace vibeqc::methods {
@@ -44,6 +45,11 @@ constexpr MethodDefinition register_method(const generated::MethodManifestEntry&
       validate = detail::validate_mp2_system;
       prepare = detail::prepare_mp2_calculation;
       batch = detail::prepare_mp2_batch;
+      break;
+    case generated::PublicProvider::Rccsd:
+      validate = detail::validate_rccsd_system;
+      prepare = detail::prepare_rccsd_calculation;
+      batch = detail::prepare_rccsd_batch;
       break;
     case generated::PublicProvider::Dft:
       validate = detail::validate_dft_system;

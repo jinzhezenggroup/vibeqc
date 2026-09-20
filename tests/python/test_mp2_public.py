@@ -473,8 +473,16 @@ def test_c_api_conventional_force_is_transactional_across_repeated_execution() -
         assert bytes(storage[legacy_size:]) == bytes([0xA5] * 32)
 
         # The preceding B2 ABI prefix must also remain bounded by struct_size.
+        ccsd_extension = next(
+            index
+            for index, (name, _ctype) in enumerate(
+                _native.CorrelationDiagnostic._fields_
+            )
+            if name == "ccsd_iterations"
+        )
+
         class PreviousB2Diagnostic(ct.Structure):
-            _fields_ = _native.CorrelationDiagnostic._fields_[:-2]
+            _fields_ = _native.CorrelationDiagnostic._fields_[:ccsd_extension]
 
         previous_size = ct.sizeof(PreviousB2Diagnostic)
         storage = (ct.c_ubyte * (previous_size + 32))(*([0xA5] * (previous_size + 32)))

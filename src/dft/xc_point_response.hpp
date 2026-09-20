@@ -45,6 +45,76 @@ inline ResponseJet expm1(const ResponseJet& x) {
 }  // namespace vibeqc::dft::point::detail
 
 namespace vibeqc::dft::point {
+/** Spin-resolved directional derivative of the physical SCF potential.
+ * The shared correlation expression and exchange potentials own the science.
+ * An empty spin admits only zero density/gradient direction: orbital rotations
+ * preserve that empty block, whereas its normal exchange Hessian is singular.
+ * Numerical density/gradient scales remain fixed in both differentiation passes. */
+inline Value unrestricted_response(bool pbe, const double rho[2], const double gradient[2][3],
+                                   const double delta_rho[2], const double delta_gradient[2][3]) {
+  Value out;
+  bool zero_direction = true;
+  for (unsigned s = 0; s < 2; ++s) {
+    if (!detail::finite(rho[s]) || rho[s] < 0.0 || !detail::finite(delta_rho[s]) ||
+        (rho[s] == 0.0 && delta_rho[s] != 0.0))
+      out.valid = false;
+    zero_direction = zero_direction && delta_rho[s] == 0.0;
+    for (unsigned k = 0; k < 3; ++k) {
+      if (!detail::finite(gradient[s][k]) || !detail::finite(delta_gradient[s][k]) ||
+          (rho[s] == 0.0 && (gradient[s][k] != 0.0 || delta_gradient[s][k] != 0.0)))
+        out.valid = false;
+      zero_direction = zero_direction && delta_gradient[s][k] == 0.0;
+    }
+  }
+  const double scale = rho[0] + rho[1];
+  out.valid = out.valid && detail::finite(scale);
+  if (!out.valid || zero_direction) return out;
+  for (unsigned s = 0; s < 2; ++s)
+    if (rho[s] > 0.0 && rho[s] / scale == 0.0) out.valid = false;
+  if (!out.valid || scale == 0.0) {
+    out.valid = false;
+    return out;
+  }
+  using detail::ResponseJet;
+  const auto a = ResponseJet::variable(rho[0] / scale, 0, delta_rho[0] / scale);
+  const auto b = ResponseJet::variable(rho[1] / scale, 1, delta_rho[1] / scale);
+  double total[3], gradient_scale = scale;
+  for (unsigned k = 0; k < 3; ++k) {
+    total[k] = gradient[0][k] + gradient[1][k];
+    gradient_scale = detail::finite(total[k]) ? ::fmax(gradient_scale, ::fabs(total[k])) : DBL_MAX;
+  }
+  // Sum before normalization to retain opposing-spin cancellation, but scale
+  // the summands separately when their otherwise valid sum would overflow.
+  const auto normalized_sum = [gradient_scale](double x, double y) {
+    const double sum = x + y;
+    return detail::finite(sum) ? sum / gradient_scale : x / gradient_scale + y / gradient_scale;
+  };
+  const double ratio = scale / gradient_scale;
+  ResponseJet g[3];
+  for (unsigned k = 0; k < 3; ++k) {
+    g[k] = ResponseJet::variable(normalized_sum(gradient[0][k], gradient[1][k]), 2 + k,
+                                 normalized_sum(delta_gradient[0][k], delta_gradient[1][k]));
+    g[k].d[5 + k] = 1.0;
+  }
+  const auto correlation = detail::correlation_per_scale(pbe, a, b, g, scale, ratio);
+  for (unsigned s = 0; s < 2; ++s) {
+    detail::Jet spin_rho(rho[s]), spin_gradient[3];
+    spin_rho.d[0] = delta_rho[s];
+    for (unsigned k = 0; k < 3; ++k) {
+      spin_gradient[k] = detail::Jet(gradient[s][k]);
+      spin_gradient[k].d[0] = delta_gradient[s][k];
+    }
+    const auto exchange = detail::exchange_value(pbe, spin_rho, spin_gradient);
+    out.rho[s] = correlation.tangent.d[s] + exchange.rho.d[0];
+    out.valid = out.valid && detail::finite(out.rho[s]);
+    for (unsigned k = 0; k < 3; ++k) {
+      out.gradient[s][k] = ratio * correlation.tangent.d[2 + 3 * s + k] + exchange.gradient[k].d[0];
+      out.valid = out.valid && detail::finite(out.gradient[s][k]);
+    }
+  }
+  return out;
+}
+
 /** Restricted total-density directional derivative of physical XC potential.
  * Only equal-spin RKS is qualified. Vacuum is allowed only with zero direction;
  * an undefined or nonrepresentable coefficient rejects the entire action. */

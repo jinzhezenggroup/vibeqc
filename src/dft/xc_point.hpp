@@ -165,7 +165,10 @@ VIBEQC_XC_HD inline ExchangeValue<Scalar> exchange_value(bool pbe, const Scalar&
     if (largest <= primal(rho43) / primal(norm)) {
       Scalar u[3], u2 = 0.0;
       for (unsigned k = 0; k < 3; ++k) {
-        u[k] = gradient[k] / rho43;
+        // At exact zero gradient rho^(4/3) can underflow although its
+        // directional ratio is finite. Factor the division before forming
+        // that product; ordinary nonzero-gradient value arithmetic is intact.
+        u[k] = primal(rho43) == 0.0 ? (gradient[k] / rho) / rho13 : gradient[k] / rho43;
         u2 = u2 + u[k] * u[k];
       }
       const Scalar denominator = kappa + mu * u2;

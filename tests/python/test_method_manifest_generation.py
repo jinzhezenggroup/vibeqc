@@ -21,6 +21,7 @@ EXPECTED_ABI_IDS = {
     "pbe-uks": 9,
     "r2scan-rks": 10,
     "r2scan-uks": 11,
+    "rccsd": 12,
 }
 
 

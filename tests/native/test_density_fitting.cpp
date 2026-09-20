@@ -798,6 +798,7 @@ int main() {
     }
     require_close(forward_dot, reverse_dot, 1.0e-14,
                   "generic metric inverse response violates forward/reverse duality");
+
     bool rank_crossing_rejected = false;
     try {
       (void)vibeqc::scf::density_fitting_metric_inverse_response(
@@ -806,6 +807,56 @@ int main() {
       rank_crossing_rejected = std::string(error.what()).find("rank crossing") != std::string::npos;
     }
     require(rank_crossing_rejected, "metric response silently accepted a rank crossing");
+
+    // The same branch-validation layer must expose M^(-1/2), not only M+.
+    // This is the metric function required by RI correlation/MP2 whitening.
+    const std::vector<double> inverse_sqrt_metric{4.0, 0.0, 0.0, 1.0};
+    const auto inverse_sqrt_factor =
+        vibeqc::scf::factor_density_fitting_metric(inverse_sqrt_metric, 2, 0.3);
+    const std::vector<double> inverse_sqrt_motion{0.0, 1.0, 1.0, 0.0};
+    const auto inverse_sqrt_response =
+        vibeqc::scf::density_fitting_metric_inverse_square_root_response(
+            inverse_sqrt_metric, inverse_sqrt_factor.inverse_square_root, inverse_sqrt_motion, 2,
+            0.3);
+    require_close(inverse_sqrt_response[1], 1.0 / 6.0, 1.0e-13,
+                  "inverse-square-root response omitted discarded-subspace motion");
+    for (const double step : {1.0e-4, 2.0e-5}) {
+      auto plus_metric = inverse_sqrt_metric, minus_metric = inverse_sqrt_metric;
+      plus_metric[1] = plus_metric[2] = step;
+      minus_metric[1] = minus_metric[2] = -step;
+      const auto plus_factor = vibeqc::scf::factor_density_fitting_metric(plus_metric, 2, 0.3);
+      const auto minus_factor = vibeqc::scf::factor_density_fitting_metric(minus_metric, 2, 0.3);
+      require(plus_factor.effective_rank == 1 && minus_factor.effective_rank == 1,
+              "inverse-square-root finite differences crossed the selected rank");
+      for (std::size_t i = 0; i < 4; ++i)
+        require_close(
+            inverse_sqrt_response[i],
+            (plus_factor.inverse_square_root[i] - minus_factor.inverse_square_root[i]) / (2 * step),
+            1.0e-7, "inverse-square-root response differs from metric factorization");
+    }
+    const std::vector<double> inverse_sqrt_weight{0.3, 0.4, -0.2, 0.1};
+    const auto inverse_sqrt_reverse =
+        vibeqc::scf::density_fitting_metric_inverse_square_root_response(
+            inverse_sqrt_metric, inverse_sqrt_factor.inverse_square_root, inverse_sqrt_weight, 2,
+            0.3);
+    forward_dot = reverse_dot = 0.0;
+    for (std::size_t i = 0; i < 4; ++i) {
+      forward_dot += inverse_sqrt_weight[i] * inverse_sqrt_response[i];
+      reverse_dot += inverse_sqrt_reverse[i] * inverse_sqrt_motion[i];
+    }
+    require_close(forward_dot, reverse_dot, 1.0e-14,
+                  "inverse-square-root response violates forward/reverse duality");
+    rank_crossing_rejected = false;
+    try {
+      const auto crossing_factor =
+          vibeqc::scf::factor_density_fitting_metric({4.0, 0.0, 0.0, 1.2}, 2, 0.29);
+      (void)vibeqc::scf::density_fitting_metric_inverse_square_root_response(
+          {4.0, 0.0, 0.0, 1.2}, crossing_factor.inverse_square_root, inverse_sqrt_motion, 2, 0.3);
+    } catch (const std::runtime_error& error) {
+      rank_crossing_rejected = std::string(error.what()).find("rank crossing") != std::string::npos;
+    }
+    require(rank_crossing_rejected,
+            "inverse-square-root response silently accepted a rank crossing");
 
 #if VIBEQC_HAS_CUDA
     {

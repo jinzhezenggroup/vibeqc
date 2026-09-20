@@ -181,6 +181,18 @@ struct DensityFittingUhfGradient {
     const std::vector<double>& metric, const std::vector<double>& inverse,
     const std::vector<double>& response, std::size_t dimension, double relative_threshold = 0.0);
 
+/**
+ * Apply the fixed-rank full-Frobenius response of the metric inverse square root.
+ *
+ * The supplied inverse square root fixes the active spectral branch and must
+ * agree with a positive relative threshold when one is provided. Forward and
+ * reverse use the same self-adjoint Fréchet map; retained/discarded projector
+ * motion is included.
+ */
+[[nodiscard]] std::vector<double> density_fitting_metric_inverse_square_root_response(
+    const std::vector<double>& metric, const std::vector<double>& inverse_square_root,
+    const std::vector<double>& response, std::size_t dimension, double relative_threshold = 0.0);
+
 /** Construct d(M+) for one coordinate, with optional explicit rank-crossing checks. */
 [[nodiscard]] std::vector<double> density_fitting_metric_pseudoinverse_derivative(
     const integrals::DensityFittingIntegralData& integrals, const std::vector<double>& inverse,

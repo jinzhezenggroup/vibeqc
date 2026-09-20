@@ -75,6 +75,25 @@ vibeqc_status vibeqc_batch_get_scf_diagnostic(const vibeqc_batch* batch, uint32_
   return VIBEQC_STATUS_SUCCESS;
 }
 
+vibeqc_status vibeqc_batch_get_correlation_diagnostic(const vibeqc_batch* batch, uint32_t index,
+                                                      vibeqc_correlation_diagnostic* diagnostic) {
+  if (!batch || !diagnostic || index >= batch->plan->size()) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  const auto caller_size = diagnostic->struct_size;
+  constexpr auto legacy_size = offsetof(vibeqc_correlation_diagnostic, response_iterations);
+  if (caller_size < legacy_size || diagnostic->abi_version != VIBEQC_ABI_VERSION)
+    return VIBEQC_STATUS_ABI_MISMATCH;
+  std::lock_guard<std::recursive_mutex> lock(batch->context->mutex);
+  try {
+    const auto value = batch->plan->correlation_diagnostic(index);
+    if (!value) return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    std::memcpy(diagnostic, &*value, std::min<std::size_t>(caller_size, sizeof(*diagnostic)));
+    diagnostic->struct_size = caller_size;
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
 vibeqc_status vibeqc_batch_get_ks_diagnostic(const vibeqc_batch* batch, uint32_t index,
                                              vibeqc_ks_diagnostic* out,
                                              vibeqc_ks_iteration* history,

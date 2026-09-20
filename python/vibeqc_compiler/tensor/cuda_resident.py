@@ -243,8 +243,15 @@ class PreparedResident(PreparedCuda):
         *,
         device: typing.Any = 0,
         resource_plan: typing.Any = None,
+        resource_owner: typing.Any = None,
     ) -> None:
-        super().__init__(plan, artifact, device=device, resource_plan=resource_plan)
+        super().__init__(
+            plan,
+            artifact,
+            device=device,
+            resource_plan=resource_plan,
+            resource_owner=resource_owner,
+        )
         lib = self._library
         lib.resident_abi.restype = ctypes.c_int
         if lib.resident_abi() != 1:

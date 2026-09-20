@@ -67,6 +67,56 @@ class _Provider:
         )
 
 
+class _ResidentProvider:
+    def __init__(self, program: typing.Any, name: str) -> None:
+        self.program = program
+        self.identity = "fake-resident-provider-" + name
+        self.feeds: dict[str, np.ndarray] = {}
+        self.transfers = {
+            "h2d_bytes": 0,
+            "d2h_bytes": 0,
+            "runs": 0,
+            "synchronizations": 0,
+        }
+        steps = []
+        outputs = []
+        for output_name, node in program.outputs.items():
+            outputs.append((output_name, len(steps)))
+            steps.append(SimpleNamespace(node=node))
+        self.plan = SimpleNamespace(
+            outputs=tuple(outputs),
+            steps=tuple(steps),
+            allocation_bytes=1024,
+            provider_bytes=2048,
+        )
+
+    def upload(self, feeds: typing.Mapping[str, np.ndarray]) -> None:
+        for name, value in feeds.items():
+            array = np.asarray(value)
+            self.feeds[name] = np.array(array, copy=True)
+            self.transfers["h2d_bytes"] += array.nbytes
+            self.transfers["synchronizations"] += 1
+
+    def run(self) -> typing.Any:
+        result = cpu_execute(self.program, self.feeds)
+        self._outputs = {
+            name: np.array(value, copy=True) for name, value in result.outputs.items()
+        }
+        self.transfers["runs"] += 1
+        self.transfers["d2h_bytes"] += 4
+        self.transfers["synchronizations"] += 1
+        return dict(self._outputs), {"profiled": False}
+
+    def download(self, value: np.ndarray) -> np.ndarray:
+        array = np.array(value, copy=True)
+        self.transfers["d2h_bytes"] += array.nbytes
+        self.transfers["synchronizations"] += 1
+        return array
+
+    def close(self) -> None:
+        pass
+
+
 def _fake_cuda_runtime(
     monkeypatch: typing.Any, *, bad_stage: str | None = None
 ) -> None:
@@ -85,16 +135,22 @@ def _fake_cuda_runtime(
         def __init__(self, admission: typing.Any, factories: typing.Any) -> None:
             self.plan = admission
             self.providers = {
-                stage: _Provider(
-                    program,
-                    stage,
-                    backend=("numpy-cpu-interpreter" if stage == bad_stage else None),
+                stage: (
+                    _ResidentProvider(program, stage)
+                    if stage == "shared_transpose"
+                    else _Provider(
+                        program,
+                        stage,
+                        backend=(
+                            "numpy-cpu-interpreter" if stage == bad_stage else None
+                        ),
+                    )
                 )
                 for stage, program in programs.items()
             }
 
         def advance(self, phase: int) -> None:
-            assert phase == 0
+            assert phase in (0, 1)
 
         def provider(self, stage: str) -> _Provider:
             return self.providers[stage]
@@ -105,6 +161,7 @@ def _fake_cuda_runtime(
     monkeypatch.setattr(module, "tensor_resource_choices", choices)
     monkeypatch.setattr(module, "plan_resources", lambda *a, **k: _Admission())
     monkeypatch.setattr(module, "ResourceSession", Session)
+    monkeypatch.setattr(module, "PreparedResident", _ResidentProvider)
 
 
 def _cc_state(name: str = "h2") -> typing.Any:
@@ -143,6 +200,16 @@ def test_cuda_lambda_actions_match_cpu_and_feed_checked_response(
         assert actual.provenance["tensor_backend"] == prepared.backend
         assert actual.provenance["execution_owner_identity"] == prepared.identity
         assert actual.operator_actions > 0
+        resident = actual.provenance["transfer_metrics"]["shared_transpose"]
+        assert resident["mode"] == "resident-static-cc-feeds"
+        assert resident["calls"] == actual.operator_actions
+        assert resident["dynamic_h2d_bytes_total"] == (
+            resident["calls"] * resident["dynamic_h2d_bytes_per_call"]
+        )
+        assert (
+            resident["initial_static_h2d_bytes"]
+            > resident["dynamic_h2d_bytes_per_call"]
+        )
         response = BoundCCSDResponse(prepared.bound, actual)
         weight = response.weight("foo", reference_identity=snapshot.identity)
         assert weight.parameter == "foo" and np.isfinite(weight.values).all()
@@ -220,6 +287,19 @@ def test_real_cuda_lambda_water_matches_cpu_and_reports_resources(
         stages = result.provenance["transfer_metrics"]
         assert {"shared_primal", "independent_primal", "shared_transpose"} <= set(
             stages
+        )
+        resident = stages["shared_transpose"]
+        assert resident["mode"] == "resident-static-cc-feeds"
+        assert resident["calls"] == result.operator_actions
+        assert resident["dynamic_h2d_bytes_total"] == (
+            resident["calls"] * resident["dynamic_h2d_bytes_per_call"]
+        )
+        assert (
+            resident["initial_static_h2d_bytes"]
+            > resident["dynamic_h2d_bytes_per_call"]
+        )
+        assert resident["dynamic_h2d_bytes_per_call"] == (
+            result.lambda1.nbytes + result.lambda2.nbytes
         )
         assert (
             sum(row.get("observed_host_to_device_bytes", 0) for row in stages.values())

@@ -20,12 +20,12 @@ CPU_FORCE_HOST_CAP = 256 << 20
 
 
 def qualified_basis(basis: typing.Any) -> bool:
-    """CPU promotion is specific to s/p ECP records, including their fragments."""
+    """CPU promotion is specific to s/p/d ECP records, including their fragments."""
     return (
         isinstance(basis, BasisSet)
         and any(element.ecp_core_electrons for element in basis.elements)
         and all(
-            shell.angular_momentum <= 1
+            shell.angular_momentum <= 2
             for element in basis.elements
             for shell in element.shells
         )

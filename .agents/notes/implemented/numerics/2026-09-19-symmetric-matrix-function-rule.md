@@ -79,3 +79,9 @@ validated spectral-state/workspace contracts; do not add method-specific copies.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Subsequent native integration
+
+The [native runtime/range decision](2026-09-20-native-matrix-function-weighted-range.md)
+extends the original CPU-reference-only boundary. The original rationale above
+is retained as historical scope, not a claim that native integration is still absent.

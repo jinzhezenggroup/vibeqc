@@ -119,6 +119,9 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_rks_response_tests tests/native/test_rks_response.cpp)
   target_compile_definitions(vibeqc_rks_response_tests PRIVATE
     VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  vibeqc_native_test(vibeqc_uks_response_tests tests/native/test_uks_response.cpp)
+  target_compile_definitions(vibeqc_uks_response_tests PRIVATE
+    VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   vibeqc_native_test(vibeqc_uks_state_tests tests/native/test_uks_state.cpp)
 
   if(VIBEQC_ENABLE_CUDA)

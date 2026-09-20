@@ -200,9 +200,21 @@ class FixedDensityXCDerivativeKernel:
             raise ValueError("XC kernel/reference functional mismatch")
         if reference.grid_identity != self.grid_identity:
             raise ValueError("XC kernel/reference grid mismatch")
-        expected = (reference.coefficients * reference.occupations) @ (
-            reference.coefficients.T
-        )
+        if getattr(reference, "algorithm", None) == "UKS":
+            expected = np.stack(
+                [
+                    (
+                        getattr(reference, f"coefficients_{spin}")
+                        * getattr(reference, f"occupations_{spin}")
+                    )
+                    @ getattr(reference, f"coefficients_{spin}").T
+                    for spin in ("alpha", "beta")
+                ]
+            )
+        else:
+            expected = (reference.coefficients * reference.occupations) @ (
+                reference.coefficients.T
+            )
         expected_spins = spin_densities(expected, self.basis.nao)
         actual_spins = spin_densities(self.reference_density, self.basis.nao)
         error = float(np.max(np.abs(expected_spins - actual_spins)))

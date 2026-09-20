@@ -97,8 +97,9 @@ failure/result record. `diis_size=0` is supported as resident Jacobi rather than
 a backend switch.
 
 The internal energy facade accepts `backend="cuda-resident"`. It remains
-energy-only; `method_capabilities("rccsd")` still reports no native prepared
-batch and force requests remain unsupported. `PreparedResidentCCSD` itself
+energy-only. Slice C now additionally exposes the production native owner through
+`VIBEQC_METHOD_RCCSD` / `Calculator(method="rccsd")`; force requests remain
+unsupported. `PreparedResidentCCSD` itself
 stays open after convergence. Its immutable `owner_identity` binds the
 reference/integrals/equations/artifact/device; a separate
 `solved_state_identity` additionally hashes the replay-qualified final T1/T2.
@@ -126,18 +127,52 @@ setup, explicit nonconvergence and resident zero-DIIS execution. H2O agrees with
 its pinned amplitudes to about 6.5e-12 max absolute error and its pinned total
 energy to about 2.9e-13 Eh.
 
-## Remaining C acceptance
+## C: native/public promotion
 
-- Native `VIBEQC_METHOD_RCCSD` registration and public prepared execution remain
-  unimplemented. Public force capability must stay unsupported.
-- Supported homogeneous prepared batches still need one isolated resident
-  T/DIIS/status owner per item plus partial-failure semantics. The Python
-  `batch_energy` helper is not that native batch.
-- The current resident solver starts from host-prepared conventional MO blocks;
-  direct producer-to-consumer device leases for HF/AO2MO remain future work.
-- Cross-geometry warm starts still require validated orbital transport.
-- Complete HF-to-native-registry performance and memory evidence remains a
-  promotion gate; resident transfer reduction alone is not a speedup claim.
+Slice C promotes restricted closed-shell CCSD as a genuine native method without
+reusing the reserved `VIBEQC_METHOD_RCCSD_T` identifier. `VIBEQC_METHOD_RCCSD=12`
+is an additive method id; all earlier values remain unchanged. The registry reports
+energy only and prepared-batch support. A force buffer/request therefore fails
+explicitly instead of returning an HF derivative under a CC label.
+
+`src/methods/rccsd_method.cpp` owns the public HF -> conventional MO blocks ->
+RCCSD lifecycle. It accepts only all-electron closed-shell RHF, FP64, unscreened
+conventional integrals, no frozen core and no density fitting. The physical CC
+energy/residual and independent expanded replay are generated at build time from
+the same #148 TensorIR. The generated topology is extent-independent: occupied
+and virtual dimensions are runtime values rather than a finite molecular shape
+whitelist.
+
+The CUDA native owner in `src/cc/cuda_solver.cu` uploads large Fock/integral,
+denominator and initial-amplitude inputs once, then retains T1/T2, physical R1/R2,
+DIIS histories and workspaces in one bounded device arena. Host iteration control
+reads only scalar energy/residual/DIIS status. A convergence candidate must pass
+the separately generated expanded physical replay on GPU before success. CUDA
+provider or solver failure never falls back to CPU CC.
+
+Prepared RCCSD batches intentionally admit one homogeneous `(nocc,nvir)` shape.
+Each input owns an independent prepared calculation, amplitudes, DIIS and status;
+an invalid or failed item cannot corrupt its neighbours. Changed geometry is
+re-prepared and starts from the deterministic MP2-like amplitudes. Shape equality
+alone never authorizes cross-geometry amplitude reuse. Ragged shapes are reported
+as unsupported and should be split by the caller.
+
+The correlation diagnostic appends CC iteration count, DIIS restarts, physical and
+replay residual maxima, correlation energy and CUDA movement counters behind the
+existing struct-size ABI boundary. A normal `NOT_CONVERGED` execution retains its
+last finite energy and CC diagnostics; arithmetic/backend failures invalidate the
+result. Older diagnostic callers continue to receive only the prefix they sized.
+
+The production path is correctness/resource qualified, not a performance
+leadership claim. Direct producer-to-consumer HF/AO2MO device leases and validated
+cross-geometry orbital/amplitude transport remain future optimizations rather than
+requirements for the declared energy-only capability.
+
+The final #149 C endpoint matrix and exact reproduction commands are recorded in
+[`benchmarks/results/rccsd-149-c`](../benchmarks/results/rccsd-149-c/README.md).
+The committed CPU and RTX 5090 records cover `(nocc,nvir)=(1,1)` and `(5,2)` at
+64/128/256 MiB with the same source identity; the 64 MiB CUDA rows are explicit
+pre-allocation budget rejections while the two larger budgets converge.
 
 ### Ordinary-stream comparison on the same H2O endpoint
 

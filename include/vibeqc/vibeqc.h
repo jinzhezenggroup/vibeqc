@@ -480,6 +480,19 @@ typedef struct vibeqc_method_descriptor {
   /** Optional KS snapshot. NULL/absent preserves the original default model.
    * The descriptor and pointees need only outlive the prepare call. */
   const vibeqc_ks_options* ks_options;
+  /** RCCSD controls. These are an additive struct-size-gated extension. An
+   * absent field preserves the documented default; zero also selects the
+   * default except ccsd_diis_history=0, which explicitly disables DIIS. */
+  uint32_t ccsd_max_iterations;
+  uint32_t ccsd_diis_history;
+  double ccsd_energy_tolerance;
+  double ccsd_residual_tolerance;
+  double ccsd_denominator_threshold;
+  double ccsd_damping;
+  double ccsd_level_shift;
+  /** Frozen occupied orbitals are not implemented for the native RCCSD owner.
+   * Zero means all occupied orbitals are correlated. */
+  uint32_t ccsd_frozen_core;
 } vibeqc_method_descriptor;
 
 /**
@@ -557,6 +570,20 @@ typedef struct vibeqc_correlation_diagnostic {
   uint64_t measured_response_workspace_peak_bytes;
   /** Successful allocation events in the same GMRES ownership domain. */
   uint64_t response_workspace_allocation_count;
+  /** RCCSD-only fields. Zero for methods that do not publish iterative CC state. */
+  uint64_t ccsd_iterations;
+  uint64_t ccsd_diis_restarts;
+  double ccsd_correlation_energy;
+  double ccsd_energy_change;
+  double ccsd_singles_residual_max;
+  double ccsd_doubles_residual_max;
+  double ccsd_replay_singles_residual_max;
+  double ccsd_replay_doubles_residual_max;
+  uint64_t ccsd_setup_h2d_bytes;
+  uint64_t ccsd_scalar_d2h_bytes;
+  uint64_t ccsd_amplitude_d2h_bytes;
+  uint64_t ccsd_synchronizations;
+  char ccsd_replay_equation_hash[65];
 } vibeqc_correlation_diagnostic;
 
 /** Executable capabilities for one method identifier. */
@@ -578,7 +605,9 @@ typedef struct vibeqc_result_descriptor {
   uint32_t force_count;
   uint32_t iterations;
   double energy_change;
-  /** RMS density update used by the SCF convergence test. */
+  /** Legacy convergence residual: SCF density-update RMS for mean-field
+   * methods; iterative correlated methods may report their own physical
+   * residual aggregate here and expose method-specific components separately. */
   double density_rms;
   int32_t converged;
   vibeqc_backend executed_backend;
@@ -1019,6 +1048,13 @@ VIBEQC_API vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch);
  */
 VIBEQC_API vibeqc_status vibeqc_batch_get_scf_diagnostic(const vibeqc_batch* batch, uint32_t index,
                                                          vibeqc_scf_diagnostic* out);
+
+/** Input-ordered correlated-method diagnostic. The caller-size compatibility
+ * contract matches vibeqc_calculation_get_correlation_diagnostic. A rejected
+ * or backend-failed item has no record; a normal NOT_CONVERGED item may retain
+ * its last finite correlation state and physical residual diagnostics. */
+VIBEQC_API vibeqc_status vibeqc_batch_get_correlation_diagnostic(
+    const vibeqc_batch* batch, uint32_t index, vibeqc_correlation_diagnostic* diagnostic);
 
 /** Input-ordered counterpart of vibeqc_calculation_get_ks_diagnostic. Invalid
  * or numerically failed items have no record; valid nonconverged items retain

@@ -6,8 +6,8 @@ the operator backends include native J/K execution. It separates the problem sna
 matrix-free operator, and the linear-solver/recycling state so downstream
 property, Hessian, and correlated-gradient code can reuse one implementation.
 This slice is partial: the RHF response layer and the direct-CPU UHF response
-layer (including `export_uhf`) and the native CPU LDA/PBE RKS CPKS handoff are
-delivered. Native UKS/CUDA CPKS and remaining performance acceptance stay open
+layer (including `export_uhf`) and the native CPU LDA/PBE RKS/UKS CPKS handoffs are
+delivered. Native CUDA CPKS and remaining performance acceptance stay open
 under `#179`.
 
 This internal tooling is not a new public electronic-structure method. It
@@ -161,7 +161,7 @@ geometry), failed replay, batch closure and response closure revoke old solves
 and recycle spaces. Changed functional, grid, basis, provider or state are
 rejected before publication.
 
-This handoff qualifies all-electron CPU LDA/PBE RKS only. UKS, CUDA CPKS, DF,
+These handoffs qualify all-electron CPU LDA/PBE RKS and UKS. CUDA CPKS, DF,
 ECP, exact/range-separated exchange, and meta-GGA response remain unsupported.
 AO/MO transforms, XC tiling and Krylov orchestration are host-side. Existing
 solver workspace accounting is not a complete endpoint memory/performance
@@ -174,6 +174,29 @@ point-response ABI against 30 independent high-precision directions, its batch
 layout and invalid-input boundaries, and energy snapshot leases from real
 LDA/PBE H2 solves. See [point acceptance](xc_scf_domain.md#executable-evidence)
 for the fixture generator and cancellation-aware numerical gate.
+
+`NativeUKSResponse.from_native` uses the same arguments and lifetime contract
+for the actual native CPU LDA/PBE UKS state. It preserves both canonical spin
+frames and occupations. The existing spin reference/layout contract carries
+an explicit `algorithm="UKS"` tag and functional/grid identities; the UHF
+operator rejects this reference. `UKSResponseOperator` changes only the shared
+spin operator's AO Fock-response seam: both outputs contain total Coulomb plus
+their own XC response, including cross-spin correlation. The common XC tile
+assembler and GMRES/multi-RHS/recycling code are reused without spin averaging.
+
+An empty spin retains its zero-dimensional orbital-rotation block. Its point
+density, gradient and response direction must be exactly zero; nonzero normal
+directions are rejected because the exchange Hessian is singular there. The
+other spin still has a nonzero response, including the correlation potential
+in both output channels. This is a tangent-direction qualification, not a
+finite full Hessian at the empty-spin boundary.
+
+`tests/python/test_response_native_uks.py` uses real LiH+ and H2+ LDA/PBE states,
+independent libcint/Libxc spin actions, finite orbital rotations, reconverged
+spin densities, true residuals, transpose identities, multi-RHS/recycling and
+lease/domain negatives. `vibeqc_uks_response_tests` checks 48 independent
+high-precision point directions, spin permutations and the private batch ABI.
+See [the spin binding decision](../.agents/notes/implemented/numerics/2026-09-20-native-uks-cpks.md).
 
 ## #153 interface
 
@@ -281,9 +304,9 @@ reused merely because alpha/beta dimensions happen to match.  The generic
 GMRES, blocked multi-RHS and recycling APIs operate on this response problem
 unchanged.
 
-This is the HF UHF response layer only. Native UKS CPKS remains open under
-`#179`; the separate CPU RKS adapter does not relabel a UHF
-state as a KS endpoint or enable unsupported XC derivatives.
+The UHF operator remains HF-specific. Native UKS CPKS reuses its spin
+layout and orbital-action implementation through the distinct UKS adapter
+described above; the actual native KS state supplies its functional identity.
 
 The direct CPU bridge can export a converged open-shell UHF solution through
 `export_uhf`.  It canonicalizes the independently returned alpha and beta AO

@@ -28,6 +28,12 @@ vibeqc_status vibeqc_xc_rks_response_batch_v1(std::uint32_t pbe, const double* r
                                               const double* gradient, const double* delta_rho,
                                               const double* delta_gradient, std::size_t point_count,
                                               double* values, std::size_t value_count);
+/** Spin-major rho[2,n] and gradient[2,n,3]; outputs point-major rho[2], gradient[2,3].
+ * As for the restricted bridge, discard the complete output after any failure. */
+vibeqc_status vibeqc_xc_uks_response_batch_v1(std::uint32_t pbe, const double* rho,
+                                              const double* gradient, const double* delta_rho,
+                                              const double* delta_gradient, std::size_t point_count,
+                                              double* values, std::size_t value_count);
 vibeqc_status vibeqc_ks_snapshot_ecp_derivatives_v1(vibeqc_batch* batch,
                                                     const vibeqc_ks_snapshot* snapshot,
                                                     double* values, std::size_t count);
