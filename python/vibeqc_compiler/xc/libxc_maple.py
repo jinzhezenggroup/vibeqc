@@ -34,6 +34,7 @@ class MapleImportError(ValueError):
     """The pinned Maple source uses syntax outside the qualified importer."""
 
 
+IMPORTER_SEMANTICS = "libxc-maple-graph/v2"
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _RESERVED = frozenset(
     (
@@ -91,6 +92,7 @@ class MapleModule:
             {
                 "entry_sha256": self.source_sha256,
                 "defines": self.defines,
+                "importer_semantics": IMPORTER_SEMANTICS,
                 "include_edges": self.include_edges,
                 "sources": self.source_hashes,
             },
