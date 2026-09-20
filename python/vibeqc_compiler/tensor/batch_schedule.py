@@ -143,9 +143,7 @@ def _ragged_step(step_index: int, node: typing.Any) -> RaggedStepSchedule:
         lowering = "inverted-segments"
     elif node.op == "segment_sum":
         offsets = tuple(node.attrs["offsets"])
-        degrees = [
-            stop - start for start, stop in pairwise(offsets)
-        ]
+        degrees = [stop - start for start, stop in pairwise(offsets)]
         scan_work = outer_count * source_extent
         scheduled_work = scan_work
         lowering = "contiguous-segments"
