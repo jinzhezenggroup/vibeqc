@@ -100,6 +100,12 @@ void destroy_cuda_density_fitting_jk_plan(CudaDensityFittingJkPlan* plan) noexce
   delete plan;
 }
 
+CudaDensityFittingSourceCounters cuda_density_fitting_jk_plan_source_counters(
+    const CudaDensityFittingJkPlan* plan) noexcept {
+  return plan == nullptr ? CudaDensityFittingSourceCounters{}
+                         : cuda_density_fitting_integral_source_counters(plan->integral_source);
+}
+
 std::size_t cuda_density_fitting_jk_plan_batch_size(const CudaDensityFittingJkPlan* plan) noexcept {
   return plan == nullptr ? 0U : plan->batch_size;
 }

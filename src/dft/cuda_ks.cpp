@@ -35,6 +35,7 @@ extern "C" void ks_cuda_fail_next_runtime_for_test_v1() { fail_next_ks_runtime =
 namespace vibeqc::dft {
 namespace {
 using namespace scf::cuda_execution;
+constexpr unsigned kMaximumFinalCorrections = 4;
 void check(cudaError_t status) {
   if (status == cudaErrorMemoryAllocation) throw std::bad_alloc();
   if (status != cudaSuccess)
@@ -229,7 +230,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
     resource.state_device_bytes = partition(n, spins, history, nullptr);
     resource.xc_device_bytes = cuda_xc_layout(basis, grid, pbe, spins == 2, tile).device_bytes;
     resource.provider_device_bytes = provider.diagnostic().device_bytes;
-    output.dft_diagnostic.history.reserve(options.max_iterations);
+    const auto diagnostic_iterations =
+        mixed_j ? sum(product(options.max_iterations, 2U), kMaximumFinalCorrections)
+                : options.max_iterations;
+    output.dft_diagnostic.history.reserve(diagnostic_iterations);
     resource.retained_host_numeric_bytes =
         (orthogonalizer.capacity() + cold_density.capacity()) * sizeof(double) +
         output.dft_diagnostic.history.capacity() * sizeof(ScfIteration);
@@ -506,13 +510,13 @@ struct CudaKsPlan::Impl : KsStateStorage {
                            output.energy_change < options.energy_tolerance &&
                            physical.density_change < options.density_tolerance &&
                            physical.residual < std::min(1e-9, options.density_tolerance);
-    constexpr unsigned maximum_final_corrections = 4;
+    const bool strict_final_closure = spins == 2 || !provider.system().ecp_terms.empty();
     const bool mixed_stage = mixed_j && !strict_refinement;
     const bool enter_strict_refinement =
         mixed_stage && (converged || output.iterations >= options.max_iterations);
     if (enter_strict_refinement) {
       // AUTO may use FP32 only as an iterative accelerator. Reset nonlinear
-      // history and spend the remaining iterations on the exact FP64 target.
+      // history and give refinement its own full budget for the FP64 target.
       strict_refinement = true;
       final_closure = false;
       final_corrections = 0;
@@ -521,11 +525,11 @@ struct CudaKsPlan::Impl : KsStateStorage {
       is_active = true;
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
       check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
-    } else if (spins == 2 && converged && !final_closure) {
+    } else if (strict_final_closure && converged && !final_closure) {
       // A DIIS proposal can satisfy the ordinary SCF density-change gate while
       // the canonical density of the unshifted physical Fock is microscopically
-      // outside the derivative-state tolerance. Mirror CPU UKS B3: enter a
-      // bounded physical fixed-point closure without relaxing any tolerance.
+      // outside the derivative-state tolerance. UKS already requires this closure;
+      // ECP RKS needs the same physical fixed point for strict derivative snapshots.
       final_closure = true;
       final_corrections = 0;
       stabilize_occupations = false;
@@ -534,7 +538,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     } else if (final_closure) {
       ++final_corrections;
       output.converged = converged;
-      is_active = !output.converged && final_corrections < maximum_final_corrections;
+      is_active = !output.converged && final_corrections < kMaximumFinalCorrections;
     } else {
       output.converged = converged;
       const bool refinement_budget = strict_refinement && mixed_j

@@ -158,6 +158,7 @@ def ks_resource_request(
     method="pbe-rks",
     basis="sto-3g",
     backend="cpu",
+    precision="fp64",
     basis_representation=None,
     charges=None,
     multiplicities=None,
@@ -178,6 +179,11 @@ def ks_resource_request(
         raise NotImplementedError(
             "KS planning supports native CPU/CUDA LDA/PBE RKS/UKS energies"
         )
+    precision = str(precision).lower()
+    if precision not in ("fp64", "auto"):
+        raise ValueError("KS precision must be 'fp64' or 'auto'")
+    if precision == "auto" and backend != "cuda":
+        raise NotImplementedError("KS automatic precision currently requires CUDA")
     model = resolve_ks_options(method, ks_options)
     systems = tuple(tuple(Atom.from_value(a) for a in atoms) for atoms in systems)
     if not systems or any(not atoms for atoms in systems):
@@ -273,11 +279,17 @@ def ks_resource_request(
             device_id=device_id,
             one_electron_mapping=os.environ.get("VIBEQC_ONE_ELECTRON_VALUE_MAPPING"),
         )
+    # AUTO runs two separately bounded nonlinear stages. Reserve the native
+    # owner and exported history for both stages plus strict closure corrections.
+    history_iterations = max_iterations
+    if precision == "auto":
+        history_iterations = checked_bytes(2 * max_iterations + 4, "KS mixed history")
+        controls["history_iterations"] = history_iterations
     identity = ResourceIdentity(
         method,
         "native-ks-direct-v1",
         backend,
-        "fp64",
+        precision,
         json.dumps({"items": items}),
         ("energy", "forces") if backend == "cuda" else ("energy",),
         json.dumps(controls, sort_keys=True),
@@ -294,7 +306,7 @@ def ks_resource_request(
         _item_host_inventory(
             item,
             diis_history=diis_history,
-            max_iterations=max_iterations,
+            max_iterations=history_iterations,
             pbe=pbe,
             backend=backend,
             model=model,

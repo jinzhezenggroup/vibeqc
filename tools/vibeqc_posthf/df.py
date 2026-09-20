@@ -169,6 +169,9 @@ class DFProvider:
             "source_tiles": 0,
             "source_seconds": 0.0,
             "transformation_seconds": 0.0,
+            "host_transform_calls": 0,
+            "subsequent_h2d_bytes": 0,
+            "endpoint_seconds": 0.0,
         }
 
     def _check(self):
@@ -256,6 +259,7 @@ class DFProvider:
                         ]
                     ).reshape(result.shape)
                     self.statistics["source_tiles"] += 1
+                    self.statistics["host_transform_calls"] += 3
                     self.statistics["transformation_seconds"] += (
                         time.perf_counter() - started
                     )
@@ -312,12 +316,21 @@ class DFProvider:
                         values += (
                             left.reshape(size, -1).T @ right.reshape(size, -1)
                         ).reshape(block.shape)
+                        self.statistics["host_transform_calls"] += 1
                         self.statistics["transformation_seconds"] += (
                             time.perf_counter() - started
                         )
                 values = immutable(values)
             finally:
                 self._retained -= persistent
+            endpoint_seconds = time.perf_counter() - start
+            self.statistics["endpoint_seconds"] += endpoint_seconds
+            source_metrics = (
+                self.source.source_metrics()
+                if hasattr(self.source, "source_metrics")
+                else None
+            )
+            host_staged = self.source.backend.startswith("cuda")
             result = BlockResult(
                 block,
                 values,
@@ -325,10 +338,14 @@ class DFProvider:
                 self.snapshot.hamiltonian_id,
                 {
                     "backend": "cpu-reference-df-staged-fp64",
+                    "execution_path": (
+                        "host-staged-compatibility" if host_staged else "cpu-source"
+                    ),
+                    "performance_claim_eligible": not host_staged,
                     "source_backend": self.source.backend,
-                    "source_host_staging": self.source.backend.startswith("cuda"),
+                    "source_host_staging": host_staged,
                     "cache_hit": False,
-                    "endpoint_seconds": time.perf_counter() - start,
+                    "endpoint_seconds": endpoint_seconds,
                     "peak_bytes": peak,
                     "host_peak_bytes": peak
                     - getattr(self.source, "source_device_bytes", 0),
@@ -343,9 +360,18 @@ class DFProvider:
                     "cumulative_transformation_seconds": self.statistics[
                         "transformation_seconds"
                     ],
-                    "cuda_source": self.source.source_metrics()
-                    if hasattr(self.source, "source_metrics")
-                    else None,
+                    "host_transform_calls": self.statistics["host_transform_calls"],
+                    "subsequent_h2d_bytes": self.statistics["subsequent_h2d_bytes"],
+                    "generated_bytes": (
+                        source_metrics["generated_bytes"] if source_metrics else 0
+                    ),
+                    "d2h_bytes": source_metrics["d2h_bytes"] if source_metrics else 0,
+                    "source_tile_count": (
+                        source_metrics["tile_count"]
+                        if source_metrics
+                        else self.statistics["source_tiles"]
+                    ),
+                    "cuda_source": source_metrics,
                 },
             )
             self._cache[block.slots] = result
