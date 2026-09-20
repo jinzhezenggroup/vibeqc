@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
+from vibeqc_compiler.common.resources import ResourceBudget
 from vibeqc_compiler.integral.blocks import TensorLayout, WeightTile
 from vibeqc_compiler.integral.second_derivatives import (
     build_eri_second_ir,
@@ -172,27 +173,119 @@ def _run_kernel_summed(
                 projections=None,
                 direction=center_direction,
             )
-            with PreparedSecondDerivative(art, record_capacity=8) as plan:
+            with PreparedSecondDerivative(
+                art,
+                record_capacity=8,
+                budget=data["resource_budget"],
+                device_id=data["device_id"],
+            ) as plan:
                 r = plan.contract(stream, profile=True)
+            data["second_executions"].append(r.diagnostics)
             full[list(oi)] += np.asarray(r.values).sum(axis=0)
     if hvp:
         return _scatter_hvp(full, ci, ca, data)
     return _scatter(full, ci, ca, data)
 
 
-def _provider_data(s):
+def _checked_second_hvp_options(backend, compiler, device_id, budget_bytes):
+    """Validate one explicit #178 weighted-HVP execution backend."""
+    if backend not in ("cpu", "cuda"):
+        raise ValueError("second-integral backend must be cpu or cuda")
+    if type(budget_bytes) is not int or not 0 < budget_bytes < 2**63:
+        raise ValueError("second-integral budget must be a positive int64")
+    if backend == "cuda":
+        from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+
+        if not isinstance(compiler, CudaCompilerAdapter):
+            raise TypeError(
+                "CUDA second-integral HVPs require an explicit CudaCompilerAdapter"
+            )
+        if type(device_id) is not int or not 0 <= device_id < 2**31:
+            raise ValueError("CUDA second-integral device_id must be a nonnegative int")
+        resource_budget = ResourceBudget(
+            host_bytes=budget_bytes,
+            device_bytes=budget_bytes,
+            per_device_bytes=((device_id, budget_bytes),),
+        )
+        return compiler, device_id, resource_budget
+    if compiler is not None:
+        raise ValueError("second-integral compiler is only meaningful for CUDA")
+    return (
+        CppCompilerAdapter(Path(shutil.which("c++") or "c++")),
+        0,
+        ResourceBudget(host_bytes=budget_bytes, device_bytes=0),
+    )
+
+
+def _provider_data(
+    s,
+    *,
+    backend="cpu",
+    compiler=None,
+    device_id=0,
+    budget_bytes=64 << 20,
+):
     _validate_analytic_domain(s)
+    adapter, provider_device, resource_budget = _checked_second_hvp_options(
+        backend, compiler, device_id, budget_bytes
+    )
     C, eps = s.C, s.eps
     W_e = (C[:, : s.nocc] * (2 * eps[: s.nocc])) @ C[:, : s.nocc].T
-    adapter = CppCompilerAdapter(Path(shutil.which("c++") or "c++"))
     return {
         "state": s,
         "shells": s.source.shells,
         "primitives": s.primitives,
         "adapter": adapter,
-        "cache": s.cache / "second-cache",
+        "cache": s.cache / f"second-cache-{backend}",
         "W_e": W_e,
         "density": s.P0,
+        "backend": backend,
+        "device_id": provider_device,
+        "budget_bytes": budget_bytes,
+        "resource_budget": resource_budget,
+        "second_executions": [],
+    }
+
+
+def _second_provider_diagnostics(data):
+    """Summarize the generated #178 provider without claiming hidden residency."""
+    executions = data["second_executions"]
+    timing_names = ("device_ms", "input_ms", "output_ms", "kernel_ms")
+    timing = {
+        name: sum(
+            (item.get("device_timing") or {}).get(name, 0.0) for item in executions
+        )
+        for name in timing_names
+    }
+    chunks = sum(item["chunks"] for item in executions)
+    cuda = data["backend"] == "cuda"
+    return {
+        "backend": f"{data['backend']}-generated-weighted-hvp",
+        "provider_backend": data["backend"],
+        "device_id": data["device_id"] if cuda else None,
+        "budget_bytes": data["budget_bytes"],
+        "program_identities": tuple(
+            sorted({item["program_identity"] for item in executions})
+        ),
+        "native_artifacts": tuple(
+            sorted({item["native_artifact"] for item in executions})
+        ),
+        "executions": len(executions),
+        "primitive_records": sum(item["records"] for item in executions),
+        "record_batches": chunks,
+        "record_batch_uploads": chunks if cuda else 0,
+        "result_tile_downloads": chunks if cuda else 0,
+        "raw_hessian_downloads": 0,
+        "intermediate_matrix_downloads": 0,
+        "peak_host_bytes": max(
+            (item["resources"]["peak_bytes"].get("host", 0) for item in executions),
+            default=0,
+        ),
+        "peak_device_bytes": max(
+            (item["resources"]["peak_bytes"].get("device", 0) for item in executions),
+            default=0,
+        ),
+        "device_timing_ms": timing if cuda else None,
     }
 
 
@@ -350,18 +443,41 @@ def provider_components(s):
     return {"core": core, "pulay": pulay, "two_electron": two_electron}
 
 
-def provider_hvp_components(s, direction):
-    """Return frozen-skeleton second-integral HVP components directly."""
+def provider_hvp_components(
+    s,
+    direction,
+    *,
+    backend="cpu",
+    compiler=None,
+    device_id=0,
+    budget_bytes=64 << 20,
+    return_diagnostics=False,
+):
+    """Return frozen-skeleton #178 HVP components on an explicit backend.
+
+    CUDA reuses the already-qualified generated second-derivative provider. It
+    streams packed primitive records to bounded device storage and downloads
+    only contracted coordinate HVP tiles; no raw integral Hessian is published.
+    """
     _validate_analytic_domain(s)
     vector = checked_direction(direction, s.nat)
-    data = _provider_data(s)
+    data = _provider_data(
+        s,
+        backend=backend,
+        compiler=compiler,
+        device_id=device_id,
+        budget_bytes=budget_bytes,
+    )
     p0 = s.P0
     core = _run_one_electron(data, "kinetic", p0, direction=vector) + _run_one_electron(
         data, "nuclear_attraction", p0, direction=vector
     )
     pulay = -_run_one_electron(data, "overlap", data["W_e"], direction=vector)
     two_electron = _run_eri(data, data["density"], direction=vector)
-    return {"core": core, "pulay": pulay, "two_electron": two_electron}
+    components = {"core": core, "pulay": pulay, "two_electron": two_electron}
+    if return_diagnostics:
+        return components, _second_provider_diagnostics(data)
+    return components
 
 
 # ---------------------------------------------------------------------------
