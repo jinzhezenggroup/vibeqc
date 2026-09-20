@@ -71,7 +71,7 @@ jobs:
           cmake -S . -B build -G Ninja
           -DVIBEQC_ENABLE_CUDA=OFF
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DVIBEQC_COMPILER_CACHE=ccache
           -DCMAKE_CXX_FLAGS="${COVERAGE_COMPILE_FLAGS}"
           -DCMAKE_EXE_LINKER_FLAGS="${COVERAGE_LINK_FLAGS}"
           -DCMAKE_SHARED_LINKER_FLAGS="${COVERAGE_LINK_FLAGS}"
@@ -168,8 +168,7 @@ jobs:
           cmake --preset cuda-release-sm120
           -DVIBEQC_BUILD_TESTS=ON
           -DVIBEQC_CUDA_FAST_COMPILE=ON
-          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
+          -DVIBEQC_COMPILER_CACHE=ccache
       - name: Compile production CUDA and runtime CTest
         run: >-
           cmake --build --preset cuda-release-sm120
@@ -279,7 +278,7 @@ jobs:
             -DVIBEQC_ENABLE_CUDA=OFF \
             -DVIBEQC_BUILD_TESTS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+            -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build --parallel
       - name: Install the Python package and test dependencies
         run: |
@@ -530,7 +529,7 @@ jobs:
             -DVIBEQC_ENABLE_CUDA=OFF \
             -DVIBEQC_BUILD_TESTS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+            -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build-benchmark --target vibeqc --parallel
       - name: Install benchmark dependencies
         run: |
