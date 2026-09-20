@@ -56,9 +56,13 @@ production ownership baseline, not a claim of pair-parallel performance.
 
 ## Data provenance and validation
 
-No xTBloom or simple-dftd3 runtime dependency is added. Build-time generation
-verifies the pinned xTBloom-derived table and covalent-radius SHA-256 values and
-emits only the compact production data needed by the native evaluator. The
+No xTBloom or simple-dftd3 runtime dependency is added. Method-level D3/D4/gCP
+coefficients have one editable source in
+`python/vibeqc_compiler/method/method_parameters.json`; codegen emits the
+Python MethodIR constants and native/CUDA `constexpr` accessors, so calculation
+paths do not parse configuration files at runtime. Build-time generation also
+verifies the pinned xTBloom-derived D3 table and covalent-radius SHA-256 values
+and emits only the compact production data needed by the native evaluator. The
 runtime rejects a MethodIR whose recorded data identity differs from those
 compiled tables.
 
@@ -74,6 +78,41 @@ PYTHONPATH=python:. OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   tests/python/test_d3_production.py tests/python/test_dft_method_ir.py -q
 python tools/check_compiler_structure.py
 ```
+
+## Compiler GeometryIR/PairIR ownership
+
+The two-body D3(BJ) scientific equation now also has a compiler-owned
+GeometryIR/PairIR/TensorIR representation. CN response, C6 interpolation, BJ pair
+energy and smooth switching lower through the shared TensorIR, and Cartesian
+`dE/dR` is generated from that energy graph with the shared VJP. The compiler
+representation uses an explicit fixed pair/switch-state identity.
+
+Use the checked NumPy compiler-reference execution boundary for coordinate replay:
+
+```python
+from vibeqc_compiler.geometry import compile_d3_bj, execute_d3_bj
+
+compiled = compile_d3_bj(spec, atomic_numbers, coordinates)
+result = execute_d3_bj(compiled, new_coordinates, gradient=True)
+energy = result["energy"]
+gradient = result["gradient"]
+```
+
+`execute_d3_bj` copies and validates the coordinate snapshot before evaluating
+primal outputs or the generated gradient. It rejects CN, pair-cutoff and
+switch-region state changes; rebuild the compiled pair state for such geometry
+changes. The generic TensorIR `execute(compiled.program, ...)` API and
+`compiled.coordinate_vjp().program` are **unchecked low-level lowering interfaces**,
+not executable D3 replay guards. Callers using them directly, including future
+CUDA executors, must perform equivalent `compiled.validate_coordinates(...)`
+preflight on the coordinates they actually execute. The checked reference API
+does not select CUDA or substitute for the native production executor.
+
+This is not yet the public ragged production execution path: `d3_bj.hpp` remains the
+qualified native CPU/CUDA runtime and oracle until dynamic/ragged PairIR execution can
+preserve the public batch/replay contract. The exact conventions, provenance,
+underflow boundary, rejected alternatives and retirement condition are recorded in the
+[D3 GeometryIR/PairIR decision](../.agents/notes/implemented/numerics/2026-09-20-d3-geometry-pair-ir.md).
 
 ## Remaining boundary
 

@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/direct_angular_fock.cu",
+  "role": "runtime",
+  "subsystem": "runtime",
+  "reason": "Existing angular queue consumers and recursive launch policy, previously classified as runtime around separately owned scientific contractions. Original template instantiations and launch bounds are retained.",
+  "regions": []
+}

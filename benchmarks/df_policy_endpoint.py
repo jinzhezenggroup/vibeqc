@@ -186,7 +186,7 @@ def main() -> None:
         "--df-budget",
         type=int,
         default=0,
-        help="Total native DF value/response budget in bytes (zero selects defaults)",
+        help="Total native DF value/response budget in bytes (zero selects resource policy)",
     )
     parser.add_argument("--control", default="VIBEQC_DF_EXCHANGE")
     parser.add_argument("--policies", nargs="+", default=["dense", "occupied"])
@@ -599,6 +599,14 @@ def main() -> None:
                     d.to_dict() for d in batch.last_density_fitting_metric_diagnostics()
                 ],
             }
+            sample["peak_memory"] = {
+                "df_plan_peak_device_bytes": max(
+                    (item["peak_device_bytes"] for item in sample["metric"]), default=0
+                ),
+                "df_plan_peak_host_bytes": max(
+                    (item["peak_host_bytes"] for item in sample["metric"]), default=0
+                ),
+            }
             if traced:
                 sample["components"] = aggregate(read_trace(trace))
                 # Query after the timed call, while the prepared owner is
@@ -618,6 +626,9 @@ def main() -> None:
                     for pid, mib in [line.split(",")]
                 }
                 sample["process_device_resident_bytes"] = process_memory[os.getpid()]
+                sample["peak_memory"]["process_device_resident_bytes"] = sample[
+                    "process_device_resident_bytes"
+                ]
             if traced or args.host_trace:
                 # Inclusive host force scope begins after the physical
                 # final state is selected and includes one-electron/Pulay,
@@ -640,11 +651,32 @@ def main() -> None:
                         raise RuntimeError("expected one completed force stage")
                     sample["force_stage_seconds"] = force_regions[0]["wall_ms"] / 1000
             if args.journal or diagnostic:
+                journal_rows = [
+                    json.loads(line) for line in journal.read_text().splitlines()
+                ]
                 sample["final_state_observations"] = [
                     row
-                    for line in journal.read_text().splitlines()
-                    if (row := json.loads(line)).get("key", "").startswith("final_")
+                    for row in journal_rows
+                    if row.get("key", "").startswith("final_")
                 ]
+                resource_keys = {
+                    "resource_policy_version",
+                    "resolved_total_budget_bytes",
+                    "resolved_value_budget_bytes",
+                    "resolved_response_budget_bytes",
+                    "resource_reserved_headroom_bytes",
+                    "resource_observed_free_bytes",
+                    "resource_observed_total_bytes",
+                    "resource_probe_live",
+                }
+                resource_policy = {
+                    row["key"]: row["value"]
+                    for row in journal_rows
+                    if row.get("event") == "VALUE" and row.get("key") in resource_keys
+                }
+                if diagnostic and resource_keys - resource_policy.keys():
+                    raise RuntimeError("DF resource-policy evidence is incomplete")
+                sample["resource_policy"] = resource_policy
             payload.setdefault("diagnostics" if diagnostic else "samples", []).append(
                 sample
             )

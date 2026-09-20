@@ -265,7 +265,7 @@ Log: `/tmp/vibeqc-162-stabilization-memcheck.log`.
 Physical ownership comparison against merged `15d6936`: scientific CUDA
 +154/-0 lines, runtime CUDA +194/-4 lines; no reclassification or scientific
 retirement. Current ownership is reproducibly generated from the source tree and
-`docs/cuda_ownership.json`; CI retains the generated report as an artifact.
+`docs/cuda_ownership/`; CI retains the generated report as an artifact.
 
 ## Public physical KS diagnostic increment
 

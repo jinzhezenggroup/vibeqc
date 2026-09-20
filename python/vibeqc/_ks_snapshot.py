@@ -347,9 +347,11 @@ class NativeKsSnapshot:
             raise ValueError("native stationary grid source mismatch")
         self.grid = grid
         functional_names = {0: "lda", 1: "pbe", 2: "r2scan"}
-        if functional not in functional_names:
-            raise NotImplementedError("unsupported native stationary functional id")
-        method = functional_names[functional] + ("-rks" if spins == 1 else "-uks")
+        try:
+            family = functional_names[functional]
+        except KeyError as error:
+            raise NotImplementedError("unsupported native KS functional id") from error
+        method = family + ("-rks" if spins == 1 else "-uks")
         _, spec = resolve_ks_method(method)
         basis_identity = basis.identity
         identity = StationaryKsIdentity(
@@ -427,12 +429,81 @@ class NativeKsSnapshot:
         self.check_current()
         return values
 
+    def energy(self) -> float:
+        """Read the verified energy under this snapshot's current-owner lease."""
+        self.check_current()
+        read = self._library.vibeqc_ks_snapshot_energy_v1
+        read.argtypes = [ct.c_void_p, ct.c_void_p, ct.POINTER(ct.c_double)]
+        read.restype = ct.c_int
+        value = ct.c_double()
+        _native.check(
+            self._library, read(self._batch._batch, self._handle, ct.byref(value))
+        )
+        self.check_current()
+        return value.value
+
+    def evaluate_rks_response_points(
+        self,
+        pbe: bool,
+        rho: typing.Any,
+        gradient: typing.Any,
+        delta_rho: typing.Any,
+        delta_gradient: typing.Any,
+    ) -> typing.Any:
+        """Differentiate the exact SCF point potential in a restricted direction.
+
+        Inputs use total density and Cartesian gradient, with no sigma division
+        or low-density clipping. This CPU bridge does not qualify UKS or CUDA.
+        """
+        self.check_current()
+        if self.backend != "cpu" or self.metadata[2] != 1:
+            raise NotImplementedError("native point response requires CPU RKS")
+        if type(pbe) is not bool or pbe != bool(self.metadata[6]):
+            raise ValueError("native response functional mismatch")
+        values = [np.asarray(x) for x in (rho, gradient, delta_rho, delta_gradient)]
+        n = values[0].size
+        if n == 0 or any(
+            x.shape != shape or np.iscomplexobj(x) or not np.isfinite(x).all()
+            for x, shape in zip(values, ((n,), (n, 3), (n,), (n, 3)), strict=True)
+        ):
+            raise ValueError("RKS point response requires finite rho[n], gradient[n,3]")
+        values = [np.ascontiguousarray(x, dtype=np.float64) for x in values]
+        output = np.empty((n, 4), dtype=np.float64)
+        evaluate = self._library.vibeqc_xc_rks_response_batch_v1
+        pointer = ct.POINTER(ct.c_double)
+        evaluate.argtypes = [
+            ct.c_uint32,
+            pointer,
+            pointer,
+            pointer,
+            pointer,
+            ct.c_size_t,
+            pointer,
+            ct.c_size_t,
+        ]
+        evaluate.restype = ct.c_int
+        _native.check(
+            self._library,
+            evaluate(
+                int(pbe),
+                *(x.ctypes.data_as(pointer) for x in values),
+                n,
+                output.ctypes.data_as(pointer),
+                output.size,
+            ),
+        )
+        self.check_current()
+        return {
+            "rho": immutable(output[:, 0][None, :]),
+            "gradient": immutable(output[:, 1:][None, :, :]),
+        }
+
     def ecp_derivatives(self) -> typing.Any:
         """Backend-specific provider bound to this live owner's exact ECP model.
 
-        This explicit diagnostic materializes two atom/xyz/AO-pair arrays.
-        CUDA uses only generated CUDA ECP derivatives; CPU keeps its oracle.
-        This dense host export is not a production force endpoint.
+        Materializes two atom/xyz/AO-pair arrays. CPU and CUDA execute shared
+        generated ECP mathematics with checked two-grid admission.
+        Public wrappers admit and reserve this dense export before execution.
         """
         self.check_current()
         if self.hamiltonian != "scalar-semilocal-ecp":

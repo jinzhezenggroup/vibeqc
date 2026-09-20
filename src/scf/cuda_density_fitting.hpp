@@ -93,6 +93,14 @@ void destroy_cuda_density_fitting_integral_source(
 std::size_t cuda_density_fitting_integral_source_device_bytes(
     const CudaDensityFittingIntegralSource* source) noexcept;
 
+/** Best-effort live memory envelope for the selected DF CUDA owner. Failure is
+ * represented by available=false and must use the deterministic policy fallback. */
+struct CudaDensityFittingMemoryInfo {
+  std::size_t free_bytes{}, total_bytes{};
+  bool available{};
+};
+CudaDensityFittingMemoryInfo cuda_density_fitting_memory_info(int device_id) noexcept;
+
 /** Host bytes retained by an opaque bounded DF integral source. */
 std::size_t cuda_density_fitting_integral_source_host_bytes(
     const CudaDensityFittingIntegralSource* source) noexcept;
@@ -233,6 +241,14 @@ struct CudaDensityFittingMetricDiagnostic {
   std::size_t host_resident_bytes{};
   /** Conservative value-plan host setup peak; force bridge storage is separate. */
   std::size_t peak_host_bytes{};
+  /** Resolved DF resource policy attached by the high-level owner. */
+  std::size_t resolved_value_budget_bytes{};
+  std::size_t resolved_response_budget_bytes{};
+  std::size_t resolved_headroom_bytes{};
+  std::size_t observed_free_device_bytes{};
+  std::size_t observed_total_device_bytes{};
+  std::uint32_t resource_policy_version{};
+  bool resource_probe_live{};
   /** Auxiliary tile selected by the planner/backend. */
   std::size_t auxiliary_tile{};
   /** True when transformed three-center values use host-backed tile streaming. */

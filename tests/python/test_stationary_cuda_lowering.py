@@ -38,8 +38,17 @@ for functional in (0,1,2):
     assert 'stationary_gradient_cuda.cuh' in s
     assert 'ao_pullback' in s
     assert 'local_becke' in s
+    assert 'namespace vibeqc_grid_adjoint {' in s
+    assert 'grid_response_adjoint.hpp' not in s
+    include = s.index('#include "dft/stationary_gradient_cuda.cuh"')
+    for scientific in ('__global__ void primitive_kernel', '__global__ void geometry_kernel'):
+        assert scientific in s
+        assert s.index(scientific) > include
     assert f'stationary_functional = {functional}' in s
     assert s == emit_stationary_cuda(primitive,functional=functional)
+template=open('src/dft/stationary_gradient_cuda.cuh').read()
+assert '__global__ void primitive_kernel' in template
+assert 'for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count' not in template
 r2scan=emit_stationary_cuda(primitive,functional=2)
 assert 'stationary_coefficients = 5' in r2scan
 assert 'tau[0]' in r2scan and 'kinetic[0]' in r2scan
@@ -98,3 +107,5 @@ def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit()
     assert "vibeqc_grid_policy::" not in gradient
     assert "namespace vibeqc_xc_gradient_grid_policy {" in gradient
     assert "vibeqc_xc_gradient_grid_policy::axis_jet" in gradient
+    assert "namespace vibeqc_grid_adjoint {" in gradient
+    assert "grid_response_adjoint.hpp" not in gradient

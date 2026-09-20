@@ -9,7 +9,7 @@ from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .coefficients import jet_pullback_program
 from .expressions import energy_expression
-from .grid_native import emit_grid_partials
+from .grid_native import emit_grid_adjoint, emit_grid_partials
 from .spec import functional as resolve_functional
 
 
@@ -153,7 +153,7 @@ def emit_geometry_cuda(
         shifts.append("{" + ",".join(map(str, row)) + "}")
     return "\n".join(
         [
-            '#include "dft/grid_response_adjoint.hpp"',
+            emit_grid_adjoint(),
             '#include "dft/xc_point.hpp"',
             emit_grid_partials(iterations, device=True),
             f"constexpr unsigned stationary_functional = {code};",
@@ -464,7 +464,7 @@ void enqueue_gradient(
             "#include <cstdint>",
             "#include <stdexcept>",
             '#include "dft/cuda_xc.hpp"',
-            '#include "dft/grid_response_adjoint.hpp"',
+            emit_grid_adjoint(),
             '#include "dft/xc_point.hpp"',
             '#include "tensor/cuda_runtime.cuh"',
             emit_grid_policy().replace(

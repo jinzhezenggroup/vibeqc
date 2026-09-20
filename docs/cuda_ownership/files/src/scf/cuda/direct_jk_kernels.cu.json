@@ -1,0 +1,14 @@
+{
+  "path": "src/scf/cuda/direct_jk_kernels.cu",
+  "role": "scientific",
+  "subsystem": "scf_tensor",
+  "reason": "Retained direct public-AO J/K and fixed-density derivative contractions, now separately compiled against the same shared native contraction definitions.",
+  "regions": [
+    {
+      "start": "namespace cuda_execution {",
+      "stop": null,
+      "role": "runtime",
+      "reason": "Host launch forwarding; no scientific arithmetic."
+    }
+  ]
+}

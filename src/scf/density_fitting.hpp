@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "integrals/s_integrals.hpp"
+#include "scf/df_preparation_budget.hpp"
 #include "scf/df_value_storage.hpp"
 #include "scf/fock_build.hpp"
 
@@ -50,6 +51,10 @@ struct DensityFittingScfData {
   // The metric cutoff selects the retained Hamiltonian as well as its response.
   // Cached plans must be rebuilt when callers change this numerical control.
   double metric_relative_threshold{};
+  // Resolved execution-resource identity for this prepared owner. A zero public
+  // request is resolved once and replayed from this owner rather than probing
+  // again during cache reuse.
+  DfResolvedBudget resolved_budget{};
   // Geometry and execution policy replace complete dA/dM tensors when the
   // generated two-electron response is selected. Both bases keep real owners.
   std::optional<core::System> df_gradient_orbital, df_gradient_auxiliary;

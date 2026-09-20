@@ -1,5 +1,29 @@
 """Geometry/pair compiler contracts lowered through the shared TensorIR."""
 
+from .d3 import (
+    D3_COMPILER_VERSION,
+    D3_RADII_SHA256,
+    D3_TABLE_SHA256,
+    D3CompilerSpec,
+    D3GeometryProgram,
+    D3PairTopology,
+    build_d3_geometry_program,
+    build_d3_pair_topology,
+    compile_d3_bj,
+    d3_geometry,
+)
+from .d3_execution import execute_d3_bj
+from .gfn2 import (
+    GFN2_CUTOFF_BOHR,
+    GFN2_SHORT_RANGE_PARAMETER_IDENTITY,
+    GFN2_SHORT_RANGE_VERSION,
+    Gfn2ShortRangeElement,
+    Gfn2ShortRangeProgram,
+    build_gfn2_pair_topology,
+    build_gfn2_short_range_program,
+    gfn2_element_parameters,
+    gfn2_geometry,
+)
 from .ir import (
     LOWERING_VERSION,
     PAIR_OWNERSHIP,
@@ -16,14 +40,34 @@ from .ir import (
 )
 
 __all__ = [
+    "D3_COMPILER_VERSION",
+    "D3_RADII_SHA256",
+    "D3_TABLE_SHA256",
+    "GFN2_CUTOFF_BOHR",
+    "GFN2_SHORT_RANGE_PARAMETER_IDENTITY",
+    "GFN2_SHORT_RANGE_VERSION",
     "LOWERING_VERSION",
     "PAIR_OWNERSHIP",
+    "D3CompilerSpec",
+    "D3GeometryProgram",
+    "D3PairTopology",
     "GeometryIR",
+    "Gfn2ShortRangeElement",
+    "Gfn2ShortRangeProgram",
     "PairCutoff",
     "PairProgram",
     "PairTensorContext",
     "PairTopology",
+    "build_d3_geometry_program",
+    "build_d3_pair_topology",
+    "build_gfn2_pair_topology",
+    "build_gfn2_short_range_program",
     "build_pair_program",
+    "compile_d3_bj",
+    "d3_geometry",
+    "execute_d3_bj",
+    "gfn2_element_parameters",
+    "gfn2_geometry",
     "inverse_power_program",
     "lower_geometry",
     "pair_to_atom",

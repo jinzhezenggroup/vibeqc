@@ -10,6 +10,7 @@ from __future__ import annotations
 import typing
 from dataclasses import dataclass, replace
 from fractions import Fraction
+from itertools import pairwise
 from math import isfinite
 from struct import pack, unpack
 
@@ -127,8 +128,12 @@ PRIMITIVES = {
         "reshape",
         "slice",
         "gather",
+        "indexed_gather",
+        "scatter_add",
+        "segment_sum",
         "reduce",
         "broadcast",
+        "cast",
     )
 }
 
@@ -198,7 +203,14 @@ def _einsum_domains(
 def _infer(
     op: str, inputs: tuple[Node, ...], a: dict, declared: TensorSpec
 ) -> TensorSpec:
-    """Infer safe result metadata; explicit view types are checked here too."""
+    """Infer safe result metadata; explicit view/cast types are checked here too."""
+    if op == "cast":
+        if len(inputs) != 1:
+            raise ValueError("cast requires exactly one operand")
+        dtype = a["dtype"]
+        if dtype not in ("float32", "float64"):
+            raise ValueError("cast target must be float32 or float64")
+        return replace(inputs[0].spec, dtype=dtype, role="intermediate")
     base = _common(inputs)
     if op in TRANSCENDENTALS:
         if len(inputs) != 1:
@@ -288,6 +300,44 @@ def _infer(
             index, selection=tuple(index.coordinate(i) for i in positions)
         )
         return _result(inputs, indices=indices)
+    if op in ("indexed_gather", "scatter_add", "segment_sum"):
+        axis = _axes((a["axis"],), len(base.indices))[0]
+        if len(declared.indices) != len(base.indices):
+            raise ValueError(f"{op} must preserve tensor rank")
+        for position, (source, target) in enumerate(
+            zip(base.indices, declared.indices, strict=True)
+        ):
+            if position != axis and source.domain != target.domain:
+                raise ValueError(f"{op} may replace only its mapped axis")
+        source = base.indices[axis]
+        target = declared.indices[axis]
+        if op == "indexed_gather":
+            positions = a["positions"]
+            if len(positions) != target.extent:
+                raise ValueError("indexed_gather map length must match output axis")
+            if any(type(i) is not int or not 0 <= i < source.extent for i in positions):
+                raise ValueError("indexed_gather position is outside its source axis")
+        elif op == "scatter_add":
+            positions = a["positions"]
+            if len(positions) != source.extent:
+                raise ValueError("scatter_add map length must match input axis")
+            if any(type(i) is not int or not 0 <= i < target.extent for i in positions):
+                raise ValueError("scatter_add position is outside its target axis")
+        else:
+            offsets = a["offsets"]
+            if (
+                len(offsets) != target.extent + 1
+                or any(type(i) is not int for i in offsets)
+                or not offsets
+                or offsets[0] != 0
+                or offsets[-1] != source.extent
+                or any(left > right for left, right in pairwise(offsets))
+            ):
+                raise ValueError(
+                    "segment_sum offsets must be monotone [0, input_extent] "
+                    "with one boundary per output segment"
+                )
+        return _result(inputs, indices=declared.indices)
     if op == "reduce":
         axes = _axes(a["axes"], len(base.indices))
         if axes != tuple(sorted(axes)):
@@ -328,8 +378,12 @@ _ATTRS = {
     "reshape": set(),
     "slice": {"ranges"},
     "gather": {"axis", "positions"},
+    "indexed_gather": {"axis", "positions"},
+    "scatter_add": {"axis", "positions"},
+    "segment_sum": {"axis", "offsets"},
     "reduce": {"axes"},
     "broadcast": {"axes"},
+    "cast": {"dtype"},
 }
 
 
@@ -390,6 +444,19 @@ def constant(values: typing.Any, spec: TensorSpec | None = None) -> Node:
     if type(values) in (int, str, Fraction):
         values = (values,)
     return Node("constant", (), spec, (("values", tuple(rational(x) for x in values)),))
+
+
+def cast(value: Node, dtype: str) -> Node:
+    """Explicit real precision conversion with round-to-nearest semantics.
+
+    Casts are first-class SSA values. They preserve logical axes, symmetry,
+    representation, and differentiability while changing only dtype. No
+    arithmetic primitive performs implicit dtype conversion.
+    """
+    if dtype not in ("float32", "float64"):
+        raise ValueError("cast target must be float32 or float64")
+    spec = replace(value.spec, dtype=dtype, role="intermediate")
+    return Node("cast", (value,), spec, (("dtype", dtype),))
 
 
 def add(*inputs: Node, coefficients: typing.Any = None) -> Node:
@@ -494,6 +561,51 @@ def slice_tensor(value: Node, ranges: typing.Any) -> Node:
 def gather(value: Node, axis: int, positions: typing.Any) -> Node:
     """Gather local positions, retaining repeated/reordered global coordinates."""
     return _make("gather", (value,), {"axis": axis, "positions": tuple(positions)})
+
+
+def _mapped_axis(value: Node, axis: int, index: Index) -> tuple[Index, ...]:
+    axis = _axes((axis,), len(value.spec.indices))[0]
+    if not isinstance(index, Index):
+        raise TypeError("mapped tensor axis requires an Index")
+    indices = list(value.spec.indices)
+    indices[axis] = index
+    return tuple(indices)
+
+
+def indexed_gather(
+    value: Node, axis: int, positions: typing.Iterable[int], index: Index
+) -> Node:
+    """Gather through an immutable integer map into a distinct semantic axis."""
+    return _make(
+        "indexed_gather",
+        (value,),
+        {"axis": axis, "positions": tuple(positions)},
+        indices=_mapped_axis(value, axis, index),
+    )
+
+
+def scatter_add(
+    value: Node, axis: int, positions: typing.Iterable[int], index: Index
+) -> Node:
+    """Transpose of indexed gather; repeated target positions accumulate."""
+    return _make(
+        "scatter_add",
+        (value,),
+        {"axis": axis, "positions": tuple(positions)},
+        indices=_mapped_axis(value, axis, index),
+    )
+
+
+def segment_sum(
+    value: Node, axis: int, offsets: typing.Iterable[int], index: Index
+) -> Node:
+    """Reduce contiguous half-open segments, including empty segments."""
+    return _make(
+        "segment_sum",
+        (value,),
+        {"axis": axis, "offsets": tuple(offsets)},
+        indices=_mapped_axis(value, axis, index),
+    )
 
 
 def reduce_sum(value: Node, axes: typing.Any) -> Node:

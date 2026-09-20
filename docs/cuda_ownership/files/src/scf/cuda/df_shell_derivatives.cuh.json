@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/df_shell_derivatives.cuh",
+  "reason": "Borrowed compact shell-class lists, panel and optional execution-counter launch contract.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}
