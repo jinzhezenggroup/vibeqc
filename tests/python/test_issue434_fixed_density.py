@@ -35,4 +35,6 @@ def test_issue434_coulomb_recomposition_matches_explicit_metric_inverse() -> Non
     charge = raw.reshape(4, 2).T @ density.reshape(-1)
     expected = (raw.reshape(4, 2) @ np.linalg.solve(metric, charge)).reshape(2, 2)
 
-    np.testing.assert_allclose(coulomb_from_raw(raw, metric, density), expected, atol=1e-14, rtol=0)
+    np.testing.assert_allclose(
+        coulomb_from_raw(raw, metric, density), expected, atol=1e-14, rtol=0
+    )

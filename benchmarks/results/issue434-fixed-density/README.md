@@ -49,5 +49,5 @@ No generated binary snapshots or the 262 MiB raw fixture are committed here.
 The compact result records the frozen fixture/library identities needed to
 audit the run.
 
-Agent: ChatGPT  
+Agent: ChatGPT
 Model: GPT-5.6 Sol
