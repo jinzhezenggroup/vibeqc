@@ -145,8 +145,8 @@ struct PreparedFockPlan::Impl {
         fitted->one_electron = std::move(ints);
         const bool materialize_df_derivatives =
             derivatives && cpu_materialized_df_derivatives_requested();
-        fitted->raw = integrals::build_density_fitting_integrals(
-            system, *auxiliary, materialize_df_derivatives);
+        fitted->raw = integrals::build_density_fitting_integrals(system, *auxiliary,
+                                                                 materialize_df_derivatives);
         if (derivatives && !materialize_df_derivatives) {
           fitted->raw.ncoord = system.atoms.size() * 3U;
           fitted->df_gradient_orbital = system;
