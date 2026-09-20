@@ -1,6 +1,6 @@
 include_guard(GLOBAL)
 
-set(VIBEQC_CPU_LINALG_PROVIDER "scalar" CACHE STRING
+set(VIBEQC_CPU_LINALG_PROVIDER "auto" CACHE STRING
     "CPU dense-linear-algebra provider: auto, scalar, or openblas")
 set_property(CACHE VIBEQC_CPU_LINALG_PROVIDER PROPERTY STRINGS auto scalar openblas)
 

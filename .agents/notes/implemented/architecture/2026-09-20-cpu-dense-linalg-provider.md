@@ -15,7 +15,7 @@ scientific code to one vendor library and make threading/oversubscription policy
 Introduce `vibeqc::tensor::CpuLinalgPlan` and a native CPU dense-linear-algebra provider
 boundary under `src/tensor`.
 
-The first vertical slice keeps the CMake build default on `scalar`. A matched endpoint
+The first vertical slice initially kept the CMake build default on `scalar`. A matched endpoint
 promotion audit was performed and **rejected default OpenBLAS promotion**: complete CPU DF
 energy+force endpoints through a 96-dimensional metric did not improve. `openblas` and
 discovery-based `auto` therefore remain explicit build choices.
@@ -180,3 +180,7 @@ not justify switching it.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Supersession
+
+Superseded default-provider decision: the scalar-default conclusion above was valid before CPU DF J/K and derivative hot paths were migrated. The later endpoint promotion evidence in `../performance/2026-09-20-cpu-df-openblas-promotion.md` changes the build default to `auto` while preserving scalar fallback.

@@ -32,12 +32,15 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--inventory", type=Path)
     parser.add_argument("--derivatives", action="store_true")
+    parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--policy-output", type=Path)
     parser.add_argument("--schedule-output", type=Path)
     parser.add_argument("--shell-output", type=Path)
     parser.add_argument("--df-production-manifest", type=Path)
     parser.add_argument("--shell-units-directory", type=Path)
     args = parser.parse_args()
+    if args.cpu and not args.derivatives:
+        parser.error("--cpu requires --derivatives")
     if (args.schedule_output or args.shell_output) and not args.derivatives:
         parser.error("--schedule-output/--shell-output require --derivatives")
     if args.shell_units_directory and not (args.derivatives and args.shell_output):
@@ -47,10 +50,12 @@ def main() -> None:
     if args.derivatives:
         from vibeqc_compiler.integral.df_derivatives_cuda import (
             df_derivative_inventory,
+            emit_df_derivatives_cpu,
             emit_df_derivatives_cuda,
         )
 
-        emitter, inventory = emit_df_derivatives_cuda, df_derivative_inventory
+        emitter = emit_df_derivatives_cpu if args.cpu else emit_df_derivatives_cuda
+        inventory = df_derivative_inventory
     else:
         emitter, inventory = emit_df_values_cuda, df_program_inventory
     if not args.derivatives:

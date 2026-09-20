@@ -127,11 +127,37 @@ std::vector<double> build_exchange(const DensityFittingThreeCenter& three_center
   const std::size_t naux = three_center.naux;
   std::vector<double> exchange(nbf * nbf, 0.0);
   std::vector<double> transformed_density(nbf * nbf, 0.0);
+
+  // B is stored AO-pair-major, so one B_Q matrix is strided. Pack every Q once
+  // per Fock build, then let the dense-LA provider own the two O(N^3) contractions.
+  // Keep tiny matrices on the historical loop where packing/dispatch dominates.
+  constexpr std::size_t kDenseExchangeMinimum = 16;
+  const bool use_dense_provider = nbf >= kDenseExchangeMinimum && tensor::cpu_openblas_built();
+  std::vector<double> auxiliary_major;
+  tensor::CpuLinalgPlan dense_plan;
+  if (use_dense_provider) {
+    auxiliary_major.resize(naux * nbf * nbf);
+    for (std::size_t mu = 0; mu < nbf; ++mu)
+      for (std::size_t nu = 0; nu < nbf; ++nu)
+        for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary)
+          auxiliary_major[auxiliary * nbf * nbf + index(mu, nu, nbf)] =
+              three_center.values[three_center_index(mu, nu, auxiliary, nbf, naux)];
+    dense_plan = {tensor::CpuLinalgProvider::automatic,
+                  tensor::CpuLinalgThreadOwnership::provider_parallel, 1};
+  }
+
   for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+    if (use_dense_provider) {
+      const double* bq = auxiliary_major.data() + auxiliary * nbf * nbf;
+      tensor::cpu_gemm('N', 'N', nbf, nbf, nbf, bq, density.data(), transformed_density.data(), 1.0,
+                       0.0, dense_plan);
+      tensor::cpu_gemm('N', 'T', nbf, nbf, nbf, transformed_density.data(), bq, exchange.data(),
+                       1.0, 1.0, dense_plan);
+      continue;
+    }
+
     std::fill(transformed_density.begin(), transformed_density.end(), 0.0);
-    // For each Q, form B_Q D and then (B_Q D) B_Q^T. This O(N^3 Naux)
-    // ordering mirrors the two GEMMs used by the future blocked CUDA path and
-    // avoids materializing any four-center ERIs in the CPU oracle.
+    // For each Q, form B_Q D and then (B_Q D) B_Q^T.
     for (std::size_t mu = 0; mu < nbf; ++mu) {
       for (std::size_t lambda = 0; lambda < nbf; ++lambda) {
         double value = 0.0;
@@ -270,11 +296,66 @@ double exchange_quadratic_derivative(const integrals::DensityFittingIntegralData
   const std::size_t nbf = data.nbf;
   const std::size_t naux = data.naux;
   const std::size_t matrix_elements = nbf * nbf;
-  // Rewrite the four-AO exchange contraction as two matrix products for each
-  // auxiliary function.  Besides matching the CUDA RI-K schedule, this keeps
-  // the independent force oracle practical for medium-sized test molecules:
-  // the straightforward O(n^4 naux^2) loop is reduced to
-  // O(n^3 naux + n^2 naux^2).
+
+  // The force contraction has an exact dense formulation:
+  //   R_Q  = D^T B_Q D
+  //   dR_Q = D^T dB_Q D
+  // followed by auxiliary-space Gram contractions against B and dB.
+  // Keep the historical scalar loop as the no-provider oracle, but use the
+  // common dense-LA boundary when an external provider is available.
+  constexpr std::size_t kDenseDerivativeMinimum = 16;
+  if (nbf >= kDenseDerivativeMinimum && tensor::cpu_openblas_built()) {
+    const tensor::CpuLinalgPlan plan{tensor::CpuLinalgProvider::automatic,
+                                     tensor::CpuLinalgThreadOwnership::provider_parallel, 1};
+    std::vector<double> b_aux(naux * matrix_elements);
+    std::vector<double> db_aux(naux * matrix_elements);
+    for (std::size_t row = 0; row < nbf; ++row) {
+      for (std::size_t column = 0; column < nbf; ++column) {
+        const std::size_t pair = index(row, column, nbf);
+        for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+          const std::size_t source = three_center_index(row, column, auxiliary, nbf, naux);
+          b_aux[auxiliary * matrix_elements + pair] = data.three_center[source];
+          db_aux[auxiliary * matrix_elements + pair] = three_center_derivative[source];
+        }
+      }
+    }
+
+    std::vector<double> response(naux * matrix_elements);
+    std::vector<double> derivative_response(naux * matrix_elements);
+    std::vector<double> transformed(matrix_elements);
+    std::vector<double> derivative_transformed(matrix_elements);
+    for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
+      const double* bq = b_aux.data() + auxiliary * matrix_elements;
+      const double* dbq = db_aux.data() + auxiliary * matrix_elements;
+      double* rq = response.data() + auxiliary * matrix_elements;
+      double* drq = derivative_response.data() + auxiliary * matrix_elements;
+      tensor::cpu_gemm('N', 'N', nbf, nbf, nbf, bq, density.data(), transformed.data(), 1.0, 0.0,
+                       plan);
+      tensor::cpu_gemm('T', 'N', nbf, nbf, nbf, density.data(), transformed.data(), rq, 1.0, 0.0,
+                       plan);
+      tensor::cpu_gemm('N', 'N', nbf, nbf, nbf, dbq, density.data(), derivative_transformed.data(),
+                       1.0, 0.0, plan);
+      tensor::cpu_gemm('T', 'N', nbf, nbf, nbf, density.data(), derivative_transformed.data(), drq,
+                       1.0, 0.0, plan);
+    }
+
+    std::vector<double> quadratic(naux * naux);
+    std::vector<double> derivative_quadratic(naux * naux);
+    tensor::cpu_gemm('N', 'T', naux, naux, matrix_elements, response.data(), b_aux.data(),
+                     quadratic.data(), 1.0, 0.0, plan);
+    tensor::cpu_gemm('N', 'T', naux, naux, matrix_elements, derivative_response.data(),
+                     b_aux.data(), derivative_quadratic.data(), 1.0, 0.0, plan);
+    tensor::cpu_gemm('N', 'T', naux, naux, matrix_elements, response.data(), db_aux.data(),
+                     derivative_quadratic.data(), 1.0, 1.0, plan);
+
+    double derivative = 0.0;
+    for (std::size_t item = 0; item < naux * naux; ++item)
+      derivative +=
+          derivative_quadratic[item] * inverse[item] + quadratic[item] * inverse_derivative[item];
+    return derivative;
+  }
+
+  // Scalar/no-provider oracle: preserve the established reduction order.
   std::vector<std::vector<double>> response(naux, std::vector<double>(matrix_elements));
   std::vector<std::vector<double>> derivative_response(naux, std::vector<double>(matrix_elements));
   for (std::size_t auxiliary = 0; auxiliary < naux; ++auxiliary) {
