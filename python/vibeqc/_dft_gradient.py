@@ -598,7 +598,7 @@ def _scf_domain_xc_geometry(
                 "functional": functional.identity,
                 "scf_domain": SCF_DOMAIN,
                 "point_coefficients": (
-                    "rho-gradient-tau-cartesian-v1"
+                    "rho-gradient-kinetic-cartesian-v1"
                     if contract.family == "mgga"
                     else "rho-gradient-cartesian-v1"
                 ),
