@@ -479,6 +479,19 @@ class Calculator:
             raise ValueError("density_fitting_memory_budget_bytes must be non-negative")
         self._method_name = method.lower()
         self._method = _METHODS[self._method_name]
+        precision_modes = {
+            "fp64": _native.PRECISION_FP64,
+            "auto": _native.PRECISION_AUTO,
+        }
+        try:
+            self._precision_mode = precision_modes[str(precision).lower()]
+        except KeyError as error:
+            raise ValueError("precision must be 'fp64' or 'auto'") from error
+        if (
+            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
+            and self._precision_mode != _native.PRECISION_FP64
+        ):
+            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._ks_options = None
         if self._method_name in (
             "lda-rks",
@@ -595,24 +608,11 @@ class Calculator:
                 )
         elif self._screening_tolerance <= 0.0:
             raise ValueError("screening_tolerance must be positive")
-        precision_modes = {
-            "fp64": _native.PRECISION_FP64,
-            "auto": _native.PRECISION_AUTO,
-        }
-        try:
-            self._precision_mode = precision_modes[str(precision).lower()]
-        except KeyError as error:
-            raise ValueError("precision must be 'fp64' or 'auto'") from error
         if (
             self._method in _CORRELATED_METHODS
             and self._precision_mode != _native.PRECISION_FP64
         ):
             raise ValueError("canonical correlated methods require precision='fp64'")
-        if (
-            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
-            and self._precision_mode != _native.PRECISION_FP64
-        ):
-            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._library = _native.load_library(device=device, device_id=self._device_id)
         self._ks_options_version = 0
         if self._ks_options is not None:
@@ -649,7 +649,8 @@ class Calculator:
                 or (self._device_name == "cpu" and qualified_basis(self._basis))
             )
             and not (
-                isinstance(self._basis, BasisSet)
+                self._device_name == "cuda"
+                and isinstance(self._basis, BasisSet)
                 and any(element.ecp_core_electrons for element in self._basis.elements)
                 and any(
                     shell.angular_momentum > 1
@@ -662,7 +663,7 @@ class Calculator:
             # Python public capability layered on the native KS prepared owner
             # plus the backend's compiled stationary gradient consumer.
             # Keep the backend-neutral C registry conservative.
-            # ECP promotion is bounded to Cartesian/real-spherical s/p records. The shared
+            # ECP promotion admits s/p/d on CPU and s/p on CUDA, in both layouts. The shared
             # nine-source consumer also enforces shape, byte and work caps;
             # higher-angular ECP domains remain energy-only.
             self._capabilities = replace(

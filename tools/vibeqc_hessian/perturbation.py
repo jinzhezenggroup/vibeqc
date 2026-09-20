@@ -214,6 +214,7 @@ def solve_rhf_nuclear_perturbations(
         strategy=strategy,
         options=options or GMRESOptions(),
         raise_on_failure=True,
+        collect_basis=False,
     )
     responses = tuple(
         _reconstruct_rhf_nuclear_response(operator, item, result)

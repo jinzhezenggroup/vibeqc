@@ -181,6 +181,7 @@ from .shell_spec import (
     shell_class_name,
     shell_pair_class,
 )
+from .specialize import specialize_integral_ir
 
 __all__ = [
     "CUDA_TARGETS",
@@ -330,6 +331,7 @@ __all__ = [
     "schedule_candidates",
     "shell_class_name",
     "shell_pair_class",
+    "specialize_integral_ir",
     "stable_aot_shard_slot",
     "supports_component_lane_rys",
     "tuning_schedule_candidates",

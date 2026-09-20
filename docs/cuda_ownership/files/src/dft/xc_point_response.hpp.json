@@ -1,0 +1,6 @@
+{
+  "path": "src/dft/xc_point_response.hpp",
+  "reason": "Shared CPU/CUDA analytic directional derivative of the existing scaled SCF point jet. Device qualification reuses this previously CPU-only expression; no scientific-code retirement is claimed.",
+  "role": "scientific",
+  "subsystem": "xc"
+}

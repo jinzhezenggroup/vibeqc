@@ -109,6 +109,10 @@ def test_precision_schedule_and_cuda_cost_identity_include_casts() -> None:
     assert precision.to_payload()["promotion"].startswith("requires-independent")
 
     plan = plan_cuda(program, cuda_target_info("sm_80"))
+    precision_schedule = plan.precision_schedule
+    assert plan.precision_schedule is precision_schedule
+    precision_name = plan.precision
+    assert plan.__dict__["precision"] == precision_name
     payload = plan.to_payload()
     assert payload["precision"] == "typed-fp32-fp64"
     assert payload["precision_schedule_identity"] == precision.identity

@@ -36,7 +36,7 @@ def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache() -> N
         .split("\n  python:\n", 1)[1]
         .split("\n  upload-coverage:\n", 1)[0]
     )
-    assert "shard: [core, posthf, compiler-heavy]" in section
+    assert "shard: [core, posthf, compiler-heavy, ecp-forces]" in section
     assert "name: python (${{ matrix.shard }})" in section
     assert "coverage-report-python-${{ matrix.shard }}" in section
     assert "benchmark-debug-${{ github.run_id }}-${{ matrix.shard }}" in section
@@ -50,5 +50,8 @@ def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache() -> N
         "test_ecp_heavy.py",
         "test_codegen.py",
         "test_second_derivatives_inputs.py",
+        "test_ecp_public_cpu.py",
+        "test_ecp_spd_cartesian_cpu.py",
+        "test_ecp_spd_spherical_cpu.py",
     ):
         assert path_name in section

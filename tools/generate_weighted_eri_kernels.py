@@ -1,4 +1,4 @@
-"""Emit the shared arbitrary-weight primitive used by the native psss candidate."""
+"""Emit the shared arbitrary-weight primitive used by the native low-order candidates."""
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from vibeqc_compiler.integral.weighted_eri_cuda import emit_psss_weighted_header
+from vibeqc_compiler.integral.weighted_eri_cuda import emit_low_order_weighted_header
 
 
 def main() -> None:
@@ -22,7 +22,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--inline-single-use", action="store_true")
     args = parser.parse_args()
-    source = emit_psss_weighted_header(inline_single_use=args.inline_single_use)
+    source = emit_low_order_weighted_header(inline_single_use=args.inline_single_use)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if not args.output.exists() or args.output.read_text() != source:
         args.output.write_text(source)

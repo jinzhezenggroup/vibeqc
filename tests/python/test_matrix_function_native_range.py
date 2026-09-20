@@ -141,6 +141,33 @@ int main() {
       std::abs(cross_result[2] - 1.0 / 12.0) > 1e-15)
     return 12;
 
+  for (int function = 0; function < 2; ++function) {
+    for (bool small : {false, true}) {
+      const bool inverse = function == 1;
+      const int exponent = inverse ? (small ? -600 : 800) : (small ? -700 : 1000);
+      const int seed_exponent = inverse ? (small ? -600 : 900) : (small ? -500 : 800);
+      const int derivative = inverse ? 2 * exponent : 3 * exponent / 2 + 1;
+      double host[6] = {1, std::ldexp(1., exponent), std::ldexp(1., seed_exponent), 0, 0, 0};
+      if (cudaMemcpy(p, host, sizeof(host), cudaMemcpyHostToDevice) != cudaSuccess) return 13;
+      vibeqc::tensor::launch_symmetric_matrix_function_vjp(
+          1, function, p, p + 1, 0, p + 2, p + 3, p + 4, p + 5, nullptr);
+      if (cudaGetLastError() != cudaSuccess || cudaDeviceSynchronize() != cudaSuccess) return 14;
+      double result;
+      if (cudaMemcpy(&result, p + 5, sizeof(double), cudaMemcpyDeviceToHost) != cudaSuccess) return 15;
+      if (result != std::ldexp(-1., seed_exponent - derivative)) return 16;
+      double cross[22] = {1, 0, 0, 1, 0, std::ldexp(1., exponent),
+                         0, std::ldexp(1., seed_exponent), std::ldexp(1., seed_exponent), 0};
+      if (cudaMemcpy(p, cross, sizeof(cross), cudaMemcpyHostToDevice) != cudaSuccess) return 17;
+      vibeqc::tensor::launch_symmetric_matrix_function_vjp(
+          2, function, p, p + 4, 0.3, p + 6, p + 10, p + 14, p + 18, nullptr);
+      if (cudaGetLastError() != cudaSuccess || cudaDeviceSynchronize() != cudaSuccess) return 18;
+      double out[4];
+      if (cudaMemcpy(out, p + 18, sizeof(out), cudaMemcpyDeviceToHost) != cudaSuccess) return 19;
+      const double expected = std::ldexp(1., seed_exponent - derivative + (inverse ? 0 : 1));
+      if (out[1] != expected || out[2] != expected) return 20;
+    }
+  }
+
   cudaFree(p);
   std::cout << "Exact inverse-sqrt/pseudoinverse FP64 response passed\n";
 }
@@ -185,5 +212,35 @@ def test_generated_cuda_matrix_function_range(tmp_path: typing.Any) -> None:
     )
     result = subprocess.run(
         [str(binary)], capture_output=True, text=True, timeout=30, check=False
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_native_weighted_spectral_response_survives_nonrepresentable_coefficient(
+    tmp_path: Path,
+) -> None:
+    """Exact powers-of-two oracle; the final VJP, not its factor, must fit FP64."""
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("C++ compiler unavailable")
+    binary = tmp_path / "weighted-range"
+    subprocess.run(
+        [
+            compiler,
+            "-std=c++20",
+            "-O2",
+            "-I" + str(ROOT / "src"),
+            str(ROOT / "tests/native/matrix_function_scale_cases.cpp"),
+            str(ROOT / "src/tensor/symmetric_matrix_function.cpp"),
+            "-o",
+            str(binary),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    result = subprocess.run(
+        [str(binary)], capture_output=True, text=True, timeout=10, check=False
     )
     assert result.returncode == 0, result.stdout + result.stderr

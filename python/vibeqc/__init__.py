@@ -1,5 +1,7 @@
 """Thin Python interface to the versioned native VIBEQC ABI."""
 
+from vibeqc_compiler.dft.grid import GridPolicy, GridProfile, GridSpec
+
 from ._cuda_runtime import install_native_loader as _install_native_loader
 from .accuracy import (
     AccuracyAssessment,
@@ -41,7 +43,7 @@ from .dispersion import (
 )
 from .elements import ElectronState, electron_state
 from .fock import FockBuildSpec, FockEvaluation, FockPlan, FockScfResult, FockTerm
-from .ks import FunctionalSpec, GridSpec, KsOptions
+from .ks import FunctionalSpec, KsOptions
 from .ks_diagnostics import (
     KsDiagnostic,
     KsEnergyComponents,
@@ -110,6 +112,8 @@ __all__ = [
     "FockScfResult",
     "FockTerm",
     "FunctionalSpec",
+    "GridPolicy",
+    "GridProfile",
     "GridSpec",
     "InactiveEigensolverProfileEntry",
     "KsDiagnostic",

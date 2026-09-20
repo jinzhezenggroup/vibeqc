@@ -87,6 +87,41 @@ def _publish_source(path: typing.Any, source: typing.Any) -> None:
             temporary.unlink(missing_ok=True)
 
 
+def _compile_primitive_library(
+    source: str, cache: str | Path, compiler: CppCompilerAdapter
+) -> tuple[ct.CDLL, typing.Any]:
+    """Revalidate source, transitive headers, compiler and binary on every load."""
+    cache = Path(cache)
+    cache.mkdir(parents=True, exist_ok=True)
+    path = cache / (canonical_hash(source) + ".cpp")
+    _publish_source(path, source)
+    headers = tuple(
+        asset_path("src/integrals/" + name)
+        for name in (
+            "first_derivative_runtime.hpp",
+            "eri_geometry.hpp",
+            "range_moments.hpp",
+        )
+    )
+    artifact = compile_runtime(
+        compiler,
+        cache,
+        path,
+        headers=headers,
+        options=("-ffp-contract=off", f"-I{headers[0].parents[1]}"),
+    )
+    library = ct.CDLL(str(artifact.library))
+    call = library.vibeqc_first_derivative_cpu
+    call.argtypes = [
+        ct.c_uint,
+        ct.POINTER(ct.c_double),
+        ct.c_size_t,
+        ct.POINTER(ct.c_double),
+    ]
+    call.restype = ct.c_int
+    return library, call
+
+
 class _PrimitiveExecutor:
     """Compile finite requested component coverage and stream fixed-size records.
 
@@ -129,35 +164,8 @@ class _PrimitiveExecutor:
         requests += [("four_center_eri", c) for c in product(domain, repeat=4)]
         requests += [("nuclear", ())]
         self.kinds = {key: i for i, key in enumerate(requests)}
-        cache = Path(cache)
-        cache.mkdir(parents=True, exist_ok=True)
         source = emit_first_derivative_cpu(tuple(requests))
-        path = cache / (canonical_hash(source) + ".cpp")
-        _publish_source(path, source)
-        headers = tuple(
-            asset_path("src/integrals/" + name)
-            for name in (
-                "first_derivative_runtime.hpp",
-                "eri_geometry.hpp",
-                "range_moments.hpp",
-            )
-        )
-        artifact = compile_runtime(
-            compiler,
-            cache,
-            path,
-            headers=headers,
-            options=("-ffp-contract=off", f"-I{headers[0].parents[1]}"),
-        )
-        self.library = ct.CDLL(str(artifact.library))
-        self.call = self.library.vibeqc_first_derivative_cpu
-        self.call.argtypes = [
-            ct.c_uint,
-            ct.POINTER(ct.c_double),
-            ct.c_size_t,
-            ct.POINTER(ct.c_double),
-        ]
-        self.call.restype = ct.c_int
+        self.library, self.call = _compile_primitive_library(source, cache, compiler)
         self.buffer = np.zeros((primitive_tile, 17))
         self.records = 0
 
@@ -229,17 +237,17 @@ def _admit_work(
     Counts describe semantic loops, not FLOPs or timing. CPU and CUDA now consume
     the same compiler-owned ECP grid policy; count both complete provider grids.
     """
-    if any(shell.angular_momentum > 1 for shell in basis.shells):
+    if any(shell.angular_momentum > 2 for shell in basis.shells):
         raise NotImplementedError(
-            "complete CPU gradient diagnostic supports s/p bases only"
+            "complete CPU gradient diagnostic supports s/p/d bases only"
         )
     natom, n = basis.natom, basis.nao
     aos = basis.packed[3 * natom + 2 * basis.nprimitive :].reshape(-1, 16)
-    if any(int(row[3]) != 1 for row in aos):
+    if any(int(row[3]) not in (1, 2, 3) for row in aos):
         raise NotImplementedError(
-            "this diagnostic requires single-component public AOs"
+            "this diagnostic supports at most three Cartesian components per AO"
         )
-    primitive_sum = sum(int(row[2]) for row in aos)
+    primitive_sum = sum(int(row[2]) * int(row[3]) for row in aos)
     pairs = natom * (natom - 1) // 2
     records = primitive_sum**4 + (natom + 2) * primitive_sum**2 + pairs
     points = len(state.grid.points)
@@ -308,16 +316,17 @@ def complete_rks_gradient_diagnostic(
     primitive_tile: typing.Any = 128,
     compiler: typing.Any = None,
     execution: typing.Any = "reference",
+    component_execution: str = "native",
     max_primitive_records: int = 2_000_000,
     max_grid_points: int = 1_000_000,
     max_grid_pair_visits: int = 100_000_000,
-    max_ecp_pair_samples: int = 100_000_000,
+    max_ecp_pair_samples: int = 200_000_000,
     max_host_bytes: int | None = None,
 ) -> typing.Any:
     """Consume one live native CPU RKS/UKS state with complete plan-owned sources.
 
     Admitted domain: direct real FP64 integer RKS/UKS, canonical
-    LDA, PBE or r2SCAN, s/p AOs, native unpruned version-one grid, distinct nuclei and no
+    LDA, PBE or r2SCAN, s/p/d AOs, native unpruned version-one grid, distinct nuclei and no
     point/center collisions. CPU is explicit; CUDA snapshots are rejected.
     Caller chooses an ignored/temporary compilation cache and may supply a
     CppCompilerAdapter; otherwise CXX (or c++) selects the executable. Scientific work is
@@ -327,7 +336,9 @@ def complete_rks_gradient_diagnostic(
     The native state already retains its full discrete grid and dense SCF data.
     execution="native" selects compiled consumers of the same mathematical
     graphs. execution="reference" retains the validated interpreter route.
-    Both retain Python primitive enumeration/scatter and NumPy XC BLAS/maps;
+    s/p/d component enumeration uses a bounded native consumer; the private
+    component_execution="python" selector retains the ordered baseline.
+    Both retain Python AO enumeration/scatter and NumPy XC BLAS/maps;
     neither alone establishes an overall endpoint/SCF memory budget. Semantic work
     budgets reject before derivative compilation or provider execution, after
     the caller's SCF and snapshot export. ECP pair-samples are a conservative
@@ -343,6 +354,8 @@ def complete_rks_gradient_diagnostic(
     """
     if execution not in ("reference", "native"):
         raise ValueError("execution must be reference or native")
+    if component_execution not in ("native", "python"):
+        raise ValueError("component_execution must be native or python")
     contract = StationaryDerivativeContract(state.identity)
     contract.validate(state)
     if state._source.backend != "cpu":
@@ -408,7 +421,20 @@ def complete_rks_gradient_diagnostic(
         compiler = CppCompilerAdapter(Path(os.environ.get("CXX", "c++")))
     if not isinstance(compiler, CppCompilerAdapter):
         raise TypeError("the CPU diagnostic requires an explicit C++ compiler adapter")
-    native = _PrimitiveExecutor(basis, cache, primitive_tile, compiler)
+    if any(shell.angular_momentum == 2 for shell in basis.shells):
+        from ._stationary_cpu_components import ComponentPrimitiveExecutor
+        from ._stationary_cpu_streaming import CompiledComponentExecutor
+
+        executor = (
+            CompiledComponentExecutor
+            if component_execution == "native"
+            else ComponentPrimitiveExecutor
+        )
+        native = executor(basis, cache, primitive_tile, compiler)
+        work.update(native.compilation_work)
+        work["component_execution"] = component_execution
+    else:
+        native = _PrimitiveExecutor(basis, cache, primitive_tile, compiler)
     natom, n = basis.natom, basis.nao
     components = {name: np.zeros((natom, 3)) for name in plan.source_names}
     charges = np.asarray([atom.atomic_number for atom in basis.atoms]) - np.asarray(
