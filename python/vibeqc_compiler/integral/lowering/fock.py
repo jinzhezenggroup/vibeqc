@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from ..fused_schedule import (
         FusedShellPlan,
     )
+    from ..ir import IntegralIR
     from ..shell_spec import (
         ShellClassSpec,
     )
@@ -40,6 +41,7 @@ def _emit_shell_class_fock_cuda(
     plan: FusedShellPlan,
     *,
     honor_schedule_block_threads: bool = False,
+    rys_support_integral: IntegralIR | None = None,
 ) -> str:
     """Emit coefficient-only Fock workers beside an accepted force kernel.
 
@@ -596,7 +598,11 @@ void generated_dppp_shell_class_fock_uhf_persistent_kernel(
       task_offset, task_count, task_head);
 }}
 """
-    if _supports_rys_component_lane_fock(spec, plan):
+    if _supports_rys_component_lane_fock(
+        spec,
+        plan,
+        support_integral=rys_support_integral,
+    ):
         worker_marker = """template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_shell_class_fock_task("""
         worker_begin = source.find(worker_marker)
@@ -606,6 +612,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_fock_task("""
             spec,
             plan,
             minimum_blocks_per_sm,
+            support_integral=rys_support_integral,
         )
     elif plan.schedule.kind == ScheduleKind.PACKED_TASKS:
         worker_marker = """template <bool Unrestricted>
@@ -633,7 +640,10 @@ __device__ __forceinline__ void generated_dppp_shell_class_fock_task("""
 
 
 def _emit_shell_class_mixed_fock_cuda(
-    spec: ShellClassSpec, plan: FusedShellPlan
+    spec: ShellClassSpec,
+    plan: FusedShellPlan,
+    *,
+    rys_support_integral: IntegralIR | None = None,
 ) -> str:
     """Emit an FP32 ERI specialization with FP64 Fock contraction.
 
@@ -647,7 +657,11 @@ def _emit_shell_class_mixed_fock_cuda(
 
     state_axis_bits = max(3, spec.maximum_force_coulomb_order.bit_length())
     state_mask = (1 << state_axis_bits) - 1
-    source = _emit_shell_class_fock_cuda(spec, plan)
+    source = _emit_shell_class_fock_cuda(
+        spec,
+        plan,
+        rys_support_integral=rys_support_integral,
+    )
     geometry_side = spec.maximum_force_coulomb_order + 1
 
     mixed_geometry = f"""

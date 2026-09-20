@@ -31,8 +31,8 @@ assert primitive == emit_first_derivative_cuda(requests)
 cpu=emit_first_derivative_cpu(requests)
 assert '__device__' not in cpu
 assert 'vibeqc_first_derivative_cpu' in cpu
-for pbe in (False,True):
-    s=emit_stationary_cuda(primitive,pbe=pbe)
+for functional in (0,1,2):
+    s=emit_stationary_cuda(primitive,functional=functional)
     assert 'vibeqc_first_derivative_cpu' not in s
     assert '__device__ bool first_derivative' in s
     assert 'stationary_gradient_cuda.cuh' in s
@@ -44,14 +44,22 @@ for pbe in (False,True):
     for scientific in ('__global__ void task_kernel', '__global__ void geometry_kernel'):
         assert scientific in s
         assert s.index(scientific) > include
+    assert f'stationary_functional = {functional}' in s
     assert 'stationary_records' not in s
-    assert s == emit_stationary_cuda(primitive,pbe=pbe)
+    assert s == emit_stationary_cuda(primitive,functional=functional)
 template=open('src/dft/stationary_gradient_cuda.cuh').read()
+assert '__global__ void primitive_kernel' not in template
 assert '__global__ void task_kernel' in template
 assert 'stationary_tasks' in template
 assert 'stationary_topology' in template
 assert 'stationary_records' not in template
+assert 'for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count' not in template
 assert 'for (size_t linear = 0; linear < primitive_work; ++linear)' not in template
+r2scan=emit_stationary_cuda(primitive,functional=2)
+assert 'stationary_coefficients = 5' in r2scan
+assert 'tau[0]' in r2scan and 'kinetic[0]' in r2scan
+assert emit_stationary_cuda(primitive,pbe=False) == emit_stationary_cuda(primitive,functional=0)
+assert emit_stationary_cuda(primitive,pbe=True) == emit_stationary_cuda(primitive,functional=1)
 driver=open('python/vibeqc/_stationary_cuda.py').read()
 assert 'stationary_records' not in driver
 assert 'for ids in product(*ranges)' not in driver

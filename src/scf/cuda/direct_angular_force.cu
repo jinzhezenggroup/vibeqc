@@ -37,7 +37,7 @@ __global__ void two_electron_force_quartet_packed_persistent_kernel(
     DeviceBatch batch, const std::uint32_t* active_shell_quartet_tile_count,
     const ActiveShellQuartetTile* active_shell_quartet_tiles, std::uint32_t* task_head,
     double screening_tolerance, const double* schwarz_bounds, const double* density,
-    const std::uint8_t* active, double* forces, std::uint64_t generated_shell_class_mask) {
+    const std::uint8_t* active, double* forces) {
   static_assert(AngularOrder < kPackedSsssAngularOrderCount);
   const unsigned lane = threadIdx.x;
   const std::uint32_t work_count = *active_shell_quartet_tile_count;
@@ -52,7 +52,7 @@ __global__ void two_electron_force_quartet_packed_persistent_kernel(
     if (packed_item < work_count) {
       contract_two_electron_force_ssss_task<Unrestricted>(
           batch, active_shell_quartet_tiles[packed_item], screening_tolerance, schwarz_bounds,
-          density, active, forces, generated_shell_class_mask);
+          density, active, forces);
     }
   }
 }
@@ -251,7 +251,7 @@ void launch_angular_force_quartets(
             <<<std::min(capacity_workers, persistent_worker_blocks), detail::kDirectQuartetThreads,
                0, stream>>>(batch, order_tile_count, order_tiles,
                             persistent_task_heads + AngularOrder, screening_tolerance,
-                            schwarz_bounds, density, active, forces, generated_shell_class_mask);
+                            schwarz_bounds, density, active, forces);
       } else if constexpr (AngularOrder == kFusedPsssAngularOrder) {
         if (psss_resident_task_count != 0 && resident_psss_bra_primitive_pairs != 0 &&
             resident_psss_bra_primitive_pairs <= kResidentPsssMaximumBraPrimitivePairs) {

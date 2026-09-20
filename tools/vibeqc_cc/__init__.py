@@ -61,6 +61,12 @@ from .triples_cuda import (
     TriplesTileConfig,
     cpu_triples_tiles,
 )
+from .triples_lambda_response import (
+    BoundCCSDTResponse,
+    CCSDTParameterWeight,
+    CorrectedLambdaResult,
+    solve_corrected_lambda,
+)
 from .triples_response import (
     TRIPLES_RESPONSE_INPUTS,
     accumulate_tile_triples_vjp,
@@ -86,6 +92,7 @@ __all__ = [
     "BoundCCSDGradient",
     "BoundCCSDLambda",
     "BoundCCSDResponse",
+    "BoundCCSDTResponse",
     "CCSDGradientCapabilities",
     "CCSDGradientOptions",
     "CCSDGradientResult",
@@ -93,7 +100,9 @@ __all__ = [
     "CCSDLambdaResult",
     "CCSDParameterWeight",
     "CCSDResult",
+    "CCSDTParameterWeight",
     "Capabilities",
+    "CorrectedLambdaResult",
     "CudaTriplesResult",
     "CudaTriplesTiles",
     "LambdaOptions",
@@ -131,6 +140,7 @@ __all__ = [
     "rccsd_t_energy",
     "rccsd_t_method_capabilities",
     "solve",
+    "solve_corrected_lambda",
     "solve_gpu_resident",
     "tile_triples_energy",
     "tile_triples_energy_masked",

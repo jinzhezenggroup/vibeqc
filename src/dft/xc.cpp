@@ -176,7 +176,8 @@ namespace {
 SpinXcIntegral integrate_spin_xc(const AoBasis& basis, const MolecularGrid& grid,
                                  const std::vector<double>& alpha_density,
                                  const std::vector<double>& beta_density, std::size_t tile_points,
-                                 bool pbe) {
+                                 bool pbe, double exchange_scale = 1.0,
+                                 double correlation_scale = 1.0) {
   validate_density_matrix(basis, grid, alpha_density, tile_points);
   validate_density_matrix(basis, grid, beta_density, tile_points);
   const std::size_t n = basis.nao;
@@ -201,7 +202,7 @@ SpinXcIntegral integrate_spin_xc(const AoBasis& basis, const MolecularGrid& grid
         rho[spin] = features[0];
         for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
       }
-      const auto xc = point::evaluate(pbe, rho, gradient);
+      const auto xc = point::evaluate(pbe, rho, gradient, exchange_scale, correlation_scale);
       if (!xc.valid) throw std::domain_error("invalid or unrepresentable semilocal spin features");
       const double weight = grid.weights()[begin + p];
       result.energy += weight * xc.energy;
@@ -231,10 +232,19 @@ SpinXcIntegral integrate_lda_xc_pw_uks(const AoBasis& basis, const MolecularGrid
   return integrate_spin_xc(basis, grid, alpha_density, beta_density, tile_points, false);
 }
 
+SpinXcIntegral integrate_pbe_uks_scaled(const AoBasis& basis, const MolecularGrid& grid,
+                                        const std::vector<double>& alpha_density,
+                                        const std::vector<double>& beta_density,
+                                        std::size_t tile_points, double exchange_scale,
+                                        double correlation_scale) {
+  return integrate_spin_xc(basis, grid, alpha_density, beta_density, tile_points, true,
+                           exchange_scale, correlation_scale);
+}
+
 SpinXcIntegral integrate_pbe_uks(const AoBasis& basis, const MolecularGrid& grid,
                                  const std::vector<double>& alpha_density,
                                  const std::vector<double>& beta_density, std::size_t tile_points) {
-  return integrate_spin_xc(basis, grid, alpha_density, beta_density, tile_points, true);
+  return integrate_pbe_uks_scaled(basis, grid, alpha_density, beta_density, tile_points, 1.0, 1.0);
 }
 
 R2scanPointValue evaluate_r2scan_point(const double rho[2], const double (&gradient)[2][3],
@@ -408,7 +418,8 @@ SpinXcIntegral integrate_r2scan_uks(const AoBasis& basis, const MolecularGrid& g
 
 XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& grid,
                                   const std::vector<double>& density, std::size_t tile_points,
-                                  bool allow_tail, XcDensitySource source) {
+                                  bool allow_tail, XcDensitySource source,
+                                  double exchange_scale = 1.0, double correlation_scale = 1.0) {
   const std::size_t n = basis.nao;
   validate_density_matrix(basis, grid, density, tile_points);
 
@@ -443,7 +454,8 @@ XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& gri
       const double spin_rho[2]{rho / 2.0, rho / 2.0};
       const double spin_gradient[2][3]{{gradient[0] / 2.0, gradient[1] / 2.0, gradient[2] / 2.0},
                                        {gradient[0] / 2.0, gradient[1] / 2.0, gradient[2] / 2.0}};
-      const auto xc = point::evaluate(true, spin_rho, spin_gradient);
+      const auto xc =
+          point::evaluate(true, spin_rho, spin_gradient, exchange_scale, correlation_scale);
       if (!xc.valid) throw std::domain_error("invalid or unrepresentable PBE features");
       const double weight = weights[begin + point];
       result.energy += weight * xc.energy;
@@ -469,10 +481,18 @@ XcIntegral integrate_pbe_rks(const AoBasis& basis, const MolecularGrid& grid,
   return integrate_pbe_rks_impl(basis, grid, density, tile_points, false, source);
 }
 
+XcIntegral integrate_pbe_rks_with_tail_scaled(const AoBasis& basis, const MolecularGrid& grid,
+                                              const std::vector<double>& density,
+                                              std::size_t tile_points, XcDensitySource source,
+                                              double exchange_scale, double correlation_scale) {
+  return integrate_pbe_rks_impl(basis, grid, density, tile_points, true, source, exchange_scale,
+                                correlation_scale);
+}
+
 XcIntegral integrate_pbe_rks_with_tail(const AoBasis& basis, const MolecularGrid& grid,
                                        const std::vector<double>& density, std::size_t tile_points,
                                        XcDensitySource source) {
-  return integrate_pbe_rks_impl(basis, grid, density, tile_points, true, source);
+  return integrate_pbe_rks_with_tail_scaled(basis, grid, density, tile_points, source, 1.0, 1.0);
 }
 
 // Keep the CPU slice's entry name bound to the same numerical contract.

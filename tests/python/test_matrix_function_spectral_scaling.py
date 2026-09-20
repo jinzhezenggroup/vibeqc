@@ -24,6 +24,7 @@ def test_seeded_spectral_response_keeps_representable_extremes(tmp_path: Path) -
             "-I" + str(ROOT / "src"),
             str(source),
             str(ROOT / "src/tensor/symmetric_matrix_function.cpp"),
+            str(ROOT / "src/tensor/cpu_linalg.cpp"),
             "-o",
             str(binary),
         ],

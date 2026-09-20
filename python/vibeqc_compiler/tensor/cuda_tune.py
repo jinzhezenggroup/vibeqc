@@ -428,13 +428,13 @@ def tune_cuda(
                 row["screening"] = screen
                 errors = []
                 with PreparedCuda(plan, compiled, device=device) as candidate:
-                    for index in screening.fixture_indices:
+                    for fixture_index in screening.fixture_indices:
                         pairs, error, _ = _measure_fixture(
                             reference_cuda,
                             candidate,
-                            fixtures[index],
-                            references[index],
-                            inputs_hash=inputs_hashes[index],
+                            fixtures[fixture_index],
+                            references[fixture_index],
+                            inputs_hash=inputs_hashes[fixture_index],
                             repeats=screening.repeats,
                             check_deadline=check_deadline,
                             profile=False,

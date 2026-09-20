@@ -50,10 +50,12 @@ CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid,
 
 CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std::size_t nao,
                                   std::size_t points, std::uint32_t functional, bool unrestricted,
-                                  std::size_t tile_points) {
+                                  std::size_t tile_points, bool response) {
   if (!atoms || !primitives || !nao || !points || !tile_points || tile_points > INT_MAX ||
       atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || functional > 2U)
     throw std::invalid_argument("invalid CUDA XC resource shape");
+  if (response && functional > 1U)
+    throw std::invalid_argument("CUDA XC response supports LDA/PBE only");
   constexpr auto overflow = "CUDA XC storage overflow";
   const auto packed =
       size_add(size_add(size_mul(3, atoms, overflow), size_mul(2, primitives, overflow), overflow),
@@ -72,13 +74,14 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
                    feature_terms,
                    packed,
                    0,
-                   functional};
+                   functional,
+                   response};
   std::size_t elements = size_add(out.packed_elements, size_mul(4, out.npoint, overflow), overflow);
   const auto panel = size_mul(out.tile_points, out.nao, overflow);
   const auto panel_terms =
       size_add(out.jets, size_mul(out.spins, out.work_jets, overflow), overflow);
   elements = size_add(elements, size_mul(panel_terms, panel, overflow), overflow);
-  auto feature_storage = size_mul(2, out.spins, overflow);
+  auto feature_storage = size_mul(response ? 3 : 2, out.spins, overflow);
   feature_storage = size_mul(feature_storage, out.feature_terms, overflow);
   feature_storage = size_add(feature_storage, 3, overflow);
   elements = size_add(elements, size_mul(feature_storage, out.tile_points, overflow), overflow);
@@ -94,9 +97,22 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
 CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional,
                        bool unrestricted, std::size_t tile_points, void* arena,
                        std::size_t arena_bytes, cudaStream_t stream)
-    : layout_(cuda_xc_layout(basis, grid, functional, unrestricted, tile_points)),
+    : CudaXcPlan(cuda_xc_layout(basis, grid, functional, unrestricted, tile_points), basis.packed,
+                 grid.points(), grid.weights(), arena, arena_bytes, stream) {}
+
+CudaXcPlan::CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_basis,
+                       const std::vector<double>& points, const std::vector<double>& weights,
+                       void* arena, std::size_t arena_bytes, cudaStream_t stream)
+    : layout_(cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
+                                   layout.functional, layout.spins == 2, layout.tile_points,
+                                   layout.response)),
       arena_(arena),
       stream_(stream) {
+  if (layout.spins != 1 && layout.spins != 2)
+    throw std::invalid_argument("CUDA XC spin layout is invalid");
+  if (packed_basis.size() != layout_.packed_elements || points.size() != 3 * layout_.npoint ||
+      weights.size() != layout_.npoint)
+    throw std::invalid_argument("CUDA XC explicit source shape mismatch");
   if (arena_bytes < layout_.device_bytes ||
       reinterpret_cast<std::uintptr_t>(arena) % alignof(double))
     throw std::invalid_argument("CUDA XC arena is too small or misaligned");
@@ -124,6 +140,9 @@ CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uin
       take_double(size_mul(feature_panel, l.tile_points, "CUDA XC workspace layout overflow"));
   coefficients_ =
       take_double(size_mul(feature_panel, l.tile_points, "CUDA XC workspace layout overflow"));
+  if (l.response)
+    delta_features_ =
+        take_double(size_mul(feature_panel, l.tile_points, "CUDA XC workspace layout overflow"));
   point_totals_ = take_double(size_mul(3, l.tile_points, "CUDA XC workspace layout overflow"));
   const auto matrix = size_mul(l.nao, l.nao, "CUDA XC workspace layout overflow");
   potential_ = take_double(size_mul(l.spins, matrix, "CUDA XC workspace layout overflow"));
@@ -133,11 +152,11 @@ CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uin
   if (workspace.bytes() != layout_.device_bytes)
     throw std::logic_error("CUDA XC workspace layout mismatch");
   try {
-    check(cudaMemcpyAsync(basis_, basis.packed.data(), l.packed_elements * sizeof(double),
+    check(cudaMemcpyAsync(basis_, packed_basis.data(), l.packed_elements * sizeof(double),
                           cudaMemcpyHostToDevice, stream_));
-    check(cudaMemcpyAsync(points_, grid.points().data(), 3 * l.npoint * sizeof(double),
+    check(cudaMemcpyAsync(points_, points.data(), 3 * l.npoint * sizeof(double),
                           cudaMemcpyHostToDevice, stream_));
-    check(cudaMemcpyAsync(weights_, grid.weights().data(), l.npoint * sizeof(double),
+    check(cudaMemcpyAsync(weights_, weights.data(), l.npoint * sizeof(double),
                           cudaMemcpyHostToDevice, stream_));
     // Complete setup before releasing borrowed host quadrature/basis inputs.
     check(cudaStreamSynchronize(stream_));
@@ -167,6 +186,18 @@ void CudaXcPlan::check_device() const {
 }
 
 void CudaXcPlan::enqueue(const double* density, std::size_t elements, std::uint64_t generation) {
+  if (layout_.response) throw std::invalid_argument("XC response plan requires a direction");
+  enqueue_impl(density, nullptr, elements, generation);
+}
+
+void CudaXcPlan::enqueue_response(const double* density, const double* direction,
+                                  std::size_t elements, std::uint64_t generation) {
+  if (!layout_.response) throw std::invalid_argument("XC plan was not prepared for response");
+  enqueue_impl(density, direction, elements, generation);
+}
+
+void CudaXcPlan::enqueue_impl(const double* density, const double* direction, std::size_t elements,
+                              std::uint64_t generation) {
   check_device();
   const auto matrix = size_mul(layout_.nao, layout_.nao, "CUDA XC density size overflow");
   const auto count = size_mul(layout_.spins, matrix, "CUDA XC density size overflow");
@@ -177,6 +208,11 @@ void CudaXcPlan::enqueue(const double* density, std::size_t elements, std::uint6
   const auto input_bytes = size_mul(count, sizeof(double), "CUDA XC density size overflow");
   if (vibeqc::runtime::ranges_overlap(density, input_bytes, arena_, layout_.device_bytes))
     throw std::invalid_argument("CUDA XC density aliases its workspace");
+  if (layout_.response) {
+    device_pointer(direction, device_);
+    if (vibeqc::runtime::ranges_overlap(direction, input_bytes, arena_, layout_.device_bytes))
+      throw std::invalid_argument("CUDA XC direction aliases its workspace");
+  }
   generations_.begin(generation);
   try {
 #if defined(VIBEQC_TEST_HOOKS)
@@ -187,7 +223,8 @@ void CudaXcPlan::enqueue(const double* density, std::size_t elements, std::uint6
     vibeqc_tensor::cuda_check(injected);
 #endif
     cuda_xc_detail::enqueue(layout_, stream_, basis_, points_, weights_, density, ao_, work_,
-                            features_, coefficients_, point_totals_, potential_, totals_, error_);
+                            features_, coefficients_, point_totals_, potential_, totals_, error_,
+                            direction, delta_features_);
   } catch (const vibeqc_tensor::DeviceAllocationError&) {
     // The generated executor has a separate exception vocabulary. Translate at
     // this native owner boundary so both single-point and batch APIs preserve it.

@@ -56,11 +56,17 @@ production ownership baseline, not a claim of pair-parallel performance.
 
 ## Data provenance and validation
 
-No xTBloom or simple-dftd3 runtime dependency is added. Method-level D3/D4/gCP
-coefficients have one editable source in
-`python/vibeqc_compiler/method/method_parameters.json`; codegen emits the
-Python MethodIR constants and native/CUDA `constexpr` accessors, so calculation
-paths do not parse configuration files at runtime. Build-time generation also
+No xTBloom, simple-dftd3 or dftd4 runtime dependency is added. The editable
+source contract is the pinned snapshots and source manifest under
+`tools/parameters/`, together with `method_parameter_overrides.json` for local
+choices. Run `python tools/sync_dispersion_parameters.py` to regenerate the
+committed intermediate `python/vibeqc_compiler/method/method_parameters.json`;
+do not edit that intermediate by hand. Then run
+`python tools/generate_method_parameters.py --python-output python/vibeqc_compiler/method/_generated_parameters.py`.
+CMake uses the same intermediate and typed generator for native/CUDA `constexpr`
+accessors, so calculation paths parse no configuration or upstream table.
+The [source-ownership decision](../.agents/notes/implemented/architecture/2026-09-20-pinned-dispersion-catalog-sources.md)
+records the input/update and regeneration contract. Build-time generation also
 verifies the pinned xTBloom-derived D3 table and covalent-radius SHA-256 values
 and emits only the compact production data needed by the native evaluator. The
 runtime rejects a MethodIR whose recorded data identity differs from those
@@ -113,6 +119,32 @@ qualified native CPU/CUDA runtime and oracle until dynamic/ragged PairIR executi
 preserve the public batch/replay contract. The exact conventions, provenance,
 underflow boundary, rejected alternatives and retirement condition are recorded in the
 [D3 GeometryIR/PairIR decision](../.agents/notes/implemented/numerics/2026-09-20-d3-geometry-pair-ir.md).
+
+## Generated ragged CUDA retirement candidate
+
+The compiler now also has a non-public ragged CUDA execution candidate for the
+same two-body D3(BJ) equation. `compile_d3_bj_batch` flattens a heterogeneous
+molecular batch into one GeometryIR, preserves explicit system atom offsets, and
+builds only within-system CN/energy pairs. Pair energies are reduced to a vector
+of per-system energies with TensorIR `scatter_add`; the complete Cartesian
+gradient is generated from that vector energy through one TensorIR VJP.
+
+`PreparedD3CudaBatch` lowers the combined energy + generated-gradient graph
+through the shared TensorIR CUDA planner/compiler/runtime. Replays that preserve
+the CN/pair/switch state reuse the prepared artifact. A replay that crosses a
+recorded topology or switch boundary prepares a replacement generated program
+before the old prepared owner is released, so a failed rebuild cannot corrupt the
+previous executable state.
+
+This is deliberately a **retirement candidate, not the public production owner**.
+The native `D3CorrectionBatch` remains authoritative until the generated route
+has independent real-device qualification for numerical parity, resource bounds,
+changed-topology replay, per-system failure isolation, energy-only execution and
+endpoint performance. In particular, the current candidate evaluates the generated
+gradient graph even when a caller only needs energy, and TensorIR's one-call batch
+failure boundary is not yet equivalent to the public native per-item status ABI.
+
+See the [generated ragged execution decision](../.agents/notes/implemented/numerics/2026-09-20-d3-generated-ragged-cuda.md).
 
 ## Remaining boundary
 
@@ -175,3 +207,19 @@ For retained performance evidence, pin the exact `nvalchemi-toolkit-ops` wheel,
 PyTorch/CUDA versions, GPU, VibeQC commit/library, cutoff, workload, and timing
 samples. Do not compare published H100 numbers directly with a local RTX 5090 run;
 run both implementations on the same allocated device.
+
+## Parameter catalog availability
+
+The generated parameter catalog retains all 157 pinned upstream D3(BJ) records,
+projected explicitly to the implemented two-body `s9=0` model. Parameter
+availability is separate from executable capability: `B97M-D3(BJ)` has negative
+`a1`, and `SSB-D3(BJ)` has negative `s8`. The current `D3Spec` sign constraints
+still reject these two records. Do not clip or take absolute values to bypass
+that boundary; extending signed damping requires separate numerical qualification.
+
+Quoted upstream TOML keys are decoded as names: for example,
+`SKALA-1.0-D3(BJ)` and `SKALA-1.1-D3(BJ)` contain no literal quote characters.
+The development-time synchronizer checks pinned source hashes; production uses
+generated constants without opening an upstream table or importing its package.
+The same pipeline preserves 118 D4 parameter records, without advertising new
+public DFT+D4 endpoints solely because those records are present.

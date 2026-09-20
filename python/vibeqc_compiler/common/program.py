@@ -165,15 +165,15 @@ class ProgramIR:
             converted = []
             for item in data[field]:
                 _keys(item, item_type.__dataclass_fields__, field)
-                item = dict(item)
-                if item_type is ProgramBuffer and item["layout"] is not None:
+                item_data = dict(item)
+                if item_type is ProgramBuffer and item_data["layout"] is not None:
                     _keys(
-                        item["layout"],
+                        item_data["layout"],
                         DenseLayout.__dataclass_fields__,
                         "buffer layout",
                     )
-                    item["layout"] = DenseLayout(**item["layout"])
-                converted.append(item_type(**item))
+                    item_data["layout"] = DenseLayout(**item_data["layout"])
+                converted.append(item_type(**item_data))
             data[field] = tuple(converted)
         return cls(**data)
 

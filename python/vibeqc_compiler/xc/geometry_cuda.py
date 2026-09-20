@@ -4,25 +4,145 @@ import typing
 
 from vibeqc_compiler.dft.ao import jet_indices
 from vibeqc_compiler.dft.ao_cuda import emit_grid_policy
+from vibeqc_compiler.integral.expr import AlgebraForm
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .coefficients import jet_pullback_program
+from .expressions import energy_expression
 from .grid_native import emit_grid_adjoint, emit_grid_partials
+from .spec import functional as resolve_functional
 
 
-def emit_geometry_cuda(*, pbe: typing.Any, iterations: typing.Any = 3) -> typing.Any:
-    """Lower AO bilinear AD; the caller supplies exact SCF point coefficients."""
-    if type(pbe) is not bool:
-        raise TypeError("geometry lowering requires a boolean PBE flag")
-    program = jet_pullback_program("gga" if pbe else "lda")
+def _functional_code(functional: typing.Any, pbe: typing.Any) -> int:
+    """Resolve the stationary semilocal selector without weakening old callers."""
+    if functional is None:
+        if type(pbe) is not bool:
+            raise TypeError(
+                "geometry lowering requires functional=0/1/2 or a boolean PBE flag"
+            )
+        return int(pbe)
+    if pbe is not None:
+        raise ValueError("specify functional or pbe, not both")
+    if type(functional) is not int or functional not in (0, 1, 2):
+        raise ValueError(
+            "geometry lowering functional must be 0 (LDA), 1 (PBE), or 2 (r2SCAN)"
+        )
+    return functional
+
+
+def _emit_stationary_point(functional: int) -> str:
+    """Emit the exact SCF-domain point differential consumed by geometry CUDA."""
+    if functional < 2:
+        pbe = "true" if functional == 1 else "false"
+        return "\n".join(
+            [
+                "struct StationaryPointValue {",
+                "  double energy{}, rho[2]{}, gradient[2][3]{}, kinetic[2]{};",
+                "  bool valid{true};",
+                "};",
+                "__device__ inline StationaryPointValue stationary_evaluate_point(",
+                "    const double rho[2], const double gradient[2][3], const double tau[2]) {",
+                f"  const auto raw = vibeqc::dft::point::evaluate({pbe}, rho, gradient);",
+                "  StationaryPointValue out;",
+                "  out.energy = raw.energy;",
+                "  out.valid = raw.valid;",
+                "  for (unsigned s = 0; s < 2; ++s) {",
+                "    out.rho[s] = raw.rho[s];",
+                "    for (unsigned k = 0; k < 3; ++k) out.gradient[s][k] = raw.gradient[s][k];",
+                "  }",
+                "  return out;",
+                "}",
+            ]
+        )
+
+    spec = resolve_functional("R2SCAN", spin="polarized")
+    graph, energy, feature_variables = energy_expression(spec, production=True)
+    roots = (
+        energy,
+        *(graph.differentiate(energy, value) for value in feature_variables),
+    )
+    graph, roots = graph.apply_algebra_form(roots, AlgebraForm.FACTORED_NARY)
+    graph, roots = graph.lower_small_integer_powers(roots)
     variables = {
-        **{f"c{j}": f"c[{j}]" for j in range(len(program.roots))},
+        "rho_a": "rho[0]",
+        "rho_b": "rho[1]",
+        "sigma_aa": "sigma[0]",
+        "sigma_ab": "sigma[1]",
+        "sigma_bb": "sigma[2]",
+        "tau_a": "tau[0]",
+        "tau_b": "tau[1]",
+    }
+    emitter = ScalarCEmitter(graph, variables)
+    emitter.emit(roots)
+    refs = [emitter.reference(root) for root in roots]
+    return "\n".join(
+        [
+            "struct StationaryPointValue {",
+            "  double energy{}, rho[2]{}, gradient[2][3]{}, kinetic[2]{};",
+            "  bool valid{true};",
+            "};",
+            "__device__ inline StationaryPointValue stationary_evaluate_point(",
+            "    const double rho[2], const double gradient[2][3], const double tau[2]) {",
+            "  StationaryPointValue out;",
+            "  const double total = rho[0] + rho[1];",
+            "  constexpr double tail_low = 1.0e-56, tail_high = 1.0e-52;",
+            "  if (total <= tail_low) return out;",
+            "  double sigma[3]{};",
+            "  for (unsigned k = 0; k < 3; ++k) {",
+            "    sigma[0] += gradient[0][k] * gradient[0][k];",
+            "    sigma[1] += gradient[0][k] * gradient[1][k];",
+            "    sigma[2] += gradient[1][k] * gradient[1][k];",
+            "  }",
+            *emitter.lines,
+            f"  double energy = {refs[0]};",
+            "  double derivative[7]{" + ", ".join(refs[1:]) + "};",
+            "  out.valid = isfinite(energy);",
+            "  for (double value : derivative) out.valid = out.valid && isfinite(value);",
+            "  if (!out.valid) return out;",
+            "  if (total < tail_high) {",
+            "    const double width = tail_high - tail_low;",
+            "    const double x = (total - tail_low) / width;",
+            "    const double x2 = x * x, x3 = x2 * x;",
+            "    const double scale = x3 * (10.0 + x * (-15.0 + 6.0 * x));",
+            "    const double dscale = 30.0 * x2 * (1.0 - x) * (1.0 - x) / width;",
+            "    const double unscaled = energy;",
+            "    energy *= scale;",
+            "    derivative[0] = scale * derivative[0] + dscale * unscaled;",
+            "    derivative[1] = scale * derivative[1] + dscale * unscaled;",
+            "    for (unsigned i = 2; i < 7; ++i) derivative[i] *= scale;",
+            "  }",
+            "  out.energy = energy;",
+            "  out.rho[0] = derivative[0];",
+            "  out.rho[1] = derivative[1];",
+            "  for (unsigned k = 0; k < 3; ++k) {",
+            "    out.gradient[0][k] = 2.0 * derivative[2] * gradient[0][k] + derivative[3] * gradient[1][k];",
+            "    out.gradient[1][k] = derivative[3] * gradient[0][k] + 2.0 * derivative[4] * gradient[1][k];",
+            "  }",
+            "  out.kinetic[0] = 0.5 * derivative[5];",
+            "  out.kinetic[1] = 0.5 * derivative[6];",
+            "  return out;",
+            "}",
+        ]
+    )
+
+
+def emit_geometry_cuda(
+    *, functional: typing.Any = None, pbe: typing.Any = None, iterations: typing.Any = 3
+) -> typing.Any:
+    """Lower AO bilinear AD; the caller supplies one exact semilocal selector."""
+    code = _functional_code(functional, pbe)
+    family = ("lda", "gga", "mgga")[code]
+    program = jet_pullback_program(family)
+    coefficient_count = {"lda": 1, "gga": 4, "mgga": 5}[family]
+    variables = {
+        **{f"c{j}": f"c[{j}]" for j in range(coefficient_count)},
         **{f"{leg}{j}": f"w[{j}]" for leg in "xy" for j in range(len(program.roots))},
     }
     emitter = ScalarCEmitter(program.graph, variables)
     emitter.emit(program.roots)
-    domain = jet_indices(1 if pbe else 0)
-    lookup = jet_indices(2 if pbe else 1)
+    derivative_order = 0 if family == "lda" else 1
+    domain = jet_indices(derivative_order)
+    lookup = jet_indices(derivative_order + 1)
     shifts = []
     for index in domain:
         row = []
@@ -34,9 +154,13 @@ def emit_geometry_cuda(*, pbe: typing.Any, iterations: typing.Any = 3) -> typing
     return "\n".join(
         [
             emit_grid_adjoint(),
+            '#include "dft/xc_point.hpp"',
             emit_grid_partials(iterations, device=True),
-            f"constexpr bool stationary_pbe = {'true' if pbe else 'false'};",
+            f"constexpr unsigned stationary_functional = {code};",
             f"constexpr unsigned stationary_jets = {len(domain)};",
+            f"constexpr unsigned stationary_ao_jets = {len(lookup)};",
+            f"constexpr unsigned stationary_coefficients = {coefficient_count};",
+            _emit_stationary_point(code),
             f"__device__ __constant__ unsigned stationary_shift[{len(domain)}][3] = {{{','.join(shifts)}}};",
             "__device__ void ao_pullback(const double* c, const double* w, double* out) {",
             *emitter.lines,

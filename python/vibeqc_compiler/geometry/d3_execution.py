@@ -6,7 +6,7 @@ import numpy as np
 
 from vibeqc_compiler.tensor import execute
 
-from .d3 import D3GeometryProgram
+from .d3 import D3GeometryBatchProgram, D3GeometryProgram
 
 
 def execute_d3_bj(
@@ -44,5 +44,43 @@ def execute_d3_bj(
             for name, source in reverse.output_map.items()
             if source == coordinate_name
         )
+        outputs["gradient"] = adjoints[gradient_name]
+    return outputs
+
+
+def execute_d3_bj_batch(
+    compiled: D3GeometryBatchProgram,
+    coordinates: object,
+    *,
+    gradient: bool = False,
+) -> dict[str, np.ndarray]:
+    """Validate and execute one heterogeneous ragged D3(BJ) compiler batch."""
+
+    if not isinstance(compiled, D3GeometryBatchProgram):
+        raise TypeError("compiled must be a D3GeometryBatchProgram")
+    if type(gradient) is not bool:
+        raise TypeError("gradient must be a Boolean")
+    xyz = np.array(coordinates, dtype=np.float64, copy=True)
+    compiled.validate_coordinates(xyz)
+    coordinate_name = compiled.geometry.coordinate_name
+    inputs = {coordinate_name: xyz}
+    outputs = dict(execute(compiled.program, inputs).outputs)
+    if gradient:
+        reverse = compiled.coordinate_vjp()
+        seed_name = next(
+            name for name, source in reverse.input_map.items() if source == "energy"
+        )
+        gradient_name = next(
+            name
+            for name, source in reverse.output_map.items()
+            if source == coordinate_name
+        )
+        adjoints = execute(
+            reverse.program,
+            {
+                **inputs,
+                seed_name: np.ones_like(outputs["energy"]),
+            },
+        ).outputs
         outputs["gradient"] = adjoints[gradient_name]
     return outputs

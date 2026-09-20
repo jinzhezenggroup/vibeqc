@@ -512,13 +512,22 @@ class UHFResponseOperator:
         """The bound UHF operator identity."""
         return self.problem.operator_identity
 
+    def validate_current(self) -> None:
+        """Check provider lifetime even on solver zero-RHS/empty fast paths."""
+        if self.problem.operator_identity != self._operator_identity(self.backend):
+            raise ValueError("problem operator_identity does not match its UHF backend")
+        validate = getattr(self.backend, "validate_reference", None)
+        if validate is not None:
+            validate(self.problem.reference)
+
     def apply(self, vector: typing.Any) -> typing.Any:
         """Apply the coupled alpha/beta UHF response Jacobian.
 
         The native UHF Fock equations define Coulomb from the total density and
-        exchange from the matching spin density; using three generic J/K calls
-        preserves those semantics for both dense-oracle and streamed backends.
+        exchange from the matching spin density. A qualified spin provider uses
+        one unrestricted call; generic dense/streamed providers use three calls.
         """
+        self.validate_current()
         vector = self.problem.layout.validate_vector(vector)
         reference = self.problem.reference
         alpha_mo = self.problem.layout.density_matrix("alpha", vector)
@@ -556,6 +565,12 @@ class UHFResponseOperator:
         self, alpha_density: typing.Any, beta_density: typing.Any
     ) -> typing.Any:
         """Shared AO seam: HF uses total Coulomb and same-spin exchange."""
+        spin_action = getattr(self.backend, "spin_coulomb_exchange", None)
+        if spin_action is not None:
+            coulomb, alpha_exchange, beta_exchange = spin_action(
+                alpha_density, beta_density
+            )
+            return coulomb - alpha_exchange, coulomb - beta_exchange
         coulomb, _ = self.backend.coulomb_exchange(alpha_density + beta_density)
         _, alpha_exchange = self.backend.coulomb_exchange(alpha_density)
         _, beta_exchange = self.backend.coulomb_exchange(beta_density)

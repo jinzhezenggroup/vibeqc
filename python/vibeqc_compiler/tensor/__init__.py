@@ -25,6 +25,12 @@ from .autodiff import (
     jvp,
     vjp,
 )
+from .batch_schedule import (
+    BATCH_SCHEDULE_SCHEMA,
+    BatchScheduleIR,
+    RaggedStepSchedule,
+    analyze_batch_schedule,
+)
 from .interpreter import Execution, execute
 from .ir import (
     PRIMITIVES,
@@ -79,10 +85,12 @@ __all__ = [
     "AD_PRIMITIVES",
     "AD_RULES",
     "AD_RULE_VERSION",
+    "BATCH_SCHEDULE_SCHEMA",
     "GENERATION_VERSION",
     "PASSES",
     "PRIMITIVES",
     "SCF_TENSOR_VERSION",
+    "BatchScheduleIR",
     "CastBoundary",
     "DenseLayout",
     "DotTestResult",
@@ -96,12 +104,14 @@ __all__ = [
     "PrecisionDirective",
     "PrecisionSchedule",
     "Program",
+    "RaggedStepSchedule",
     "Symmetry",
     "TensorSpec",
     "VJPProgram",
     "VJPResult",
     "ValuePrecision",
     "add",
+    "analyze_batch_schedule",
     "broadcast",
     "capabilities",
     "cast",
