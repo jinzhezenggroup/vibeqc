@@ -15,7 +15,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     """Native and JIT builds must compile exactly one scientific grid policy."""
-    from vibeqc_compiler.dft.ao_cuda import (\n        emit_grid_source,\n        emit_native_xc_contraction_kernels,\n    )
+    from vibeqc_compiler.dft.ao_cuda import (
+        emit_grid_source,
+        emit_native_xc_contraction_kernels,
+    )
 
     output = tmp_path / "grid.cu"
     subprocess.run(
