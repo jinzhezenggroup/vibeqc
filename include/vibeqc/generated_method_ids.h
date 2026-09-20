@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 
+// clang-format off
 typedef int32_t vibeqc_method;
 enum {
   VIBEQC_METHOD_RHF = 1,
@@ -17,5 +18,6 @@ enum {
   VIBEQC_METHOD_LDA_UKS = 8,
   VIBEQC_METHOD_PBE_UKS = 9
 };
+// clang-format on
 
 #endif
