@@ -13,6 +13,7 @@ import ctypes
 import json
 import math
 import os
+import typing
 from dataclasses import asdict, replace
 
 from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
@@ -36,7 +37,15 @@ from .resources_hf import _basis_record, _cuda_library_identity, _ecp_workspace
 _METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks", "pbe0-rks", "pbe0-uks")
 
 
-def _item_host_inventory(item, *, diis_history, max_iterations, pbe, backend, model):
+def _item_host_inventory(
+    item: typing.Any,
+    *,
+    diis_history: typing.Any,
+    max_iterations: typing.Any,
+    pbe: typing.Any,
+    backend: typing.Any,
+    model: typing.Any,
+) -> typing.Any:
     """Bound numeric and LP64 value metadata by actual execution lifetimes.
 
     Every plan retains its host grid, basis, warm/source metadata and provider.
@@ -103,7 +112,14 @@ def _item_host_inventory(item, *, diis_history, max_iterations, pbe, backend, mo
     }
 
 
-def _cuda_item_inventory(library, item, *, diis_history, pbe, tile):
+def _cuda_item_inventory(
+    library: typing.Any,
+    item: typing.Any,
+    *,
+    diis_history: typing.Any,
+    pbe: typing.Any,
+    tile: typing.Any,
+) -> typing.Any:
     query = getattr(library, "vibeqc_resource_ks_cuda_v1", None)
     if query is None:
         raise NotImplementedError(
@@ -154,7 +170,7 @@ def _cuda_item_inventory(library, item, *, diis_history, pbe, tile):
 
 
 def ks_resource_request(
-    systems,
+    systems: typing.Any,
     *,
     method: typing.Any = "pbe-rks",
     basis: typing.Any = "sto-3g",
@@ -473,7 +489,9 @@ def ks_resource_request(
     return ResourceRequest(name, identity, (candidate,), exclusions)
 
 
-def estimate_ks_resources(systems, *, budget=None, **options):
+def estimate_ks_resources(
+    systems: typing.Any, *, budget: typing.Any = None, **options: typing.Any
+) -> typing.Any:
     """Plan native KS energy capacity without creating scientific arrays."""
     return plan_resources(
         (ks_resource_request(systems, **options),),

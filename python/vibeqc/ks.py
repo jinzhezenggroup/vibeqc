@@ -6,6 +6,7 @@ interior-only reference contract. Unsupported compositions fail before prepare.
 """
 
 import math
+import typing
 from dataclasses import asdict, dataclass, field, replace
 from fractions import Fraction
 
@@ -49,7 +50,7 @@ class KsOptions:
     scf_domain: str = SCF_DOMAIN
     _method_ir: MethodIR | None = field(default=None, init=False, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> typing.Any:
         if self.functional is not None and not isinstance(
             self.functional, FunctionalSpec
         ):
@@ -65,29 +66,29 @@ class KsOptions:
             raise NotImplementedError("unsupported native KS tail/spin domain policy")
 
     @property
-    def method_ir(self):
+    def method_ir(self) -> typing.Any:
         """Resolved method graph consumed by this native KS option set."""
         if self._method_ir is None:
             raise ValueError("resolve KS options against a method first")
         return self._method_ir
 
     @property
-    def coefficients(self):
+    def coefficients(self) -> typing.Any:
         """Resolved (semilocal X, semilocal C, raw Fock K) coefficients."""
         return ks_coefficients(self.method_ir)
 
     @property
-    def requires_composition_v2(self):
+    def requires_composition_v2(self) -> bool:
         return self.coefficients != (1.0, 1.0, 0.0)
 
     @property
-    def ao_order(self):
+    def ao_order(self) -> typing.Any:
         """SCF needs the potential; only GGA composition needs first AO jets."""
         if self.functional is None:
             raise ValueError("resolve KS options against a method first")
         return int("sigma" in self.functional.ingredients)
 
-    def to_payload(self):
+    def to_payload(self) -> typing.Any:
         """Keep composition provenance and the effective SCF domain explicit."""
         if self.functional is None:
             raise ValueError("resolve KS options against a method first")
@@ -107,11 +108,11 @@ class KsOptions:
         return payload
 
     @property
-    def identity(self):
+    def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
 
 
-def _native_components(method_ir):
+def _native_components(method_ir: typing.Any) -> typing.Any:
     """Select supported primitive families by type, not by a method alias."""
     semilocal = tuple(
         primitive
@@ -134,11 +135,11 @@ def _native_components(method_ir):
     return semilocal[0].functional, exchange[0] if exchange else None
 
 
-def _native_semilocal(method_ir):
+def _native_semilocal(method_ir: typing.Any) -> typing.Any:
     return _native_components(method_ir)[0]
 
 
-def ks_coefficients(method_ir):
+def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     """Lower one supported MethodIR graph to explicit native X/C/K coefficients."""
     if not isinstance(method_ir, MethodIR):
         raise TypeError("KS coefficients require a resolved MethodIR")
@@ -171,7 +172,7 @@ def ks_coefficients(method_ir):
     return values
 
 
-def resolve_ks_method(method):
+def resolve_ks_method(method: typing.Any) -> typing.Any:
     """Resolve a named native KS selector through canonical MethodIR."""
     if method not in _NATIVE_KS_METHODS:
         raise ValueError("KS options require a native LDA/PBE/PBE0 RKS/UKS method")
@@ -203,7 +204,7 @@ def resolve_ks_method(method):
     return method_ir, semilocal
 
 
-def resolve_ks_options(method, options=None):
+def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing.Any:
     """Validate a MethodIR-resolved model before resource/native allocation."""
     named_ir, expected = resolve_ks_method(method)
     options = KsOptions() if options is None else options
@@ -245,7 +246,7 @@ def resolve_ks_options(method, options=None):
     return result
 
 
-def native_ks_options(options, *, version=2):
+def native_ks_options(options: typing.Any, *, version: int = 2) -> typing.Any:
     """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
     import ctypes
 

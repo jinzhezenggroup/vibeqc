@@ -1,6 +1,7 @@
 """Explicit KS composition/grid identity, native snapshots and budget shapes."""
 
 import os
+import typing
 from dataclasses import replace
 from fractions import Fraction
 
@@ -30,13 +31,13 @@ CUSTOM = GridSpec(
 
 
 @pytest.fixture(params=("cpu", "cuda"))
-def device(request):
+def device(request: typing.Any) -> typing.Any:
     if request.param == "cuda" and os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1":
         pytest.skip("requires an explicitly Slurm-allocated GPU")
     return request.param
 
 
-def test_functional_composition_resolves_only_required_ingredients():
+def test_functional_composition_resolves_only_required_ingredients() -> typing.Any:
     lda = resolve_ks_options("lda-rks")
     pbe = resolve_ks_options("pbe-uks")
     assert lda.ao_order == 0 and lda.functional.ingredients == ("rho",)
@@ -55,7 +56,9 @@ def test_functional_composition_resolves_only_required_ingredients():
     assert pbe.to_payload()["scf_domain"].endswith("pbe-spin-c2-1e-18")
 
 
-def test_named_pbe_selector_cannot_silently_change_to_hybrid(monkeypatch):
+def test_named_pbe_selector_cannot_silently_change_to_hybrid(
+    monkeypatch: typing.Any,
+) -> None:
     import vibeqc.ks as ks_module
 
     hybrid = resolve_method("PBE0", spin="unpolarized")
@@ -72,8 +75,8 @@ def test_named_pbe_selector_cannot_silently_change_to_hybrid(monkeypatch):
     ),
 )
 def test_pbe0_named_selector_resolves_common_methodir_composition(
-    method, spin, coefficients
-):
+    method: typing.Any, spin: typing.Any, coefficients: typing.Any
+) -> None:
     options = resolve_ks_options(method)
     assert options.method_ir.identifier == "PBE0"
     assert options.method_ir.spin == spin
@@ -91,7 +94,9 @@ def test_pbe0_named_selector_resolves_common_methodir_composition(
         ("pbe-uks", "PBE", "polarized"),
     ),
 )
-def test_method_ir_projection_preserves_catalog_identity(method, identifier, spin):
+def test_method_ir_projection_preserves_catalog_identity(
+    method: typing.Any, identifier: typing.Any, spin: typing.Any
+) -> typing.Any:
     options = resolve_ks_options(method)
     expected = functional(identifier, spin=spin)
     assert options.functional.identity == expected.identity
@@ -128,11 +133,13 @@ def test_method_ir_projection_preserves_catalog_identity(method, identifier, spi
     ids=("coefficient", "missing-component", "extra-component", "family", "spin"),
 )
 @pytest.mark.parametrize("consumer", ("options", "calculator", "resources"))
-def test_method_ir_mismatch_fails_before_native_load(monkeypatch, graph, consumer):
+def test_method_ir_mismatch_fails_before_native_load(
+    monkeypatch: typing.Any, graph: typing.Any, consumer: typing.Any
+) -> typing.Any:
     import vibeqc.ks as ks_module
     from vibeqc import _native
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         pytest.fail("inconsistent MethodIR reached native loading")
 
     # The common resolver is authoritative for composition, but native selectors
@@ -148,7 +155,9 @@ def test_method_ir_mismatch_fails_before_native_load(monkeypatch, graph, consume
             estimate_ks_resources([H2], method="pbe-rks")
 
 
-def test_method_ir_projection_treats_identifiers_as_descriptive(monkeypatch):
+def test_method_ir_projection_treats_identifiers_as_descriptive(
+    monkeypatch: typing.Any,
+) -> typing.Any:
     import vibeqc.ks as ks_module
 
     graph = replace(resolve_method("PBE"), identifier="descriptive-pbe-alias")
@@ -158,10 +167,12 @@ def test_method_ir_projection_treats_identifiers_as_descriptive(monkeypatch):
     assert options.functional.identity == functional("PBE", spin="unpolarized").identity
 
 
-def test_unsupported_compositions_and_policy_fail_before_native_load(monkeypatch):
+def test_unsupported_compositions_and_policy_fail_before_native_load(
+    monkeypatch: typing.Any,
+) -> typing.Any:
     from vibeqc import _native
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         pytest.fail("unsupported KS model reached native loading")
 
     monkeypatch.setattr(_native, "load_library", forbidden)
@@ -182,7 +193,7 @@ def test_unsupported_compositions_and_policy_fail_before_native_load(monkeypatch
         Calculator(method="rhf", ks_options=KsOptions())
 
 
-def test_ks_options_v2_suffix_preserves_v1_prefix_and_pbe0_coefficients():
+def test_ks_options_v2_suffix_preserves_v1_prefix_and_pbe0_coefficients() -> None:
     from vibeqc import _native
 
     pure = resolve_ks_options("pbe-rks")
@@ -199,8 +210,10 @@ def test_ks_options_v2_suffix_preserves_v1_prefix_and_pbe0_coefficients():
     ) == (0.75, 1.0, -0.125)
 
 
-def test_custom_model_changes_plan_identity_without_materializing_grid(monkeypatch):
-    def forbidden(*args, **kwargs):
+def test_custom_model_changes_plan_identity_without_materializing_grid(
+    monkeypatch: typing.Any,
+) -> None:
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("dry run materialized a scientific array")
 
     monkeypatch.setattr(MolecularGrid, "__init__", forbidden)
@@ -222,7 +235,9 @@ def test_custom_model_changes_plan_identity_without_materializing_grid(monkeypat
 
 
 @pytest.mark.parametrize("method", ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"))
-def test_custom_native_grid_matches_independent_scf_and_budget(method, device):
+def test_custom_native_grid_matches_independent_scf_and_budget(
+    method: typing.Any, device: typing.Any
+) -> typing.Any:
     pyscf = pytest.importorskip("pyscf")
     from pyscf import dft, gto
 
@@ -307,7 +322,9 @@ def test_custom_native_grid_matches_independent_scf_and_budget(method, device):
             batch.execute(strict=True)
 
 
-def test_older_native_library_cannot_claim_pbe0_without_composition_v2(monkeypatch):
+def test_older_native_library_cannot_claim_pbe0_without_composition_v2(
+    monkeypatch: typing.Any,
+) -> None:
     from vibeqc import _native
 
     library = _native.load_library(device="cpu")
@@ -316,7 +333,7 @@ def test_older_native_library_cannot_claim_pbe0_without_composition_v2(monkeypat
         argtypes = None
         restype = None
 
-        def __call__(self):
+        def __call__(self) -> typing.Any:
             return 1
 
     monkeypatch.setattr(library, "vibeqc_ks_options_version", VersionOne())
@@ -325,7 +342,9 @@ def test_older_native_library_cannot_claim_pbe0_without_composition_v2(monkeypat
         Calculator(method="pbe0-rks")
 
 
-def test_older_native_library_cannot_silently_ignore_custom_options(monkeypatch):
+def test_older_native_library_cannot_silently_ignore_custom_options(
+    monkeypatch: typing.Any,
+) -> None:
     from vibeqc import _native
 
     library = _native.load_library(device="cpu")

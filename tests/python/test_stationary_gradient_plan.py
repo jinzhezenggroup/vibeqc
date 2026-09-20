@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import typing
 from dataclasses import replace
 from fractions import Fraction
 from itertools import product
@@ -21,13 +22,13 @@ from vibeqc_compiler.tensor.cuda_emit import emit_cuda
 from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 
 
-def plan(spin="unpolarized", method="PBE"):
+def plan(spin: typing.Any = "unpolarized", method: typing.Any = "PBE") -> typing.Any:
     return StationaryGradientPlan(
         resolve_method(method, spin=spin), StationaryMeanField(SCF_POINT_MODEL)
     )
 
 
-def fixture(source, spins):
+def fixture(source: typing.Any, spins: typing.Any) -> typing.Any:
     """All ordered 3-AO pair/quartet tuples, including off-diagonal entries."""
     rng = np.random.default_rng(163)
     d = rng.normal(size=(spins, 3, 3))
@@ -50,7 +51,7 @@ def fixture(source, spins):
     return feeds, integrals
 
 
-def independent_weights(source, feeds):
+def independent_weights(source: typing.Any, feeds: typing.Any) -> typing.Any:
     """Separate scalar loops, not generated primal or another TensorIR lowering."""
     left = feeds["weighted_density" if source == "overlap_pulay" else "density_left"]
     result = []
@@ -65,7 +66,9 @@ def independent_weights(source, feeds):
 
 
 @pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
-def test_ecp_stationary_plan_has_complete_sources_and_generated_weights(spin):
+def test_ecp_stationary_plan_has_complete_sources_and_generated_weights(
+    spin: typing.Any,
+) -> typing.Any:
     ae = plan(spin)
     ecp = StationaryGradientPlan(
         ae.method,
@@ -95,8 +98,8 @@ def test_ecp_stationary_plan_has_complete_sources_and_generated_weights(spin):
 @pytest.mark.parametrize("source", ["one_electron", "coulomb", "overlap_pulay"])
 @pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
 def test_generated_weights_and_all_coordinate_components_have_independent_oracle(
-    source, spin
-):
+    source: typing.Any, spin: typing.Any
+) -> typing.Any:
     p = plan(spin)
     feeds, integrals = fixture(source, p.spin_blocks)
     block = p.integral_block(source, terms=len(integrals), coordinates=6)
@@ -146,8 +149,8 @@ def test_generated_weights_and_all_coordinate_components_have_independent_oracle
     [("unpolarized", Fraction(-1, 16)), ("polarized", Fraction(-1, 8))],
 )
 def test_exact_exchange_weights_are_same_spin_and_use_methodir_fraction(
-    spin, expected_factor
-):
+    spin: typing.Any, expected_factor: typing.Any
+) -> None:
     """Independent scalar K oracle: 1/2*cK and no alpha/beta cross terms."""
     p = plan(spin, method="PBE0")
     rng = np.random.default_rng(165)
@@ -182,7 +185,7 @@ def test_exact_exchange_weights_are_same_spin_and_use_methodir_fraction(
         assert not np.allclose(actual, expected + cross_spin)
 
 
-def test_exact_exchange_fraction_and_zero_exchange_recover_expected_plans():
+def test_exact_exchange_fraction_and_zero_exchange_recover_expected_plans() -> None:
     pbe = plan(method="PBE")
     pbe0 = plan(method="PBE0")
     assert "exact_exchange" not in pbe.source_names
@@ -204,7 +207,7 @@ def test_exact_exchange_fraction_and_zero_exchange_recover_expected_plans():
     assert "exact_exchange" not in plan(method=semilocal_only).source_names
 
 
-def test_uks_coulomb_includes_cross_spin_and_recovers_total_density_rks():
+def test_uks_coulomb_includes_cross_spin_and_recovers_total_density_rks() -> None:
     feeds, integrals = fixture("coulomb", 2)
     uks = plan("polarized").integral_block(
         "coulomb", terms=len(integrals), coordinates=6
@@ -222,7 +225,7 @@ def test_uks_coulomb_includes_cross_spin_and_recovers_total_density_rks():
     assert not np.allclose(wrong @ feeds["integral_derivatives"], u)
 
 
-def test_tiled_ordered_quartets_sum_to_the_unsplit_result():
+def test_tiled_ordered_quartets_sum_to_the_unsplit_result() -> typing.Any:
     p = plan("polarized")
     feeds, integrals = fixture("coulomb", 2)
     expected = execute(
@@ -243,7 +246,9 @@ def test_tiled_ordered_quartets_sum_to_the_unsplit_result():
     np.testing.assert_allclose(actual, expected, atol=2e-13, rtol=2e-13)
 
 
-def test_complete_reduction_requires_all_sources_once_and_preserves_inputs():
+def test_complete_reduction_requires_all_sources_once_and_preserves_inputs() -> (
+    typing.Any
+):
     p = plan()
     components = {
         name: np.arange(6, dtype=float).reshape(2, 3) + i + 1
@@ -274,7 +279,7 @@ def test_complete_reduction_requires_all_sources_once_and_preserves_inputs():
     assert normal.logical_hash == reordered.logical_hash
 
 
-def test_plan_identity_uses_semantics_not_names_or_live_solve_epochs():
+def test_plan_identity_uses_semantics_not_names_or_live_solve_epochs() -> typing.Any:
     p = plan()
     renamed = replace(p, method=replace(p.method, identifier="an-equivalent-alias"))
     assert p.identity == renamed.identity
@@ -316,12 +321,16 @@ def test_plan_identity_uses_semantics_not_names_or_live_solve_epochs():
         {"point_model": "unknown"},
     ],
 )
-def test_unsupported_envelope_is_not_silently_substituted(change):
+def test_unsupported_envelope_is_not_silently_substituted(
+    change: typing.Any,
+) -> typing.Any:
     with pytest.raises(UnsupportedMethod):
         StationaryMeanField(**{"point_model": SCF_POINT_MODEL, **change})
 
 
-def test_global_hybrid_plan_adds_exact_exchange_without_granting_public_forces():
+def test_global_hybrid_plan_adds_exact_exchange_without_granting_public_forces() -> (
+    None
+):
     hybrid = plan(method="PBE0")
     assert hybrid.source_names == (
         "one_electron",
@@ -341,7 +350,7 @@ def test_global_hybrid_plan_adds_exact_exchange_without_granting_public_forces()
         hybrid.require_native_endpoint("silently-use-pyscf")
 
 
-def test_budget_shape_dtype_and_nonfinite_fail_before_publishing():
+def test_budget_shape_dtype_and_nonfinite_fail_before_publishing() -> typing.Any:
     p = plan()
     for kwargs in (
         {"terms": True},
@@ -366,7 +375,9 @@ def test_budget_shape_dtype_and_nonfinite_fail_before_publishing():
         p.reduce_diagnostic(components, atoms=1, max_bytes=1)
 
 
-def test_same_tensor_graph_has_deterministic_cuda_source_and_separate_schedule_identity():
+def test_same_tensor_graph_has_deterministic_cuda_source_and_separate_schedule_identity() -> (
+    typing.Any
+):
     p = plan("polarized")
     programs = [
         p.integral_block(source, terms=5).contraction
@@ -395,7 +406,7 @@ def test_same_tensor_graph_has_deterministic_cuda_source_and_separate_schedule_i
         p.require_native_endpoint("cuda")
 
 
-def test_missing_xc_derivative_rule_rejects_plan(monkeypatch):
+def test_missing_xc_derivative_rule_rejects_plan(monkeypatch: typing.Any) -> typing.Any:
     from vibeqc_compiler.method import SemilocalXCPrimitive
 
     monkeypatch.setattr(
@@ -407,7 +418,9 @@ def test_missing_xc_derivative_rule_rejects_plan(monkeypatch):
         plan()
 
 
-def test_missing_exact_exchange_derivative_rule_rejects_hybrid_plan(monkeypatch):
+def test_missing_exact_exchange_derivative_rule_rejects_hybrid_plan(
+    monkeypatch: typing.Any,
+) -> None:
     from vibeqc_compiler.method import ExactExchangePrimitive
 
     monkeypatch.setattr(
@@ -419,7 +432,9 @@ def test_missing_exact_exchange_derivative_rule_rejects_hybrid_plan(monkeypatch)
         plan(method="PBE0")
 
 
-def test_source_generation_does_not_import_public_runtime_or_reference_frameworks():
+def test_source_generation_does_not_import_public_runtime_or_reference_frameworks() -> (
+    None
+):
     script = """
 import importlib.abc
 import sys
