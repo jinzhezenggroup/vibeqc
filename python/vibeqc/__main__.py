@@ -22,16 +22,7 @@ def parser() -> argparse.ArgumentParser:
     resources.add_argument("--representation", choices=("cartesian", "spherical"))
     resources.add_argument(
         "--method",
-        choices=(
-            "rhf",
-            "uhf",
-            "lda-rks",
-            "pbe-rks",
-            "lda-uks",
-            "pbe-uks",
-            "pbe0-rks",
-            "pbe0-uks",
-        ),
+        choices=("rhf", "uhf", "lda-rks", "pbe-rks", "lda-uks", "pbe-uks"),
         default="rhf",
     )
     resources.add_argument("--backend", choices=("cpu", "cuda"), default="cpu")
