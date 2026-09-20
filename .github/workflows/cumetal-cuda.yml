@@ -348,7 +348,7 @@ jobs:
             "$FAKE_CUDA/lib/cmake/CUDAToolkit/CUDAToolkitConfig.cmake" \
             "$FAKE_CUDA/lib/cmake/CUDAToolkit/CUDAToolkitConfigVersion.cmake"; do
             if [[ -f "$file" ]]; then
-              sed -i '' 's/12\\.2/12.9/g' "$file"
+              sed -i '' 's/12\.2/12.9/g' "$file"
             fi
           done
           for libdir in lib lib64; do
