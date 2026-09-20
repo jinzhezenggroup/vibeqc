@@ -324,9 +324,14 @@ def emit_stationary_cuda(
     ``pbe`` remains a compatibility spelling for historical LDA/PBE callers.
     New method-owned lowering passes 0=LDA, 1=PBE, or 2=r2SCAN explicitly.
     """
+    if not isinstance(plan, StationaryGradientPlan):
+        raise TypeError("stationary CUDA requires StationaryGradientPlan")
     return (
         primitive_source
         + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
+        + "namespace vibeqc_stationary_cuda {\n"
+        + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
+        + "}\n"
         + '#include "dft/stationary_gradient_cuda.cuh"\n'
         + emit_stationary_scientific_kernels(plan)
     )

@@ -24,7 +24,7 @@ struct Owner {
 // dereference. The fixed worker count bounds O(worker*natom) adjoint scratch.
 size_t allocation(size_t na, size_t n, size_t np, size_t nr, size_t ns) {
   if (!na || na > 32 || !n || n > 128 || !np || np > 4096 || !nr || nr > 4096 ||
-      (ns != 1 && ns != 2))
+      (ns != 1 && ns != 2) || ns != stationary_spin_blocks)
     throw std::invalid_argument("stationary CUDA shape exceeds small-domain caps");
   return 8 * (record_stride * nr + 12 * nr + 3 * na + 2 * np + workers * 9 * na + workers * 9 * na +
               21 * na + map_stride * nr + n + np + 2 * ns * n * n) +
