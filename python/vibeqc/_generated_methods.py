@@ -13,6 +13,18 @@ METHOD_PBE_RKS = 7
 METHOD_LDA_UKS = 8
 METHOD_PBE_UKS = 9
 
+METHOD_CONSTANTS = MappingProxyType({
+    "METHOD_RHF": METHOD_RHF,
+    "METHOD_UHF": METHOD_UHF,
+    "METHOD_WB97M_V": METHOD_WB97M_V,
+    "METHOD_RCCSD_T": METHOD_RCCSD_T,
+    "METHOD_MP2": METHOD_MP2,
+    "METHOD_LDA_RKS": METHOD_LDA_RKS,
+    "METHOD_PBE_RKS": METHOD_PBE_RKS,
+    "METHOD_LDA_UKS": METHOD_LDA_UKS,
+    "METHOD_PBE_UKS": METHOD_PBE_UKS,
+})
+
 METHOD_METADATA = MappingProxyType({
     'rhf': MappingProxyType({"abi_id": 1, "family": 'hartree_fock', "provider": 'hf', "properties": ('energy', 'forces'), "supports_batch": True, "aliases": ()}),
     'uhf': MappingProxyType({"abi_id": 2, "family": 'hartree_fock', "provider": 'hf', "properties": ('energy', 'forces'), "supports_batch": True, "aliases": ()}),
