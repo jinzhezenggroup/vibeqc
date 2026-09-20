@@ -138,6 +138,7 @@ def test_late_threads_keep_control_publication(
 ) -> None:
     completed = subprocess.run(
         [str(control_executable), str(mode)],
+        check=False,
         capture_output=True,
         text=True,
         timeout=20,
