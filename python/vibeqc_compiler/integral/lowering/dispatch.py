@@ -21,12 +21,12 @@ from ..fused_schedule import (
     build_fused_shell_plan,
 )
 from ..ir import KernelConsumer
-from ..specialize import specialize_integral_ir
 from ..shell_spec import (
     DPPP_SPEC,
     ShellClassSpec,
     cartesian_components,
 )
+from ..specialize import specialize_integral_ir
 from .algebra import (
     _emit_triple_pair_matchings,
     _emit_weighted_component_gradient_cuda,
