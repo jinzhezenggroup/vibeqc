@@ -4,11 +4,12 @@ import typing
 
 from vibeqc_compiler.dft.ao import jet_indices
 from vibeqc_compiler.dft.ao_cuda import emit_grid_policy
+from vibeqc_compiler.integral.expr import AlgebraForm
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .coefficients import jet_pullback_program
+from .expressions import energy_expression
 from .grid_native import emit_grid_partials
-from .program import build_program
 from .spec import functional as resolve_functional
 
 
@@ -51,8 +52,10 @@ def _emit_stationary_point(functional: int) -> str:
         )
 
     spec = resolve_functional("R2SCAN", spin="polarized")
-    outputs = ((), *((i,) for i in range(len(spec.features))))
-    program = build_program(spec, order=1, outputs=outputs)
+    graph, energy, feature_variables = energy_expression(spec, production=True)
+    roots = (energy, *(graph.differentiate(energy, value) for value in feature_variables))
+    graph, roots = graph.apply_algebra_form(roots, AlgebraForm.FACTORED_NARY)
+    graph, roots = graph.lower_small_integer_powers(roots)
     variables = {
         "rho_a": "rho[0]",
         "rho_b": "rho[1]",
@@ -62,9 +65,9 @@ def _emit_stationary_point(functional: int) -> str:
         "tau_a": "tau[0]",
         "tau_b": "tau[1]",
     }
-    emitter = ScalarCEmitter(program.graph, variables)
-    emitter.emit(program.roots)
-    refs = [emitter.reference(root) for root in program.roots]
+    emitter = ScalarCEmitter(graph, variables)
+    emitter.emit(roots)
+    refs = [emitter.reference(root) for root in roots]
     return "\n".join(
         [
             "struct StationaryPointValue {",
