@@ -10,8 +10,8 @@ from itertools import product
 from .ir_serialization import integral_to_payload
 from .one_electron_cuda import (
     _emit_component_index,
-    _emit_operator_helpers,
-    _emit_pair_geometry,
+    _emit_operator_helpers_aggregate,
+    _emit_pair_geometry_aggregate,
 )
 from .one_electron_derivatives import build_one_electron_derivative_ir
 from .one_electron_derivatives_cuda import (
@@ -61,9 +61,9 @@ def emit_one_electron_st_cpu() -> str:
     """Emit the s/p/d/f S/T value + first-derivative production helper."""
     body = "\n".join(
         (
-            _emit_pair_geometry(),
+            _emit_pair_geometry_aggregate(),
             _emit_component_index(),
-            _emit_operator_helpers(False),
+            _emit_operator_helpers_aggregate(False),
             _emit_axis_permutations(),
             _emit_gradient_helpers(False),
         )
