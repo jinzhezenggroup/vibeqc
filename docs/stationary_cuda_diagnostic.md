@@ -80,10 +80,17 @@ counts, snapshot export counters, streams, grid allocation/timing metrics,
 TensorIR execution/transfer totals, declared numeric bounds, endpoint time and
 the paths/hashes of every loaded generated artifact. `work["timeline"]` is an
 exclusive host-wall timeline: its phase durations sum to `endpoint_seconds`
-without overlap and without introducing CUDA synchronization. Transfer bytes,
-launch counts, TensorIR device timings and grid timings are separate attribution
-metrics and must not be added to those wall phases. The reused grid/TensorIR
-ABIs still do not expose a complete endpoint kernel-launch count; source launches
+without overlap and without introducing CUDA synchronization. The #662 benchmark
+also enables `profile_device=True`: four reusable CUDA events bracket each already
+synchronized source batch, so `work["device_phase_ms"]` separates primitive H2D,
+derivative kernels, reductions, geometry H2D/kernels/reductions, setup work and
+final D2H. Event elapsed times are read only after an existing source synchronization;
+no extra synchronization point is inserted. `synchronization_wait_wall` measures
+the wall time spent in those existing stream synchronizations and is reported as
+attribution, not double-counted into the additive wall timeline. Transfer bytes,
+launch counts, TensorIR device timings and grid timings are likewise separate
+attribution metrics. The reused grid/TensorIR ABIs still do not expose a complete
+endpoint kernel-launch count; source launches
 must not be presented as the endpoint total. No speedup is claimed.
 
 ## Example and qualification

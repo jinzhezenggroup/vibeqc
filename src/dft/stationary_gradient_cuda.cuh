@@ -2,6 +2,7 @@
 // Small-domain diagnostic runtime. Graph-emitted primitive, AO pullback and
 // Becke entries precede this include; compiler-emitted contraction bodies follow it.
 // This header owns only resource state, validation, transfers, launches and ABI.
+#include <chrono>
 #include <vector>
 
 #include "../tensor/cuda_runtime.cuh"
@@ -15,6 +16,11 @@ struct Owner {
   Context context;
   size_t atoms{}, aos{}, points{}, records{}, bytes{};
   bool failed = true;  // An owner must be reset before its first source or read.
+  bool profile = false;
+  cudaEvent_t stage0{}, stage1{}, stage2{}, stage3{};
+  double synchronization_wait_ms{}, setup_transfer_ms{}, setup_validation_ms{};
+  double primitive_h2d_ms{}, primitive_kernel_ms{}, primitive_reduction_ms{};
+  double geometry_h2d_ms{}, geometry_kernel_ms{}, geometry_reduction_ms{}, final_d2h_wall_ms{};
   double *record{}, *primitive{}, *centers{}, *weights{}, *raw{}, *partial{}, *scratch{},
       *sources{};
   int64_t *maps{}, *ao_atoms{}, *point_atoms{};
@@ -49,13 +55,29 @@ void check(Owner& p) {
   if (p.failed) throw std::runtime_error("failed stationary owner; reset before reuse");
   p.context.check_device();
 }
+void profile_record(Owner& p, cudaEvent_t event, cudaStream_t stream) {
+  if (p.profile) cuda_check(cudaEventRecord(event, stream));
+}
+void profile_elapsed(Owner& p, double& total, cudaEvent_t begin, cudaEvent_t end) {
+  if (!p.profile) return;
+  float elapsed = 0;
+  cuda_check(cudaEventElapsedTime(&elapsed, begin, end));
+  total += elapsed;
+}
 void finished(Owner& p, cudaStream_t stream) {
   int failure = 0;
   cuda_check(cudaGetLastError());
   cuda_check(
       cudaMemcpyAsync(&failure, p.context.error, sizeof(int), cudaMemcpyDeviceToHost, stream));
   ++p.d2h_calls;
+  auto sync_begin = std::chrono::steady_clock::time_point{};
+  if (p.profile) sync_begin = std::chrono::steady_clock::now();
   cuda_check(cudaStreamSynchronize(stream));
+  if (p.profile) {
+    p.synchronization_wait_ms +=
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - sync_begin)
+            .count();
+  }
   ++p.synchronizations;
   p.downloads += sizeof(int);
   if (failure) throw std::runtime_error("nonfinite or invalid stationary CUDA source");
@@ -122,6 +144,20 @@ int stationary_create(int device, int major, int minor, size_t na, size_t n, siz
     *output = p.release();
   });
 }
+int stationary_profile(void* pointer, char* error, size_t size) {
+  using namespace vibeqc_stationary_cuda;
+  auto* p = static_cast<Owner*>(pointer);
+  return guarded(p, error, size, [&] {
+    if (!p) throw std::invalid_argument("null stationary owner");
+    p->context.check_device();
+    if (p->profile) return;
+    cuda_check(cudaEventCreate(&p->stage0));
+    cuda_check(cudaEventCreate(&p->stage1));
+    cuda_check(cudaEventCreate(&p->stage2));
+    cuda_check(cudaEventCreate(&p->stage3));
+    p->profile = true;
+  });
+}
 int stationary_reset(void* pointer, const double* centers, const int64_t* ao_atoms,
                      double tolerance, char* error, size_t size) {
   using namespace vibeqc_stationary_cuda;
@@ -132,14 +168,19 @@ int stationary_reset(void* pointer, const double* centers, const int64_t* ao_ato
     p->context.check_device();
     p->failed = false;
     auto stream = p->context.stream;
+    profile_record(*p, p->stage0, stream);
     cuda_check(cudaMemsetAsync(p->context.error, 0, sizeof(int), stream));
     cuda_check(cudaMemsetAsync(p->sources, 0, 21 * p->atoms * 8, stream));
     upload(*p, p->centers, centers, 3 * p->atoms, stream);
     upload(*p, p->ao_atoms, ao_atoms, p->aos, stream);
+    profile_record(*p, p->stage1, stream);
     validate_centers<<<1, 1, 0, stream>>>(p->centers, p->atoms, tolerance, p->context.error);
+    profile_record(*p, p->stage2, stream);
     ++p->launches;
     p->pair_visits += p->atoms * (p->atoms - 1) / 2;
     finished(*p, stream);
+    profile_elapsed(*p, p->setup_transfer_ms, p->stage0, p->stage1);
+    profile_elapsed(*p, p->setup_validation_ms, p->stage1, p->stage2);
   });
 }
 int stationary_records(void* pointer, unsigned kind, unsigned source, const double* records,
@@ -152,17 +193,24 @@ int stationary_records(void* pointer, unsigned kind, unsigned source, const doub
       throw std::invalid_argument("invalid primitive tile");
     check(*p);
     auto stream = p->context.stream;
+    profile_record(*p, p->stage0, stream);
     upload(*p, p->record, records, count * record_stride, stream);
     upload(*p, p->maps, maps, count * 4, stream);
+    profile_record(*p, p->stage1, stream);
     primitive_kernel<<<blocks(count, 64), 64, 0, stream>>>(kind, p->record, count, p->primitive,
                                                            p->context.error);
+    profile_record(*p, p->stage2, stream);
     primitive_reduce<<<blocks(3 * p->atoms, 64), 64, 0, stream>>>(
         p->primitive, p->maps, count, p->atoms, p->sources + source * 3 * p->atoms,
         p->context.error);
+    profile_record(*p, p->stage3, stream);
     p->launches += 2;
     p->primitive_count += count;
     ++p->primitive_batches;
     finished(*p, stream);
+    profile_elapsed(*p, p->primitive_h2d_ms, p->stage0, p->stage1);
+    profile_elapsed(*p, p->primitive_kernel_ms, p->stage1, p->stage2);
+    profile_elapsed(*p, p->primitive_reduction_ms, p->stage2, p->stage3);
   });
 }
 int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, const double* work,
@@ -180,23 +228,38 @@ int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, co
     // CudaGrid synchronized its producer before lending this view. Finish on
     // the SAME borrowed stream before the lease ends; retain no task pointers.
     try {
+      profile_record(*p, p->stage0, stream);
       upload(*p, p->point_atoms, owners, view->npoint, stream);
       upload(*p, p->weights, weights, view->npoint, stream);
       upload(*p, p->raw, raw, view->npoint, stream);
+      profile_record(*p, p->stage1, stream);
       geometry_kernel<<<1, workers, 0, stream>>>(*view, work, p->ao_atoms, p->point_atoms,
                                                  p->centers, p->atoms, p->weights, p->raw,
                                                  p->partial, p->scratch, p->context.error);
+      profile_record(*p, p->stage2, stream);
       geometry_reduce<<<blocks(9 * p->atoms, 64), 64, 0, stream>>>(
           p->partial, p->atoms, p->sources + 6 * p->atoms, p->context.error);
+      profile_record(*p, p->stage3, stream);
       p->launches += 2;
       p->point_count += view->npoint;
       p->pair_visits += view->npoint * p->atoms * (p->atoms - 1);
       ++p->geometry_batches;
       finished(*p, stream);
+      profile_elapsed(*p, p->geometry_h2d_ms, p->stage0, p->stage1);
+      profile_elapsed(*p, p->geometry_kernel_ms, p->stage1, p->stage2);
+      profile_elapsed(*p, p->geometry_reduction_ms, p->stage2, p->stage3);
     } catch (...) {
       // Even an upload/launch failure must drain the borrowed stream before
       // our arena can be freed or the grid owner can reuse its leased buffers.
-      if (cudaStreamSynchronize(stream) == cudaSuccess) ++p->synchronizations;
+      const auto sync_begin = std::chrono::steady_clock::now();
+      if (cudaStreamSynchronize(stream) == cudaSuccess) {
+        if (p->profile) {
+          p->synchronization_wait_ms += std::chrono::duration<double, std::milli>(
+                                            std::chrono::steady_clock::now() - sync_begin)
+                                            .count();
+        }
+        ++p->synchronizations;
+      }
       throw;
     }
   });
@@ -211,13 +274,31 @@ int stationary_finish(void* pointer, double* output, size_t count, char* error, 
     finished(*p, p->context.stream);
     // Host output is touched only after every device source passed its gate.
     std::vector<double> candidate(count);
+    auto d2h_begin = std::chrono::steady_clock::time_point{};
+    if (p->profile) d2h_begin = std::chrono::steady_clock::now();
     cuda_check(cudaMemcpy(candidate.data(), p->sources, count * 8, cudaMemcpyDeviceToHost));
+    if (p->profile) {
+      p->final_d2h_wall_ms +=
+          std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - d2h_begin)
+              .count();
+    }
     ++p->d2h_calls;
     p->downloads += count * 8;
     for (double v : candidate)
       if (!std::isfinite(v)) throw std::runtime_error("nonfinite gradient");
     std::copy(candidate.begin(), candidate.end(), output);
   });
+}
+int stationary_profile_metrics(void* pointer, double* output, size_t count) {
+  auto* p = static_cast<vibeqc_stationary_cuda::Owner*>(pointer);
+  if (!p || !output || count != 10) return 1;
+  const double values[]{p->synchronization_wait_ms, p->setup_transfer_ms,
+                        p->setup_validation_ms,     p->primitive_h2d_ms,
+                        p->primitive_kernel_ms,     p->primitive_reduction_ms,
+                        p->geometry_h2d_ms,         p->geometry_kernel_ms,
+                        p->geometry_reduction_ms,   p->final_d2h_wall_ms};
+  std::copy(values, values + 10, output);
+  return 0;
 }
 int stationary_metrics(void* pointer, uint64_t* output, size_t count) {
   auto* p = static_cast<vibeqc_stationary_cuda::Owner*>(pointer);
@@ -239,6 +320,17 @@ int stationary_metrics(void* pointer, uint64_t* output, size_t count) {
   return 0;
 }
 void stationary_destroy(void* pointer) {
-  delete static_cast<vibeqc_stationary_cuda::Owner*>(pointer);
+  auto* p = static_cast<vibeqc_stationary_cuda::Owner*>(pointer);
+  if (!p) return;
+  int previous = 0;
+  const bool have_device = cudaGetDevice(&previous) == cudaSuccess;
+  if (cudaSetDevice(p->context.device) == cudaSuccess) {
+    if (p->stage0) cudaEventDestroy(p->stage0);
+    if (p->stage1) cudaEventDestroy(p->stage1);
+    if (p->stage2) cudaEventDestroy(p->stage2);
+    if (p->stage3) cudaEventDestroy(p->stage3);
+  }
+  if (have_device) cudaSetDevice(previous);
+  delete p;
 }
 }

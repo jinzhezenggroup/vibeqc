@@ -165,11 +165,13 @@ class _CudaSources:
         records: typing.Any,
         budget: typing.Any,
         timeline: _ExclusiveWallTimeline | None = None,
+        profile_device: bool = False,
     ) -> None:
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
             raise ValueError("stationary CUDA binary hash mismatch")
         self.artifact = artifact
         self.timeline = timeline
+        self.profile_device = profile_device
         self.handle = ct.c_void_p()
         self.library = lib = ct.CDLL(str(artifact.library))
         self.natom, self.nao, self.point_capacity = basis.natom, basis.nao, points
@@ -189,6 +191,7 @@ class _CudaSources:
         lib.stationary_create.argtypes = (
             [ct.c_int] * 3 + [ct.c_size_t] * 5 + [ct.POINTER(ct.c_void_p), *tail]
         )
+        lib.stationary_profile.argtypes = [ct.c_void_p, *tail]
         lib.stationary_reset.argtypes = [ct.c_void_p, _DOUBLE, _INT, ct.c_double, *tail]
         lib.stationary_records.argtypes = [
             ct.c_void_p,
@@ -214,6 +217,11 @@ class _CudaSources:
             ct.POINTER(ct.c_uint64),
             ct.c_size_t,
         ]
+        lib.stationary_profile_metrics.argtypes = [
+            ct.c_void_p,
+            ct.POINTER(ct.c_double),
+            ct.c_size_t,
+        ]
         lib.stationary_destroy.argtypes = [ct.c_void_p]
         lib.stationary_destroy.restype = None
         self._call(
@@ -227,6 +235,8 @@ class _CudaSources:
             budget,
             ct.byref(self.handle),
         )
+        if profile_device:
+            self._call("stationary_profile", self.handle)
 
     def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
@@ -347,7 +357,7 @@ class _CudaSources:
         values = (ct.c_uint64 * 13)()
         if self.library.stationary_metrics(self.handle, values, 13):
             raise RuntimeError("stationary metrics unavailable")
-        return dict(
+        metrics = dict(
             zip(
                 (
                     "owned_device_bytes",
@@ -367,6 +377,28 @@ class _CudaSources:
                 values,
             )
         )
+        profile = (ct.c_double * 10)()
+        if self.library.stationary_profile_metrics(self.handle, profile, 10):
+            raise RuntimeError("stationary profile metrics unavailable")
+        metrics["device_profile_enabled"] = self.profile_device
+        metrics["device_phase_ms"] = dict(
+            zip(
+                (
+                    "synchronization_wait_wall",
+                    "setup_transfer_and_clear",
+                    "setup_validation_kernel",
+                    "primitive_h2d",
+                    "primitive_derivative_kernel",
+                    "primitive_reduction",
+                    "geometry_h2d",
+                    "geometry_kernel",
+                    "geometry_reduction",
+                    "final_d2h_wall",
+                ),
+                profile,
+            )
+        )
+        return metrics
 
     def close(self) -> None:
         if self.handle:
@@ -399,6 +431,7 @@ def complete_rks_cuda_gradient_diagnostic(
     max_primitive_records: typing.Any = 2_000_000,
     max_grid_pair_visits: typing.Any = 100_000_000,
     max_ecp_pair_samples: int = 100_000_000,
+    profile_device: bool = False,
 ) -> typing.Any:
     """Consume a current native CUDA RKS/UKS snapshot with every plan source.
 
@@ -639,6 +672,7 @@ def complete_rks_cuda_gradient_diagnostic(
                     primitive_tile,
                     source_bytes,
                     timeline=timeline,
+                    profile_device=profile_device,
                 )
             )
             sources.reset(spec.coincident_tolerance)
@@ -815,6 +849,7 @@ def complete_rks_cuda_gradient_diagnostic(
         host_scope="snapshot validation; primitive enumeration and record packing; density gathers; TensorIR H2D/D2H; immutable result copies",
         endpoint_seconds=timeline_record["endpoint_seconds"],
         timeline=timeline_record,
+        measurement_profile_enabled=profile_device,
         transfer_work={
             "source_h2d_bytes": work["h2d_bytes"],
             "source_d2h_bytes": work["d2h_bytes"],

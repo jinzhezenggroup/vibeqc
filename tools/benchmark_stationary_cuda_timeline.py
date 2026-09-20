@@ -135,7 +135,7 @@ def _diagnostic(
 ) -> tuple[typing.Any, float]:
     started = perf_counter()
     result = complete_rks_cuda_gradient_diagnostic(
-        state, basis, compiler=compiler, cache=cache
+        state, basis, compiler=compiler, cache=cache, profile_device=True
     )
     observed = perf_counter() - started
     return result, observed
