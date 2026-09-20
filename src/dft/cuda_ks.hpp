@@ -33,6 +33,9 @@ struct CudaKsTransfers {
   /** Number of subsequent proposals using the CPU-compatible stationary-cycle
    * shift; cumulative across replays, independent of transfer counts. */
   std::uint64_t occupation_stabilized_proposals{};
+  /** Internal execution evidence. A selected two-slot RKS chunk can submit one
+   * bounded unused slot when its first physical iteration terminates. */
+  std::uint64_t submitted_iterations{}, iteration_chunks{}, iteration_synchronizations{};
 };
 
 /** Exact state-arena size from the allocator's own typed layout. This query
@@ -63,7 +66,7 @@ class CudaKsPlan {
   bool pending() const noexcept;
   bool failed() const noexcept;
   void enqueue_iteration();
-  /** Resolve a submitted iteration; returns true while another is needed. */
+  /** Resolve a submitted iteration or bounded chunk; returns true while another is needed. */
   bool finish_iteration();
   /** Terminal result; density export is optional and never used in an iteration. */
   scf::ScfResult result(bool export_density = true);
