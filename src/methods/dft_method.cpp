@@ -106,8 +106,7 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   }
 
   scf::FockBuildSpec fock;
-  fock.spin = is_uks(descriptor.method) ? scf::FockSpin::Unrestricted
-                                                : scf::FockSpin::Restricted;
+  fock.spin = is_uks(descriptor.method) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
   fock.derivative_order = 0;
   fock.exchange.present = false;
   options.resolved_fock_build = scf::resolve_fock_build(
@@ -235,8 +234,8 @@ class KsPreparedCalculation final : public PreparedCalculation {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
 #if VIBEQC_HAS_CUDA
     if (backend_ == VIBEQC_BACKEND_CUDA)
-      cuda_ = std::make_unique<dft::CudaKsPlan>(
-          fock_, basis_, grid_, options_, functional_code(method_), options_.xc_tile_points);
+      cuda_ = std::make_unique<dft::CudaKsPlan>(fock_, basis_, grid_, options_,
+                                                functional_code(method_), options_.xc_tile_points);
 #endif
     runtime::sample_cpu_capacity(host_numeric_capacity());
   }
@@ -448,14 +447,8 @@ class KsPreparedCalculation final : public PreparedCalculation {
       dft::KsFinalStateIdentity identity;
       identity.determinant = {
           {cpu_owner_, 1, 1, 1}, cpu_epoch_, fock_.strategy(), std::move(occupied)};
-      identity.model = {1,
-                        1,
-                        grid_.spec(),
-                        options_.xc_tile_points,
-                        functional_code(method_),
-                        spins,
-                        -1,
-                        cpu_owner_};
+      identity.model = {1,     1,  grid_.spec(), options_.xc_tile_points, functional_code(method_),
+                        spins, -1, cpu_owner_};
       dft::KsPhysicalState physical{identity,
                                     true,
                                     std::move(densities),

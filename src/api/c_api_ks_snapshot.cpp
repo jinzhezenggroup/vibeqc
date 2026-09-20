@@ -255,12 +255,10 @@ vibeqc_status vibeqc_xc_point_batch_v2(std::uint32_t functional, const double* r
       double local_tau[2]{tau[point], tau[point_count + point]};
       for (std::size_t spin = 0; spin < 2; ++spin)
         for (std::size_t axis = 0; axis < 3; ++axis)
-          local_gradient[spin][axis] =
-              gradient[(spin * point_count + point) * 3 + axis];
+          local_gradient[spin][axis] = gradient[(spin * point_count + point) * 3 + axis];
       double* output = values + stride * point;
       if (functional < 2) {
-        const auto xc =
-            vibeqc::dft::point::evaluate(functional == 1, local_rho, local_gradient);
+        const auto xc = vibeqc::dft::point::evaluate(functional == 1, local_rho, local_gradient);
         if (!xc.valid) return VIBEQC_STATUS_NUMERICAL_FAILURE;
         output[0] = xc.energy;
         output[1] = xc.rho[0];
@@ -270,8 +268,7 @@ vibeqc_status vibeqc_xc_point_batch_v2(std::uint32_t functional, const double* r
             output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
         output[9] = output[10] = 0.0;
       } else {
-        const auto xc =
-            vibeqc::dft::evaluate_r2scan_point(local_rho, local_gradient, local_tau);
+        const auto xc = vibeqc::dft::evaluate_r2scan_point(local_rho, local_gradient, local_tau);
         output[0] = xc.energy;
         output[1] = xc.rho[0];
         output[2] = xc.rho[1];

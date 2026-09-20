@@ -528,8 +528,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
     identity.determinant.model = provider.strategy();
     identity.determinant.occupied = {occupations[0]};
     if (spins == 2) identity.determinant.occupied.push_back(occupations[1]);
-    identity.model = {1, functional == 2U ? 2U : 1U, grid_spec, xc->layout().tile_points,
-                      functional, spins, device, owner};
+    identity.model = {1,          functional == 2U ? 2U : 1U,
+                      grid_spec,  xc->layout().tile_points,
+                      functional, spins,
+                      device,     owner};
     return identity;
   }
 

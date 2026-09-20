@@ -122,7 +122,7 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
   const auto& l = fixture.layout;
   if (l.spins == 1) {
     const auto ref = l.functional == 1U ? integrate_pbe_rks_with_tail(basis, grid, d, 17)
-                                         : integrate_lda_xc_pw_rks(basis, grid, d, 17);
+                                        : integrate_lda_xc_pw_rks(basis, grid, d, 17);
     close(result.energy, ref.energy, "RKS CPU/CUDA XC energy");
     close(result.electrons[0] + result.electrons[1], ref.electrons, "RKS electrons");
     for (std::size_t i = 0; i < v.size(); ++i)
@@ -131,7 +131,7 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
     const auto elements = l.nao * l.nao;
     const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
     const auto ref = l.functional == 1U ? integrate_pbe_uks(basis, grid, a, b, 17)
-                                         : integrate_lda_xc_pw_uks(basis, grid, a, b, 17);
+                                        : integrate_lda_xc_pw_uks(basis, grid, a, b, 17);
     close(result.energy, ref.energy, "UKS CPU/CUDA XC energy");
     for (unsigned s = 0; s < 2; ++s) {
       close(result.electrons[s], ref.electrons[s], "UKS electrons");

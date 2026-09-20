@@ -79,14 +79,12 @@ constexpr std::array<MethodDefinition, 11> kMethods{{
     register_method("pbe-uks", VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
                     VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
                     detail::prepare_dft_calculation, detail::prepare_dft_batch),
-    register_method("r2scan-rks", VIBEQC_METHOD_R2SCAN_RKS,
-                    VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, VIBEQC_PROPERTY_ENERGY,
-                    detail::validate_dft_system, detail::prepare_dft_calculation,
-                    detail::prepare_dft_batch),
-    register_method("r2scan-uks", VIBEQC_METHOD_R2SCAN_UKS,
-                    VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL, VIBEQC_PROPERTY_ENERGY,
-                    detail::validate_dft_system, detail::prepare_dft_calculation,
-                    detail::prepare_dft_batch),
+    register_method("r2scan-rks", VIBEQC_METHOD_R2SCAN_RKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
+                    VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
+                    detail::prepare_dft_calculation, detail::prepare_dft_batch),
+    register_method("r2scan-uks", VIBEQC_METHOD_R2SCAN_UKS, VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL,
+                    VIBEQC_PROPERTY_ENERGY, detail::validate_dft_system,
+                    detail::prepare_dft_calculation, detail::prepare_dft_batch),
 }};
 
 const MethodDefinition* find_definition(vibeqc_method method) noexcept {

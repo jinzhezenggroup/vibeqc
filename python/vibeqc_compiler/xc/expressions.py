@@ -124,9 +124,7 @@ def energy_expression(spec, *, production=False):
             return value.pow(2 / 3)
         cutoff = F("1e-18")
         t = value / cutoff
-        extension = F("1e-12") * t * (
-            F(14, 9) + t * (F(-7, 9) + t * F(2, 9))
-        )
+        extension = F("1e-12") * t * (F(14, 9) + t * (F(-7, 9) + t * F(2, 9)))
         return graph.select_le(value, cutoff, extension, value.pow(2 / 3))
 
     def production_channel(term, density):

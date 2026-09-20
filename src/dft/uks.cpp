@@ -27,29 +27,22 @@ struct SpinEvaluation {
   dft::EnergyComponents components;
 };
 
-using SpinXcEvaluator = dft::SpinXcIntegral (*)(const dft::AoBasis&,
-                                                   const dft::MolecularGrid&,
-                                                   const Matrix&, const Matrix&,
-                                                   std::size_t);
+using SpinXcEvaluator = dft::SpinXcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
+                                                const Matrix&, const Matrix&, std::size_t);
 
-dft::SpinXcIntegral evaluate_lda_xc_uks(const dft::AoBasis& basis,
-                                        const dft::MolecularGrid& grid,
-                                        const Matrix& alpha, const Matrix& beta,
-                                        std::size_t tile) {
+dft::SpinXcIntegral evaluate_lda_xc_uks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                                        const Matrix& alpha, const Matrix& beta, std::size_t tile) {
   return dft::integrate_lda_xc_pw_uks(basis, grid, alpha, beta, tile);
 }
 
-dft::SpinXcIntegral evaluate_pbe_xc_uks(const dft::AoBasis& basis,
-                                        const dft::MolecularGrid& grid,
-                                        const Matrix& alpha, const Matrix& beta,
-                                        std::size_t tile) {
+dft::SpinXcIntegral evaluate_pbe_xc_uks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                                        const Matrix& alpha, const Matrix& beta, std::size_t tile) {
   return dft::integrate_pbe_uks(basis, grid, alpha, beta, tile);
 }
 
 dft::SpinXcIntegral evaluate_r2scan_xc_uks(const dft::AoBasis& basis,
-                                           const dft::MolecularGrid& grid,
-                                           const Matrix& alpha, const Matrix& beta,
-                                           std::size_t tile) {
+                                           const dft::MolecularGrid& grid, const Matrix& alpha,
+                                           const Matrix& beta, std::size_t tile) {
   return dft::integrate_r2scan_uks(basis, grid, alpha, beta, tile);
 }
 
@@ -164,8 +157,8 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
       UksState{std::move(alpha), std::move(beta)}, policy,
       [&](const UksState& state, unsigned) {
         const bool stabilized = stabilize_occupations;
-        auto physical =
-            evaluate(plan, basis, grid, state.alpha, state.beta, evaluate_xc, options.xc_tile_points);
+        auto physical = evaluate(plan, basis, grid, state.alpha, state.beta, evaluate_xc,
+                                 options.xc_tile_points);
         ++result.fock_builds;
         Matrix ra = commutator_residual(physical.fock.alpha, state.alpha, ints.overlap, n);
         Matrix rb = commutator_residual(physical.fock.beta, state.beta, ints.overlap, n);
@@ -304,8 +297,7 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                   const dft::MolecularGrid& grid, const ScfOptions& options, bool pbe,
                   const std::vector<double>* initial_density) {
-  return run_uks_impl(plan, basis, grid, options,
-                      pbe ? evaluate_pbe_xc_uks : evaluate_lda_xc_uks,
+  return run_uks_impl(plan, basis, grid, options, pbe ? evaluate_pbe_xc_uks : evaluate_lda_xc_uks,
                       pbe ? "PBE" : "LDA", initial_density);
 }
 ScfResult run_lda_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,

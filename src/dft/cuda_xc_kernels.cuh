@@ -28,23 +28,22 @@ __global__ void validate_density(const double* density, I n, I spins, int* error
 __global__ void density_product(const double* density, const double* ao, I n, I count, I spins,
                                 I work_jets, double* work, int* error) {
   const I panel = count * n;
-  for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x;
-       i < spins * work_jets * panel; i += I(blockDim.x) * gridDim.x) {
+  for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * work_jets * panel;
+       i += I(blockDim.x) * gridDim.x) {
     const I spin = i / (work_jets * panel), jet = i / panel % work_jets;
     const I point = i / n % count, mu = i % n;
     const double* d = density + spin * n * n;
     const double* source = ao + jet * panel;
     double value = 0.0;
     for (I nu = 0; nu < n; ++nu)
-      value += (0.5 * d[mu * n + nu] + 0.5 * d[nu * n + mu]) *
-               source[point * n + nu];
+      value += (0.5 * d[mu * n + nu] + 0.5 * d[nu * n + mu]) * source[point * n + nu];
     work[i] = finite(value, error, 1);
   }
 }
 
-__global__ void density_features(const double* ao, const double* work, I n, I count,
-                                 I spins, I ao_jets, I work_jets, I feature_terms,
-                                 I functional, double* features, int* error) {
+__global__ void density_features(const double* ao, const double* work, I n, I count, I spins,
+                                 I ao_jets, I work_jets, I feature_terms, I functional,
+                                 double* features, int* error) {
   const I stride = count * n;
   const unsigned ingredient_mask = functional == 0 ? 1U : (functional == 1 ? 7U : 15U);
   for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * count;
@@ -56,16 +55,14 @@ __global__ void density_features(const double* ao, const double* work, I n, I co
       double derivatives[3]{};
       double panel[4]{work[(spin * work_jets) * stride + index], 0.0, 0.0, 0.0};
       if (ao_jets == 4)
-        for (unsigned k = 0; k < 3; ++k)
-          derivatives[k] = ao[(k + 1) * stride + index];
+        for (unsigned k = 0; k < 3; ++k) derivatives[k] = ao[(k + 1) * stride + index];
       if (work_jets == 4)
         for (unsigned k = 0; k < 3; ++k)
           panel[k + 1] = work[(spin * work_jets + k + 1) * stride + index];
       vibeqc_grid_policy::add_features(ao[index], derivatives, panel, accum, ingredient_mask);
     }
     for (I k = 0; k < feature_terms; ++k)
-      features[(spin * feature_terms + k) * count + point] =
-          finite(accum[k], error, 1);
+      features[(spin * feature_terms + k) * count + point] = finite(accum[k], error, 1);
   }
 }
 
@@ -74,8 +71,9 @@ struct DevicePointValue {
   bool valid{true};
 };
 
-__device__ inline DevicePointValue evaluate_semilocal_point(
-    I functional, const double rho[2], const double gradient[2][3], const double tau[2]) {
+__device__ inline DevicePointValue evaluate_semilocal_point(I functional, const double rho[2],
+                                                            const double gradient[2][3],
+                                                            const double tau[2]) {
   DevicePointValue out;
   if (functional < 2) {
     const auto value = point::evaluate(functional == 1, rho, gradient);
@@ -96,11 +94,9 @@ __device__ inline DevicePointValue evaluate_semilocal_point(
     sigma[1] += gradient[0][k] * gradient[1][k];
     sigma[2] += gradient[1][k] * gradient[1][k];
   }
-  auto raw = generated::r2scan_device(
-      rho[0], rho[1], sigma[0], sigma[1], sigma[2], tau[0], tau[1]);
+  auto raw = generated::r2scan_device(rho[0], rho[1], sigma[0], sigma[1], sigma[2], tau[0], tau[1]);
   out.valid = isfinite(raw.energy_density);
-  for (double derivative : raw.feature_derivative)
-    out.valid = out.valid && isfinite(derivative);
+  for (double derivative : raw.feature_derivative) out.valid = out.valid && isfinite(derivative);
   if (!out.valid) return out;
   if (total < tail_high) {
     const double width = tail_high - tail_low;
@@ -118,12 +114,10 @@ __device__ inline DevicePointValue evaluate_semilocal_point(
   out.rho[0] = raw.feature_derivative[0];
   out.rho[1] = raw.feature_derivative[1];
   for (I k = 0; k < 3; ++k) {
-    out.gradient[0][k] =
-        2.0 * raw.feature_derivative[2] * gradient[0][k] +
-        raw.feature_derivative[3] * gradient[1][k];
-    out.gradient[1][k] =
-        raw.feature_derivative[3] * gradient[0][k] +
-        2.0 * raw.feature_derivative[4] * gradient[1][k];
+    out.gradient[0][k] = 2.0 * raw.feature_derivative[2] * gradient[0][k] +
+                         raw.feature_derivative[3] * gradient[1][k];
+    out.gradient[1][k] = raw.feature_derivative[3] * gradient[0][k] +
+                         2.0 * raw.feature_derivative[4] * gradient[1][k];
   }
   out.kinetic[0] = 0.5 * raw.feature_derivative[5];
   out.kinetic[1] = 0.5 * raw.feature_derivative[6];
@@ -133,8 +127,7 @@ __device__ inline DevicePointValue evaluate_semilocal_point(
 __global__ void evaluate_points(const double* features, const double* weights, I count, I spins,
                                 I feature_terms, I functional, double* coefficients,
                                 double* point_totals, int* error) {
-  for (I p = I(blockIdx.x) * blockDim.x + threadIdx.x; p < count;
-       p += I(blockDim.x) * gridDim.x) {
+  for (I p = I(blockIdx.x) * blockDim.x + threadIdx.x; p < count; p += I(blockDim.x) * gridDim.x) {
     double rho[2]{}, gradient[2][3]{}, tau[2]{};
     for (I s = 0; s < 2; ++s) {
       const I source = spins == 1 ? 0 : s;
@@ -142,10 +135,8 @@ __global__ void evaluate_points(const double* features, const double* weights, I
       rho[s] = scale * features[source * feature_terms * count + p];
       if (feature_terms >= 4)
         for (I k = 0; k < 3; ++k)
-          gradient[s][k] =
-              scale * features[(source * feature_terms + k + 1) * count + p];
-      if (feature_terms == 5)
-        tau[s] = scale * features[(source * feature_terms + 4) * count + p];
+          gradient[s][k] = scale * features[(source * feature_terms + k + 1) * count + p];
+      if (feature_terms == 5) tau[s] = scale * features[(source * feature_terms + 4) * count + p];
     }
     const auto xc = evaluate_semilocal_point(functional, rho, gradient, tau);
     if (!xc.valid) atomicCAS(error, 0, 3);
@@ -158,8 +149,7 @@ __global__ void evaluate_points(const double* features, const double* weights, I
       if (feature_terms >= 4)
         for (I k = 0; k < 3; ++k)
           coefficients[(s * feature_terms + k + 1) * count + p] =
-              spins == 1 ? 0.5 * (xc.gradient[0][k] + xc.gradient[1][k])
-                         : xc.gradient[s][k];
+              spins == 1 ? 0.5 * (xc.gradient[0][k] + xc.gradient[1][k]) : xc.gradient[s][k];
       if (feature_terms == 5)
         coefficients[(s * feature_terms + 4) * count + p] =
             spins == 1 ? 0.5 * (xc.kinetic[0] + xc.kinetic[1]) : xc.kinetic[s];
@@ -168,8 +158,8 @@ __global__ void evaluate_points(const double* features, const double* weights, I
 }
 
 __global__ void assemble_potential(const double* ao, const double* coefficients,
-                                   const double* weights, I n, I count, I spins,
-                                   I feature_terms, double* potential, int* error) {
+                                   const double* weights, I n, I count, I spins, I feature_terms,
+                                   double* potential, int* error) {
   const I stride = count * n;
   for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * n * n;
        i += I(blockDim.x) * gridDim.x) {
@@ -183,13 +173,11 @@ __global__ void assemble_potential(const double* ao, const double* coefficients,
         for (I k = 0; k < 3; ++k)
           integrand +=
               coefficients[(spin * feature_terms + k + 1) * count + p] *
-              (ao[(k + 1) * stride + p * n + mu] * b +
-               a * ao[(k + 1) * stride + p * n + nu]);
+              (ao[(k + 1) * stride + p * n + mu] * b + a * ao[(k + 1) * stride + p * n + nu]);
       if (feature_terms == 5)
         for (I k = 0; k < 3; ++k)
           integrand += coefficients[(spin * feature_terms + 4) * count + p] *
-                       ao[(k + 1) * stride + p * n + mu] *
-                       ao[(k + 1) * stride + p * n + nu];
+                       ao[(k + 1) * stride + p * n + mu] * ao[(k + 1) * stride + p * n + nu];
       value += weights[p] * integrand;
     }
     value = finite(potential[i] + value, error, 3);
@@ -227,16 +215,16 @@ void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, co
         density, ao, l.nao, count, l.spins, l.work_jets, work, error);
     cuda_check(cudaGetLastError());
     density_features<<<blocks(l.spins * count, 128), 128, 0, stream>>>(
-        ao, work, l.nao, count, l.spins, l.jets, l.work_jets, l.feature_terms,
-        l.functional, features, error);
+        ao, work, l.nao, count, l.spins, l.jets, l.work_jets, l.feature_terms, l.functional,
+        features, error);
     cuda_check(cudaGetLastError());
-    evaluate_points<<<blocks(count, 128), 128, 0, stream>>>(
-        features, weights + begin, count, l.spins, l.feature_terms, l.functional,
-        coefficients, point_totals, error);
+    evaluate_points<<<blocks(count, 128), 128, 0, stream>>>(features, weights + begin, count,
+                                                            l.spins, l.feature_terms, l.functional,
+                                                            coefficients, point_totals, error);
     cuda_check(cudaGetLastError());
     assemble_potential<<<blocks(matrices, 128), 128, 0, stream>>>(
-        ao, coefficients, weights + begin, l.nao, count, l.spins, l.feature_terms,
-        potential, error);
+        ao, coefficients, weights + begin, l.nao, count, l.spins, l.feature_terms, potential,
+        error);
     cuda_check(cudaGetLastError());
     accumulate_totals<<<1, 32, 0, stream>>>(point_totals, count, totals, error);
     cuda_check(cudaGetLastError());

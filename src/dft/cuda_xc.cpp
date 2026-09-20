@@ -38,8 +38,7 @@ void device_pointer(const void* pointer, int device) {
 }  // namespace
 
 CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid,
-                            std::uint32_t functional, bool unrestricted,
-                            std::size_t tile_points) {
+                            std::uint32_t functional, bool unrestricted, std::size_t tile_points) {
   // Equal dimensions alone cannot bind a grid to its current geometry/basis.
   const AoBasis grid_basis(grid.system());
   if (basis.nao != grid_basis.nao || basis.natom != grid_basis.natom ||
@@ -50,8 +49,8 @@ CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid,
 }
 
 CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std::size_t nao,
-                                  std::size_t points, std::uint32_t functional,
-                                  bool unrestricted, std::size_t tile_points) {
+                                  std::size_t points, std::uint32_t functional, bool unrestricted,
+                                  std::size_t tile_points) {
   if (!atoms || !primitives || !nao || !points || !tile_points || tile_points > INT_MAX ||
       atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || functional > 2U)
     throw std::invalid_argument("invalid CUDA XC resource shape");
@@ -92,9 +91,9 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
   return out;
 }
 
-CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid,
-                       std::uint32_t functional, bool unrestricted, std::size_t tile_points,
-                       void* arena, std::size_t arena_bytes, cudaStream_t stream)
+CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional,
+                       bool unrestricted, std::size_t tile_points, void* arena,
+                       std::size_t arena_bytes, cudaStream_t stream)
     : layout_(cuda_xc_layout(basis, grid, functional, unrestricted, tile_points)),
       arena_(arena),
       stream_(stream) {
@@ -117,9 +116,8 @@ CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid,
   weights_ = take_double(l.npoint);
   const auto panel = size_mul(l.tile_points, l.nao, "CUDA XC workspace layout overflow");
   ao_ = take_double(size_mul(l.jets, panel, "CUDA XC workspace layout overflow"));
-  work_ = take_double(
-      size_mul(size_mul(l.spins, l.work_jets, "CUDA XC workspace layout overflow"), panel,
-               "CUDA XC workspace layout overflow"));
+  work_ = take_double(size_mul(size_mul(l.spins, l.work_jets, "CUDA XC workspace layout overflow"),
+                               panel, "CUDA XC workspace layout overflow"));
   const auto feature_panel =
       size_mul(l.spins, l.feature_terms, "CUDA XC workspace layout overflow");
   features_ =

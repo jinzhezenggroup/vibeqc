@@ -71,8 +71,7 @@ dft::XcIntegral evaluate_pbe_xc_rks(const dft::AoBasis& basis, const dft::Molecu
   return dft::integrate_pbe_rks_with_tail(basis, grid, density, tile, source);
 }
 
-dft::XcIntegral evaluate_r2scan_xc_rks(const dft::AoBasis& basis,
-                                       const dft::MolecularGrid& grid,
+dft::XcIntegral evaluate_r2scan_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                        const Matrix& density, dft::XcDensitySource source,
                                        std::size_t tile) {
   return dft::integrate_r2scan_rks(basis, grid, density, tile, source);

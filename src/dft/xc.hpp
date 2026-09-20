@@ -29,8 +29,7 @@ inline constexpr const char* kLdaSpinTailPolicy = "lda-spin-tail-v2-sixth-root";
 inline constexpr const char* kPbeSpinProductionTailPolicy = kPbeProductionTailPolicy;
 /** Only the numerically null far tail is modified; the quintic switch is C2
  * and its density derivative is included in the generalized-KS potential. */
-inline constexpr const char* kR2scanProductionTailPolicy =
-    "r2scan-tail-c2-v1/n=1e-56:1e-52";
+inline constexpr const char* kR2scanProductionTailPolicy = "r2scan-tail-c2-v1/n=1e-56:1e-52";
 
 struct XcIntegral {
   double energy{};
@@ -75,7 +74,6 @@ SpinXcIntegral integrate_pbe_uks(const AoBasis& basis, const MolecularGrid& grid
                                  const std::vector<double>& beta_density,
                                  std::size_t tile_points = 256);
 
-
 struct R2scanPointValue {
   double energy{};
   double rho[2]{};
@@ -84,14 +82,13 @@ struct R2scanPointValue {
   double kinetic[2]{};
 };
 
-R2scanPointValue evaluate_r2scan_point(const double rho[2],
-                                       const double (&gradient)[2][3],
+R2scanPointValue evaluate_r2scan_point(const double rho[2], const double (&gradient)[2][3],
                                        const double tau[2]);
 
 /** r2SCAN meta-GGA using rho/sigma/tau and the generated vtau weak-form term. */
 XcIntegral integrate_r2scan_rks(const AoBasis& basis, const MolecularGrid& grid,
-                                const std::vector<double>& density,
-                                std::size_t tile_points = 256, XcDensitySource source = {});
+                                const std::vector<double>& density, std::size_t tile_points = 256,
+                                XcDensitySource source = {});
 
 SpinXcIntegral integrate_r2scan_uks(const AoBasis& basis, const MolecularGrid& grid,
                                     const std::vector<double>& alpha_density,

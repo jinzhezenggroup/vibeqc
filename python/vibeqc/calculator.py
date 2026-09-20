@@ -430,7 +430,14 @@ class Calculator:
         self._method_name = method.lower()
         self._method = _METHODS[self._method_name]
         self._ks_options = None
-        if self._method_name in ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks", "r2scan-rks", "r2scan-uks"):
+        if self._method_name in (
+            "lda-rks",
+            "pbe-rks",
+            "lda-uks",
+            "pbe-uks",
+            "r2scan-rks",
+            "r2scan-uks",
+        ):
             from .ks import resolve_ks_options
 
             self._ks_options = resolve_ks_options(self._method_name, ks_options)

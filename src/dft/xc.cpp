@@ -237,8 +237,7 @@ SpinXcIntegral integrate_pbe_uks(const AoBasis& basis, const MolecularGrid& grid
   return integrate_spin_xc(basis, grid, alpha_density, beta_density, tile_points, true);
 }
 
-R2scanPointValue evaluate_r2scan_point(const double rho[2],
-                                       const double (&gradient)[2][3],
+R2scanPointValue evaluate_r2scan_point(const double rho[2], const double (&gradient)[2][3],
                                        const double tau[2]) {
   for (unsigned spin = 0; spin < 2; ++spin) {
     if (!std::isfinite(rho[spin]) || !std::isfinite(tau[spin]) || rho[spin] < 0.0 ||
@@ -255,8 +254,8 @@ R2scanPointValue evaluate_r2scan_point(const double rho[2],
 
   double sigma[3]{};
   generated::sigma(gradient, sigma);
-  auto raw = generated::r2scan_polarized(rho[0], rho[1], sigma[0], sigma[1], sigma[2],
-                                          tau[0], tau[1]);
+  auto raw =
+      generated::r2scan_polarized(rho[0], rho[1], sigma[0], sigma[1], sigma[2], tau[0], tau[1]);
   if (!std::isfinite(raw.energy_density)) {
     char detail[512];
     std::snprintf(detail, sizeof(detail),
@@ -280,14 +279,11 @@ R2scanPointValue evaluate_r2scan_point(const double rho[2],
     const double x2 = x * x;
     const double x3 = x2 * x;
     const double scale = x3 * (10.0 + x * (-15.0 + 6.0 * x));
-    const double dscale =
-        30.0 * x2 * (1.0 - x) * (1.0 - x) / width;
+    const double dscale = 30.0 * x2 * (1.0 - x) * (1.0 - x) / width;
     const double unscaled_energy = raw.energy_density;
     raw.energy_density *= scale;
-    raw.feature_derivative[0] =
-        scale * raw.feature_derivative[0] + dscale * unscaled_energy;
-    raw.feature_derivative[1] =
-        scale * raw.feature_derivative[1] + dscale * unscaled_energy;
+    raw.feature_derivative[0] = scale * raw.feature_derivative[0] + dscale * unscaled_energy;
+    raw.feature_derivative[1] = scale * raw.feature_derivative[1] + dscale * unscaled_energy;
     for (unsigned i = 2; i < 7; ++i) raw.feature_derivative[i] *= scale;
   }
 
@@ -296,12 +292,10 @@ R2scanPointValue evaluate_r2scan_point(const double rho[2],
   out.rho[0] = raw.feature_derivative[0];
   out.rho[1] = raw.feature_derivative[1];
   for (unsigned k = 0; k < 3; ++k) {
-    out.gradient[0][k] =
-        2.0 * raw.feature_derivative[2] * gradient[0][k] +
-        raw.feature_derivative[3] * gradient[1][k];
-    out.gradient[1][k] =
-        raw.feature_derivative[3] * gradient[0][k] +
-        2.0 * raw.feature_derivative[4] * gradient[1][k];
+    out.gradient[0][k] = 2.0 * raw.feature_derivative[2] * gradient[0][k] +
+                         raw.feature_derivative[3] * gradient[1][k];
+    out.gradient[1][k] = raw.feature_derivative[3] * gradient[0][k] +
+                         2.0 * raw.feature_derivative[4] * gradient[1][k];
   }
   // tau_s = 1/2 sum_mn D_s,mn grad(phi_m).grad(phi_n).
   out.kinetic[0] = 0.5 * raw.feature_derivative[5];
@@ -351,8 +345,7 @@ XcIntegral integrate_r2scan_rks(const AoBasis& basis, const MolecularGrid& grid,
         for (std::size_t nu = 0; nu < n; ++nu) {
           double value = rho_coefficient * phi[mu] * phi[nu];
           for (unsigned k = 0; k < 3; ++k) {
-            value += gradient_coefficient[k] *
-                     (jets[k][mu] * phi[nu] + phi[mu] * jets[k][nu]);
+            value += gradient_coefficient[k] * (jets[k][mu] * phi[nu] + phi[mu] * jets[k][nu]);
             value += kinetic_coefficient * jets[k][mu] * jets[k][nu];
           }
           result.potential[mu * n + nu] += weight * value;
@@ -400,8 +393,7 @@ SpinXcIntegral integrate_r2scan_uks(const AoBasis& basis, const MolecularGrid& g
           for (std::size_t nu = 0; nu < n; ++nu) {
             double value = xc.rho[spin] * phi[mu] * phi[nu];
             for (unsigned k = 0; k < 3; ++k) {
-              value += xc.gradient[spin][k] *
-                       (jets[k][mu] * phi[nu] + phi[mu] * jets[k][nu]);
+              value += xc.gradient[spin][k] * (jets[k][mu] * phi[nu] + phi[mu] * jets[k][nu]);
               value += xc.kinetic[spin] * jets[k][mu] * jets[k][nu];
             }
             result.potential[spin][mu * n + nu] += weight * value;

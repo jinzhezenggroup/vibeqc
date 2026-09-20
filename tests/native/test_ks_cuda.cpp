@@ -246,7 +246,9 @@ void run_case(unsigned atoms, bool restricted, bool pbe) {
       [](auto& value) { value.identity.determinant.occupied[0] = 0; },
       [](auto& value) { ++value.identity.model.owner; },
       [](auto& value) { ++value.identity.model.grid.radial_points; },
-      [](auto& value) { value.identity.model.functional = (value.identity.model.functional + 1U) % 3U; },
+      [](auto& value) {
+        value.identity.model.functional = (value.identity.model.functional + 1U) % 3U;
+      },
       [](auto& value) { ++value.identity.model.tile_points; },
       [](auto& value) { ++value.identity.model.device; },
       [](auto& value) { ++value.identity.model.scf_domain_version; }};

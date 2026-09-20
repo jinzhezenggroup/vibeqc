@@ -50,9 +50,9 @@ std::size_t cuda_ks_state_bytes(std::size_t nao, unsigned spins, unsigned diis_h
  * isolates pending/active/failed/converged and last-good warm states. */
 class CudaKsPlan {
  public:
-  CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis,
-             const MolecularGrid& grid, const scf::ScfOptions& options,
-             std::uint32_t functional, std::size_t tile_points = 256);
+  CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis, const MolecularGrid& grid,
+             const scf::ScfOptions& options, std::uint32_t functional,
+             std::size_t tile_points = 256);
   ~CudaKsPlan();
   CudaKsPlan(const CudaKsPlan&) = delete;
   CudaKsPlan& operator=(const CudaKsPlan&) = delete;

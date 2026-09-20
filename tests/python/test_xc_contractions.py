@@ -92,7 +92,12 @@ def test_r2scan_geometry_includes_tau_and_matches_moved_collocation(spin):
         )
         jets = basis.evaluate(grid.points, geometry.contract.ao_order)
         assert geometry.contract.ao_order == 2
-        assert set(geometry.features(jets, density)) >= {"rho", "gradient", "sigma", "tau"}
+        assert set(geometry.features(jets, density)) >= {
+            "rho",
+            "gradient",
+            "sigma",
+            "tau",
+        }
         partials = geometry.evaluate(
             jets,
             density,

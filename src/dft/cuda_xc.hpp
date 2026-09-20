@@ -32,8 +32,8 @@ CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid,
 /** Metadata-only counterpart of the same layout: does not construct a grid,
  * normalize basis data, initialize CUDA or allocate any numerical buffer. */
 CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std::size_t nao,
-                                  std::size_t points, std::uint32_t functional,
-                                  bool unrestricted, std::size_t tile_points = 256);
+                                  std::size_t points, std::uint32_t functional, bool unrestricted,
+                                  std::size_t tile_points = 256);
 
 struct CudaXcTransfers {
   std::uint64_t setup_h2d_bytes{}, output_d2h_bytes{}, synchronizations{}, evaluations{};
@@ -66,8 +66,8 @@ struct CudaXcScalars {
 class CudaXcPlan {
  public:
   CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional,
-             bool unrestricted, std::size_t tile_points, void* arena,
-             std::size_t arena_bytes, cudaStream_t stream);
+             bool unrestricted, std::size_t tile_points, void* arena, std::size_t arena_bytes,
+             cudaStream_t stream);
   ~CudaXcPlan();
   CudaXcPlan(const CudaXcPlan&) = delete;
   CudaXcPlan& operator=(const CudaXcPlan&) = delete;

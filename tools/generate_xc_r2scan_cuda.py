@@ -9,6 +9,7 @@ sys.path[:0] = [str(ROOT / "python"), str(ROOT)]
 
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.xc import functional
+
 from tools.generate_xc_cpu import build_roots, write_if_changed
 
 

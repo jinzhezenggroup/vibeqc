@@ -129,10 +129,11 @@ class DiscreteEnergyContract:
             raise UnsupportedXC(
                 "semilocal contractions do not include exact-exchange operators"
             )
-        if "tau" in self.functional.ingredients and self.request.observable == "response":
-            raise UnsupportedXC(
-                "tau-dependent density response is not validated"
-            )
+        if (
+            "tau" in self.functional.ingredients
+            and self.request.observable == "response"
+        ):
+            raise UnsupportedXC("tau-dependent density response is not validated")
 
     @property
     def ingredients(self):
