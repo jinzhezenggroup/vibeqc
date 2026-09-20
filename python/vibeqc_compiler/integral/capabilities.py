@@ -243,7 +243,10 @@ def query_integral_capability(
                 )
         except (ValueError, IndexError) as error:
             return CapabilityCheck(False, reasons=(str(error),))
-        return CapabilityCheck(True, schedules=("thread", "shell_warp", "serial"))
+        return CapabilityCheck(
+            True,
+            schedules=("thread", "shell_warp", "serial", "nucleus_cooperative"),
+        )
     if backend == "cuda_weighted_eri":
         from .blocks import WeightedDerivative
 

@@ -391,6 +391,7 @@ jobs:
           slow_paths=(
             tests/python/test_cc_complete_gradient.py
             tests/python/test_cc_triples_response.py
+            tests/python/test_ccsd_t_gradient_validation.py
             tests/python/test_dft_complete_cpu.py
             tests/python/test_ecp_stationary_cpu.py
             tests/python/test_ecp_public_cpu.py
@@ -422,6 +423,7 @@ jobs:
               test_targets=(
                 tests/python/test_cc_complete_gradient.py
                 tests/python/test_cc_triples_response.py
+                tests/python/test_ccsd_t_gradient_validation.py
                 tests/python/test_dft_complete_cpu.py
                 tests/python/test_ecp_stationary_cpu.py
                 tests/python/test_ecp_f.py
@@ -449,6 +451,7 @@ jobs:
               test_targets=(
                 tests/python/test_codegen.py
                 tests/python/test_d3_geometry_ir.py
+                tests/python/test_d3_generated_ragged.py
                 tests/python/test_high_angular.py
                 tests/python/test_one_electron_derivatives.py
                 tests/python/test_range_separation.py

@@ -84,29 +84,40 @@ struct RksEvaluation {
 };
 
 using RksXcEvaluator = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
-                                           const Matrix&, dft::XcDensitySource, std::size_t);
+                                           const Matrix&, dft::XcDensitySource, std::size_t, double,
+                                           double);
 
 dft::XcIntegral evaluate_lda_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                     const Matrix& density, dft::XcDensitySource source,
-                                    std::size_t tile) {
+                                    std::size_t tile, double exchange_scale,
+                                    double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled LDA RKS is not qualified");
   return dft::integrate_lda_xc_pw_rks(basis, grid, density, tile, source);
 }
 
 dft::XcIntegral evaluate_pbe_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                     const Matrix& density, dft::XcDensitySource source,
-                                    std::size_t tile) {
-  return dft::integrate_pbe_rks_with_tail(basis, grid, density, tile, source);
+                                    std::size_t tile, double exchange_scale,
+                                    double correlation_scale) {
+  return dft::integrate_pbe_rks_with_tail_scaled(basis, grid, density, tile, source, exchange_scale,
+                                                 correlation_scale);
 }
 
 dft::XcIntegral evaluate_r2scan_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                        const Matrix& density, dft::XcDensitySource source,
-                                       std::size_t tile) {
+                                       std::size_t tile, double exchange_scale,
+                                       double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled r2SCAN RKS is not qualified");
   return dft::integrate_r2scan_rks(basis, grid, density, tile, source);
 }
 
 dft::XcIntegral evaluate_cam_b3lyp_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                           const Matrix& density, dft::XcDensitySource source,
-                                          std::size_t tile) {
+                                          std::size_t tile, double exchange_scale, double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled CAM-B3LYP RKS is not qualified");
   return dft::integrate_cam_b3lyp_rks(basis, grid, density, tile, source);
 }
 
@@ -115,7 +126,7 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
                            const dft::MolecularGrid& grid, const Matrix& density,
                            RksXcEvaluator evaluate_xc, const char* method_name,
                            dft::XcDensitySource source, std::size_t retained_capacity,
-                           std::size_t tile) {
+                           std::size_t tile, double exchange_scale, double correlation_scale) {
   const auto& strategy = plan.strategy();
   const auto& ints = plan.one_electron();
   const auto jk = plan.build(density);
@@ -135,7 +146,8 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
     exact_exchange +=
         contract_fock_energy_components(correction_strategy, correction_jk, density).exchange;
   }
-  const auto xc = evaluate_xc(basis, grid, density, source, tile);
+  const auto xc =
+      evaluate_xc(basis, grid, density, source, tile, exchange_scale, correlation_scale);
   result.density_diagnostic = xc.density_diagnostic;
   // The AO tile and potential were live together with these J/Fock buffers
   // inside evaluate_xc. Its peak excludes borrowed D/factor to avoid charging
@@ -174,9 +186,12 @@ ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_ran
     throw std::invalid_argument(std::string(method_name) + " RKS forces are not implemented");
   if (strategy.backend != FockBackend::Cpu || strategy.spec.spin != FockSpin::Restricted ||
       strategy.spec.derivative_order != 0 || !strategy.spec.coulomb.present ||
-      strategy.spec.coulomb.coefficient != 1.0)
+      strategy.spec.coulomb.coefficient != 1.0 ||
+      (strategy.spec.exchange.present &&
+       (strategy.spec.exchange.op != FockOperator::FullRange ||
+        strategy.spec.exchange.approximation != FockApproximation::Exact)))
     throw std::invalid_argument(std::string(method_name) +
-                                " RKS requires a CPU full-Coulomb Fock strategy");
+                                " RKS requires a CPU full-range exact J/K Fock strategy");
   if (long_range_correction) {
     const auto& correction = long_range_correction->strategy();
     validate_resolved_fock_build(correction);
@@ -192,9 +207,6 @@ ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_ran
         correction.spec.exchange.op == FockOperator::LongRange;
     if (!primary_exchange || !correction_exchange)
       throw std::invalid_argument("RSH RKS requires full-range primary K plus direct long-range K");
-  } else if (strategy.spec.exchange.present) {
-    throw std::invalid_argument(std::string(method_name) +
-                                " RKS requires a CPU Coulomb-only Fock strategy");
   }
   if (system.electron_count <= 0 || system.electron_count % 2 || system.multiplicity != 1)
     throw std::invalid_argument(std::string(method_name) +
@@ -286,7 +298,8 @@ ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_ran
         evaluate_rks(plan, long_range_correction, basis, grid, current_density, evaluate_xc,
                      method_name, {options.xc_density_route, factor.get(), identity},
                      runtime::add_capacity(retained_capacity(current_density), extra_live_bytes),
-                     options.xc_tile_points);
+                     options.xc_tile_points, options.semilocal_exchange_scale,
+                     options.semilocal_correlation_scale);
     const auto& record = physical.density_diagnostic;
     if (record.executed == dft::XcDensityRoute::OccupiedOrbitals)
       ++diagnostic.orbital_calls;

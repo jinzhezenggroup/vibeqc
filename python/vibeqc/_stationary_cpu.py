@@ -47,7 +47,6 @@ from ._dft_gradient import (
     _native_ao_atoms,
     native_ao_geometry_identity,
 )
-from .ks import resolve_ks_method
 
 
 @dataclass(frozen=True)
@@ -249,7 +248,18 @@ def _admit_work(
         )
     primitive_sum = sum(int(row[2]) * int(row[3]) for row in aos)
     pairs = natom * (natom - 1) // 2
-    records = primitive_sum**4 + (natom + 2) * primitive_sum**2 + pairs
+    exact_exchange = bool(
+        getattr(
+            getattr(state._source, "method_ir", None),
+            "full_range_exact_exchange",
+            0,
+        )
+    )
+    # Coulomb always traverses every ordered primitive quartet. A full-range
+    # exact-exchange source is a second, independently weighted ERI derivative
+    # traversal over the same quartet domain and must be charged separately.
+    quartet_passes = 1 + int(exact_exchange)
+    records = quartet_passes * primitive_sum**4 + (natom + 2) * primitive_sum**2 + pairs
     points = len(state.grid.points)
     visits = (2 if execution == "native" else 3 * natom) * pairs * points
     validations = ((points + tile_points - 1) // tile_points) * pairs
@@ -325,14 +335,15 @@ def complete_rks_gradient_diagnostic(
 ) -> typing.Any:
     """Consume one live native CPU RKS/UKS state with complete plan-owned sources.
 
-    Admitted domain: direct real FP64 integer RKS/UKS, canonical
-    LDA, PBE or r2SCAN, s/p/d AOs, native unpruned version-one grid, distinct nuclei and no
+    Admitted domain: direct real FP64 integer RKS/UKS, a validated
+    LDA/PBE/r2SCAN MethodIR (PBE may include full-range exact exchange),
+    s/p/d AOs, native unpruned version-one grid, distinct nuclei and no
     point/center collisions. CPU is explicit; CUDA snapshots are rejected.
     Caller chooses an ignored/temporary compilation cache and may supply a
     CppCompilerAdapter; otherwise CXX (or c++) selects the executable. Scientific work is
     full ordered AO pairs/quartets, without screening or symmetry shortcuts.
     Working arrays scale with a point tile times (AO + atom), one primitive
-    record tile, D/W, and seven atom gradients, never coordinate-grid-AO pairs.
+    record tile, D/W, and bounded per-source atom gradients, never coordinate-grid-AO pairs.
     The native state already retains its full discrete grid and dense SCF data.
     execution="native" selects compiled consumers of the same mathematical
     graphs. execution="reference" retains the validated interpreter route.
@@ -408,7 +419,11 @@ def complete_rks_gradient_diagnostic(
             additional_host_numeric_bound=host_bound,
             additional_host_budget=max_host_bytes,
         )
-    method, functional = resolve_ks_method(state.identity.method)
+    # Consume the exact graph proven by the live snapshot. Re-resolving the
+    # descriptive method alias here would discard custom/global-hybrid
+    # coefficients and split energy/Fock semantics from the derivative.
+    method = state._source.method_ir
+    functional = state._source.functional
     plan = StationaryGradientPlan(
         method,
         StationaryMeanField(
@@ -446,9 +461,17 @@ def complete_rks_gradient_diagnostic(
         integral_term_capacity=integral_terms,
     )
     tensor_consumers = {}
-    # TensorIR AD supplies D, D*D/2, and -W. The runtime never rebuilds these
-    # scientific coefficients from a method-name-specific gradient formula.
-    for source, rank in (("one_electron", 2), ("overlap_pulay", 2), ("coulomb", 4)):
+    # TensorIR AD supplies D, Coulomb D*D/2, exact-exchange same-spin
+    # D[a,c]*D[b,d]*cK/2, and -W. Runtime only binds tuple-indexed state;
+    # it never rebuilds method coefficients from a named-functional formula.
+    integral_sources = [
+        ("one_electron", 2),
+        ("overlap_pulay", 2),
+        ("coulomb", 4),
+    ]
+    if plan.exchange is not None:
+        integral_sources.append(("exact_exchange", 4))
+    for source, rank in integral_sources:
         iterator = product(range(n), repeat=rank)
         while tuples := tuple(islice(iterator, integral_terms)):
             ids = np.asarray(tuples)
@@ -463,6 +486,13 @@ def complete_rks_gradient_diagnostic(
             if source == "overlap_pulay":
                 feeds = {
                     "weighted_density": state.weighted_density[:, ids[:, 0], ids[:, 1]]
+                }
+            elif source == "exact_exchange":
+                # For each ordered ERI (ab|cd), K contracts same-spin
+                # D[a,c] D[b,d]. Cross-spin exchange is deliberately absent.
+                feeds = {
+                    "density_left": state.density[:, ids[:, 0], ids[:, 2]],
+                    "density_right": state.density[:, ids[:, 1], ids[:, 3]],
                 }
             else:
                 feeds = {"density_left": state.density[:, ids[:, 0], ids[:, 1]]}
@@ -479,6 +509,7 @@ def complete_rks_gradient_diagnostic(
                     "one_electron": "kinetic",
                     "overlap_pulay": "overlap",
                     "coulomb": "four_center_eri",
+                    "exact_exchange": "four_center_eri",
                 }[source]
                 owners, values = native.integral(operator, indices, weight)
                 np.add.at(components[source], owners, values)

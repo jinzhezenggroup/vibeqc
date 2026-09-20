@@ -17,7 +17,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 
 from . import _native
 from .batch import PreparedBatch
-from .ks import SCF_DOMAIN, resolve_ks_method
+from .ks import SCF_DOMAIN
 
 
 def _scf_xc_points(
@@ -26,6 +26,8 @@ def _scf_xc_points(
     rho: typing.Any,
     gradient: typing.Any,
     tau: typing.Any = None,
+    *,
+    scales: typing.Any = (1.0, 1.0),
 ) -> typing.Any:
     """Evaluate the exact native semilocal SCF point model."""
     if type(functional) is bool:
@@ -54,13 +56,23 @@ def _scf_xc_points(
     tau = np.ascontiguousarray(raw_tau, dtype=np.float64)
     output = np.empty((rho.shape[1], 11), dtype=np.float64)
     try:
-        evaluate = library.vibeqc_xc_point_batch_v2
+        evaluate = (
+            library.vibeqc_xc_point_batch_v2
+            if scales == (1.0, 1.0)
+            else library.vibeqc_xc_point_batch_v3
+        )
     except AttributeError as error:
         raise NotImplementedError(
-            "native library lacks the semilocal XC point bridge v2"
+            "native library lacks the required semilocal XC point bridge"
         ) from error
+    prefix_types = (
+        [ct.c_uint32]
+        if scales == (1.0, 1.0)
+        else [ct.c_uint32, ct.c_double, ct.c_double]
+    )
+    prefix_values = [functional] if scales == (1.0, 1.0) else [functional, *scales]
     evaluate.argtypes = [
-        ct.c_uint32,
+        *prefix_types,
         ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
@@ -72,7 +84,7 @@ def _scf_xc_points(
     _native.check(
         library,
         evaluate(
-            functional,
+            *prefix_values,
             rho.ctypes.data_as(ct.POINTER(ct.c_double)),
             gradient.ctypes.data_as(ct.POINTER(ct.c_double)),
             tau.ctypes.data_as(ct.POINTER(ct.c_double)),
@@ -103,14 +115,17 @@ class NativeKsSnapshot:
         "_residual",
         "atomic_weights",
         "backend",
+        "coefficients",
         "ecp_cores",
         "ecp_terms",
         "export_work",
+        "functional",
         "grid",
         "grid_provenance",
         "grid_spec",
         "hamiltonian",
         "metadata",
+        "method_ir",
         "values",
     )
     _fixed = frozenset(__slots__)
@@ -170,11 +185,11 @@ class NativeKsSnapshot:
             )
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
-            if metadata[0] not in (1, 2, 3, 4, 5) or metadata[7] != 1:
+            if metadata[0] not in (1, 2, 3, 4, 5, 6, 7) or metadata[7] != 1:
                 raise NotImplementedError(
                     "unsupported native KS snapshot/domain version"
                 )
-            cpu = metadata[0] in (2, 4)
+            cpu = metadata[0] in (2, 4, 6, 7)
             if (metadata[12] == 2**64 - 1) != cpu:
                 raise ValueError("native KS snapshot backend/device mismatch")
             self.backend = "cpu" if cpu else "cuda"
@@ -266,7 +281,7 @@ class NativeKsSnapshot:
             take((npoint,)),
             take((npoint,)),
         )
-        if self.metadata[0] in (2, 3, 4, 5):
+        if self.metadata[0] in (2, 3, 4, 5, 6, 7):
             from vibeqc_compiler.dft.grid import GridSpec, grid_policy_provenance
 
             version, radial, polar, azimuth, iterations, tolerance = take((6,))
@@ -293,7 +308,7 @@ class NativeKsSnapshot:
             if self.metadata[0] in (3, 5)
             else {}
         )
-        if self.metadata[0] in (4, 5):
+        if self.metadata[0] in (4, 5, 7):
             cores = take((natom,))
             count = float(take((1,))[0])
             if not np.isfinite(count) or count < 1 or not count.is_integer():
@@ -330,6 +345,19 @@ class NativeKsSnapshot:
                 if kind.value == 0:
                     hamiltonian = "all-electron"
             self.hamiltonian = hamiltonian
+        self.coefficients = (
+            tuple(take((3,))) if self.metadata[0] in (6, 7) else (1.0, 1.0, 0.0)
+        )
+        options = self._batch._calculator.ks_options
+        if (
+            options is None
+            or options.coefficients != self.coefficients
+            or functional
+            != (2 if "tau" in options.functional.ingredients else options.ao_order)
+            or (options.method_ir.spin == "polarized") != (spins == 2)
+        ):
+            raise ValueError("native stationary composition mismatch")
+        self.method_ir, self.functional = options.method_ir, options.functional
         if offset != len(self.values):
             raise ValueError("native KS snapshot wire length mismatch")
         if self.hamiltonian != "unbound" and not np.isclose(
@@ -366,13 +394,13 @@ class NativeKsSnapshot:
         ):
             raise ValueError("native stationary grid source mismatch")
         self.grid = grid
-        functional_names = {0: "lda", 1: "pbe", 2: "r2scan"}
-        try:
-            family = functional_names[functional]
-        except KeyError as error:
-            raise NotImplementedError("unsupported native KS functional id") from error
-        method = family + ("-rks" if spins == 1 else "-uks")
-        _, spec = resolve_ks_method(method)
+        method = self._batch._calculator._method_name
+        spec = self.functional
+        composition_identity = (
+            {"method_ir": self.method_ir.identity, "coefficients": self.coefficients}
+            if self.coefficients != (1.0, 1.0, 0.0)
+            else {}
+        )
         basis_identity = basis.identity
         identity = StationaryKsIdentity(
             method=method,
@@ -388,13 +416,14 @@ class NativeKsSnapshot:
                         else {}
                     ),
                     "basis": basis_identity,
+                    **composition_identity,
                     **(
                         {
                             "hamiltonian": self.hamiltonian,
                             "ecp_cores": self.ecp_cores,
                             "ecp_terms": self.ecp_terms,
                         }
-                        if self.metadata[0] in (4, 5)
+                        if self.metadata[0] in (4, 5, 7)
                         else {}
                     ),
                 }
@@ -415,9 +444,10 @@ class NativeKsSnapshot:
             regularization_identity=scf_regularization_identity(),
             provider_identity=canonical_hash(
                 {
-                    "provider": f"native-{self.backend}-exact-j-fp64",
+                    "provider": f"native-{self.backend}-exact-{'jk' if self.coefficients[2] else 'j'}-fp64",
                     "owner": owner,
                     "device": -1 if self.backend == "cpu" else device,
+                    **composition_identity,
                 }
             ),
             owner=owner,
@@ -450,7 +480,16 @@ class NativeKsSnapshot:
     ) -> typing.Any:
         """Return SCF-domain point energy and Cartesian first derivatives."""
         self.check_current()
-        values = _scf_xc_points(self._library, functional, rho, gradient, tau)
+        expected = (
+            2
+            if "tau" in self.functional.ingredients
+            else int("sigma" in self.functional.ingredients)
+        )
+        if functional != expected:
+            raise ValueError("XC point family disagrees with native composition")
+        values = _scf_xc_points(
+            self._library, functional, rho, gradient, tau, scales=self.coefficients[:2]
+        )
         self.check_current()
         return values
 
@@ -528,8 +567,10 @@ class NativeKsSnapshot:
             )
         # The snapshot's functional wire code is not a boolean: newer SCF
         # methods (for example r2SCAN=2) must never be interpreted as PBE.
-        if self.metadata[6] not in (0, 1):
-            raise NotImplementedError("native point response supports LDA/PBE only")
+        if self.metadata[6] not in (0, 1) or self.coefficients != (1.0, 1.0, 0.0):
+            raise NotImplementedError(
+                "native point response requires unscaled LDA/PBE only"
+            )
         if type(pbe) is not bool or pbe != bool(self.metadata[6]):
             raise ValueError("native response functional mismatch")
         values = [np.asarray(x) for x in (rho, gradient, delta_rho, delta_gradient)]

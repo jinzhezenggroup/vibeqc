@@ -246,6 +246,10 @@ class _NativeKSLease:
                 raise ResponseUnsupported(
                     f"native CPKS requires all-electron {spin_method.upper()} LDA/PBE"
                 )
+            if state._source.coefficients != (1.0, 1.0, 0.0):
+                raise ResponseUnsupported(
+                    f"native CPKS requires unscaled LDA/PBE {spin_method.upper()}"
+                )
             _, expected = resolve_ks_method(state.identity.method)
             spec = expected if functional is None else functional
             if spec.identity != state.identity.functional_identity:

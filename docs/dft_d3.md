@@ -120,6 +120,32 @@ preserve the public batch/replay contract. The exact conventions, provenance,
 underflow boundary, rejected alternatives and retirement condition are recorded in the
 [D3 GeometryIR/PairIR decision](../.agents/notes/implemented/numerics/2026-09-20-d3-geometry-pair-ir.md).
 
+## Generated ragged CUDA retirement candidate
+
+The compiler now also has a non-public ragged CUDA execution candidate for the
+same two-body D3(BJ) equation. `compile_d3_bj_batch` flattens a heterogeneous
+molecular batch into one GeometryIR, preserves explicit system atom offsets, and
+builds only within-system CN/energy pairs. Pair energies are reduced to a vector
+of per-system energies with TensorIR `scatter_add`; the complete Cartesian
+gradient is generated from that vector energy through one TensorIR VJP.
+
+`PreparedD3CudaBatch` lowers the combined energy + generated-gradient graph
+through the shared TensorIR CUDA planner/compiler/runtime. Replays that preserve
+the CN/pair/switch state reuse the prepared artifact. A replay that crosses a
+recorded topology or switch boundary prepares a replacement generated program
+before the old prepared owner is released, so a failed rebuild cannot corrupt the
+previous executable state.
+
+This is deliberately a **retirement candidate, not the public production owner**.
+The native `D3CorrectionBatch` remains authoritative until the generated route
+has independent real-device qualification for numerical parity, resource bounds,
+changed-topology replay, per-system failure isolation, energy-only execution and
+endpoint performance. In particular, the current candidate evaluates the generated
+gradient graph even when a caller only needs energy, and TensorIR's one-call batch
+failure boundary is not yet equivalent to the public native per-item status ABI.
+
+See the [generated ragged execution decision](../.agents/notes/implemented/numerics/2026-09-20-d3-generated-ragged-cuda.md).
+
 ## Remaining boundary
 
 The public correction owner is deliberately separate from the electronic DFT
