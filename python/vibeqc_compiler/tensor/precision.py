@@ -398,7 +398,7 @@ def describe_precision(
     provenance = program.provenance
     source = provenance.get("precision_source_equation", program.logical_hash)
     if not isinstance(source, str):
-        raise ValueError("precision_source_equation provenance must be a string")
+        raise TypeError("precision_source_equation provenance must be a string")
     return PrecisionSchedule(
         source,
         program.logical_hash,
