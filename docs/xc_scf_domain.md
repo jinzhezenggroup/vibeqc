@@ -183,6 +183,14 @@ empty spin. The per-component gate is `3e-10*abs(reference)` plus 64 machine
 epsilons times independent `abs(delta_X)+abs(delta_C)` and 8 minimum subnormals.
 The target also verifies spin permutation, batched layout and domain errors.
 
+With CUDA enabled, `vibeqc_xc_response_cuda_tests` evaluates the same 30 RKS
+and 48 UKS fixture directions through the shared point differential on device,
+using the same relative, independently scaled cancellation and subnormal gates.
+`tests/python/test_response_native_cuda.py` qualifies complete native CUDA
+LDA/PBE CPKS actions and solves against independent molecular references; see
+[the response boundary](response.md#native-cuda-cpks) for host/device ownership
+and the required Slurm allocation.
+
 `vibeqc_dft_tests` retains the #214 identical-grid oracle and adds unequal
 spin directional tests, isolated symmetric off-diagonal perturbations,
 spin swaps, and deliberate half/double-factor failures. These tests precede

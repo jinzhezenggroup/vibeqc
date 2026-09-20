@@ -577,6 +577,9 @@ def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver() -> Non
         def norm(self, value: typing.Any) -> typing.Any:
             return float(np.linalg.norm(value.values))
 
+        def dot(self, left: typing.Any, right: typing.Any) -> float:
+            return float(np.dot(left.values, right.values))
+
         def apply(self, operator: typing.Any, value: typing.Any) -> typing.Any:
             del operator
             self.applies += 1
@@ -653,10 +656,77 @@ def test_single_gmres_uses_bound_vector_engine_without_duplicate_solver() -> Non
     assert engine.applies == result.operator_actions
     assert result.basis.shape == (operator.dimension, 0)
 
-    with pytest.raises(ValueError, match="blocked GMRES.*resident"):
-        solve_many(
-            operator,
-            np.column_stack((rhs, rhs)),
-            strategy="blocked",
-            options=GMRESOptions(rtol=1e-12, restart=6, max_iterations=20),
+    before = engine.applies
+    blocked = solve_many(
+        operator,
+        np.column_stack((rhs, rhs)),
+        strategy="blocked",
+        options=GMRESOptions(rtol=1e-12, restart=6, max_iterations=20),
+        collect_basis=False,
+    )
+    assert blocked.converged and blocked.rank_deficient_rhs
+    assert engine.applies - before == blocked.operator_actions
+    np.testing.assert_allclose(
+        operator.matrix @ blocked.solution, np.column_stack((rhs, rhs)), atol=2e-11
+    )
+    assert all(item.basis.shape == (operator.dimension, 0) for item in blocked.results)
+
+
+@pytest.mark.parametrize("strategy", ("sequential", "blocked", "recycled"))
+def test_cost_ledger_does_not_count_operator_time_as_orthogonalization(
+    strategy: str, monkeypatch: typing.Any
+) -> None:
+    """A deterministic clock separates action cost without timing assertions."""
+    from tools.vibeqc_response import krylov
+
+    clock = [0.0]
+    operator = _synthetic_operator(size=6)
+    apply = operator.apply
+    norm = krylov._HostKrylovEngine.norm
+
+    def action(value: typing.Any) -> typing.Any:
+        clock[0] += 1.0
+        return apply(value)
+
+    def residual_norm(self: typing.Any, value: typing.Any) -> typing.Any:
+        clock[0] += 0.25
+        return norm(self, value)
+
+    monkeypatch.setattr(operator, "apply", action)
+    monkeypatch.setattr(krylov._HostKrylovEngine, "norm", residual_norm)
+    monkeypatch.setattr(krylov.time, "perf_counter", lambda: clock[0])
+    result = solve_many(
+        operator,
+        np.eye(6)[:, :3],
+        strategy=strategy,
+        raise_on_failure=True,
+        collect_basis=False,
+    )
+    assert all(item.basis.shape == (6, 0) for item in result.results)
+    assert result.operator_seconds == result.operator_actions
+    assert result.orthogonalization_seconds == 0.0
+    assert result.recycling_seconds >= 0.0
+    assert result.seconds > result.operator_seconds
+
+
+@pytest.mark.parametrize("scale", (1e-150, 1.0, 1e150))
+def test_engine_thin_range_factor_matches_independent_dense_svd(scale: float) -> None:
+    """Qualify range/rank decisions at both sides of the breakdown cutoff."""
+    from tools.vibeqc_response.krylov import _block_range_factor, _HostKrylovEngine
+
+    rng = np.random.default_rng(179)
+    left, _ = np.linalg.qr(rng.normal(size=(37, 4)))
+    right, _ = np.linalg.qr(rng.normal(size=(4, 4)))
+    for smallest in (0.5e-12, 2e-12):
+        matrix = scale * (left * [2.0, 0.3, 0.01, smallest]) @ right.T
+        u, singular, vh = np.linalg.svd(matrix, full_matrices=False)
+        keep = singular > scale * 1e-12
+        expected = (u[:, keep] * singular[keep]) @ vh[keep]
+        engine = _HostKrylovEngine(37)
+        basis, factor = _block_range_factor(
+            engine, list(matrix.T), tolerance=scale * 1e-12, capacity=4
         )
+        assert len(basis) == int(keep.sum())
+        q = np.column_stack(basis)
+        np.testing.assert_allclose(q.T @ q, np.eye(len(basis)), atol=2e-14)
+        np.testing.assert_allclose((q @ factor) / scale, expected / scale, atol=2e-14)

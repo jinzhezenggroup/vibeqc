@@ -1,22 +1,31 @@
 """Explicit KS composition/grid identity, native snapshots and budget shapes."""
 
+import json
 import os
 import typing
 from dataclasses import replace
 from fractions import Fraction
+from pathlib import Path
 
 import numpy as np
 import pytest
 from vibeqc import (
     Atom,
     Calculator,
+    GridPolicy,
     GridSpec,
     KsOptions,
     ResourceBudget,
     estimate_ks_resources,
 )
-from vibeqc.ks import resolve_ks_options
-from vibeqc_compiler.dft.grid import MolecularGrid
+from vibeqc.ks import native_ks_options, resolve_ks_options
+from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.dft.grid import (
+    GRID_POLICY_RADII_SOURCE,
+    GRID_POLICY_UPSTREAM_REVISION,
+    MolecularGrid,
+    grid_policy_provenance,
+)
 from vibeqc_compiler.method import MethodSpec, SemilocalXCPrimitive, resolve_method
 from vibeqc_compiler.xc.spec import functional
 
@@ -54,6 +63,124 @@ def test_functional_composition_resolves_only_required_ingredients() -> None:
     assert "tau" not in pbe.to_payload()["required_ingredients"]
     assert pbe.to_payload()["scalar_derivative_order"] == 1
     assert pbe.to_payload()["scf_domain"].endswith("pbe-spin-c2-1e-18")
+
+
+def test_production_grid_policy_is_resolved_element_aware_and_versioned() -> None:
+    lda = resolve_ks_options("lda-rks")
+    pbe = resolve_ks_options("pbe-rks")
+    tight = resolve_ks_options("pbe-rks", KsOptions(grid_accuracy="tight"))
+    derivative = GridPolicy().resolve("pbe-rks", derivative_order=1)
+    derivative_profile = GridPolicy().profile("pbe-rks", derivative_order=1)
+
+    assert lda.grid.version == pbe.grid.version == tight.grid.version == 2
+    assert (
+        lda.grid.radial_points,
+        lda.grid.angular_polar,
+        lda.grid.angular_azimuth,
+    ) == (
+        54,
+        16,
+        32,
+    )
+    assert (
+        pbe.grid.radial_points,
+        pbe.grid.angular_polar,
+        pbe.grid.angular_azimuth,
+    ) == (
+        54,
+        16,
+        32,
+    )
+    assert tight.grid == derivative
+    assert derivative_profile.pruning == "none"
+    assert derivative_profile.screening == "none"
+    assert derivative_profile.topology == "atom-radial-polar-azimuth"
+    assert (
+        tight.grid.radial_points,
+        tight.grid.angular_polar,
+        tight.grid.angular_azimuth,
+    ) == (
+        72,
+        24,
+        48,
+    )
+    radii = dict(pbe.grid.element_radii)
+    assert len(radii) == 86
+    assert radii[1] != 1.0
+    assert radii[26] > 0.0  # representative transition metal, Fe
+    assert radii[54] > 0.0  # representative heavier element, Xe
+    assert lda.identity != pbe.identity
+    assert pbe.identity != tight.identity
+    assert pbe.to_payload()["grid"]["version"] == 2
+    assert pbe.to_payload()["grid_provenance"] == GridPolicy().provenance
+    assert pbe.to_payload()["grid_provenance"] == grid_policy_provenance(pbe.grid)
+    assert GridSpec(**pbe.to_payload()["grid"]) == pbe.grid
+    changed_provenance = json.loads(json.dumps(pbe.to_payload()))
+    changed_provenance["grid_provenance"]["upstream_revision"] = "different"
+    assert canonical_hash(changed_provenance) != pbe.identity
+
+    native = native_ks_options(pbe)
+    assert native.grid_version == 2
+    assert native.element_radius_count == 119
+    assert native.element_radii[26] == pytest.approx(radii[26], rel=0, abs=0)
+    assert native.element_radii[87] == 0.0
+
+    custom_points = replace(pbe.grid, radial_points=pbe.grid.radial_points + 1)
+    custom_radii = replace(
+        pbe.grid,
+        element_radii=tuple(
+            (z, radius * 1.01 if z == 1 else radius)
+            for z, radius in pbe.grid.element_radii
+        ),
+    )
+    for custom in (custom_points, custom_radii):
+        provenance = grid_policy_provenance(custom)
+        assert provenance == {"policy_version": 2, "contract": "explicit-grid-v2"}
+        resolved_custom = resolve_ks_options("pbe-rks", KsOptions(grid=custom))
+        assert resolved_custom.to_payload()["grid_provenance"] == provenance
+        assert resolved_custom.identity != pbe.identity
+
+
+def test_production_grid_radii_match_pinned_provenance_and_unknowns_fail_closed() -> (
+    None
+):
+    root = Path(__file__).resolve().parents[2]
+    source = json.loads((root / "external/xtbloom-d3/covalent_radii.json").read_text())
+    policy = GridPolicy()
+    spec = policy.resolve("lda-rks")
+    assert GRID_POLICY_RADII_SOURCE.endswith(
+        "92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111"
+    )
+    assert GRID_POLICY_UPSTREAM_REVISION == "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+    assert policy.provenance["radii_source"] == GRID_POLICY_RADII_SOURCE
+    assert [r for _, r in spec.element_radii] == source
+
+    # Historical v1 remains an exact one-Bohr reference fallback.
+    legacy = MolecularGrid([Atom(87, (0.0, 0.0, 0.0))], spec=GridSpec())
+    assert legacy.resolved_radii == (1.0,)
+    # Production v2 never silently turns an unsourced element into one Bohr.
+    with pytest.raises(ValueError, match="no sourced radius.*87"):
+        MolecularGrid([Atom(87, (0.0, 0.0, 0.0))], spec=spec)
+
+
+def test_grid_policy_capability_boundaries_fail_closed() -> None:
+    policy = GridPolicy()
+    for method in (
+        "r2scan-rks",
+        "r2scan-uks",
+        "scan-rks",
+        "scan-uks",
+        "vv10-rks",
+        "vv10-uks",
+        "pbe0-rks",
+        "pbe0-uks",
+    ):
+        with pytest.raises(NotImplementedError, match="qualified only"):
+            policy.resolve(method)
+    with pytest.raises(NotImplementedError, match="orders 0 and 1"):
+        policy.resolve("pbe-rks", derivative_order=2)
+    with pytest.raises(ValueError, match="accuracy"):
+        GridPolicy("turbo").resolve("pbe-rks")
 
 
 def test_method_ir_capability_gate_rejects_non_semilocal_graph(

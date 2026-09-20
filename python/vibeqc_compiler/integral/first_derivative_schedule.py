@@ -18,6 +18,10 @@ REQUESTS_PER_UNIT = 8
 MAX_UNIT_BYTES = 4 << 20
 MAX_PROGRAM_BYTES = 64 << 20
 DerivativeRequest = tuple[str, tuple[str, ...]]
+COMPONENT_LABELS = ("", "x", "xx", "xy", "xz", "y", "yy", "yz", "z", "zz")
+COMPONENT_OPERATORS = ("overlap", "kinetic", "nuclear_attraction", "four_center_eri")
+DISPATCH_ROWS = 3 * len(COMPONENT_LABELS) ** 2 + len(COMPONENT_LABELS) ** 4
+DISPATCH_WIDTH = 9
 
 
 @dataclass(frozen=True)
@@ -106,3 +110,31 @@ def derivative_sources(
             raise ValueError("first derivative generated source budget exceeded")
         units.append((selected, source))
     return tuple(units)
+
+
+@lru_cache(maxsize=4)
+def derivative_dispatch_table(domain: tuple[str, ...]) -> tuple[tuple[int, ...], ...]:
+    """Immutable runtime dispatch: library, kind, four centers and three axes.
+
+    Slots use base-ten Cartesian label codes, independently of public AO order.
+    Unrequested slots remain invalid. This is metadata, never consumer weights.
+    """
+    requests = {request: i for i, request in enumerate(derivative_requests(domain))}
+    table = [(-1,) * DISPATCH_WIDTH] * DISPATCH_ROWS
+    for op, operator in enumerate(COMPONENT_OPERATORS):
+        rank = 4 if op == 3 else 2
+        for labels in product(domain, repeat=rank):
+            slot = 0
+            for label in labels:
+                slot = len(COMPONENT_LABELS) * slot + COMPONENT_LABELS.index(label)
+            slot += op * len(COMPONENT_LABELS) ** 2
+            binding = derivative_binding(operator, labels)
+            kernel = requests[binding.request]
+            table[slot] = (
+                kernel // REQUESTS_PER_UNIT,
+                kernel % REQUESTS_PER_UNIT,
+                *binding.centers,
+                *([-1] * (4 - len(binding.centers))),
+                *binding.axes,
+            )
+    return tuple(table)

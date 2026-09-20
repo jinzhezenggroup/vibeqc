@@ -118,10 +118,18 @@ used by occupied density-fitting exchange. Python tracing is therefore absent
 from the SCF iteration hot path.
 
 This cutover covers CPU density construction and its compact occupied-factor
-consumer. Resident CUDA SCF density kernels retain their existing device
-ownership for now; moving those kernels requires separate stream/layout and
-performance qualification. This is still an internal preview and does not add
-an Array API conformance claim.
+consumer. The same generated header also consumes the canonical TensorIR
+`diis_gram_program` and `diis_extrapolation_program` equations for CPU
+production DIIS. Only the pure residual Gram and Fock-history contraction move
+to generated scientific ownership: chronological history mutation, optional
+metric normalization, the augmented pivoted solve, dependent-history retirement,
+and fallback semantics remain native solver policy. The specialization preserves
+the historical FP64 reduction order.
+
+Resident CUDA SCF density and DIIS kernels retain their existing device ownership
+for now; moving those kernels requires separate stream/layout and performance
+qualification. This is still an internal preview and does not add an Array API
+conformance claim.
 
 ## Ownership
 

@@ -157,6 +157,7 @@ class CudaResidentRHFResponse:
         self.vector_slots = vector_slots
         self._free = list(reversed(range(vector_slots)))
         self._live = set()
+        self._retained = set()
         self._vectors = WeakValueDictionary()
         diagnostic = self.diagnostics
         if (
@@ -230,12 +231,26 @@ class CudaResidentRHFResponse:
             yield
         finally:
             for vector in list(self._vectors.values()):
-                vector.release()
+                if vector.slot not in self._retained:
+                    vector.release()
 
     def reset(self) -> None:
-        if self._live:
+        if self._live != self._retained:
             raise RuntimeError("resident Krylov reset with live vector leases")
-        self._free = list(reversed(range(self.vector_slots)))
+        self._free = [
+            slot
+            for slot in reversed(range(self.vector_slots))
+            if slot not in self._live
+        ]
+
+    def _retain(self, vector: typing.Any) -> None:
+        """Promote a validated recycle vector beyond one solver workspace.
+
+        The recycle space owns its lease and must release it before this owner
+        closes. Temporary cleanup never revokes successfully retained vectors.
+        """
+        self._validate_vector(vector)
+        self._retained.add(vector.slot)
 
     def _validate_vector(self, value: typing.Any) -> None:
         if self._closed or not self._handle:
@@ -259,6 +274,7 @@ class CudaResidentRHFResponse:
     def _release_slot(self, slot: typing.Any) -> None:
         if slot in self._live:
             self._live.remove(slot)
+            self._retained.discard(slot)
             self._vectors.pop(slot, None)
             self._free.append(slot)
 
@@ -416,6 +432,7 @@ class CudaResidentRHFResponse:
             # Any retained vector now refers to a closed owner; later release
             # is harmless because its slot is no longer in the live set.
             self._live.clear()
+            self._retained.clear()
         elif self._live:
             import gc
 

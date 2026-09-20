@@ -267,9 +267,18 @@ VIBEQC_XC_HD inline Value evaluate(bool pbe, const double rho[2], const double g
   Value out;
   for (unsigned s = 0; s < 2; ++s) {
     if (!detail::finite(rho[s]) || rho[s] < 0.0) out.valid = false;
-    for (unsigned k = 0; k < 3; ++k)
-      if (!detail::finite(gradient[s][k]) || (rho[s] == 0.0 && gradient[s][k] != 0.0))
+    for (unsigned k = 0; k < 3; ++k) {
+      if (!detail::finite(gradient[s][k])) {
         out.valid = false;
+        continue;
+      }
+      // AO contractions can underflow the density to exact zero while leaving
+      // a subnormal first derivative. Its squared norm is already
+      // unrepresentable in FP64, so canonicalize only this numerically-null
+      // residue to the analytic vacuum. Normal nonzero vacuum gradients remain
+      // outside the public domain and are still rejected.
+      if (rho[s] == 0.0 && ::fabs(gradient[s][k]) >= DBL_MIN) out.valid = false;
+    }
   }
   const double scale = rho[0] + rho[1];
   if (!detail::finite(scale)) out.valid = false;

@@ -10,6 +10,31 @@ from vibeqc_compiler.integral import first_derivative_schedule as schedule
 DOMAIN = ("", "x", "xx", "xy", "xz", "y", "yy", "yz", "z", "zz")
 
 
+@pytest.mark.parametrize("domain", [DOMAIN, ("", "xy", "zz")])
+def test_runtime_dispatch_preserves_every_binding(domain: tuple[str, ...]) -> None:
+    table = schedule.derivative_dispatch_table(domain)
+    requests = schedule.derivative_requests(domain)
+    visited = set()
+    for op, operator in enumerate(schedule.COMPONENT_OPERATORS):
+        for labels in product(domain, repeat=4 if op == 3 else 2):
+            slot = 0
+            for label in labels:
+                slot = 10 * slot + DOMAIN.index(label)
+            slot += 100 * op
+            visited.add(slot)
+            row = table[slot]
+            binding = schedule.derivative_binding(operator, labels)
+            assert (
+                requests[row[0] * schedule.REQUESTS_PER_UNIT + row[1]]
+                == binding.request
+            )
+            assert row[2 : 2 + len(binding.centers)] == binding.centers
+            assert row[6:] == binding.axes
+    assert all(
+        row == (-1,) * 9 for slot, row in enumerate(table) if slot not in visited
+    )
+
+
 def test_complete_spd_schedule_is_finite_and_deterministic() -> None:
     requests = schedule.derivative_requests(DOMAIN)
     assert len(requests) == 362

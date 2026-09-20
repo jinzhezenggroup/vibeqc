@@ -23,6 +23,10 @@ endfunction()
 macro(vibeqc_add_native_tests)
   enable_testing()
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_xc_response_cuda_tests tests/native/test_xc_response_cuda.cu
+                       NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
+    target_compile_definitions(vibeqc_xc_response_cuda_tests PRIVATE
+                               VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
     # Run the same analytic/negative shared-policy suite through device algebra.
     vibeqc_native_test(vibeqc_df_final_validation_tests tests/native/test_final_state.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
