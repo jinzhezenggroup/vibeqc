@@ -138,7 +138,6 @@ from .rys import (
 from .rys import (
     boys_values as rys_boys_values,
 )
-from .specialize import specialize_integral_ir
 from .shell_class import (
     DpppComponentKernel,
     DpppContractionKernel,
@@ -182,6 +181,7 @@ from .shell_spec import (
     shell_class_name,
     shell_pair_class,
 )
+from .specialize import specialize_integral_ir
 
 __all__ = [
     "CUDA_TARGETS",
