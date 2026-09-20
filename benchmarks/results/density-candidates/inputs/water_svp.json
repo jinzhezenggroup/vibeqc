@@ -257,8 +257,8 @@
   "reference": {
     "PySCF": "2.14.0",
     "Libxc": "7.0.0",
-    "exporter_sha256": "3fae4d0d67df3ded3fd327f9afce6c2251bd888501dd0e258a93c8b887329a30",
-    "basis_adapter_sha256": "88b59d85e891edf86405990179723802682f479fc265a91773b088b1ce1b162e",
+    "exporter_sha256": "075ca64b52d7f4019b6f6b1ca191dd9d279f8c4964e26d279686d1ccb4480f1a",
+    "basis_adapter_sha256": "8a3db899cdfffbb3517d2976b21f4798e28deffe7e9a5356bd6c5119ccd52722",
     "numint_sha256": "ff7384551c7a6b80ff8a5ffcd915eb8bfbf6ca4b8f987f912aa82a1d6edda7e8",
     "angular_momenta": [
       0,
@@ -424,5 +424,5 @@
       "sha256": "bb62a2298dbb8b582e53283d74d30d3350920007257b1abdb5db2060d0b0a7c6"
     }
   },
-  "identity": "77f351158e5fbf02a5b587d8490b6a2418199871ee59a8a3e3bca3e1115efd17"
+  "identity": "9e96579739b06caf1c1dc1f8828e498c8f259fbff23da60a995b6604e07f4505"
 }
