@@ -2,7 +2,7 @@
 # Copyright (C) 2026 VibeQC contributors
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. See external/libxc-7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
-"""Audited Libxc 7.0 CAM-B3LYP-family scalar expressions."""
+"""Audited Libxc 7.0 extended GGA/hybrid scalar expressions."""
 
 import math
 from fractions import Fraction as F
@@ -32,6 +32,99 @@ def energy_expression(spec):
 
     def lda_exchange():
         return graph.sum(-cx * density.pow(4 / 3) for density in (ra, rb))
+
+    def pw91_exchange():
+        x2s = 1 / (2 * (6 * math.pi**2) ** (1 / 3))
+        a = F("0.19645")
+        b = F("7.7956")
+        c = F("0.2743")
+        d = F("-0.1508")
+        f = F("0.004")
+        alpha = F(100)
+        terms = []
+        for density, sigma in ((ra, saa), (rb, sbb)):
+            s2 = x2s**2 * sigma * density.pow(-8 / 3)
+            s = s2.pow(0.5)
+            s4 = s2.pow(2)
+            numerator = (c + d * graph.exponential(-alpha * s2)) * s2 - f * s4
+            denominator = (
+                1 + a * s * graph.transcendental_unary("asinh", b * s) + f * s4
+            )
+            enhancement = 1 + numerator / denominator
+            terms.append(-cx * density.pow(4 / 3) * enhancement)
+        return graph.sum(terms)
+
+    def pw92_epsilon():
+        parameters = {
+            "a": ("0.031091", "0.015545", "0.016887"),
+            "alpha": ("0.21370", "0.20548", "0.11125"),
+            "b1": ("7.5957", "14.1189", "10.357"),
+            "b2": ("3.5876", "6.1977", "3.6231"),
+            "b3": ("1.6382", "3.3662", "0.88026"),
+            "b4": ("0.49294", "0.62517", "0.49671"),
+        }
+        values = []
+        for i in range(3):
+            aux = (
+                F(parameters["b1"][i]) * rs.pow(0.5)
+                + F(parameters["b2"][i]) * rs
+                + F(parameters["b3"][i]) * rs.pow(1.5)
+                + F(parameters["b4"][i]) * rs.pow(2)
+            )
+            u = 1 / (2 * F(parameters["a"][i]) * aux)
+            values.append(
+                -2
+                * F(parameters["a"][i])
+                * (1 + F(parameters["alpha"][i]) * rs)
+                * graph.stable_unary("log1p", u)
+            )
+        fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
+        fz20 = F("1.709921")
+        g0, g1, gm = values
+        return g0 + z.pow(4) * fz * (g1 - g0 + gm / fz20) - fz * gm / fz20
+
+    def pw92_correlation():
+        return n * pw92_epsilon()
+
+    def pw91_correlation():
+        epsilon = pw92_epsilon()
+        phi = (up.pow(2 / 3) + down.pow(2 / 3)) / 2
+        phi3 = phi.pow(3)
+        total_sigma = saa + 2 * sab + sbb
+        t2 = total_sigma * n.pow(-8 / 3) / (16 * 2 ** (2 / 3) * phi.pow(2) * rs)
+        alpha = F("0.09")
+        c0 = F("0.004235")
+        nu = 16 / math.pi * (3 * math.pi**2) ** (1 / 3)
+        beta = nu * c0
+        c1 = beta**2 / (2 * alpha)
+        c2 = 2 * alpha / beta
+        a_term = c2 / graph.stable_unary(
+            "expm1", -2 * alpha * epsilon / (phi3 * beta**2)
+        )
+        h0 = (
+            c1
+            * phi3
+            * graph.stable_unary(
+                "log1p",
+                c2
+                * (t2 + a_term * t2.pow(2))
+                / (1 + a_term * t2 + a_term.pow(2) * t2.pow(2)),
+            )
+        )
+        rg_c_xc = (F("2.568") + F("23.266") * rs + F("0.007389") * rs.pow(2)) / (
+            1000 * (1 + F("8.723") * rs + F("0.472") * rs.pow(2))
+        )
+        c_xc0 = F("0.002568")
+        c_x = F("-0.001667")
+        h_a1 = -100 * 4 / math.pi * (4 / (9 * math.pi)) ** (1 / 3)
+        h1 = (
+            nu
+            * (rg_c_xc - c_xc0 - 3 * c_x / 7)
+            * phi3
+            * t2
+            * graph.exponential(h_a1 * rs * phi.pow(4) * t2)
+        )
+        return n * (epsilon + h0 + h1)
 
     def b88_enhancement(density, sigma):
         beta_b88 = F("0.0042")
@@ -158,6 +251,9 @@ def energy_expression(spec):
         "LDA_X": lda_exchange,
         "GGA_X_B88": lambda: b88_exchange(False),
         "GGA_X_ITYH": lambda: b88_exchange(True),
+        "GGA_X_PW91": pw91_exchange,
+        "LDA_C_PW": pw92_correlation,
+        "GGA_C_PW91": pw91_correlation,
         "LDA_C_VWN": vwn_correlation,
         "LDA_C_VWN_RPA": vwn_rpa_correlation,
         "GGA_C_LYP": lyp_correlation,
