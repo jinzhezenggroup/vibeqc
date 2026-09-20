@@ -28,7 +28,7 @@ Value and response ownership are proportional to estimated staged work with boun
 
 ## Evidence
 
-The synthetic policy test covers explicit hard caps, energy/force ownership, small/large workloads, deterministic no-probe fallback, live constrained/roomy envelopes and infeasible tiny force budgets. Native replay tests bind the generated response budget to the prepared owner. `benchmarks/df_policy_endpoint.py` retains resolved policy fields together with DF-plan and process peak-memory evidence; final CPU/CUDA qualification is recorded in the PR and repository checks.
+The synthetic policy test covers explicit hard caps, energy/force ownership, small/large workloads, deterministic no-probe fallback, live constrained/roomy envelopes and infeasible tiny force budgets. Native replay tests bind the generated response budget to the prepared owner. `benchmarks/df_policy_endpoint.py` is the driver for recording resolved fields with DF-plan and process peak-memory evidence. A driver and green CI are not a completed campaign: retained final-head real-device RHF/UHF force, constrained/roomy memory and warm-replay qualification remain pending.
 
 ## Subbudget provenance review
 
