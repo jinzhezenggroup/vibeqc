@@ -41,13 +41,22 @@ for pbe in (False,True):
     assert 'namespace vibeqc_grid_adjoint {' in s
     assert 'grid_response_adjoint.hpp' not in s
     include = s.index('#include "dft/stationary_gradient_cuda.cuh"')
-    for scientific in ('__global__ void primitive_kernel', '__global__ void geometry_kernel'):
+    for scientific in ('__global__ void task_kernel', '__global__ void geometry_kernel'):
         assert scientific in s
         assert s.index(scientific) > include
+    assert 'stationary_records' not in s
     assert s == emit_stationary_cuda(primitive,pbe=pbe)
 template=open('src/dft/stationary_gradient_cuda.cuh').read()
-assert '__global__ void primitive_kernel' in template
-assert 'for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count' not in template
+assert '__global__ void task_kernel' in template
+assert 'stationary_tasks' in template
+assert 'stationary_topology' in template
+assert 'stationary_records' not in template
+assert 'for (size_t linear = 0; linear < primitive_work; ++linear)' not in template
+driver=open('python/vibeqc/_stationary_cuda.py').read()
+assert 'stationary_records' not in driver
+assert 'for ids in product(*ranges)' not in driver
+assert '"stationary_tasks"' in driver
+assert 'np.lexsort' in driver
 """
     subprocess.run(
         [sys.executable, "-c", script],

@@ -1,10 +1,11 @@
 """Complete CUDA RKS/UKS gradient diagnostic with explicit host export.
 
 This bounded consumer also supplies qualified public Calculator CUDA forces. Native
-CUDA SCF exports its verified D/W frame to the host. Python enumerates primitive
-records and gathers TensorIR inputs; all derivative/normalization/contraction,
-AO/features/XC work, atom scatter and final source reduction execute on CUDA.
-No CPU derivative or interpreter fallback is available.
+CUDA SCF exports its verified D/W frame to the host. Python submits compact AO-tuple
+tasks and gathers TensorIR inputs; immutable basis topology is resident and primitive
+enumeration/derivative contraction executes on CUDA. AO/features/XC work, atom
+scatter and final source reduction also execute on CUDA. No CPU derivative or
+interpreter fallback is available.
 """
 
 from __future__ import annotations
@@ -98,7 +99,7 @@ def _layout(basis: typing.Any) -> typing.Any:
 
 
 class _CudaSources:
-    """Serialized finite owner; device accumulators publish only after success."""
+    """Serialized finite owner; bounded AO tasks expand primitives only on CUDA."""
 
     def __init__(
         self,
@@ -109,6 +110,7 @@ class _CudaSources:
         points: typing.Any,
         records: typing.Any,
         budget: typing.Any,
+        work_budget: typing.Any = 2_000_000,
     ) -> None:
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
             raise ValueError("stationary CUDA binary hash mismatch")
@@ -116,10 +118,9 @@ class _CudaSources:
         self.handle = ct.c_void_p()
         self.library = lib = ct.CDLL(str(artifact.library))
         self.natom, self.nao, self.point_capacity = basis.natom, basis.nao, points
-        self.buffer = np.ones((records, 26))
-        self.maps = np.full((records, 4), -1, dtype=np.int64)
+        self.tasks = np.full((records, 9), -1, dtype=np.int64)
+        self.factors = np.ones((records, 2))
         self.used = 0
-        self.pending = None
         self.device = device
         self.borrowed_streams = set()
         self.centers = np.ascontiguousarray(
@@ -127,19 +128,37 @@ class _CudaSources:
         )
         self.ao_atoms = np.ascontiguousarray(_native_ao_atoms(basis), dtype=np.int64)
         self.primitives, self.aos, self.components, requests = _layout(basis)
+        self.primitive_table = np.ascontiguousarray(self.primitives, dtype=np.float64)
+        self.ao_ranges = np.ascontiguousarray(self.aos[:, 1:3], dtype=np.int64)
+        self.ao_norms = np.ascontiguousarray(self.aos[:, 7], dtype=np.float64)
         self.kinds = {key: i for i, key in enumerate(requests)}
         tail = [ct.c_char_p, ct.c_size_t]
         lib.stationary_create.argtypes = (
-            [ct.c_int] * 3 + [ct.c_size_t] * 5 + [ct.POINTER(ct.c_void_p), *tail]
+            [ct.c_int] * 3 + [ct.c_size_t] * 7 + [ct.POINTER(ct.c_void_p), *tail]
         )
-        lib.stationary_reset.argtypes = [ct.c_void_p, _DOUBLE, _INT, ct.c_double, *tail]
-        lib.stationary_records.argtypes = [
+        lib.stationary_topology.argtypes = [
             ct.c_void_p,
-            ct.c_uint,
-            ct.c_uint,
             _DOUBLE,
             _INT,
+            _DOUBLE,
+            _INT,
+            *tail,
+        ]
+        lib.stationary_reset.argtypes = [ct.c_void_p, _DOUBLE, ct.c_double, *tail]
+        lib.stationary_tasks.argtypes = [
+            ct.c_void_p,
+            _INT,
+            _DOUBLE,
             ct.c_size_t,
+            *tail,
+        ]
+        lib.stationary_nuclear.argtypes = [
+            ct.c_void_p,
+            ct.c_uint,
+            ct.c_int64,
+            ct.c_int64,
+            ct.c_double,
+            ct.c_double,
             *tail,
         ]
         lib.stationary_geometry.argtypes = [
@@ -165,10 +184,20 @@ class _CudaSources:
             *compiler.target.compute_capability,
             basis.natom,
             basis.nao,
+            basis.nprimitive,
             points,
             records,
+            work_budget,
             budget,
             ct.byref(self.handle),
+        )
+        self._call(
+            "stationary_topology",
+            self.handle,
+            _ptr(self.primitive_table),
+            _ptr(self.ao_ranges),
+            _ptr(self.ao_norms),
+            _ptr(self.ao_atoms),
         )
 
     def _call(self, name: typing.Any, *args: typing.Any) -> None:
@@ -177,23 +206,25 @@ class _CudaSources:
             raise RuntimeError(error.value.decode())
 
     def reset(self, tolerance: typing.Any) -> None:
-        self.used, self.pending = 0, None
+        self.used = 0
         self._call(
             "stationary_reset",
             self.handle,
             _ptr(self.centers),
-            _ptr(self.ao_atoms),
             tolerance,
         )
 
     def flush(self) -> None:
         if self.used:
+            pending = self.tasks[: self.used]
+            order = np.lexsort((pending[:, 1], pending[:, 0]))
+            tasks = np.ascontiguousarray(pending[order])
+            factors = np.ascontiguousarray(self.factors[: self.used][order])
             self._call(
-                "stationary_records",
+                "stationary_tasks",
                 self.handle,
-                *self.pending,
-                _ptr(self.buffer),
-                _ptr(self.maps),
+                _ptr(tasks),
+                _ptr(factors),
                 self.used,
             )
             self.used = 0
@@ -207,45 +238,42 @@ class _CudaSources:
         nucleus: typing.Any = None,
         charge: typing.Any = 1.0,
     ) -> None:
-        """Pack exponents, raw normalization factors and plan weights separately.
-
-        Host work is discrete record enumeration. CUDA multiplies every
-        normalization factor and performs the weighted derivative/scatter.
-        """
-        key = self.kinds[operator, tuple(self.components[i] for i in indices)], source
-        if key != self.pending:
-            self.flush()
-            self.pending = key
+        """Append one AO task; primitive Cartesian products are traversed natively."""
+        indices = tuple(int(i) for i in indices)
+        rank = len(indices)
+        if rank not in (2, 4):
+            raise ValueError("stationary CUDA task rank must be two or four")
+        kind = self.kinds[operator, tuple(self.components[i] for i in indices)]
         rows = self.aos[list(indices)]
-        owners = [int(r[0]) for r in rows]
-        if nucleus is not None:
-            owners.append(nucleus)
-        ranges = [range(int(r[1]), int(r[1] + r[2])) for r in rows]
-        for ids in product(*ranges):
-            r, m = self.buffer[self.used], self.maps[self.used]
-            r.fill(1)
-            m.fill(-1)
-            primitives = self.primitives[list(ids)]
-            r[: len(ids)] = primitives[:, 0]
-            r[4 : 4 + 3 * len(owners)] = self.centers[owners].reshape(-1)
-            r[16 : 16 + len(ids)] = primitives[:, 1]
-            r[20 : 20 + len(ids)] = rows[:, 7]
-            r[24], r[25] = weight, charge
-            m[: len(owners)] = owners
-            self.used += 1
-            if self.used == len(self.buffer):
-                self.flush()
+        primitive_work = 1
+        for row in rows:
+            primitive_work *= int(row[2])
+        if self.used == len(self.tasks):
+            self.flush()
+        task = self.tasks[self.used]
+        task.fill(-1)
+        task[:4] = (
+            kind,
+            source,
+            rank,
+            -1 if nucleus is None else int(nucleus),
+        )
+        task[4 : 4 + rank] = indices
+        task[8] = primitive_work
+        self.factors[self.used] = weight, charge
+        self.used += 1
 
     def nuclear(self, a: typing.Any, b: typing.Any, charges: typing.Any) -> None:
         self.flush()
-        self.pending = self.kinds["nuclear", ()], 6
-        r, m = self.buffer[0], self.maps[0]
-        r.fill(1)
-        m.fill(-1)
-        r[:2] = charges[[a, b]]
-        r[4:10] = self.centers[[a, b]].reshape(-1)
-        m[:2] = a, b
-        self.used = 1
+        self._call(
+            "stationary_nuclear",
+            self.handle,
+            self.kinds["nuclear", ()],
+            int(a),
+            int(b),
+            float(charges[a]),
+            float(charges[b]),
+        )
 
     def geometry(
         self,
@@ -281,8 +309,8 @@ class _CudaSources:
         return {name: out[i] for i, name in enumerate(_SOURCE_NAMES)}
 
     def metrics(self) -> typing.Any:
-        values = (ct.c_uint64 * 8)()
-        if self.library.stationary_metrics(self.handle, values, 8):
+        values = (ct.c_uint64 * 10)()
+        if self.library.stationary_metrics(self.handle, values, 10):
             raise RuntimeError("stationary metrics unavailable")
         return dict(
             zip(
@@ -295,6 +323,8 @@ class _CudaSources:
                     "xc_points",
                     "grid_pair_visits",
                     "stream",
+                    "task_descriptors",
+                    "task_batches",
                 ),
                 values,
             )
@@ -389,6 +419,8 @@ def complete_rks_cuda_gradient_diagnostic(
     na, n = basis.natom, basis.nao
     if not 1 <= na <= 32 or not 1 <= n <= 128:
         raise ValueError("CUDA diagnostic small-domain atom/AO cap exceeded")
+    if not 1 <= basis.nprimitive <= 4096:
+        raise ValueError("CUDA diagnostic primitive-topology cap exceeded")
     _, aos, _, requests = _layout(basis)
     primitive_sum = sum(int(r[2]) for r in aos)
     records = primitive_sum**4 + (na + 2) * primitive_sum**2 + na * (na - 1) // 2
@@ -426,7 +458,15 @@ def complete_rks_cuda_gradient_diagnostic(
         budget_bytes=max_device_bytes,
     )
     source_bytes = (
-        8 * (42 * primitive_tile + 24 * na + 3 * tile_points + 576 * na + n) + 256
+        8
+        * (
+            23 * primitive_tile
+            + 2 * basis.nprimitive
+            + 4 * n
+            + 600 * na
+            + 3 * tile_points
+        )
+        + 256
     )
     available = max_device_bytes - grid_plan.peak_bytes - source_bytes
     if available <= 0:
@@ -442,8 +482,9 @@ def complete_rks_cuda_gradient_diagnostic(
     tensor_plans["reduction"] = plan_cuda(
         plan.reduction_program(atoms=na), compiler.target, max_bytes=available
     )
-    # Conservative numeric-array bound: record/maps, adapter staging, D spin
-    # conversion, gathered feeds, candidate/publication copies, and tile owners.
+    # Conservative numeric-array bound: compact task pages/sort staging, resident
+    # topology mirrors, adapter staging, D spin conversion, gathered feeds,
+    # candidate/publication copies, and tile owners.
     # Compiler objects, Python headers and the caller's existing SCF snapshot
     # are explicit exclusions, as in the reused grid/TensorIR resource contracts.
     host_bound = (
@@ -455,7 +496,8 @@ def complete_rks_cuda_gradient_diagnostic(
             + 120 * na
             + 26 * integral_terms
             + 3 * tile_points
-            + n
+            + 2 * basis.nprimitive
+            + 4 * n
             + 80
         )
         + max(tp.host_bytes for tp in tensor_plans.values())
@@ -567,6 +609,7 @@ def complete_rks_cuda_gradient_diagnostic(
                 tile_points,
                 primitive_tile,
                 source_bytes,
+                work_budget=records,
             )
         )
         sources.reset(spec.coincident_tolerance)
@@ -709,7 +752,7 @@ def complete_rks_cuda_gradient_diagnostic(
         snapshot_host_bytes=state._source.values.nbytes,
         snapshot_export_work=dict(state._source.export_work),
         snapshot_export="explicit native CUDA final-state export; W/frame validation is host work",
-        host_scope="snapshot validation; primitive enumeration and record packing; density gathers; TensorIR H2D/D2H; immutable result copies",
+        host_scope="snapshot validation; bounded AO-task packing/grouping; density gathers; TensorIR H2D/D2H; immutable result copies",
         endpoint_seconds=perf_counter() - started,
         artifacts=tuple(
             {
@@ -727,5 +770,5 @@ def complete_rks_cuda_gradient_diagnostic(
         state.identity,
         MappingProxyType(work),
         execution=("cuda-nine-source" if ecp else "cuda-seven-source")
-        + "/explicit-host-snapshot-and-orchestration-v1",
+        + "/explicit-host-snapshot-and-native-task-batches-v2",
     )
