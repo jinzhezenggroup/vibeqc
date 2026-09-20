@@ -260,7 +260,7 @@ def test_fused_primitive_replay_adjoint_and_higher_derivatives(
         "d_y": np.asarray(1, dtype=dtype),
     }
     _close(execute(second.program, args).outputs["d_bar_y"], dtype(0.75), dtype)
-    assert AD_RULE_VERSION == GENERATION_VERSION == 2
+    assert AD_RULE_VERSION == GENERATION_VERSION == 3
     with pytest.raises(ValueError, match="six operands"):
         Node("scaled_bilinear", tuple(nodes[:5]), nodes[0].spec.result())
 
