@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "xtbloom/xtbloom.h"
+#include "runtime/gfn2_cpu_execution.hpp"
 
 namespace vibeqc::methods::detail {
 namespace {
@@ -25,7 +25,31 @@ xtbloom_buffer_t output_buffer(std::vector<T>& values) {
           0u};
 }
 
-[[noreturn]] void throw_xtbloom(xtbloom_status_t status, const char* stage) {
+const char* xtb_status_name(xtbloom_status_t status) noexcept {
+  switch (status) {
+    case XTBLOOM_STATUS_SUCCESS:
+      return "success";
+    case XTBLOOM_STATUS_INVALID_ARGUMENT:
+      return "invalid argument";
+    case XTBLOOM_STATUS_BACKEND_UNAVAILABLE:
+      return "backend unavailable";
+    case XTBLOOM_STATUS_NOT_SUPPORTED:
+      return "not supported";
+    case XTBLOOM_STATUS_NOT_IMPLEMENTED:
+      return "not implemented";
+    case XTBLOOM_STATUS_ALLOCATION_FAILED:
+      return "allocation failed";
+    case XTBLOOM_STATUS_SCC_NOT_CONVERGED:
+      return "SCC not converged";
+    case XTBLOOM_STATUS_EIGENSOLVER_FAILED:
+      return "eigensolver failed";
+    default:
+      return "internal error";
+  }
+}
+
+[[noreturn]] void throw_xtbloom(xtbloom_status_t status, const char* stage,
+                                 const std::string& detail = {}) {
   vibeqc_status mapped = VIBEQC_STATUS_INTERNAL_ERROR;
   switch (status) {
     case XTBLOOM_STATUS_INVALID_ARGUMENT:
@@ -49,43 +73,10 @@ xtbloom_buffer_t output_buffer(std::vector<T>& values) {
       mapped = VIBEQC_STATUS_INTERNAL_ERROR;
       break;
   }
-  const char* detail = xtbloom_get_last_error();
-  std::string message = std::string("GFN2-xTB ") + stage + " failed";
-  if (detail != nullptr && detail[0] != '\0') {
-    message += ": ";
-    message += detail;
-  } else {
-    message += ": ";
-    message += xtbloom_status_string(status);
-  }
+  std::string message = std::string("GFN2-xTB ") + stage + " failed: ";
+  message += detail.empty() ? xtb_status_name(status) : detail;
   throw MethodError(mapped, message);
 }
-
-void check_xtbloom(xtbloom_status_t status, const char* stage) {
-  if (status != XTBLOOM_STATUS_SUCCESS) throw_xtbloom(status, stage);
-}
-
-class XtbContext final {
- public:
-  XtbContext() {
-    xtbloom_context_options_t options{};
-    check_xtbloom(xtbloom_context_options_init(&options, sizeof(options)), "context init");
-    options.backend = XTBLOOM_BACKEND_CPU;
-    options.cpu_threads = 1;
-    xtbloom_context_t* raw = nullptr;
-    check_xtbloom(xtbloom_context_create(&options, &raw), "context creation");
-    context_ = raw;
-  }
-
-  ~XtbContext() { xtbloom_context_destroy(context_); }
-  XtbContext(const XtbContext&) = delete;
-  XtbContext& operator=(const XtbContext&) = delete;
-
-  [[nodiscard]] xtbloom_context_t* get() const noexcept { return context_; }
-
- private:
-  xtbloom_context_t* context_{};
-};
 
 class Gfn2PreparedCalculation final : public PreparedCalculation {
  public:
@@ -136,9 +127,12 @@ class Gfn2PreparedCalculation final : public PreparedCalculation {
     xtbloom_batch_t batch{};
     xtbloom_compute_options_t options{};
     xtbloom_batch_result_t output{};
-    check_xtbloom(xtbloom_batch_init(&batch, sizeof(batch)), "batch init");
-    check_xtbloom(xtbloom_compute_options_init(&options, sizeof(options)), "options init");
-    check_xtbloom(xtbloom_batch_result_init(&output, sizeof(output)), "result init");
+    batch.struct_size = sizeof(batch);
+    batch.api_version = XTBLOOM_API_VERSION;
+    options.struct_size = sizeof(options);
+    options.api_version = XTBLOOM_API_VERSION;
+    output.struct_size = sizeof(output);
+    output.api_version = XTBLOOM_API_VERSION;
 
     batch.batch_size = 1;
     batch.total_atoms = static_cast<std::int64_t>(atoms_.size());
@@ -155,6 +149,7 @@ class Gfn2PreparedCalculation final : public PreparedCalculation {
     options.max_scc_iterations = static_cast<std::int32_t>(maximum_iterations_);
     options.charge_tolerance = charge_tolerance_;
     options.energy_tolerance = energy_tolerance_;
+    options.electronic_temperature = XTBLOOM_DEFAULT_ELECTRONIC_TEMPERATURE;
     options.scc_start_mode = XTBLOOM_SCC_START_FRESH;
     options.scc_mixer = XTBLOOM_SCC_MIXER_MODIFIED_BROYDEN;
     options.scc_mixer_history = static_cast<std::int32_t>(mixer_history_);
@@ -171,7 +166,11 @@ class Gfn2PreparedCalculation final : public PreparedCalculation {
     output.scc_converged = output_buffer(converged);
     output.per_system_status = output_buffer(statuses);
 
-    check_xtbloom(xtbloom_compute(context_.get(), &batch, &options, &output), "execution");
+    std::string execution_error;
+    const xtbloom_status_t execution_status =
+        xtbloom::detail::execute_restricted_gfn2_cpu(cache_, batch, options, output, execution_error);
+    if (execution_status != XTBLOOM_STATUS_SUCCESS)
+      throw_xtbloom(execution_status, "execution", execution_error);
 
     if (statuses[0] == XTBLOOM_STATUS_EIGENSOLVER_FAILED)
       throw MethodError(VIBEQC_STATUS_NUMERICAL_FAILURE, "GFN2-xTB generalized eigensolver failed");
@@ -199,7 +198,7 @@ class Gfn2PreparedCalculation final : public PreparedCalculation {
   unsigned mixer_history_{};
   double energy_tolerance_{};
   double charge_tolerance_{};
-  XtbContext context_;
+  xtbloom::detail::Gfn2CpuExecutionCache cache_{1};
 };
 
 }  // namespace

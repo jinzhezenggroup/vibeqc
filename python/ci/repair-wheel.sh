@@ -9,9 +9,9 @@ provider_python="$project_dir/build/wheel-openblas-provider/bin/python"
 # OpenBLAS into the process-global namespace, which the private shim avoids.
 provider_path=$(
   "$provider_python" \
-    "$project_dir/external/xtbloom-gfn2/python/ci/resolve-openblas-wheel.py" \
+    "$project_dir/tools/xtb/resolve-openblas-wheel.py" \
     --manifest \
-    "$project_dir/external/xtbloom-gfn2/cmake/3rdparty/scipy_openblas32_manifest.json" |
+    "$project_dir/tools/xtb/scipy_openblas32_manifest.json" |
     "$provider_python" -c \
       'import json, sys; print(json.load(sys.stdin)["provider_path"])'
 )

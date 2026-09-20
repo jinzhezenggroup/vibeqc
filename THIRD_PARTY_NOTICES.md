@@ -89,12 +89,12 @@ see `LICENSES/mstore-Apache-2.0.txt`.
 
 VibeQC issue #560 embeds a reviewed source snapshot of xTBloom commit
 `5a67cc59ace94c8296e873503b2ae1298e7c2861` under
-`external/xtbloom-gfn2/` to provide the first production GFN2-xTB runtime:
+`src/xtb/gfn2_runtime/` to provide the first production GFN2-xTB runtime:
 intrinsic-basis integrals, H0, ES2/ES3/AES2, generalized eigensolution,
 occupations, Mulliken/multipole state, SCC mixing, repulsion, self-consistent
-D4, spin terms, total energy, and analytic nuclear forces. The snapshot is
-statically linked into `libvibeqc`; an installed xTBloom library or executable
-is not a runtime dependency. Its GPL-3.0-or-later terms, additional CUDA/MKL
+D4, spin terms, total energy, and analytic nuclear forces. VibeQC compiles only the required common/GFN2/CPU-runtime sources into
+`libvibeqc`; the former broad xTBloom subproject is not restored, and an
+installed xTBloom library or executable is not a runtime dependency. Its GPL-3.0-or-later terms, additional CUDA/MKL
 permission, full third-party notices, and retained license texts ship with the
 source/wheel legal material.
 

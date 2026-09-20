@@ -12,4 +12,4 @@ rm -rf "$provider_env"
 python -m venv "$provider_env"
 "$provider_env/bin/python" -m pip install --disable-pip-version-check --no-deps   "scipy-openblas32==0.3.34.0.0"
 
-"$provider_env/bin/python"   "$project_dir/external/xtbloom-gfn2/python/ci/resolve-openblas-wheel.py"   --manifest   "$project_dir/external/xtbloom-gfn2/cmake/3rdparty/scipy_openblas32_manifest.json"   >/dev/null
+"$provider_env/bin/python"   "$project_dir/tools/xtb/resolve-openblas-wheel.py"   --manifest   "$project_dir/tools/xtb/scipy_openblas32_manifest.json"   >/dev/null
