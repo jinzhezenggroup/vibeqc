@@ -60,12 +60,15 @@ EEQ provider uses a dense `(N+1)^2` constrained matrix and a bounded
 large-system schedule. Its asymptotic linear solves are cubic.
 
 The same bounded EEQ charge/response mathematics is qualified on CPU and CUDA.
-The CUDA test uploads immutable EEQ/D4 tables, evaluates both standard and
-r2SCAN-3c profiles on a real device, and covers ragged members plus peer-local
-failure. The one-worker-per-molecule route is a correctness baseline; a
-production GPU scheduler, generated derivative lowering and performance
-qualification remain open under #493. There is no PBC, Hessian, public SCF
-integration, or complete r2SCAN-3c method registration in this slice.
+The complete EEQ route remains a one-worker-per-molecule correctness baseline.
+For fixed-charge D4, d4_cuda.cu now provides a bounded block-cooperative
+scheduler: one block owns each ragged molecule while 256 lanes share
+coordination, pair, ATM-triple and response work. Failed and inactive members
+publish zero outputs without poisoning successful peers. The scheduler keeps
+the scalar evaluator as the numerical oracle and materializes no pair/triple
+tensors. Parallel EEQ charge/response solves, generated derivative lowering and
+public provider integration remain open under #493. There is no PBC, Hessian,
+public SCF integration, or complete r2SCAN-3c method registration in this slice.
 
 ## Reproduction
 
@@ -89,7 +92,9 @@ python tools/parameters/generate_d4_eeq.py \
 ```
 
 CTest targets are `vibeqc_d4_reference_tests`, `vibeqc_d4_eeq_tests`, and on
-CUDA builds `vibeqc_d4_reference_cuda_tests` plus `vibeqc_d4_eeq_cuda_tests`.
+CUDA builds `vibeqc_d4_reference_cuda_tests`, `vibeqc_d4_schedule_cuda_tests`
+and `vibeqc_d4_eeq_cuda_tests`. The `vibeqc_d4_schedule_probe` executable
+compares the retained one-lane device oracle with block-cooperative fixed-charge execution.
 Regenerate the independent EEQ
 fixtures with:
 

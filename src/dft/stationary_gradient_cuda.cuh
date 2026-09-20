@@ -14,10 +14,11 @@ using namespace vibeqc_tensor;
 constexpr size_t workers = 32, record_stride = 26, task_stride = 9;
 struct Owner {
   Context context;
-  size_t atoms{}, aos{}, primitives{}, points{}, task_capacity{}, max_primitive_work{}, bytes{};
+  size_t atoms{}, aos{}, primitives{}, points{}, task_capacity{}, spin_blocks{},
+      max_primitive_work{}, bytes{};
   bool failed = true, topology_ready = false;
-  double *primitive_table{}, *ao_norms{}, *task_factors{}, *task_values{}, *centers{}, *weights{},
-      *raw{}, *partial{}, *scratch{}, *sources{};
+  double *primitive_table{}, *ao_norms{}, *task_charges{}, *task_values{}, *centers{}, *weights{},
+      *raw{}, *partial{}, *scratch{}, *sources{}, *density{}, *weighted_density{};
   int64_t *ao_ranges{}, *tasks{}, *ao_atoms{}, *point_atoms{};
   uint64_t uploads{}, downloads{}, launches{}, primitive_count{}, point_count{}, pair_visits{},
       task_count{}, task_batches{};
@@ -37,11 +38,11 @@ struct Owner {
 };
 // Caps make all products below representable before any allocation or pointer
 // dereference. The fixed worker count bounds O(worker*natom) adjoint scratch.
-size_t allocation(size_t na, size_t n, size_t nprimitive, size_t np, size_t ntask) {
+size_t allocation(size_t na, size_t n, size_t nprimitive, size_t np, size_t ntask, size_t ns) {
   if (!na || na > 32 || !n || n > 128 || !nprimitive || nprimitive > 4096 || !np || np > 4096 ||
-      !ntask || ntask > 4096)
+      !ntask || ntask > 4096 || (ns != 1 && ns != 2) || ns != stationary_spin_blocks)
     throw std::invalid_argument("stationary CUDA shape exceeds small-domain caps");
-  return 8 * (2 * nprimitive + 4 * n + 23 * ntask + 600 * na + 3 * np) + 256;
+  return 8 * (2 * nprimitive + 4 * n + 22 * ntask + 600 * na + 3 * np + 2 * ns * n * n) + 256;
 }
 template <class F>
 int guarded(Owner* owner, char* error, size_t size, F f) noexcept {
@@ -78,10 +79,11 @@ void upload(Owner& p, T* out, const T* in, size_t n, cudaStream_t stream) {
   cuda_check(cudaMemcpyAsync(out, in, n * sizeof(T), cudaMemcpyHostToDevice, stream));
   p.uploads += n * sizeof(T);
 }
-__global__ void task_kernel(const int64_t* tasks, const double* factors, size_t count,
+__global__ void task_kernel(const int64_t* tasks, const double* charges, size_t count,
                             const double* primitives, size_t nprimitive, const int64_t* ao_ranges,
                             const double* ao_norms, const int64_t* ao_atoms, const double* centers,
-                            size_t nao, size_t na, double* output, int* error);
+                            const double* density, const double* weighted_density, size_t nao,
+                            size_t na, double* output, int* error);
 __global__ void task_reduce(const double* input, const int64_t* tasks, size_t count,
                             const int64_t* ao_atoms, size_t na, double* output, int* error);
 __global__ void nuclear_kernel(unsigned kind, int64_t a, int64_t b, double za, double zb,
@@ -96,14 +98,14 @@ __global__ void geometry_reduce(const double* partial, size_t na, double* output
 
 extern "C" {
 int stationary_create(int device, int major, int minor, size_t na, size_t n, size_t nprimitive,
-                      size_t np, size_t ntask, size_t max_primitive_work, size_t budget,
+                      size_t np, size_t ntask, size_t ns, size_t max_primitive_work, size_t budget,
                       void** output, char* error, size_t size) {
   using namespace vibeqc_stationary_cuda;
   if (output) *output = nullptr;
   return guarded(nullptr, error, size, [&] {
     if (!output || !max_primitive_work)
       throw std::invalid_argument("invalid stationary owner output/work budget");
-    const size_t bytes = allocation(na, n, nprimitive, np, ntask);
+    const size_t bytes = allocation(na, n, nprimitive, np, ntask, ns);
     if (bytes > budget) throw std::invalid_argument("stationary CUDA byte budget exceeded");
     int device_count = 0;
     cuda_check(cudaGetDeviceCount(&device_count));
@@ -115,6 +117,7 @@ int stationary_create(int device, int major, int minor, size_t na, size_t n, siz
     p->primitives = nprimitive;
     p->points = np;
     p->task_capacity = ntask;
+    p->spin_blocks = ns;
     p->max_primitive_work = max_primitive_work;
     p->bytes = bytes;
     p->context.prepare(device, major, minor, bytes, bytes - 256, 0, 0, 0, false);
@@ -126,7 +129,7 @@ int stationary_create(int device, int major, int minor, size_t na, size_t n, siz
     };
     p->primitive_table = take(2 * nprimitive);
     p->ao_norms = take(n);
-    p->task_factors = take(2 * ntask);
+    p->task_charges = take(ntask);
     p->task_values = take(12 * ntask);
     p->centers = take(3 * na);
     p->weights = take(np);
@@ -138,6 +141,8 @@ int stationary_create(int device, int major, int minor, size_t na, size_t n, siz
     p->tasks = reinterpret_cast<int64_t*>(take(task_stride * ntask));
     p->ao_atoms = reinterpret_cast<int64_t*>(take(n));
     p->point_atoms = reinterpret_cast<int64_t*>(take(np));
+    p->density = take(ns * n * n);
+    p->weighted_density = take(ns * n * n);
     *output = p.release();
   });
 }
@@ -169,8 +174,8 @@ int stationary_topology(void* pointer, const double* primitives, const int64_t* 
     p->topology_ready = true;
   });
 }
-int stationary_reset(void* pointer, const double* centers, double tolerance, char* error,
-                     size_t size) {
+int stationary_reset(void* pointer, const double* centers, const double* density,
+                     const double* weighted_density, double tolerance, char* error, size_t size) {
   using namespace vibeqc_stationary_cuda;
   auto* p = static_cast<Owner*>(pointer);
   return guarded(p, error, size, [&] {
@@ -183,18 +188,20 @@ int stationary_reset(void* pointer, const double* centers, double tolerance, cha
     cuda_check(cudaMemsetAsync(p->context.error, 0, sizeof(int), stream));
     cuda_check(cudaMemsetAsync(p->sources, 0, 21 * p->atoms * 8, stream));
     upload(*p, p->centers, centers, 3 * p->atoms, stream);
+    upload(*p, p->density, density, p->spin_blocks * p->aos * p->aos, stream);
+    upload(*p, p->weighted_density, weighted_density, p->spin_blocks * p->aos * p->aos, stream);
     validate_centers<<<1, 1, 0, stream>>>(p->centers, p->atoms, tolerance, p->context.error);
     ++p->launches;
     p->pair_visits += p->atoms * (p->atoms - 1) / 2;
     finished(*p, stream);
   });
 }
-int stationary_tasks(void* pointer, const int64_t* tasks, const double* factors, size_t count,
+int stationary_tasks(void* pointer, const int64_t* tasks, const double* charges, size_t count,
                      char* error, size_t size) {
   using namespace vibeqc_stationary_cuda;
   auto* p = static_cast<Owner*>(pointer);
   return guarded(p, error, size, [&] {
-    if (!p || !tasks || !factors || !count || count > p->task_capacity)
+    if (!p || !tasks || !charges || !count || count > p->task_capacity)
       throw std::invalid_argument("invalid stationary task page");
     check(*p);
     size_t primitive_work = 0;
@@ -214,10 +221,11 @@ int stationary_tasks(void* pointer, const int64_t* tasks, const double* factors,
     p->check_primitive_work(primitive_work);
     auto stream = p->context.stream;
     upload(*p, p->tasks, tasks, task_stride * count, stream);
-    upload(*p, p->task_factors, factors, 2 * count, stream);
+    upload(*p, p->task_charges, charges, count, stream);
     task_kernel<<<blocks(count, 64), 64, 0, stream>>>(
-        p->tasks, p->task_factors, count, p->primitive_table, p->primitives, p->ao_ranges,
-        p->ao_norms, p->ao_atoms, p->centers, p->aos, p->atoms, p->task_values, p->context.error);
+        p->tasks, p->task_charges, count, p->primitive_table, p->primitives, p->ao_ranges,
+        p->ao_norms, p->ao_atoms, p->centers, p->density, p->weighted_density, p->aos, p->atoms,
+        p->task_values, p->context.error);
     task_reduce<<<blocks(21 * p->atoms, 64), 64, 0, stream>>>(
         p->task_values, p->tasks, count, p->ao_atoms, p->atoms, p->sources, p->context.error);
     p->launches += 2;

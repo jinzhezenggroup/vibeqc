@@ -17,6 +17,7 @@ METHOD_R2SCAN_UKS = 11
 METHOD_RCCSD = 12
 METHOD_PBE0_RKS = 13
 METHOD_PBE0_UKS = 14
+METHOD_GFN2_XTB = 15
 
 METHOD_CONSTANTS = MappingProxyType({
     "METHOD_RHF": METHOD_RHF,
@@ -33,6 +34,7 @@ METHOD_CONSTANTS = MappingProxyType({
     "METHOD_RCCSD": METHOD_RCCSD,
     "METHOD_PBE0_RKS": METHOD_PBE0_RKS,
     "METHOD_PBE0_UKS": METHOD_PBE0_UKS,
+    "METHOD_GFN2_XTB": METHOD_GFN2_XTB,
 })
 
 METHOD_METADATA = MappingProxyType({
@@ -50,6 +52,7 @@ METHOD_METADATA = MappingProxyType({
     'rccsd': MappingProxyType({"abi_id": 12, "family": 'coupled_cluster', "provider": 'rccsd', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
     'pbe0-rks': MappingProxyType({"abi_id": 13, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
     'pbe0-uks': MappingProxyType({"abi_id": 14, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
+    'gfn2-xtb': MappingProxyType({"abi_id": 15, "family": 'semiempirical', "provider": 'xtb', "properties": ('energy', 'forces'), "supports_batch": False, "aliases": ('gfn2',)}),
 })
 
 METHOD_NAME_TO_ID = MappingProxyType({
@@ -68,6 +71,8 @@ METHOD_NAME_TO_ID = MappingProxyType({
     'rccsd': METHOD_RCCSD,
     'pbe0-rks': METHOD_PBE0_RKS,
     'pbe0-uks': METHOD_PBE0_UKS,
+    'gfn2-xtb': METHOD_GFN2_XTB,
+    'gfn2': METHOD_GFN2_XTB,
 })
 METHOD_ID_TO_NAME = MappingProxyType({
     METHOD_RHF: 'rhf',
@@ -84,6 +89,7 @@ METHOD_ID_TO_NAME = MappingProxyType({
     METHOD_RCCSD: 'rccsd',
     METHOD_PBE0_RKS: 'pbe0-rks',
     METHOD_PBE0_UKS: 'pbe0-uks',
+    METHOD_GFN2_XTB: 'gfn2-xtb',
 })
 
 HF_METHOD_IDS = frozenset((METHOD_RHF, METHOD_UHF,))

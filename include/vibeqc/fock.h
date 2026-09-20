@@ -213,6 +213,19 @@ VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_norm(vibeqc_rhf_response_r
                                                            uint32_t slot, double* value);
 VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_apply(vibeqc_rhf_response_resident* owner,
                                                             uint32_t destination, uint32_t source);
+/** Reconstruct final RHF nuclear response matrices from one solved resident
+ * rotation vector. frozen_mo/overlap_mo are row-major (nbf,nbf) host matrices.
+ * On success D1 and W1 remain device-resident and contiguous until the next
+ * resident operator action or reconstruction. This is tools-only plumbing for
+ * Hessian/HVP consumers, not a public Calculator API. */
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_reconstruct_v1(
+    vibeqc_rhf_response_resident* owner, uint32_t solution_slot, const double* frozen_mo,
+    uint64_t frozen_count, const double* overlap_mo, uint64_t overlap_count);
+VIBEQC_API const double* vibeqc_rhf_response_resident_reconstructed_weights_device_v1(
+    const vibeqc_rhf_response_resident* owner);
+VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_download_reconstruction_v1(
+    vibeqc_rhf_response_resident* owner, double* density_derivative, uint64_t density_count,
+    double* energy_weighted_density_derivative, uint64_t energy_count);
 
 #ifdef __cplusplus
 }

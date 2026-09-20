@@ -24,8 +24,12 @@ from vibeqc_compiler.tensor import (
     vjp,
 )
 from vibeqc_compiler.tensor.cuda_emit import emit_cuda
-from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
-from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+from vibeqc_compiler.tensor.cuda_execute import (
+    PreparedCuda,
+    compile_cuda,
+    tensor_static_data,
+)
+from vibeqc_compiler.tensor.cuda_plan import VALIDATION_BYTES, TensorSchedule, plan_cuda
 from vibeqc_compiler.tensor.interpreter import execute
 
 TARGET = cuda_target_info("sm_120")
@@ -153,6 +157,7 @@ def test_ragged_reference_and_generated_adjoint_agree() -> None:
 def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     plan = plan_cuda(_program(), TARGET, schedule=TensorSchedule())
     source = emit_cuda(plan)
+    external = emit_cuda(plan, embed_static_data=False)
     assert len(plan.index_tables) == 3
     assert plan.index_table_bytes == 3 * 256
     assert plan.accumulation_workspace_bytes == 0
@@ -182,6 +187,18 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     assert "for (I r =" in source  # segment_sum keeps its direct segment traversal
     assert "{0LL, 2LL, 3LL, 5LL, 0LL, 1LL, 2LL, 3LL, 4LL}" in source
     assert "if (reinterpret_cast<const I*>" not in source
+    assert "static const I" in source
+    assert "tensor_static_initialize" not in source
+    assert "static const I" not in external
+    assert "tensor_static_initialize" in external
+    assert "ctx->static_ready = false;" in external
+    assert "tensor static data is not initialized" in external
+    assert plan.static_data_bytes == len(tensor_static_data(plan)) == 144
+    input_bytes = sum(plan.steps[i].node.spec.size * 8 for i in plan.inputs)
+    output_bytes = sum(plan.steps[i].node.spec.size * 8 for _, i in plan.outputs)
+    assert plan.host_bytes == (
+        input_bytes + VALIDATION_BYTES + max(output_bytes, plan.static_data_bytes)
+    )
 
 
 def test_batch_schedule_counts_outer_ragged_work() -> None:

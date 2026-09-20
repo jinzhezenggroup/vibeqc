@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <memory>
 #include <span>
+#include <vector>
 
 #include "core/types.hpp"
 #include "dft/cosx_reference.hpp"
@@ -19,6 +20,19 @@ struct CudaCosxStagingDiagnostic {
 /** Pure resource estimate for the bounded native candidate. */
 CudaCosxStagingDiagnostic cuda_cosx_staging_diagnostic(const core::System& system,
                                                        std::size_t npoint, std::size_t tile_points);
+
+/** Bounded CUDA correctness primitive for the explicit-point COSX derivative.
+ *
+ * Returns point-major xyz dE_x/dR_point while density, quadrature weights,
+ * Gaussian centers and basis data are held fixed. This is not a molecular
+ * nuclear gradient and is intentionally not wired into SCF force dispatch.
+ */
+std::vector<double> cuda_cosx_point_derivative_reference(const core::System& system,
+                                                         std::span<const double> points_xyz,
+                                                         std::span<const double> weights,
+                                                         std::span<const double> density,
+                                                         CosxDensityConvention convention,
+                                                         std::size_t tile_points, int device);
 
 class CudaCosxStagingPlan {
  public:

@@ -154,18 +154,37 @@ def solve_rhf_nuclear_perturbation(
     overlap: typing.Any,
     *,
     options: typing.Any = None,
+    resident_reconstruction_consumer: typing.Any = None,
 ) -> typing.Any:
     """Solve A x = -b once, retaining occupied metric and energy responses."""
     if options is not None and not isinstance(options, GMRESOptions):
         raise TypeError("options must be GMRESOptions")
+    if resident_reconstruction_consumer is not None and not callable(
+        resident_reconstruction_consumer
+    ):
+        raise TypeError("resident_reconstruction_consumer must be callable")
     prepared = _prepare_rhf_nuclear_perturbation(operator, frozen_fock, overlap)
     _, layout = _validate_operator(operator)
+
+    def consume_resident_solution(engine: typing.Any, solution: typing.Any) -> None:
+        reconstruct = getattr(engine, "reconstruct_nuclear_response", None)
+        if reconstruct is None:
+            raise ValueError("resident reconstruction requires a resident RHF engine")
+        resident_reconstruction_consumer(
+            reconstruct(solution, prepared.frozen_mo, prepared.overlap_mo)
+        )
+
     result = solve(
         operator,
         layout.pack(-prepared.rhs),
         options=options or GMRESOptions(),
         raise_on_failure=True,
         collect_basis=False,
+        solution_consumer=(
+            consume_resident_solution
+            if resident_reconstruction_consumer is not None
+            else None
+        ),
     )
     return _reconstruct_rhf_nuclear_response(operator, prepared, result)
 
@@ -177,6 +196,7 @@ def solve_rhf_nuclear_perturbations(
     *,
     strategy: typing.Any = "recycled",
     options: typing.Any = None,
+    resident_reconstruction_consumers: typing.Any = None,
 ) -> typing.Any:
     """Solve a bounded set of RHF nuclear perturbations with one multi-RHS call.
 
@@ -207,6 +227,34 @@ def solve_rhf_nuclear_perturbations(
         _prepare_rhf_nuclear_perturbation(operator, frozen, overlap)
         for frozen, overlap in zip(frozen_values, overlap_values, strict=True)
     )
+    consumers = (
+        (None,) * len(prepared)
+        if resident_reconstruction_consumers is None
+        else tuple(resident_reconstruction_consumers)
+    )
+    if len(consumers) != len(prepared) or any(
+        consumer is not None and not callable(consumer) for consumer in consumers
+    ):
+        raise ValueError(
+            "resident_reconstruction_consumers must match perturbation count"
+        )
+
+    def solution_consumer(
+        item: _PreparedNuclearPerturbation, consumer: typing.Any
+    ) -> typing.Any:
+        if consumer is None:
+            return None
+
+        def consume(engine: typing.Any, solution: typing.Any) -> None:
+            reconstruct = getattr(engine, "reconstruct_nuclear_response", None)
+            if reconstruct is None:
+                raise ValueError(
+                    "resident reconstruction requires a resident RHF engine"
+                )
+            consumer(reconstruct(solution, item.frozen_mo, item.overlap_mo))
+
+        return consume
+
     packed = np.column_stack([layout.pack(-item.rhs) for item in prepared])
     multi = solve_many(
         operator,
@@ -215,6 +263,10 @@ def solve_rhf_nuclear_perturbations(
         options=options or GMRESOptions(),
         raise_on_failure=True,
         collect_basis=False,
+        solution_consumers=tuple(
+            solution_consumer(item, consumer)
+            for item, consumer in zip(prepared, consumers, strict=True)
+        ),
     )
     responses = tuple(
         _reconstruct_rhf_nuclear_response(operator, item, result)

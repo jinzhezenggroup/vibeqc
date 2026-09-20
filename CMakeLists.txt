@@ -11,6 +11,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSources.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCuda.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCudaImplib.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCpuLinalg.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGfn2Runtime.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCTests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSourceIdentity.cmake")
 
@@ -20,6 +21,9 @@ option(VIBEQC_ENABLE_AOT_SHELLS
 option(VIBEQC_BUILD_TESTS "Build native tests" ON)
 option(VIBEQC_PYTHON_WHEEL
        "Install one unversioned shared library for a Python wheel" OFF)
+option(VIBEQC_BUNDLE_XTB_OPENBLAS
+       "Bundle the reviewed private LP64 OpenBLAS provider for GFN2 wheels"
+       ${VIBEQC_PYTHON_WHEEL})
 option(VIBEQC_CUDA_SEPARABLE_COMPILATION
        "Enable CUDA relocatable device code and the device-link stage" OFF)
 option(VIBEQC_CUDA_DIRECT_DEVICE_LINK
@@ -74,11 +78,21 @@ elseif(NOT VIBEQC_COMPILER_CACHE STREQUAL "off"
   endif()
 endif()
 if(_vibeqc_compiler_cache)
+  get_filename_component(_vibeqc_compiler_cache_name
+                         "${_vibeqc_compiler_cache}" NAME)
+  set(_vibeqc_compiler_cache_launcher "${_vibeqc_compiler_cache}")
+  if(_vibeqc_compiler_cache_name STREQUAL "ccache")
+    # Generated CUDA/AOT sources live below the build tree. Without a stable
+    # base directory, their absolute paths make byte-identical objects miss
+    # when the same source is rebuilt in another worktree or build directory.
+    set(_vibeqc_compiler_cache_launcher
+        "${CMAKE_COMMAND};-E;env;CCACHE_BASEDIR=${CMAKE_BINARY_DIR};${_vibeqc_compiler_cache}")
+  endif()
   if(NOT CMAKE_CXX_COMPILER_LAUNCHER)
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${_vibeqc_compiler_cache}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${_vibeqc_compiler_cache_launcher}")
   endif()
   if(NOT CMAKE_CUDA_COMPILER_LAUNCHER)
-    set(CMAKE_CUDA_COMPILER_LAUNCHER "${_vibeqc_compiler_cache}")
+    set(CMAKE_CUDA_COMPILER_LAUNCHER "${_vibeqc_compiler_cache_launcher}")
   endif()
   message(STATUS "VibeQC compiler cache: ${_vibeqc_compiler_cache}")
 endif()
@@ -176,9 +190,11 @@ if(VIBEQC_ENABLE_CUDA)
   endif()
 endif()
 
+# Scoped VibeQC-owned GFN2 CPU runtime is registered below.
 add_library(vibeqc SHARED)
 target_link_libraries(vibeqc PRIVATE Threads::Threads)
 vibeqc_configure_cpu_linalg(vibeqc)
+vibeqc_add_gfn2_runtime(vibeqc)
 vibeqc_add_component_sources(vibeqc)
 vibeqc_register_host_generated_sources(vibeqc)
 

@@ -65,5 +65,10 @@ independent numerical validation before admission changes.
 
 Refs #528, #375, #174, #508; `tests/python/test_tensor_precision.py`.
 
+The later [FP64 accumulation decision](2026-09-21-tensor-fp64-accumulation.md)
+supersedes the rejection of distinct compute/accumulation lowering and extends
+schedule payload v2 to v3 with an explicit source-to-lowered execution scope.
+The identity, qualification-scope, and cast-AD decisions here remain current.
+
 Agent: ChatGPT
 Model: GPT-6 Astra Pro

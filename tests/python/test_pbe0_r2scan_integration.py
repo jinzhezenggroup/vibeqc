@@ -32,6 +32,44 @@ def test_r2scan_keeps_unscaled_composition_descriptor(method: str) -> None:
     assert native.fock_exchange_coefficient == 0.0
 
 
+def test_b3lyp_point_bridge_matches_pinned_libxc_oracle() -> None:
+    library = _native.load_library(device="cpu")
+    ga = np.array([np.sqrt(0.015), 0.0, 0.0])
+    gb = np.array(
+        [
+            0.003 / ga[0],
+            np.sqrt(0.01 - (0.003 / ga[0]) ** 2),
+            0.0,
+        ]
+    )
+    rho = np.array([[0.3], [0.2]])
+    gradient = np.stack([ga, gb])[:, None, :]
+    actual = _scf_xc_points(library, 3, rho, gradient)
+    feature = np.array(
+        [
+            -0.7122471845474007,
+            -0.647404446702975,
+            -0.014654598299102754,
+            0.0016566689256405436,
+            -0.022748740576278376,
+        ]
+    )
+    expected_gradient = np.stack(
+        [
+            2.0 * feature[2] * ga + feature[3] * gb,
+            feature[3] * ga + 2.0 * feature[4] * gb,
+        ]
+    )[:, None, :]
+    np.testing.assert_allclose(
+        actual["energy"], [-0.26232290280116083], rtol=2e-12, atol=2e-13
+    )
+    np.testing.assert_allclose(actual["rho"][:, 0], feature[:2], rtol=2e-12, atol=2e-13)
+    np.testing.assert_allclose(
+        actual["gradient"], expected_gradient, rtol=3e-12, atol=3e-13
+    )
+    np.testing.assert_array_equal(actual["kinetic"], np.zeros((2, 1)))
+
+
 @pytest.mark.parametrize("functional", (0, 1))
 def test_v1_and_v2_point_layouts_remain_compatible(functional: int) -> None:
     library = _native.load_library(device="cpu")

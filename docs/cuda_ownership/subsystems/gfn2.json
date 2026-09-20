@@ -1,0 +1,12 @@
+{
+  "current_default": "Scoped CPU-only GFN2-xTB runtime owner for #560 Stage A; no public CUDA GFN2 capability is admitted.",
+  "evidence": [
+    "tests/python/test_gfn2_xtb.py",
+    "tests/python/test_gfn2_xtb_force_qualification.py"
+  ],
+  "generated_capability": "#504/#505 generated GFN2 geometry and fixed-state electronic slices are independently qualified but are not yet the complete runtime owner.",
+  "missing_capability": "Replace transitional scientific owners with generated/VibeQC-native components, attach SCC policy to the shared fixed-point driver, add ragged production semantics, and qualify native CUDA end to end.",
+  "owner": "gfn2",
+  "retirement_condition": "Retire pinned shared scientific source only after the replacement path reproduces independent GFN2 energy/force and backend-consistency gates.",
+  "status": "transitional_cpu_runtime"
+}

@@ -75,6 +75,9 @@
     "tools/generate_xc_gradient_cuda.py",
     "tools/run_codegen.py",
     "tools/vibeqc_posthf/plan_spec.py",
-    "tools/generate_scf_array_native.py"
+    "tools/generate_scf_array_native.py",
+    "cmake/VibeQCGfn2Runtime.cmake",
+    "tools/xtb/resolve-openblas-wheel.py",
+    "tools/xtb/scipy_openblas32_manifest.json"
   ]
 }

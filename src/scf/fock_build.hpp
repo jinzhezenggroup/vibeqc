@@ -177,6 +177,17 @@ DirectJkMatrices build_exact_direct_jk(const ResolvedFockBuild& strategy, std::s
                                        std::span<const double> beta = {});
 FockMatrices assemble_fock(const ResolvedFockBuild& strategy, std::span<const double> hcore,
                            const DirectJkMatrices& jk);
+struct FockEnergyComponents {
+  double coulomb{};
+  double exchange{};
+  double total() const noexcept { return coulomb + exchange; }
+};
+
+/** Two-electron energy at fixed density, split by physical source. */
+FockEnergyComponents contract_fock_energy_components(const ResolvedFockBuild& strategy,
+                                                     const DirectJkMatrices& jk,
+                                                     std::span<const double> density,
+                                                     std::span<const double> beta = {});
 /** Two-electron energy at fixed density, with the same weights as Fock assembly. */
 double contract_fock_energy(const ResolvedFockBuild& strategy, const DirectJkMatrices& jk,
                             std::span<const double> density, std::span<const double> beta = {});

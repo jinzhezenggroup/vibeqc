@@ -502,6 +502,29 @@ int main() {
     require_matrix_close(spherical_transformed.three_center_derivative,
                          spherical.three_center_derivative, 2.0e-13,
                          "public spherical DF tensor derivative transform differs");
+    std::vector<double> spherical_metric_weights(spherical.metric.size());
+    std::vector<double> spherical_three_center_weights(spherical.three_center.size());
+    for (std::size_t item = 0; item < spherical_metric_weights.size(); ++item)
+      spherical_metric_weights[item] = 0.003 * static_cast<double>((item % 7) + 1);
+    for (std::size_t item = 0; item < spherical_three_center_weights.size(); ++item)
+      spherical_three_center_weights[item] =
+          (item % 2 ? -0.002 : 0.001) * static_cast<double>((item % 11) + 1);
+    const auto spherical_weighted = vibeqc::integrals::contract_weighted_density_fitting_derivative(
+        spherical_d_system(0.9), spherical_d_system(0.55), spherical_metric_weights,
+        spherical_three_center_weights);
+    std::vector<double> spherical_weighted_oracle(spherical.ncoord, 0.0);
+    for (std::size_t coordinate = 0; coordinate < spherical.ncoord; ++coordinate) {
+      for (std::size_t item = 0; item < spherical_metric_weights.size(); ++item)
+        spherical_weighted_oracle[coordinate] +=
+            spherical_metric_weights[item] *
+            spherical.metric_derivative[coordinate * spherical.metric.size() + item];
+      for (std::size_t item = 0; item < spherical_three_center_weights.size(); ++item)
+        spherical_weighted_oracle[coordinate] +=
+            spherical_three_center_weights[item] *
+            spherical.three_center_derivative[coordinate * spherical.three_center.size() + item];
+    }
+    require_matrix_close(spherical_weighted, spherical_weighted_oracle, 3.0e-11,
+                         "weighted spherical DF derivative differs from materialized oracle");
 
     constexpr double displacement = 1.0e-5;
     vibeqc::core::System plus_orbital = orbital;
@@ -694,6 +717,147 @@ int main() {
       require_close(uhf_gradient.derivative[axis] + uhf_gradient.derivative[axis + 3], 0.0, 3.0e-10,
                     "UHF DF gradient violates translation invariance");
     }
+
+    auto value_only = vibeqc::integrals::build_density_fitting_integrals(orbital, auxiliary, false);
+    value_only.ncoord = orbital.atoms.size() * 3U;
+    const auto weighted_rhf = vibeqc::scf::build_density_fitting_rhf_weighted_gradient(
+        orbital, auxiliary, value_only, rhf_density, 1.0e-12);
+    const auto weighted_uhf = vibeqc::scf::build_density_fitting_uhf_weighted_gradient(
+        orbital, auxiliary, value_only, alpha_density, beta_density, 1.0e-12);
+    require(value_only.metric_derivative.empty() && value_only.three_center_derivative.empty(),
+            "value-only DF fixture unexpectedly materialized derivatives");
+    require_matrix_close(weighted_rhf.derivative, rhf_gradient.derivative, 2.0e-10,
+                         "weighted RHF DF gradient differs from materialized oracle");
+    require_matrix_close(weighted_uhf.derivative, uhf_gradient.derivative, 2.0e-10,
+                         "weighted UHF DF gradient differs from materialized oracle");
+
+    // A single-center spherical fixture has identically zero nuclear response.
+    // Use two centers so an incorrect public-to-Cartesian adjoint cannot pass
+    // merely because both sides of the comparison vanish.
+    auto spherical_pair = spherical_d_system(0.9);
+    spherical_pair.atoms.push_back({1, {0.31, -0.27, 1.4}});
+    spherical_pair.shells.push_back({1, 2, {{0.63, 1.0}}});
+    spherical_pair.multiplicity = 1;
+    std::string spherical_pair_detail;
+    require(vibeqc::molecule::validate_and_normalize(spherical_pair, spherical_pair_detail) ==
+                VIBEQC_STATUS_SUCCESS,
+            "two-center spherical fixture normalization failed");
+    auto spherical_auxiliary = spherical_pair;
+    spherical_auxiliary.shells[0].primitives[0].exponent = 0.55;
+    spherical_auxiliary.shells[1].primitives[0].exponent = 0.41;
+    require(vibeqc::molecule::validate_and_normalize(spherical_auxiliary, spherical_pair_detail) ==
+                VIBEQC_STATUS_SUCCESS,
+            "two-center spherical auxiliary normalization failed");
+    const auto pair_full = vibeqc::integrals::build_density_fitting_integrals(
+        spherical_pair, spherical_auxiliary, true);
+    std::vector<double> pair_metric_weights(pair_full.metric.size());
+    std::vector<double> pair_three_center_weights(pair_full.three_center.size());
+    for (std::size_t i = 0; i < pair_metric_weights.size(); ++i)
+      pair_metric_weights[i] = (i % 2 ? -0.003 : 0.002) * (1 + i % 7);
+    for (std::size_t i = 0; i < pair_three_center_weights.size(); ++i)
+      pair_three_center_weights[i] = (i % 3 ? -0.001 : 0.004) * (1 + i % 11);
+    const auto pair_weighted = vibeqc::integrals::contract_weighted_density_fitting_derivative(
+        spherical_pair, spherical_auxiliary, pair_metric_weights, pair_three_center_weights);
+    std::vector<double> pair_oracle(pair_full.ncoord, 0.0);
+    for (std::size_t coordinate = 0; coordinate < pair_full.ncoord; ++coordinate) {
+      for (std::size_t i = 0; i < pair_metric_weights.size(); ++i)
+        pair_oracle[coordinate] +=
+            pair_metric_weights[i] *
+            pair_full.metric_derivative[coordinate * pair_metric_weights.size() + i];
+      for (std::size_t i = 0; i < pair_three_center_weights.size(); ++i)
+        pair_oracle[coordinate] +=
+            pair_three_center_weights[i] *
+            pair_full.three_center_derivative[coordinate * pair_three_center_weights.size() + i];
+    }
+    require(matrix_inner_product(pair_oracle, pair_oracle) > 1e-10,
+            "two-center spherical response must be nonzero");
+    require_matrix_close(pair_weighted, pair_oracle, 3e-10,
+                         "nonzero spherical weighted derivative differs from full tensors");
+
+    // Independently rebuild the energy at displaced geometries, including a
+    // genuinely truncated, constant-rank metric. Reconstruct four-center RI
+    // integrals in reference_jk; do not use the reverse-weight implementation
+    // or analytic derivative arrays to obtain the finite-difference oracle.
+    const std::vector<double> motion{0.23, -0.17, 0.31, -0.11, 0.27, -0.19};
+    unsigned weighted_fd_cases = 0;
+    for (double cutoff : {1e-12, 0.1}) {
+      const auto base_factor =
+          vibeqc::scf::factor_density_fitting_metric(value_only.metric, value_only.naux, cutoff);
+      require(cutoff < 0.01
+                  ? base_factor.effective_rank == value_only.naux
+                  : base_factor.effective_rank > 0 && base_factor.effective_rank < value_only.naux,
+              "weighted response fixture did not exercise full and truncated metric ranks");
+      for (bool unrestricted : {false, true}) {
+        for (vibeqc::scf::JkCoefficients coefficients :
+             {vibeqc::scf::JkCoefficients{1.0, unrestricted ? -1.0 : -0.5},
+              vibeqc::scf::JkCoefficients{0.0, -0.7}, vibeqc::scf::JkCoefficients{0.6, 0.0},
+              vibeqc::scf::JkCoefficients{0.3, 0.2}}) {
+          std::vector<double> derivative;
+          if (unrestricted) {
+            const auto candidate = vibeqc::scf::build_density_fitting_uhf_weighted_gradient(
+                orbital, auxiliary, value_only, alpha_density, beta_density, cutoff, coefficients);
+            const auto full = vibeqc::scf::build_density_fitting_uhf_gradient(
+                integrals, alpha_density, beta_density, cutoff, coefficients);
+            derivative = candidate.derivative;
+            require_matrix_close(derivative, full.derivative, 2e-10,
+                                 "weighted UHF reverse chain changed metric-rank response");
+            for (std::size_t i = 0; i < derivative.size(); ++i)
+              require_close(candidate.forces[i], -derivative[i], 0.0, "weighted UHF force sign");
+          } else {
+            const auto candidate = vibeqc::scf::build_density_fitting_rhf_weighted_gradient(
+                orbital, auxiliary, value_only, rhf_density, cutoff, coefficients);
+            const auto full = vibeqc::scf::build_density_fitting_rhf_gradient(
+                integrals, rhf_density, cutoff, coefficients);
+            derivative = candidate.derivative;
+            require_matrix_close(derivative, full.derivative, 2e-10,
+                                 "weighted RHF reverse chain changed metric-rank response");
+            for (std::size_t i = 0; i < derivative.size(); ++i)
+              require_close(candidate.forces[i], -derivative[i], 0.0, "weighted RHF force sign");
+          }
+          for (std::size_t axis = 0; axis < 3; ++axis)
+            require_close(derivative[axis] + derivative[axis + 3], 0.0, 3e-10,
+                          "weighted reverse chain changed translation invariance");
+          const auto displaced_energy = [&](double step) {
+            auto shifted_orbital = orbital;
+            auto shifted_auxiliary = auxiliary;
+            for (std::size_t i = 0; i < motion.size(); ++i) {
+              shifted_orbital.atoms[i / 3].position[i % 3] += step * motion[i];
+              shifted_auxiliary.atoms[i / 3].position[i % 3] += step * motion[i];
+            }
+            const auto shifted = vibeqc::integrals::build_density_fitting_integrals(
+                shifted_orbital, shifted_auxiliary, false);
+            const auto shifted_factor =
+                vibeqc::scf::factor_density_fitting_metric(shifted.metric, shifted.naux, cutoff);
+            require(shifted_factor.effective_rank == base_factor.effective_rank,
+                    "finite difference crossed a metric rank boundary");
+            const auto transformed = vibeqc::scf::orthonormalize_density_fitting_three_center(
+                shifted.three_center, shifted.nbf, shifted_factor);
+            if (!unrestricted) {
+              const auto jk = reference_jk(transformed, rhf_density);
+              return 0.5 * coefficients.coulomb * matrix_inner_product(rhf_density, jk.first) +
+                     0.5 * coefficients.exchange * matrix_inner_product(rhf_density, jk.second);
+            }
+            const auto total = reference_jk(transformed, total_density);
+            const auto alpha = reference_jk(transformed, alpha_density);
+            const auto beta = reference_jk(transformed, beta_density);
+            return 0.5 * coefficients.coulomb * matrix_inner_product(total_density, total.first) +
+                   0.5 * coefficients.exchange *
+                       (matrix_inner_product(alpha_density, alpha.second) +
+                        matrix_inner_product(beta_density, beta.second));
+          };
+          const double analytic = matrix_inner_product(derivative, motion);
+          for (double step : {2e-4, 1e-4, 5e-5}) {
+            const double difference =
+                (displaced_energy(step) - displaced_energy(-step)) / (2 * step);
+            require_close(analytic, difference, 2e-7,
+                          "weighted DF response differs from rebuilt energy finite difference");
+            ++weighted_fd_cases;
+          }
+        }
+      }
+    }
+    require(weighted_fd_cases == 48, "weighted DF qualification did not run every case");
+    std::cout << weighted_fd_cases << " weighted DF finite-difference gates passed\n";
 
     // The HF adapter emits generic, strided external weights. Dot these
     // against the independent raw derivative tensors, with two memory/tile

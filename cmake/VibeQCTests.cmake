@@ -110,6 +110,9 @@ macro(vibeqc_add_native_tests)
     "${CMAKE_CURRENT_BINARY_DIR}/generated")
   add_test(NAME vibeqc_dft_tests COMMAND vibeqc_dft_tests)
 
+  vibeqc_native_test(vibeqc_d3_atm_reference_tests tests/native/test_d3_atm.cpp NO_VIBEQC)
+  add_dependencies(vibeqc_d3_atm_reference_tests vibeqc_d3_codegen)
+  target_include_directories(vibeqc_d3_atm_reference_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
   vibeqc_native_test(vibeqc_d3_ragged_tests tests/native/test_d3_ragged.cpp)
   add_dependencies(vibeqc_d3_ragged_tests vibeqc)
   target_include_directories(vibeqc_d3_ragged_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -134,12 +137,34 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_uks_state_tests tests/native/test_uks_state.cpp)
 
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_d3_atm_cuda_tests tests/native/test_d3_atm_cuda.cu
+                       NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
+    add_dependencies(vibeqc_d3_atm_cuda_tests vibeqc_d3_codegen)
+    target_include_directories(vibeqc_d3_atm_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    set_target_properties(vibeqc_d3_atm_cuda_tests PROPERTIES CUDA_STANDARD 20)
+
     vibeqc_native_test(vibeqc_d4_reference_cuda_tests tests/native/test_d4_reference_cuda.cu
                        NO_VIBEQC SKIP_77)
     add_dependencies(vibeqc_d4_reference_cuda_tests vibeqc_method_parameters_codegen)
     target_include_directories(
       vibeqc_d4_reference_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
     set_target_properties(vibeqc_d4_reference_cuda_tests PROPERTIES CUDA_STANDARD 20)
+
+    vibeqc_native_test(vibeqc_d4_schedule_cuda_tests tests/native/test_d4_schedule_cuda.cu
+                       LIBRARIES CUDA::cudart SKIP_77)
+    add_dependencies(vibeqc_d4_schedule_cuda_tests vibeqc_method_parameters_codegen)
+    target_include_directories(
+      vibeqc_d4_schedule_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    set_target_properties(vibeqc_d4_schedule_cuda_tests PROPERTIES CUDA_STANDARD 20
+                          BUILD_RPATH "$<TARGET_FILE_DIR:CUDA::cudart>")
+
+    add_executable(vibeqc_d4_schedule_probe EXCLUDE_FROM_ALL benchmarks/d4_cuda_schedule_probe.cu)
+    target_link_libraries(vibeqc_d4_schedule_probe PRIVATE vibeqc CUDA::cudart)
+    target_include_directories(vibeqc_d4_schedule_probe PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    add_dependencies(vibeqc_d4_schedule_probe vibeqc_method_parameters_codegen)
+    set_target_properties(vibeqc_d4_schedule_probe PROPERTIES CUDA_STANDARD 20
+                          BUILD_RPATH "$<TARGET_FILE_DIR:CUDA::cudart>")
 
     vibeqc_native_test(vibeqc_d4_eeq_cuda_tests tests/native/test_d4_eeq_cuda.cu
                        NO_VIBEQC SKIP_77)
@@ -170,12 +195,18 @@ macro(vibeqc_add_native_tests)
     add_executable(vibeqc_cosx_cuda_tests
       tests/native/test_cosx_cuda.cu
       src/dft/cuda_cosx.cu
+      src/dft/cuda_cosx_derivative.cu
       "${VIBEQC_ONE_ELECTRON_HEADER}"
+      "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
+      "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}"
+      "${VIBEQC_DF_VALUE_CPU_HEADER}"
+      "${VIBEQC_DF_DERIVATIVE_CPU_HEADER}"
       "${VIBEQC_GRID_SOURCE}"
       src/dft/ao_grid.cpp
       src/dft/grid.cpp
       src/dft/cosx_reference.cpp
       src/integrals/s_integrals.cpp
+      src/integrals/generated_df_cpu.cpp
       src/integrals/ecp.cpp
       src/molecule/basis.cpp)
     add_dependencies(vibeqc_cosx_cuda_tests vibeqc_ecp_codegen)

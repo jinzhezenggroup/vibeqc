@@ -266,6 +266,7 @@ def test_static_accounting_reuses_combined_numeric_budget_and_labels_unknowns() 
     assert estimate["estimated_shared_bytes"] == 0  # global panels are not shared tiles
     assert estimate["estimated_local_bytes"] is None  # spills need PTXAS, not guesses
     assert estimate["generated_source_bytes"] > 0
+    assert estimate["generated_static_data_bytes"] == baseline.static_data_bytes
     assert "excludes" in estimate["traffic_scope"]
     assert "calibrated" in estimate["compile_cost_proxy"]
 
@@ -757,10 +758,13 @@ def test_unemittable_candidate_does_not_abort_other_candidates(
 
     emit = search.emit_cuda
 
-    def emit_supported(plan: typing.Any) -> typing.Any:
+    def emit_supported(
+        plan: typing.Any, *, embed_static_data: bool = True
+    ) -> typing.Any:
+        assert embed_static_data is False
         if plan.schedule.fuse:
             raise ValueError("candidate emission unsupported")
-        return emit(plan)
+        return emit(plan, embed_static_data=embed_static_data)
 
     monkeypatch.setattr(search, "emit_cuda", emit_supported)
     baseline = plan_cuda(vector_program(), TARGET)
