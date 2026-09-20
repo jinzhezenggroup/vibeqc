@@ -95,14 +95,22 @@ def test_switch_state_is_explicit_and_generated_gradient_is_finite_difference() 
     minus[1, 0] -= step
     compiled.validate_coordinates(plus)
     compiled.validate_coordinates(minus)
-    ep = execute(
-        compiled.program,
-        {"coordinates": plus},
-    ).outputs["energy"].item()
-    em = execute(
-        compiled.program,
-        {"coordinates": minus},
-    ).outputs["energy"].item()
+    ep = (
+        execute(
+            compiled.program,
+            {"coordinates": plus},
+        )
+        .outputs["energy"]
+        .item()
+    )
+    em = (
+        execute(
+            compiled.program,
+            {"coordinates": minus},
+        )
+        .outputs["energy"]
+        .item()
+    )
     assert gradient[1, 0] == pytest.approx(
         (ep - em) / (2 * step),
         abs=2e-11,

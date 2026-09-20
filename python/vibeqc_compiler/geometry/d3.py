@@ -10,9 +10,10 @@ from __future__ import annotations
 import functools
 import hashlib
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Protocol
+from typing import Protocol
 
 import numpy as np
 
@@ -260,15 +261,11 @@ def _reference_c6(
     record = tables.pairs[_pair_record_index(first_z, second_z)]
     if first_z <= second_z:
         offset = (
-            record.c6_offset
-            + second_ref * record.first_reference_count
-            + first_ref
+            record.c6_offset + second_ref * record.first_reference_count + first_ref
         )
     else:
         offset = (
-            record.c6_offset
-            + first_ref * record.first_reference_count
-            + second_ref
+            record.c6_offset + first_ref * record.first_reference_count + second_ref
         )
     return tables.reference_c6[offset]
 
@@ -284,14 +281,10 @@ class D3PairTopology:
 
     def __post_init__(self) -> None:
         pair_count = len(self.topology.pairs)
-        if (
-            len(self.cn_active) != pair_count
-            or len(self.energy_regions) != pair_count
-        ):
+        if len(self.cn_active) != pair_count or len(self.energy_regions) != pair_count:
             raise ValueError("D3 pair masks must match PairTopology")
         if any(
-            region not in {"off", "inner", "switch"}
-            for region in self.energy_regions
+            region not in {"off", "inner", "switch"} for region in self.energy_regions
         ):
             raise ValueError("invalid D3 pair switch region")
         if not isinstance(self.spec_identity, str) or not self.spec_identity:
@@ -357,9 +350,7 @@ def _validate_reference_weight_domain(
 ) -> None:
     tables = _d3_tables()
     coordination = np.zeros(geometry.atom_count, dtype=np.float64)
-    for active, (first, second) in zip(
-        state.cn_active, state.topology.pairs
-    ):
+    for active, (first, second) in zip(state.cn_active, state.topology.pairs):
         if not active:
             continue
         displacement = coordinates[first] - coordinates[second]
@@ -429,10 +420,7 @@ def build_d3_pair_topology(
                 energy_regions.append(region)
 
     union_cutoff = None
-    if (
-        compiler_spec.cn_cutoff is not None
-        and compiler_spec.pair_cutoff is not None
-    ):
+    if compiler_spec.cn_cutoff is not None and compiler_spec.pair_cutoff is not None:
         union_cutoff = PairCutoff(
             max(compiler_spec.cn_cutoff, compiler_spec.pair_cutoff)
         )
@@ -543,9 +531,7 @@ def _reference_weights(
             is_valid = ref < element.reference_count
             valid.append(float(is_valid))
             references.append(
-                tables.reference_cn[element.reference_offset + ref]
-                if is_valid
-                else 0.0
+                tables.reference_cn[element.reference_offset + ref] if is_valid else 0.0
             )
         reference = _atom_constant(coordination, references)
         mask = _atom_constant(coordination, valid)
@@ -566,12 +552,8 @@ def _interpolated_c6(
     tables = _d3_tables()
     left_positions = tuple(first for first, _ in context.topology.pairs)
     right_positions = tuple(second for _, second in context.topology.pairs)
-    left = tuple(
-        _atom_to_pair(value, context, left_positions) for value in weights
-    )
-    right = tuple(
-        _atom_to_pair(value, context, right_positions) for value in weights
-    )
+    left = tuple(_atom_to_pair(value, context, left_positions) for value in weights)
+    right = tuple(_atom_to_pair(value, context, right_positions) for value in weights)
     terms = []
     for first_ref in range(D3_REFERENCE_SLOTS):
         for second_ref in range(D3_REFERENCE_SLOTS):
@@ -608,19 +590,13 @@ def _switch(
     pair_count = len(context.topology.pairs)
     inner = _pair_constant(
         context,
-        (
-            1.0 if region == "inner" else 0.0
-            for region in state.energy_regions
-        ),
+        (1.0 if region == "inner" else 0.0 for region in state.energy_regions),
     )
     if spec.pair_switch_width == 0.0:
         return inner
     switching = _pair_constant(
         context,
-        (
-            1.0 if region == "switch" else 0.0
-            for region in state.energy_regions
-        ),
+        (1.0 if region == "switch" else 0.0 for region in state.energy_regions),
     )
     cutoff = _pair_constant(
         context,
@@ -663,14 +639,10 @@ def _pair_energy(
     tables = _d3_tables()
     pair_count = len(context.topology.pairs)
     rr_values = tuple(
-        3.0
-        * tables.elements[first_z - 1].r4r2
-        * tables.elements[second_z - 1].r4r2
+        3.0 * tables.elements[first_z - 1].r4r2 * tables.elements[second_z - 1].r4r2
         for first_z, second_z in context.pair_elements
     )
-    rd_values = tuple(
-        spec.a1 * math.sqrt(value) + spec.a2 for value in rr_values
-    )
+    rd_values = tuple(spec.a1 * math.sqrt(value) + spec.a2 for value in rr_values)
     r6 = power(context.distance, 6)
     r8 = power(context.distance, 8)
     term6 = divide(
@@ -720,17 +692,11 @@ class D3GeometryProgram:
         if self.version != D3_COMPILER_VERSION:
             raise ValueError("unsupported D3 compiler lowering version")
         if self.geometry.parameter_identity != self.spec.identity:
-            raise ValueError(
-                "D3 program GeometryIR/specification identity mismatch"
-            )
+            raise ValueError("D3 program GeometryIR/specification identity mismatch")
         if self.pair_state.spec_identity != self.spec.identity:
-            raise ValueError(
-                "D3 program pair-state/specification identity mismatch"
-            )
+            raise ValueError("D3 program pair-state/specification identity mismatch")
         if self.pair_state.topology.atom_count != self.geometry.atom_count:
-            raise ValueError(
-                "D3 program geometry/topology atom counts disagree"
-            )
+            raise ValueError("D3 program geometry/topology atom counts disagree")
 
     @property
     def identity(self) -> str:
