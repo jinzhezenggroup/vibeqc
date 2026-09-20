@@ -412,7 +412,7 @@ def complete_rks_gradient_diagnostic(
             coefficients["energy"],
             coefficients["rho"],
             coefficients["gradient"] if contract.family != "lda" else None,
-            coefficients["tau"] if contract.family == "mgga" else None,
+            coefficients["kinetic"] if contract.family == "mgga" else None,
             ao_atoms=ao_atoms,
             natom=natom,
         )
