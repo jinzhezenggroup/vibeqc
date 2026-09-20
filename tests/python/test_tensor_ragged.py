@@ -24,7 +24,11 @@ from vibeqc_compiler.tensor import (
     vjp,
 )
 from vibeqc_compiler.tensor.cuda_emit import emit_cuda
-from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
+from vibeqc_compiler.tensor.cuda_execute import (
+    PreparedCuda,
+    compile_cuda,
+    tensor_static_data,
+)
 from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 from vibeqc_compiler.tensor.interpreter import execute
 
@@ -153,6 +157,7 @@ def test_ragged_reference_and_generated_adjoint_agree() -> None:
 def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     plan = plan_cuda(_program(), TARGET, schedule=TensorSchedule())
     source = emit_cuda(plan)
+    external = emit_cuda(plan, embed_static_data=False)
     assert len(plan.index_tables) == 3
     assert plan.index_table_bytes == 3 * 256
     assert plan.accumulation_workspace_bytes == 0
@@ -168,6 +173,10 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     assert "const I begin = index[" in source
     assert "for (I q = begin; q < end; ++q)" in source
     assert "for (I r =" in source  # segment_sum keeps its direct segment traversal
+    assert "static const I" in source
+    assert "static const I" not in external
+    assert "tensor_static_initialize" in external
+    assert plan.static_data_bytes == len(tensor_static_data(plan)) == 144
 
 
 def test_changed_ragged_topology_changes_program_and_plan_identity() -> None:

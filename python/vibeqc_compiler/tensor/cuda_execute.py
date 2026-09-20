@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ctypes
 import dataclasses
+import hashlib
 import json
 import os
 import platform
@@ -52,10 +53,15 @@ from vibeqc_compiler.common.specialization import (
     WorkloadSignature,
 )
 
-from .cuda_dtype import compile_options, symmetry_tolerance
+from .cuda_dtype import compile_options, scalar_type, symmetry_tolerance
 from .cuda_emit import emit_cuda
 from .cuda_gemm import gemm_contract
-from .cuda_plan import VALIDATION_CHUNK, TensorPlan
+from .cuda_plan import (
+    VALIDATION_CHUNK,
+    TensorPlan,
+    _index_table_values,
+    static_data_slices,
+)
 from .cuda_resources import parse_resources
 
 if typing.TYPE_CHECKING:
@@ -109,6 +115,32 @@ def tensor_source_identity() -> str:
     )
 
 
+def tensor_static_data(plan: TensorPlan) -> bytes:
+    """Serialize immutable constants/maps without device-alignment padding."""
+    parts = []
+    payload_bytes = 0
+    for step_index, kind, _arena, payload_offset, size_bytes in static_data_slices(plan):
+        node = plan.steps[step_index].node
+        if kind == "constant":
+            scalar = scalar_type(node.spec.dtype)
+            values = [scalar.coefficient(pair) for pair in node.attrs["values"]]
+            payload = np.asarray(values, dtype=node.spec.dtype).tobytes(order="C")
+        else:
+            values = _index_table_values(node)
+            assert values is not None
+            payload = np.asarray(values, dtype=np.int64).tobytes(order="C")
+        if len(payload) != size_bytes:
+            raise AssertionError("tensor static-data byte accounting mismatch")
+        if payload_offset != payload_bytes:
+            raise AssertionError("tensor static-data payload offsets are not compact")
+        parts.append(payload)
+        payload_bytes += len(payload)
+    result = b"".join(parts)
+    if len(result) != plan.static_data_bytes:
+        raise AssertionError("tensor static-data plan size mismatch")
+    return result
+
+
 def compile_cuda(
     plan: TensorPlan, compiler: CudaCompilerAdapter, cache: Path
 ) -> CudaArtifact:
@@ -122,7 +154,9 @@ def compile_cuda(
     if compiler.target != plan.target:
         raise ValueError("compiler target does not match tensor plan target")
     options = compile_options(plan)
-    source = emit_cuda(plan)
+    source = emit_cuda(plan, embed_static_data=False)
+    static_data = tensor_static_data(plan)
+    static_sha256 = hashlib.sha256(static_data).hexdigest()
     host_compiler = os.environ.get("NVCC_CCBIN") or shutil.which("gcc")
     if not host_compiler:
         raise ValueError("NVCC host compiler cannot be identified")
@@ -138,6 +172,7 @@ def compile_cuda(
         "plan": plan.identity,
         "source": tensor_source_identity(),
         "generated": canonical_hash(source),
+        "static_data": {"bytes": len(static_data), "sha256": static_sha256},
         "toolchain": toolchain_identity(compiler.nvcc),
         "host_compiler": host_version.stdout + host_version.stderr,
         "compiler_environment": {
@@ -168,7 +203,9 @@ def compile_cuda(
         ) as temporary:
             directory = Path(temporary)
             cu, library = directory / "program.cu", directory / "program.so"
+            static_path = directory / "static.bin"
             cu.write_text(source)
+            static_path.write_bytes(static_data)
             result = compiler.compile_shared(
                 cu,
                 library,
@@ -185,9 +222,12 @@ def compile_cuda(
                 "identity": identity,
                 "key": key,
                 "binary_sha256": file_hash(library),
+                "static_data_sha256": file_hash(static_path),
+                "static_data_bytes": static_path.stat().st_size,
                 "compile_seconds": result.duration_seconds,
                 "generated_source_bytes": len(source.encode("utf-8")),
                 "binary_bytes": library.stat().st_size,
+                "artifact_bytes": library.stat().st_size + static_path.stat().st_size,
                 "resources": [
                     dataclasses.asdict(r) for r in parse_resources(result.stderr)
                 ],
@@ -203,12 +243,16 @@ def compile_cuda(
                     raise
     metadata = json.loads((destination / "artifact.json").read_text())
     library = destination / "program.so"
+    static_path = destination / "static.bin"
     if (
         metadata.get("identity") != json.loads(json.dumps(identity))
         or metadata.get("key") != key
         or file_hash(library) != metadata.get("binary_sha256")
+        or not static_path.is_file()
+        or static_path.stat().st_size != metadata.get("static_data_bytes")
+        or file_hash(static_path) != metadata.get("static_data_sha256")
     ):
-        raise ValueError("tensor artifact identity or binary hash mismatch")
+        raise ValueError("tensor artifact identity, binary, or static-data hash mismatch")
     return CudaArtifact(library, metadata)
 
 
@@ -349,6 +393,16 @@ class PreparedCuda:
             ctypes.c_size_t,
         ]
         lib.tensor_create.restype = ctypes.c_int
+        lib.tensor_static_bytes.argtypes = []
+        lib.tensor_static_bytes.restype = ctypes.c_size_t
+        lib.tensor_static_initialize.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+            ctypes.c_char_p,
+            ctypes.c_size_t,
+        ]
+        lib.tensor_static_initialize.restype = ctypes.c_int
         lib.tensor_destroy.argtypes = [ctypes.c_void_p]
         lib.tensor_destroy.restype = None
         lib.tensor_run.argtypes = [
@@ -432,11 +486,35 @@ class PreparedCuda:
             # Release host owners now instead of relying on object collection.
             self._inputs, self._scratch, self._mask = [], [], None
             raise ResourceAllocationError("host", str(error)) from error
+        static_path = artifact.library.parent / "static.bin"
+        if (
+            not static_path.is_file()
+            or static_path.stat().st_size != artifact.metadata.get("static_data_bytes")
+            or file_hash(static_path) != artifact.metadata.get("static_data_sha256")
+        ):
+            raise ValueError("tensor artifact static-data hash mismatch")
+        static_data = np.fromfile(static_path, dtype=np.uint8)
+        if lib.tensor_static_bytes() != static_data.nbytes:
+            raise ValueError("native tensor static-data size mismatch")
+        static_pointer = (
+            ctypes.c_void_p(static_data.ctypes.data) if static_data.nbytes else None
+        )
         with _PREPARATION_LOCK:
             status = lib.tensor_create(
                 device, ctypes.byref(self._pointer), error, len(error)
             )
+            if not status:
+                status = lib.tensor_static_initialize(
+                    self._pointer,
+                    static_pointer,
+                    static_data.nbytes,
+                    error,
+                    len(error),
+                )
         if status:
+            if self._pointer:
+                lib.tensor_destroy(self._pointer)
+                self._pointer = ctypes.c_void_p()
             self._inputs, self._scratch, self._mask = [], [], None
             if status in (2, 3):
                 raise ResourceAllocationError(

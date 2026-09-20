@@ -214,6 +214,11 @@ class TensorPlan:
         return total
 
     @property
+    def static_data_bytes(self) -> int:
+        """Compact host artifact bytes needed to initialize immutable device data."""
+        return sum(item[4] for item in static_data_slices(self))
+
+    @property
     def accumulation_workspace_bytes(self) -> int:
         """Extra ragged reduction workspace beyond materialized outputs."""
         # scatter_add and segment_sum assign one CUDA output element per thread
@@ -352,6 +357,27 @@ class TensorPlan:
                 for s in self.steps
             ],
         }
+
+
+def static_data_slices(
+    plan: TensorPlan,
+) -> tuple[tuple[int, str, int, int, int], ...]:
+    """Map compact artifact payload slices onto aligned device-arena locations."""
+    tables = dict(plan.index_tables)
+    payload_offset = 0
+    result = []
+    for step_index, step in enumerate(plan.steps):
+        node = step.node
+        if node.op == "constant" and node.spec.size:
+            size = node.spec.size * node.spec.itemsize
+            result.append((step_index, "constant", step.offset, payload_offset, size))
+            payload_offset += size
+        values = _index_table_values(node)
+        if values:
+            size = len(values) * 8
+            result.append((step_index, "index", tables[step_index], payload_offset, size))
+            payload_offset += size
+    return tuple(result)
 
 
 def _occurrences(program: typing.Any, recompute: typing.Any) -> typing.Any:

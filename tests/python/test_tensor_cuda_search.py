@@ -266,6 +266,7 @@ def test_static_accounting_reuses_combined_numeric_budget_and_labels_unknowns() 
     assert estimate["estimated_shared_bytes"] == 0  # global panels are not shared tiles
     assert estimate["estimated_local_bytes"] is None  # spills need PTXAS, not guesses
     assert estimate["generated_source_bytes"] > 0
+    assert estimate["generated_static_data_bytes"] == baseline.static_data_bytes
     assert "excludes" in estimate["traffic_scope"]
     assert "calibrated" in estimate["compile_cost_proxy"]
 

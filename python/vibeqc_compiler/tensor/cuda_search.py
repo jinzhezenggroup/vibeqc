@@ -220,7 +220,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
             elif step.gemm == "packed":
                 estimate += 2 * (plan.schedule.staging_width - 1)
             registers = max(registers, estimate)
-    source_bytes = len(emit_cuda(plan).encode("utf-8"))
+    source_bytes = len(emit_cuda(plan, embed_static_data=False).encode("utf-8"))
     resident = _resident_blocks(plan, registers, 0)
     traffic = plan.semantic_traffic
     return {
@@ -252,7 +252,8 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         * plan.schedule.threads
         / plan.target.maximum_threads_per_sm,
         "generated_source_bytes": source_bytes,
-        "compile_cost_proxy": "generated_source_bytes; calibrated only against compiler-reported seconds after compilation",
+        "generated_static_data_bytes": plan.static_data_bytes,
+        "compile_cost_proxy": "generated_source_bytes calibrated against compiler-reported seconds; immutable static payload is external and is not parsed by NVCC",
     }
 
 

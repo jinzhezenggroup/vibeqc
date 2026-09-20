@@ -12,7 +12,14 @@ from math import prod
 
 from .cuda_dtype import scalar_type
 from .cuda_gemm import gemm_contract
-from .cuda_plan import ALIGNMENT, TensorPlan, _index_table_values, aligned, strides
+from .cuda_plan import (
+    ALIGNMENT,
+    TensorPlan,
+    _index_table_values,
+    aligned,
+    static_data_slices,
+    strides,
+)
 from .ir import TRANSCENDENTALS
 from .scaled_arithmetic import emit_scaled_bilinear
 
@@ -401,7 +408,9 @@ for (I n0 = 0; n0 < {g.n}LL; n0 += {nt}LL) {{
 }}"""
 
 
-def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
+def emit_cuda(
+    plan: TensorPlan, symbol_prefix: str = "", *, embed_static_data: bool = True
+) -> str:
     """Return standalone C++17 CUDA source with an optional symbol prefix.
 
     A prefix places the generated ABI in a unique namespace and prefixes all
@@ -446,14 +455,14 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
         node = step.node
         scalar = scalar_type(node.spec.dtype)
         ty = scalar.ctype
-        if node.op == "constant" and node.spec.size:
+        if embed_static_data and node.op == "constant" and node.spec.size:
             values = ", ".join(scalar.literal(pair) for pair in node.attrs["values"])
             parts.append(f"static const {ty} {prefix}constant_{i}[] = {{{values}}};")
             initialize.append(
                 f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, {prefix}constant_{i}, {node.spec.size * node.spec.itemsize}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
         table_values = _index_table_values(node)
-        if table_values:
+        if embed_static_data and table_values:
             values = ", ".join(_integer(v) for v in table_values)
             parts.append(f"static const I {prefix}index_data_{i}[] = {{{values}}};")
             initialize.append(
@@ -527,6 +536,12 @@ __global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
         plan,
         'std::string(arithmetic_error < 0 ? "tensor division by zero at step " : "non-finite tensor at step ") + std::to_string(std::abs(arithmetic_error)-1)',
     )
+    external_slices = () if embed_static_data else static_data_slices(plan)
+    external_static_bytes = sum(item[4] for item in external_slices)
+    external_copies = " ".join(
+        f"cuda_check(cudaMemcpyAsync(ctx.arena + {arena_offset}, bytes + {payload_offset}, {size_bytes}ULL, cudaMemcpyHostToDevice, ctx.stream));"
+        for _, _, arena_offset, payload_offset, size_bytes in external_slices
+    )
     parts.append(f"""
 extern "C" const char* {_name(prefix, "tensor_plan_identity")}() {{ return "{plan.identity}"; }}
 extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char* error, size_t size) {{
@@ -550,6 +565,25 @@ extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char*
     }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
 }}
 extern "C" void {_name(prefix, "tensor_destroy")}(void* pointer) {{ delete static_cast<GraphContext*>(static_cast<Context*>(pointer)); }}
+extern "C" size_t {_name(prefix, "tensor_static_bytes")}() {{ return {external_static_bytes}ULL; }}
+extern "C" int {_name(prefix, "tensor_static_initialize")}(void* pointer, const void* data, size_t bytes_count,
+                          char* error, size_t size) {{
+    if (!pointer) {{ error_text(error, size, "null tensor plan"); return 1; }}
+    auto& ctx = *static_cast<GraphContext*>(static_cast<Context*>(pointer));
+    std::unique_lock<std::mutex> lock(ctx.mutex, std::try_to_lock);
+    if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
+    try {{
+        ctx.check_device();
+        if (bytes_count != {external_static_bytes}ULL)
+            throw std::runtime_error("tensor static-data size mismatch");
+        if (bytes_count && !data)
+            throw std::runtime_error("null tensor static-data payload");
+        const auto* bytes = static_cast<const unsigned char*>(data);
+        {external_copies}
+        cuda_check(cudaStreamSynchronize(ctx.stream));
+        return 0;
+    }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
+}}
 static int {_name(prefix, "tensor_run_impl")}(void* pointer, const void* const* inputs, void* const* outputs,
                           int profile, Metrics* result, vibeqc::runtime::GraphMetrics* graph_result,
                           char* graph_reason, size_t graph_reason_size, char* error, size_t size) {{
