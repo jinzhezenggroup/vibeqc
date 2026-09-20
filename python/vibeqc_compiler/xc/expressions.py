@@ -229,6 +229,100 @@ def energy_expression(spec):
         )
     )
 
+    def scan_switch(alpha, c1, c2, d):
+        epsilon = 2.220446049250313e-16
+        log_epsilon = -math.log(epsilon)
+        left_cutoff = log_epsilon / (log_epsilon + float(c1))
+        right_log = -math.log(epsilon / float(d))
+        right_cutoff = (right_log + float(c2)) / right_log
+        left = graph.select_le(
+            alpha,
+            left_cutoff,
+            graph.exponential(-c1 * alpha / (1 - alpha)),
+            0,
+        )
+        right = graph.select_le(
+            alpha,
+            right_cutoff,
+            0,
+            -d * graph.exponential(c2 / (1 - alpha)),
+        )
+        return graph.select_le(alpha, 1, left, right)
+
+    def scan_exchange():
+        k1 = F("0.065")
+        h0 = F("1.174")
+        c1 = F("0.667")
+        c2 = F("0.8")
+        d = F("1.24")
+        a1 = F("4.9479")
+        mu_ge = F(10, 81)
+        b2 = math.sqrt(5913 / 405000)
+        b1 = F(511, 13500) / (2 * b2)
+        b3 = F(1, 2)
+        b4 = mu_ge**2 / k1 - F(1606, 18225) - b1**2
+
+        terms = []
+        for density, sigma, tau in ((ra, saa, ta), (rb, sbb, tb)):
+            x2 = sigma * density.pow(-8 / 3)
+            p = x2s2 * x2
+            alpha = (tau * density.pow(-5 / 3) - x2 / 8) / k_factor
+            y = (
+                mu_ge * p
+                + b4 * p.pow(2) * graph.exponential(-b4 * p / mu_ge)
+                + (
+                    b1 * p
+                    + b2 * (1 - alpha) * graph.exponential(-b3 * (1 - alpha).pow(2))
+                ).pow(2)
+            )
+            h1 = 1 + k1 * (1 - k1 / (k1 + y))
+            f_alpha = scan_switch(alpha, c1, c2, d)
+            gx = graph.select_le(
+                x2,
+                0,
+                1,
+                1 - graph.exponential(-a1 / (math.sqrt(x2s) * x2.pow(0.25))),
+            )
+            enhancement = (h1 + f_alpha * (h0 - h1)) * gx
+            terms.append(-cx * density.pow(4 / 3) * enhancement)
+        return graph.sum(terms)
+
+    def scan_correlation():
+        phi = (up.pow(2 / 3) + down.pow(2 / 3)) / 2
+        spin_fifth = (up.pow(5 / 3) + down.pow(5 / 3)) / 2
+        total_sigma = saa + 2 * sab + sbb
+        xt2 = total_sigma * n.pow(-8 / 3)
+        normalized_tau = (ta + tb) * n.pow(-5 / 3)
+        alpha = (normalized_tau - xt2 / 8) / (k_factor * 2 ** (-2 / 3) * spin_fifth)
+        f_alpha = scan_switch(alpha, F("0.64"), F("1.5"), F("0.7"))
+
+        pw_value = pw(True)
+        phi3 = phi.pow(3)
+        w1 = graph.stable_unary("expm1", -pw_value / (gamma * phi3))
+        beta_rs = (
+            F("0.066724550603149220") * (1 + F("0.1") * rs) / (1 + F("0.1778") * rs)
+        )
+        t2 = xt2 / (16 * 2 ** (2 / 3) * phi.pow(2) * rs)
+        y = beta_rs * t2 / (gamma * w1)
+        g = (1 + 4 * y).pow(-0.25)
+        h = gamma * phi3 * graph.stable_unary("log1p", w1 * (1 - g))
+        ec1 = pw_value + h
+
+        s2 = x2s2 * 2 ** (2 / 3) * xt2
+        b1c = F("0.0285764")
+        b2c = F("0.0889")
+        b3c = F("0.125541")
+        eclda0 = -b1c / (1 + b2c * rs.pow(0.5) + b3c * rs)
+        gc = (1 - F("2.363") * (2 ** (1 / 3) - 1) * fz) * (1 - z.pow(12))
+        chi_infinity = F("0.12802585262625815")
+        g_infinity = (1 + 4 * chi_infinity * s2).pow(-0.25)
+        h0 = b1c * graph.stable_unary(
+            "log1p",
+            graph.stable_unary("expm1", -eclda0 / b1c) * (1 - g_infinity),
+        )
+        ec0 = (eclda0 + h0) * gc
+        return n * (ec1 + f_alpha * (ec0 - ec1))
+
     def r2scan_exchange():
         eta = F("0.001")
         dp2 = F("0.361")
@@ -336,6 +430,8 @@ def energy_expression(spec):
         "LDA_C_PW": lambda: correlation(False, False),
         "LDA_C_PW_MOD": lambda: correlation(False, True),
         "GGA_C_PBE": lambda: correlation(True, True),
+        "MGGA_X_SCAN": scan_exchange,
+        "MGGA_C_SCAN": scan_correlation,
         "MGGA_X_R2SCAN": r2scan_exchange,
         "MGGA_C_R2SCAN": r2scan_correlation,
     }
