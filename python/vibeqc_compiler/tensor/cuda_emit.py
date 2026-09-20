@@ -542,6 +542,29 @@ __global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
         f"cuda_check(cudaMemcpyAsync(ctx.arena + {arena_offset}, bytes + {payload_offset}, {size_bytes}ULL, cudaMemcpyHostToDevice, ctx.stream));"
         for _, _, arena_offset, payload_offset, size_bytes in external_slices
     )
+    static_abi = ""
+    if not embed_static_data:
+        static_abi = f"""
+extern "C" size_t {_name(prefix, "tensor_static_bytes")}() {{ return {external_static_bytes}ULL; }}
+extern "C" int {_name(prefix, "tensor_static_initialize")}(void* pointer, const void* data, size_t bytes_count,
+                          char* error, size_t size) {{
+    if (!pointer) {{ error_text(error, size, "null tensor plan"); return 1; }}
+    auto& ctx = *static_cast<GraphContext*>(static_cast<Context*>(pointer));
+    std::unique_lock<std::mutex> lock(ctx.mutex, std::try_to_lock);
+    if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
+    try {{
+        ctx.check_device();
+        if (bytes_count != {external_static_bytes}ULL)
+            throw std::runtime_error("tensor static-data size mismatch");
+        if (bytes_count && !data)
+            throw std::runtime_error("null tensor static-data payload");
+        const auto* bytes = static_cast<const unsigned char*>(data);
+        {external_copies}
+        cuda_check(cudaStreamSynchronize(ctx.stream));
+        return 0;
+    }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
+}}
+"""
     parts.append(f"""
 extern "C" const char* {_name(prefix, "tensor_plan_identity")}() {{ return "{plan.identity}"; }}
 extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char* error, size_t size) {{
@@ -565,25 +588,7 @@ extern "C" int {_name(prefix, "tensor_create")}(int device, void** result, char*
     }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
 }}
 extern "C" void {_name(prefix, "tensor_destroy")}(void* pointer) {{ delete static_cast<GraphContext*>(static_cast<Context*>(pointer)); }}
-extern "C" size_t {_name(prefix, "tensor_static_bytes")}() {{ return {external_static_bytes}ULL; }}
-extern "C" int {_name(prefix, "tensor_static_initialize")}(void* pointer, const void* data, size_t bytes_count,
-                          char* error, size_t size) {{
-    if (!pointer) {{ error_text(error, size, "null tensor plan"); return 1; }}
-    auto& ctx = *static_cast<GraphContext*>(static_cast<Context*>(pointer));
-    std::unique_lock<std::mutex> lock(ctx.mutex, std::try_to_lock);
-    if (!lock.owns_lock()) {{ error_text(error, size, "tensor plan is already executing"); return 1; }}
-    try {{
-        ctx.check_device();
-        if (bytes_count != {external_static_bytes}ULL)
-            throw std::runtime_error("tensor static-data size mismatch");
-        if (bytes_count && !data)
-            throw std::runtime_error("null tensor static-data payload");
-        const auto* bytes = static_cast<const unsigned char*>(data);
-        {external_copies}
-        cuda_check(cudaStreamSynchronize(ctx.stream));
-        return 0;
-    }} catch (const std::exception& e) {{ error_text(error, size, e.what()); return 1; }}
-}}
+{static_abi}
 static int {_name(prefix, "tensor_run_impl")}(void* pointer, const void* const* inputs, void* const* outputs,
                           int profile, Metrics* result, vibeqc::runtime::GraphMetrics* graph_result,
                           char* graph_reason, size_t graph_reason_size, char* error, size_t size) {{

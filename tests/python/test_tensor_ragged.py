@@ -174,6 +174,7 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     assert "for (I q = begin; q < end; ++q)" in source
     assert "for (I r =" in source  # segment_sum keeps its direct segment traversal
     assert "static const I" in source
+    assert "tensor_static_initialize" not in source
     assert "static const I" not in external
     assert "tensor_static_initialize" in external
     assert (
