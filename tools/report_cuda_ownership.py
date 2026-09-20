@@ -1,6 +1,6 @@
 """Reproduce maintained CUDA ownership separately from generated build output.
 
-The ledger is a reviewed semantic classification, not a keyword classifier for
+The ownership shards form a reviewed semantic classification, not a keyword classifier for
 scientific mathematics. Exact source anchors partition mixed files, while the
 inventory check rejects new or removed CUDA files until the ledger is updated.
 Counts include host launch/ownership code in CUDA translation units. Generated
@@ -292,14 +292,14 @@ def validate_baseline(baseline: typing.Any) -> None:
 def main() -> typing.Any:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--ledger", type=Path, default=ROOT / "docs/cuda_ownership.json"
+        "--ledger", type=Path, default=ROOT / "docs/cuda_ownership"
     )
     parser.add_argument("--build", type=Path)
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    report = ownership_report(ROOT, json.loads(args.ledger.read_text()), args.build)
+    report = ownership_report(ROOT, load_ledger(args.ledger), args.build)
     if args.baseline:
         baseline = json.loads(args.baseline.read_text())
         validate_baseline(baseline)

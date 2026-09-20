@@ -8,13 +8,18 @@ from pathlib import Path
 import pytest
 
 from tools.compare_cuda_ownership import compare
-from tools.report_cuda_ownership import code_lines, ownership_report, validate_baseline
+from tools.report_cuda_ownership import (
+    code_lines,
+    load_ledger,
+    ownership_report,
+    validate_baseline,
+)
 
 
 def test_current_report_is_generated_deterministically_from_source_and_ledger() -> None:
     """Keep the current report reproducible without a merge-conflict-prone snapshot."""
     root = Path(__file__).resolve().parents[2]
-    ledger = json.loads((root / "docs/cuda_ownership.json").read_text())
+    ledger = load_ledger(root / "docs/cuda_ownership")
     first = ownership_report(root, ledger)
     second = ownership_report(root, ledger)
     validate_baseline(first)
@@ -22,6 +27,8 @@ def test_current_report_is_generated_deterministically_from_source_and_ledger() 
     assert first["schema"] == "vibeqc.cuda-ownership-report.v1"
     assert first["files"]
     assert not (root / "docs/cuda_ownership_current.json").exists()
+    assert not (root / "docs/cuda_ownership.json").exists()
+    assert any((root / "docs/cuda_ownership/files").rglob("*.json"))
 
 
 def ledger_for(tmp_path: typing.Any) -> typing.Any:

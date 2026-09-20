@@ -1,0 +1,20 @@
+{
+  "path": "src/dft/cuda_grid.cu",
+  "reason": "Native plan/arena ownership around the bounded AO/feature kernels.",
+  "regions": [
+    {
+      "reason": "Normalized primitive traversal and D/C feature layout/reduction adapters remain counted conservatively as scientific glue. Axis derivative polynomials and the bilinear ingredient/sigma arithmetic shared by both routes are compiler-owned.",
+      "role": "scientific",
+      "start": "__global__ void ao_kernel",
+      "stop": "// Gather every local matrix element"
+    },
+    {
+      "reason": "Native CUDA LDA/PBE point dispatch, deterministic energy/electron integration and spin-potential matrix contraction. Scalar XC algebra is shared with the CPU implementation, but this endpoint-specific device contraction remains maintained scientific glue.",
+      "role": "scientific",
+      "start": "__device__ vibeqc::dft::point::Value evaluate_xc_point",
+      "stop": "extern \"C\" {"
+    }
+  ],
+  "role": "runtime",
+  "subsystem": "ao_grid"
+}

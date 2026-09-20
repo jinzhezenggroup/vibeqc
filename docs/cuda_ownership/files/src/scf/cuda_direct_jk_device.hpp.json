@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda_direct_jk_device.hpp",
+  "reason": "Borrowed direct-provider stream, resident matrix and numerical-status contract; no new J/K dispatch or scientific equations.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

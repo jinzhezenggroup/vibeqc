@@ -1,0 +1,7 @@
+{
+  "path": "src/runtime/cuda_subgroup.cuh",
+  "reason": "Power-of-two subgroup reduction of fixed channel arrays; masks and arithmetic are independent of integral family.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}
