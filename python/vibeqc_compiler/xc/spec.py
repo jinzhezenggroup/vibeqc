@@ -33,8 +33,9 @@ RSH_COMPONENTS = (
 )
 PW91_COMPONENTS = ("GGA_X_PW91", "GGA_C_PW91")
 P86_COMPONENTS = ("LDA_C_PZ", "GGA_C_P86")
+WB97MV_COMPONENTS = ("MGGA_X_WB97M_V", "MGGA_C_WB97M_V")
 SPECIAL_EXPRESSION_COMPONENTS = RSH_COMPONENTS + PW91_COMPONENTS + P86_COMPONENTS
-COMPONENTS = PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS
+COMPONENTS = PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS + WB97MV_COMPONENTS
 CATALOG = {
     **{name: ((name, Fraction(1)),) for name in PUBLIC_COMPONENTS},
     "LDA_XC_PW": (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
@@ -106,12 +107,12 @@ class FunctionalSpec:
                     "exchange metadata requires nonnegative exact fractions"
                 )
         has_range_semilocal = any(
-            name == "GGA_X_ITYH" and coefficient
+            name in ("GGA_X_ITYH", "MGGA_X_WB97M_V") and coefficient
             for name, coefficient in self.components
         )
         if has_range_semilocal and not self.range_omega:
             raise UnsupportedXC(
-                "ITYH short-range exchange requires one positive range_omega"
+                "range-dependent semilocal exchange requires one positive range_omega"
             )
 
     @property
@@ -143,8 +144,16 @@ class FunctionalSpec:
             name in SPECIAL_EXPRESSION_COMPONENTS and coefficient
             for name, coefficient in self.components
         )
-        manifest = "rsh-manifest.json" if special else "manifest.json"
-        expression_source = "rsh_expressions.py" if special else "expressions.py"
+        wb97mv = any(
+            name in WB97MV_COMPONENTS and coefficient
+            for name, coefficient in self.components
+        )
+        if wb97mv:
+            manifest = "wb97mv-manifest.json"
+            expression_source = "wb97mv_expressions.py"
+        else:
+            manifest = "rsh-manifest.json" if special else "manifest.json"
+            expression_source = "rsh_expressions.py" if special else "expressions.py"
         return {
             **payload,
             "ingredients": self.ingredients,
@@ -159,10 +168,15 @@ class FunctionalSpec:
                 Path(__file__).with_name(expression_source)
             ),
             "domain": (
-                "rsh-interior-v1: interior-v1 plus explicit ITYH attenuation "
-                "branch support; no clipping"
-                if self.range_omega
-                else "interior-v1: no clipping; see docs/xc_expressions.md"
+                "wb97mv-interior-v1: Libxc-7.0 B97M polynomial plus direct "
+                "erf attenuation branch a<1.35; no clipping"
+                if wb97mv
+                else (
+                    "rsh-interior-v1: interior-v1 plus explicit ITYH attenuation "
+                    "branch support; no clipping"
+                    if self.range_omega
+                    else "interior-v1: no clipping; see docs/xc_expressions.md"
+                )
             ),
         }
 

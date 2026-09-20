@@ -135,7 +135,7 @@ class MethodSpec:
                 raise UnsupportedMethod(f"{label} must be nonnegative")
         has_range_exchange = bool(self.short_range_exchange or self.long_range_exchange)
         has_range_semilocal = any(
-            name == "GGA_X_ITYH" and coefficient
+            name in ("GGA_X_ITYH", "MGGA_X_WB97M_V") and coefficient
             for name, coefficient in self.semilocal_components
         )
         if bool(self.range_omega) != (has_range_exchange or has_range_semilocal):
@@ -733,6 +733,19 @@ METHOD_CATALOG = MappingProxyType(
             (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
             exact_exchange=Fraction(1, 4),
             dispersion=pbe0_d3_bj_spec(),
+        ),
+        "WB97M-V": MethodSpec(
+            "WB97M-V",
+            (
+                ("MGGA_X_WB97M_V", Fraction(1)),
+                ("MGGA_C_WB97M_V", Fraction(1)),
+            ),
+            short_range_exchange=Fraction(3, 20),
+            long_range_exchange=Fraction(1),
+            range_omega=Fraction(3, 10),
+            nonlocal_correlation=NonlocalCorrelationSpec(
+                "vv10", Fraction(6), Fraction(1, 100)
+            ),
         ),
         "CAM-B3LYP": MethodSpec(
             "CAM-B3LYP",

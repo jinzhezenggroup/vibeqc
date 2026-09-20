@@ -48,11 +48,21 @@ per spin; PBE retains value and three ordinary spatial derivatives. Neither
 requests tau, D times derivative-AO panels, or higher AO jets.
 
 The sequence is AO -> D times AO -> density/gradient -> shared point energy
-and Cartesian potential coefficients -> weighted E/V reductions. The point
-evaluator differentiates the same stable energy used by the CPU consumer; no
-separate singular sigma chain rule or CPU XC call is inserted. Matrix assembly
-applies weights once, retains both differentiated AO legs, and does not double
-the scalar term. All symmetric matrix cross terms are retained.
+and Cartesian potential coefficients -> weighted E/V reductions. The AO
+traversal, dense D*AO/density-feature contractions, resident point-domain XC
+coefficient algebra, symmetric-potential assembly and scalar-total reductions
+are emitted by `vibeqc_compiler.dft.ao_cuda`; the resident header owns density
+validation and launch/runtime scheduling only. The emitted point evaluator
+differentiates the same stable energy used by the CPU
+consumer; no separate singular sigma chain rule or CPU XC call is inserted.
+Matrix assembly applies weights once, retains both differentiated AO legs, and
+does not double the scalar term. All symmetric matrix cross terms are retained.
+
+The resident contraction block is currently compiler-emitted maintained CUDA
+text, not a complete typed grid/XC IR lowering. The native header's runtime-only
+ownership classification does not remove this remaining scientific-text owner.
+See the [ownership decision](../.agents/notes/implemented/architecture/2026-09-20-resident-xc-emitted-text.md)
+for the preserved native/JIT boundary and the condition for replacing it.
 
 RKS input is the total density. The point layer receives half in each spin and
 the returned single potential uses the corresponding total-density chain rule.
