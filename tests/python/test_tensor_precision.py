@@ -15,6 +15,7 @@ from vibeqc_compiler.tensor import (
     cast,
     conservative_precision_variants,
     describe_precision,
+    einsum,
     execute,
     input_tensor,
     jvp,
@@ -185,6 +186,168 @@ def test_precision_directives_lower_mixed_subgraphs_and_fail_closed() -> None:
                 )
             },
         )
+    with pytest.raises(ValueError, match="qualification"):
+        lower_precision(
+            program,
+            {
+                reduction_name: PrecisionDirective(
+                    "float32",
+                    "float32",
+                    "float64",
+                )
+            },
+        )
+
+
+def test_qualified_fp32_reduce_uses_fp64_accumulation_reference_oracle() -> None:
+    space = IndexSpace("mixed_accum_values", "batch", 4)
+    x = input_tensor(
+        "x",
+        TensorSpec(
+            (Index("i", space),),
+            dtype="float64",
+            role="parameter",
+            differentiable=True,
+        ),
+    )
+    reduced = reduce_sum(x, (0,))
+    program = Program({"out": reduced})
+    lowered = lower_precision(
+        program,
+        {
+            program.debug_names[reduced]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="unit/fp32-compute-fp64-accum",
+            )
+        },
+    )
+
+    values = np.array([1.0e8, 1.0, -1.0e8, 1.0], dtype=np.float64)
+    rounded = values.astype(np.float32)
+    mixed_oracle = np.float64(0.0)
+    fp32_oracle = np.float32(0.0)
+    for value in rounded:
+        mixed_oracle = np.float64(mixed_oracle + np.float64(value))
+        fp32_oracle = np.float32(fp32_oracle + value)
+    expected = np.float64(np.float32(mixed_oracle))
+    assert expected == 2.0
+    assert np.float64(fp32_oracle) != expected
+    assert execute(lowered, {"x": values}).outputs["out"] == expected
+
+    full_fp32 = lower_precision(
+        program,
+        {
+            program.debug_names[reduced]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float32",
+                qualification="unit/full-fp32-reduction",
+            )
+        },
+    )
+    assert full_fp32.logical_hash == lowered.logical_hash
+    assert (
+        describe_precision(full_fp32).identity != describe_precision(lowered).identity
+    )
+    assert (
+        plan_cuda(full_fp32, cuda_target_info("sm_80")).identity
+        != plan_cuda(lowered, cuda_target_info("sm_80")).identity
+    )
+
+    replayed = Program.loads(lowered.dumps())
+    assert describe_precision(replayed).identity == describe_precision(lowered).identity
+    assert execute(replayed, {"x": values}).outputs["out"] == expected
+
+    schedule = describe_precision(lowered)
+    reduction = next(value for value in schedule.values if value.op == "reduce")
+    assert schedule.to_payload()["schema"] == "vibeqc.tensor.precision-schedule.v3"
+    assert schedule.execution_scope == ((program.debug_names[reduced], reduction.name),)
+    assert (
+        reduction.storage_dtype,
+        reduction.compute_dtype,
+        reduction.accumulation_dtype,
+    ) == ("float32", "float32", "float64")
+
+
+def test_mixed_accumulation_einsum_uses_generated_kernel_not_sgemm() -> None:
+    space = IndexSpace("mixed_dot_values", "batch", 4)
+    spec = TensorSpec(
+        (Index("i", space),),
+        dtype="float64",
+        role="parameter",
+        differentiable=True,
+    )
+    left = input_tensor("left", spec)
+    right = input_tensor("right", spec)
+    dot = einsum("i,i->", left, right, coefficient="1/3")
+    program = Program({"out": dot})
+    lowered = lower_precision(
+        program,
+        {
+            program.debug_names[dot]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="unit/fp32-dot-fp64-accum",
+            )
+        },
+    )
+    plan = plan_cuda(lowered, cuda_target_info("sm_80"))
+    step = next(step for step in plan.steps if step.node.op == "einsum")
+    assert step.gemm == "none"
+    step_precision = plan.precision_by_node[step.node]
+    assert step_precision.compute_dtype == "float32"
+    assert step_precision.accumulation_dtype == "float64"
+
+    assert estimate_schedule(plan)["estimated_fp64_accumulation_terms"] == 4
+    source = emit_cuda(plan)
+    assert "double value = 0.0;" in source
+    assert "__dadd_rn(value, static_cast<double>(" in source
+    assert "__fmul_rn(__double2float_rn(finite(value" in source
+
+    left_values = np.array([1.0e8, 1.0, -1.0e8, 1.0], dtype=np.float64)
+    right_values = np.ones(4, dtype=np.float64)
+    expected = np.float64(np.float32(2.0) * np.float32(1.0 / 3.0))
+    assert (
+        execute(lowered, {"left": left_values, "right": right_values}).outputs["out"]
+        == expected
+    )
+
+
+def test_mixed_accumulation_binding_survives_relower_and_rejects_tampering() -> None:
+    space = IndexSpace("mixed_relower_values", "batch", 4)
+    x = input_tensor(
+        "x",
+        TensorSpec((Index("i", space),), dtype="float64", role="parameter"),
+    )
+    reduced = reduce_sum(x, (0,))
+    program = Program({"out": reduced})
+    first = lower_precision(
+        program,
+        {
+            program.debug_names[reduced]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="unit/mixed-reduction",
+            )
+        },
+    )
+    second = lower_precision(first, {})
+    assert any(
+        value.op == "reduce"
+        and value.compute_dtype == "float32"
+        and value.accumulation_dtype == "float64"
+        for value in describe_precision(second).values
+    )
+
+    provenance = second.provenance
+    provenance["precision_execution"]["precision_request_identity"] = "0" * 64
+    altered = Program(second.outputs, second.definitions, provenance=provenance)
+    with pytest.raises(ValueError, match="precision execution.*validated request"):
+        describe_precision(altered)
 
 
 def test_existing_schedule_search_can_cross_precision_variants() -> None:

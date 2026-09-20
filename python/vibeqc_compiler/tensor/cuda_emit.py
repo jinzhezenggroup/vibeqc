@@ -76,12 +76,30 @@ def _read(
     return f"{_name(prefix, f'read_{operand}')}(p, {index}, error)"
 
 
+def _value_precision(plan: typing.Any, i: int) -> typing.Any:
+    return plan.precision_by_node[plan.steps[i].node]
+
+
+def _convert(value: str, source: typing.Any, target: typing.Any) -> str:
+    if source.dtype == target.dtype:
+        return value
+    if source.dtype == "float64" and target.dtype == "float32":
+        return f"__double2float_rn({value})"
+    if source.dtype == "float32" and target.dtype == "float64":
+        return f"static_cast<double>({value})"
+    raise ValueError("unsupported TensorIR CUDA precision conversion")
+
+
 def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.Any:
     """Emit scalar evaluation with each original arithmetic error boundary."""
     step = plan.steps[i]
     node, a, args = step.node, step.node.attrs, step.inputs
     scalar = scalar_type(node.spec.dtype)
+    precision = _value_precision(plan, i)
+    accumulator = scalar_type(precision.accumulation_dtype)
     ty, add, mul = scalar.ctype, scalar.intrinsic("add"), scalar.intrinsic("mul")
+    acc_ty = accumulator.ctype
+    acc_add = accumulator.intrinsic("add")
     shape = node.spec.shape
     c = [_coordinate("z", shape, axis) for axis in range(len(shape))]
     reduction_pragma = (
@@ -93,14 +111,8 @@ def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.A
         child = args[0]
         source = scalar_type(plan.steps[child].node.spec.dtype)
         value = _read(child, "z", prefix)
-        if source.dtype == "float64" and scalar.dtype == "float32":
-            converted = f"__double2float_rn({value})"
-        elif source.dtype == "float32" and scalar.dtype == "float64":
-            # FP32 -> FP64 is exact. Keep the boundary explicit instead of
-            # relying on arithmetic promotion in a neighboring primitive.
-            converted = f"static_cast<double>({value})"
-        else:
-            converted = value
+        # FP32 -> FP64 is exact; FP64 -> FP32 is explicit RN conversion.
+        converted = _convert(value, source, scalar)
         return f"return finite({converted}, error, {i});"
     if node.op == "add":
         lines = [f"{ty} value = {scalar.zero};"]
@@ -154,10 +166,13 @@ def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.A
         term = values[0]
         for value in values[1:]:
             term = f"{mul}({term}, {value})"
-        return f"""{ty} value = {scalar.zero};
+        accumulated_term = _convert(term, scalar, accumulator)
+        narrowed = _convert(f"finite(value, error, {i})", accumulator, scalar)
+        scaled = f"{mul}({narrowed}, {scalar.literal(a['coefficient'])})"
+        return f"""{acc_ty} value = {accumulator.zero};
 {reduction_pragma}for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
-    value = {add}(value, {term});
-return finite({mul}(finite(value, error, {i}), {scalar.literal(a["coefficient"])}), error, {i});"""
+    value = {acc_add}(value, {accumulated_term});
+return finite({scaled}, error, {i});"""
     child = args[0]
     source_shape = plan.steps[child].node.spec.shape
     if node.op == "reshape":
@@ -219,10 +234,14 @@ return finite(value, error, {i});"""
             else:
                 source.append(c[cursor])
                 cursor += 1
-        return f"""{ty} value = {scalar.zero};
+        contribution = _convert(
+            _read(child, _flat(source, source_shape), prefix), scalar, accumulator
+        )
+        result = _convert("value", accumulator, scalar)
+        return f"""{acc_ty} value = {accumulator.zero};
 {reduction_pragma}for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
-    value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
-return finite(value, error, {i});"""
+    value = {acc_add}(value, {contribution});
+return finite({result}, error, {i});"""
     else:
         raise ValueError(f"unsupported CUDA primitive: {node.op}")
     return f"return {_read(child, index, prefix)};"

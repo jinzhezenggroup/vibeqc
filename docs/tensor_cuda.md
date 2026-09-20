@@ -227,11 +227,17 @@ arithmetic, and the strict CUDA arithmetic identity remains
 `PrecisionDirective` records requested storage, compute and accumulation
 dtypes. `lower_precision` converts supported requests into ordinary TensorIR
 DAGs with explicit casts while preserving the external input/output ABI and the
-source-equation identity. The current ordinary-stream lowering requires compute
-and accumulation dtypes to agree. FP32 requests for reductions/contractions or
-sensitive divide/transcendental operations fail closed unless they carry
-qualification provenance; the conservative generated candidate only lowers
-ordinary elementwise/view subgraphs and leaves those boundaries in FP64.
+source-equation identity. Qualified `reduce` and `einsum` values may use FP32
+storage/compute with FP64 accumulation; the
+wider accumulator is represented in the resolved precision schedule and plan
+identity. Other compute/accumulation mismatches fail closed. Mixed-accumulation
+einsums deliberately use the generated generic contraction kernel because the
+current cuBLAS path does not provide this FP32-input/FP64-accumulator contract.
+FP32 requests for reductions/contractions or sensitive divide/transcendental
+operations still require qualification provenance; the conservative generated
+candidate leaves those boundaries in FP64. The numerical/backend rationale and
+qualification boundary are recorded in the
+[FP64 accumulation decision](../.agents/notes/implemented/numerics/2026-09-21-tensor-fp64-accumulation.md).
 
 Precision candidates are passed to the existing #508 schedule search and tuner.
 They share the same planning budgets, deduplication, compilation cache, resource

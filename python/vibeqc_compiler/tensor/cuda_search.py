@@ -200,6 +200,34 @@ def _resident_blocks(
     return min(limits)
 
 
+def _fp64_accumulation_terms(plan: TensorPlan) -> int:
+    """Count scalar contributions widened from FP32 into qualified FP64 reductions."""
+    total = 0
+    for step in plan.steps:
+        value = plan.precision_by_node[step.node]
+        if value.compute_dtype == value.accumulation_dtype:
+            continue
+        node = step.node
+        if node.op == "reduce":
+            domain = prod(
+                node.inputs[0].spec.shape[axis] for axis in node.attrs["axes"]
+            )
+            total += node.spec.size * domain
+        elif node.op == "einsum":
+            domains = {}
+            for child, labels in zip(node.inputs, node.attrs["labels"], strict=True):
+                domains.update(zip(labels, child.spec.shape, strict=True))
+            reduction = prod(
+                size
+                for label, size in domains.items()
+                if label not in node.attrs["output"]
+            )
+            total += node.spec.size * reduction
+        else:  # pragma: no cover - precision admission owns this invariant
+            raise AssertionError(f"unexpected mixed-accumulation op: {node.op}")
+    return total
+
+
 def estimate_schedule(plan: TensorPlan) -> dict:
     """Reuse exact capacity accounting and expose bounded, calibratable cost proxies."""
     live_values, registers = [], 0
@@ -217,6 +245,10 @@ def estimate_schedule(plan: TensorPlan) -> dict:
                 estimate += 2 * (plan.schedule.elements_per_thread - 1)
                 if step.node.op in ("reduce", "einsum"):
                     estimate += plan.schedule.reduction_unroll - 1
+                value_precision = plan.precision_by_node[step.node]
+                if value_precision.compute_dtype != value_precision.accumulation_dtype:
+                    # One wider live accumulator plus conversion temporary.
+                    estimate += 2
             elif step.gemm == "packed":
                 estimate += 2 * (plan.schedule.staging_width - 1)
             registers = max(registers, estimate)
@@ -243,6 +275,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "estimated_endpoint_semantic_traffic_bytes": traffic["total_bytes"],
         "traffic_scope": traffic["scope"],
         "estimated_flops": plan.estimated_flops,
+        "estimated_fp64_accumulation_terms": _fp64_accumulation_terms(plan),
         "estimated_registers_per_thread": registers,
         "estimated_shared_bytes": 0,
         "estimated_local_bytes": None,
