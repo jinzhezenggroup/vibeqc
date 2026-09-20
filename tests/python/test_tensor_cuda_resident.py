@@ -61,6 +61,11 @@ def test_resident_source_keeps_the_ordinary_abi() -> None:
         "tensor_probe",
     ):
         assert ordinary in source, ordinary
+    assert "tensor_static_initialize" not in source
+
+    external = resident_source(plan, embed_static_data=False)
+    assert "tensor_static_bytes" in external
+    assert "tensor_static_initialize" in external
 
 
 def test_resident_source_declares_the_resident_abi() -> None:

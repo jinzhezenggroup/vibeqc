@@ -84,7 +84,11 @@ __global__ void resident_validate_{slot}(unsigned char* p, int* error) {{
 
 
 def resident_source(
-    plan: typing.Any, *, prefix: typing.Any = "", extension: typing.Any = ""
+    plan: typing.Any,
+    *,
+    prefix: typing.Any = "",
+    extension: typing.Any = "",
+    embed_static_data: bool = True,
 ) -> typing.Any:
     """Append the resident ABI to the verified ordinary TU.
 
@@ -106,7 +110,9 @@ def resident_source(
             raise ValueError(
                 "resident inputs must be pinned for the full plan lifetime"
             )
-    base = emit_cuda(plan, symbol_prefix=prefix)
+    base = emit_cuda(
+        plan, symbol_prefix=prefix, embed_static_data=embed_static_data
+    )
     validations, _vc = _validation_body(plan)
 
     inputs = [plan.steps[i] for i in plan.inputs]
