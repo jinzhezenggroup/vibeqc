@@ -402,6 +402,25 @@ def _jvp_gather(node: Node, values, tangents) -> np.ndarray:
     )
 
 
+def _jvp_scatter_add(node: Node, values, tangents) -> np.ndarray:
+    result = _zeros(node.spec)
+    index = [slice(None)] * result.ndim
+    index[node.attrs["axis"]] = np.asarray(node.attrs["positions"], dtype=np.intp)
+    np.add.at(result, tuple(index), tangents[0])
+    return result
+
+
+def _jvp_segment_sum(node: Node, values, tangents) -> np.ndarray:
+    result = _zeros(node.spec)
+    source = np.moveaxis(tangents[0], node.attrs["axis"], 0)
+    target = np.moveaxis(result, node.attrs["axis"], 0)
+    for segment, (start, stop) in enumerate(
+        zip(node.attrs["offsets"], node.attrs["offsets"][1:])
+    ):
+        target[segment] = np.sum(source[start:stop], axis=0, dtype=node.spec.dtype)
+    return result
+
+
 def _jvp_reduce(node: Node, values, tangents) -> np.ndarray:
     return np.sum(tangents[0], axis=node.attrs["axes"], dtype=node.spec.dtype)
 
@@ -451,6 +470,9 @@ _JVP_RULES = {
     "reshape": _jvp_reshape,
     "slice": _jvp_slice,
     "gather": _jvp_gather,
+    "indexed_gather": _jvp_gather,
+    "scatter_add": _jvp_scatter_add,
+    "segment_sum": _jvp_segment_sum,
     "reduce": _jvp_reduce,
     "broadcast": _jvp_broadcast,
 }
@@ -578,6 +600,24 @@ def _vjp_gather(node: Node, values, bar) -> list[np.ndarray]:
     return [result]
 
 
+def _vjp_scatter_add(node: Node, values, bar) -> list[np.ndarray]:
+    return [
+        np.take(
+            bar,
+            np.asarray(node.attrs["positions"], dtype=np.intp),
+            axis=node.attrs["axis"],
+        )
+    ]
+
+
+def _vjp_segment_sum(node: Node, values, bar) -> list[np.ndarray]:
+    offsets = node.attrs["offsets"]
+    positions = np.repeat(
+        np.arange(len(offsets) - 1, dtype=np.intp), np.diff(np.asarray(offsets))
+    )
+    return [np.take(bar, positions, axis=node.attrs["axis"])]
+
+
 def _vjp_reduce(node: Node, values, bar) -> list[np.ndarray]:
     input_shape = node.inputs[0].spec.shape
     reduced = set(node.attrs["axes"])
@@ -605,6 +645,9 @@ _VJP_RULES = {
     "reshape": _vjp_reshape,
     "slice": _vjp_slice,
     "gather": _vjp_gather,
+    "indexed_gather": _vjp_gather,
+    "scatter_add": _vjp_scatter_add,
+    "segment_sum": _vjp_segment_sum,
     "reduce": _vjp_reduce,
     "broadcast": _vjp_broadcast,
 }

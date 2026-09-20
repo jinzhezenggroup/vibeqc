@@ -19,6 +19,7 @@ SPACE_KINDS = frozenset(
         "auxiliary",
         "batch",
         "spin",
+        "shell",
         "atom",
         "pair",
         "cartesian",
