@@ -11,8 +11,8 @@ import argparse
 import hashlib
 import json
 import os
-import shutil
 import subprocess
+import tempfile
 import typing
 from pathlib import Path
 from time import perf_counter
@@ -222,8 +222,9 @@ def benchmark_case(
     charge, multiplicity = _spin(method)
     calc = _calculator(method)
     records: list[dict[str, typing.Any]] = []
-    cache.parent.mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(cache, ignore_errors=True)
+    cache.mkdir(parents=True, exist_ok=True)
+    # A cold measurement owns a fresh child, never deletes caller cache/evidence.
+    cache = Path(tempfile.mkdtemp(prefix="cold-", dir=cache))
 
     with (
         calc.prepare_batch(
@@ -231,7 +232,7 @@ def benchmark_case(
         ) as batch,
         NativeAO(atoms, charge=charge, multiplicity=multiplicity) as basis,
     ):
-        cold_item = batch.execute(strict=True).items[0]
+        cold_item = batch.execute(strict=True, properties=("energy",)).items[0]
         cold_state, export_seconds = _export_state(batch, basis)
         try:
             result, wall = _diagnostic(cold_state, basis, compiler, cache)
@@ -262,7 +263,7 @@ def benchmark_case(
                 return records
             raise
 
-        warm_item = batch.execute(strict=True).items[0]
+        warm_item = batch.execute(strict=True, properties=("energy",)).items[0]
         warm_state, export_seconds = _export_state(batch, basis)
         result, wall = _diagnostic(warm_state, basis, compiler, cache)
         records.append(
@@ -301,7 +302,9 @@ def benchmark_case(
             (atom[0], tuple(float(x) for x in coord))
             for atom, coord in zip(atoms, xyz, strict=True)
         ]
-        changed_item = batch.execute(coordinates=[xyz], strict=True).items[0]
+        changed_item = batch.execute(
+            coordinates=[xyz], strict=True, properties=("energy",)
+        ).items[0]
         with NativeAO(
             changed_atoms, charge=charge, multiplicity=multiplicity
         ) as changed_basis:

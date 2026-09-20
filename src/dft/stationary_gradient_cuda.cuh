@@ -151,10 +151,19 @@ int stationary_profile(void* pointer, char* error, size_t size) {
     if (!p) throw std::invalid_argument("null stationary owner");
     p->context.check_device();
     if (p->profile) return;
-    cuda_check(cudaEventCreate(&p->stage0));
-    cuda_check(cudaEventCreate(&p->stage1));
-    cuda_check(cudaEventCreate(&p->stage2));
-    cuda_check(cudaEventCreate(&p->stage3));
+    // Do not publish partial event ownership: a failed enable may be retried.
+    cudaEvent_t events[4]{};
+    try {
+      for (auto& event : events) cuda_check(cudaEventCreate(&event));
+    } catch (...) {
+      for (auto event : events)
+        if (event) cudaEventDestroy(event);
+      throw;
+    }
+    p->stage0 = events[0];
+    p->stage1 = events[1];
+    p->stage2 = events[2];
+    p->stage3 = events[3];
     p->profile = true;
   });
 }
