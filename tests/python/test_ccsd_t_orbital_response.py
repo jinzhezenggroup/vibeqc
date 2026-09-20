@@ -175,7 +175,6 @@ def test_total_ccsdt_orbital_rhs_and_raw_weights_decompose(
     assert state.minimum_orbital_curvature > state.options.minimum_orbital_curvature
 
 
-
 def test_real_denominator_sources_chain_through_canonical_fock(
     water_state: BoundCCSDTOrbitalResponse,
 ) -> None:
@@ -229,7 +228,6 @@ def test_real_denominator_sources_chain_through_canonical_fock(
             atol=3e-8,
             rtol=3e-7,
         )
-
 
 
 def test_denominator_source_changes_orbital_and_overlap_response(
