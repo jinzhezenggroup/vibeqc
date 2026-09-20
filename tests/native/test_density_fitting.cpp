@@ -502,6 +502,29 @@ int main() {
     require_matrix_close(spherical_transformed.three_center_derivative,
                          spherical.three_center_derivative, 2.0e-13,
                          "public spherical DF tensor derivative transform differs");
+    std::vector<double> spherical_metric_weights(spherical.metric.size());
+    std::vector<double> spherical_three_center_weights(spherical.three_center.size());
+    for (std::size_t item = 0; item < spherical_metric_weights.size(); ++item)
+      spherical_metric_weights[item] = 0.003 * static_cast<double>((item % 7) + 1);
+    for (std::size_t item = 0; item < spherical_three_center_weights.size(); ++item)
+      spherical_three_center_weights[item] =
+          (item % 2 ? -0.002 : 0.001) * static_cast<double>((item % 11) + 1);
+    const auto spherical_weighted = vibeqc::integrals::contract_weighted_density_fitting_derivative(
+        spherical_d_system(0.9), spherical_d_system(0.55), spherical_metric_weights,
+        spherical_three_center_weights);
+    std::vector<double> spherical_weighted_oracle(spherical.ncoord, 0.0);
+    for (std::size_t coordinate = 0; coordinate < spherical.ncoord; ++coordinate) {
+      for (std::size_t item = 0; item < spherical_metric_weights.size(); ++item)
+        spherical_weighted_oracle[coordinate] +=
+            spherical_metric_weights[item] *
+            spherical.metric_derivative[coordinate * spherical.metric.size() + item];
+      for (std::size_t item = 0; item < spherical_three_center_weights.size(); ++item)
+        spherical_weighted_oracle[coordinate] +=
+            spherical_three_center_weights[item] *
+            spherical.three_center_derivative[coordinate * spherical.three_center.size() + item];
+    }
+    require_matrix_close(spherical_weighted, spherical_weighted_oracle, 3.0e-11,
+                         "weighted spherical DF derivative differs from materialized oracle");
 
     constexpr double displacement = 1.0e-5;
     vibeqc::core::System plus_orbital = orbital;
@@ -694,6 +717,19 @@ int main() {
       require_close(uhf_gradient.derivative[axis] + uhf_gradient.derivative[axis + 3], 0.0, 3.0e-10,
                     "UHF DF gradient violates translation invariance");
     }
+
+    auto value_only = vibeqc::integrals::build_density_fitting_integrals(orbital, auxiliary, false);
+    value_only.ncoord = orbital.atoms.size() * 3U;
+    const auto weighted_rhf = vibeqc::scf::build_density_fitting_rhf_weighted_gradient(
+        orbital, auxiliary, value_only, rhf_density, 1.0e-12);
+    const auto weighted_uhf = vibeqc::scf::build_density_fitting_uhf_weighted_gradient(
+        orbital, auxiliary, value_only, alpha_density, beta_density, 1.0e-12);
+    require(value_only.metric_derivative.empty() && value_only.three_center_derivative.empty(),
+            "value-only DF fixture unexpectedly materialized derivatives");
+    require_matrix_close(weighted_rhf.derivative, rhf_gradient.derivative, 2.0e-10,
+                         "weighted RHF DF gradient differs from materialized oracle");
+    require_matrix_close(weighted_uhf.derivative, uhf_gradient.derivative, 2.0e-10,
+                         "weighted UHF DF gradient differs from materialized oracle");
 
     // The HF adapter emits generic, strided external weights. Dot these
     // against the independent raw derivative tensors, with two memory/tile
