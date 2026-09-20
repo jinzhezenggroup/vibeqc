@@ -151,7 +151,9 @@ def test_precision_directives_lower_mixed_subgraphs_and_fail_closed() -> None:
         node.op == "reduce" and node.spec.dtype == "float64"
         for node in lowered.live_nodes
     )
-    assert [(c.source_dtype, c.target_dtype) for c in describe_precision(lowered).casts] == [
+    assert [
+        (c.source_dtype, c.target_dtype) for c in describe_precision(lowered).casts
+    ] == [
         ("float64", "float32"),
         ("float32", "float64"),
     ]

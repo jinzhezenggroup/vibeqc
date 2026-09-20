@@ -194,7 +194,9 @@ def tune_cuda(
         else tuple(islice(precision_programs, search_limits.maximum_candidates + 1))
     )
     if not 1 <= len(precision_programs) <= search_limits.maximum_candidates:
-        raise ValueError("precision variant count exceeds the candidate limit or is empty")
+        raise ValueError(
+            "precision variant count exceeds the candidate limit or is empty"
+        )
     maximum_schedules = max(
         1, search_limits.maximum_candidates // len(precision_programs)
     )

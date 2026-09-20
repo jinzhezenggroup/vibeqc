@@ -81,7 +81,12 @@ class ValuePrecision:
             raise ValueError("precision value requires an operation name")
         for label in ("storage_dtype", "compute_dtype", "accumulation_dtype"):
             _dtype(getattr(self, label), label)
-        if self.sensitivity not in ("ordinary", "reduction", "sensitive", "cast"):
+        if self.sensitivity not in (
+            "ordinary",
+            "reduction",
+            "sensitive",
+            "cast",
+        ):
             raise ValueError("invalid precision sensitivity class")
         if self.math_mode != STRICT_MATH_MODE:
             raise ValueError("unsupported TensorIR arithmetic mode")
@@ -164,7 +169,9 @@ class PrecisionSchedule:
 
     @property
     def cast_read_bytes(self) -> int:
-        return checked_size(sum(cast.read_bytes for cast in self.casts), "cast read bytes")
+        return checked_size(
+            sum(cast.read_bytes for cast in self.casts), "cast read bytes"
+        )
 
     @property
     def cast_write_bytes(self) -> int:
@@ -277,7 +284,9 @@ def lower_precision(
         storage_dtype = (
             node.spec.dtype if directive is None else directive.storage_dtype
         )
-        inputs = tuple(_ensure_dtype(mapping[child], compute_dtype) for child in node.inputs)
+        inputs = tuple(
+            _ensure_dtype(mapping[child], compute_dtype) for child in node.inputs
+        )
         declared = replace(
             node.spec,
             dtype=compute_dtype,
@@ -340,11 +349,18 @@ def conservative_precision_variants(program: Program) -> tuple[Program, ...]:
 
 
 def describe_precision(
-    program: Program, *, strict_audit_dtype: str = "float64"
+    program: Program, *, strict_audit_dtype: str | None = None
 ) -> PrecisionSchedule:
     """Resolve dtype/sensitivity/cast facts without inventing a promotion policy."""
     if not isinstance(program, Program):
         raise TypeError("precision scheduling requires a TensorIR Program")
+    if strict_audit_dtype is None:
+        request = program.provenance.get("precision_request")
+        strict_audit_dtype = (
+            request.get("strict_audit_dtype", "float64")
+            if isinstance(request, dict)
+            else "float64"
+        )
     _dtype(strict_audit_dtype, "strict audit dtype")
     names = program.debug_names
     values = []

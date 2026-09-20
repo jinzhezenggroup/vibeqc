@@ -330,7 +330,9 @@ def plan_schedule_search(
     resolved = []
     for program in programs:
         if _program_abi(program) != baseline_abi:
-            raise ValueError("precision variants must preserve the baseline input/output ABI")
+            raise ValueError(
+                "precision variants must preserve the baseline input/output ABI"
+            )
         precision = describe_precision(program)
         if precision.source_equation != baseline.program.logical_hash:
             raise ValueError(
@@ -346,10 +348,10 @@ def plan_schedule_search(
                 plan = plan_cuda(
                     program,
                     baseline.target,
-                max_bytes=baseline.max_bytes,
-                schedule=requested,
-                reservations=baseline.reservations,
-                library_bytes=baseline.library_bytes,
+                    max_bytes=baseline.max_bytes,
+                    schedule=requested,
+                    reservations=baseline.reservations,
+                    library_bytes=baseline.library_bytes,
                     provider_bytes=baseline.provider_bytes,
                 )
             except ValueError as error:
