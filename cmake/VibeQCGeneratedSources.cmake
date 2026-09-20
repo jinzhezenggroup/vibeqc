@@ -50,7 +50,6 @@ macro(vibeqc_register_host_generated_sources target)
     TARGET ${target}
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
     OUTPUTS "${VIBEQC_XC_CPU_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_XC_CPU_HEADER}")
 
   set(VIBEQC_SCF_ARRAY_CPU_HEADER
@@ -60,7 +59,6 @@ macro(vibeqc_register_host_generated_sources target)
     TARGET ${target}
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_scf_array_native.py"
     OUTPUTS "${VIBEQC_SCF_ARRAY_CPU_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_SCF_ARRAY_CPU_HEADER}"
     COMMENT "Generating Array frontend SCF CPU tensor helpers")
 
@@ -84,7 +82,6 @@ macro(vibeqc_register_host_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_hf_response.py"
     OUTPUTS "${VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --contract-output "${VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER}")
 
   set(VIBEQC_ECP_HEADER
@@ -95,7 +92,6 @@ macro(vibeqc_register_host_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_ecp_kernels.py"
     OUTPUTS "${VIBEQC_ECP_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_ECP_HEADER}")
 endmacro()
 
@@ -107,7 +103,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_matrix_function_cuda.py"
     OUTPUTS "${VIBEQC_MATRIX_FUNCTION_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_MATRIX_FUNCTION_HEADER}")
 
   set(VIBEQC_DF_HF_RESPONSE_CUDA_HEADER
@@ -117,7 +112,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_hf_response.py"
     OUTPUTS "${VIBEQC_DF_HF_RESPONSE_CUDA_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --cuda-output "${VIBEQC_DF_HF_RESPONSE_CUDA_HEADER}")
 
   set(VIBEQC_DF_GENERATED_HEADER
@@ -238,7 +232,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_weighted_eri_kernels.py"
     OUTPUTS "${VIBEQC_WEIGHTED_ERI_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_WEIGHTED_ERI_HEADER}")
 
   set(VIBEQC_R2SCAN_CUDA_HEADER
@@ -248,7 +241,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_r2scan_cuda.py"
     OUTPUTS "${VIBEQC_R2SCAN_CUDA_HEADER}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_R2SCAN_CUDA_HEADER}")
 
   set(VIBEQC_GRID_SOURCE
@@ -271,7 +263,6 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_gradient_cuda.py"
     OUTPUTS "${VIBEQC_XC_GRADIENT_SOURCE}"
-    DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
     ARGS --output "${VIBEQC_XC_GRADIENT_SOURCE}")
 
   set(VIBEQC_RCCSD_CUDA_SOURCE
@@ -327,8 +318,7 @@ macro(vibeqc_add_codegen_pilot)
       vibeqc_register_generated_sources(
         GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
         OUTPUTS "${output}"
-        DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
-        ARGS --shell-class psss --axis "${axis}" --output "${output}"
+            ARGS --shell-class psss --axis "${axis}" --output "${output}"
         COMMENT "Generating symbolic/CSE psss ${axis}-gradient CUDA pilot")
       list(APPEND VIBEQC_CODEGEN_PILOT_OUTPUTS "${output}")
     endforeach()
@@ -338,8 +328,7 @@ macro(vibeqc_add_codegen_pilot)
     vibeqc_register_generated_sources(
       GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
       OUTPUTS "${output}"
-      DEPENDS ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
-      ARGS
+        ARGS
         --shell-class dppp --d-component xy --p-components xyz
         --lowering factored --output "${output}"
       COMMENT "Generating factored symbolic/CSE dppp xy/xyz CUDA candidate")
