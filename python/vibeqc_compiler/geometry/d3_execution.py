@@ -68,9 +68,7 @@ def execute_d3_bj_batch(
     if gradient:
         reverse = compiled.coordinate_vjp()
         seed_name = next(
-            name
-            for name, source in reverse.input_map.items()
-            if source == "energy"
+            name for name, source in reverse.input_map.items() if source == "energy"
         )
         gradient_name = next(
             name

@@ -519,6 +519,7 @@ def _d3_pair_system_owners(
         owners.append(system)
     return tuple(owners)
 
+
 def _pair_constant(
     context: PairTensorContext,
     values: typing.Iterable[float],
@@ -965,6 +966,7 @@ def compile_d3_bj(
         pair_state,
     )
 
+
 def build_d3_batch_geometry_program(
     spec: D3SpecLike | D3CompilerSpec,
     geometry: GeometryIR,
@@ -1067,4 +1069,3 @@ def compile_d3_bj_batch(
         offsets,
         pair_state,
     )
-

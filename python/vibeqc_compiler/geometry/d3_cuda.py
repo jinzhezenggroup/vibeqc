@@ -261,7 +261,9 @@ class PreparedD3CudaBatch:
         if gradients:
             split = tuple(
                 gradient[begin:end].copy()
-                for begin, end in zip(self._offsets[:-1], self._offsets[1:], strict=True)
+                for begin, end in zip(
+                    self._offsets[:-1], self._offsets[1:], strict=True
+                )
             )
         return D3GeneratedCudaExecution(
             energies=energies,
