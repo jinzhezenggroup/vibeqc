@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from fractions import Fraction
 import typing
+from fractions import Fraction
 
 from vibeqc_compiler.tensor import ir as tensor_ir
 
@@ -22,15 +22,13 @@ def _exact(value: object, name: str = "scalar") -> Fraction:
             f"{name} must be an exact integer, Fraction, or rational string; "
             "floating-point scalar spelling is not accepted"
         )
-    return Fraction(typing.cast(ExactScalar, value))
+    return Fraction(typing.cast("ExactScalar", value))
 
 
 def _binary_arrays(
     left: object, right: object, name: str
 ) -> tuple[VibeArray, VibeArray]:
-    return _array(left, f"{name} left operand"), _array(
-        right, f"{name} right operand"
-    )
+    return _array(left, f"{name} left operand"), _array(right, f"{name} right operand")
 
 
 def add(x1: object, x2: object) -> VibeArray:
@@ -42,9 +40,7 @@ def add(x1: object, x2: object) -> VibeArray:
 def subtract(x1: object, x2: object) -> VibeArray:
     """Elementwise subtraction on identical TensorIR scientific domains."""
     left, right = _binary_arrays(x1, x2, "subtract")
-    return VibeArray(
-        tensor_ir.add(left.node, right.node, coefficients=(1, -1))
-    )
+    return VibeArray(tensor_ir.add(left.node, right.node, coefficients=(1, -1)))
 
 
 def multiply(x1: object, x2: object) -> VibeArray:
@@ -117,7 +113,7 @@ def sum(
     if axis is None:
         axes = tuple(range(value.ndim))
     elif type(axis) is int:
-        axes = (typing.cast(int, axis),)
+        axes = (typing.cast("int", axis),)
     else:
         axes = tuple(axis)
     return VibeArray(tensor_ir.reduce_sum(value.node, axes=axes))

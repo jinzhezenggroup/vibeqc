@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
-import typing
 
 from vibeqc_compiler.tensor.ir import Node
 

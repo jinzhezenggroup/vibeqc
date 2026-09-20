@@ -8,8 +8,10 @@ from vibeqc_compiler.array_api import (
     VibeArray,
     capabilities,
     input_array,
-    namespace as xp,
     trace,
+)
+from vibeqc_compiler.array_api import (
+    namespace as xp,
 )
 from vibeqc_compiler.tensor import (
     Index,

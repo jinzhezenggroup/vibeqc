@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
 import typing
+from collections.abc import Callable, Mapping
 
 from vibeqc_compiler.tensor.ir import input_tensor
 from vibeqc_compiler.tensor.program import Program
@@ -20,9 +20,7 @@ def input_array(name: str, spec: TensorSpec) -> VibeArray:
     return VibeArray(input_tensor(name, spec))
 
 
-def _outputs(
-    result: object, *, output_name: str
-) -> dict[str, typing.Any]:
+def _outputs(result: object, *, output_name: str) -> dict[str, typing.Any]:
     if isinstance(result, VibeArray):
         if not isinstance(output_name, str) or not output_name.isidentifier():
             raise ValueError("output_name must be an identifier")
