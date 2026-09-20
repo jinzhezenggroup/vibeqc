@@ -21,7 +21,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def compiler():
+def compiler() -> CudaCompilerAdapter:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     nvcc = shutil.which("nvcc")
     assert nvcc, "selected CUDA qualification needs nvcc on PATH"
@@ -32,7 +32,7 @@ def compiler():
 
 
 @pytest.fixture(scope="module")
-def h2_case():
+def h2_case() -> object:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
         vector = np.random.default_rng(1812).normal(size=(state.nat, 3))
@@ -40,7 +40,9 @@ def h2_case():
         yield state, vector
 
 
-def test_cuda_second_provider_matches_cpu_components(h2_case, compiler):
+def test_cuda_second_provider_matches_cpu_components(
+    h2_case: tuple[NativeRHFState, np.ndarray], compiler: CudaCompilerAdapter
+) -> None:
     state, vector = h2_case
     expected = provider_hvp_components(state, vector)
     actual, diagnostic = provider_hvp_components(
@@ -64,14 +66,16 @@ def test_cuda_second_provider_matches_cpu_components(h2_case, compiler):
 
 
 def test_complete_hvp_uses_cuda_second_provider_without_cpu_substitution(
-    h2_case, compiler, monkeypatch
-):
+    h2_case: tuple[NativeRHFState, np.ndarray],
+    compiler: CudaCompilerAdapter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from tools.vibeqc_hessian import analytic
 
     state, vector = h2_case
     expected = rhf_hvp(state, vector)
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: object, **kwargs: object) -> object:
         raise AssertionError("CUDA second-integral HVP substituted the CPU compiler")
 
     monkeypatch.setattr(analytic, "CppCompilerAdapter", forbidden)
@@ -95,7 +99,9 @@ def test_complete_hvp_uses_cuda_second_provider_without_cpu_substitution(
     assert transfer["raw_hessian_downloads"] == 0
 
 
-def test_block_hvp_can_use_cuda_second_provider(h2_case, compiler):
+def test_block_hvp_can_use_cuda_second_provider(
+    h2_case: tuple[NativeRHFState, np.ndarray], compiler: CudaCompilerAdapter
+) -> None:
     state, vector = h2_case
     directions = np.stack((vector, -0.41 * vector))
     expected = rhf_hvp_many(state, directions, strategy="recycled")
@@ -118,7 +124,9 @@ def test_block_hvp_can_use_cuda_second_provider(h2_case, compiler):
     )
 
 
-def test_full_hessian_can_use_cuda_second_provider(h2_case, compiler):
+def test_full_hessian_can_use_cuda_second_provider(
+    h2_case: tuple[NativeRHFState, np.ndarray], compiler: CudaCompilerAdapter
+) -> None:
     state, _ = h2_case
     expected = rhf_hessian(state, block_size=3, strategy="recycled")
     actual = rhf_hessian(

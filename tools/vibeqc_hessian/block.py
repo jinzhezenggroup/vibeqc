@@ -54,11 +54,11 @@ class RHFHVPBlockResult:
     _diagnostics: dict = field(repr=False)
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> dict[str, object]:
         return deepcopy(self._diagnostics)
 
     @property
-    def components(self):
+    def components(self) -> dict[str, np.ndarray]:
         return {
             "nuclear": self.nuclear,
             "core": self.core,
@@ -77,11 +77,11 @@ class RHFHessianResult:
     _diagnostics: dict = field(repr=False)
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> dict[str, object]:
         return deepcopy(self._diagnostics)
 
 
-def _checked_directions(directions, natoms):
+def _checked_directions(directions: np.ndarray, natoms: int) -> np.ndarray:
     values = np.asarray(directions)
     if (
         values.ndim != 3
@@ -97,13 +97,13 @@ def _checked_directions(directions, natoms):
     return result
 
 
-def _checked_budget(value, name):
+def _checked_budget(value: int, name: str) -> int:
     if type(value) is not int or not 0 < value < 2**63:
         raise ValueError(f"{name} must be a positive int64 byte count")
     return value
 
 
-def _block_persistent_bound(state, nrhs):
+def _block_persistent_bound(state: NativeRHFState, nrhs: int) -> dict[str, int]:
     """Conservative numeric storage retained outside solve_many workspace."""
     nmo, nocc = state.nbf, state.nocc
     nvir = nmo - nocc
@@ -145,25 +145,25 @@ def _block_persistent_bound(state, nrhs):
 
 
 def rhf_hvp_many(
-    state,
-    directions,
+    state: NativeRHFState,
+    directions: np.ndarray,
     *,
-    strategy="recycled",
-    total_budget_bytes=128 << 20,
-    jk_backend="cpu",
-    device_id=0,
-    device_budget_bytes=64 << 20,
-    solver_options=None,
-    first_backend="cpu",
-    first_compiler=None,
-    first_budget_bytes=64 << 20,
-    second_backend="cpu",
-    second_compiler=None,
-    second_budget_bytes=64 << 20,
-    relaxation_backend="cpu",
-    relaxation_compiler=None,
-    relaxation_budget_bytes=64 << 20,
-):
+    strategy: str = "recycled",
+    total_budget_bytes: int = 128 << 20,
+    jk_backend: str = "cpu",
+    device_id: int = 0,
+    device_budget_bytes: int = 64 << 20,
+    solver_options: object = None,
+    first_backend: str = "cpu",
+    first_compiler: object = None,
+    first_budget_bytes: int = 64 << 20,
+    second_backend: str = "cpu",
+    second_compiler: object = None,
+    second_budget_bytes: int = 64 << 20,
+    relaxation_backend: str = "cpu",
+    relaxation_compiler: object = None,
+    relaxation_budget_bytes: int = 64 << 20,
+) -> RHFHVPBlockResult:
     """Apply the complete conventional RHF Hessian to a bounded direction block.
 
     First-integral sources are generated independently per direction, while one
@@ -499,13 +499,13 @@ def rhf_hvp_many(
 
 
 def rhf_hessian(
-    state,
+    state: NativeRHFState,
     *,
-    block_size=None,
-    strategy="recycled",
-    total_budget_bytes=128 << 20,
-    **hvp_kwargs,
-):
+    block_size: int | None = None,
+    strategy: str = "recycled",
+    total_budget_bytes: int = 128 << 20,
+    **hvp_kwargs: object,
+) -> RHFHessianResult:
     """Assemble the raw full Cartesian RHF Hessian in bounded direction blocks.
 
     Columns are independent canonical atom/xyz unit directions. The output is

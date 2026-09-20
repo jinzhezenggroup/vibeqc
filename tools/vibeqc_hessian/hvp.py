@@ -42,11 +42,11 @@ class RHFHVPResult:
     _diagnostics: dict = field(repr=False)
 
     @property
-    def diagnostics(self):
+    def diagnostics(self) -> dict[str, object]:
         return deepcopy(self._diagnostics)
 
     @property
-    def components(self):
+    def components(self) -> dict[str, np.ndarray]:
         return {
             "nuclear": self.nuclear,
             "core": self.core,
@@ -57,25 +57,25 @@ class RHFHVPResult:
 
 
 def rhf_hvp(
-    state,
-    direction,
+    state: NativeRHFState,
+    direction: np.ndarray,
     *,
-    jk_backend="cpu",
-    device_id=0,
-    device_budget_bytes=64 << 20,
-    response_execution="host",
-    response_device_budget_bytes=128 << 20,
-    solver_options=None,
-    first_backend="cpu",
-    first_compiler=None,
-    first_budget_bytes=64 << 20,
-    second_backend="cpu",
-    second_compiler=None,
-    second_budget_bytes=64 << 20,
-    relaxation_backend="cpu",
-    relaxation_compiler=None,
-    relaxation_budget_bytes=64 << 20,
-):
+    jk_backend: str = "cpu",
+    device_id: int = 0,
+    device_budget_bytes: int = 64 << 20,
+    response_execution: str = "host",
+    response_device_budget_bytes: int = 128 << 20,
+    solver_options: object = None,
+    first_backend: str = "cpu",
+    first_compiler: object = None,
+    first_budget_bytes: int = 64 << 20,
+    second_backend: str = "cpu",
+    second_compiler: object = None,
+    second_budget_bytes: int = 64 << 20,
+    relaxation_backend: str = "cpu",
+    relaxation_compiler: object = None,
+    relaxation_budget_bytes: int = 64 << 20,
+) -> RHFHVPResult:
     """Apply the complete conventional RHF molecular Hessian to one direction.
 
     The second-integral skeleton is generated directly as weighted HVPs. One
