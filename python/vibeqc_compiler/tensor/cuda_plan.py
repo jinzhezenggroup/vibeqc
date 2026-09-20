@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import typing
 from dataclasses import asdict, dataclass, replace
+from functools import cached_property
 from math import prod
 
 from vibeqc_compiler.common.backend import TargetScheduleShape
@@ -50,6 +51,35 @@ def aligned(size: int) -> int:
     return checked_size(
         (size + ALIGNMENT - 1) // ALIGNMENT * ALIGNMENT, "aligned bytes"
     )
+
+
+def _index_table_values(node: Node) -> tuple[int, ...] | None:
+    """Return the device table for one static indexed/ragged primitive.
+
+    Scatter-add stores a deterministic inverted index.  Each destination owns
+    a contiguous ascending list of source coordinates, preserving the existing
+    source-order accumulation while avoiding a full source-axis scan per output.
+    """
+    if node.op in ("gather", "indexed_gather"):
+        return tuple(node.attrs["positions"])
+    if node.op == "segment_sum":
+        return tuple(node.attrs["offsets"])
+    if node.op != "scatter_add":
+        return None
+    positions = tuple(node.attrs["positions"])
+    if not positions:
+        return ()
+    axis = node.attrs["axis"]
+    target_extent = node.spec.shape[axis]
+    buckets = [[] for _ in range(target_extent)]
+    for source, target in enumerate(positions):
+        buckets[target].append(source)
+    offsets = [0]
+    sources = []
+    for bucket in buckets:
+        sources.extend(bucket)
+        offsets.append(len(sources))
+    return (*offsets, *sources)
 
 
 @dataclass(frozen=True)
@@ -149,11 +179,11 @@ class TensorPlan:
     estimated_traffic_bytes: int
     layout_decision: LayoutDecision
 
-    @property
+    @cached_property
     def precision(self) -> str:
         return program_precision(self.program)
 
-    @property
+    @cached_property
     def precision_schedule(self) -> PrecisionSchedule:
         return describe_precision(self.program)
 
@@ -174,11 +204,8 @@ class TensorPlan:
         total = 0
         for step_index, _ in self.index_tables:
             node = self.steps[step_index].node
-            if node.op in ("gather", "indexed_gather", "scatter_add"):
-                values = node.attrs["positions"]
-            elif node.op == "segment_sum":
-                values = node.attrs["offsets"]
-            else:  # pragma: no cover - planner constructs the table list
+            values = _index_table_values(node)
+            if values is None:  # pragma: no cover - planner constructs table owners
                 raise AssertionError(f"unexpected index-table owner: {node.op}")
             total = checked_size(
                 total + aligned(len(values) * 8),
@@ -469,11 +496,7 @@ def plan_cuda(
     offsets, active, free, capacity = {}, {}, [], 0
     tables = []
     for i, (node, _) in enumerate(nodes):
-        values = None
-        if node.op in ("gather", "indexed_gather", "scatter_add"):
-            values = node.attrs["positions"]
-        elif node.op == "segment_sum":
-            values = node.attrs["offsets"]
+        values = _index_table_values(node)
         if values is not None:
             tables.append((i, capacity))
             capacity = checked_size(

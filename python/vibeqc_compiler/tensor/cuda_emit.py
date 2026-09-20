@@ -12,7 +12,7 @@ from math import prod
 
 from .cuda_dtype import scalar_type
 from .cuda_gemm import gemm_contract
-from .cuda_plan import ALIGNMENT, TensorPlan, aligned, strides
+from .cuda_plan import ALIGNMENT, TensorPlan, _index_table_values, aligned, strides
 from .ir import TRANSCENDENTALS
 from .scaled_arithmetic import emit_scaled_bilinear
 
@@ -173,16 +173,24 @@ return finite({mul}(finite(value, error, {i}), {scalar.literal(a["coefficient"])
         c[a["axis"]] = f"reinterpret_cast<const I*>(p + {table})[{c[a['axis']]}]"
         index = _flat(c, source_shape)
     elif node.op == "scatter_add":
-        table = dict(plan.index_tables)[i]
         axis = a["axis"]
+        if not source_shape[axis]:
+            return f"return finite({scalar.zero}, error, {i});"
+        table = dict(plan.index_tables)[i]
         target = c[axis]
+        target_extent = shape[axis]
         source = list(c)
         source[axis] = "r"
-        return f"""{ty} value = {scalar.zero};
-{reduction_pragma}for (I r = 0; r < {_integer(source_shape[axis])}; ++r)
-    if (reinterpret_cast<const I*>(p + {table})[r] == {target})
-        value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
-return finite(value, error, {i});"""
+        return (
+            f"{ty} value = {scalar.zero};\n"
+            f"const I* index = reinterpret_cast<const I*>(p + {table});\n"
+            f"const I begin = index[{target}], end = index[{target} + 1];\n"
+            f"{reduction_pragma}for (I q = begin; q < end; ++q) {{\n"
+            f"    const I r = index[{target_extent + 1}LL + q];\n"
+            f"    value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});\n"
+            "}\n"
+            f"return finite(value, error, {i});"
+        )
     elif node.op == "segment_sum":
         table = dict(plan.index_tables)[i]
         axis = a["axis"]
@@ -444,11 +452,7 @@ def emit_cuda(plan: TensorPlan, symbol_prefix: str = "") -> str:
             initialize.append(
                 f"cuda_check(cudaMemcpyAsync(ctx->arena + {step.offset}, {prefix}constant_{i}, {node.spec.size * node.spec.itemsize}ULL, cudaMemcpyHostToDevice, ctx->stream));"
             )
-        table_values = None
-        if node.op in ("gather", "indexed_gather", "scatter_add"):
-            table_values = node.attrs["positions"]
-        elif node.op == "segment_sum":
-            table_values = node.attrs["offsets"]
+        table_values = _index_table_values(node)
         if table_values:
             values = ", ".join(_integer(v) for v in table_values)
             parts.append(f"static const I {prefix}index_data_{i}[] = {{{values}}};")
