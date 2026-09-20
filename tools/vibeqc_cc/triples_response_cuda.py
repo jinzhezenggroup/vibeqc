@@ -211,7 +211,15 @@ class CudaTriplesResponseTiles:
                 plan, artifact, device=self.config.device
             ) as resident:
                 started = time.perf_counter()
-                resident.upload(feeds)
+                # Selected VJPs can eliminate primal inputs. The resident ABI
+                # accepts only output-reachable inputs, not dead definitions.
+                resident.upload(
+                    {
+                        node.attrs["name"]: feeds[node.attrs["name"]]
+                        for node in derivative.program.live_nodes
+                        if node.op == "input"
+                    }
+                )
                 timing["upload_s"] += time.perf_counter() - started
 
                 started = time.perf_counter()
