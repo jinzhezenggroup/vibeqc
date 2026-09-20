@@ -200,10 +200,4 @@ def emit_low_order_weighted_header(*, inline_single_use: typing.Any = False) -> 
         gradient_centers=(0, 1, 2),
         result_type="IndependentGradient",
     )
-    return (
-        full[: -len(marker)]
-        + specialized_result
-        + psss_force
-        + ssss_force
-        + marker
-    )
+    return full[: -len(marker)] + specialized_result + psss_force + ssss_force + marker

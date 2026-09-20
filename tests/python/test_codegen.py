@@ -3873,9 +3873,9 @@ def test_psss_force_codegen_emits_only_independent_gradient_roots() -> None:
 def test_psss_generated_candidate_resolves_route_outside_primitive_loop() -> None:
     """Make psss A/B selection a shell-task decision, not primitive-loop work."""
 
-    native_source = (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_native_psss.cuh"
-    ).read_text(encoding="utf-8")
+    native_source = (REPOSITORY_ROOT / "src/scf/cuda/direct_native_psss.cuh").read_text(
+        encoding="utf-8"
+    )
     low_order_source = (
         REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
     ).read_text(encoding="utf-8")

@@ -300,11 +300,11 @@ __device__ inline __noinline__ void contract_two_electron_force_psss_task(
   const PsssWeightedGradient gradient =
       batch.generated_psss_weighted
           ? contracted_eri_cartesian_source_psss_weighted_gradient<ResidentBra, true>(
-                batch, canonical_pair[0], canonical_pair[1], slots[0], slots[1], slots[2],
-                slots[3], density_coefficient, resident_first_pairs, resident_first_pair_count)
+                batch, canonical_pair[0], canonical_pair[1], slots[0], slots[1], slots[2], slots[3],
+                density_coefficient, resident_first_pairs, resident_first_pair_count)
           : contracted_eri_cartesian_source_psss_weighted_gradient<ResidentBra, false>(
-                batch, canonical_pair[0], canonical_pair[1], slots[0], slots[1], slots[2],
-                slots[3], density_coefficient, resident_first_pairs, resident_first_pair_count);
+                batch, canonical_pair[0], canonical_pair[1], slots[0], slots[1], slots[2], slots[3],
+                density_coefficient, resident_first_pairs, resident_first_pair_count);
   double derivative_sum[3]{};
   for (unsigned atom = 0; atom + 1 < unique_center_count; ++atom) {
     const std::int64_t coordinate = static_cast<std::int64_t>(unique_center_atoms[atom]) * 3;
