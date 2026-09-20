@@ -9,6 +9,13 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/cumetal-cuda.yml"
+CUMETAL_APPLE_CMAKE_CONFORMANCE = "73ee848cdb88f15518f05278ce16d55edfbbbc44"
+
+
+def test_cumetal_jobs_share_apple_cmake_conformance_pin() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    pins = re.findall(r"CUMETAL_COMMIT: ([0-9a-f]{40})", workflow)
+    assert pins == [CUMETAL_APPLE_CMAKE_CONFORMANCE] * 2
 
 
 @pytest.mark.skipif(shutil.which("sed") is None, reason="sed is not installed")
