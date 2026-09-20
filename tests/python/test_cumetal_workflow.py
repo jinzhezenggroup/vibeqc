@@ -57,3 +57,18 @@ def test_real_endpoint_benchmarks_do_not_enable_per_launch_logging() -> None:
     assert 'CUMETAL_DEBUG_REGISTRATION: "1"' in diagnostics
     assert 'CUMETAL_DEBUG_LAUNCH: "1"' in diagnostics
     assert "--codspeed" not in diagnostics
+
+
+@pytest.mark.parametrize(
+    "step_name",
+    (
+        "Run CodSpeed real VibeQC CuMetal endpoint suite",
+        "Diagnose failed real CuMetal endpoints",
+    ),
+)
+def test_real_endpoint_selects_typed_ieee64_backend(step_name: str) -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    step = workflow.split(f"- name: {step_name}", 1)[1]
+    step = step.split("\n      - name:", 1)[0]
+    assert "CUMETAL_PTX_BACKEND: cumetal-ir" in step
+    assert "CUMETAL_FP64_MODE: ieee64" in step

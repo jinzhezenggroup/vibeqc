@@ -407,6 +407,10 @@ jobs:
           CUMETAL_ROOT: /tmp/cumetal-install
           DYLD_LIBRARY_PATH: /tmp/cuda-metal/build
           VIBEQC_LIBRARY: ${{ github.workspace }}/build-cumetal-benchmark/runtime/libvibeqc.dylib
+          # The pinned runtime defaults to legacy lowering and fast48.
+          # Real FP64 endpoints require typed lowering and software binary64.
+          CUMETAL_PTX_BACKEND: cumetal-ir
+          CUMETAL_FP64_MODE: ieee64
         with:
           mode: walltime
           run: .venv/bin/python -m pytest benchmarks/test_cumetal_endpoint_codspeed.py --codspeed -q
@@ -417,6 +421,10 @@ jobs:
           CUMETAL_ROOT: /tmp/cumetal-install
           DYLD_LIBRARY_PATH: /tmp/cuda-metal/build
           VIBEQC_LIBRARY: ${{ github.workspace }}/build-cumetal-benchmark/runtime/libvibeqc.dylib
+          # The pinned runtime defaults to legacy lowering and fast48.
+          # Real FP64 endpoints require typed lowering and software binary64.
+          CUMETAL_PTX_BACKEND: cumetal-ir
+          CUMETAL_FP64_MODE: ieee64
           CUMETAL_DEBUG_REGISTRATION: "1"
           CUMETAL_DEBUG_LAUNCH: "1"
         run: .venv/bin/python -m pytest benchmarks/test_cumetal_endpoint_codspeed.py -q
