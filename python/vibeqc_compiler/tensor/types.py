@@ -20,6 +20,8 @@ SPACE_KINDS = frozenset(
         "batch",
         "spin",
         "shell",
+        "matrix",
+        "component",
         "atom",
         "pair",
         "cartesian",
