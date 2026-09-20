@@ -8,7 +8,6 @@ struct GraphContext : Context {
   vibeqc::runtime::CudaGraphRegion graph;
   vibeqc::runtime::GraphBinding binding;
   bool graph_enabled = false;
-  bool static_ready = true;
 
   void configure_graph(bool enabled, const char* qualification) {
     check_device();
