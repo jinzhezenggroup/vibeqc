@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_capture_exception_abandons_stream_and_allows_retry(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("C++ compiler unavailable")

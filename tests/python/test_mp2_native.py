@@ -23,7 +23,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
-def test_native_source_to_component_energies(name: typing.Any) -> typing.Any:
+def test_native_source_to_component_energies(name: typing.Any) -> None:
     meta, arrays = load_fixture(name)
     s = fixture_snapshot(meta, arrays)
     mo = arrays["conventional_mo"]
@@ -49,7 +49,7 @@ def test_native_source_to_component_energies(name: typing.Any) -> typing.Any:
         )
 
 
-def test_native_hf_export_and_scf_failure_remain_visible() -> typing.Any:
+def test_native_hf_export_and_scf_failure_remain_visible() -> None:
     meta, _ = load_fixture("h2")
     with NativeSource(**source_arguments(meta)) as source:
         s, diagnostics = export_rhf(source)
@@ -112,7 +112,7 @@ def bounded_reference(
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
-def test_bounded_reference_uses_native_physical_fock(name: typing.Any) -> typing.Any:
+def test_bounded_reference_uses_native_physical_fock(name: typing.Any) -> None:
     meta, a = load_fixture(name)
     with NativeSource(**source_arguments(meta)) as source:
         (s, h, f, c, d), eps, diag = bounded_reference(source)

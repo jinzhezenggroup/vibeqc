@@ -33,7 +33,7 @@ def runtime() -> typing.Any:
         yield context
 
 
-def test_transfers_bounds_and_context_ownership(runtime: typing.Any) -> typing.Any:
+def test_transfers_bounds_and_context_ownership(runtime: typing.Any) -> None:
     data = np.arange(17, dtype=np.float64)
     buffer = runtime.allocate(data.nbytes)
     runtime.write(buffer, data.tobytes())
@@ -56,7 +56,7 @@ def test_transfers_bounds_and_context_ownership(runtime: typing.Any) -> typing.A
 
 def test_compile_failure_releases_failed_program_and_retains_diagnostics(
     runtime: typing.Any,
-) -> typing.Any:
+) -> None:
     before = len(runtime._resources)
     with pytest.raises(OpenCLError) as failed:
         runtime.compile("__kernel void broken( { definitely invalid")
@@ -70,7 +70,7 @@ def test_compile_failure_releases_failed_program_and_retains_diagnostics(
 
 def test_cross_queue_events_retain_buffers_and_execute_partial_workgroups(
     runtime: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     program = runtime.compile(SOURCE)
     executable = runtime.link((program,))
     data = np.arange(17, dtype=np.float64)
@@ -112,7 +112,7 @@ def test_cross_queue_events_retain_buffers_and_execute_partial_workgroups(
 
 def test_unsupported_graphs_and_invalid_launches_fail_before_enqueue(
     runtime: typing.Any,
-) -> typing.Any:
+) -> None:
     target = runtime.target_info()
     assert target.backend == "opencl" and target.maximum_resident_workgroups is None
     with pytest.raises(UnsupportedBackendFeature, match="GEMM"):
@@ -138,7 +138,7 @@ def test_unsupported_graphs_and_invalid_launches_fail_before_enqueue(
 @pytest.mark.parametrize("count,workgroup", [(1, 16), (17, 32), (8197, 64)])
 def test_fp64_reduction_stays_on_device_across_partial_levels(
     runtime: typing.Any, count: typing.Any, workgroup: typing.Any
-) -> typing.Any:
+) -> None:
     data = np.arange(count, dtype=np.float64) - 11
     source = runtime.allocate(data.nbytes)
     runtime.write(source, data.tobytes())
@@ -152,7 +152,7 @@ def test_fp64_reduction_stays_on_device_across_partial_levels(
 
 def test_close_attempts_all_releases_after_vendor_finish_error(
     runtime: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     buffer = runtime.allocate(8)
     released = []
     native_release = runtime.api.clReleaseMemObject
@@ -173,7 +173,7 @@ def test_close_attempts_all_releases_after_vendor_finish_error(
 
 def test_reduction_terminal_execution_error_releases_intermediates(
     runtime: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     source = runtime.allocate(17 * 8)
     runtime.write(source, np.arange(17, dtype=np.float64).tobytes())
     before = set(runtime._resources)

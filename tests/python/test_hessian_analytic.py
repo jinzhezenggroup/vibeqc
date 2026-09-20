@@ -30,7 +30,7 @@ def case(request: typing.Any) -> typing.Any:
 
 def test_first_order_sources_match_independent_native_derivatives(
     case: typing.Any,
-) -> typing.Any:
+) -> None:
     _, state, _ = case
     h1, s1 = state.first_order_inputs
     reference = state.source.integral_derivatives()  # oracle, never the live path
@@ -49,7 +49,7 @@ def test_first_order_sources_match_independent_native_derivatives(
 
 def test_reference_is_the_native_converged_state(
     case: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     _, state, _ = case
 
     def unexpected_scf(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
@@ -63,7 +63,7 @@ def test_reference_is_the_native_converged_state(
     np.testing.assert_allclose(raw, raw.transpose(1, 0, 3, 2), atol=2e-10, rtol=0)
 
 
-def test_total_matches_independent_pyscf_hessian(case: typing.Any) -> typing.Any:
+def test_total_matches_independent_pyscf_hessian(case: typing.Any) -> None:
     pytest.importorskip("pyscf")
     from pyscf import scf
 
@@ -75,7 +75,7 @@ def test_total_matches_independent_pyscf_hessian(case: typing.Any) -> typing.Any
 
 def test_components_match_independent_finite_difference_oracle(
     case: typing.Any,
-) -> typing.Any:
+) -> None:
     pytest.importorskip("pyscf")
     from tools.vibeqc_hessian.reference import hessian_components
 
@@ -87,7 +87,7 @@ def test_components_match_independent_finite_difference_oracle(
         np.testing.assert_allclose(comp[key], expected[key], atol=5e-5, rtol=0)
 
 
-def test_raw_total_invariants(case: typing.Any) -> typing.Any:
+def test_raw_total_invariants(case: typing.Any) -> None:
     _, _, comp = case
     raw = comp["total"]
     assert np.isfinite(raw).all()
@@ -113,7 +113,7 @@ def test_raw_total_invariants(case: typing.Any) -> typing.Any:
 )
 def test_invalid_relaxation_rejected_before_provider_work(
     relax: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
 
@@ -127,7 +127,7 @@ def test_invalid_relaxation_rejected_before_provider_work(
             analytic_hessian(state, relax=relax)
 
 
-def test_source_lifetime_and_reference_identity_fail_closed() -> typing.Any:
+def test_source_lifetime_and_reference_identity_fail_closed() -> None:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
         with pytest.raises(ValueError, match="geometry"):
@@ -144,7 +144,7 @@ def test_source_lifetime_and_reference_identity_fail_closed() -> typing.Any:
         analytic_hessian(object())
 
 
-def test_native_hessian_does_not_import_or_call_an_oracle() -> typing.Any:
+def test_native_hessian_does_not_import_or_call_an_oracle() -> None:
     # Fresh process is essential: collection by other tests may import PySCF.
     code = r"""
 import importlib.abc
@@ -190,7 +190,7 @@ with NativeSource([(1, [0, 0, 0]), (1, [0, 0, 1.4])]) as source:
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "water_sdf"])
-def test_reduced_response_matches_full_space(name: typing.Any) -> typing.Any:
+def test_reduced_response_matches_full_space(name: typing.Any) -> None:
     pytest.importorskip("pyscf")
     from tools.vibeqc_hessian.reference import (
         _first_order_mo1_e1,
@@ -218,7 +218,7 @@ def test_reduced_response_matches_full_space(name: typing.Any) -> typing.Any:
     os.environ.get("VIBEQC_HESSIAN_SLOW") != "1",
     reason="explicit 12-AO d-shell generated Hessian qualification",
 )
-def test_native_d_shell_hessian_matches_external_oracle() -> typing.Any:
+def test_native_d_shell_hessian_matches_external_oracle() -> None:
     pytest.importorskip("pyscf")
     from pyscf import scf
 
@@ -233,7 +233,7 @@ def test_native_d_shell_hessian_matches_external_oracle() -> typing.Any:
 
 def test_three_step_directional_differences_of_native_forces(
     case: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc import Calculator
 
     _, state, comp = case
@@ -271,7 +271,7 @@ def test_three_step_directional_differences_of_native_forces(
 
 def test_large_domain_is_rejected_before_native_scf(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc import Primitive, Shell
 
     shells = tuple(

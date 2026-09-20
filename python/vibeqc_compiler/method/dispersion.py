@@ -35,7 +35,7 @@ class D3Spec:
     pair_switch_width: float = 0.0
     version: str = "d3-bj-spec-v1"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.version != "d3-bj-spec-v1" or self.damping != "bj":
             raise ValueError("only the versioned two-body D3(BJ) model is supported")
         for field in ("s6", "s8", "a1", "a2", "s9", "pair_switch_width"):
@@ -96,7 +96,7 @@ class D4Spec:
     charge_cn_cutoff: float = 25.0
     version: str = "d4-bj-eeq-spec-v1"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.version != "d4-bj-eeq-spec-v1":
             raise ValueError("unsupported D4 specification version")
         if self.reference_model != "eeq" or self.charge_model != "eeq2019":
@@ -164,7 +164,7 @@ class DispersionCorrectionPrimitive:
     specification: D3Spec | D4Spec
     kind: ClassVar[str] = "dispersion_correction"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.specification, (D3Spec, D4Spec)):
             raise TypeError("dispersion primitive requires a D3Spec or D4Spec")
 

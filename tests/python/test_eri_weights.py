@@ -30,7 +30,7 @@ def independent_orbit(indices: typing.Any) -> typing.Any:
     }
 
 
-def test_every_ao_equality_pattern_has_exact_dense_weight_multiplicity() -> typing.Any:
+def test_every_ao_equality_pattern_has_exact_dense_weight_multiplicity() -> None:
     rng = np.random.default_rng(144)
     weights = rng.normal(size=(4,) * 4)
     for indices in itertools.product(range(4), repeat=4):
@@ -47,7 +47,7 @@ def test_every_ao_equality_pattern_has_exact_dense_weight_multiplicity() -> typi
     assert len(eri_weight_orbit((3, 2, 1, 0))) == 8
 
 
-def test_arbitrary_weight_full_and_folded_gradient_scalars_agree() -> typing.Any:
+def test_arbitrary_weight_full_and_folded_gradient_scalars_agree() -> None:
     rng = np.random.default_rng(17)
     weights = rng.normal(size=(3,) * 4)
     # An independent symmetric integral response has one atomic gradient per
@@ -65,9 +65,7 @@ def test_arbitrary_weight_full_and_folded_gradient_scalars_agree() -> typing.Any
     np.testing.assert_allclose(folded, full, atol=2e-14, rtol=2e-14)
 
 
-def test_normalized_pair_matrix_uses_svec_factors_and_pair_exchange_once() -> (
-    typing.Any
-):
+def test_normalized_pair_matrix_uses_svec_factors_and_pair_exchange_once() -> None:
     rng = np.random.default_rng(91)
     # Full pair matrix need not be symmetric. T[I,J]=s[I]*s[J]*(ij|kl),
     # s[ij]=sqrt(2) off diagonal, one on diagonal.
@@ -89,9 +87,7 @@ def test_normalized_pair_matrix_uses_svec_factors_and_pair_exchange_once() -> (
         )
 
 
-def test_hf_adapter_is_explicit_and_recovers_existing_rhf_uhf_energy_weights() -> (
-    typing.Any
-):
+def test_hf_adapter_is_explicit_and_recovers_existing_rhf_uhf_energy_weights() -> None:
     rng = np.random.default_rng(12)
     alpha = rng.normal(size=(4, 4))
     alpha += alpha.T
@@ -113,12 +109,12 @@ def test_hf_adapter_is_explicit_and_recovers_existing_rhf_uhf_energy_weights() -
 
 
 @pytest.mark.parametrize("indices", [(0, 1, 2), (0, 1, 2, -1), (0, 1, 2, True)])
-def test_invalid_eri_indices_are_rejected(indices: typing.Any) -> typing.Any:
+def test_invalid_eri_indices_are_rejected(indices: typing.Any) -> None:
     with pytest.raises((ValueError, TypeError)):
         eri_weight_orbit(indices)
 
 
-def test_nonfinite_external_weights_are_rejected_without_screening() -> typing.Any:
+def test_nonfinite_external_weights_are_rejected_without_screening() -> None:
     with pytest.raises(ValueError, match="finite"):
         fold_dense_eri_weight(lambda _: float("nan"), (0, 0, 0, 0))
     with pytest.raises(ValueError, match="finite"):

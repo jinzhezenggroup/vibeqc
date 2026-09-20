@@ -11,7 +11,7 @@ import pytest
 
 def test_preparation_shapes_and_value_response_partition(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     compiler = shutil.which("c++")
     if not compiler:
         pytest.skip("host C++ compiler unavailable")

@@ -31,7 +31,7 @@ def source_for(basis: typing.Any, data: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])
 def test_cpu_registration_keeps_existing_d_consumer(
     native_factory: typing.Any, observable: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = source_for(basis, data)
@@ -85,7 +85,7 @@ def test_cpu_registration_keeps_existing_d_consumer(
 
 def test_response_candidate_binds_immutable_direction(
     native_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = source_for(basis, data)
@@ -123,7 +123,7 @@ def test_response_candidate_binds_immutable_direction(
 
 def test_registration_rejects_changed_resources_and_wrong_basis(
     native_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = source_for(basis, data)
@@ -154,7 +154,7 @@ GPU = pytest.mark.skipif(
 @pytest.mark.parametrize("capacity", [None, (1, 1), (2, 2)])
 def test_gpu_registered_execution_and_capacity_fallback(
     artifact: typing.Any, native_factory: typing.Any, capacity: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = source_for(basis, data)
@@ -215,7 +215,7 @@ def test_gpu_registered_execution_and_capacity_fallback(
 @GPU
 def test_gpu_candidate_propagates_failed_upload(
     artifact: typing.Any, native_factory: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = source_for(basis, data)
@@ -245,7 +245,7 @@ def test_gpu_candidate_propagates_failed_upload(
 @GPU
 def test_local_candidate_counts_leases_and_same_mask_replacement(
     artifact: typing.Any, native_factory: typing.Any, local_case: typing.Any
-) -> typing.Any:
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (5, 3))
     with (

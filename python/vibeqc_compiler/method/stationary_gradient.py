@@ -61,7 +61,7 @@ class StationaryMeanField:
     topology_policy: str = "stable-explicit-grid-v1"
     dtype: str = "float64"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.point_model not in ("interior-v1", SCF_POINT_MODEL):
             raise UnsupportedMethod("unsupported XC point-model contract")
         if self.hamiltonian not in ("all-electron", "scalar-semilocal-ecp"):
@@ -179,7 +179,7 @@ class StationaryGradientPlan:
     method: MethodIR
     mean_field: StationaryMeanField
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.method, MethodIR):
             raise TypeError("stationary gradient requires resolved MethodIR")
         if not isinstance(self.mean_field, StationaryMeanField):
@@ -239,7 +239,7 @@ class StationaryGradientPlan:
         """Mathematics only; backend artifacts and live leases have other owners."""
         return canonical_hash(self.to_payload())
 
-    def require_native_endpoint(self, backend: typing.Any) -> typing.Any:
+    def require_native_endpoint(self, backend: typing.Any) -> None:
         """A generated plan alone never grants a complete molecular capability."""
         if backend not in ("cpu", "cuda"):
             raise ValueError("unknown stationary-gradient backend")

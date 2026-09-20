@@ -7,7 +7,6 @@ batches, whose per-item diagnostics repeat their shared batch plan's peak.
 
 # Source-tree CLI bootstrap for transitive compiler clients.
 import sys as _compiler_sys
-import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -177,7 +176,7 @@ def summarize(directory: Path) -> dict:
     return result
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
     args = parser.parse_args()

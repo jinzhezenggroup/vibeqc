@@ -20,7 +20,7 @@ def arguments(tmp_path: typing.Any, scope: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("scope", ["inventory", "case"])
 def test_all_cases_have_the_same_five_sample_abba_order(
     tmp_path: typing.Any, monkeypatch: typing.Any, scope: typing.Any
-) -> typing.Any:
+) -> None:
     observed = []
     saved = {}
 
@@ -73,7 +73,7 @@ def test_all_cases_have_the_same_five_sample_abba_order(
 
 def test_case_aggregation_rejects_changed_source_metadata(
     tmp_path: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     def measure(
         args: typing.Any, label: typing.Any, cases: typing.Any, path: typing.Any
     ) -> typing.Any:
@@ -90,7 +90,7 @@ def test_case_aggregation_rejects_changed_source_metadata(
 @pytest.mark.parametrize("cases", [["unknown"], ["spf/rhf/cartesian/df/batch1"] * 2])
 def test_bad_case_requests_fail_before_launch(
     tmp_path: typing.Any, monkeypatch: typing.Any, cases: typing.Any
-) -> typing.Any:
+) -> None:
     args = arguments(tmp_path, "case")
     args.case = cases
     monkeypatch.setattr(

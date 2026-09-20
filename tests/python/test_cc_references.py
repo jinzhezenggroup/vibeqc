@@ -35,7 +35,7 @@ def references() -> typing.Any:
 @pytest.mark.parametrize("case", references(), ids=lambda c: c["name"])
 def test_pinned_pyscf_updates_reconstruct_shift_independent_physical_residual(
     case: typing.Any,
-) -> typing.Any:
+) -> None:
     assert canonical_hash(case["inputs"]) == case["inputs_hash"]
     f, g, x, y = (np.array(case["inputs"][key]) for key in ("fock", "eri", "t1", "t2"))
     result = execute(build_program(*x.shape), dense_feeds(f, g, x, y)).outputs
@@ -54,7 +54,7 @@ def test_pinned_pyscf_updates_reconstruct_shift_independent_physical_residual(
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
-def test_native_provider_same_C_and_new_vibeqc_HF(name: typing.Any) -> typing.Any:
+def test_native_provider_same_C_and_new_vibeqc_HF(name: typing.Any) -> None:
     meta, arrays = load_fixture(name)
     try:
         source = NativeSource(**source_arguments(meta))

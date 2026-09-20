@@ -114,7 +114,7 @@ class ImplicitSolveSpec:
     residual_metric: tuple[float, ...] = ()
     kind: ClassVar[str] = "implicit_solve"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.program, Program):
             raise TypeError("implicit residual must be a TensorIR Program")
         if set(self.program.outputs) != {self.residual_name}:

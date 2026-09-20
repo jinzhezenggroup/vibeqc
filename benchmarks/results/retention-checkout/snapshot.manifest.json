@@ -3,8 +3,8 @@
   "source_revision": "e215b30685f8a36ef0cc5772c9166837527f64a2",
   "retention": "Existing ancestor Git objects only; no new external copy, release, tag or asset. Recovery requires retaining source history; history rewriting or object removal can make the snapshot unavailable.",
   "history_rewritten": false,
-  "moved_files": 205,
-  "moved_bytes": 43163752,
+  "moved_files": 209,
+  "moved_bytes": 43485989,
   "files": [
     {
       "path": "benchmarks/results/issue206-aot-and-stock/README.md",
@@ -40,7 +40,7 @@
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-octamer-s4-def2-svp-spherical-b1-none.progress.jsonl",
       "bytes": 41334,
       "sha256": "1584e0e8ba48075bb302395f3d00656e470d05bbe3cc473053b302a2e7da9d5d",
-      "checkout": "retained"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-octamer-s4-def2-svp-spherical-b4-none.json",
@@ -52,7 +52,7 @@
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-octamer-s4-def2-svp-spherical-b4-none.progress.jsonl",
       "bytes": 151054,
       "sha256": "39e3b9e9d9a2207fee26fc5ac1d7c434b64c4553048d65b5861c0987b94e5238",
-      "checkout": "retained"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-tetramer-def2-svp-spherical-b1-none.json",
@@ -64,7 +64,7 @@
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-tetramer-def2-svp-spherical-b1-none.progress.jsonl",
       "bytes": 28929,
       "sha256": "cd418731b2f3c64ee1b0af31fa50a1c6a9914b4ddadcdb310a70857b46ea302d",
-      "checkout": "retained"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-tetramer-def2-svp-spherical-b4-none.json",
@@ -76,7 +76,7 @@
       "path": "benchmarks/results/issue206-aot-and-stock/direct/water-tetramer-def2-svp-spherical-b4-none.progress.jsonl",
       "bytes": 100920,
       "sha256": "88fdeae358511f15b49ae7cacba122e55998c071ace396f76ec684350589f285",
-      "checkout": "retained"
+      "checkout": "git-history"
     },
     {
       "path": "benchmarks/results/issue206-aot-and-stock/manifest.json",

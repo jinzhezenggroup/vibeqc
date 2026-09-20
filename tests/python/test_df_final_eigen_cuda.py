@@ -23,7 +23,7 @@ def test_tiny_final_provider_budget_rejects_without_reference_retry(
     budget: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """The fixed library scratch cannot be hidden behind an old smaller budget."""
     from vibeqc import _native
 
@@ -63,7 +63,7 @@ def test_final_provider_matches_reference_across_replans(
     budget: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Two prepared owners compare only the final eigensolver, including forces.
 
     Oxygen's d shell distinguishes Cartesian and spherical layouts. Full

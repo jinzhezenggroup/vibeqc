@@ -27,7 +27,7 @@ from .program import validate_features
 from .spec import UnsupportedXC
 
 
-def _cache_source(path: typing.Any, source: typing.Any) -> typing.Any:
+def _cache_source(path: typing.Any, source: typing.Any) -> None:
     """Publish complete compiler input without rewriting a cache hit.
 
     Concurrent misses publish identical bytes via same-directory replacement;

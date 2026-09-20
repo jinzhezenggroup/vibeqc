@@ -165,7 +165,7 @@ def run(
 
 def test_retained_chunks_match_independent_ragged_tiles_and_empty_replay(
     runtime: typing.Any,
-) -> typing.Any:
+) -> None:
     first, expected_first = records_for()
     second, expected_second = records_for("changed", 1)
     status, handle, detail = create(runtime)
@@ -192,7 +192,7 @@ def test_retained_chunks_match_independent_ragged_tiles_and_empty_replay(
 
 def test_budget_is_checked_before_publication_and_capacity_is_enforced(
     runtime: typing.Any,
-) -> typing.Any:
+) -> None:
     status, handle, detail = create(runtime)
     assert status == 0, detail
     try:
@@ -216,7 +216,7 @@ def test_budget_is_checked_before_publication_and_capacity_is_enforced(
 
 def test_record_identity_and_numerical_failures_leave_output_and_plan_reusable(
     runtime: typing.Any,
-) -> typing.Any:
+) -> None:
     records, _ = records_for()
     fields = list(PRIMITIVE_RANGE_RECORD.unpack(records[0]))
     status, handle, detail = create(runtime)
@@ -253,7 +253,7 @@ def test_record_identity_and_numerical_failures_leave_output_and_plan_reusable(
 
 def test_python_prepared_chunks_detach_results_and_track_geometry_identity(
     runtime: typing.Any,
-) -> typing.Any:
+) -> None:
     artifact = runtime[0]._weighted_artifact
     first, expected_first = stream_for()
     second, expected_second = stream_for("changed", 1)
@@ -293,7 +293,7 @@ def test_python_prepared_chunks_detach_results_and_track_geometry_identity(
 
 def test_python_preflight_rejects_wrong_operator_and_native_failure_allows_replay(
     runtime: typing.Any,
-) -> typing.Any:
+) -> None:
     first, expected = stream_for()
     wrong = replace(
         first,
@@ -322,7 +322,7 @@ def test_python_preflight_rejects_wrong_operator_and_native_failure_allows_repla
 
 def test_python_budget_preflight_precedes_library_loading(
     runtime: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     def forbidden(*_: typing.Any, **__: typing.Any) -> typing.Any:
         raise AssertionError("library loaded before budget preflight")
 
@@ -336,7 +336,7 @@ def test_python_budget_preflight_precedes_library_loading(
 
 def test_compiled_omega_invalidates_cache_but_stream_coefficients_apply_once(
     runtime: typing.Any,
-) -> typing.Any:
+) -> None:
     lib, _ = runtime
     artifact = lib._weighted_artifact
     changed = replace(
@@ -375,7 +375,7 @@ def test_compiled_omega_invalidates_cache_but_stream_coefficients_apply_once(
 @pytest.mark.parametrize("family", ["long_range", "short_range"])
 def test_prepared_runtime_general_components_with_contracted_spherical_weights(
     runtime: typing.Any, name: typing.Any, family: typing.Any
-) -> typing.Any:
+) -> None:
     lib, _ = runtime
     fixture = make_fixture(
         name, "spherical", coulomb_kernel=CoulombKernel(family, 0.63)
@@ -403,7 +403,7 @@ def test_prepared_runtime_general_components_with_contracted_spherical_weights(
 @pytest.mark.parametrize("family", ["long_range", "short_range"])
 def test_raw_public_components_match_independent_values_and_center_derivatives(
     runtime: typing.Any, name: typing.Any, variant: typing.Any, family: typing.Any
-) -> typing.Any:
+) -> None:
     """Raw unit cotangents use the same normalization/pullback as weighted calls."""
     lib, _ = runtime
     radial = CoulombKernel(family, 0.63)
@@ -442,7 +442,7 @@ def test_raw_public_components_match_independent_values_and_center_derivatives(
 
 def test_raw_rejects_capacity_budget_and_incomplete_spherical_pullback_then_replays(
     runtime: typing.Any,
-) -> typing.Any:
+) -> None:
     lib, _ = runtime
     fixture = make_fixture("dsss", "spherical", coulomb_kernel=RADIAL)
     artifact = compile_weighted_eri(
@@ -473,7 +473,7 @@ def test_raw_rejects_capacity_budget_and_incomplete_spherical_pullback_then_repl
 
 def test_preparation_rejects_forged_mathematical_and_component_metadata(
     runtime: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     artifact = runtime[0]._weighted_artifact
 
     def forbidden(*_: typing.Any, **__: typing.Any) -> typing.Any:
@@ -499,7 +499,7 @@ def test_preparation_rejects_forged_mathematical_and_component_metadata(
 @pytest.mark.parametrize("variant", ["orbit", "exchange"])
 def test_range_weighted_orbits_and_exchange_cotangents(
     runtime: typing.Any, family: typing.Any, variant: typing.Any
-) -> typing.Any:
+) -> None:
     """Fold ordered density/external cotangents with the existing orbit interface."""
     lib, _ = runtime
     fixture = make_fixture("dpsp", variant, coulomb_kernel=CoulombKernel(family, 0.63))
@@ -524,7 +524,7 @@ def test_range_weighted_orbits_and_exchange_cotangents(
 @pytest.mark.parametrize("family", ["long_range", "short_range"])
 def test_raw_f_shell_permutation_orbit_preserves_center_slots(
     runtime: typing.Any, family: typing.Any
-) -> typing.Any:
+) -> None:
     """All eight ERI symmetries permute shell-center derivatives with their slots."""
     lib, _ = runtime
     radial = CoulombKernel(family, 0.63)
@@ -567,7 +567,7 @@ def test_raw_f_shell_permutation_orbit_preserves_center_slots(
                 np.testing.assert_allclose(restored, expected, atol=1e-11, rtol=1e-10)
 
 
-def test_range_capability_is_explicit_bounded_and_excludes_legacy_hf() -> typing.Any:
+def test_range_capability_is_explicit_bounded_and_excludes_legacy_hf() -> None:
     integral = build_weighted_eri_ir(
         (3, 3, 3, 3), operator=four_center_eri_operator(RADIAL)
     )
@@ -590,7 +590,7 @@ def test_range_capability_is_explicit_bounded_and_excludes_legacy_hf() -> typing
 @pytest.mark.parametrize("family", ["long_range", "short_range"])
 def test_range_atomic_force_scatter_adds_coincident_shell_slots(
     runtime: typing.Any, family: typing.Any
-) -> typing.Any:
+) -> None:
     """Two slots on one atom contribute separately before the existing scatter."""
     lib, _ = runtime
     fixture = make_fixture(

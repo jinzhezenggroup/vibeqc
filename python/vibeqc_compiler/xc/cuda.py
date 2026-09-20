@@ -176,12 +176,12 @@ class CudaXC:
                 ct.byref(self._handle),
             )
 
-    def _call(self, name: typing.Any, *args: typing.Any) -> typing.Any:
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def _check_open(self) -> typing.Any:
+    def _check_open(self) -> None:
         if not self._handle:
             raise RuntimeError("XC CUDA plan is closed")
 
@@ -216,7 +216,7 @@ class CudaXC:
                 "driver_version": versions[1],
             }
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Release the arena and stream; repeated closure is harmless."""
         with self._lock, _PREPARATION_LOCK:
             if self._handle:

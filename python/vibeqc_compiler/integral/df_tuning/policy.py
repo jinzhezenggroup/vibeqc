@@ -39,7 +39,7 @@ class DfDerivativeTrial:
     lowering: str
     variant: int
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if (
             not isinstance(self.angular, tuple)
             or len(self.angular) != 3

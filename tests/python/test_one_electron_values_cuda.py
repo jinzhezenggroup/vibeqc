@@ -91,7 +91,7 @@ def test_generated_schedules_preserve_scf_and_geometry(
     representation: typing.Any,
     fitted: typing.Any,
     count: typing.Any,
-) -> typing.Any:
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests must run inside Slurm"
     kwargs = {
         "method": method,
@@ -122,7 +122,7 @@ def test_generated_schedules_preserve_scf_and_geometry(
 
 def test_policy_changes_rebuild_reused_direct_plan(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     """A cached plan must follow the policy recorded for the current execution."""
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests must run inside Slurm"
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
@@ -153,7 +153,7 @@ def test_policy_changes_rebuild_reused_direct_plan(
 @pytest.mark.parametrize("mapping", ["thread", "shell_warp"])
 def test_generated_pair_policy_hcore_matches_independent_libcint(
     monkeypatch: typing.Any, representation: typing.Any, mapping: typing.Any
-) -> typing.Any:
+) -> None:
     """Exercise normalized pair traversal independently of an SCF fixed point.
 
     Negative contraction coefficients, every s/p/d/f shell, unequal charges

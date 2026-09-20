@@ -50,7 +50,7 @@ from tools.vibeqc_response import (
 
 def test_dense_derivative_oracle_rejects_output_budget_before_allocation(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, _ = load_fixture("h2")
     arguments = source_arguments(meta)
     with NativeSource(**arguments) as source:
@@ -89,7 +89,7 @@ def test_dense_derivative_oracle_rejects_output_budget_before_allocation(
 @pytest.mark.parametrize("shell_tile", [False, True])
 def test_weighted_eri_rejects_complex_weights_before_allocation(
     shell_tile: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     """Real-only bridges must reject complex cotangents without losing data."""
     meta, _ = load_fixture("h2")
     with NativeSource(**source_arguments(meta)) as source:
@@ -112,7 +112,7 @@ def test_weighted_eri_rejects_complex_weights_before_allocation(
 @pytest.mark.parametrize("invalid_index", [0.5, True, -1, 2**80])
 def test_weighted_eri_rejects_invalid_shell_indices_before_allocation(
     invalid_index: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     """Index conversion must not silently select a different shell quartet."""
     meta, _ = load_fixture("h2")
     with NativeSource(**source_arguments(meta)) as source:
@@ -128,7 +128,7 @@ def test_weighted_eri_rejects_invalid_shell_indices_before_allocation(
             source.weighted_eri_shell_gradient_cuda((invalid_index, 0, 0, 0), weights)
 
 
-def test_inverse_sqrt_metric_response_is_included_in_ri_gradient() -> typing.Any:
+def test_inverse_sqrt_metric_response_is_included_in_ri_gradient() -> None:
     from tools.vibeqc_mp2.gradient import _inverse_sqrt_metric_response
 
     metric = np.array([[2.0, 0.2], [0.2, 1.1]])
@@ -148,7 +148,7 @@ def test_inverse_sqrt_metric_response_is_included_in_ri_gradient() -> typing.Any
     assert errors[-1] < 1e-9 and errors[-1] < errors[0]
 
 
-def test_nuclear_repulsion_gradient_matches_independent_oracle_block() -> typing.Any:
+def test_nuclear_repulsion_gradient_matches_independent_oracle_block() -> None:
     from tools.vibeqc_mp2.gradient import _nuclear_repulsion_gradient
 
     meta, _ = load_fixture("water")
@@ -160,7 +160,7 @@ def test_nuclear_repulsion_gradient_matches_independent_oracle_block() -> typing
     )
 
 
-def test_gradient_validation_helpers_route_explicit_device() -> typing.Any:
+def test_gradient_validation_helpers_route_explicit_device() -> None:
     from tools.vibeqc_validation.df_gradient import execute_df_gradient
     from tools.vibeqc_validation.one_electron_gradient import execute_gradient
 
@@ -173,7 +173,7 @@ def test_gradient_validation_helpers_route_explicit_device() -> typing.Any:
         def __call__(self, *arguments: typing.Any) -> typing.Any:
             return self.implementation(*arguments)
 
-    def capture(descriptor: typing.Any, _: typing.Any) -> typing.Any:
+    def capture(descriptor: typing.Any, _: typing.Any) -> None:
         value = ct.cast(descriptor, ct.POINTER(_native.ContextDescriptor)).contents
         captured.append(value.device_id)
         raise RuntimeError("captured device")
@@ -199,7 +199,7 @@ def test_gradient_validation_helpers_route_explicit_device() -> typing.Any:
     assert captured == [7, 9]
 
 
-def test_tiled_validation_energy_avoids_full_denominator_and_t2() -> typing.Any:
+def test_tiled_validation_energy_avoids_full_denominator_and_t2() -> None:
     rng = np.random.default_rng(1938)
     g = rng.normal(scale=0.03, size=(2, 2, 10, 10))
     energies = np.concatenate(([-1.1, -0.7], np.linspace(0.1, 1.0, 10)))
@@ -216,7 +216,7 @@ def test_tiled_validation_energy_avoids_full_denominator_and_t2() -> typing.Any:
     assert tiles == 16
 
 
-def test_ri_tile_plan_allows_auxiliary_dimension_above_ao_square() -> typing.Any:
+def test_ri_tile_plan_allows_auxiliary_dimension_above_ao_square() -> None:
     a_ranges, metric_ranges = _ri_gradient_tile_ranges(2, 10, 4, 13)
     assert len(a_ranges) == 10 and a_ranges[-1] == (9, 1, (9, 1, 10, 1))
     assert metric_ranges[0] == (0, 13, (0, 1, 1, 1))
@@ -228,7 +228,7 @@ def test_ri_tile_plan_allows_auxiliary_dimension_above_ao_square() -> typing.Any
 @pytest.mark.parametrize("label", ["conventional", "df"])
 def test_streamed_orbital_and_lagrangian_weights_match_dense(
     label: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, arrays = load_fixture("h2")
     arguments = source_arguments(meta)
     with NativeSource(**arguments) as source:
@@ -287,7 +287,7 @@ def test_streamed_orbital_and_lagrangian_weights_match_dense(
         provider.close()
 
 
-def test_df_provider_close_serializes_cache_clear() -> typing.Any:
+def test_df_provider_close_serializes_cache_clear() -> None:
     from concurrent.futures import ThreadPoolExecutor
     from threading import Event
 
@@ -299,7 +299,7 @@ def test_df_provider_close_serializes_cache_clear() -> typing.Any:
         provider = DFProvider(reference, source, metric)
         started = Event()
 
-        def close() -> typing.Any:
+        def close() -> None:
             started.set()
             provider.close()
 
@@ -314,7 +314,7 @@ def test_df_provider_close_serializes_cache_clear() -> typing.Any:
 @pytest.mark.parametrize("density_fitted", [False, True])
 def test_complete_gradient_facade_publishes_native_total_on_cpu(
     density_fitted: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     """Exercise result publication in CPU CI with real small-system oracles.
 
     Only CUDA boundaries are replaced; reference export, MP2 providers,
@@ -394,7 +394,7 @@ def test_complete_gradient_facade_publishes_native_total_on_cpu(
 )
 def test_weighted_eri_cuda_spherical_pullback_matches_dense_oracle(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, _ = load_fixture("f_heh")
     arguments = source_arguments(meta)
     assert arguments["representation"] == "spherical"
@@ -431,7 +431,7 @@ def test_weighted_eri_cuda_spherical_pullback_matches_dense_oracle(
 @pytest.mark.parametrize("density_fitted", [False, True])
 def test_complete_gradient_validation_facade_matches_public_finite_difference(
     density_fitted: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     meta, _ = load_fixture("h2")
     arguments = source_arguments(meta)
     with NativeSource(**arguments) as source:
@@ -503,7 +503,7 @@ def _energy(feeds: typing.Any) -> typing.Any:
     return float(values["opposite_spin"] + values["same_spin"])
 
 
-def test_tile_energy_adjoint_matches_closed_form_and_dot_identity() -> typing.Any:
+def test_tile_energy_adjoint_matches_closed_form_and_dot_identity() -> None:
     rng = np.random.default_rng(193)
     shape = (2, 3, 2, 4)
     feeds = {
@@ -554,7 +554,7 @@ def test_tile_energy_adjoint_matches_closed_form_and_dot_identity() -> typing.An
     assert errors[-1] < errors[0]
 
 
-def test_energy_program_default_remains_nondifferentiable() -> typing.Any:
+def test_energy_program_default_remains_nondifferentiable() -> None:
     shape = (1, 1, 2, 2)
     primal = energy_program(shape)
     differentiable = energy_program(shape, differentiable=True)
@@ -563,9 +563,7 @@ def test_energy_program_default_remains_nondifferentiable() -> typing.Any:
     assert inputs and all(not node.spec.differentiable for node in inputs)
 
 
-def test_canonical_adjoint_accumulates_exchange_and_repeated_energy_feeds() -> (
-    typing.Any
-):
+def test_canonical_adjoint_accumulates_exchange_and_repeated_energy_feeds() -> None:
     rng = np.random.default_rng(194)
     no, nv = 2, 3
     g = rng.normal(scale=0.1, size=(no, no, nv, nv))
@@ -632,7 +630,7 @@ def _fock(hcore: typing.Any, eri: typing.Any, occupied: typing.Any) -> typing.An
     return result
 
 
-def test_canonical_orbital_rhs_matches_rebuilt_fock_rotation() -> typing.Any:
+def test_canonical_orbital_rhs_matches_rebuilt_fock_rotation() -> None:
     rng = np.random.default_rng(195)
     occupied, size = 2, 5
     eri = _symmetric_eri(rng, size)
@@ -687,9 +685,7 @@ def test_canonical_orbital_rhs_matches_rebuilt_fock_rotation() -> typing.Any:
     assert errors[-1] < errors[0]
 
 
-def test_canonical_orbital_rhs_skips_zero_derivative_degenerate_subspace() -> (
-    typing.Any
-):
+def test_canonical_orbital_rhs_skips_zero_derivative_degenerate_subspace() -> None:
     meta, arrays = load_fixture("lih")
     reference = fixture_snapshot(meta, arrays)
     occupied = reference.nocc
@@ -708,7 +704,7 @@ def test_canonical_orbital_rhs_skips_zero_derivative_degenerate_subspace() -> (
     assert np.isfinite(orbital.response_rhs).all()
 
 
-def test_orbital_rhs_rejects_nonfinite_hamiltonian_data() -> typing.Any:
+def test_orbital_rhs_rejects_nonfinite_hamiltonian_data() -> None:
     energies = np.array([-0.8, 0.3])
     eri = np.zeros((2, 2, 2, 2))
     adjoint = canonical_energy_adjoint(
@@ -742,7 +738,7 @@ def _explicit_rhf_matrix(
     return matrix
 
 
-def test_mp2_orbital_response_reuses_shared_solver_and_explicit_matrix() -> typing.Any:
+def test_mp2_orbital_response_reuses_shared_solver_and_explicit_matrix() -> None:
     meta, arrays = load_fixture("water")
     reference = fixture_snapshot(meta, arrays)
     occupied = reference.nocc
@@ -819,7 +815,7 @@ def test_mp2_orbital_response_reuses_shared_solver_and_explicit_matrix() -> typi
 @pytest.mark.parametrize("name", ["h2", "water"])
 def test_dense_complete_gradient_matches_fully_resolved_finite_differences(
     name: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     meta, arrays = load_fixture(name)
     arguments = source_arguments(meta)
     reference = fixture_snapshot(meta, arrays)
@@ -939,7 +935,7 @@ def test_dense_complete_gradient_matches_fully_resolved_finite_differences(
 @pytest.mark.parametrize("name", ["h2", "water"])
 def test_complete_conventional_gradient_matches_pyscf_analytic(
     name: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     pyscf = pytest.importorskip("pyscf")
     from pyscf import ao2mo, mp, scf
     from pyscf.scf import cphf
@@ -1025,7 +1021,7 @@ def test_complete_conventional_gradient_matches_pyscf_analytic(
 
 
 def test_complete_conventional_gradient_matches_libcint_derivative_contraction() -> (
-    typing.Any
+    None
 ):
     pytest.importorskip("pyscf")
     from pyscf import scf
@@ -1091,7 +1087,7 @@ def test_complete_conventional_gradient_matches_libcint_derivative_contraction()
 @pytest.mark.parametrize("name", ["h2", "water"])
 def test_dense_complete_ri_gradient_matches_fully_resolved_finite_differences(
     name: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     meta, arrays = load_fixture(name)
     arguments = source_arguments(meta)
     with NativeSource(**arguments) as source:
@@ -1264,7 +1260,7 @@ def test_dense_complete_ri_gradient_matches_fully_resolved_finite_differences(
 
 
 def test_complete_ri_gradient_matches_independent_libcint_derivative_contraction() -> (
-    typing.Any
+    None
 ):
     pytest.importorskip("pyscf")
     from pyscf import scf

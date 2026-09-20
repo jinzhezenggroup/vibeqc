@@ -69,7 +69,7 @@ def test_streamed_raw_reuse_matches_independent_jk(
     retained: typing.Any,
     exchange: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     binary, fixture = fixed_density_probe
     trace = tmp_path / "trace.jsonl"
     arrays = tmp_path / "arrays.bin"

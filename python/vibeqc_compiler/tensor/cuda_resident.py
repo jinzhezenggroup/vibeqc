@@ -210,7 +210,7 @@ class DeviceTensor:
         return self.owner.download(self)
 
 
-def _check_lease(owner: typing.Any, value: typing.Any) -> typing.Any:
+def _check_lease(owner: typing.Any, value: typing.Any) -> None:
     """Validate a DeviceTensor lease: owner + readiness + generation.
 
     Raises RuntimeError when the lease is stale (generation mismatch or the
@@ -281,11 +281,11 @@ class PreparedResident(PreparedCuda):
             "synchronizations": 0,
         }
 
-    def _invalidate(self) -> typing.Any:
+    def _invalidate(self) -> None:
         self._ready = False
         self._generation += 1
 
-    def upload(self, feeds: typing.Any) -> typing.Any:
+    def upload(self, feeds: typing.Any) -> None:
         """Upload all or selected named inputs once; reject invalid tensors first."""
         with self._lock:
             if not self._pointer:
@@ -397,7 +397,7 @@ class PreparedResident(PreparedCuda):
             self.transfers["synchronizations"] += 1
             return output
 
-    def copy_input(self, name: typing.Any, host_array: typing.Any) -> typing.Any:
+    def copy_input(self, name: typing.Any, host_array: typing.Any) -> None:
         """Upload one named input into an already-running resident owner."""
         self.upload({name: host_array})
 

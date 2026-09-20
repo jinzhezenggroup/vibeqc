@@ -1,8 +1,8 @@
 # Audited semilocal XC expressions (DFT02)
 
 `vibeqc_compiler.xc` represents LDA exchange, PW92 correlation (ordinary and modified
-parameters), PBE exchange/correlation, and tau-dependent r²SCAN
-exchange/correlation. `LDA_XC_PW`, `PBE`, and `R2SCAN` are exact component
+parameters), PBE exchange/correlation, and tau-dependent SCAN and r²SCAN
+exchange/correlation. `LDA_XC_PW`, `PBE`, `SCAN`, and `R2SCAN` are exact component
 sums. This is an explicit scientific tooling API, not a public molecular KS
 method or a promoted kernel schedule. There is no Hartree, nuclear or exact
 exchange energy in these outputs.
@@ -30,6 +30,50 @@ Furness definitions, including eta=0.001, dp2=0.361 and the exact rSCAN switchin
 polynomials; SCAN, rSCAN and r²SCAN are not aliases. No runtime Libxc call or
 Python autograd appears in production expression execution.
 
+## SCAN and SCAN0 composition and switching contract
+
+`MGGA_X_SCAN` and `MGGA_C_SCAN` use the pinned Libxc 7.0.0 SCAN expressions.
+`resolve_method("SCAN")` contains their unit-weight semilocal sum.
+`resolve_method("SCAN0")` contains 3/4 SCAN exchange and full SCAN correlation,
+plus a separate `ExactExchangePrimitive` with coefficient 1/4. Evaluating its
+semilocal scalar program does not compute that nonlocal exact-exchange term.
+SCAN, rSCAN, and r²SCAN remain different scientific definitions, not aliases.
+
+The SCAN interpolation uses the iso-orbital indicator alpha, with exchange
+parameters `(c1, c2, d) = (0.667, 0.8, 1.24)` and correlation parameters
+`(0.64, 1.5, 0.7)`. Its piecewise scalar graph preserves the pinned machine-epsilon
+cutoffs rather than evaluating the singular denominator at alpha=1. With
+`eps = 2.220446049250313e-16`, `L = -log(eps)`, and `Ld = -log(eps/d)`:
+
+- the left branch is `exp(-c1*alpha/(1-alpha))` through
+  `alpha = L/(L+c1)`;
+- the interpolation is zero between that cutoff and `alpha = 1+c2/Ld`,
+  including alpha=1;
+- the right branch above its cutoff is `-d*exp(c2/(1-alpha))`.
+
+Differentiation follows the selected graph branch. These cutoffs are part of the
+versioned scientific expression, not a new density floor or a generic smoothing
+policy. The shared finite feature domain and explicit rejection rules below
+continue to apply.
+
+The retained independent Libxc fixtures cover both spin layouts, typical and
+boundary inputs, energy density, all first partials, and the default packed
+feature Hessian. Raw oracle arrays remain available; the exact spin-separability
+zero structure for exchange is checked separately. Named SCAN/SCAN0 scalar gates
+and explicit alpha=0.99/1.0/1.03 cases are in `test_scan_family.py`; the complete
+component derivative gates are in `test_xc_expressions.py`.
+
+```bash
+PYTHONPATH=python:tools python -m pytest -q \
+  tests/python/test_scan_family.py tests/python/test_xc_expressions.py
+```
+
+This is MethodIR/scalar-XC qualification only. It does not enable a new public
+self-consistent SCAN/SCAN0 method, a molecular gradient/Hessian endpoint, a
+production CUDA schedule, or arbitrary molecular-grid-tail handling. The
+[SCAN translation decision](../.agents/notes/implemented/numerics/2026-09-20-scan-scalar-contract.md)
+records the numerical boundary and rejected alternatives.
+
 ## Scalar and derivative conventions
 
 All quantities use atomic units. The scalar is **energy per volume**
@@ -43,7 +87,7 @@ All quantities use atomic units. The scalar is **energy per volume**
 
 `sigma_ab = grad(rho_a) dot grad(rho_b)` has **no factor two**. Total sigma is
 `sigma_aa + 2 sigma_ab + sigma_bb`. `tau_s = 1/2 sum D_s,mu,nu grad(phi_mu) dot
-grad(phi_nu)`. LDA/GGA prune tau; r²SCAN activates it and generated first/second
+grad(phi_nu)`. LDA/GGA prune tau; SCAN and r²SCAN activate it and generated first/second
 partials include `vtau` and mixed tau derivatives. Unpolarized lowering substitutes
 `rho_s=rho/2`, `sigma_ss'=sigma/4`, `tau_s=tau/2` *before differentiation*.
 `pack_grid_features` maps DFT01 data and requires equal spin fields before

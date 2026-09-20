@@ -12,8 +12,15 @@ import hashlib
 import json
 import math
 import re
+import sys
 import typing
 from pathlib import Path
+
+_BENCHMARKS_DIR = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "benchmarks"
+)
+sys.path.insert(0, str(_BENCHMARKS_DIR))
+from _retention import raw_output_path
 
 LIMIT = 1 << 20
 
@@ -36,7 +43,7 @@ def bind_changed_diagnostics(clean_path: Path, companion_directory: Path) -> typ
     companion_path = companion_directory / "768-changed-clean.json"
     companion = json.loads(companion_path.read_text())
 
-    def require(condition: typing.Any, reason: typing.Any) -> typing.Any:
+    def require(condition: typing.Any, reason: typing.Any) -> None:
         if not condition:
             raise ValueError(f"invalid changed diagnostic companion: {reason}")
 
@@ -120,11 +127,11 @@ def bind_changed_diagnostics(clean_path: Path, companion_directory: Path) -> typ
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     """Reject incomplete clean cells unless explicitly preparing a partial draft."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--partial", action="store_true")
     args = parser.parse_args()
     source, output = args.artifacts.resolve(), args.output.resolve()
@@ -136,9 +143,7 @@ def main() -> typing.Any:
         "incomplete": [],
     }
 
-    def retain(
-        path: typing.Any, name: typing.Any, *, value: typing.Any = None
-    ) -> typing.Any:
+    def retain(path: typing.Any, name: typing.Any, *, value: typing.Any = None) -> None:
         """Keep exact input hashes even when whitespace-only JSON compaction is needed."""
         original = path.read_bytes()
         data = (

@@ -90,7 +90,7 @@ def _options(**kwargs: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("seed", [1.0, -2.5, 0.0, 1e-100, 1e100])
 def test_scalar_analytic_vjp_includes_direct_parameter_dependence(
     seed: typing.Any,
-) -> typing.Any:
+) -> None:
     spec, feeds = _scalar()
     result = _vjp(
         _bound(spec, feeds), np.array(seed), direct={"q": np.array(0.1 * seed)}
@@ -104,9 +104,7 @@ def test_scalar_analytic_vjp_includes_direct_parameter_dependence(
     assert result.solver_backend == "python-response-gmres"
 
 
-def test_scalar_derivative_converges_against_resolved_finite_differences() -> (
-    typing.Any
-):
+def test_scalar_derivative_converges_against_resolved_finite_differences() -> None:
     spec, feeds = _scalar()
     expected = _vjp(_bound(spec, feeds), np.array(1.0)).parameter_cotangents["q"]
     errors = []
@@ -120,7 +118,7 @@ def test_scalar_derivative_converges_against_resolved_finite_differences() -> (
 @pytest.mark.parametrize("weighted", [False, True])
 def test_nonsymmetric_nonlinear_vjp_dot_and_resolved_directional_differences(
     weighted: typing.Any,
-) -> typing.Any:
+) -> None:
     spec, feeds = _nonsymmetric(weights=weighted)
     plan = spec.compile()
     bound = _bound(spec, feeds, solver=ResponseGMRES(3, _options()))
@@ -176,7 +174,7 @@ def test_nonsymmetric_nonlinear_vjp_dot_and_resolved_directional_differences(
     assert errors[-1] < errors[0] / 30
 
 
-def test_existing_packed_orbit_metric_is_not_an_unweighted_transpose() -> typing.Any:
+def test_existing_packed_orbit_metric_is_not_an_unweighted_transpose() -> None:
     axis = Index("i", IndexSpace("symmetric", "batch", 2))
     layout = PackedLayout(
         TensorSpec((axis, Index("j", axis.space)), symmetries=(Symmetry((1, 0)),))
@@ -207,7 +205,7 @@ def test_existing_packed_orbit_metric_is_not_an_unweighted_transpose() -> typing
         )
 
 
-def test_scalar_state_can_have_a_differently_shaped_residual() -> typing.Any:
+def test_scalar_state_can_have_a_differently_shaped_residual() -> None:
     from vibeqc_compiler.tensor import reshape
 
     spec, feeds = _scalar()
@@ -223,7 +221,7 @@ def test_scalar_state_can_have_a_differently_shaped_residual() -> typing.Any:
     assert result.parameter_cotangents["q"] == pytest.approx(0.25)
 
 
-def test_replay_regenerates_math_and_is_backend_independent() -> typing.Any:
+def test_replay_regenerates_math_and_is_backend_independent() -> None:
     spec, feeds = _nonsymmetric(weights=True)
     plan = spec.compile()
     replay = ImplicitVJPPlan.from_payload(json.loads(json.dumps(plan.to_payload())))
@@ -262,12 +260,12 @@ def test_replay_regenerates_math_and_is_backend_independent() -> typing.Any:
 )
 def test_math_identity_includes_operator_layout_gauge_and_metrics(
     change: typing.Any,
-) -> typing.Any:
+) -> None:
     spec, _ = _nonsymmetric()
     assert replace(spec, **change).compile().identity != spec.compile().identity
 
 
-def test_documentary_provenance_does_not_change_math_identity() -> typing.Any:
+def test_documentary_provenance_does_not_change_math_identity() -> None:
     spec, _ = _scalar()
     other = replace(
         spec,
@@ -292,7 +290,7 @@ def test_documentary_provenance_does_not_change_math_identity() -> typing.Any:
 )
 def test_spec_payload_rejects_unknown_or_unsupported_contracts(
     field: typing.Any, value: typing.Any
-) -> typing.Any:
+) -> None:
     spec, _ = _scalar()
     payload = spec.to_payload()
     payload[field] = value
@@ -305,7 +303,7 @@ def test_spec_payload_rejects_unknown_or_unsupported_contracts(
 )
 def test_plan_payload_cannot_substitute_derivative_graphs(
     mutation: typing.Any,
-) -> typing.Any:
+) -> None:
     spec, _ = _scalar()
     payload = spec.compile().to_payload()
     if mutation == "identity":
@@ -335,15 +333,13 @@ def test_plan_payload_cannot_substitute_derivative_graphs(
         {"residual_metric": [1.0]},
     ],
 )
-def test_invalid_declarations_fail_before_compilation(change: typing.Any) -> typing.Any:
+def test_invalid_declarations_fail_before_compilation(change: typing.Any) -> None:
     spec, _ = _scalar()
     with pytest.raises((ValueError, TypeError)):
         replace(spec, **change)
 
 
-def test_unsupported_dtype_and_redundant_symmetry_are_not_silently_accepted() -> (
-    typing.Any
-):
+def test_unsupported_dtype_and_redundant_symmetry_are_not_silently_accepted() -> None:
     for dtype in ("float32",):
         x, q = _parameter("x", dtype=dtype), _parameter("q", dtype=dtype)
         with pytest.raises(NotImplementedError, match="FP64"):
@@ -366,7 +362,7 @@ def test_unsupported_dtype_and_redundant_symmetry_are_not_silently_accepted() ->
 )
 def test_strict_input_and_cotangent_shape_dtype_finiteness(
     value: typing.Any,
-) -> typing.Any:
+) -> None:
     spec, feeds = _scalar()
     with pytest.raises(ValueError):
         _bound(spec, {**feeds, "x": value})
@@ -377,7 +373,7 @@ def test_strict_input_and_cotangent_shape_dtype_finiteness(
         _vjp(bound, np.array(1.0), direct={"q": value})
 
 
-def test_primal_and_unknown_parameter_inputs_are_checked() -> typing.Any:
+def test_primal_and_unknown_parameter_inputs_are_checked() -> None:
     spec, feeds = _scalar()
     with pytest.raises(ImplicitSolveError, match="primal is not converged"):
         _bound(spec, {**feeds, "x": np.array(3.0)})
@@ -387,7 +383,7 @@ def test_primal_and_unknown_parameter_inputs_are_checked() -> typing.Any:
         _vjp(_bound(spec, feeds), np.array(1.0), direct={"unknown": np.array(1.0)})
 
 
-def test_state_inputs_and_published_results_cannot_be_mutated() -> typing.Any:
+def test_state_inputs_and_published_results_cannot_be_mutated() -> None:
     spec, feeds = _nonsymmetric()
     # Non-contiguous caller views are accepted and snapshotted.
     feeds = {
@@ -414,9 +410,7 @@ def test_state_inputs_and_published_results_cannot_be_mutated() -> typing.Any:
         bound.plan.identity = "changed"
 
 
-def test_changed_reference_or_equations_change_state_and_execution_identity() -> (
-    typing.Any
-):
+def test_changed_reference_or_equations_change_state_and_execution_identity() -> None:
     spec, feeds = _scalar()
     first = _bound(spec, feeds)
     other = _bound(spec, {"x": np.array(3.0), "q": np.array(9.0)})
@@ -446,7 +440,7 @@ class _ProbeExecutor:
 @pytest.mark.parametrize("stage", ["transpose", "source", "adjoint"])
 def test_live_reference_change_during_execution_fails_before_publication(
     stage: typing.Any,
-) -> typing.Any:
+) -> None:
     spec, feeds = _scalar()
     plan = spec.compile()
     executor = _ProbeExecutor(plan)
@@ -464,7 +458,7 @@ def test_live_reference_change_during_execution_fails_before_publication(
     assert _vjp(bound, np.array(1.0)).parameter_cotangents["q"] == pytest.approx(0.25)
 
 
-def test_callback_identity_and_backend_switches_fail_closed() -> typing.Any:
+def test_callback_identity_and_backend_switches_fail_closed() -> None:
     spec, feeds = _scalar()
     executor = _ProbeExecutor(spec.compile())
     bound = _bound(spec, feeds, executor=executor)
@@ -480,7 +474,7 @@ def test_callback_identity_and_backend_switches_fail_closed() -> typing.Any:
 @pytest.mark.parametrize("max_bytes", [0, 1, -1, True, 2**64])
 def test_combined_budget_preflight_precedes_tensor_execution(
     max_bytes: typing.Any,
-) -> typing.Any:
+) -> None:
     spec, feeds = _scalar()
     executor = _ProbeExecutor(spec.compile())
     with pytest.raises((ImplicitSolveError, ValueError)):
@@ -488,7 +482,7 @@ def test_combined_budget_preflight_precedes_tensor_execution(
     assert executor.calls == []
 
 
-def test_reservation_includes_simultaneous_solver_and_executor_storage() -> typing.Any:
+def test_reservation_includes_simultaneous_solver_and_executor_storage() -> None:
     spec, feeds = _scalar()
     plan = spec.compile()
     solver = ResponseGMRES(1, _options())
@@ -509,9 +503,7 @@ def test_reservation_includes_simultaneous_solver_and_executor_storage() -> typi
     assert result.logical_reserved_host_bytes == required
 
 
-def test_nonconvergence_singularity_and_solver_budget_do_not_publish_results() -> (
-    typing.Any
-):
+def test_nonconvergence_singularity_and_solver_budget_do_not_publish_results() -> None:
     spec, feeds = _nonsymmetric()
     for options in (
         GMRESOptions(rtol=1e-15, max_iterations=1, restart=1),
@@ -538,7 +530,7 @@ def test_nonconvergence_singularity_and_solver_budget_do_not_publish_results() -
 )
 def test_solver_report_is_not_a_substitute_for_true_residual(
     failure: typing.Any,
-) -> typing.Any:
+) -> None:
     spec, feeds = _scalar()
     real = ResponseGMRES(1, _options())
 
@@ -566,7 +558,7 @@ def test_solver_report_is_not_a_substitute_for_true_residual(
     assert "source" not in executor.calls
 
 
-def test_missing_executor_outputs_fail_without_success() -> typing.Any:
+def test_missing_executor_outputs_fail_without_success() -> None:
     spec, feeds = _scalar()
     executor = _ProbeExecutor(spec.compile())
     bound = _bound(spec, feeds, executor=executor)
@@ -577,9 +569,7 @@ def test_missing_executor_outputs_fail_without_success() -> typing.Any:
         _vjp(bound, np.array(1.0))
 
 
-def test_generated_objective_vjp_composes_without_omitting_the_direct_term() -> (
-    typing.Any
-):
+def test_generated_objective_vjp_composes_without_omitting_the_direct_term() -> None:
     from vibeqc_compiler.tensor import transpose_program
 
     spec, feeds = _scalar()
@@ -595,7 +585,7 @@ def test_generated_objective_vjp_composes_without_omitting_the_direct_term() -> 
 
 
 def test_matrix_free_derivative_storage_is_linear_and_independent_of_iterations() -> (
-    typing.Any
+    None
 ):
     from implicit_fixtures import rank_one_problem
 
@@ -622,7 +612,7 @@ def test_matrix_free_derivative_storage_is_linear_and_independent_of_iterations(
 
 def test_cuda_global_admission_fails_before_any_compilation_or_device_probe(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.common.resources import ResourceBudget
 
     from tools.vibeqc_response.implicit_cuda import PreparedImplicitCuda
@@ -640,7 +630,7 @@ def test_cuda_global_admission_fails_before_any_compilation_or_device_probe(
     assert list(tmp_path.iterdir()) == []
 
 
-def test_executor_reused_output_buffers_do_not_alias_published_weights() -> typing.Any:
+def test_executor_reused_output_buffers_do_not_alias_published_weights() -> None:
     spec, feeds = _scalar()
 
     class ReusingExecutor(_ProbeExecutor):

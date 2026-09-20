@@ -22,7 +22,7 @@ from vibeqc_compiler.dft import DensitySource, ExplicitGrid, NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
 
 
-def validate_matrix_errors(errors: typing.Any) -> typing.Any:
+def validate_matrix_errors(errors: typing.Any) -> None:
     """Require every declared numerical gate, including equal-count key swaps.
 
     This is the fixed acceptance matrix, independent of which keys a measured

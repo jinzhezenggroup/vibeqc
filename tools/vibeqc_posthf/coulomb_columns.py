@@ -41,13 +41,13 @@ class CoulombColumns:
         self.numeric_bytes = source.numeric_bytes + CPU_SOURCE_SCRATCH
         self.statistics = {"tiles": 0, "elements": 0, "seconds": 0.0}
 
-    def check(self) -> typing.Any:
+    def check(self) -> None:
         """Reject stale source lifetime or replaced scientific metadata."""
         self.source._check_open()
         if self.source.identity != self._source_identity:
             raise ValueError("raw source identity changed; rebuild factorization")
 
-    def _range(self, begin: typing.Any, count: typing.Any) -> typing.Any:
+    def _range(self, begin: typing.Any, count: typing.Any) -> None:
         self.check()
         if (
             type(begin) is not int

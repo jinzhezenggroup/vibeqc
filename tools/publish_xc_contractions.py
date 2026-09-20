@@ -30,7 +30,7 @@ OBSERVABLES = ("energy", "potential", "response", "geometry")
 
 def checked_error(
     error: typing.Any, *, atol: typing.Any = 1e-11, rtol: typing.Any = 1e-10
-) -> typing.Any:
+) -> None:
     """Require the unchanged quantitative gate, not a standalone success flag."""
     if (
         error["passed"] is not True
@@ -240,7 +240,7 @@ def summarize(run: typing.Any) -> typing.Any:
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--stage", type=Path, required=True)

@@ -69,7 +69,7 @@ def record(result: typing.Any, options: typing.Any) -> typing.Any:
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     selection = parser.add_mutually_exclusive_group(required=True)
     selection.add_argument("--case", choices=CASES)

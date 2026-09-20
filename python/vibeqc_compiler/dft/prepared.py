@@ -144,7 +144,7 @@ class PreparedGrid:
     def nao(self) -> typing.Any:
         return self._plan.nao
 
-    def _refresh_identity(self) -> typing.Any:
+    def _refresh_identity(self) -> None:
         basis = self._basis
         if basis is None:
             raise RuntimeError("prepared grid is closed")
@@ -166,7 +166,7 @@ class PreparedGrid:
     def generation(self) -> typing.Any:
         return self._generation
 
-    def reconfigure(self, **changes: typing.Any) -> typing.Any:
+    def reconfigure(self, **changes: typing.Any) -> None:
         """Transactionally replace changed numerical state and advance generation.
 
         ``coordinates`` moves the existing ordered atoms. To reorder/change
@@ -306,7 +306,7 @@ class PreparedGrid:
                 result["cuda"] = self._cuda.metrics()
             return result
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with self._lock:
             if self._cuda:
                 self._cuda.close()
@@ -381,7 +381,7 @@ class PreparedGridBatch:
                 result.append(record)
             return result
 
-    def reconfigure(self, index: typing.Any, **changes: typing.Any) -> typing.Any:
+    def reconfigure(self, index: typing.Any, **changes: typing.Any) -> None:
         """Update one item under the fleet budget, rebuilding ragged offsets."""
         with self._lock:
             checked_int(index, "batch index", low=0, high=len(self._items) - 1)
@@ -399,7 +399,7 @@ class PreparedGridBatch:
                 self.point_offsets.append(self.point_offsets[-1] + item.grid.npoint)
                 self.ao_offsets.append(self.ao_offsets[-1] + item.nao)
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with self._lock:
             for item in self._items:
                 item.close()

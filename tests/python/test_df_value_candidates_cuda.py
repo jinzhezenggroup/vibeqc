@@ -21,7 +21,7 @@ def test_value_math_replay_and_geometry(
     representation: typing.Any,
     budget: typing.Any,
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     """Resident/export and bounded/generated sources use the same independent gates."""
     from pyscf import gto, scf
 

@@ -32,7 +32,7 @@ def artifact() -> typing.Any:
     )
 
 
-def check(actual: typing.Any, expected: typing.Any) -> typing.Any:
+def check(actual: typing.Any, expected: typing.Any) -> None:
     result = block_error(actual, expected, atol=1e-11, rtol=1e-10)
     assert result["passed"], result
 
@@ -41,7 +41,7 @@ def check(actual: typing.Any, expected: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("tile_points", [7, 31])
 def test_all_jets_features_partial_tiles_and_resident_density(
     artifact: typing.Any, name: typing.Any, tile_points: typing.Any
-) -> typing.Any:
+) -> None:
     meta, arrays = load_fixture(name)
     with NativeAO(**basis_arguments(meta)) as basis:
         with CudaGrid(basis, artifact, order=3, tile_points=tile_points) as cuda:
@@ -71,7 +71,7 @@ def test_all_jets_features_partial_tiles_and_resident_density(
             cuda.evaluate(arrays["points"][:1])
 
 
-def test_orders_zero_to_three_and_budget_rejection(artifact: typing.Any) -> typing.Any:
+def test_orders_zero_to_three_and_budget_rejection(artifact: typing.Any) -> None:
     meta, arrays = load_fixture("f_spherical")
     with NativeAO(**basis_arguments(meta)) as basis:
         with pytest.raises(ValueError, match="budget"):
@@ -88,7 +88,7 @@ def test_orders_zero_to_three_and_budget_rejection(artifact: typing.Any) -> typi
 
 def test_prepared_reuse_changed_geometry_and_ragged_failures(
     artifact: typing.Any,
-) -> typing.Any:
+) -> None:
     items, densities = [], []
     for name in ("h2", "water", "f_spherical"):
         meta, arrays = load_fixture(name)
@@ -136,7 +136,7 @@ def test_prepared_reuse_changed_geometry_and_ragged_failures(
         check(plan.integrate(densities[0])["electrons"], changed["electrons"])
 
 
-def test_shared_posthf_runtime_after_cache_extraction() -> typing.Any:
+def test_shared_posthf_runtime_after_cache_extraction() -> None:
     """Exercise the existing cuBLAS MO consumer after extracting shared caching."""
     from tools.vibeqc_posthf.conventions import MOBlock
     from tools.vibeqc_posthf.cuda import compile_cuda as compile_posthf
@@ -166,7 +166,7 @@ def test_shared_posthf_runtime_after_cache_extraction() -> typing.Any:
 
 def test_gpu_iterator_density_isolation_and_failed_update(
     artifact: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data = load_fixture("h2")
     options = {
         **basis_arguments(meta),

@@ -40,7 +40,7 @@ def fixture() -> typing.Any:
 
 def test_screening_off_partition_is_only_an_equivalent_reordering(
     fixture: typing.Any,
-) -> typing.Any:
+) -> None:
     basis, grid = fixture
     expected = basis.evaluate(grid.points, order=1)
     generations = set()
@@ -77,7 +77,7 @@ def test_screening_off_partition_is_only_an_equivalent_reordering(
 
 def test_fixed_mask_is_discovered_without_evaluating_the_dense_ao_grid(
     fixture: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     basis, grid = fixture
     original = basis.evaluate
 
@@ -108,7 +108,7 @@ def test_fixed_mask_is_discovered_without_evaluating_the_dense_ao_grid(
 
 def test_stale_grid_weights_point_order_and_basis_fail(
     fixture: typing.Any,
-) -> typing.Any:
+) -> None:
     basis, grid = fixture
     tasks = build_spatial_tasks(basis, grid)
     for changed in (
@@ -132,7 +132,7 @@ def test_stale_grid_weights_point_order_and_basis_fail(
 
 def test_grid_and_atom_permutations_preserve_geometric_masks(
     fixture: typing.Any,
-) -> typing.Any:
+) -> None:
     basis, grid = fixture
     policy = SpatialPolicy(region_points=3, screening="absolute_ao_jet", cutoff=1e-8)
     original = build_spatial_tasks(basis, grid, policy=policy)
@@ -176,7 +176,7 @@ def test_grid_and_atom_permutations_preserve_geometric_masks(
 
 def test_shared_budget_preflight_precedes_envelope_construction(
     fixture: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.dft import spatial
 
     basis, grid = fixture
@@ -199,7 +199,7 @@ def test_shared_budget_preflight_precedes_envelope_construction(
         assert result.resource_plan.peak_bytes["host"] <= budget
 
 
-def test_empty_grid_and_invalid_owner(fixture: typing.Any) -> typing.Any:
+def test_empty_grid_and_invalid_owner(fixture: typing.Any) -> None:
     basis, _ = fixture
     grid = ExplicitGrid(np.empty((0, 3)), np.empty(0), (), {})
     assert build_spatial_tasks(basis, grid).tasks == ()
@@ -210,7 +210,7 @@ def test_empty_grid_and_invalid_owner(fixture: typing.Any) -> typing.Any:
 
 def test_mutated_maps_and_relabelled_generations_fail(
     fixture: typing.Any,
-) -> typing.Any:
+) -> None:
     basis, grid = fixture
     tasks = build_spatial_tasks(basis, grid, policy=SpatialPolicy(region_points=4))
     first = tasks.tasks[0]
@@ -230,7 +230,7 @@ def test_mutated_maps_and_relabelled_generations_fail(
 
 def test_forged_screening_certificate_cannot_drop_large_ao(
     fixture: typing.Any,
-) -> typing.Any:
+) -> None:
     basis, grid = fixture
     policy = SpatialPolicy(region_points=4, screening="absolute_ao_jet", cutoff=1e-8)
     tasks = build_spatial_tasks(basis, grid, policy=policy)

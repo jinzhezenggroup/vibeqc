@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import typing
 from pathlib import Path
 
 from .fixtures import ROOT
@@ -70,7 +69,7 @@ def capability_table(catalog: Path = ROOT / "docs/codegen_capabilities.json") ->
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output", type=Path, required=True, help="six-stage JSON capability table"

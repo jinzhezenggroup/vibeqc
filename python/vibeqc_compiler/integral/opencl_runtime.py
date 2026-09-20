@@ -59,7 +59,7 @@ class LocalMemory:
     nbytes: int
 
 
-def _check(code: typing.Any, operation: typing.Any, log: typing.Any = "") -> typing.Any:
+def _check(code: typing.Any, operation: typing.Any, log: typing.Any = "") -> None:
     if code:
         raise OpenCLError(operation, code, log)
 
@@ -110,7 +110,7 @@ class OpenCLRuntime:
             self.close()
             raise
 
-    def _bind(self) -> typing.Any:
+    def _bind(self) -> None:
         """Declare OpenCL 1.2 ABI signatures, using pointer-sized handles explicitly."""
         P, U, I, S, B = c.c_void_p, c.c_uint, c.c_int, c.c_size_t, c.c_uint64
         PP, UP, IP, SP = c.POINTER(P), c.POINTER(U), c.POINTER(I), c.POINTER(S)
@@ -330,7 +330,7 @@ class OpenCLRuntime:
         *,
         offset: typing.Any = 0,
         stream: typing.Any = None,
-    ) -> typing.Any:
+    ) -> None:
         """A blocking transfer owns the host input until the ICD has consumed it."""
         data = bytes(data)
         handle = self._bounds(buffer, offset, len(data))
@@ -682,7 +682,7 @@ class OpenCLRuntime:
         finally:
             self.release(fn)
 
-    def wait(self, event: typing.Any) -> typing.Any:
+    def wait(self, event: typing.Any) -> None:
         handle = c.c_void_p(self._require(event, "event"))
         code = self.api.clWaitForEvents(1, c.byref(handle))
         # -14 denotes a terminal execution failure, so retained resources can
@@ -780,7 +780,7 @@ __kernel void reduce_sum(__global const double* input, __global double* output,
             if not self._closed:
                 self.release(compiled)
 
-    def release(self, resource: typing.Any) -> typing.Any:
+    def release(self, resource: typing.Any) -> None:
         """Reject stale/cross-context handles and release only completed dependencies."""
         if not isinstance(resource, Resource):
             raise TypeError("a live typed OpenCL resource is required")
@@ -808,7 +808,7 @@ __kernel void reduce_sum(__global const double* input, __global double* output,
         object.__setattr__(resource, "handle", 0)
         self._resources.pop(id(resource))
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Drain and attempt every native release, even after a vendor error.
 
         Enqueued commands retain their native objects until completion. Dropping
@@ -821,7 +821,7 @@ __kernel void reduce_sum(__global const double* input, __global double* output,
 
         def attempt(
             function: typing.Any, handle: typing.Any, operation: typing.Any
-        ) -> typing.Any:
+        ) -> None:
             try:
                 _check(function(handle), operation)
             except OpenCLError as error:

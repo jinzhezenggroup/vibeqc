@@ -252,14 +252,27 @@ unsigned ppps_resident_block_threads_requested() noexcept {
   return 0U;
 }
 
+OneElectronValuePolicy resolve_one_electron_value_policy(
+    const runtime::CudaProviderCapabilities& provider) noexcept {
+  OneElectronValuePolicy policy;
+  const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING");
+  if (selection == nullptr) {
+    policy.mapping = provider.templated_shell_warp_one_electron ? 1U : 0U;
+    return policy;
+  }
+  policy.diagnostic_override = true;
+  const bool requests_shell_warp =
+      std::strcmp(selection, "1") == 0 || std::strcmp(selection, "shell_warp") == 0;
+  if (requests_shell_warp && !provider.templated_shell_warp_one_electron) {
+    policy.capability_fallback = true;
+    return policy;
+  }
+  policy.mapping = requests_shell_warp ? 1U : 0U;
+  return policy;
+}
+
 unsigned one_electron_value_mapping_requested() noexcept {
-  // The shared shell-warp policy passed the complete NVIDIA ownership-migration
-  // endpoint gate. CuMetal does not currently register the templated shell-warp
-  // one-electron kernel in its metallib, so keep the qualified pair-thread
-  // schedule there unless the user explicitly overrides the mapping.
-  if (std::getenv("VIBEQC_ONE_ELECTRON_VALUE_MAPPING") == nullptr)
-    return std::getenv("CUMETAL_ROOT") == nullptr ? 1U : 0U;
-  return selected("VIBEQC_ONE_ELECTRON_VALUE_MAPPING", "shell_warp") ? 1U : 0U;
+  return resolve_one_electron_value_policy(runtime::active_cuda_provider()).mapping;
 }
 
 bool generated_one_electron_derivatives_requested() noexcept {

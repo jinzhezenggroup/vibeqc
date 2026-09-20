@@ -32,7 +32,7 @@ class OccupiedProposal:
     parent_id: str
     columns: tuple
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(self, "columns", tuple(_columns(c) for c in self.columns))
 
     def materialize(self, state: typing.Any) -> typing.Any:
@@ -79,7 +79,7 @@ class RotationProposal:
     rotations: tuple
     kind: str = "occupied_virtual_rotation"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in ("coefficients", "rotations"):
             object.__setattr__(
                 self, name, tuple(_columns(c) for c in getattr(self, name))

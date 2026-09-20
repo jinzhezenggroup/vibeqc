@@ -29,7 +29,7 @@ def test_compact_diis_independent_forces_and_warm_reset(
     dots: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     from pyscf import gto, scf
 
     assert os.environ.get("SLURM_JOB_ID")
@@ -124,7 +124,7 @@ def test_compact_diis_independent_forces_and_warm_reset(
 
 def test_diis_workspace_shortfall_fails_without_numerical_retry(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """A force half-budget cannot borrow response capacity for solver owners."""
     assert os.environ.get("SLURM_JOB_ID")
     path = tmp_path / "shortfall.jsonl"

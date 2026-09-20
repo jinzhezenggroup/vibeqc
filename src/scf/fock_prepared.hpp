@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "runtime/cuda_provider.hpp"
 #include "scf/cuda_fock_provider.hpp"
 #include "scf/initial_guess/eigen_operation.hpp"
 
@@ -14,7 +15,9 @@ class OverlapOrthogonalizer;
 /** Backend variants frozen into the prepared source; mathematical identity
  * remains in ResolvedFockBuild::spec. These switches never authorize DF. */
 struct FockExecutionVariant {
+  runtime::CudaProviderKind cuda_provider{runtime::CudaProviderKind::None};
   unsigned one_electron_value_mapping{}, df_value_mapping{}, df_derivative_mapping{};
+  bool one_electron_value_override{}, one_electron_value_capability_fallback{};
   DfPairStorage df_pair_storage{DfPairStorage::Dense};
   bool operator==(const FockExecutionVariant&) const = default;
 };

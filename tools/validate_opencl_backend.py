@@ -228,7 +228,7 @@ def execute_program(
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     """Record current vendor/runtime provenance without advertising a full backend."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", required=True, type=Path)

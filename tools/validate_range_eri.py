@@ -342,7 +342,7 @@ def run(args: typing.Any) -> typing.Any:
         "resources.json retains shared numeric plans verified against native storage. Process-wide peak memory, Python metadata, caller streams and native call stacks/CUDA context are excluded."
     )
 
-    def save(name: typing.Any, value: typing.Any) -> typing.Any:
+    def save(name: typing.Any, value: typing.Any) -> None:
         (args.output / name).write_text(
             json.dumps(value, sort_keys=True, indent=2, allow_nan=False) + "\n"
         )

@@ -28,7 +28,7 @@ def first_component_identity(integral: typing.Any, indices: typing.Any) -> typin
     )
 
 
-def validate_first_components(integral: typing.Any, indices: typing.Any) -> typing.Any:
+def validate_first_components(integral: typing.Any, indices: typing.Any) -> None:
     """Reject unsupported semantics rather than relabel another derivative."""
     if integral.derivative is None or integral.derivative.order != 1:
         raise ValueError("first component execution requires derivative order one")

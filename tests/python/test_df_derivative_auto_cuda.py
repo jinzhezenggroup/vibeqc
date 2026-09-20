@@ -40,7 +40,7 @@ def test_automatic_derivative_route_cold_warm_and_moved(
     packet: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """No forced shell/candidate control can stand in for the public auto path."""
     from pyscf import gto, scf
 

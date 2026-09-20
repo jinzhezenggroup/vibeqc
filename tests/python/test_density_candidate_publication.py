@@ -28,7 +28,7 @@ def publication(request: typing.Any) -> typing.Any:
 
 def test_retained_summary_reconstructs_and_has_complete_matrix(
     publication: typing.Any,
-) -> typing.Any:
+) -> None:
     kind, report, files = publication
     summary = summarize(report)
     assert summary == json.loads(files["summary.json"])
@@ -79,7 +79,7 @@ def test_retained_summary_reconstructs_and_has_complete_matrix(
 @pytest.mark.parametrize("fault", ["missing", "duplicate", "identity", "nonpositive"])
 def test_summary_rejects_incomparable_or_incomplete_pairs(
     publication: typing.Any, fault: typing.Any
-) -> typing.Any:
+) -> None:
     _, report, _ = publication
     report = copy.deepcopy(report)
     if fault == "missing":
@@ -97,7 +97,7 @@ def test_summary_rejects_incomparable_or_incomplete_pairs(
 @pytest.mark.parametrize("rename", [False, True])
 def test_matrix_gate_inventory_rejects_missing_or_reused_keys(
     rename: typing.Any,
-) -> typing.Any:
+) -> None:
     report = load_record(ROOT / "gpu/evidence.json")
     key = next(iter(report["block_errors"]))
     record = report["block_errors"].pop(key)

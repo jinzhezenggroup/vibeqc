@@ -55,7 +55,7 @@ def source_identity(generated: typing.Any) -> typing.Any:
 
 def write_workloads(
     path: typing.Any, profiles: typing.Any, *, angular: typing.Any = LOW_ANGULAR_CLASSES
-) -> typing.Any:
+) -> None:
     """Serialize real geometries/bases and the ledger's precise panel domain.
 
     Only ordinary basis metadata is imported from the runtime package. This is
@@ -94,7 +94,7 @@ def write_workloads(
     path.write_text("\n".join(lines) + "\n")
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, action="append", required=True)
     parser.add_argument(

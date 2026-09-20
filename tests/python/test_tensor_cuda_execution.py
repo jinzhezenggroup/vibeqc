@@ -4,6 +4,8 @@ Example: srun -p main --gres=gpu:5090:1 --time=00:10:00 env
 VIBEQC_TENSOR_CUDA_TEST=1 VIBEQC_NVCC=/path/to/nvcc python -m pytest ...
 """
 
+from __future__ import annotations
+
 import os
 import typing
 from concurrent.futures import ThreadPoolExecutor
@@ -66,7 +68,7 @@ def cache(tmp_path_factory: typing.Any) -> typing.Any:
 
 def test_two_tensor_providers_share_one_global_budget(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     """A retained neighbor forces an executable recomputation alternative."""
     from vibeqc.resources import ResourceBudget, ResourceSession, plan_resources
     from vibeqc_compiler.tensor.resources import tensor_resource_choices
@@ -122,7 +124,7 @@ def test_two_tensor_providers_share_one_global_budget(
 
 def test_actual_cuda_allocation_failure_is_typed_and_exhausted_plan_is_recorded(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     """An impossible native allocation tests rollback without filling GPU RAM."""
     from vibeqc import (
         ResourceAllocationError,
@@ -161,7 +163,7 @@ def test_actual_cuda_allocation_failure_is_typed_and_exhausted_plan_is_recorded(
 )
 def test_direct_hf_and_tensor_share_one_executable_resource_plan(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc import Calculator, ResourceBudget, ResourceSession, plan_resources
     from vibeqc_compiler.tensor.resources import tensor_resource_choices
 
@@ -233,13 +235,21 @@ def check(
             assert result.metrics["owned_device_bytes"] == plan.allocation_bytes
             assert result.metrics["provider_retained_bytes"] <= plan.provider_bytes
             assert result.metrics["predicted_peak_bytes"] <= plan.max_bytes
+            assert (
+                result.metrics["observed_semantic_traffic_bytes"]
+                == plan.semantic_traffic["total_bytes"]
+            )
+            assert (
+                "not a hardware DRAM counter"
+                in result.metrics["observed_traffic_scope"]
+            )
         return result
 
 
 @pytest.mark.parametrize("case", ["diagonal", "named_inputs", "inactive_operand"])
 def test_generated_vjp_review_regressions_on_cuda(
     case: typing.Any, compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     """Check generated adjoints against analytic results on the real backend."""
     if case == "named_inputs":
         spec = TensorSpec((), role="parameter", differentiable=True)
@@ -275,10 +285,58 @@ def test_generated_vjp_review_regressions_on_cuda(
     np.testing.assert_array_equal(result.outputs[output], expected)
 
 
+def test_resource_aware_schedule_dimensions_execute_on_cuda(
+    compiler: typing.Any, cache: typing.Any
+) -> None:
+    """Executable search axes keep exact numerical parity on the real backend."""
+    i = Index("i", IndexSpace("rows", "batch", 17))
+    j = Index("j", IndexSpace("columns", "batch", 19))
+    k = Index("k", IndexSpace("inner", "batch", 33))
+    rng = np.random.default_rng(508)
+
+    x = input_tensor("x", TensorSpec((i, j), role="input"))
+    check(
+        Program({"out": add(multiply(x, x), x)}),
+        {"x": rng.uniform(-0.5, 0.5, x.spec.shape)},
+        compiler,
+        cache,
+        TensorSchedule(elements_per_thread=4),
+    )
+
+    r = input_tensor("r", TensorSpec((i, k), role="input"))
+    check(
+        Program({"out": reduce_sum(r, (1,))}),
+        {"r": rng.uniform(-0.5, 0.5, r.spec.shape)},
+        compiler,
+        cache,
+        TensorSchedule(elements_per_thread=2, reduction_unroll=4),
+    )
+
+    a = input_tensor("a", TensorSpec((i, k), role="input"))
+    b = input_tensor("b", TensorSpec((k, j), role="input"))
+    check(
+        Program({"out": einsum("ik,kj->ji", a, b)}),
+        {
+            "a": rng.uniform(-0.5, 0.5, a.spec.shape),
+            "b": rng.uniform(-0.5, 0.5, b.spec.shape),
+        },
+        compiler,
+        cache,
+        TensorSchedule(
+            tile_m=11,
+            tile_n=13,
+            tile_k=17,
+            direct_gemm=False,
+            staging_width=4,
+        ),
+        library_bytes=0,
+    )
+
+
 @pytest.mark.parametrize("case", example_cases(), ids=lambda c: c.name)
 def test_examples_and_every_intermediate(
     case: typing.Any, compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     names = case.program.debug_names
     debug = Program({names[n]: n for n in case.program.live_nodes})
     check(debug, case.inputs, compiler, cache)
@@ -326,7 +384,7 @@ def test_einsum_layouts_and_partial_tiles(
     dimensions: typing.Any,
     compiler: typing.Any,
     cache: typing.Any,
-) -> typing.Any:
+) -> None:
     from test_tensor_cuda_gemm import node_for
 
     node = node_for(expression, dimensions)
@@ -349,7 +407,7 @@ def test_einsum_layouts_and_partial_tiles(
 
 def test_views_gathers_general_reductions_and_empty_axes(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     i, j = (
         Index("i", IndexSpace("i", "batch", 3)),
         Index("j", IndexSpace("j", "batch", 5)),
@@ -381,7 +439,7 @@ def test_views_gathers_general_reductions_and_empty_axes(
 
 def test_errors_recovery_detachment_and_independent_contexts(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     i = Index("i", IndexSpace("i", "batch", 5))
     x = input_tensor("x", TensorSpec((i,), role="input"))
     y = input_tensor("y", TensorSpec((i,), role="input"))
@@ -413,7 +471,7 @@ def test_errors_recovery_detachment_and_independent_contexts(
 
 def test_nonfinite_intermediate_and_minimum_budget(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     i = Index("i", IndexSpace("i", "batch", 3))
     x = input_tensor("x", TensorSpec((i,), role="input"))
     square = multiply(x, x)
@@ -443,7 +501,7 @@ def test_nonfinite_intermediate_and_minimum_budget(
 
 def test_shape_buckets_budget_and_concurrent_system_independence(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.tensor.cuda_batch import PreparedTensorBatch
 
     plans, feeds = [], []
@@ -476,7 +534,7 @@ def test_shape_buckets_budget_and_concurrent_system_independence(
 
 def test_architecture_mismatch_is_explicit_before_execution(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     other = replace(
         compiler,
         target=cuda_target_info(
@@ -490,7 +548,7 @@ def test_architecture_mismatch_is_explicit_before_execution(
 
 def test_provider_allowance_guard_releases_a_rejected_handle(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     case = example_cases()[0]
     plan = plan_cuda(case.program, compiler.target, library_bytes=0)
     artifact = compile_cuda(plan, compiler, cache)
@@ -515,7 +573,7 @@ def test_provider_allowance_guard_releases_a_rejected_handle(
 @pytest.mark.parametrize("direct_gemm", [True, False])
 def test_graph_replay_refresh_invalidation_and_profiling(
     compiler: typing.Any, cache: typing.Any, direct_gemm: typing.Any
-) -> typing.Any:
+) -> None:
     """Real capture for direct cuBLAS and packed partial-tile programs."""
     axis = IndexSpace("graph_axis", "batch", 17)
     i, j, k = (Index(name, axis) for name in "ijk")
@@ -584,7 +642,7 @@ def test_graph_replay_refresh_invalidation_and_profiling(
 
 def test_graph_arithmetic_failure_is_preserved_and_next_replay_recovers(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     i = Index("i", IndexSpace("axis", "batch", 8))
     x = input_tensor("x", TensorSpec((i,), role="input"))
     y = input_tensor("y", TensorSpec((i,), role="input"))
@@ -609,7 +667,7 @@ def test_graph_arithmetic_failure_is_preserved_and_next_replay_recovers(
 
 def test_graph_global_budget_falls_back_without_untracked_graph_storage(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc.resources import ResourceBudget, plan_resources
     from vibeqc_compiler.tensor.resources import tensor_resource_choices
 
@@ -636,7 +694,7 @@ def test_graph_global_budget_falls_back_without_untracked_graph_storage(
 
 def test_graph_fp32_falls_back_without_relabeling_precision(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     i = Index("i", IndexSpace("axis", "batch", 4))
     x = input_tensor("x", TensorSpec((i,), dtype="float32", role="input"))
     plan = plan_cuda(Program({"out": add(x, x)}), compiler.target)
@@ -654,7 +712,7 @@ def test_graph_fp32_falls_back_without_relabeling_precision(
 @pytest.mark.parametrize("family", ["elementwise", "contraction"])
 def test_staged_tuning_qualifies_fresh_complete_cuda_endpoints(
     compiler: typing.Any, cache: typing.Any, family: typing.Any
-) -> typing.Any:
+) -> None:
     """Real CUDA screens may rank, but only fresh all-input gates may promote."""
     from vibeqc_compiler.tensor.cuda_search import TensorScreeningPolicy
     from vibeqc_compiler.tensor.cuda_tune import tune_cuda

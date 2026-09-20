@@ -26,7 +26,7 @@ DP = np.array([[0.1, -0.3, 0.4], [0.2, 0.1, -0.2], [-0.4, 0.2, 0.1]])
 @pytest.mark.parametrize("source", ["point", "center", "both"])
 def test_partition_sources_match_independent_multistep_differences(
     iterations: typing.Any, source: typing.Any
-) -> typing.Any:
+) -> None:
     dp = DP if source != "center" else np.zeros_like(DP)
     dc = DC if source != "point" else np.zeros_like(DC)
     result = partition_response(
@@ -82,7 +82,7 @@ def decimal_partition(
 @pytest.mark.parametrize("iterations", [1, 3, 5])
 def test_decimal_oracle_is_independent_of_generated_primal(
     iterations: typing.Any,
-) -> typing.Any:
+) -> None:
     with localcontext() as context:
         context.prec = 60
         h = Decimal("1e-16")
@@ -118,7 +118,7 @@ def test_decimal_oracle_is_independent_of_generated_primal(
     np.testing.assert_allclose(result.directional, derivative, atol=6e-15, rtol=5e-13)
 
 
-def test_translation_permutation_and_empty_partition() -> typing.Any:
+def test_translation_permutation_and_empty_partition() -> None:
     translation = np.array([0.3, -0.7, 0.2])
     rigid = partition_response(
         POINTS,
@@ -147,7 +147,7 @@ def test_translation_permutation_and_empty_partition() -> typing.Any:
     np.testing.assert_array_equal(single.directional, 0)
 
 
-def test_exact_zero_pair_products_do_not_divide_by_zero() -> typing.Any:
+def test_exact_zero_pair_products_do_not_divide_by_zero() -> None:
     centers = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
     points = np.array([[-1.0, 0.0, 0.0], [3.0, 0.0, 0.0]])
     response = partition_response(
@@ -182,9 +182,7 @@ def gather(
     )
 
 
-def test_owner_motion_weight_motion_and_partial_tile_match_rebuilt_grids() -> (
-    typing.Any
-):
+def test_owner_motion_weight_motion_and_partial_tile_match_rebuilt_grids() -> None:
     grid = grid_at()
     tiles, dx, dw = gather(grid, DC)
     explicit = grid.explicit()
@@ -224,7 +222,7 @@ def test_owner_motion_weight_motion_and_partial_tile_match_rebuilt_grids() -> (
 
 
 def test_point_and_weight_sources_contract_once_with_existing_geometry_partials() -> (
-    typing.Any
+    None
 ):
     grid = grid_at()
     _, dx, dw = gather(grid, DC)
@@ -261,7 +259,7 @@ def test_point_and_weight_sources_contract_once_with_existing_geometry_partials(
     "bad",
     ["coincident", "tolerance", "point_collision", "nan", "complex", "motion_shape"],
 )
-def test_invalid_or_nonsmooth_inputs_fail_closed(bad: typing.Any) -> typing.Any:
+def test_invalid_or_nonsmooth_inputs_fail_closed(bad: typing.Any) -> None:
     centers, points, dc = CENTERS.copy(), POINTS.copy(), DC.copy()
     tolerance = 1e-12
     if bad == "coincident":
@@ -286,9 +284,7 @@ def test_invalid_or_nonsmooth_inputs_fail_closed(bad: typing.Any) -> typing.Any:
         )
 
 
-def test_branch_program_identity_and_no_runtime_import_during_generation() -> (
-    typing.Any
-):
+def test_branch_program_identity_and_no_runtime_import_during_generation() -> None:
     one = grid_response_program("becke", 1)
     three = grid_response_program("becke", 3)
     assert one.identity != three.identity
@@ -327,7 +323,7 @@ for kind in ('norm', 'ratio', 'log', 'becke'):
     )
 
 
-def test_grid_spec_and_bad_tile_boundaries_are_not_silently_changed() -> typing.Any:
+def test_grid_spec_and_bad_tile_boundaries_are_not_silently_changed() -> None:
     grid = grid_at(spec=replace(grid_at().spec, partition_iterations=1))
     _, _, derivative = gather(grid, DC)
     assert derivative.shape == (grid.npoint,)

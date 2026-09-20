@@ -287,7 +287,7 @@ def solve(
             return 3
 
     @_OBSERVE
-    def observe(view_ptr: typing.Any, decision_ptr: typing.Any) -> typing.Any:
+    def observe(view_ptr: typing.Any, decision_ptr: typing.Any) -> None:
         nonlocal trace_seconds, trace_complete
         copying = time.perf_counter()
         try:
@@ -423,7 +423,7 @@ class ScfItem:
         self._busy = False
         self.rebind(source, model)
 
-    def rebind(self, source: typing.Any, model: typing.Any) -> typing.Any:
+    def rebind(self, source: typing.Any, model: typing.Any) -> None:
         with self._lock:
             if self._busy:
                 raise RuntimeError("cannot rebind an active SCF item")

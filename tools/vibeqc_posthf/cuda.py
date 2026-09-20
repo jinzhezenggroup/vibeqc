@@ -113,16 +113,16 @@ class CudaTransform:
             )
         self.device_id = device_id
 
-    def _call(self, name: typing.Any, *args: typing.Any) -> typing.Any:
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def _check_open(self) -> typing.Any:
+    def _check_open(self) -> None:
         if not self._handle:
             raise RuntimeError("CUDA MO block is closed")
 
-    def add(self, tile: typing.Any, offsets: typing.Any) -> typing.Any:
+    def add(self, tile: typing.Any, offsets: typing.Any) -> None:
         """Accumulate one AO shell tile after four device-only transformations."""
         with self._lock:
             self._check_open()
@@ -168,7 +168,7 @@ class CudaTransform:
                 "cublas_version": versions[2],
             }
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with self._lock, _PREPARATION_LOCK:
             if self._handle:
                 self._library.posthf_cuda_destroy_v1(self._handle)

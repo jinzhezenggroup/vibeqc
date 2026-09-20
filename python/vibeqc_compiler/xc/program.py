@@ -14,7 +14,7 @@ from vibeqc_compiler.integral.expr import AlgebraForm, Expr, Graph
 
 from .expressions import energy_expression as semilocal_energy_expression
 from .rsh_expressions import energy_expression as rsh_energy_expression
-from .spec import RSH_COMPONENTS, FunctionalSpec, UnsupportedXC
+from .spec import SPECIAL_EXPRESSION_COMPONENTS, FunctionalSpec, UnsupportedXC
 
 
 def output_set(spec: typing.Any, order: typing.Any) -> typing.Any:
@@ -93,11 +93,19 @@ def validate_features(
                 raise UnsupportedXC("reduced gradient exceeds interior-v1 1e6")
     components = {name for name, coefficient in spec.components if coefficient}
     if (
-        components & {"GGA_X_B88", "GGA_X_ITYH"}
+        components & {"GGA_X_B88", "GGA_X_ITYH", "GGA_X_PW91"}
         and order
         and np.any((aa[active] == 0) | (bb[active] == 0))
     ):
-        raise UnsupportedXC("B88 derivative support requires positive same-spin sigma")
+        raise UnsupportedXC(
+            "B88/PW91 exchange derivatives require positive same-spin sigma"
+        )
+    if "GGA_C_P86" in components and order:
+        total_sigma = aa[active] + 2 * ab[active] + bb[active]
+        if np.any(total_sigma == 0):
+            raise UnsupportedXC(
+                "P86 correlation derivatives require positive total-density sigma"
+            )
     if "GGA_X_ITYH" in components:
         beta_b88 = 0.0042
         gamma_b88 = 6.0
@@ -197,7 +205,8 @@ class XCProgram:
 
 def _energy_expression(spec: typing.Any) -> typing.Any:
     if any(
-        name in RSH_COMPONENTS and coefficient for name, coefficient in spec.components
+        name in SPECIAL_EXPRESSION_COMPONENTS and coefficient
+        for name, coefficient in spec.components
     ):
         return rsh_energy_expression(spec)
     return semilocal_energy_expression(spec)

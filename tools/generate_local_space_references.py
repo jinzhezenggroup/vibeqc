@@ -13,7 +13,7 @@ from tools.generate_validation_references import pyscf_molecule
 from tools.vibeqc_posthf.fixtures import load_fixture
 
 
-def generate(output: typing.Any) -> typing.Any:
+def generate(output: typing.Any) -> None:
     """Use public PySCF PM APIs on the exact canonical #147 occupied subspaces."""
     import pyscf
     from pyscf import lo

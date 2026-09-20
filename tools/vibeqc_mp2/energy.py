@@ -325,7 +325,7 @@ class PreparedMP2Energy:
             self._state = "ready"
             return result
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with self._lock:
             self._provider.close()
             self._last_result = None

@@ -73,7 +73,7 @@ def _runtime(
 )
 def test_probe_binds_assigned_device_then_qualifies_requested_profile(
     monkeypatch: typing.Any, row: typing.Any, profile: typing.Any, accepted: typing.Any
-) -> typing.Any:
+) -> None:
     monkeypatch.setattr(benchmark.ctypes, "CDLL", lambda _: _runtime())
 
     def query(arguments: typing.Any) -> typing.Any:
@@ -99,7 +99,7 @@ def test_probe_binds_assigned_device_then_qualifies_requested_profile(
 @pytest.mark.parametrize("status,bus", [(100, b""), (0, b"")])
 def test_failed_runtime_probe_cannot_publish_hardware_success(
     monkeypatch: typing.Any, status: typing.Any, bus: typing.Any
-) -> typing.Any:
+) -> None:
     monkeypatch.setattr(
         benchmark.ctypes,
         "CDLL",

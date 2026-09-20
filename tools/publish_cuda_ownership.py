@@ -33,7 +33,7 @@ from vibeqc_compiler.common.timing import interleaved_selection_order
 from tools.vibeqc_validation.publication import publish
 
 
-def write(path: typing.Any, value: typing.Any) -> typing.Any:
+def write(path: typing.Any, value: typing.Any) -> None:
     """Write deterministic finite JSON without discarding float precision."""
     path.write_text(
         json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
@@ -276,7 +276,7 @@ def validate_resources(
     candidate: typing.Any,
     *,
     domain: typing.Any = "one-electron",
-) -> typing.Any:
+) -> None:
     """Bind object measurements to the exact worker source and build contract.
 
     An exact-source kernel reconstruction is explicit when the historical linked
@@ -322,7 +322,7 @@ def validate_resources(
             raise ValueError(f"incomplete native resource measurement: {name}")
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--comparison", type=Path, required=True)
     parser.add_argument("--destination", type=Path, required=True)

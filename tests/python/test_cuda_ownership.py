@@ -11,9 +11,7 @@ from tools.compare_cuda_ownership import compare
 from tools.report_cuda_ownership import code_lines, ownership_report, validate_baseline
 
 
-def test_current_report_is_generated_deterministically_from_source_and_ledger() -> (
-    typing.Any
-):
+def test_current_report_is_generated_deterministically_from_source_and_ledger() -> None:
     """Keep the current report reproducible without a merge-conflict-prone snapshot."""
     root = Path(__file__).resolve().parents[2]
     ledger = json.loads((root / "docs/cuda_ownership.json").read_text())
@@ -72,7 +70,7 @@ def ledger_for(tmp_path: typing.Any) -> typing.Any:
 
 def test_complete_inventory_and_stale_region_fail_closed(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     ledger = ledger_for(tmp_path)
     report = ownership_report(tmp_path, ledger)
     assert report["maintained_code_lines"]["scientific"] == 1
@@ -88,7 +86,7 @@ def test_complete_inventory_and_stale_region_fail_closed(
 
 def test_oracle_reclassification_cannot_claim_code_deletion(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     ledger = ledger_for(tmp_path)
     before = ownership_report(tmp_path, ledger)
     ledger["files"][0]["regions"][0]["role"] = "oracle"
@@ -102,7 +100,7 @@ def test_oracle_reclassification_cannot_claim_code_deletion(
 
 def test_generated_build_output_is_separate_and_not_counted_twice(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     ledger = ledger_for(tmp_path)
     generated = tmp_path / "build/generated"
     generated.mkdir(parents=True)
@@ -122,7 +120,7 @@ def test_generated_build_output_is_separate_and_not_counted_twice(
 
 def test_stale_generated_owner_and_evidence_paths_are_rejected(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     ledger = ledger_for(tmp_path)
     ledger["generated_families"][0]["owner"] = "missing_generator.py"
     with pytest.raises(ValueError, match="stale owner"):
@@ -135,7 +133,7 @@ def test_stale_generated_owner_and_evidence_paths_are_rejected(
 
 def test_edited_baseline_aggregate_cannot_claim_retirement(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     report = ownership_report(tmp_path, ledger_for(tmp_path))
     validate_baseline(report)
     report["maintained_code_lines"]["scientific"] += 10
@@ -146,7 +144,7 @@ def test_edited_baseline_aggregate_cannot_claim_retirement(
 @pytest.mark.parametrize("materialized", [False, True])
 def test_generated_byte_aggregate_must_match_retained_files(
     tmp_path: typing.Any, materialized: typing.Any
-) -> typing.Any:
+) -> None:
     ledger = ledger_for(tmp_path)
     build = tmp_path / "build"
     generated = build / "generated"
@@ -160,7 +158,7 @@ def test_generated_byte_aggregate_must_match_retained_files(
         validate_baseline(report)
 
 
-def test_physical_count_preserves_literals_and_drops_comments() -> typing.Any:
+def test_physical_count_preserves_literals_and_drops_comments() -> None:
     text = '// only comment\nconst char* url = "https://example"; // comment\n/* spanning\ncomment */ int x = 1;\n\n'
     assert code_lines(text) == [False, True, False, True, False]
     assert code_lines("int x = 0xA'B'C; // ignored\n// only comment\n") == [True, False]
@@ -171,7 +169,7 @@ def test_physical_count_preserves_literals_and_drops_comments() -> typing.Any:
 
 def test_overlapping_regions_and_new_cuda_header_are_rejected(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     ledger = ledger_for(tmp_path)
     (tmp_path / "src/new.hpp").write_text("__device__ void helper() {}\n")
     with pytest.raises(ValueError, match="unclassified"):
@@ -186,7 +184,7 @@ def test_overlapping_regions_and_new_cuda_header_are_rejected(
 
 def test_physical_edits_and_unchanged_reclassification_are_separate(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     old_root, new_root = tmp_path / "old", tmp_path / "new"
     old_root.mkdir()
     new_root.mkdir()
@@ -210,7 +208,7 @@ def test_physical_edits_and_unchanged_reclassification_are_separate(
 
 def test_stale_source_or_inconsistent_totals_cannot_claim_retirement(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     ledger = ledger_for(tmp_path)
     report = ownership_report(tmp_path, ledger)
     corrupted = copy.deepcopy(report)

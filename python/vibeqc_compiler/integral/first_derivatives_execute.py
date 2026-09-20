@@ -36,7 +36,7 @@ class CompiledFirstDerivative:
     component_indices: tuple[int, ...]
     program_identity: str
 
-    def validate(self) -> typing.Any:
+    def validate(self) -> None:
         validate_first_components(self.integral, self.component_indices)
         identity = self.native.metadata["identity"]
         if (
@@ -86,7 +86,7 @@ class CompiledFirstDerivativeShell:
     tile_size: int
     program_identity: str
 
-    def validate(self) -> typing.Any:
+    def validate(self) -> None:
         expected = first_derivative_component_tiles(
             self.integral, tile_size=self.tile_size
         )
@@ -242,7 +242,7 @@ class FirstDerivativeEvaluator:
         result = np.zeros(self.shape)
         count = 0
 
-        def flush(count: typing.Any) -> typing.Any:
+        def flush(count: typing.Any) -> None:
             status = self.run(
                 records.ctypes.data, count, self.stride, chunk.ctypes.data, chunk.size
             )

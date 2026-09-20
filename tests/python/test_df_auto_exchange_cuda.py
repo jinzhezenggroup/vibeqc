@@ -28,7 +28,7 @@ pytestmark = pytest.mark.skipif(
 )
 def test_automatic_cold_and_warm_force_matches_independent_oracle(
     monkeypatch: typing.Any, tmp_path: typing.Any, case_name: typing.Any
-) -> typing.Any:
+) -> None:
     """96/192/384/768 AO are validation points, with executed provenance required."""
     from pyscf import gto, scf
 

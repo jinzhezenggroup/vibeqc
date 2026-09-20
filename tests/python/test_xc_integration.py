@@ -21,7 +21,7 @@ from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture as 
 from vibeqc_compiler.xc.potential import assemble_potential
 
 
-def check(actual: typing.Any, expected: typing.Any) -> typing.Any:
+def check(actual: typing.Any, expected: typing.Any) -> None:
     np.testing.assert_allclose(actual, expected, atol=1e-11, rtol=1e-10)
 
 
@@ -38,7 +38,7 @@ def consumer(name: typing.Any, spin: typing.Any = "polarized") -> typing.Any:
 )
 def test_identical_grid_independent_energy_and_every_matrix_element(
     case: typing.Any, name: typing.Any, layout: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = fixture(case)
     density = data[f"density_{layout}"]
     prefix = f"{name}_{layout}"
@@ -65,7 +65,7 @@ def test_identical_grid_independent_energy_and_every_matrix_element(
 )
 def test_trace_variation_diagonal_offdiagonal_and_mixed_spins(
     name: typing.Any, layout: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = fixture("water")
     density = data[f"density_{layout}"]
     integrator = consumer(name, spin)
@@ -102,7 +102,7 @@ def test_trace_variation_diagonal_offdiagonal_and_mixed_spins(
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
 def test_tile_boundaries_weight_linearity_and_spin_layouts(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = fixture("h2")
     density = data["density_total"]
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -131,9 +131,7 @@ def test_tile_boundaries_weight_linearity_and_spin_layouts(
         assert not np.isclose(scaled.energy, 2.7**2 * reference.energy)
 
 
-def test_assembly_tau_half_and_cross_spin_factors_against_direct_bilinears() -> (
-    typing.Any
-):
+def test_assembly_tau_half_and_cross_spin_factors_against_direct_bilinears() -> None:
     rng = np.random.default_rng(162)
     jets = rng.normal(size=(4, 9, 3))
     d = np.stack((np.eye(3), 0.6 * np.eye(3)))
@@ -161,7 +159,7 @@ def test_assembly_tau_half_and_cross_spin_factors_against_direct_bilinears() -> 
 
 
 def test_geometry_grid_basis_density_and_functional_changes_do_not_reuse_results() -> (
-    typing.Any
+    None
 ):
     meta, data, explicit = fixture("h2")
     args = basis_arguments(meta)
@@ -212,7 +210,7 @@ def test_geometry_grid_basis_density_and_functional_changes_do_not_reuse_results
             )
 
 
-def test_unsupported_domain_invalid_density_and_empty_grid_are_explicit() -> typing.Any:
+def test_unsupported_domain_invalid_density_and_empty_grid_are_explicit() -> None:
     meta, data, grid = fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         d = data["density_total"]
@@ -241,7 +239,7 @@ def test_unsupported_domain_invalid_density_and_empty_grid_are_explicit() -> typ
 @pytest.mark.parametrize("fault", ["double_weight", "spin_factor", "double_potential"])
 def test_independent_gate_rejects_deliberate_factor_faults(
     monkeypatch: typing.Any, fault: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.xc import integration
 
     meta, data, grid = fixture("water")
@@ -276,7 +274,7 @@ def test_independent_gate_rejects_deliberate_factor_faults(
             check(bad.energy, data["PBE_spin_energy"][0])
 
 
-def test_consumer_rejects_nonsemilocal_metadata_and_assembly_shapes() -> typing.Any:
+def test_consumer_rejects_nonsemilocal_metadata_and_assembly_shapes() -> None:
     with pytest.raises(TypeError, match="FunctionalSpec"):
         FixedDensityXC("PBE")
     with pytest.raises(UnsupportedXC, match="semilocal"):

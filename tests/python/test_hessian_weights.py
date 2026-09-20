@@ -41,7 +41,7 @@ def _symmetric_eri(n: typing.Any = 4, seed: typing.Any = 181) -> typing.Any:
     return eri / 4.0
 
 
-def test_folded_weight_reproduces_the_two_electron_energy() -> typing.Any:
+def test_folded_weight_reproduces_the_two_electron_energy() -> None:
     """``Σ W (μν|λσ)`` must equal ``½ Tr[P G(P)]``, with no further factor.
 
     This is the check that fails when the outer ``½`` is applied twice: the
@@ -58,7 +58,7 @@ def test_folded_weight_reproduces_the_two_electron_energy() -> typing.Any:
     assert abs(direct) > 1.0e-3
 
 
-def test_applying_the_outer_half_twice_is_detectably_wrong() -> typing.Any:
+def test_applying_the_outer_half_twice_is_detectably_wrong() -> None:
     """``½ Σ W (μν|λσ)`` is pinned as the losing alternative.
 
     Keeping it explicit means an edit that re-adds the outer ``½`` fails here
@@ -73,7 +73,7 @@ def test_applying_the_outer_half_twice_is_detectably_wrong() -> typing.Any:
     assert halved != pytest.approx(direct, rel=1.0e-6)
 
 
-def test_folded_weight_reproduces_the_energy_for_real_integrals() -> typing.Any:
+def test_folded_weight_reproduces_the_energy_for_real_integrals() -> None:
     """The same identity must hold for integrals a real code produced.
 
     The synthetic tensor pins the algebra; this pins the notation, because a
@@ -96,13 +96,13 @@ def test_folded_weight_reproduces_the_energy_for_real_integrals() -> typing.Any:
     assert folded == pytest.approx(direct, rel=1.0e-12, abs=1.0e-12)
 
 
-def test_two_electron_weight_rejects_a_malformed_density() -> typing.Any:
+def test_two_electron_weight_rejects_a_malformed_density() -> None:
     with pytest.raises(ValueError, match="square matrix"):
         two_electron_weight(np.zeros((2, 3)))
     with pytest.raises(ValueError, match="finite"):
         two_electron_weight(np.array([[np.nan, 0.0], [0.0, 1.0]]))
 
 
-def test_weight_energy_rejects_a_shape_mismatch() -> typing.Any:
+def test_weight_energy_rejects_a_shape_mismatch() -> None:
     with pytest.raises(ValueError, match="does not match"):
         weight_energy(np.zeros((2, 2, 2, 2)), np.zeros((3, 3, 3, 3)))

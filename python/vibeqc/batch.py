@@ -594,7 +594,7 @@ class PreparedBatch:
     def _public_dft_cuda_force(
         self, index: typing.Any, atoms: typing.Any
     ) -> typing.Any:
-        """Execute the qualified seven-source plan against one live batch item."""
+        """Execute the qualified seven/nine-source plan against one live item."""
         from vibeqc_compiler.dft import NativeAO
 
         from ._dft_gradient import StationaryKsState
@@ -610,6 +610,12 @@ class PreparedBatch:
         ) as basis:
             state = StationaryKsState.from_native(self, basis, index=index)
             try:
+                if state._source.backend != "cuda" or (
+                    "forces" not in calculator._capabilities.supported_properties
+                ):
+                    raise NotImplementedError(
+                        "public CUDA DFT forces require a qualified CUDA owner"
+                    )
                 result = complete_rks_cuda_gradient_diagnostic(
                     state,
                     basis,
@@ -621,7 +627,7 @@ class PreparedBatch:
                     ),
                 )
                 # StationaryGradientPlan publishes +dE/dR. Public API is force.
-                return -np.asarray(result.gradient).copy()
+                return -np.asarray(result.gradient).copy(), dict(result.work)
             finally:
                 state._source.close()
 
@@ -790,6 +796,10 @@ class PreparedBatch:
 
             check_resource_status(self._library, status, self.resource_diagnostics)
 
+        if self.resource_diagnostics is not None:
+            # Separate from the native SCF ledger: generated libraries own
+            # their own bounded allocations and export/work observations.
+            self.resource_diagnostics["generated_force"] = []
         items: list[BatchItemResult] = []
         for index, output in enumerate(output_array):
             builds = ctypes.c_uint64()
@@ -814,7 +824,11 @@ class PreparedBatch:
                         for atom, position in zip(atoms, xyz, strict=True)
                     )
                 try:
-                    public_force = self._public_dft_cuda_force(index, atoms)
+                    public_force, force_work = self._public_dft_cuda_force(index, atoms)
+                    if self.resource_diagnostics is not None:
+                        self.resource_diagnostics["generated_force"].append(
+                            {"index": index, "work": force_work}
+                        )
                 except NotImplementedError:
                     output.status = _native.STATUS_NOT_IMPLEMENTED
                     succeeded = False

@@ -119,7 +119,7 @@ def arrays_dict(feeds: typing.Any) -> typing.Any:
     return dict(zip(names, feeds[2:]))
 
 
-def run(args: typing.Any) -> typing.Any:
+def run(args: typing.Any) -> None:
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     cache = Path(args.cache)

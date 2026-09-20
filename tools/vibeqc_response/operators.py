@@ -108,7 +108,7 @@ class _BaseResponseOperator:
             }
         )
 
-    def _record(self, started: typing.Any, backend_started: typing.Any) -> typing.Any:
+    def _record(self, started: typing.Any, backend_started: typing.Any) -> None:
         self.statistics["actions"] += 1
         self.statistics["seconds"] += time.perf_counter() - started
         self.statistics["backend_seconds"] += time.perf_counter() - backend_started

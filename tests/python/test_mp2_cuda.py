@@ -43,7 +43,7 @@ def cuda_setup(tmp_path_factory: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("tiles", [(1, 2), (2, 3)])
 def test_native_cuda_tile_components_replay_and_failures(
     cuda_setup: typing.Any, name: typing.Any, tiles: typing.Any
-) -> typing.Any:
+) -> None:
     compiler, cache, artifact = cuda_setup
     meta, a = load_fixture(name)
     s = fixture_snapshot(meta, a)

@@ -53,7 +53,7 @@ class LambdaOptions:
         default_factory=lambda: GMRESOptions(rtol=0.0, atol=1e-11)
     )
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in ("cc_tolerance", "lambda_tolerance"):
             value = getattr(self, name)
             if (
@@ -330,7 +330,7 @@ class BoundCCSDLambda:
         )
         self._assert_current(snapshot.identity)
 
-    def _assert_current(self, reference_identity: typing.Any) -> typing.Any:
+    def _assert_current(self, reference_identity: typing.Any) -> None:
         if reference_identity != self.reference_identity or (
             self._current_reference is not None
             and self._current_reference() != self.reference_identity

@@ -42,7 +42,7 @@ def arguments() -> typing.Any:
     return values
 
 
-def check_reference(evaluate: typing.Any, nroots: typing.Any) -> typing.Any:
+def check_reference(evaluate: typing.Any, nroots: typing.Any) -> None:
     mp = pytest.importorskip("mpmath")
     with mp.workdps(75):
         for argument in arguments():
@@ -121,7 +121,7 @@ def check_reference(evaluate: typing.Any, nroots: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("nroots", (1, 2, 3, 4))
 def test_python_evaluator_matches_independent_integrals(
     nroots: typing.Any,
-) -> typing.Any:
+) -> None:
     check_reference(rys_roots, nroots)
 
 
@@ -130,7 +130,7 @@ def test_python_evaluator_matches_independent_integrals(
 )
 def test_invalid_host_evaluator_domain(
     argument: typing.Any, nroots: typing.Any
-) -> typing.Any:
+) -> None:
     with pytest.raises(ValueError):
         rys_roots(argument, nroots)
 
@@ -237,7 +237,7 @@ extern "C" int probe(unsigned roots, const double* input, size_t count, double* 
 @pytest.mark.parametrize("nroots", (1, 2, 3, 4))
 def test_cuda_evaluator_matches_independent_integrals(
     cuda_evaluator: typing.Any, nroots: typing.Any
-) -> typing.Any:
+) -> None:
     check_reference(cuda_evaluator, nroots)
 
 
@@ -304,5 +304,5 @@ extern "C" void probe(unsigned n,double t,double* nodes,double* weights) {
 @pytest.mark.parametrize("nroots", (1, 2, 3, 4))
 def test_emitted_evaluator_matches_independent_integrals(
     emitted_evaluator: typing.Any, nroots: typing.Any
-) -> typing.Any:
+) -> None:
     check_reference(emitted_evaluator, nroots)

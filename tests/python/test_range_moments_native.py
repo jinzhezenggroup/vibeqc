@@ -98,7 +98,7 @@ extern "C" int evaluate(unsigned order, double t, double rho, unsigned range,
 @pytest.mark.parametrize("rho", [1e-12, 0.73, 1e12])
 def test_native_moments_resolve_limits_and_separate_parts(
     native_moments: typing.Any, family: typing.Any, rho: typing.Any
-) -> typing.Any:
+) -> None:
     """All orders retain relative accuracy, including tiny positive SR values."""
     tag = 1 if family == "long_range" else 2
     for omega in (0, 1e-12, 0.2, 1, 1e6, 1e150):
@@ -120,7 +120,7 @@ def test_native_moments_resolve_limits_and_separate_parts(
 
 def test_native_moment_controls_fail_without_touching_output(
     native_moments: typing.Any,
-) -> typing.Any:
+) -> None:
     cases = [
         (14, 1, 1, 1, 0.5),
         (0, float("nan"), 1, 1, 0.5),
@@ -142,7 +142,7 @@ def test_native_moment_controls_fail_without_touching_output(
 
 def test_native_moments_derivative_chain_and_complement(
     native_moments: typing.Any,
-) -> typing.Any:
+) -> None:
     values = []
     for tag in (0, 1, 2):
         omega = 0 if tag == 0 else 0.8

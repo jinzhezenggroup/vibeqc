@@ -245,7 +245,7 @@ def _validate(
     t2: typing.Any,
     eps_o: typing.Any,
     eps_v: typing.Any,
-) -> typing.Any:
+) -> None:
     arrays = {
         "ovvv": ovvv,
         "ovoo": ovoo,
@@ -326,7 +326,7 @@ def _degeneracy(a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
 
 def _check_denominators(
     eps_o: typing.Any, eps_v: typing.Any, threshold: typing.Any
-) -> typing.Any:
+) -> None:
     """Reject noncanonical or near-zero (T) denominators before evaluation.
 
     A canonical RHF reference has occupied energies below virtual energies, so

@@ -43,7 +43,7 @@ class StationaryKsIdentity:
     fock_generation: int
     orbital_generation: int
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.method not in _METHODS:
             raise ValueError("stationary derivatives support LDA/PBE RKS/UKS only")
         for name in (
@@ -135,7 +135,7 @@ class StationaryKsState:
             raise ValueError("state has no native quadrature source")
         return self._source.grid
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.identity, StationaryKsIdentity):
             raise TypeError("stationary state requires a typed identity")
         for name in ("successful", "converged", "physical"):
@@ -169,7 +169,7 @@ class StationaryDerivativeContract:
     sign: str = "gradient"
     identity: str = field(init=False)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.state_identity, StationaryKsIdentity):
             raise TypeError("stationary derivative requires a KS state identity")
         if self.topology_policy != "stable-explicit-grid-v1":
@@ -284,7 +284,7 @@ class StableGridMotion:
     weights: np.ndarray
     topology_changed: bool = False
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.topology_identity, str) or not self.topology_identity:
             raise ValueError("motion requires a topology identity")
         if type(self.topology_changed) is not bool:
@@ -323,7 +323,7 @@ class FixedDensityXcGeometry:
     partials: GeometryPartials
     force_capability: str = field(init=False, default="unsupported")
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.state_identity, StationaryKsIdentity):
             raise TypeError("generated XC geometry requires a stationary identity")
         expected = {
@@ -407,7 +407,7 @@ class GeneratedXcGeometry(FixedDensityXcGeometry):
 
     state: StationaryKsState
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         super().__post_init__()
         contract = StationaryDerivativeContract(self.state_identity)
         contract.validate(self.state)

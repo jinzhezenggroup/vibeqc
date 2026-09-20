@@ -21,7 +21,7 @@ from tools.vibeqc_response import (
 )
 
 
-def test_fixed_density_xc_hessian_matches_potential_finite_difference() -> typing.Any:
+def test_fixed_density_xc_hessian_matches_potential_finite_difference() -> None:
     meta, arrays, grid = load_integration_fixture("h2")
     spec = functional("PBE", spin="unpolarized")
     density = arrays["density_total"]
@@ -47,7 +47,7 @@ def test_fixed_density_xc_hessian_matches_potential_finite_difference() -> typin
         assert kernel.statistics["tiles"] > 0
 
 
-def test_polarized_fixed_density_xc_response_averages_spin_potentials() -> typing.Any:
+def test_polarized_fixed_density_xc_response_averages_spin_potentials() -> None:
     meta, arrays, grid = load_integration_fixture("h2")
     spec = functional("PBE", spin="polarized")
     density = arrays["density_total"]
@@ -69,7 +69,7 @@ def test_polarized_fixed_density_xc_response_averages_spin_potentials() -> typin
             np.testing.assert_allclose(actual, expected, atol=3e-7, rtol=3e-8)
 
 
-def test_fixed_density_xc_kernel_rejects_wrong_reference_density() -> typing.Any:
+def test_fixed_density_xc_kernel_rejects_wrong_reference_density() -> None:
     meta, _arrays, grid = load_integration_fixture("h2")
     spec = functional("PBE", spin="unpolarized")
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -95,7 +95,7 @@ def test_fixed_density_xc_kernel_rejects_wrong_reference_density() -> typing.Any
             wrong.validate_reference(ks)
 
 
-def test_fixed_density_xc_kernel_rejects_exact_exchange_and_stale_grid() -> typing.Any:
+def test_fixed_density_xc_kernel_rejects_exact_exchange_and_stale_grid() -> None:
     meta, arrays, grid = load_integration_fixture("h2")
     spec = functional("PBE", spin="unpolarized")
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -135,7 +135,7 @@ class _LinearXCDerivativeKernel:
         return self.apply(delta_density)
 
 
-def test_cpks_operator_action_and_solve_with_synthetic_ks_reference() -> typing.Any:
+def test_cpks_operator_action_and_solve_with_synthetic_ks_reference() -> None:
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     ks = replace(
@@ -172,7 +172,7 @@ def test_cpks_operator_action_and_solve_with_synthetic_ks_reference() -> typing.
     assert result.residual_norm < 1e-11
 
 
-def test_cpks_requires_matching_kernel_identities_and_ks_reference() -> typing.Any:
+def test_cpks_requires_matching_kernel_identities_and_ks_reference() -> None:
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     backend = DenseAOResponseBackend(np.zeros((reference.nmo,) * 4))

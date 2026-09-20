@@ -517,9 +517,7 @@ def _changed_geometry(case: PublicForceCase) -> tuple[np.ndarray, np.ndarray]:
 def _run_failure_matrix(case: PublicForceCase, backend: str) -> dict:
     checks = {}
 
-    def expect(
-        name: typing.Any, expected: typing.Any, operation: typing.Any
-    ) -> typing.Any:
+    def expect(name: typing.Any, expected: typing.Any, operation: typing.Any) -> None:
         try:
             operation()
         except expected as error:

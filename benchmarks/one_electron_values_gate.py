@@ -20,6 +20,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Calculator, Primitive, Shell, _native
 from vibeqc.autotune import source_identity
 from vibeqc.resources import ResourceBudget
@@ -29,7 +34,7 @@ from tools.vibeqc_validation.performance import assess_comparison, measure_inter
 from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
-def main() -> typing.Any:
+def main() -> None:
     """Keep exact inputs, every SCF residual/iteration count and raw A/B samples."""
     cases = benchmark_cases()
     parser = argparse.ArgumentParser(description=__doc__)
@@ -56,8 +61,8 @@ def main() -> typing.Any:
     )
     parser.add_argument(
         "--output",
-        type=Path,
-        default=Path(".artifacts/benchmarks/one_electron_values_gate.json"),
+        type=raw_output_path,
+        default=str(Path(".artifacts/benchmarks/one_electron_values_gate.json")),
     )
     args = parser.parse_args()
     if not os.environ.get("SLURM_JOB_ID"):
@@ -145,11 +150,11 @@ def main() -> typing.Any:
     cudart = ctypes.CDLL("libcudart.so.12")
     cudart.cudaDeviceSynchronize.restype = ctypes.c_int
 
-    def synchronize() -> typing.Any:
+    def synchronize() -> None:
         if cudart.cudaDeviceSynchronize() != 0:
             raise RuntimeError("CUDA synchronization failed")
 
-    def select(selection: typing.Any) -> typing.Any:
+    def select(selection: typing.Any) -> None:
         os.environ[selection_variable] = (
             "generated" if selection == "candidate" else "reference"
         )

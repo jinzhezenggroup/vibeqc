@@ -72,7 +72,7 @@ def _numerical_multiplier(
 
 def test_molecular_lambda_matches_numerical_transpose(
     molecular_state: typing.Any,
-) -> typing.Any:
+) -> None:
     name, snapshot, cc, arrays, bound, result = molecular_state
     assert result.converged and result.status == "converged"
     assert result.reference_identity == snapshot.identity
@@ -117,7 +117,7 @@ def test_molecular_lambda_matches_numerical_transpose(
 
 def test_lagrangian_is_stationary_at_three_steps(
     molecular_state: typing.Any,
-) -> typing.Any:
+) -> None:
     _name, _snapshot, _cc, _arrays, bound, result = molecular_state
     direction = np.random.default_rng(152).normal(size=len(bound.sqrt_weights))
     direction /= np.linalg.norm(direction)
@@ -144,7 +144,7 @@ def test_lagrangian_is_stationary_at_three_steps(
 
 def test_bound_state_and_result_are_immutable_and_detached(
     small_state: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     copied = replace(
         cc, replay_inputs=deepcopy(cc.replay_inputs), provenance=dict(cc.provenance)
@@ -185,9 +185,7 @@ def test_bound_state_and_result_are_immutable_and_detached(
         "integral_hash",
     ],
 )
-def test_rejects_changed_provenance(
-    small_state: typing.Any, field: typing.Any
-) -> typing.Any:
+def test_rejects_changed_provenance(small_state: typing.Any, field: typing.Any) -> None:
     snapshot, cc, _ = small_state
     with pytest.raises(ResponseCompatibilityError):
         BoundCCSDLambda(
@@ -200,7 +198,7 @@ def test_rejects_changed_provenance(
 )
 def test_rejects_corrupt_replay_inputs(
     small_state: typing.Any, kind: typing.Any
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     replay = deepcopy(cc.replay_inputs)
     if kind == "reference":
@@ -219,7 +217,7 @@ def test_rejects_corrupt_replay_inputs(
 
 def test_fock_reference_comparison_even_with_recomputed_input_hash(
     small_state: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     replay = deepcopy(cc.replay_inputs)
     replay["foo"][0][0] += 0.01
@@ -255,7 +253,7 @@ def test_fock_reference_comparison_even_with_recomputed_input_hash(
 )
 def test_invalid_primal_cannot_publish_response(
     small_state: typing.Any, kind: typing.Any
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     if kind == "nonconverged":
         cc = replace(cc, status="not_converged")
@@ -285,7 +283,7 @@ def test_invalid_primal_cannot_publish_response(
 
 def test_unconverged_or_noncanonical_scf_rejected(
     small_state: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     for changes in (
         {"converged": False},
@@ -298,7 +296,7 @@ def test_unconverged_or_noncanonical_scf_rejected(
 
 def test_dense_t2_symmetry_is_not_silently_projected(
     molecular_state: typing.Any,
-) -> typing.Any:
+) -> None:
     name, snapshot, cc, _arrays, _bound, _result = molecular_state
     if name == "h2":
         return  # no distinct simultaneous-pair orbit
@@ -310,7 +308,7 @@ def test_dense_t2_symmetry_is_not_silently_projected(
 
 def test_stale_live_generation_and_explicit_identity(
     small_state: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     current = [snapshot.identity]
     bound = BoundCCSDLambda(snapshot, cc, current_reference=lambda: current[0])
@@ -327,7 +325,7 @@ def test_stale_live_generation_and_explicit_identity(
 
 def test_combined_budget_rejects_before_interpreter(
     small_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     bound = BoundCCSDLambda(snapshot, cc)
     exact = BoundCCSDLambda(
@@ -396,7 +394,7 @@ class AdversarialSolver:
 )
 def test_adversarial_solver_cannot_publish_lambda(
     small_state: typing.Any, mode: typing.Any
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     current = [snapshot.identity]
     solver = AdversarialSolver(2, mode, current)
@@ -410,7 +408,7 @@ def test_adversarial_solver_cannot_publish_lambda(
         bound.solve(reference_identity=snapshot.identity)
 
 
-def test_real_solver_workspace_failure(small_state: typing.Any) -> typing.Any:
+def test_real_solver_workspace_failure(small_state: typing.Any) -> None:
     snapshot, cc, _ = small_state
     options = LambdaOptions(gmres=GMRESOptions(max_workspace_bytes=1))
     bound = BoundCCSDLambda(snapshot, cc, options=options)
@@ -420,7 +418,7 @@ def test_real_solver_workspace_failure(small_state: typing.Any) -> typing.Any:
 
 def test_real_solver_nonconvergence_is_separate_from_cc(
     molecular_state: typing.Any,
-) -> typing.Any:
+) -> None:
     name, snapshot, cc, _arrays, _bound, _result = molecular_state
     if name == "h2":
         return
@@ -447,14 +445,14 @@ def test_real_solver_nonconvergence_is_separate_from_cc(
         {"gmres": object()},
     ],
 )
-def test_invalid_options(kwargs: typing.Any) -> typing.Any:
+def test_invalid_options(kwargs: typing.Any) -> None:
     with pytest.raises((TypeError, ValueError)):
         LambdaOptions(**kwargs)
 
 
 def test_explicit_unsupported_backend_and_bad_types(
     small_state: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     with pytest.raises(NotImplementedError, match="CPU tooling only"):
         BoundCCSDLambda(snapshot, cc, backend="cuda")
@@ -469,7 +467,7 @@ def test_explicit_unsupported_backend_and_bad_types(
 
 def test_generated_graphs_do_not_contain_dense_coordinate_maps(
     molecular_state: typing.Any,
-) -> typing.Any:
+) -> None:
     _name, _snapshot, _cc, _arrays, bound, _result = molecular_state
     for bundle in (bound.programs, bound.independent):
         for program in (bundle.energy_vjp.program, bundle.residual_vjp.program):
@@ -482,7 +480,7 @@ def test_generated_graphs_do_not_contain_dense_coordinate_maps(
 )
 def test_native_hf_cc_lambda_complete_small_endpoint(
     name: typing.Any, shift: typing.Any
-) -> typing.Any:
+) -> None:
     meta, _ = load("h2" if name == "h4" else name)
     inputs = deepcopy(meta["inputs"])
     inputs["coordinates"][1][2] += shift
@@ -556,7 +554,7 @@ def test_native_hf_cc_lambda_complete_small_endpoint(
 
 def test_tensor_backend_switch_is_not_silent_fallback(
     small_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     original = consumer.execute
 
@@ -570,7 +568,7 @@ def test_tensor_backend_switch_is_not_silent_fallback(
 
 def test_nonfinite_transpose_output_cannot_reach_solver(
     small_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     bound = BoundCCSDLambda(snapshot, cc)
     original = consumer.execute
@@ -596,7 +594,7 @@ def test_nonfinite_transpose_output_cannot_reach_solver(
 
 def test_a_changed_reference_cannot_reuse_old_converged_cc(
     small_state: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, cc, _ = small_state
     other = replace(snapshot, generation_id="same-shape-different-generation")
     with pytest.raises(ResponseCompatibilityError, match="reference/Hamiltonian"):

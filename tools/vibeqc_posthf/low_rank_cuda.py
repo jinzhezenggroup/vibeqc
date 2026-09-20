@@ -173,7 +173,7 @@ class _NativePrefix:
                 ct.byref(self._handle),
             )
 
-    def call(self, name: typing.Any, *args: typing.Any) -> typing.Any:
+    def call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
@@ -193,7 +193,7 @@ class _NativePrefix:
         )
         return result
 
-    def commit(self, column: typing.Any, rank: typing.Any) -> typing.Any:
+    def commit(self, column: typing.Any, rank: typing.Any) -> None:
         self.call(
             "posthf_cholesky_commit_v1",
             self._handle,
@@ -222,7 +222,7 @@ class _NativePrefix:
         self.call("posthf_cholesky_metrics_v1", self._handle, ct.byref(value))
         return {name: getattr(value, name) for name, _ in value._fields_}
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with _PREPARATION_LOCK:
             if self._handle:
                 self._library.posthf_cholesky_destroy_v1(self._handle)
@@ -281,7 +281,7 @@ class CudaIncrementalCholesky(IncrementalCholesky):
             self.close()
             raise
 
-    def _check(self) -> typing.Any:
+    def _check(self) -> None:
         super()._check()
         if self._failed:
             raise RuntimeError(
@@ -291,7 +291,7 @@ class CudaIncrementalCholesky(IncrementalCholesky):
     def _project_column(self, column: typing.Any, pivot: typing.Any) -> typing.Any:
         return self._native.project(column, pivot, self.rank)
 
-    def _commit_native_column(self, column: typing.Any) -> typing.Any:
+    def _commit_native_column(self, column: typing.Any) -> None:
         try:
             self._native.commit(column, self.rank)
         except BaseException:
@@ -339,7 +339,7 @@ class CudaIncrementalCholesky(IncrementalCholesky):
             )
             return result
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with self._lock:
             if self._native is not None:
                 self._native.close()

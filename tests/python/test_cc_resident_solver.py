@@ -21,9 +21,7 @@ from tools.vibeqc_cc.resident_solver import (
 from tools.vibeqc_cc.solver import SolverOptions
 
 
-def test_resident_solver_extension_owns_iteration_state_without_new_equations() -> (
-    typing.Any
-):
+def test_resident_solver_extension_owns_iteration_state_without_new_equations() -> None:
     options = SolverOptions()
     primary, replay, diagnostic = solver_plans(
         2, 3, cuda_target_info("sm_120"), options
@@ -54,7 +52,7 @@ def test_resident_solver_extension_owns_iteration_state_without_new_equations() 
 
 def test_resident_solver_budget_rejection_precedes_integral_reads(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     snapshot, provider, _, _ = fixture_problem("h2")
     monkeypatch.setattr(
         provider,
@@ -74,7 +72,7 @@ def test_resident_solver_budget_rejection_precedes_integral_reads(
 
 def test_resident_solver_requires_explicit_compiler_cache_and_rhf(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, provider, _, _ = fixture_problem("h2")
     with pytest.raises(TypeError, match="CudaCompilerAdapter"):
         solve_gpu_resident(snapshot, provider, compiler=None, cache=tmp_path)
@@ -89,7 +87,7 @@ def test_resident_solver_requires_explicit_compiler_cache_and_rhf(
 
 def test_resident_warm_start_requires_exact_reference_before_compile(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, provider, _, arrays = fixture_problem("h2")
     compiler = CudaCompilerAdapter(Path("nvcc"), cuda_target_info("sm_120"))
     warm = AmplitudeSnapshot(snapshot.identity, arrays["t1"], arrays["t2"])
@@ -128,7 +126,7 @@ def _compiler_cache(tmp_path: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("name", ("h2", "h2o", "ch4"))
 def test_real_resident_solver_matches_reference_without_per_iteration_large_transfers(
     name: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     snapshot, provider, meta, amplitudes = fixture_problem(name)
     compiler, cache = _compiler_cache(tmp_path)
     result = solve_gpu_resident(
@@ -166,7 +164,7 @@ def test_real_resident_solver_matches_reference_without_per_iteration_large_tran
 )
 def test_resident_owner_preserves_converged_device_state_for_follow_on_consumers(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, provider, meta, _ = fixture_problem("h2")
     compiler, cache = _compiler_cache(tmp_path)
     with PreparedResidentCCSD(
@@ -202,7 +200,7 @@ def test_resident_owner_preserves_converged_device_state_for_follow_on_consumers
 )
 def test_resident_nonconvergence_is_explicit_and_serializable(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, provider, _, _ = fixture_problem("ch4")
     compiler, cache = _compiler_cache(tmp_path)
     result = solve_gpu_resident(
@@ -221,7 +219,7 @@ def test_resident_nonconvergence_is_explicit_and_serializable(
 @pytest.mark.skipif(
     not _REAL, reason="requires explicitly allocated resident CUDA window"
 )
-def test_resident_zero_diis_stays_device_resident(tmp_path: typing.Any) -> typing.Any:
+def test_resident_zero_diis_stays_device_resident(tmp_path: typing.Any) -> None:
     snapshot, provider, meta, _ = fixture_problem("h2")
     compiler, cache = _compiler_cache(tmp_path)
     result = solve_gpu_resident(
@@ -244,7 +242,7 @@ def test_resident_zero_diis_stays_device_resident(tmp_path: typing.Any) -> typin
 )
 def test_internal_energy_facade_selects_resident_backend(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_cc.api import energy
 
     snapshot, provider, meta, _ = fixture_problem("h2")
@@ -267,7 +265,7 @@ def test_internal_energy_facade_selects_resident_backend(
 )
 def test_resident_repeated_solve_reuses_uploaded_owner(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, provider, meta, _ = fixture_problem("h2")
     compiler, cache = _compiler_cache(tmp_path)
     with PreparedResidentCCSD(snapshot, provider, compiler, cache) as prepared:
@@ -291,7 +289,7 @@ def test_resident_repeated_solve_reuses_uploaded_owner(
 @pytest.mark.skipif(
     not _REAL, reason="requires explicitly allocated resident CUDA window"
 )
-def test_two_resident_owners_keep_state_isolated(tmp_path: typing.Any) -> typing.Any:
+def test_two_resident_owners_keep_state_isolated(tmp_path: typing.Any) -> None:
     h2 = fixture_problem("h2")
     water = fixture_problem("h2o")
     compiler, cache = _compiler_cache(tmp_path)
@@ -320,7 +318,7 @@ def test_two_resident_owners_keep_state_isolated(tmp_path: typing.Any) -> typing
 
 def test_resident_convenience_entry_forwards_exact_warm_start(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_cc import resident_solver
 
     received = {}

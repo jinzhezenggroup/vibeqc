@@ -30,7 +30,7 @@ def capture(argv: typing.Any) -> typing.Any:
     return subprocess.check_output(argv, text=True).strip()
 
 
-def write(path: typing.Any, payload: typing.Any) -> typing.Any:
+def write(path: typing.Any, payload: typing.Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n")
 
@@ -69,7 +69,7 @@ def case_id(row: typing.Any) -> typing.Any:
     return f"{family}/{method}/{representation}/{'df' if fitted else 'direct'}/batch{count}"
 
 
-def worker(args: typing.Any) -> typing.Any:
+def worker(args: typing.Any) -> None:
     """Measure synchronized public endpoints and retain actual plan diagnostics."""
     if not os.environ.get("SLURM_JOB_ID"):
         raise RuntimeError("real GPU measurements require Slurm")
@@ -448,7 +448,7 @@ def collect_runs(args: typing.Any) -> typing.Any:
     return runs, measured
 
 
-def compare(args: typing.Any) -> typing.Any:
+def compare(args: typing.Any) -> None:
     """Retain all samples; use unchanged numerical and 2% endpoint gates.
 
     The 2% gate is a non-regression ceiling, not a significant-speedup claim.
@@ -607,7 +607,7 @@ def compare(args: typing.Any) -> typing.Any:
         raise SystemExit(1)
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     w = commands.add_parser("worker")

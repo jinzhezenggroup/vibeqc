@@ -303,7 +303,7 @@ def canonical_orbital_rhs_streamed(
 
     def add_negative_fock_multiplier(
         row: typing.Any, column: typing.Any, value: typing.Any
-    ) -> typing.Any:
+    ) -> None:
         one[row, column] -= value
         for j in range(occupied):
             two[row, column, j, j] -= 2 * value
@@ -401,7 +401,7 @@ def canonical_orbital_rhs(
 
     def add_negative_fock_multiplier(
         row: typing.Any, column: typing.Any, value: typing.Any
-    ) -> typing.Any:
+    ) -> None:
         one[row, column] -= value
         for j in range(occupied):
             two[row, column, j, j] -= 2 * value
@@ -506,7 +506,7 @@ def canonical_lagrangian_weights(
 
     def add_negative_fock_multiplier(
         row: typing.Any, column: typing.Any, value: typing.Any
-    ) -> typing.Any:
+    ) -> None:
         one[row, column] -= value
         for j in range(occupied):
             two[row, column, j, j] -= 2 * value
@@ -566,7 +566,7 @@ def canonical_lagrangian_weights_streamed(
 
     def add_negative_fock_multiplier(
         row: typing.Any, column: typing.Any, value: typing.Any
-    ) -> typing.Any:
+    ) -> None:
         one[row, column] -= value
         for j in range(occupied):
             two[row, column, j, j] -= 2 * value

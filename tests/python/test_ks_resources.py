@@ -20,10 +20,10 @@ CUDA = pytest.mark.skipif(
 
 def test_dry_run_uses_only_metadata_and_tracks_all_retained_items(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc import _native
 
-    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("KS dry run attempted native execution or a numerical allocation")
 
     monkeypatch.setattr(_native, "load_library", forbidden)
@@ -42,7 +42,7 @@ def test_dry_run_uses_only_metadata_and_tracks_all_retained_items(
     assert plan.peak_bytes["host"] > 10**12
 
 
-def test_topology_controls_and_spin_bind_the_resource_identity() -> typing.Any:
+def test_topology_controls_and_spin_bind_the_resource_identity() -> None:
     base = estimate_ks_resources([H2])
     moved = [(1, (0.0, 0.0, -0.8)), (1, (0.0, 0.0, 0.8))]
     assert estimate_ks_resources([moved]).identity == base.identity
@@ -60,7 +60,7 @@ def test_topology_controls_and_spin_bind_the_resource_identity() -> typing.Any:
 @pytest.mark.parametrize("method", ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"))
 def test_cpu_budget_covers_prepare_replay_rebuild_and_singlepoint(
     method: typing.Any,
-) -> typing.Any:
+) -> None:
     uks = method.endswith("uks")
     systems = [H2, H if uks else HE]
     charges, multiplicities = ([1, 0], [2, 2]) if uks else ([0, 0], [1, 1])
@@ -106,14 +106,14 @@ def test_cpu_budget_covers_prepare_replay_rebuild_and_singlepoint(
 @pytest.mark.parametrize("batch", (False, True))
 def test_one_byte_short_rejects_before_context_or_preparation(
     monkeypatch: typing.Any, batch: typing.Any
-) -> typing.Any:
+) -> None:
     probe = estimate_ks_resources([H2])
     calculator = Calculator(
         method="pbe-rks",
         resource_budget=ResourceBudget(host_bytes=probe.peak_bytes["host"] - 1),
     )
 
-    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("an infeasible KS plan attempted native preparation")
 
     for name in (
@@ -128,7 +128,7 @@ def test_one_byte_short_rejects_before_context_or_preparation(
 
 def test_failed_preparation_keeps_evidence_and_failed_scf_keeps_samples(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc import _native
     from vibeqc.resources import ResourceAllocationError
 
@@ -159,7 +159,7 @@ def test_failed_preparation_keeps_evidence_and_failed_scf_keeps_samples(
 
 def test_cli_ks_dry_run_does_not_load_a_native_runtime(
     monkeypatch: typing.Any, tmp_path: typing.Any, capsys: typing.Any
-) -> typing.Any:
+) -> None:
     import json
 
     from vibeqc import _native
@@ -168,7 +168,7 @@ def test_cli_ks_dry_run_does_not_load_a_native_runtime(
     path = tmp_path / "h2.xyz"
     path.write_text("2\nbohr\nH 0 0 -0.7\nH 0 0 0.7\n")
 
-    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("KS CLI dry run loaded a native runtime")
 
     monkeypatch.setattr(_native, "load_library", forbidden)
@@ -198,7 +198,7 @@ def test_cli_ks_dry_run_does_not_load_a_native_runtime(
 
 def test_missing_inventory_and_foreign_plan_reject_before_preparation(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     from types import SimpleNamespace
 
     calculator = Calculator(method="pbe-rks", resource_budget=ResourceBudget())
@@ -215,7 +215,7 @@ def test_missing_inventory_and_foreign_plan_reject_before_preparation(
 @pytest.mark.parametrize("method", ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"))
 def test_cuda_ledger_owns_prepare_replay_rebuild_and_release(
     method: typing.Any,
-) -> typing.Any:
+) -> None:
     uks = method.endswith("uks")
     systems = [H2, H if uks else HE, H2]
     charges, multiplicities = ([1, 0, 1], [2, 2, 2]) if uks else ([0] * 3, [1] * 3)
@@ -265,12 +265,12 @@ def test_cuda_ledger_owns_prepare_replay_rebuild_and_release(
 @CUDA
 def test_cuda_shape_queries_need_no_execution_context_and_cover_large_solver(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc import _native, profiles
 
     library = _native.load_library(device="cpu")
 
-    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("KS shape query attempted scientific execution")
 
     with monkeypatch.context() as patch:
@@ -303,7 +303,7 @@ def test_cuda_shape_queries_need_no_execution_context_and_cover_large_solver(
 def test_cuda_failed_preparation_retains_ledger_rejection_and_releases_buffers(
     monkeypatch: typing.Any,
     partial: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc.resources import ResourceAllocationError
 
     calculator = Calculator(

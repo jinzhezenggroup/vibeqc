@@ -147,7 +147,7 @@ def independent_energies(
     return np.asarray(values)
 
 
-def validate_phase(record: typing.Any, expected: typing.Any) -> typing.Any:
+def validate_phase(record: typing.Any, expected: typing.Any) -> None:
     actual = np.asarray(record["energies"])
     if not np.allclose(actual, expected, rtol=0.0, atol=1.0e-8):
         raise RuntimeError(
@@ -243,7 +243,7 @@ def run_case(method: str, batch: int) -> typing.Any:
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--methods", nargs="+", choices=METHODS, default=list(METHODS))

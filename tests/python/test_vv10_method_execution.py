@@ -33,7 +33,7 @@ def _pbe_nonlocal_spec(variant: typing.Any) -> typing.Any:
 )
 def test_fixed_density_methodir_nonlocal_potential_matches_energy_derivative(
     spin: typing.Any, density_key: typing.Any, variant: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     density = data[density_key]
     graph = resolve_method(_pbe_nonlocal_spec(variant), spin=spin)
@@ -70,7 +70,7 @@ def test_fixed_density_methodir_nonlocal_potential_matches_energy_derivative(
         )
 
 
-def test_nonlocal_reference_execution_has_explicit_grid_admission_gate() -> typing.Any:
+def test_nonlocal_reference_execution_has_explicit_grid_admission_gate() -> None:
     meta, data, grid = load_integration_fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         executor = FixedDensityNonlocalCorrelation(
@@ -81,7 +81,7 @@ def test_nonlocal_reference_execution_has_explicit_grid_admission_gate() -> typi
             executor.integrate(basis, grid, data["density_total"], tile_points=7)
 
 
-def test_compile_rejects_nonlocal_only_graph_for_mean_field_execution() -> typing.Any:
+def test_compile_rejects_nonlocal_only_graph_for_mean_field_execution() -> None:
     graph = resolve_method(
         MethodSpec(
             "VV10-only",

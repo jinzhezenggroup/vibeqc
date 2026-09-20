@@ -24,7 +24,7 @@ def device(request: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("method", ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"))
 def test_physical_components_and_history_match_independent_state(
     method: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     pyscf = pytest.importorskip("pyscf")
     from pyscf import dft, gto
 
@@ -124,7 +124,7 @@ def test_physical_components_and_history_match_independent_state(
 
 def test_batch_snapshot_history_abi_invalidation_and_old_library(
     monkeypatch: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     calculator = Calculator(
         method="pbe-uks",
         device=device,
@@ -201,7 +201,7 @@ def test_batch_snapshot_history_abi_invalidation_and_old_library(
 
 def test_valid_iteration_limit_keeps_its_actual_history(
     device: typing.Any,
-) -> typing.Any:
+) -> None:
     calculator = Calculator(method="pbe-uks", device=device, max_iterations=1)
     with calculator.prepare_batch([H3], multiplicities=[2]) as batch:
         result = batch.execute().items[0]
@@ -215,7 +215,7 @@ def test_valid_iteration_limit_keeps_its_actual_history(
         json.dumps(diagnostic.to_payload(), allow_nan=False)
 
 
-def test_hf_has_no_ks_snapshot() -> typing.Any:
+def test_hf_has_no_ks_snapshot() -> None:
     calculator = Calculator(method="rhf", device="cpu")
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     assert calculator.singlepoint(atoms, properties=("energy",)).ks_diagnostic is None
@@ -231,7 +231,7 @@ def test_hf_has_no_ks_snapshot() -> typing.Any:
 
 def test_cpu_and_old_libraries_report_no_cuda_ks_transport(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calculator = Calculator(method="lda-rks", device="cpu")
     assert calculator.singlepoint(atoms).ks_transport_diagnostic is None
@@ -258,7 +258,7 @@ def test_cpu_and_old_libraries_report_no_cuda_ks_transport(
 
 def test_cuda_ks_transport_covers_setup_replay_and_geometry_rebuild(
     device: typing.Any,
-) -> typing.Any:
+) -> None:
     if device != "cuda":
         pytest.skip("transport ledger is CUDA-only")
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
@@ -309,7 +309,7 @@ def test_cuda_ks_transport_covers_setup_replay_and_geometry_rebuild(
 
 def test_cold_retry_replaces_the_failed_warm_attempt_history(
     device: typing.Any,
-) -> typing.Any:
+) -> None:
     """A normalized virtual determinant forces a retry within a two-step limit."""
     from vibeqc import cross_overlap
 

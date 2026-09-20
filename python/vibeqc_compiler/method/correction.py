@@ -19,7 +19,7 @@ class CorrectionProvenance:
     implementation: str
     version: str = _CORRECTION_API_VERSION
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not all(
             isinstance(v, str) and v
             for v in (
@@ -60,7 +60,7 @@ class CorrectionResult:
     gradient_unit: str = "hartree/bohr"
     version: str = _CORRECTION_API_VERSION
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.component, str) or not self.component:
             raise ValueError("correction result requires a component name")
         if self.status != "ok":

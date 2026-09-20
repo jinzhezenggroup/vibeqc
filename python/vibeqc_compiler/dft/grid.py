@@ -77,7 +77,7 @@ class GridSpec:
     units: str = "Bohr"
     ordering: str = "atom-radial-polar-azimuth"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         checked_int(self.version, "grid version", high=1)
         checked_int(self.radial_points, "radial points", high=512)
         checked_int(self.angular_polar, "polar points", high=256)
@@ -201,7 +201,7 @@ class MolecularGrid:
     charge: int = 0
     multiplicity: int = 1
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         atoms = owned_atoms(self.atoms)
         if not isinstance(self.spec, GridSpec):
             raise TypeError("expected GridSpec")
@@ -346,7 +346,7 @@ class ExplicitGrid:
         _provenance_json: ClassVar[str]
         identity: ClassVar[str]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         points, weights = immutable(self.points), immutable(self.weights)
         owners = tuple(self.owners)
         if (
@@ -376,7 +376,7 @@ class ExplicitGrid:
             "provenance": json.loads(self._provenance_json),
         }
 
-    def write(self, path: typing.Any) -> typing.Any:
+    def write(self, path: typing.Any) -> None:
         """Write explicit data and a content hash; no external program is needed."""
         Path(path).write_text(
             json.dumps({**self.record(), "sha256": self.identity}, indent=2) + "\n"

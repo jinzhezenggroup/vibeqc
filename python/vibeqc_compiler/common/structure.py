@@ -86,7 +86,7 @@ def audit_structure(package: Path = PACKAGE) -> dict:
             relative: typing.Any = relative,
             owner: typing.Any = owner,
             name: typing.Any = name,
-        ) -> typing.Any:
+        ) -> None:
             lazy = lazy or isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
             if isinstance(node, ast.ImportFrom):
                 target = node.module or ""

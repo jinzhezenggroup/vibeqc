@@ -52,11 +52,14 @@ from .shared import _AXIS_INDEX
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from ..cuda_target import CudaTargetInfo
+
 
 def emit_shell_class_fused_cuda(
     spec: ShellClassSpec,
     plan: FusedShellPlan | None = None,
     *,
+    target: CudaTargetInfo | None = None,
     fock_schedule: ScheduleIR | None = None,
     capabilities: Iterable[str] = (),
 ) -> str:
@@ -68,7 +71,10 @@ def emit_shell_class_fused_cuda(
     representative, or coordinate dispatch.
     """
 
-    plan = build_fused_shell_plan(spec) if plan is None else plan
+    if plan is None:
+        plan = build_fused_shell_plan(spec, target=target)
+    elif target is not None and plan.kernel.target != target:
+        raise ValueError("fused plan and explicit CUDA target disagree")
     selected_capabilities = frozenset(capabilities)
     if plan.spec != spec:
         raise ValueError("fused plan and shell specification do not match")

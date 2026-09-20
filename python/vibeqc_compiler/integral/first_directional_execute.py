@@ -51,7 +51,7 @@ class CompiledDirectionalFirst:
     runtime_identity: str
     target: tuple
 
-    def validate(self, *, check_binary: typing.Any = True) -> typing.Any:
+    def validate(self, *, check_binary: typing.Any = True) -> None:
         if (
             directional_identity(self.integral, self.component_indices, self.terms)
             != self.program_identity
@@ -283,9 +283,7 @@ class DirectionalFirstAccumulator:
             )
         self.statistics = {"chunks": 0, "primitive_records": 0, "matrix_downloads": 0}
 
-    def _call(
-        self, library: typing.Any, name: typing.Any, *args: typing.Any
-    ) -> typing.Any:
+    def _call(self, library: typing.Any, name: typing.Any, *args: typing.Any) -> None:
         detail = ct.create_string_buffer(2048)
         status = getattr(library, f"vibeqc_directional_{name}_v1")(
             *args, detail, len(detail)
@@ -295,11 +293,11 @@ class DirectionalFirstAccumulator:
                 status, RuntimeError
             )(detail.value.decode())
 
-    def _ensure_open(self) -> typing.Any:
+    def _ensure_open(self) -> None:
         if not self._handle:
             raise RuntimeError("directional accumulator is closed")
 
-    def reset(self, weights: typing.Any, direction: typing.Any) -> typing.Any:
+    def reset(self, weights: typing.Any, direction: typing.Any) -> None:
         with self._lock:
             self._ensure_open()
             self._failed = True
@@ -324,7 +322,7 @@ class DirectionalFirstAccumulator:
         *,
         offsets: typing.Any,
         atoms: typing.Any,
-    ) -> typing.Any:
+    ) -> None:
         with self._lock:
             self._ensure_open()
             if self._failed:
@@ -380,7 +378,7 @@ class DirectionalFirstAccumulator:
             self.records[:, 4 : 4 + nc * 3] = coords.ravel()
             count = 0
 
-            def flush() -> typing.Any:
+            def flush() -> None:
                 self._call(
                     lib,
                     "append",
@@ -418,7 +416,7 @@ class DirectionalFirstAccumulator:
             self._failed = False
             return immutable(output)
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with self._lock:
             if self._handle:
                 with _PREPARATION_LOCK:

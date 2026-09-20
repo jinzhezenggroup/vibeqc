@@ -144,7 +144,7 @@ class CudaDirectJKBackend:
             self.close()
             raise
 
-    def _ensure_open(self) -> typing.Any:
+    def _ensure_open(self) -> None:
         if self._plan is None:
             raise RuntimeError("CUDA direct response backend is closed")
         if _source_record(self.source) != self._source_record:
@@ -230,7 +230,7 @@ class CudaDirectJKBackend:
                 device_budget_bytes=device_budget_bytes,
             )
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Release only the owned Fock plan; the caller owns source lifetime."""
         with self._lock:
             if self._plan is not None:

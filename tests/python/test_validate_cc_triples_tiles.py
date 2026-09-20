@@ -45,7 +45,7 @@ def _manifest(args: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("compile_only", [False, True])
 def test_all_infeasible_budgets_fail_qualification(
     qualification_args: typing.Any, monkeypatch: typing.Any, compile_only: typing.Any
-) -> typing.Any:
+) -> None:
     """An empty set of executed plans cannot satisfy the requested gates."""
     from vibeqc_compiler.tensor import cuda_plan
 
@@ -89,7 +89,7 @@ def _mock_gpu_result(
 
 def test_partial_budget_failure_fails_qualification(
     qualification_args: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     """A passing large budget must not hide a failed constrained budget."""
     qualification_args.budget = "1,256"
     monkeypatch.setattr(validator.CudaTriplesTiles, "run_tiles", _mock_gpu_result)
@@ -102,7 +102,7 @@ def test_partial_budget_failure_fails_qualification(
 
 def test_successful_gates_are_json_booleans(
     qualification_args: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     """NumPy comparisons must serialize as booleans, not the string 'True'."""
     monkeypatch.setattr(validator.CudaTriplesTiles, "run_tiles", _mock_gpu_result)
     validator.run(qualification_args)
@@ -125,7 +125,7 @@ def test_successful_gates_are_json_booleans(
 @pytest.mark.parametrize("molecules", ["", "h2,typo"])
 def test_invalid_endpoint_selection_fails(
     qualification_args: typing.Any, molecules: typing.Any
-) -> typing.Any:
+) -> None:
     qualification_args.molecules = molecules
     with pytest.raises(ValueError, match="molecules must be"):
         validator.run(qualification_args)

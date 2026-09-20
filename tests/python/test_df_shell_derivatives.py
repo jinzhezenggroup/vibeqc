@@ -147,7 +147,7 @@ extern "C" void shell_derivative(unsigned code,const double* e,const double* r,
 @pytest.mark.parametrize("order", range(11))
 def test_boys_diagnostics_preserve_values(
     shell_library: typing.Any, order: typing.Any
-) -> typing.Any:
+) -> None:
     """Observed branch/iteration counts leave the independently checked values intact."""
     special = pytest.importorskip("scipy.special")
     rng = np.random.default_rng(395)
@@ -186,7 +186,7 @@ def test_boys_diagnostics_preserve_values(
 @pytest.mark.parametrize("angular", SHELL_CLASSES)
 def test_shell_work_model_matches_executed_generated_loops(
     shell_library: typing.Any, angular: typing.Any
-) -> typing.Any:
+) -> None:
     """Instrumented emitted C++ protects the ledger from stale analytical formulas."""
     model = shell_work_model(angular)
     loops = model["component_convolution_iterations"]
@@ -210,7 +210,7 @@ def test_shell_work_model_matches_executed_generated_loops(
 @pytest.mark.parametrize("variant", ["asymmetric", "coincident"])
 def test_shell_moments_match_independent_contracted_blocks(
     shell_library: typing.Any, angular: typing.Any, variant: typing.Any
-) -> typing.Any:
+) -> None:
     """Libcint checks normalization, Gaussian decay and all three center channels."""
     pytest.importorskip("pyscf")
     fixture = make_df_derivative_fixture(angular, variant=variant)

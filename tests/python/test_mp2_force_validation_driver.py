@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 
-def test_validation_cases_cover_required_public_force_domain() -> typing.Any:
+def test_validation_cases_cover_required_public_force_domain() -> None:
     from tools.validate_mp2_public_force import validation_cases
 
     cases = validation_cases()
@@ -17,7 +17,7 @@ def test_validation_cases_cover_required_public_force_domain() -> typing.Any:
     assert cases["water-def2-svp"].minimum_ao_count > 12
 
 
-def test_fd_steps_require_three_distinct_positive_values() -> typing.Any:
+def test_fd_steps_require_three_distinct_positive_values() -> None:
     from tools.validate_mp2_public_force import parse_fd_steps
 
     assert parse_fd_steps("0.004,0.002,0.001") == (0.004, 0.002, 0.001)
@@ -28,7 +28,7 @@ def test_fd_steps_require_three_distinct_positive_values() -> typing.Any:
 
 def test_run_directory_is_fresh_and_manifest_is_machine_readable(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     from tools.validate_mp2_public_force import initialize_run_directory
 
     destination = tmp_path / "run"
@@ -55,7 +55,7 @@ def test_run_directory_is_fresh_and_manifest_is_machine_readable(
         )
 
 
-def test_case_record_requires_complete_scientific_and_resource_gates() -> typing.Any:
+def test_case_record_requires_complete_scientific_and_resource_gates() -> None:
     from tools.validate_mp2_public_force import validate_case_record
 
     record = {
@@ -105,7 +105,7 @@ def test_case_record_requires_complete_scientific_and_resource_gates() -> typing
         validate_case_record(record, expected_steps=(0.004, 0.002, 0.001))
 
 
-def test_full_cartesian_finite_difference_recomputes_every_displacement() -> typing.Any:
+def test_full_cartesian_finite_difference_recomputes_every_displacement() -> None:
     from tools.validate_mp2_public_force import central_finite_difference_forces
 
     class QuadraticCalculator:
@@ -136,7 +136,7 @@ def test_full_cartesian_finite_difference_recomputes_every_displacement() -> typ
         )
 
 
-def test_fd_displacements_preserve_full_ordered_matrix_and_input() -> typing.Any:
+def test_fd_displacements_preserve_full_ordered_matrix_and_input() -> None:
     from tools.validate_mp2_public_force import _finite_difference_displacements
 
     atoms = (("H", (0.2, -0.1, 0.3)), ("H", (-0.4, 0.5, -0.6)))
@@ -152,7 +152,7 @@ def test_fd_displacements_preserve_full_ordered_matrix_and_input() -> typing.Any
 
 def test_parallel_fd_requires_cpu_worker_pool_and_cuda_rejects_it(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     from tools.validate_mp2_public_force import (
         main,
         parallel_central_finite_difference_forces,
@@ -182,7 +182,7 @@ def test_parallel_fd_requires_cpu_worker_pool_and_cuda_rejects_it(
 
 def test_parallel_fd_preserves_serial_force_order(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     import tools.validate_mp2_public_force as driver
 
     class ImmediateExecutor:
@@ -224,7 +224,7 @@ def test_parallel_fd_preserves_serial_force_order(
         )
 
 
-def test_force_invariants_report_translation_and_torque_norms() -> typing.Any:
+def test_force_invariants_report_translation_and_torque_norms() -> None:
     from tools.validate_mp2_public_force import force_invariants
 
     positions = np.asarray([[0.0, 0.0, -0.7], [0.0, 0.0, 0.7]])

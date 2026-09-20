@@ -45,9 +45,7 @@ def compiled(
     return program, artifact
 
 
-def check(
-    actual: typing.Any, expected: typing.Any, tolerance: typing.Any
-) -> typing.Any:
+def check(actual: typing.Any, expected: typing.Any, tolerance: typing.Any) -> None:
     result = block_error(actual, expected, **tolerance)
     assert result["passed"], result
 
@@ -57,7 +55,7 @@ def check(
 @pytest.mark.parametrize("variant", ["baseline", "fused", "split"])
 def test_every_kernel_value_derivative_boundary_and_partial_tile(
     name: typing.Any, spin: typing.Any, variant: typing.Any
-) -> typing.Any:
+) -> None:
     program, artifact = compiled(name, spin, variant)
     for capacity in (7, 31):
         with CudaXC(program, artifact, tile_points=capacity) as device:
@@ -87,7 +85,7 @@ def test_every_kernel_value_derivative_boundary_and_partial_tile(
             device.evaluate(x[:, :1])
 
 
-def test_replay_changed_input_capacity_failure_and_independent_threads() -> typing.Any:
+def test_replay_changed_input_capacity_failure_and_independent_threads() -> None:
     program, artifact = compiled("PBE", "polarized", "split")
     _, x, expected, _ = load_fixture("PBE")
     tolerance = {"atol": 1e-11, "rtol": 1e-10}
@@ -112,7 +110,7 @@ def test_replay_changed_input_capacity_failure_and_independent_threads() -> typi
     check(np.concatenate(result, axis=1), expected[:, :14], tolerance)
 
 
-def test_vacuum_energy_and_pruned_outputs_and_binary_contract() -> typing.Any:
+def test_vacuum_energy_and_pruned_outputs_and_binary_contract() -> None:
     program, artifact = compiled("PBE", "polarized", "fused", order=0)
     with CudaXC(program, artifact, tile_points=7) as device:
         check(

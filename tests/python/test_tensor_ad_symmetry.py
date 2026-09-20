@@ -34,7 +34,7 @@ from vibeqc_compiler.tensor import (
 )
 def test_dense_projection_matches_independent_orbits_and_directional_derivative(
     rank: typing.Any, generators: typing.Any
-) -> typing.Any:
+) -> None:
     rng = np.random.default_rng(152)
     space = IndexSpace("o", "occupied", 3)
     spec = TensorSpec(
@@ -79,7 +79,7 @@ def test_dense_projection_matches_independent_orbits_and_directional_derivative(
     assert max(n.spec.size for n in reverse.program.live_nodes) <= spec.size
 
 
-def test_asymmetric_forward_seed_is_rejected() -> typing.Any:
+def test_asymmetric_forward_seed_is_rejected() -> None:
     space = IndexSpace("o", "occupied", 2)
     spec = TensorSpec(
         (Index("i", space), Index("j", space)),
@@ -95,7 +95,7 @@ def test_asymmetric_forward_seed_is_rejected() -> typing.Any:
         )
 
 
-def test_symbolic_symmetry_group_expansion_is_bounded() -> typing.Any:
+def test_symbolic_symmetry_group_expansion_is_bounded() -> None:
     space = IndexSpace("o", "occupied", 1)
     generators = []
     for k in range(6):

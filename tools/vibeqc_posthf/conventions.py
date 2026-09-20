@@ -17,7 +17,7 @@ class MOBlock:
 
     slots: tuple[tuple[int, ...], ...]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(self, "slots", tuple(tuple(x) for x in self.slots))
         if len(self.slots) != 4:
             raise ValueError("chemists' ERIs require four explicit MO slots")
@@ -42,7 +42,7 @@ class MOBlock:
     def shape(self) -> typing.Any:
         return tuple(map(len, self.slots))
 
-    def validate(self, snapshot: typing.Any) -> typing.Any:
+    def validate(self, snapshot: typing.Any) -> None:
         if any(i >= snapshot.nmo for slot in self.slots for i in slot):
             raise ValueError("MO index outside the reference snapshot")
 

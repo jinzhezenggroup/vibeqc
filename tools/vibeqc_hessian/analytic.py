@@ -446,7 +446,7 @@ def _analytic_first_order_inputs(s: typing.Any) -> typing.Any:
     return s.first_order_inputs
 
 
-def _validate_analytic_domain(s: typing.Any) -> typing.Any:
+def _validate_analytic_domain(s: typing.Any) -> None:
     if not isinstance(s, NativeRHFState):
         raise TypeError(
             "analytic Hessian requires NativeRHFState, not an oracle System"

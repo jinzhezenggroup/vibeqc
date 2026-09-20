@@ -100,7 +100,7 @@ class PreparedXCContractions:
         resource_budget: typing.Any,
         spatial: typing.Any,
         density_grid: typing.Any,
-    ) -> typing.Any:
+    ) -> None:
         """Capture the complete borrowed configuration under its spatial lock."""
         if not isinstance(program, NativeContractionProgram) or not isinstance(
             basis, NativeAO
@@ -326,7 +326,7 @@ class PreparedXCContractions:
             )
         )
 
-    def _check(self) -> typing.Any:
+    def _check(self) -> None:
         if self._closed:
             raise RuntimeError("prepared XC contractions are closed")
         mask = None if self.spatial is None else self.spatial.tasks.identity
@@ -775,7 +775,7 @@ class PreparedXCContractions:
             self.statistics["seconds"] = perf_counter() - started
             return result
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """End this execution lease without closing borrowed basis/spatial owners."""
         with self._lock:
             self._closed = True

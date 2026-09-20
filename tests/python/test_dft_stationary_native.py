@@ -46,7 +46,7 @@ GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
 )
 def test_native_snapshot_rejects_relabeling_and_replay(
     method: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     unrestricted = method.endswith("uks")
     charge, multiplicity = (-1, 2) if unrestricted else (0, 1)
     calculator = Calculator(

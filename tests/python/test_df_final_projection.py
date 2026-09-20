@@ -9,7 +9,7 @@ import pytest
 @pytest.mark.parametrize("discarded", [0, 2])
 def test_whitened_projection_recovers_only_retained_metric_directions(
     discarded: typing.Any,
-) -> typing.Any:
+) -> None:
     """A nonzero discarded component cannot be reconstructed by a pseudoinverse.
 
     This deliberately keeps discarded eigenvalues finite. Their spectral

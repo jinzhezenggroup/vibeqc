@@ -36,7 +36,7 @@ class NonlocalCorrelationSpec:
     c: Fraction
     version: str = NONLOCAL_CORRELATION_VERSION
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.variant not in _VARIANTS:
             raise UnsupportedNonlocalCorrelation(
                 f"unsupported nonlocal-correlation variant {self.variant!r}"

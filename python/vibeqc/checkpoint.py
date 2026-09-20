@@ -84,7 +84,7 @@ def _integer(
     return value
 
 
-def _keys(value: typing.Any, keys: typing.Any, name: typing.Any) -> typing.Any:
+def _keys(value: typing.Any, keys: typing.Any, name: typing.Any) -> None:
     if not isinstance(value, dict) or set(value) != set(keys.split()):
         raise CheckpointError(f"unknown or missing required {name} fields")
 
@@ -134,7 +134,7 @@ def _provider(model: typing.Any) -> typing.Any:
     )
 
 
-def _validate_controls(controls: typing.Any) -> typing.Any:
+def _validate_controls(controls: typing.Any) -> None:
     """Keep source provenance strict without changing target solver controls."""
     _keys(
         controls,
@@ -176,7 +176,7 @@ def _validate_controls(controls: typing.Any) -> typing.Any:
         raise CheckpointError("inconsistent source precision policy")
 
 
-def _check_batch(batch: typing.Any) -> typing.Any:
+def _check_batch(batch: typing.Any) -> None:
     batch._ensure_open()
     if batch._calculator._model_signature() != batch._model_signature:
         raise CheckpointError("prepared model identity changed; prepare a new batch")

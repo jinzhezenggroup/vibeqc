@@ -31,7 +31,7 @@ def test_selection_rebuild_and_force_transitions(
     budget: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Three independent owners exercise actual provider and reuse choices.
 
     The CPU DF calculation supplies an independent molecular energy/force
@@ -190,7 +190,7 @@ def test_selection_rebuild_and_force_transitions(
 @pytest.mark.parametrize("state", ("rhf", "uhf", "empty_beta"))
 def test_complete_force_matches_independent_energy_differences(
     representation: typing.Any, state: typing.Any
-) -> typing.Any:
+) -> None:
     """Differentiate total CPU DF energies, independently of all force formulas.
 
     Each displacement rebuilds orbital and auxiliary centers together, testing

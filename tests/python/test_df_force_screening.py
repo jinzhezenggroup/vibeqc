@@ -104,7 +104,7 @@ def independent(
 
 def test_bound_covers_signs_geometry_exponents_and_translation(
     bound: typing.Any,
-) -> typing.Any:
+) -> None:
     pytest.importorskip("pyscf")
     rng = np.random.default_rng(406)
     for _ in range(40):
@@ -117,7 +117,7 @@ def test_bound_covers_signs_geometry_exponents_and_translation(
         np.testing.assert_allclose(derivatives.sum(axis=0), 0, atol=1e-10)
 
 
-def test_small_value_large_force_is_not_screened(bound: typing.Any) -> typing.Any:
+def test_small_value_large_force_is_not_screened(bound: typing.Any) -> None:
     pytest.importorskip("pyscf")
     exponents = np.array([1e10, 2e10, 1.5e10])
     coordinates = np.array([[0.0, 0.0, 0.0], [1e-6, 2e-6, 0.0], [2e-6, 0.0, -1e-6]])

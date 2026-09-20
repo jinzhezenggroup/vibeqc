@@ -10,7 +10,7 @@ from .policy import SCHEDULES, DfDerivativeTrial
 MANIFEST = Path(__file__).resolve().parents[1] / "production_df_derivatives.json"
 
 
-def _validate_profile(profile: typing.Any) -> typing.Any:
+def _validate_profile(profile: typing.Any) -> None:
     """Apply the same mathematical and evidence gates to both comparison arms."""
     if not isinstance(profile, dict) or type(profile.get("qualified")) is not bool:
         raise ValueError("explicit endpoint qualification status required")

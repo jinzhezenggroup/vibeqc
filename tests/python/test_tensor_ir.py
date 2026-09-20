@@ -50,9 +50,7 @@ def tensor(
 
 @pytest.mark.parametrize("kind", sorted(SPACE_KINDS))
 @pytest.mark.parametrize("spin", [None, "alpha", "beta"])
-def test_explicit_space_ranges_and_spin(
-    kind: typing.Any, spin: typing.Any
-) -> typing.Any:
+def test_explicit_space_ranges_and_spin(kind: typing.Any, spin: typing.Any) -> None:
     space = IndexSpace("population", kind, 5, spin)
     index = Index("p", space, 1, 4)
     spec = TensorSpec((index,), role="parameter", differentiable=True)
@@ -64,12 +62,12 @@ def test_explicit_space_ranges_and_spin(
 
 
 @pytest.mark.parametrize("bad", [-1, True, 2.0, 1 << 63])
-def test_invalid_dimensions_rejected_before_allocating(bad: typing.Any) -> typing.Any:
+def test_invalid_dimensions_rejected_before_allocating(bad: typing.Any) -> None:
     with pytest.raises(ValueError):
         IndexSpace("o", "occupied", bad)
 
 
-def test_size_product_overflow_and_scalar_empty_shapes() -> typing.Any:
+def test_size_product_overflow_and_scalar_empty_shapes() -> None:
     huge = IndexSpace("huge", "batch", 1 << 40)
     with pytest.raises(ValueError, match="byte count"):
         TensorSpec((Index("x", huge), Index("y", huge)))
@@ -80,7 +78,7 @@ def test_size_product_overflow_and_scalar_empty_shapes() -> typing.Any:
         execute(Program({"x": tensor()}), {"x": np.ones(3)}, max_bytes=1)
 
 
-def test_exact_factors_and_dummy_alpha_renaming_have_stable_hashes() -> typing.Any:
+def test_exact_factors_and_dummy_alpha_renaming_have_stable_hashes() -> None:
     x = tensor()
     p = Program({"energy": einsum("i,i->", x, x, coefficient=Fraction(2, 8))})
     q = Program({"energy": einsum("p,p->", x, x, coefficient="1/4")})
@@ -96,7 +94,7 @@ def test_exact_factors_and_dummy_alpha_renaming_have_stable_hashes() -> typing.A
         Node("add", (x,), x.spec.result(), (("coefficients", ((1, 0),)),))
 
 
-def test_order_and_provenance_do_not_change_equation_identity() -> typing.Any:
+def test_order_and_provenance_do_not_change_equation_identity() -> None:
     x, y = tensor("x"), tensor("y")
     a, b = multiply(x, y), add(x, y)
     provenance = {"versions": ["first"]}
@@ -113,7 +111,7 @@ def test_order_and_provenance_do_not_change_equation_identity() -> typing.Any:
         p.outputs["a"] = x
 
 
-def test_hash_is_stable_across_python_hash_seeds() -> typing.Any:
+def test_hash_is_stable_across_python_hash_seeds() -> None:
     source = """
 from vibeqc_compiler.tensor.examples import example_cases
 for case in example_cases():
@@ -130,7 +128,7 @@ for case in example_cases():
     assert outputs[0] == outputs[1]
 
 
-def test_input_and_space_names_cannot_hide_semantic_conflicts() -> typing.Any:
+def test_input_and_space_names_cannot_hide_semantic_conflicts() -> None:
     with pytest.raises(ValueError, match="input name"):
         Program({"a": tensor(), "b": tensor(representation="spin_orbital")})
     a = tensor("a", spin="alpha")
@@ -171,13 +169,13 @@ def test_input_and_space_names_cannot_hide_semantic_conflicts() -> typing.Any:
         lambda x: einsum("i,i->", x),
     ],
 )
-def test_illegal_primitives_fail_at_construction(factory: typing.Any) -> typing.Any:
+def test_illegal_primitives_fail_at_construction(factory: typing.Any) -> None:
     with pytest.raises(ValueError):
         factory(tensor())
 
 
 def test_complex_conjugation_and_mutable_destinations_are_explicitly_unsupported() -> (
-    typing.Any
+    None
 ):
     with pytest.raises(ValueError, match="real"):
         TensorSpec(dtype="complex128")
@@ -189,7 +187,7 @@ def test_complex_conjugation_and_mutable_destinations_are_explicitly_unsupported
         Node("multiply", (x, x), x.spec.result(), (("out", "x"),))
 
 
-def test_runtime_input_contract_and_constant_validation() -> typing.Any:
+def test_runtime_input_contract_and_constant_validation() -> None:
     p = Program({"out": tensor()})
     for value in (np.ones(4), np.ones(3, dtype=np.float32), np.ones(3, dtype=complex)):
         with pytest.raises(ValueError, match="real dtype"):
@@ -210,7 +208,7 @@ def test_runtime_input_contract_and_constant_validation() -> typing.Any:
 
 
 @pytest.mark.parametrize("field", ["schema_version", "primitive_version"])
-def test_incompatible_schema_versions_are_rejected(field: typing.Any) -> typing.Any:
+def test_incompatible_schema_versions_are_rejected(field: typing.Any) -> None:
     payload = example_cases()[0].program.to_payload()
     payload[field] = 99
     with pytest.raises(ValueError, match="version"):
@@ -233,7 +231,7 @@ def test_incompatible_schema_versions_are_rejected(field: typing.Any) -> typing.
         lambda p: p.update(unknown_field="silently ignored"),
     ],
 )
-def test_corrupted_equations_cannot_be_replayed(mutation: typing.Any) -> typing.Any:
+def test_corrupted_equations_cannot_be_replayed(mutation: typing.Any) -> None:
     payload = json.loads(example_cases()[0].program.dumps())
     mutation(payload)
     with pytest.raises(ValueError):
@@ -242,7 +240,7 @@ def test_corrupted_equations_cannot_be_replayed(mutation: typing.Any) -> typing.
 
 def test_duplicate_json_fields_and_executable_strings_are_data_only(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     with pytest.raises(ValueError, match="duplicate JSON"):
         Program.loads('{"schema": "one", "schema": "two"}')
     marker = tmp_path / "should-not-exist"
@@ -253,7 +251,7 @@ def test_duplicate_json_fields_and_executable_strings_are_data_only(
     assert not marker.exists()
 
 
-def test_symmetry_declarations_must_preserve_populations() -> typing.Any:
+def test_symmetry_declarations_must_preserve_populations() -> None:
     o, v = IndexSpace("o", "occupied", 2), IndexSpace("v", "virtual", 2)
     with pytest.raises(ValueError, match="different index domains"):
         TensorSpec((Index("i", o), Index("a", v)), symmetries=(Symmetry((1, 0)),))

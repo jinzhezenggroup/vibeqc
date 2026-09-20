@@ -48,7 +48,7 @@ def requests(monkeypatch: typing.Any, tmp_path: typing.Any) -> typing.Any:
     return request, calls
 
 
-def test_same_context_reuses_live_artifact(requests: typing.Any) -> typing.Any:
+def test_same_context_reuses_live_artifact(requests: typing.Any) -> None:
     request, calls = requests
     first = request()
     assert request() is first
@@ -59,7 +59,7 @@ def test_same_context_reuses_live_artifact(requests: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("changed", ["cache", "adapter", "outputs", "components"])
 def test_distinct_contexts_never_alias(
     requests: typing.Any, tmp_path: typing.Any, changed: typing.Any
-) -> typing.Any:
+) -> None:
     request, calls = requests
     first = request()
     changes = {
@@ -80,7 +80,7 @@ def test_distinct_contexts_never_alias(
 
 def test_removed_binary_is_rebuilt_not_returned_from_memory(
     requests: typing.Any,
-) -> typing.Any:
+) -> None:
     request, calls = requests
     first = request()
     first.native.library.unlink()

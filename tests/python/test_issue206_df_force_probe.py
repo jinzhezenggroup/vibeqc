@@ -51,7 +51,7 @@ def protocol(tmp_path: typing.Any, monkeypatch: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("variable", ["SLURM_JOB_ID", "CUDA_VISIBLE_DEVICES"])
 def test_probe_requires_slurm_and_cuda_visibility(
     protocol: typing.Any, monkeypatch: typing.Any, variable: typing.Any
-) -> typing.Any:
+) -> None:
     monkeypatch.delenv(variable)
     with pytest.raises(SystemExit):
         probe.main()
@@ -59,7 +59,7 @@ def test_probe_requires_slurm_and_cuda_visibility(
 
 def test_probe_writes_validated_force_increment_and_binary_identity(
     protocol: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     library, output, energy, force = protocol
     samples = iter([energy, force])
 
@@ -107,7 +107,7 @@ def test_invalid_pairs_never_publish_a_ledger(
     field: typing.Any,
     value: typing.Any,
     match: typing.Any,
-) -> typing.Any:
+) -> None:
     _, output, energy, force = protocol
     samples = copy.deepcopy([energy, force])
     samples[which][field] = value
@@ -120,7 +120,7 @@ def test_invalid_pairs_never_publish_a_ledger(
 
 def test_changed_binary_never_publishes_a_ledger(
     protocol: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     library, output, energy, force = protocol
     samples = iter([energy, force])
 
@@ -137,7 +137,7 @@ def test_changed_binary_never_publishes_a_ledger(
 @pytest.mark.parametrize("variable", ("VIBEQC_DF_TRACE", "VIBEQC_DF_HOST_TRACE"))
 def test_unrequested_trace_cannot_contaminate_unprofiled_evidence(
     protocol: typing.Any, monkeypatch: typing.Any, variable: typing.Any
-) -> typing.Any:
+) -> None:
     monkeypatch.setenv(variable, "unexpected.jsonl")
     with pytest.raises(SystemExit):
         probe.main()
@@ -145,7 +145,7 @@ def test_unrequested_trace_cannot_contaminate_unprofiled_evidence(
 
 def test_positive_budget_is_applied_to_both_samples_and_recorded(
     protocol: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     _, output, energy, force = protocol
     monkeypatch.setattr(sys, "argv", [*sys.argv, "--memory-budget-bytes", "268435456"])
     samples = iter([energy, force])
@@ -173,7 +173,7 @@ def test_trace_protocol_preserves_raw_evidence_and_requires_force_components(
     monkeypatch: typing.Any,
     omit_force: typing.Any,
     one_electron: typing.Any,
-) -> typing.Any:
+) -> None:
     library, output, energy, force = protocol
     directory = output.parent / "traces"
     monkeypatch.setattr(

@@ -35,7 +35,7 @@ def reference_inputs(aos: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("aos", CASES)
 def test_retained_independent_references_match_current_workloads(
     aos: typing.Any,
-) -> typing.Any:
+) -> None:
     """All four retained geometries and scientific settings remain admissible."""
     reference, args = reference_inputs(aos)
     energy, forces = independent_reference(reference, *args)
@@ -57,9 +57,7 @@ def test_retained_independent_references_match_current_workloads(
         ("energy_tolerance", 1e-8),
     ],
 )
-def test_reference_rejects_changed_workload(
-    key: typing.Any, value: typing.Any
-) -> typing.Any:
+def test_reference_rejects_changed_workload(key: typing.Any, value: typing.Any) -> None:
     """A matching case label cannot authorize a different scientific workload."""
     reference, args = reference_inputs(96)
     reference["workload"][key] = value
@@ -68,7 +66,7 @@ def test_reference_rejects_changed_workload(
 
 
 @pytest.mark.parametrize("change", ["coordinate", "element", "basis"])
-def test_reference_rejects_changed_geometry_or_basis(change: typing.Any) -> typing.Any:
+def test_reference_rejects_changed_geometry_or_basis(change: typing.Any) -> None:
     """Atom identity, coordinates and actual basis fingerprints are all checked."""
     reference, args = reference_inputs(96)
     if change == "coordinate":
@@ -101,7 +99,7 @@ def test_reference_rejects_changed_geometry_or_basis(change: typing.Any) -> typi
 )
 def test_reference_rejects_broadcastable_or_nonfinite_arrays(
     key: typing.Any, value: typing.Any, message: typing.Any
-) -> typing.Any:
+) -> None:
     """Broadcasting and NaN comparisons must never turn bad evidence into a pass."""
     reference, args = reference_inputs(96)
     reference["gpu4pyscf"][key] = value
@@ -122,7 +120,7 @@ def test_coupled_policies_reject_incomplete_or_non_schedule_arms(
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
     capsys: typing.Any,
-) -> typing.Any:
+) -> None:
     """Reject settings that could leak between arms or change scheduler visibility."""
     from benchmarks.df_policy_endpoint import main
 
@@ -153,7 +151,7 @@ def test_coupled_policies_reject_incomplete_or_non_schedule_arms(
 @pytest.mark.parametrize("bad", ("shape", "nan", "inf"))
 def test_cpu_reference_endpoint_checks_reject_bad_arrays(
     side: typing.Any, bad: typing.Any
-) -> typing.Any:
+) -> None:
     arrays = [np.zeros(1), np.zeros((1, 2, 3)), np.zeros(1), np.zeros((1, 2, 3))]
     index = 1 if side == "actual" else 3
     if bad == "shape":
@@ -164,7 +162,7 @@ def test_cpu_reference_endpoint_checks_reject_bad_arrays(
         endpoint_errors(*arrays)
 
 
-def test_cpu_reference_endpoint_energy_only_and_force_errors() -> typing.Any:
+def test_cpu_reference_endpoint_energy_only_and_force_errors() -> None:
     assert endpoint_errors([1.0], None, [1.25], None) == (0.25, None)
     assert endpoint_errors([1.0], [[[1.0, 2.0, 3.0]]], [1.25], [[[1.0, 1.5, 3.0]]]) == (
         0.25,

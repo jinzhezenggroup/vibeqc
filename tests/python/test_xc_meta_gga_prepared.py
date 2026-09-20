@@ -47,9 +47,7 @@ class AnalyticGaussianAO(NativeAO):
         pass
 
 
-def _check_prepared(
-    tmp_path: typing.Any, spin: typing.Any, basis: typing.Any
-) -> typing.Any:
+def _check_prepared(tmp_path: typing.Any, spin: typing.Any, basis: typing.Any) -> None:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("C++ compiler unavailable")
@@ -94,7 +92,7 @@ def _check_prepared(
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
 def test_prepared_meta_gga_keeps_tau_and_density_derivative(
     tmp_path: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     with AnalyticGaussianAO() as basis:
         _check_prepared(tmp_path, spin, basis)
 
@@ -102,7 +100,7 @@ def test_prepared_meta_gga_keeps_tau_and_density_derivative(
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
 def test_real_native_ao_prepared_meta_gga(
     tmp_path: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     with NativeAO([(1, (0.0, 0.0, -0.7)), (1, (0.0, 0.0, 0.7))]) as basis:
         _check_prepared(tmp_path, spin, basis)
 
@@ -110,7 +108,7 @@ def test_real_native_ao_prepared_meta_gga(
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE", "R2SCAN"])
 def test_spatial_meta_gga_requests_every_active_ingredient(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     """Exercise the actual spatial request boundary, not a source-text check."""
     program = ContractionProgram(functional(name))
     basis = AnalyticGaussianAO()
@@ -151,7 +149,7 @@ def test_spatial_meta_gga_requests_every_active_ingredient(
 @pytest.mark.parametrize("missing", ["rho", "sigma", "tau"])
 def test_active_meta_gga_ingredients_cannot_be_zero_filled(
     missing: typing.Any,
-) -> typing.Any:
+) -> None:
     program = ContractionProgram(functional("R2SCAN"))
     basis = AnalyticGaussianAO()
     jets = basis.evaluate(np.array([[0.2, 0.3, 0.4]]), 1)

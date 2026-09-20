@@ -143,7 +143,7 @@ def gate(actual: typing.Any, expected: typing.Any) -> typing.Any:
 
 def record_worst(
     errors: typing.Any, key: typing.Any, actual: typing.Any, expected: typing.Any
-) -> typing.Any:
+) -> None:
     """Retain the worst scaled whole-block gate across all repeated executions."""
     error = gate(actual, expected)
     if (
@@ -499,7 +499,7 @@ def endpoint_cases(
     return rows
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, required=True)
     parser.add_argument("--cache", type=Path, required=True)

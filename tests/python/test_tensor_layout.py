@@ -97,7 +97,7 @@ def producer_case(
 @pytest.mark.parametrize("shape", [(), (1,), (2, 3), (2, 1, 3), (2, 3, 5)])
 def test_dense_layout_bijection_matches_independent_numpy(
     shape: typing.Any,
-) -> typing.Any:
+) -> None:
     reference = np.arange(np.prod(shape, dtype=int)).reshape(shape)
     for order in permutations(range(len(shape))):
         layout = DenseLayout(shape, order, 256)
@@ -119,7 +119,7 @@ def test_dense_layout_bijection_matches_independent_numpy(
 
 
 @pytest.mark.parametrize("shape", [(0,), (2, 0, 3)])
-def test_empty_layouts_have_no_valid_indices(shape: typing.Any) -> typing.Any:
+def test_empty_layouts_have_no_valid_indices(shape: typing.Any) -> None:
     layout = DenseLayout(shape, tuple(reversed(range(len(shape)))))
     assert layout.is_c_contiguous
     with pytest.raises(ValueError, match="outside"):
@@ -140,12 +140,12 @@ def test_empty_layouts_have_no_valid_indices(shape: typing.Any) -> typing.Any:
         {"shape": (), "alignment": 0},
     ],
 )
-def test_invalid_layouts_fail_closed(options: typing.Any) -> typing.Any:
+def test_invalid_layouts_fail_closed(options: typing.Any) -> None:
     with pytest.raises(ValueError):
         DenseLayout(**options)
 
 
-def test_layout_descriptors_do_not_retain_mutable_sequences() -> typing.Any:
+def test_layout_descriptors_do_not_retain_mutable_sequences() -> None:
     shape, order = [2, 3], [1, 0]
     layout = DenseLayout(shape, order)
     shape[0], order[0] = 99, 0
@@ -170,7 +170,7 @@ def test_layout_descriptors_do_not_retain_mutable_sequences() -> typing.Any:
         "reduce",
     ],
 )
-def test_producer_layout_removes_packing(kind: typing.Any) -> typing.Any:
+def test_producer_layout_removes_packing(kind: typing.Any) -> None:
     program, _, producer = producer_case(kind)
     logical_hash, serialized = program.logical_hash, program.dumps()
     baseline = plan_cuda(program, TARGET)
@@ -197,7 +197,7 @@ def test_producer_layout_removes_packing(kind: typing.Any) -> typing.Any:
     assert plan.arena_bytes == baseline.arena_bytes
 
 
-def test_joint_operand_choice_avoids_a_greedy_single_producer_dead_end() -> typing.Any:
+def test_joint_operand_choice_avoids_a_greedy_single_producer_dead_end() -> None:
     program, _, _ = producer_case(both=True)
     baseline = plan_cuda(program, TARGET)
     plan = plan_cuda(program, TARGET, schedule=TensorSchedule(layouts=True))
@@ -209,7 +209,7 @@ def test_joint_operand_choice_avoids_a_greedy_single_producer_dead_end() -> typi
 @pytest.mark.parametrize("large_first", [False, True])
 def test_conflicting_consumers_are_costed_together_without_duplicate_storage(
     large_first: typing.Any,
-) -> typing.Any:
+) -> None:
     dims = {
         "i": 3,
         "b": 2,
@@ -263,7 +263,7 @@ def gemm_producer_case(
 )
 def test_gemm_output_layout_can_propagate_forward_and_backward(
     packed_producer: typing.Any, packed_consumer: typing.Any
-) -> typing.Any:
+) -> None:
     program, _, producer = gemm_producer_case(
         packed_producer=packed_producer, packed_consumer=packed_consumer
     )
@@ -279,7 +279,7 @@ def test_gemm_output_layout_can_propagate_forward_and_backward(
     assert emit_cuda(plan)
 
 
-def test_views_outputs_and_explicit_fallback_keep_their_contracts() -> typing.Any:
+def test_views_outputs_and_explicit_fallback_keep_their_contracts() -> None:
     program, _, value = producer_case("transpose")
     for schedule in (
         TensorSchedule(views=True, layouts=True),
@@ -297,7 +297,7 @@ def test_views_outputs_and_explicit_fallback_keep_their_contracts() -> typing.An
         TensorSchedule(layouts=1)
 
 
-def test_panel_savings_enable_a_previously_infeasible_budget() -> typing.Any:
+def test_panel_savings_enable_a_previously_infeasible_budget() -> None:
     from test_tensor_cuda_plan import assert_disjoint_live_allocations
 
     program, _, _ = producer_case()
@@ -318,7 +318,7 @@ def test_panel_savings_enable_a_previously_infeasible_budget() -> typing.Any:
         )
 
 
-def test_conversion_accounting_uses_actual_budget_shrunk_tiles() -> typing.Any:
+def test_conversion_accounting_uses_actual_budget_shrunk_tiles() -> None:
     program, _, _ = gemm_producer_case(packed_consumer=True)
     full = plan_cuda(program, TARGET, schedule=TensorSchedule(layouts=True))
     tiny = plan_cuda(
@@ -340,7 +340,7 @@ def test_conversion_accounting_uses_actual_budget_shrunk_tiles() -> typing.Any:
     )
 
 
-def test_emitter_rejects_noncanonical_public_output_layout() -> typing.Any:
+def test_emitter_rejects_noncanonical_public_output_layout() -> None:
     program, _, _ = producer_case()
     plan = plan_cuda(program, TARGET)
     steps = list(plan.steps)
@@ -363,7 +363,7 @@ def test_emitter_rejects_noncanonical_public_output_layout() -> typing.Any:
 )
 def test_opt_in_keeps_existing_direct_transpose_flags(
     equation: typing.Any, kind: typing.Any
-) -> typing.Any:
+) -> None:
     from test_tensor_cuda_gemm import node_for
 
     plan = plan_cuda(
@@ -382,9 +382,7 @@ def self_product_case() -> typing.Any:
     return program, {"x": np.random.default_rng(1509).normal(size=x.spec.shape)}, value
 
 
-def test_same_producer_in_both_operand_slots_requires_one_compatible_layout() -> (
-    typing.Any
-):
+def test_same_producer_in_both_operand_slots_requires_one_compatible_layout() -> None:
     program, _, value = self_product_case()
     plan = plan_cuda(program, TARGET, schedule=TensorSchedule(layouts=True))
     assert plan.steps[-1].gemm == "direct-NT"
@@ -408,7 +406,7 @@ def grouped_output_case() -> typing.Any:
     return program, feeds, value
 
 
-def test_grouped_mnk_labels_preserve_physical_order() -> typing.Any:
+def test_grouped_mnk_labels_preserve_physical_order() -> None:
     program, _, value = grouped_output_case()
     plan = plan_cuda(program, TARGET, schedule=TensorSchedule(layouts=True))
     step = next(s for s in plan.steps if s.node is value)
@@ -417,9 +415,7 @@ def test_grouped_mnk_labels_preserve_physical_order() -> typing.Any:
     assert plan.panel_bytes == 0
 
 
-def test_layout_identity_can_fail_closed_in_shared_specialization_guards() -> (
-    typing.Any
-):
+def test_layout_identity_can_fail_closed_in_shared_specialization_guards() -> None:
     from vibeqc_compiler.common.specialization import GuardPredicate
 
     program, _, _ = producer_case()
@@ -433,7 +429,7 @@ def test_layout_identity_can_fail_closed_in_shared_specialization_guards() -> (
     assert guard.failure({"workload": {}})
 
 
-def test_region_search_has_an_explicit_trial_limit() -> typing.Any:
+def test_region_search_has_an_explicit_trial_limit() -> None:
     dims = {"i": 2, "b": 2, "k": 2, "j": 2}
     right = operand("y", "bkj", dims)
     outputs = {}
@@ -449,7 +445,7 @@ def test_region_search_has_an_explicit_trial_limit() -> typing.Any:
     )
 
 
-def test_fp32_layout_admission_does_not_change_ordinary_fp32() -> typing.Any:
+def test_fp32_layout_admission_does_not_change_ordinary_fp32() -> None:
     x = input_tensor("x", TensorSpec(dtype="float32", role="input"))
     program = Program({"out": add(x, x)})
     assert plan_cuda(program, TARGET).precision == "fp32"
@@ -460,7 +456,7 @@ def test_fp32_layout_admission_does_not_change_ordinary_fp32() -> typing.Any:
 @pytest.mark.parametrize("other", [None, object(), (2, 3), 1, "layout"])
 def test_dense_layout_equivalence_rejects_foreign_types(
     other: typing.Any,
-) -> typing.Any:
+) -> None:
     """Type annotations must not remove the existing runtime comparison guard."""
     from vibeqc_compiler.common.layout import DenseLayout
 

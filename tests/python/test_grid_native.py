@@ -26,7 +26,7 @@ def native(tmp_path: typing.Any, **kwargs: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("iterations", [1, 3, 5])
 def test_independent_decimal_fd_translation_permutation_and_tiles(
     tmp_path: typing.Any, iterations: typing.Any
-) -> typing.Any:
+) -> None:
     executor = native(tmp_path, iterations=iterations)
     gradient = executor.contract(POINTS, CENTERS, OWNERS, SEEDS)
     derivative = np.sum(gradient * DC)
@@ -101,7 +101,7 @@ def test_independent_decimal_fd_translation_permutation_and_tiles(
 @pytest.mark.parametrize("iterations", [1, 3, 5])
 def test_saturated_exact_zero_and_single_zero_factor(
     tmp_path: typing.Any, iterations: typing.Any
-) -> typing.Any:
+) -> None:
     executor = native(tmp_path, iterations=iterations)
     centers = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
     points = np.array([[-1.0, 0.0, 0.0], [3.0, 0.0, 0.0]])
@@ -118,7 +118,7 @@ def test_saturated_exact_zero_and_single_zero_factor(
 
 def test_native_bounds_invalid_inputs_and_transactional_late_failure(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     executor = native(tmp_path)
     with pytest.raises(ValueError, match="budget"):
         native(tmp_path, max_bytes=1).contract(POINTS, CENTERS, OWNERS, SEEDS)
@@ -176,7 +176,7 @@ def test_native_bounds_invalid_inputs_and_transactional_late_failure(
 
 def test_one_rounded_zero_factor_keeps_nonzero_product_derivative(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """A single zero factor can have a nonzero tangent before saturation.
 
     The final pair value rounds to zero at iteration one, but its derivative

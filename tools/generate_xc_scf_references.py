@@ -110,7 +110,7 @@ def boundary_reference(pbe: typing.Any, values: typing.Any) -> typing.Any:
     return np.array([float(x) for x in result])
 
 
-def main() -> typing.Any:
+def main() -> None:
     mp.mp.dps = 450
     rng = np.random.default_rng(162)
     rows = []

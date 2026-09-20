@@ -29,7 +29,7 @@ def test_setup_provider_matches_reference_across_replans(
     budget: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Two prepared owners compare only the setup eigensolver, including forces.
 
     Oxygen's d shell distinguishes Cartesian and spherical layouts. Full
@@ -141,7 +141,7 @@ def test_setup_provider_matches_reference_across_replans(
 
 def test_setup_empty_beta_channel(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """The empty UHF spin stays empty while its shared cold frame is replaced."""
     assert os.environ.get("SLURM_JOB_ID")
     # Provider substitution must hold final work fixed after candidate reuse.

@@ -16,7 +16,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def select_response(monkeypatch: typing.Any, storage: typing.Any) -> typing.Any:
+def select_response(monkeypatch: typing.Any, storage: typing.Any) -> None:
     """Explicit selectors keep this experiment independent of size promotion."""
     assert os.environ.get("SLURM_JOB_ID")
     monkeypatch.setenv("VIBEQC_DF_RESPONSE_STORAGE", storage)
@@ -41,7 +41,7 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
     batch_size: typing.Any,
     exchange: typing.Any,
     case_name: typing.Any,
-) -> typing.Any:
+) -> None:
     """Both spins, batch items and the next SCF reuse the same scratch owners."""
     from pyscf import gto, scf
 
@@ -150,7 +150,7 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
 @pytest.mark.parametrize("pairs", ["full", "packed"])
 def test_jk_scratch_retains_discarded_metric_response(
     monkeypatch: typing.Any, tmp_path: typing.Any, space: typing.Any, pairs: typing.Any
-) -> typing.Any:
+) -> None:
     """An unequal near-duplicate auxiliary pair has a finite discarded mode."""
     monkeypatch.setenv("VIBEQC_DF_FINAL_PROJECTION", "reuse")
     monkeypatch.setenv("VIBEQC_DF_FINAL_EXCHANGE", "occupied")
@@ -206,7 +206,7 @@ def test_jk_scratch_retains_discarded_metric_response(
         )
 
 
-def test_jk_scratch_rejects_partial_source_plan(monkeypatch: typing.Any) -> typing.Any:
+def test_jk_scratch_rejects_partial_source_plan(monkeypatch: typing.Any) -> None:
     """Retained B alone never authorizes borrowing full-size K buffers."""
     select_response(monkeypatch, "jk-scratch")
     monkeypatch.delenv("VIBEQC_DF_RESPONSE_BUDGET_BYTES")
@@ -254,7 +254,7 @@ def test_jk_scratch_rejects_partial_source_plan(monkeypatch: typing.Any) -> typi
 )
 def test_jk_scratch_rejects_incompatible_controls_and_recovers(
     monkeypatch: typing.Any, control: typing.Any, value: typing.Any
-) -> typing.Any:
+) -> None:
     """A failed force must drain its borrowed stream before the next SCF replay."""
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     expected = Calculator(device="cpu", density_fitting="cpu").singlepoint(atoms)
@@ -279,7 +279,7 @@ def test_jk_scratch_rejects_incompatible_controls_and_recovers(
 @pytest.mark.parametrize("model_change", ["orbital", "auxiliary", "metric"])
 def test_raw_view_binds_model_and_survives_upload_ablation(
     monkeypatch: typing.Any, tmp_path: typing.Any, model_change: typing.Any
-) -> typing.Any:
+) -> None:
     """Equal AO dimensions never authorize reuse across a changed model owner.
 
     Toggle the upload diagnostic on an unchanged owner, then construct another

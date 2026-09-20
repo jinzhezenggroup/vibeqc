@@ -64,7 +64,7 @@ def test_cuda_primal_jvp_vjp_ordinary_and_resident(
     cache: typing.Any,
     schedule_id: typing.Any,
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.tensor import interpreter
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
@@ -133,7 +133,7 @@ def test_cuda_primal_jvp_vjp_ordinary_and_resident(
 )
 def test_cuda_error_propagation_recovery_and_no_stale_resident_outputs(
     compiler: typing.Any, cache: typing.Any, kind: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
     from vibeqc_compiler.tensor.cuda_resident import PreparedResident, compile_resident

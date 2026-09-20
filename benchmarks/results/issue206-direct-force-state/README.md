@@ -94,6 +94,13 @@ zero final rejections and 718 iterative updates across its calls. Energy-only
 calls assert zero additional force-operation records. No component speedup
 or operator elimination is claimed.
 
+The four compressed `integration-e4f2f67/*.progress.jsonl.gz` streams contain
+only per-call execution progress from the final integration matrix. Their exact
+bytes now live in the checksum-bound [`retention-488`](../retention-488/README.md)
+Git-history snapshot. The retained integration logs/XML, numerical records and
+qualification summaries preserve the source/build identity and pass/failure
+conclusions without treating progress streams as accepted benchmark evidence.
+
 ## Earlier attempts and reproduction
 
 [history/](history/) retains the PFP-only paired failure and the fixed one-update

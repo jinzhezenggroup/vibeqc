@@ -14,6 +14,11 @@ import re
 import sqlite3
 from pathlib import Path
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 
 def classify_kernel(name: str) -> tuple[str | None, str, str | None]:
     """Return consumer, exact f/non-f/mixed attribution, and any exact class."""
@@ -104,8 +109,8 @@ def main() -> None:
     parser.add_argument("trace", type=Path)
     parser.add_argument(
         "--output",
-        type=Path,
-        default=Path(".artifacts/benchmarks/f_shell_device_time.json"),
+        type=raw_output_path,
+        default=str(Path(".artifacts/benchmarks/f_shell_device_time.json")),
     )
     args = parser.parse_args()
     result = read_trace(args.trace)

@@ -69,7 +69,7 @@ The degree-17 Chebyshev interpolants cover [0,48] in two-unit intervals.
     )
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",

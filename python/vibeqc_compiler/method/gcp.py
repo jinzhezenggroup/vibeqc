@@ -35,7 +35,7 @@ class GCPSpec:
     profile: str = "r2scan3c"
     version: str = GCP_SPEC_VERSION
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.version != GCP_SPEC_VERSION:
             raise ValueError("unsupported gCP specification version")
         if not all(
@@ -139,7 +139,7 @@ class GeometricCounterpoisePrimitive:
     specification: GCPSpec
     kind: ClassVar[str] = "geometric_counterpoise"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.specification, GCPSpec):
             raise TypeError("gCP primitive requires GCPSpec")
 

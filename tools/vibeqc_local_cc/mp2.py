@@ -98,7 +98,7 @@ class PairMP2Result:
     energy: float
     full_virtual_pair_energy: float
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.space, PairSpace):
             raise TypeError("pair result requires a typed PNO space")
         shape = (self.space.rank, self.space.rank)
@@ -140,7 +140,7 @@ class LocalMP2Result:
     full_space_recovery: bool
     derivative_status: str = "unsupported"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         pairs = tuple(self.pairs)
         if not pairs or any(
             not isinstance(p, PairMP2Result)

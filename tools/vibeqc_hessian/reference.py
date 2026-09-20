@@ -60,13 +60,13 @@ def _mol_at(mol0: typing.Any, coords: typing.Any) -> typing.Any:
     )
 
 
-def _validate_step(step: typing.Any) -> typing.Any:
+def _validate_step(step: typing.Any) -> None:
     """Reject invalid difference steps before rebuilding any molecules."""
     if not np.isfinite(step) or step <= 0:
         raise ValueError("finite-difference step must be finite and positive")
 
 
-def _validate_molecule(mol: typing.Any) -> typing.Any:
+def _validate_molecule(mol: typing.Any) -> None:
     """Keep this dense all-electron RHF oracle within its qualified domain."""
     if (
         not mol.cart
@@ -180,7 +180,7 @@ class System:
                 d[(i, j)] = d[(j, i)]
         return d
 
-    def derive(self) -> typing.Any:
+    def derive(self) -> None:
         """Materialize finite-difference integral derivatives at the fixed state."""
         nd = self.nd
         self.h1 = {i: self._d1(self._h_ao, i) for i in range(nd)}

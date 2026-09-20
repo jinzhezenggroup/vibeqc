@@ -26,7 +26,7 @@ def test_diis_retry_provider_and_iteration_limit(
     water_count: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """One iteration forces the existing compact-to-DIIS transition.
 
     Compare the explicit reference diagnostic with ordinary device execution

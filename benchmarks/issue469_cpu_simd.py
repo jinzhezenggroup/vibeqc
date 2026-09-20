@@ -92,7 +92,7 @@ def _median_ms(
     return statistics.median(values)
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--shell", type=_angular, default=_angular("fdps"))
     parser.add_argument("--records", type=int, default=2048)

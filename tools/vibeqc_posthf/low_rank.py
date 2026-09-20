@@ -181,7 +181,7 @@ class IncrementalCholesky:
             )
         return value
 
-    def _check(self) -> typing.Any:
+    def _check(self) -> None:
         if self._closed:
             raise RuntimeError("incremental factorization is closed")
         self._columns.check()
@@ -242,7 +242,7 @@ class IncrementalCholesky:
     def _commit_native_column(self, column: typing.Any) -> typing.Any:
         """Execution-policy hook, called after validation and before host commit."""
 
-    def _pivot(self, pivot: typing.Any, diagonal: typing.Any) -> typing.Any:
+    def _pivot(self, pivot: typing.Any, diagonal: typing.Any) -> None:
         """Validate an entire new Schur column before mutating the prefix."""
         n = self.space.size
         column = np.empty(n)
@@ -402,7 +402,7 @@ class IncrementalCholesky:
                 "refinement_seconds": sum(row.seconds for row in self._refinements),
             }
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with self._lock:
             self._closed = True
             self._factors = self._original = self._residual = None

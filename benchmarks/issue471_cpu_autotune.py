@@ -11,6 +11,11 @@ import typing
 from pathlib import Path
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Primitive, Shell
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
@@ -100,10 +105,10 @@ def _independent_reference(
     return normalized / factors[:, None]
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cache", type=Path)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     parser.add_argument("--repeats", type=int, default=7)
     parser.add_argument("--maximum-candidates", type=int, default=16)
     args = parser.parse_args()

@@ -69,7 +69,7 @@ class CompiledSecondDerivative:
     backend: str
     program_identity: str
 
-    def validate(self) -> typing.Any:
+    def validate(self) -> None:
         """Reject replaced metadata before loading an artifact or allocating buffers."""
         require_second_consumer(self.integral)
         if (
@@ -496,7 +496,7 @@ class PreparedSecondDerivative:
         """Shared resource estimate for the immutable prepared capacities."""
         return self._resource_plan
 
-    def _call(self, name: typing.Any, *args: typing.Any) -> typing.Any:
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(1024)
         status = getattr(self._library, name)(*args, error, len(error))
         if status:
@@ -553,7 +553,7 @@ class PreparedSecondDerivative:
                 for name in ("device_ms", "input_ms", "output_ms", "kernel_ms")
             }
 
-            def flush(count: typing.Any) -> typing.Any:
+            def flush(count: typing.Any) -> None:
                 nonlocal chunks
                 self._call(
                     "vibeqc_second_run_v1",
@@ -622,7 +622,7 @@ class PreparedSecondDerivative:
             }
             return SecondDerivativeExecution(result, diagnostics)
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Release the shared native arena once, respecting its preparation lock."""
         with self._lock, _PREPARATION_LOCK:
             if self._handle.value:

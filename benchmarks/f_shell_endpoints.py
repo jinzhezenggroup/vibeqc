@@ -17,6 +17,11 @@ from pathlib import Path
 
 import numpy as np
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 ROOT = Path(__file__).resolve().parents[1]
 CASES = (
     "water-def2-tzvp",
@@ -318,8 +323,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        type=Path,
-        default=Path(".artifacts/benchmarks/f_shell_endpoints.json"),
+        type=raw_output_path,
+        default=str(Path(".artifacts/benchmarks/f_shell_endpoints.json")),
     )
     args = parser.parse_args()
     if args.batch < 1 or args.repeats < 2:

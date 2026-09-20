@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_native_matrix_function_range_uses_no_overflowing_products(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("C++ compiler unavailable")
@@ -75,7 +75,7 @@ _CUDA_SOURCE = '#include <cuda_runtime.h>\n#include <cmath>\n#include <cstdlib>\
     os.environ.get("VIBEQC_MATRIX_FUNCTION_CUDA_TEST") != "1",
     reason="explicit allocated CUDA tier",
 )
-def test_generated_cuda_matrix_function_range(tmp_path: typing.Any) -> typing.Any:
+def test_generated_cuda_matrix_function_range(tmp_path: typing.Any) -> None:
     from vibeqc_compiler.method.matrix_function_cuda import emit_pseudoinverse_vjp_cuda
 
     assert os.environ.get("SLURM_JOB_ID"), (

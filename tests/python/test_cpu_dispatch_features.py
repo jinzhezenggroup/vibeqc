@@ -21,7 +21,7 @@ from vibeqc_compiler.common.cpu_target import CPU_TARGETS
 )
 def test_linux_dispatch_uses_common_processor_features(
     monkeypatch: typing.Any, records: typing.Any, expected: typing.Any
-) -> typing.Any:
+) -> None:
     monkeypatch.setattr(cpu_dispatch.sys, "platform", "linux")
     monkeypatch.setattr(cpu_dispatch.platform, "machine", lambda: "x86_64")
     monkeypatch.setattr(cpu_dispatch.Path, "read_text", lambda self: records)
@@ -36,7 +36,7 @@ def test_linux_dispatch_uses_common_processor_features(
 
 def test_linux_unavailable_feature_inventory_is_generic(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     def unavailable(self: typing.Any) -> typing.Any:
         raise OSError("unavailable CPU inventory")
 

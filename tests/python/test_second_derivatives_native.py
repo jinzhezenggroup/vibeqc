@@ -87,7 +87,7 @@ def fixture(family: typing.Any, output: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("output", ["raw_hessian", "weighted_hessian", "weighted_hvp"])
 def test_native_tiles_match_independent_analytic_hessian(
     compiler: typing.Any, family: typing.Any, output: typing.Any
-) -> typing.Any:
+) -> None:
     pytest.importorskip("pyscf")
     ir, indices, outputs, primitive = fixture(family, output)
     artifact = compile_second_derivative(
@@ -140,7 +140,7 @@ def test_native_tiles_match_independent_analytic_hessian(
 
 def test_failed_late_chunk_native_errors_empty_replay_and_budget(
     compiler: typing.Any,
-) -> typing.Any:
+) -> None:
     ir, indices, outputs, primitive = fixture("eri", "weighted_hvp")
     artifact = compile_second_derivative(
         ir, *compiler, component_indices=indices, output_indices=outputs
@@ -216,7 +216,7 @@ def test_failed_late_chunk_native_errors_empty_replay_and_budget(
     plan.close()
 
 
-def test_explicit_fifteenth_moment_native_hvp(compiler: typing.Any) -> typing.Any:
+def test_explicit_fifteenth_moment_native_hvp(compiler: typing.Any) -> None:
     ir = build_eri_second_ir((3, 3, 3, 3))
     kernel = build_second_derivative_kernel(ir, (0,), output_indices=(0,))
     artifact = compile_second_derivative(
@@ -237,7 +237,7 @@ def test_explicit_fifteenth_moment_native_hvp(compiler: typing.Any) -> typing.An
 
 def test_native_svec_preserves_offdiagonal_inner_product_factors(
     compiler: typing.Any,
-) -> typing.Any:
+) -> None:
     pytest.importorskip("pyscf")
     from vibeqc_compiler.integral.second_order_layout import HessianLayout
 
@@ -273,7 +273,7 @@ def test_native_svec_preserves_offdiagonal_inner_product_factors(
 
 def test_native_ffff_hvp_against_independent_libcint(
     compiler: typing.Any,
-) -> typing.Any:
+) -> None:
     pytest.importorskip("pyscf")
     ir = build_eri_second_ir((3, 3, 3, 3))
     artifact = compile_second_derivative(

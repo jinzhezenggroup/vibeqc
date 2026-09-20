@@ -19,7 +19,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("method", ["rhf", "uhf"])
 def test_final_projection_replay_and_geometry(
     method: typing.Any, monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """Only singleton RHF may lend U; warm and geometry replays bind fresh states."""
     from pyscf import gto, scf
 

@@ -20,13 +20,13 @@ def audit_module() -> typing.Any:
     return module
 
 
-def test_archived_audit_reproduces_all_observations() -> typing.Any:
+def test_archived_audit_reproduces_all_observations() -> None:
     assert audit_module().analyze(EVIDENCE / "raw") == json.loads(
         (EVIDENCE / "summary.json").read_text()
     )
 
 
-def test_optimized_audit_refuses_to_publish(tmp_path: typing.Any) -> typing.Any:
+def test_optimized_audit_refuses_to_publish(tmp_path: typing.Any) -> None:
     output = tmp_path / "summary.json"
     result = subprocess.run(
         [sys.executable, "-O", str(SCRIPT), str(EVIDENCE / "raw"), str(output)],
@@ -44,7 +44,7 @@ def test_optimized_audit_refuses_to_publish(tmp_path: typing.Any) -> typing.Any:
 )
 def test_audit_rejects_corrupt_matched_summary(
     monkeypatch: typing.Any, field: typing.Any
-) -> typing.Any:
+) -> None:
     """Recorded summaries cannot authorize an invented branch or stronger ratio."""
     audit = audit_module()
     original = audit.read

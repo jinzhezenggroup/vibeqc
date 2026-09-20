@@ -3,11 +3,10 @@
 import argparse
 import hashlib
 import json
-import typing
 from pathlib import Path
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("--check", action="store_true")

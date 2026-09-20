@@ -23,10 +23,10 @@ SYSTEM = [("H", position) for position in XYZ]
 )
 def test_invalid_coordinate_structure_never_executes_native(
     monkeypatch: typing.Any, coordinates: typing.Any
-) -> typing.Any:
+) -> None:
     with Calculator(device="cpu").prepare_batch([SYSTEM]) as prepared:
 
-        def unexpected_execute(*args: typing.Any) -> typing.Any:
+        def unexpected_execute(*args: typing.Any) -> None:
             pytest.fail("malformed coordinates reached native execution")
 
         with monkeypatch.context() as guard:
@@ -42,7 +42,7 @@ def test_invalid_coordinate_structure_never_executes_native(
 @pytest.mark.parametrize("layout", ["c", "fortran", "strided", "readonly", "list"])
 def test_real_coordinate_layouts_preserve_energy_and_forces(
     layout: typing.Any,
-) -> typing.Any:
+) -> None:
     values = XYZ.copy()
     values[1, 2] = 0.8
     if layout == "fortran":
@@ -70,7 +70,7 @@ def test_real_coordinate_layouts_preserve_energy_and_forces(
 @pytest.mark.parametrize("invalid", [XYZ[:1], [0.0], np.empty(0), np.zeros((3, 3))])
 def test_wrong_atom_count_keeps_native_per_item_failure_isolation(
     invalid: typing.Any,
-) -> typing.Any:
+) -> None:
     with Calculator(device="cpu").prepare_batch([SYSTEM, SYSTEM]) as prepared:
         result = prepared.execute([invalid, XYZ])
         assert result.failure_indices == (0,)

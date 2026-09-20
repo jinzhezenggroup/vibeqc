@@ -67,7 +67,7 @@ class PreparedTensorBatch:
             ]
             return tuple(f.result() for f in futures)
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         for item in self.items:
             item.close()
 

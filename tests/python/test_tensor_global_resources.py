@@ -38,10 +38,10 @@ def fragment() -> typing.Any:
 
 def test_tensor_global_budget_selects_real_recompute_plan_without_device(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     import ctypes
 
-    def no_device(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def no_device(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("planning must not load a device library")
 
     monkeypatch.setattr(ctypes, "CDLL", no_device)
@@ -98,7 +98,7 @@ def test_tensor_global_budget_selects_real_recompute_plan_without_device(
     )
 
 
-def test_tensor_indivisible_minimum_is_an_infeasible_provider_request() -> typing.Any:
+def test_tensor_indivisible_minimum_is_an_infeasible_provider_request() -> None:
     choices = tensor_resource_choices(
         fragment(), cuda_target_info("sm_120"), sub_budget_bytes=1
     )
@@ -107,7 +107,7 @@ def test_tensor_indivisible_minimum_is_an_infeasible_provider_request() -> typin
     assert "provider sub-budget" in plan.diagnostic
 
 
-def test_tensor_foreign_plan_is_rejected_before_artifact_loading() -> typing.Any:
+def test_tensor_foreign_plan_is_rejected_before_artifact_loading() -> None:
     choices = tensor_resource_choices(fragment(), cuda_target_info("sm_120"))
     foreign = tensor_resource_choices(fragment(), cuda_target_info("sm_120"), device=1)
     plan = plan_resources([foreign.request], ResourceBudget())

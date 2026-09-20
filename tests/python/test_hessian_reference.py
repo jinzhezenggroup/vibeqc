@@ -79,7 +79,7 @@ def _water_mol() -> typing.Any:
 )
 def test_reference_matches_energy_fd(
     mol_fn: typing.Any, label: typing.Any, fd_tol: typing.Any
-) -> typing.Any:
+) -> None:
     mol = mol_fn()
     s = System(mol)
     s.derive()
@@ -97,9 +97,7 @@ def test_reference_matches_energy_fd(
         (_water_mol, "water", 1e-8),
     ],
 )
-def test_symmetry(
-    mol_fn: typing.Any, label: typing.Any, sym_tol: typing.Any
-) -> typing.Any:
+def test_symmetry(mol_fn: typing.Any, label: typing.Any, sym_tol: typing.Any) -> None:
     mol = mol_fn()
     s = System(mol)
     s.derive()
@@ -118,7 +116,7 @@ def test_symmetry(
 )
 def test_translation_invariance(
     mol_fn: typing.Any, label: typing.Any, tr_tol: typing.Any
-) -> typing.Any:
+) -> None:
     mol = mol_fn()
     s = System(mol)
     s.derive()
@@ -136,9 +134,7 @@ def test_translation_invariance(
         (_water_mol, "water"),
     ],
 )
-def test_component_sum_equals_total(
-    mol_fn: typing.Any, label: typing.Any
-) -> typing.Any:
+def test_component_sum_equals_total(mol_fn: typing.Any, label: typing.Any) -> None:
     mol = mol_fn()
     s = System(mol)
     s.derive()
@@ -170,7 +166,7 @@ def test_component_sum_equals_total(
 )
 def test_component_nonzero(
     mol_fn: typing.Any, label: typing.Any, key: typing.Any
-) -> typing.Any:
+) -> None:
     """Each component must be non-trivial (negative case: removing it breaks)."""
     mol = mol_fn()
     s = System(mol)
@@ -190,7 +186,7 @@ def test_component_nonzero(
 )
 def test_frozen_density_wrong(
     mol_fn: typing.Any, label: typing.Any, tol: typing.Any
-) -> typing.Any:
+) -> None:
     """Negative case: removing orbital relaxation must shift the Hessian
     by more than the reference-vs-FD error."""
     mol = mol_fn()
@@ -225,7 +221,7 @@ def _sto3g_water() -> typing.Any:
 @pytest.mark.parametrize("mol_fn", [_h2_mol, _water_mol, _sto3g_water])
 def test_reference_matches_analytic_hessian_and_gradient_differences(
     mol_fn: typing.Any,
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_hessian.reference import _converged_rhf
 
     mol = mol_fn()
@@ -253,7 +249,7 @@ def test_reference_matches_analytic_hessian_and_gradient_differences(
 
 
 @pytest.mark.parametrize("step", [0.0, -1e-4, np.inf, np.nan])
-def test_invalid_steps_rejected(step: typing.Any) -> typing.Any:
+def test_invalid_steps_rejected(step: typing.Any) -> None:
     mol = _h2_mol()
     with pytest.raises(ValueError, match="finite and positive"):
         System(mol, h1=step)
@@ -263,7 +259,7 @@ def test_invalid_steps_rejected(step: typing.Any) -> typing.Any:
         fd_hessian(mol, h=step)
 
 
-def test_unconverged_reference_is_rejected(monkeypatch: typing.Any) -> typing.Any:
+def test_unconverged_reference_is_rejected(monkeypatch: typing.Any) -> None:
     from tools.vibeqc_hessian import reference
 
     class FailedRHF:
@@ -280,7 +276,7 @@ def test_unconverged_reference_is_rejected(monkeypatch: typing.Any) -> typing.An
         fd_hessian(_h2_mol())
 
 
-def test_open_shell_and_spherical_reference_are_rejected() -> typing.Any:
+def test_open_shell_and_spherical_reference_are_rejected() -> None:
     from pyscf import gto
 
     hydrogen = gto.M(atom="H 0 0 0", basis="sto-3g", spin=1, cart=True, verbose=0)

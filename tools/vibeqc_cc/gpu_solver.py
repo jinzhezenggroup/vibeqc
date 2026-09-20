@@ -216,7 +216,7 @@ class PreparedGPUSolver:
                 raise FloatingPointError(str(error)) from error
             raise
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         self.primary.close()
         self.replay.close()
 

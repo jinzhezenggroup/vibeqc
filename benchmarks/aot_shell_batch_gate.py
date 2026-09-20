@@ -29,10 +29,14 @@ import os
 import time
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Any
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc_compiler.common.timing import (
     interleaved_selection_order as interleaved_selection_order,
 )
@@ -842,7 +846,7 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="collect the final screened shell-class profile after each batch",
     )
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     parser.add_argument(
         "--dry-run",
         action="store_true",

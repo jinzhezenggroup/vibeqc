@@ -19,7 +19,7 @@ from vibeqc_compiler.integral.one_electron_values import (
 from vibeqc_compiler.integral.shell_spec import cartesian_components
 
 
-def test_generated_value_header_helpers_have_internal_linkage() -> typing.Any:
+def test_generated_value_header_helpers_have_internal_linkage() -> None:
     """Header-defined noinline device helpers must be reusable by multiple CUDA TUs."""
 
     source = emit_one_electron_values_cuda()
@@ -54,7 +54,7 @@ def gaussian_self_norm(exponent: typing.Any, component: typing.Any) -> typing.An
 @pytest.mark.parametrize("angular", list(product(range(4), repeat=2)))
 def test_every_public_cartesian_component_against_pyscf(
     family: typing.Any, angular: typing.Any
-) -> typing.Any:
+) -> None:
     gto = pytest.importorskip("pyscf.gto")
     components = tuple(cartesian_components(l) for l in angular)
     alpha, beta = 0.8, 0.35
@@ -105,7 +105,7 @@ def test_every_public_cartesian_component_against_pyscf(
 
 
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
-def test_sign_translation_and_shell_exchange(family: typing.Any) -> typing.Any:
+def test_sign_translation_and_shell_exchange(family: typing.Any) -> None:
     positions = np.array([[0.2, -0.3, 0.4], [-0.2, 0.5, 0.1], [0.1, -0.2, -0.4]])
     if family != "nuclear_attraction":
         positions = positions[:2]
@@ -126,7 +126,7 @@ def test_sign_translation_and_shell_exchange(family: typing.Any) -> typing.Any:
         assert first.integral.operator.centers == (0, 1, 2)
 
 
-def test_kinetic_raised_states_do_not_widen_public_shells() -> typing.Any:
+def test_kinetic_raised_states_do_not_widen_public_shells() -> None:
     program = kernel("kinetic", (3, 3), ("xxx", "xxx"))
     assert program.integral.signature.component_shape == (10, 10)
     assert max(state[2] for state in program.hermite_states) == 5
@@ -138,7 +138,7 @@ def test_kinetic_raised_states_do_not_widen_public_shells() -> typing.Any:
         build_one_electron_value_ir("four_center_eri", (0, 0))
 
 
-def test_interpreter_rejects_invalid_scientific_inputs() -> typing.Any:
+def test_interpreter_rejects_invalid_scientific_inputs() -> None:
     program = kernel("overlap", (0, 0), ("", ""))
     for exponents, centers in [
         ((0.0, 1.0), [(0, 0, 0)] * 2),
@@ -209,7 +209,7 @@ extern "C" void evaluate(const double* inputs, double* outputs, unsigned count) 
 
 def test_emitted_arithmetic_all_pairs_and_normalized_contractions(
     emitted_host: typing.Any,
-) -> typing.Any:
+) -> None:
     pytest.importorskip("pyscf")
     from tools.vibeqc_validation.one_electron_values import one_electron_value_matrix
 
@@ -233,7 +233,7 @@ def test_emitted_arithmetic_all_pairs_and_normalized_contractions(
         )
 
 
-def test_one_electron_inventory_retains_operator_and_output_contracts() -> typing.Any:
+def test_one_electron_inventory_retains_operator_and_output_contracts() -> None:
     from vibeqc_compiler.integral.one_electron_cuda import (
         one_electron_program_inventory,
     )

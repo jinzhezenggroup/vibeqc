@@ -44,7 +44,7 @@ def source_factory() -> typing.Any:
 @pytest.mark.parametrize("axis_tile", [1, 2, 4])
 def test_streamed_mo_all_elements_cache_and_mp2(
     source_factory: typing.Any, name: typing.Any, axis_tile: typing.Any
-) -> typing.Any:
+) -> None:
     source, meta, a = source_factory(name)
     s = fixture_snapshot(meta, a)
     with ConventionalProvider(s, source, axis_tile=axis_tile) as provider:
@@ -82,7 +82,7 @@ def test_streamed_mo_all_elements_cache_and_mp2(
 
 def test_budget_preflight_lru_empty_and_source_mismatch(
     source_factory: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     source, meta, a = source_factory("water")
     s = fixture_snapshot(meta, a)
     block = MOBlock.from_spaces(s, "ovov")
@@ -115,7 +115,7 @@ def test_budget_preflight_lru_empty_and_source_mismatch(
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
 def test_df_raw_b_blocks_and_same_hamiltonian_mp2(
     source_factory: typing.Any, name: typing.Any
-) -> typing.Any:
+) -> None:
     source, meta, a = source_factory(name)
     metric = MetricFactor.from_source(source)
     n = source.nbf
@@ -158,7 +158,7 @@ def test_df_raw_b_blocks_and_same_hamiltonian_mp2(
 
 def test_df_rank_threshold_and_metric_invalidation(
     source_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     _, meta, _ = source_factory()
     args = source_arguments(meta)
     source, _, _ = source_factory(
@@ -173,7 +173,7 @@ def test_df_rank_threshold_and_metric_invalidation(
 @pytest.mark.parametrize("backend", ["cpu", "cuda"])
 def test_native_direct_density_export_preserves_zero_screening(
     source_factory: typing.Any, backend: typing.Any
-) -> typing.Any:
+) -> None:
     """The native export requests screening=0 for its unscreened HF reference."""
     if backend == "cuda" and os.environ.get("VIBEQC_POSTHF_CUDA_TEST") != "1":
         pytest.skip("requires explicitly allocated real GPU")
@@ -190,7 +190,7 @@ def test_native_direct_density_export_preserves_zero_screening(
 
 def test_native_hf_export_failure_isolation_and_ownership(
     source_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     source, _, _ = source_factory()
     other, _, _ = source_factory()
     with pytest.raises(RuntimeError, match="did not converge"):
@@ -205,7 +205,7 @@ def test_native_hf_export_failure_isolation_and_ownership(
     np.testing.assert_allclose(fresh.coefficients, s.coefficients, atol=1e-12)
 
 
-def test_actual_f_partial_shell_tiles(source_factory: typing.Any) -> typing.Any:
+def test_actual_f_partial_shell_tiles(source_factory: typing.Any) -> None:
     source, meta, a = source_factory("f_heh")
     assert 3 in meta["actual_angular_momenta"]
     # Exercise a final partial spherical-f tile with independent asymmetric
@@ -224,7 +224,7 @@ def test_actual_f_partial_shell_tiles(source_factory: typing.Any) -> typing.Any:
 
 def test_raw_empty_overflow_wrong_rank_and_closed(
     source_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     source, _, _ = source_factory()
     assert (
         source._read("four_center_eri", (source.nbf, 0, 0, 0), (0, 1, 1, 1)).size == 0
@@ -238,7 +238,7 @@ def test_raw_empty_overflow_wrong_rank_and_closed(
         source.one_electron()
 
 
-def test_stale_metric_geometry_is_rejected(source_factory: typing.Any) -> typing.Any:
+def test_stale_metric_geometry_is_rejected(source_factory: typing.Any) -> None:
     source, meta, a = source_factory()
     metric = MetricFactor.from_source(source)
     snapshot = fixture_snapshot(meta, a, label="df", metric=metric)
@@ -248,7 +248,7 @@ def test_stale_metric_geometry_is_rejected(source_factory: typing.Any) -> typing
 
 def test_valid_but_unsupported_raw_operator_has_explicit_status(
     source_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.integral.blocks import (
         BlockRequest,
         BlockStatus,
@@ -289,7 +289,7 @@ def test_valid_but_unsupported_raw_operator_has_explicit_status(
 
 def test_source_metadata_cannot_silently_change_owned_geometry(
     source_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     source, _, _ = source_factory()
     for name in ("atoms", "basis_hash", "geometry_hash", "identity", "numeric_bytes"):
         with pytest.raises(AttributeError, match="immutable"):

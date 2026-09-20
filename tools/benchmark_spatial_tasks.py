@@ -25,7 +25,7 @@ def capture(argv: typing.Any) -> typing.Any:
     return subprocess.check_output(argv, text=True).strip()
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--library", type=Path, required=True)

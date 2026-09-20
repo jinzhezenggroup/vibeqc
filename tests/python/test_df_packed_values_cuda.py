@@ -36,7 +36,7 @@ def test_packed_preparation_replay_and_representation_replacement(
     representation: typing.Any,
     auxiliary: typing.Any,
     oh: typing.Any,
-) -> typing.Any:
+) -> None:
     """Independent forces, unequal auxiliaries, empty spin and changed geometry.
 
     Reuse one prepared Python owner while changing the value representation.
@@ -146,7 +146,7 @@ def test_packed_preparation_replay_and_representation_replacement(
 
 def test_packed_global_ledger_and_raw_reuse_ablation(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """Charge live packed owners and reject a changed admitted representation.
 
     Raw-reuse off exercises bounded source regeneration through the same value
@@ -210,7 +210,7 @@ def test_packed_global_ledger_and_raw_reuse_ablation(
 @pytest.mark.parametrize("spin", ["restricted", "unrestricted"])
 def test_packed_composed_fock_keeps_prepared_identity_and_dense_fallback(
     monkeypatch: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     """Unknown-rank Fock inputs retain exact bounded K and frozen provenance."""
     from vibeqc.fock import FockBuildSpec, FockPlan
     from vibeqc_compiler.dft import NativeAO

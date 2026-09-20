@@ -75,7 +75,7 @@ def _resolved_energy(owner: typing.Any, feeds: typing.Any) -> typing.Any:
     )
 
 
-def test_common_stationary_plan_matches_pre_migration_rhf_df_algebra() -> typing.Any:
+def test_common_stationary_plan_matches_pre_migration_rhf_df_algebra() -> None:
     _, owner, feeds = _fixture()
     assert owner.coulomb_coefficient == Fraction(1, 1)
     assert owner.exchange_coefficient == Fraction(1, 4)
@@ -117,7 +117,7 @@ def test_common_stationary_plan_matches_pre_migration_rhf_df_algebra() -> typing
     }
 
 
-def test_generated_source_weights_match_resolved_finite_differences() -> typing.Any:
+def test_generated_source_weights_match_resolved_finite_differences() -> None:
     rng, owner, feeds = _fixture()
     _, weights = _weights(owner, feeds)
     directions = {
@@ -147,7 +147,7 @@ def test_generated_source_weights_match_resolved_finite_differences() -> typing.
         assert max(errors) < 2e-7
 
 
-def test_metric_custom_rule_is_explicit_fixed_rank_pseudoinverse() -> typing.Any:
+def test_metric_custom_rule_is_explicit_fixed_rank_pseudoinverse() -> None:
     owner = DensityFittingRHFResponsePlan(2, 3)
     rule = owner.metric_rule(0.1)
     assert rule.function == "pseudoinverse"
@@ -157,7 +157,7 @@ def test_metric_custom_rule_is_explicit_fixed_rank_pseudoinverse() -> typing.Any
     assert np.linalg.norm(state.jvp(tangent)[:1, 1:]) > 0
 
 
-def test_production_native_lowering_is_bound_to_stationary_plan() -> typing.Any:
+def test_production_native_lowering_is_bound_to_stationary_plan() -> None:
     owner = DensityFittingRHFResponsePlan(1, 1)
     plan = owner.compile(max_elements=256)
     contract = emit_df_hf_response_contract()

@@ -33,7 +33,7 @@ def packed_reference(space: typing.Any, ao: typing.Any) -> typing.Any:
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
-def test_native_columns_and_full_target_recovery(name: typing.Any) -> typing.Any:
+def test_native_columns_and_full_target_recovery(name: typing.Any) -> None:
     source, arrays = source_for(name)
     with source:
         columns = CoulombColumns(source)
@@ -71,7 +71,7 @@ def test_native_columns_and_full_target_recovery(name: typing.Any) -> typing.Any
         columns.diagonal(0, 1)
 
 
-def test_spherical_f_partial_pair_rows() -> typing.Any:
+def test_spherical_f_partial_pair_rows() -> None:
     source, arrays = source_for("f_heh")
     with source:
         columns = CoulombColumns(source)

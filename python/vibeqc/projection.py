@@ -31,7 +31,7 @@ class ProjectionPolicy:
     maximum_residual: float = 0.5
     maximum_ao: int = 4096
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in ("relative_threshold", "validation_tolerance", "maximum_residual"):
             value = getattr(self, name)
             if isinstance(value, bool) or not np.isfinite(value) or not 0 < value <= 1:

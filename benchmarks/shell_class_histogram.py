@@ -10,12 +10,17 @@ import sqlite3
 import typing
 from collections import defaultdict
 from dataclasses import dataclass
-from pathlib import Path
 
 from _support import cuda_accelerator_metadata, environment_metadata
 
 if typing.TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 ANGULAR_LABELS = "spdfgh"
 
@@ -444,7 +449,7 @@ def main() -> None:
         default=1.0e-14,
         help="VIBEQC direct-screening threshold; default matches the formal gate",
     )
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     arguments = parser.parse_args()
     if arguments.batch < 1 or arguments.warm_repeats < 0:
         raise ValueError("--batch must be positive and --warm-repeats non-negative")

@@ -21,7 +21,7 @@ class PairSpace:
 
     nbf: int
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if type(self.nbf) is not int or self.nbf < 1:
             raise ValueError("positive integer AO dimension required")
         checked_index(self.size, "symmetric AO pair count")

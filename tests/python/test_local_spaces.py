@@ -37,7 +37,7 @@ def fixture(name: typing.Any = "water") -> typing.Any:
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
 def test_localization_matches_independent_pyscf_objective_and_occupied_metric(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     snapshot, ao_atoms, metadata, _ = fixture(name)
     record = json.loads(
         (Path(__file__).parents[1] / "reference_data/local-spaces/pm.json").read_text()
@@ -73,7 +73,7 @@ def test_localization_matches_independent_pyscf_objective_and_occupied_metric(
 
 
 def test_alternative_occupied_gauges_and_atom_permutations_preserve_pm_objective() -> (
-    typing.Any
+    None
 ):
     s, atoms, _, _ = fixture()
     rng = np.random.default_rng(182)
@@ -90,9 +90,7 @@ def test_alternative_occupied_gauges_and_atom_permutations_preserve_pm_objective
     )
 
 
-def test_localization_failures_do_not_publish_unconverged_or_invalid_spaces() -> (
-    typing.Any
-):
+def test_localization_failures_do_not_publish_unconverged_or_invalid_spaces() -> None:
     s, atoms, _, _ = fixture()
     with pytest.raises(RuntimeError, match="localization failed"):
         localize_occupied(s, atoms, max_sweeps=1, tolerance=1e-14)
@@ -113,7 +111,7 @@ def test_localization_failures_do_not_publish_unconverged_or_invalid_spaces() ->
 
 
 def test_projected_aos_remove_occupied_components_and_report_duplicate_rank_loss() -> (
-    typing.Any
+    None
 ):
     s, _, _, _ = fixture()
     domain = projected_virtual_space(s)
@@ -135,7 +133,7 @@ def test_projected_aos_remove_occupied_components_and_report_duplicate_rank_loss
         projected_virtual_space(s, budget_bytes=1)
 
 
-def test_pair_density_spin_factors_and_degenerate_cluster_policy() -> typing.Any:
+def test_pair_density_spin_factors_and_degenerate_cluster_policy() -> None:
     rng = np.random.default_rng(182)
     t = rng.normal(size=(4, 4))
     tilde = 2 * t - t.T
@@ -153,7 +151,7 @@ def test_pair_density_spin_factors_and_degenerate_cluster_policy() -> typing.Any
     assert selected.all()
 
 
-def test_pair_projectors_overlaps_gauges_and_stale_parent_rejection() -> typing.Any:
+def test_pair_projectors_overlaps_gauges_and_stale_parent_rejection() -> None:
     s, atoms, _, _ = fixture("lih")
     local = localize_occupied(s, atoms)
     domain = projected_virtual_space(s)
@@ -180,7 +178,7 @@ def test_pair_projectors_overlaps_gauges_and_stale_parent_rejection() -> typing.
 
 
 def test_mulliken_charge_jacobi_gradient_matches_independent_finite_difference() -> (
-    typing.Any
+    None
 ):
     s, atoms, _, _ = fixture()
     operators = population_operators(s, atoms)

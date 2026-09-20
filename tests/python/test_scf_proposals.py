@@ -45,7 +45,7 @@ def setup(method: typing.Any = "rhf", fitted: typing.Any = False) -> typing.Any:
 @pytest.mark.parametrize("fitted", [False, True])
 def test_disabled_and_observed_paths_match_legacy_and_physical_fock(
     method: typing.Any, fitted: typing.Any
-) -> typing.Any:
+) -> None:
     source, model = setup(method, fitted)
     with source:
         legacy = probe_hf(source, model)
@@ -90,7 +90,7 @@ def test_disabled_and_observed_paths_match_legacy_and_physical_fock(
 )
 def test_malformed_outputs_are_rejected_by_native_guard(
     method: typing.Any, fault: typing.Any, reason: typing.Any
-) -> typing.Any:
+) -> None:
     source, model = setup(method)
 
     def propose(state: typing.Any) -> typing.Any:
@@ -125,7 +125,7 @@ def test_malformed_outputs_are_rejected_by_native_guard(
         assert result.fock_builds == result.iterations + 2
 
 
-def test_ensemble_and_determinant_domains_and_wrong_spin_counts() -> typing.Any:
+def test_ensemble_and_determinant_domains_and_wrong_spin_counts() -> None:
     source, model = setup()
     with source:
 
@@ -155,7 +155,7 @@ def test_ensemble_and_determinant_domains_and_wrong_spin_counts() -> typing.Any:
         assert result.decisions[0]["reason"] == "electron_count"
 
 
-def test_returning_current_density_cannot_manufacture_convergence() -> typing.Any:
+def test_returning_current_density_cannot_manufacture_convergence() -> None:
     source, model = setup()
     with source:
         result = solve(
@@ -179,7 +179,7 @@ def test_returning_current_density_cannot_manufacture_convergence() -> typing.An
 
 
 @pytest.mark.parametrize("fault", ["shape", "exception", "type"])
-def test_callback_errors_reset_without_escaping_ctypes(fault: typing.Any) -> typing.Any:
+def test_callback_errors_reset_without_escaping_ctypes(fault: typing.Any) -> None:
     source, model = setup()
 
     def bad(state: typing.Any) -> typing.Any:
@@ -198,7 +198,7 @@ def test_callback_errors_reset_without_escaping_ctypes(fault: typing.Any) -> typ
         assert result.decisions[0]["adapter_error"]
 
 
-def test_occupied_and_rotation_invariants_and_timed_projection() -> typing.Any:
+def test_occupied_and_rotation_invariants_and_timed_projection() -> None:
     source, model = setup()
     with source:
         state = solve(source, model, capture=True).snapshots[0]
@@ -222,7 +222,7 @@ def test_occupied_and_rotation_invariants_and_timed_projection() -> typing.Any:
 @pytest.mark.parametrize("fitted", [False, True])
 def test_native_safeguard_matches_independent_counterfactual(
     fitted: typing.Any,
-) -> typing.Any:
+) -> None:
     source, model = setup(fitted=fitted)
     with source:
         result = solve(source, model, proposer=diis_density, capture=True)
@@ -241,7 +241,7 @@ def test_native_safeguard_matches_independent_counterfactual(
             assert not replay["complete_solve_measurement"]
 
 
-def test_failed_solve_trace_and_lifetime_roundtrip(tmp_path: typing.Any) -> typing.Any:
+def test_failed_solve_trace_and_lifetime_roundtrip(tmp_path: typing.Any) -> None:
     source, model = setup()
     with source:
         failed = solve(source, model, ProbeControls(max_iterations=2), capture=True)
@@ -266,7 +266,7 @@ def test_failed_solve_trace_and_lifetime_roundtrip(tmp_path: typing.Any) -> typi
         export_trace(failed, source, path)
 
 
-def test_trace_tampering_and_truncation_are_visible(tmp_path: typing.Any) -> typing.Any:
+def test_trace_tampering_and_truncation_are_visible(tmp_path: typing.Any) -> None:
     source, model = setup()
     with source:
         result = solve(source, model, capture=True, max_trace_iterations=1)
@@ -277,7 +277,7 @@ def test_trace_tampering_and_truncation_are_visible(tmp_path: typing.Any) -> typ
         load_trace(path)
 
 
-def test_batch_ownership_rebinding_and_concurrent_results() -> typing.Any:
+def test_batch_ownership_rebinding_and_concurrent_results() -> None:
     source, model = setup()
     with source:
         items = [ScfItem(source, model), ScfItem(source, model)]
@@ -296,7 +296,7 @@ def test_batch_ownership_rebinding_and_concurrent_results() -> typing.Any:
         assert items[0].last_result is None
         assert items[0].solve(capture=True).owner != results[0].owner
 
-        def recursive(s: typing.Any) -> typing.Any:
+        def recursive(s: typing.Any) -> None:
             items[0].rebind(source, model)
 
         result = items[0].solve(proposer=recursive, capture=True)
@@ -306,7 +306,7 @@ def test_batch_ownership_rebinding_and_concurrent_results() -> typing.Any:
             items[0].rebind(source, replace(model, geometry_hash="stale"))
 
 
-def test_invalid_initial_guess_is_not_silently_rescaled() -> typing.Any:
+def test_invalid_initial_guess_is_not_silently_rescaled() -> None:
     source, model = setup()
     with source:
         result = solve(source, model)
@@ -320,7 +320,7 @@ def test_invalid_initial_guess_is_not_silently_rescaled() -> typing.Any:
 @pytest.mark.parametrize("gauge_seed", [None, 7, 19])
 def test_real_operator_damps_a_valid_but_overlarge_orbital_rotation(
     gauge_seed: typing.Any,
-) -> typing.Any:
+) -> None:
     atoms = [(8, (0.0, 0.0, 0.0)), (1, (0.0, -1.43, 1.1)), (1, (0.0, 1.43, 1.1))]
     model = Calculator().resolved_model(atoms)
 
@@ -355,9 +355,7 @@ def test_real_operator_damps_a_valid_but_overlarge_orbital_rotation(
         assert replay["action"] == "damped" and replay["fraction"] == 0.25
 
 
-def test_spin_change_invalidates_previous_proposals_and_supports_empty_beta() -> (
-    typing.Any
-):
+def test_spin_change_invalidates_previous_proposals_and_supports_empty_beta() -> None:
     source, singlet = setup()
     triplet = Calculator(method="uhf").resolved_model(ATOMS, charge=1, multiplicity=3)
     with source:
@@ -378,7 +376,7 @@ def test_spin_change_invalidates_previous_proposals_and_supports_empty_beta() ->
             probe_hf(source, triplet)
 
 
-def test_repeated_bad_model_is_disabled_so_traditional_diis_can_recover() -> typing.Any:
+def test_repeated_bad_model_is_disabled_so_traditional_diis_can_recover() -> None:
     source, model = setup()
     calls = []
 
@@ -394,7 +392,7 @@ def test_repeated_bad_model_is_disabled_so_traditional_diis_can_recover() -> typ
         assert result.fock_builds == result.iterations + 2
 
 
-def test_transport_and_extrapolation_are_explicit_new_validated_states() -> typing.Any:
+def test_transport_and_extrapolation_are_explicit_new_validated_states() -> None:
     from tools.vibeqc_scf.baselines import transported_density
 
     source, model = setup()
@@ -421,7 +419,7 @@ def test_transport_and_extrapolation_are_explicit_new_validated_states() -> typi
 
 def test_dataset_split_rejects_adjacent_geometry_leakage(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     import json
 
     from vibeqc.profiles import canonical_hash
@@ -438,7 +436,7 @@ def test_dataset_split_rejects_adjacent_geometry_leakage(
         load_references(path)
 
 
-def test_snapshot_altered_operator_is_rejected_before_counterfactual() -> typing.Any:
+def test_snapshot_altered_operator_is_rejected_before_counterfactual() -> None:
     source, model = setup()
     with source:
         state = solve(source, model, capture=True).snapshots[0]
@@ -450,16 +448,14 @@ def test_snapshot_altered_operator_is_rejected_before_counterfactual() -> typing
             counterfactual(shifted, None, TargetOperator(source, model))
 
 
-def test_malformed_model_output_is_bounded_before_ownership_copy() -> typing.Any:
+def test_malformed_model_output_is_bounded_before_ownership_copy() -> None:
     with pytest.raises(ValueError, match="output budget"):
         DensityProposal("parent", np.zeros((2, 13, 13)))
     with pytest.raises(ValueError, match="output budget"):
         OccupiedProposal("parent", (np.zeros((13, 13)),))
 
 
-def test_failed_batch_item_preserves_its_trace_without_poisoning_neighbor() -> (
-    typing.Any
-):
+def test_failed_batch_item_preserves_its_trace_without_poisoning_neighbor() -> None:
     source, model = setup()
     with source:
         items = (ScfItem(source, model), ScfItem(source, model))

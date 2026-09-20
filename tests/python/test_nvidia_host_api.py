@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_provider_free_sgemm_declarations_and_imports(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("host C++ compiler unavailable")
@@ -59,7 +59,7 @@ static_assert(std::is_same_v<decltype(&cublasSgemmStridedBatched), Batch>);
 
 def test_sgemm_trampolines_link_without_providers_and_forward_abi(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Exercise real lazy import stubs, including 64-bit strides, without CUDA."""
     import platform
     import sys

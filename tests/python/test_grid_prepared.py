@@ -16,7 +16,7 @@ def arguments(name: typing.Any = "h2") -> typing.Any:
     return {**basis_arguments(meta), "spec": GridSpec(3, 3, 6), "tile_points": 7}, data
 
 
-def test_replay_and_invalidated_iterator_density_and_geometry() -> typing.Any:
+def test_replay_and_invalidated_iterator_density_and_geometry() -> None:
     args, data = arguments()
     with PreparedGrid(**args) as plan:
         first = plan.integrate(data["density"])
@@ -53,7 +53,7 @@ def test_replay_and_invalidated_iterator_density_and_geometry() -> typing.Any:
         )
 
 
-def test_replacement_overlap_is_budgeted_before_device_allocation() -> typing.Any:
+def test_replacement_overlap_is_budgeted_before_device_allocation() -> None:
     args, _ = arguments()
     with PreparedGrid(**args) as measured:
         peak = measured.plan.peak_bytes
@@ -68,7 +68,7 @@ def test_replacement_overlap_is_budgeted_before_device_allocation() -> typing.An
         assert plan.diagnostics()["peak_bytes"] == peak
 
 
-def test_basis_charge_spin_and_rule_invalidation() -> typing.Any:
+def test_basis_charge_spin_and_rule_invalidation() -> None:
     args, _ = arguments()
     with PreparedGrid(**args) as plan:
         identities = [plan.identity]
@@ -90,7 +90,7 @@ def test_basis_charge_spin_and_rule_invalidation() -> typing.Any:
         assert len(set(identities)) == len(identities)
 
 
-def test_ragged_offsets_failure_isolation_and_update_budget() -> typing.Any:
+def test_ragged_offsets_failure_isolation_and_update_budget() -> None:
     args, a = arguments("h2")
     other, b = arguments("water")
     with PreparedGridBatch([args, other]) as batch:
@@ -112,7 +112,7 @@ def test_ragged_offsets_failure_isolation_and_update_budget() -> typing.Any:
         PreparedGridBatch([args, other], budget_bytes=1)
 
 
-def test_budget_scales_with_tile_and_jets_not_molecular_grid_size() -> typing.Any:
+def test_budget_scales_with_tile_and_jets_not_molecular_grid_size() -> None:
     args, _ = arguments("f_spherical")
     with NativeAO(
         **{k: v for k, v in args.items() if k not in ("spec", "tile_points")}
@@ -128,7 +128,7 @@ def test_budget_scales_with_tile_and_jets_not_molecular_grid_size() -> typing.An
             )
 
 
-def test_unsupported_public_basis_and_invalid_native_arrays_fail() -> typing.Any:
+def test_unsupported_public_basis_and_invalid_native_arrays_fail() -> None:
     from vibeqc import Primitive, Shell
 
     with pytest.raises(ValueError, match="through f"):

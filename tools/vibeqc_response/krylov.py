@@ -188,7 +188,7 @@ class GMRESOptions:
     stagnation_window: int = 25
     stagnation_tolerance: float = 1e-14
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not np.isfinite(self.rtol) or not 0 <= self.rtol < 1:
             raise ValueError("rtol must be finite and in [0,1)")
         if not np.isfinite(self.atol) or self.atol < 0:
@@ -304,7 +304,7 @@ class _HostKrylovEngine:
     def __init__(self, dimension: typing.Any) -> None:
         self.dimension = dimension
 
-    def reset(self) -> typing.Any:
+    def reset(self) -> None:
         return None
 
     def from_host(self, values: typing.Any) -> typing.Any:
@@ -668,7 +668,7 @@ class KrylovRecycleSpace:
         capacity = min(self.max_vectors, dimension, self.max_bytes // (dimension * 8))
         return (capacity + 3) * dimension * 8
 
-    def assert_compatible(self, problem: typing.Any) -> typing.Any:
+    def assert_compatible(self, problem: typing.Any) -> None:
         """Fail closed on a changed reference/model/operator/layout."""
         if problem.compatibility_identity != self.key:
             raise ResponseCompatibilityError(

@@ -17,7 +17,7 @@ class XCSchedule:
     threads: int = 128
     group_size: int = 8
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.variant not in ("baseline", "fused", "split"):
             raise ValueError("unknown XC CUDA variant")
         if type(self.threads) is not int or self.threads not in (64, 128, 256):

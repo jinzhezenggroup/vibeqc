@@ -21,7 +21,7 @@ from tools.vibeqc_cc.gpu_solver import PreparedGPUSolver, solve_gpu
 from tools.vibeqc_cc.solver import SolverOptions
 
 
-def test_gpu_solver_plans_compose_under_budget() -> typing.Any:
+def test_gpu_solver_plans_compose_under_budget() -> None:
     from tools.vibeqc_cc.gpu_state import solver_plans
 
     s, _p, _meta, _ = fixture_problem("h2o")
@@ -35,7 +35,7 @@ def test_gpu_solver_plans_compose_under_budget() -> typing.Any:
     assert diag["combined_peak_bytes"] == primary.peak_bytes + replay.peak_bytes
 
 
-def test_gpu_solver_requires_explicit_compiler_and_cache() -> typing.Any:
+def test_gpu_solver_requires_explicit_compiler_and_cache() -> None:
     s, p, _meta, _ = fixture_problem("h2")
     with pytest.raises(TypeError, match="CudaCompilerAdapter"):
         solve_gpu(s, p, compiler=None, cache=Path("."))
@@ -50,7 +50,7 @@ def test_gpu_solver_requires_explicit_compiler_and_cache() -> typing.Any:
 
 def test_gpu_budget_rejection_precedes_integral_reads(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """An impossible composed budget must not trigger AO-to-MO preparation."""
     s, p, _, _ = fixture_problem()
     monkeypatch.setattr(
@@ -68,7 +68,7 @@ def test_gpu_budget_rejection_precedes_integral_reads(
 
 def test_replay_preparation_failure_releases_primary(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """Retaining a failed constructor traceback must not retain device memory."""
     from tools.vibeqc_cc import gpu_solver
 
@@ -108,7 +108,7 @@ def test_replay_preparation_failure_releases_primary(
 @pytest.mark.parametrize("name", ["h2", "h2o", "ch4"])
 def test_real_device_gpu_solver_converges_and_replays(
     name: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc.profiles import find_nvcc
 
     s, p, meta, _ = fixture_problem(name)
@@ -157,7 +157,7 @@ def test_real_device_gpu_solver_converges_and_replays(
 )
 def test_real_device_gpu_nonconvergence_is_an_explicit_failure_state(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc.profiles import find_nvcc
 
     s, p, _meta, _ = fixture_problem("ch4")
@@ -183,7 +183,7 @@ def test_real_device_gpu_nonconvergence_is_an_explicit_failure_state(
 )
 def test_real_device_gpu_overflow_retains_serializable_failure(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Native arithmetic failure returns the last finite input for replay."""
     from vibeqc.profiles import find_nvcc
 

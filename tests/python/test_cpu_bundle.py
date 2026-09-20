@@ -31,7 +31,7 @@ from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 
 def test_cpu_target_selection_prefers_widest_supported_and_forces_safely(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     monkeypatch.delenv("VIBEQC_CPU_TARGET", raising=False)
     none = CpuRuntimeFeatures("x86_64", ())
     avx2 = CpuRuntimeFeatures("amd64", ("fma", "avx2"))
@@ -80,7 +80,7 @@ def cpu_bundle(tmp_path_factory: typing.Any) -> typing.Any:
 
 def test_bundle_materializes_portable_manifest_and_target_specific_cache(
     cpu_bundle: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     cpu_bundle.validate()
     assert tuple(target.name for target in cpu_bundle.targets) == (
         GENERIC_CPU_TARGET.name,
@@ -120,7 +120,7 @@ def test_bundle_materializes_portable_manifest_and_target_specific_cache(
 
 def test_dispatch_loads_only_selected_compatible_candidate(
     cpu_bundle: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     monkeypatch.delenv("VIBEQC_CPU_TARGET", raising=False)
     primitives = (
         (
@@ -173,7 +173,7 @@ def test_dispatch_loads_only_selected_compatible_candidate(
 
 def test_bundle_rejects_cross_architecture_before_loading(
     cpu_bundle: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     import vibeqc_compiler.integral.cpu_bundle as module
 
     def forbidden_loader(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
@@ -187,7 +187,7 @@ def test_bundle_rejects_cross_architecture_before_loading(
         )
 
 
-def test_binary_target_gate_checks_runtime_abi(monkeypatch: typing.Any) -> typing.Any:
+def test_binary_target_gate_checks_runtime_abi(monkeypatch: typing.Any) -> None:
     monkeypatch.setattr(sys, "platform", "linux")
     runtime = CpuRuntimeFeatures("x86_64", ())
     assert cpu_binary_target_supported("x86_64-linux-gnu", runtime)
@@ -197,7 +197,7 @@ def test_binary_target_gate_checks_runtime_abi(monkeypatch: typing.Any) -> typin
 
 def test_bundle_rejects_forced_unsupported_isa_before_loading(
     cpu_bundle: typing.Any,
-) -> typing.Any:
+) -> None:
     with pytest.raises(ValueError, match="unsupported"):
         FirstDerivativeCpuDispatchEvaluator(
             cpu_bundle,

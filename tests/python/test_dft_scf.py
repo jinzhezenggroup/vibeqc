@@ -38,7 +38,7 @@ def device(request: typing.Any, monkeypatch: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("method", ("lda-uks", "pbe-uks"))
 def test_uks_public_energy_and_spin_contract(
     method: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     capabilities = method_capabilities(method)
     assert capabilities.available
     assert capabilities.supported_properties == frozenset(("energy",))
@@ -103,7 +103,7 @@ def test_native_matches_independent_scf(
     multiplicity: typing.Any,
     basis_name: typing.Any,
     device: typing.Any,
-) -> typing.Any:
+) -> None:
     pyscf = pytest.importorskip("pyscf")
     from pyscf import dft, gto
 

@@ -38,14 +38,14 @@ CONVENTION = "L=E+lambda^T R; R_x^T lambda=-E_x; weights=E_q+R_q^T lambda"
 _PREFIX = "stationary_"
 
 
-def _identifier(value: typing.Any, label: typing.Any) -> typing.Any:
+def _identifier(value: typing.Any, label: typing.Any) -> None:
     if not isinstance(value, str) or not value.isidentifier():
         raise ValueError(f"{label} must be an identifier")
     if value.startswith(_PREFIX):
         raise ValueError(f"{label} uses reserved prefix {_PREFIX}")
 
 
-def _identity(value: typing.Any, label: typing.Any) -> typing.Any:
+def _identity(value: typing.Any, label: typing.Any) -> None:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{label} must be a nonempty identity")
 
@@ -112,7 +112,7 @@ class StationaryState:
     implicit_operator_identity: str | None = None
     residual_layout_identity: str | None = None
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         _identifier(self.name, "state name")
         _identifier(self.residual, "residual output")
         _identity(self.coordinate_identity, "state coordinate")
@@ -153,7 +153,7 @@ class ParameterSource:
     dependencies: tuple[str, ...] = ()
     pullback_identity: str | None = None
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         _identifier(self.name, "parameter source")
         _identity(self.identity, "parameter source")
         dependencies = _names(self.dependencies, "source dependency")
@@ -182,7 +182,7 @@ class StationaryProblem:
     model_identity: str
     solver_contract: str
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.equations, Program):
             raise TypeError("stationary equations must be a TensorIR Program")
         _identifier(self.objective, "objective output")
@@ -430,7 +430,7 @@ class StationaryDerivativePlan:
     weight_outputs: Mapping[str, str]
     implicit_plans: Mapping[str, ImplicitVJPPlan]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in (
             "multiplier_inputs",
             "stationarity_outputs",

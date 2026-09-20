@@ -37,7 +37,7 @@ class DensityStamp:
     layout: str
     role: str
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in ("basis_identity", "density_identity"):
             value = getattr(self, name)
             if (
@@ -119,7 +119,7 @@ class DensitySource:
         reason: typing.Any,
         status: typing.Any,
         error: typing.Any,
-    ) -> typing.Any:
+    ) -> None:
         # Called only while creating a detached result. Rejected candidates must
         # clear any previously accepted factor, not reuse it accidentally.
         for key, value in zip(

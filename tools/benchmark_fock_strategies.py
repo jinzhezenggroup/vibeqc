@@ -86,7 +86,7 @@ def provenance(root: typing.Any, build: typing.Any) -> typing.Any:
     }
 
 
-def worker(args: typing.Any) -> typing.Any:
+def worker(args: typing.Any) -> None:
     """Time synchronous public endpoints without import/setup clock pollution."""
     sys.path.insert(0, str(args.root / "python"))
     import numpy as np
@@ -137,9 +137,7 @@ def worker(args: typing.Any) -> typing.Any:
             for item in items
         ]
 
-    def diagnostic(
-        plan: typing.Any, metadata: typing.Any, count: typing.Any
-    ) -> typing.Any:
+    def diagnostic(plan: typing.Any, metadata: typing.Any, count: typing.Any) -> None:
         # Outside the timing interval: retain the selected eigensolver and DF
         # allocation/tiling records without turning on scientific profiling.
         def optional(query: typing.Any) -> typing.Any:
@@ -161,9 +159,7 @@ def worker(args: typing.Any) -> typing.Any:
             }
         )
 
-    def measure(
-        name: typing.Any, function: typing.Any, metadata: typing.Any
-    ) -> typing.Any:
+    def measure(name: typing.Any, function: typing.Any, metadata: typing.Any) -> None:
         if args.endpoint is not None and args.endpoint != name:
             return
         samples, outputs = [], []
@@ -357,7 +353,7 @@ def compare(base: typing.Any, head: typing.Any) -> typing.Any:
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", type=Path)
     parser.add_argument(

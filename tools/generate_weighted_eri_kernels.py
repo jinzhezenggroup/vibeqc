@@ -2,7 +2,6 @@
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
-import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -18,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from vibeqc_compiler.integral.weighted_eri_cuda import emit_psss_weighted_header
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--inline-single-use", action="store_true")

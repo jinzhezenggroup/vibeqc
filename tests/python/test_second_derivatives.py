@@ -44,7 +44,7 @@ EXPONENTS = (0.6, 0.8, 1.1, 0.9)
 
 def check_hessian(
     hessian: typing.Any, first_derivatives: typing.Any, centers: typing.Any
-) -> typing.Any:
+) -> None:
     """Separate scale-aware second-order gate, including three FD step sizes."""
     count = len(centers)
     scale = max(1.0, np.max(np.abs(hessian)))
@@ -71,7 +71,7 @@ def check_hessian(
 @pytest.mark.parametrize("angular,index", [((1, 2), 4), ((3, 0), 4)])
 def test_stv_raw_against_analytic_libcint_and_first_gradient_fd(
     family: typing.Any, angular: typing.Any, index: typing.Any
-) -> typing.Any:
+) -> None:
     pytest.importorskip("pyscf")
     ir = build_one_electron_second_ir(family, angular, charge=2.3)
     kernel = build_second_derivative_kernel(ir, (index,))
@@ -102,7 +102,7 @@ def test_stv_raw_against_analytic_libcint_and_first_gradient_fd(
 @pytest.mark.parametrize("coincident", [False, True])
 def test_eri_decay_response_and_both_translation_indices(
     angular: typing.Any, coincident: typing.Any
-) -> typing.Any:
+) -> None:
     ir = build_eri_second_ir(angular, output="weighted_hessian")
     indices = tuple(range(min(2, ir.signature.component_count)))
     kernel = build_second_derivative_kernel(ir, indices)
@@ -133,7 +133,7 @@ def test_eri_decay_response_and_both_translation_indices(
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction", "eri"])
 def test_weighted_packed_hvp_tiling_and_algebra_commutation(
     family: typing.Any,
-) -> typing.Any:
+) -> None:
     def make(**kwargs: typing.Any) -> typing.Any:
         return (
             build_eri_second_ir((1, 0, 1, 0), **kwargs)
@@ -200,7 +200,7 @@ def test_weighted_packed_hvp_tiling_and_algebra_commutation(
     assert len(tile.outputs) == 2
 
 
-def test_f_shell_second_moment_bound_and_nonfinal_recovery() -> typing.Any:
+def test_f_shell_second_moment_bound_and_nonfinal_recovery() -> None:
     ir = build_eri_second_ir((3, 3, 3, 3))
     kernel = build_second_derivative_kernel(ir, (0,), output_indices=(0,))
     assert kernel.boys_count == 15
@@ -227,7 +227,7 @@ def test_f_shell_second_moment_bound_and_nonfinal_recovery() -> typing.Any:
 @pytest.mark.parametrize("angular", [(2, 1, 0, 1), (3, 0, 0, 0)])
 def test_eri_hessian_all_center_pairs_against_independent_libcint(
     angular: typing.Any,
-) -> typing.Any:
+) -> None:
     pytest.importorskip("pyscf")
     ir = build_eri_second_ir(angular, output="weighted_hessian")
     indices = (0, 4)

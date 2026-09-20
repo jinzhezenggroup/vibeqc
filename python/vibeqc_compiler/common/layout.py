@@ -29,7 +29,7 @@ class DenseLayout:
     order: tuple[int, ...] | None = None
     alignment: int = 1
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(self, "shape", tuple(self.shape))
         order = (
             tuple(range(len(self.shape))) if self.order is None else tuple(self.order)

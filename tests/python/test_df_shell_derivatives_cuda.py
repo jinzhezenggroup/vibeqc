@@ -31,7 +31,7 @@ def test_shell_execution_and_return_to_generic(
     staging: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Independent complete gradients and counters exclude a silent generic replay.
 
     Both orbital p and d shells are present: generated shell and generic

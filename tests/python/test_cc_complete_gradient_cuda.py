@@ -34,7 +34,7 @@ def _dense_contract(derivatives: typing.Any, weights: typing.Any) -> typing.Any:
     ).reshape(-1, 3)
 
 
-def test_posthf_cuda_bridges_match_dense_cpu_derivatives_on_water() -> typing.Any:
+def test_posthf_cuda_bridges_match_dense_cpu_derivatives_on_water() -> None:
     with _source("h2o") as source:
         dense = source.integral_derivatives(output_budget_bytes=128 << 20)
         rng = np.random.default_rng(153)
@@ -74,7 +74,7 @@ def test_posthf_cuda_bridges_match_dense_cpu_derivatives_on_water() -> typing.An
 )
 def test_complete_cuda_derivative_endpoint_matches_independent_reference(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     record = load(name)
     with _source(name) as source:
         result = complete_gradient_validation(
@@ -100,7 +100,7 @@ def test_complete_cuda_derivative_endpoint_matches_independent_reference(
     assert result.diagnostics["gpu_weighted_eri_calls"] == 4
 
 
-def test_h2_shell_streamed_eri_weights_match_dense_cuda_endpoint() -> typing.Any:
+def test_h2_shell_streamed_eri_weights_match_dense_cuda_endpoint() -> None:
     results = []
     for mode in ("dense", "shell"):
         with _source("h2") as source:
@@ -125,7 +125,7 @@ def test_h2_shell_streamed_eri_weights_match_dense_cuda_endpoint() -> typing.Any
     assert results[1].diagnostics["gpu_weighted_eri_calls"] == 4 * quartets
 
 
-def test_water_two_cuda_stage_budgets_are_numerically_identical() -> typing.Any:
+def test_water_two_cuda_stage_budgets_are_numerically_identical() -> None:
     results = []
     for budget in (16 << 20, 64 << 20):
         with _source("h2o") as source:
@@ -147,7 +147,7 @@ def test_water_two_cuda_stage_budgets_are_numerically_identical() -> typing.Any:
     assert results[1].diagnostics["gpu_derivative_stage_budget_bytes"] == 64 << 20
 
 
-def test_sparse_ffff_weighted_eri_cuda_matches_cpu_finite_difference() -> typing.Any:
+def test_sparse_ffff_weighted_eri_cuda_matches_cpu_finite_difference() -> None:
     """Protect the through-f reference fallback from maximum-order stack blowup."""
     base = source_arguments(inputs("h2"))
     basis = list(base["basis"])
@@ -208,7 +208,7 @@ def test_sparse_ffff_weighted_eri_cuda_matches_cpu_finite_difference() -> typing
 
 def test_cuda_stage_budget_fails_without_cpu_fallback(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     with _source("h2") as source:
         calls = {"dense": 0}
         original = source.integral_derivatives

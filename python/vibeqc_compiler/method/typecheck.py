@@ -53,7 +53,7 @@ class FeatureType:
     shape: tuple[int, ...]
     spin: str
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.ingredient not in ("rho", "sigma", "tau"):
             raise MethodTypeError(f"unknown MethodIR ingredient {self.ingredient!r}")
         if self.dtype not in _DTYPES:
@@ -89,7 +89,7 @@ class BackendCapability:
     ingredients: tuple[str, ...]
     operators: tuple[str, ...]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.backend, str) or not self.backend:
             raise ValueError("backend capability requires a nonempty name")
         for field in (
@@ -133,7 +133,7 @@ class TypedMethodIR:
     derivative_order: int
     features: tuple[FeatureType, ...]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.method, MethodIR):
             raise TypeError("typed method requires MethodIR")
         if not isinstance(self.backend, str) or not self.backend:

@@ -17,7 +17,7 @@ def gate(monkeypatch: typing.Any) -> typing.Any:
 
 def test_reference_override_changes_only_requested_reference(
     gate: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     for point in gate.real_molecule_gate_points():
         kwargs = {
             "repeats": 7,
@@ -42,12 +42,12 @@ def test_reference_override_changes_only_requested_reference(
 )
 def test_invalid_reference_override_rejected(
     gate: typing.Any, value: typing.Any
-) -> typing.Any:
+) -> None:
     with pytest.raises(gate.argparse.ArgumentTypeError):
         gate._reference_override(value)
 
 
-def test_reference_loosening_rejected(gate: typing.Any) -> typing.Any:
+def test_reference_loosening_rejected(gate: typing.Any) -> None:
     point = gate.real_molecule_gate_points()[0]
     with pytest.raises(ValueError, match="only tighten"):
         gate._reference_tolerance(
@@ -61,7 +61,7 @@ def test_ambiguous_or_unused_overrides_rejected(
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
     overrides: typing.Any,
-) -> typing.Any:
+) -> None:
     argv = ["gate", "--dry-run", "--output-directory", str(tmp_path)]
     for value in overrides:
         argv += ["--reference-gradient-tolerance", value]
@@ -72,7 +72,7 @@ def test_ambiguous_or_unused_overrides_rejected(
 
 def test_summary_records_both_policies_and_preserves_failed_point(
     gate: typing.Any, monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     monkeypatch.setattr(
         gate.sys,
         "argv",
@@ -128,7 +128,7 @@ def test_summary_records_both_policies_and_preserves_failed_point(
 
 def test_full_fock_control_is_scoped_to_selected_reference(
     gate: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     for point in gate.real_molecule_gate_points():
         command = gate._point_command(
             point,
@@ -143,7 +143,7 @@ def test_full_fock_control_is_scoped_to_selected_reference(
 @pytest.mark.parametrize("full_fock", [False, True])
 def test_reference_fock_setting_does_not_change_numerical_gates(
     gate: typing.Any, full_fock: typing.Any
-) -> typing.Any:
+) -> None:
     comparison = importlib.import_module("compare_gpu4pyscf_batch")
     engine = SimpleNamespace()
     comparison._configure_reference_scf(

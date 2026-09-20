@@ -49,7 +49,7 @@ def _transpose(
 @pytest.mark.parametrize("o,v", [(1, 1), (1, 2), (2, 2), (2, 3)])
 def test_generated_energy_and_residual_actions_against_determinant_directions(
     o: typing.Any, v: typing.Any
-) -> typing.Any:
+) -> None:
     programs = _programs(o, v)
     f, g, t1, t2 = random_case(o, v, 152)
     feeds = dense_feeds(f, g, t1, t2)
@@ -113,7 +113,7 @@ def numerical_jacobian() -> typing.Any:
 
 def test_numerical_jacobian_transpose_and_orbit_multiplicity(
     numerical_jacobian: typing.Any,
-) -> typing.Any:
+) -> None:
     feeds, layouts, matrix, energy_derivative, weights = numerical_jacobian
     programs = _programs(2, 2)
     lam = np.random.default_rng(154).normal(size=len(weights))
@@ -132,7 +132,7 @@ def test_numerical_jacobian_transpose_and_orbit_multiplicity(
 
 def test_generated_actions_plug_into_existing_gmres(
     numerical_jacobian: typing.Any,
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_response.krylov import GMRESOptions, solve
 
     feeds, layouts, matrix, energy_derivative, weights = numerical_jacobian
@@ -163,7 +163,7 @@ def test_generated_actions_plug_into_existing_gmres(
     # This is an operator/solver interoperability test, not a converged-CC response API.
 
 
-def test_replay_equation_forms_and_provenance() -> typing.Any:
+def test_replay_equation_forms_and_provenance() -> None:
     arrays = random_case(2, 2, 155)
     feeds = dense_feeds(*arrays)
     expected = None
@@ -195,7 +195,7 @@ def test_replay_equation_forms_and_provenance() -> typing.Any:
 
 
 def test_lambda_programs_have_no_amplitude_squared_projection_and_plan_for_cuda() -> (
-    typing.Any
+    None
 ):
     target = cuda_target_info("sm_80")
     sizes = []
@@ -221,7 +221,7 @@ def test_lambda_programs_have_no_amplitude_squared_projection_and_plan_for_cuda(
 @pytest.mark.parametrize("kind", ["shape", "dtype", "symmetry", "nonfinite", "budget"])
 def test_linearization_fails_closed_for_bad_seeds_and_budgets(
     kind: typing.Any,
-) -> typing.Any:
+) -> None:
     programs = _programs(2, 2)
     feeds = dense_feeds(*random_case())
     tangent1, tangent2 = np.ones((2, 2)), np.ones((2, 2, 2, 2))

@@ -59,7 +59,7 @@ def measurement(monkeypatch: typing.Any) -> typing.Any:
 
 def test_singlepoint_samples_are_cold_and_balanced(
     measurement: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     refs = references()
     calls = []
     monkeypatch.setattr(
@@ -152,7 +152,7 @@ def install_batches(
 
 def test_batch_states_repeat_and_interleave_each_policy(
     measurement: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     plans, calls = install_batches(monkeypatch)
     rows = matrix._batch_matrix(
         "h2", CASE, BASE, MOVED, references(), measurement, None
@@ -186,7 +186,7 @@ def test_batch_states_repeat_and_interleave_each_policy(
 
 def test_later_batch_failure_preserves_cold_measurement(
     measurement: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     plans, _ = install_batches(monkeypatch, fail_warm=True)
     rows = matrix._batch_matrix(
         "h2", CASE, BASE, MOVED, references(), measurement, None
@@ -199,7 +199,7 @@ def test_later_batch_failure_preserves_cold_measurement(
 @pytest.mark.parametrize("reference_result", [None, result(converged=False)])
 def test_invalid_reference_cannot_produce_batch_accuracy(
     measurement: typing.Any, reference_result: typing.Any
-) -> typing.Any:
+) -> None:
     item = result(
         index=0,
         status_message="success",
@@ -219,7 +219,7 @@ def test_invalid_reference_cannot_produce_batch_accuracy(
 
 def test_failed_strict_reference_is_retained(
     measurement: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     def singlepoint(*args: typing.Any, **kw: typing.Any) -> typing.Any:
         raise RuntimeError("reference did not converge")
 

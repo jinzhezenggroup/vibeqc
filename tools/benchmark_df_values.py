@@ -309,7 +309,7 @@ def rank_values(
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
     parser.add_argument("--nvcc", type=Path, required=True)

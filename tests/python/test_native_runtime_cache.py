@@ -14,7 +14,7 @@ from vibeqc_compiler.common.native_runtime import compile_runtime
 
 def test_cpu_cache_executes_exact_headers_and_flags_and_rejects_corruption(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     if shutil.which("c++") is None:
         pytest.skip("native C++ compiler unavailable")
     compiler = CppCompilerAdapter(Path("c++"))
@@ -55,7 +55,7 @@ def test_cpu_cache_executes_exact_headers_and_flags_and_rejects_corruption(
         )
 
 
-def test_finite_compiler_process_reports_timeout_and_failure() -> typing.Any:
+def test_finite_compiler_process_reports_timeout_and_failure() -> None:
     failed = run_compiler(
         [sys.executable, "-c", "raise SystemExit(19)"], 10, label="probe"
     )
@@ -67,6 +67,6 @@ def test_finite_compiler_process_reports_timeout_and_failure() -> typing.Any:
     assert "probe compilation timed out" in timed.stderr
 
 
-def test_missing_requested_cpu_compiler_does_not_select_another_backend() -> typing.Any:
+def test_missing_requested_cpu_compiler_does_not_select_another_backend() -> None:
     with pytest.raises(ValueError, match=r"requested C\+\+ compiler"):
         CppCompilerAdapter(Path("vibeqc-no-such-cxx"))

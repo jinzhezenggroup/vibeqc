@@ -90,7 +90,7 @@ extern "C" double probe(unsigned rank, unsigned lane, unsigned lanes, bool empty
 @pytest.mark.parametrize("lanes", [1, 2, 3, 32, 64])
 def test_lane_partitions_preserve_complete_sparse_product(
     product_probe: typing.Any, rank: typing.Any, empty: typing.Any, lanes: typing.Any
-) -> typing.Any:
+) -> None:
     offsets = (0, 9, 16, 16 if empty else 21)
     terms = (2, 3, 1)
     expected = math.prod(

@@ -101,7 +101,7 @@ def case(request: typing.Any) -> typing.Any:
 
 def test_device_first_sources_match_independent_analytic_integrals(
     case: typing.Any,
-) -> typing.Any:
+) -> None:
     _, _, actual, expected, _, _ = case
     np.testing.assert_allclose(
         actual.frozen_fock_derivative, expected[0], atol=2e-10, rtol=2e-10
@@ -115,7 +115,7 @@ def test_device_first_sources_match_independent_analytic_integrals(
 
 def test_three_step_native_differences_check_entire_directional_response(
     case: typing.Any,
-) -> typing.Any:
+) -> None:
     _, _, actual, _, finite, _ = case
     targets = (
         actual.frozen_fock_derivative,
@@ -137,7 +137,7 @@ def test_three_step_native_differences_check_entire_directional_response(
 
 def test_no_raw_derivative_download_and_explicit_residency(
     case: typing.Any,
-) -> typing.Any:
+) -> None:
     s, _, actual, _, _, _ = case
     diag = actual.diagnostics
     provider = diag["first_derivative_provider"]
@@ -153,7 +153,7 @@ def test_no_raw_derivative_download_and_explicit_residency(
 
 
 @pytest.mark.parametrize("case", ["h2"], indirect=True)
-def test_zero_translation_and_signed_scaling(case: typing.Any) -> typing.Any:
+def test_zero_translation_and_signed_scaling(case: typing.Any) -> None:
     state, v, actual, _, _, compiler = case
     for scale in (0.0, -0.7):
         r = directional_rhf_response(
@@ -191,7 +191,7 @@ def test_zero_translation_and_signed_scaling(case: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("case", ["h2"], indirect=True)
 def test_tiny_first_source_budget_fails_without_disabling_later_calls(
     case: typing.Any,
-) -> typing.Any:
+) -> None:
     state, v, expected, _, _, compiler = case
     with pytest.raises(MemoryError):
         directional_rhf_response(

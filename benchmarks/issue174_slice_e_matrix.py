@@ -48,6 +48,11 @@ from pathlib import Path
 from statistics import median
 from typing import Any
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPOSITORY_ROOT) not in sys.path:
     # Direct ``python benchmarks/...`` execution otherwise exposes only the
@@ -814,7 +819,7 @@ def main() -> None:
     parser.add_argument("--properties", default="energy,forces")
     parser.add_argument("--skip-batch", action="store_true")
     parser.add_argument("--batch-sizes", default="1,4")
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     arguments = parser.parse_args()
     if (
         arguments.repeats < 1

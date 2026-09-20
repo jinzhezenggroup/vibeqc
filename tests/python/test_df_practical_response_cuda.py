@@ -98,7 +98,7 @@ def test_practical_full_force_cold_warm_and_changed_geometry(
     budget: typing.Any,
     *,
     density_tolerance: typing.Any = 1e-12,
-) -> typing.Any:
+) -> None:
     """Check complete forces, including Coulomb/exchange and metric cancellation.
 
     Accuracy is tested at every endpoint, including the first cold solve. All
@@ -217,7 +217,7 @@ def test_practical_original_density_request(
     storage: typing.Any,
     space: typing.Any,
     algebra: typing.Any,
-) -> typing.Any:
+) -> None:
     """Keep the original RHF/UHF request and every failed route's strict gate.
 
     Cold, warm and both changed-geometry endpoints are independently compared
@@ -242,7 +242,7 @@ def test_practical_original_density_request(
 )
 def test_practical_packed_oh_at_128_mib(
     monkeypatch: typing.Any, tmp_path: typing.Any, practical_reference: typing.Any
-) -> typing.Any:
+) -> None:
     """Keep the admitted small packed case separate from water's rejection."""
     test_practical_full_force_cold_warm_and_changed_geometry(
         monkeypatch,
@@ -264,7 +264,7 @@ def test_practical_water_insufficient_budget(
     tmp_path: typing.Any,
     values: typing.Any,
     budget: typing.Any,
-) -> typing.Any:
+) -> None:
     """Reject allowances below the value plan's independently checked lower bound.
 
     The force adapter assigns half its allowance to J/K. The native CPU planner
@@ -332,7 +332,7 @@ def test_practical_auxiliary_f_rys_is_executed(
     tmp_path: typing.Any,
     practical_reference: typing.Any,
     buckets: typing.Any,
-) -> typing.Any:
+) -> None:
     """Observe the generated f classes, not just agreement of two fallbacks."""
     from benchmarks.df_component_ledger import aggregate, read_trace
 

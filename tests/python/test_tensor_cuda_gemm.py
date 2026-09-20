@@ -46,7 +46,7 @@ def node_for(expression: typing.Any, dimensions: typing.Any) -> typing.Any:
 )
 def test_matrix_coordinates_reconstruct_independent_einsum(
     expression: typing.Any, dimensions: typing.Any
-) -> typing.Any:
+) -> None:
     node = node_for(expression, dimensions)
     contract = gemm_contract(node)
     assert contract is not None
@@ -67,12 +67,12 @@ def test_matrix_coordinates_reconstruct_independent_einsum(
 @pytest.mark.parametrize("expression", ["ik,j->i", "ii,ij->j", "ij,jk,kl->il"])
 def test_non_gemm_einsums_explicitly_keep_the_general_path(
     expression: typing.Any,
-) -> typing.Any:
+) -> None:
     node = node_for(expression, {"i": 3, "j": 3, "k": 3, "l": 3})
     assert gemm_contract(node) is None
 
 
-def test_empty_groups_and_bounded_partial_panel_storage() -> typing.Any:
+def test_empty_groups_and_bounded_partial_panel_storage() -> None:
     empty = gemm_contract(node_for("ik,kj->ij", {"i": 3, "k": 0, "j": 5}))
     assert empty.panel_bytes(2, 3, 4) == 0
     with pytest.raises(ValueError, match="outside"):
@@ -84,9 +84,7 @@ def test_empty_groups_and_bounded_partial_panel_storage() -> typing.Any:
         ordinary.panel_bytes(0, 3, 4)
 
 
-def test_coefficient_conversion_does_not_overflow_separate_integer_terms() -> (
-    typing.Any
-):
+def test_coefficient_conversion_does_not_overflow_separate_integer_terms() -> None:
     assert fp64_coefficient((10**400, 10**400)) == 1.0
     with pytest.raises(ValueError, match="finite FP64"):
         fp64_coefficient((10**400, 1))

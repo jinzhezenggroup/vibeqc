@@ -19,7 +19,7 @@ from tools.vibeqc_posthf.sources import NativeSource
 from tools.vibeqc_response.backends import NativeJKBackend
 
 
-def _validate_source(source: typing.Any) -> typing.Any:
+def _validate_source(source: typing.Any) -> None:
     if not isinstance(source, NativeSource):
         raise TypeError("analytic Hessian requires a VibeQC NativeSource")
     source._check_open()
@@ -49,7 +49,7 @@ class NativeRHFState:
     reference: ReferenceSnapshot
     cache: Path = Path(".artifacts")
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         self.validate()
         object.__setattr__(self, "cache", Path(self.cache))
 

@@ -36,7 +36,7 @@ def _number(
     return value
 
 
-def _identity(value: typing.Any, name: typing.Any) -> typing.Any:
+def _identity(value: typing.Any, name: typing.Any) -> None:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{name} must be a nonempty identity")
 
@@ -67,7 +67,7 @@ class ResolvedModel:
     metric_relative_threshold: float | None = None
     schema_version: int = SCHEMA_VERSION
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if (
             type(self.schema_version) is not int
             or self.schema_version != SCHEMA_VERSION
@@ -147,7 +147,7 @@ class ObservableTarget:
     absolute: float = 0.0
     relative: float = 0.0
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if (self.observable, self.norm, self.unit) not in (
             ("energy", "absolute", "Eh"),
             ("forces", "max_abs", "Eh/bohr"),
@@ -182,7 +182,7 @@ class TargetAccuracy:
     scope: str = "relaxed_target"
     schema_version: int = SCHEMA_VERSION
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         values = tuple(self.observables)
         if not values or any(not isinstance(v, ObservableTarget) for v in values):
             raise ValueError("observables must contain typed accuracy requirements")
@@ -258,7 +258,7 @@ class ErrorEvidence:
     actual_reference_error: float | None = None
     schema_version: int = SCHEMA_VERSION
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if (
             type(self.schema_version) is not int
             or self.schema_version != SCHEMA_VERSION
@@ -324,7 +324,7 @@ class AccuracyAssessment:
     evidence: tuple[ErrorEvidence, ...] = ()
     converged: bool = True
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.model, ResolvedModel) or not isinstance(
             self.target, TargetAccuracy
         ):

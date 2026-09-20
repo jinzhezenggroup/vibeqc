@@ -42,7 +42,7 @@ def resolve(record: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("order", (0, 1, 2, 3))
 def test_ecp_ao_spatial_jets_have_backend_specific_capabilities(
     backend: typing.Any, order: typing.Any
-) -> typing.Any:
+) -> None:
     basis = BasisSet(
         "synthetic scalar ECP",
         (element([potential()]),),
@@ -58,7 +58,7 @@ def test_ecp_ao_spatial_jets_have_backend_specific_capabilities(
     assert report["eligible"] == (backend == "cpu" or order <= 1)
 
 
-def test_ecp_ao_preflight_does_not_strip_unsupported_potential_metadata() -> typing.Any:
+def test_ecp_ao_preflight_does_not_strip_unsupported_potential_metadata() -> None:
     # Local label g is valid with f projectors; h remains outside the contract.
     basis = BasisSet(
         "unsupported scalar ECP",
@@ -81,7 +81,7 @@ def test_ecp_ao_preflight_does_not_strip_unsupported_potential_metadata() -> typ
 )
 def test_scalar_contract_at_construction_and_resolution(
     changes: typing.Any, message: typing.Any
-) -> typing.Any:
+) -> None:
     malformed = [potential(**changes)]
     with pytest.raises(ValueError, match=message):
         element(malformed)
@@ -94,13 +94,13 @@ def test_scalar_contract_at_construction_and_resolution(
         resolve(record)
 
 
-def test_highest_singleton_channel_is_local() -> typing.Any:
+def test_highest_singleton_channel_is_local() -> None:
     cores, terms = resolve(element([potential(angular_momentum=[1]), potential()]))
     assert cores == (10,)
     assert terms == ((0, -1, 2, 0.8, -2.0), (0, 0, 2, 0.8, -2.0))
 
 
-def test_g_local_label_enables_f_projector_without_g_orbitals() -> typing.Any:
+def test_g_local_label_enables_f_projector_without_g_orbitals() -> None:
     cores, terms = resolve(
         element([potential(angular_momentum=[4]), potential(angular_momentum=[3])])
     )
@@ -117,12 +117,12 @@ def test_g_local_label_enables_f_projector_without_g_orbitals() -> typing.Any:
 )
 def test_unsupported_execution_conventions_remain_rejected(
     changes: typing.Any, message: typing.Any
-) -> typing.Any:
+) -> None:
     with pytest.raises(NotImplementedError, match=message):
         resolve(element([potential(**changes)]))
 
 
-def test_f_orbitals_are_resolved_but_g_remains_unsupported() -> typing.Any:
+def test_f_orbitals_are_resolved_but_g_remains_unsupported() -> None:
     record = element([potential()])
     for angular in (3, 4):
         changed = replace(record, shells=(BasisShell(angular, ("0.7",), (("1",),)),))
@@ -133,7 +133,7 @@ def test_f_orbitals_are_resolved_but_g_remains_unsupported() -> typing.Any:
                 resolve(changed)
 
 
-def test_mixed_all_electron_atom_obeys_the_same_orbital_boundary() -> typing.Any:
+def test_mixed_all_electron_atom_obeys_the_same_orbital_boundary() -> None:
     for angular in (3, 4):
         hydrogen = ElementBasis(1, (BasisShell(angular, ("0.7",), (("1",),)),))
         basis = BasisSet(

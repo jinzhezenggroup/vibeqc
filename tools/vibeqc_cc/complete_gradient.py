@@ -108,7 +108,7 @@ class CCSDGradientOptions:
         default_factory=lambda: GMRESOptions(rtol=0, atol=1e-12)
     )
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in ("max_bytes", "provider_budget_bytes"):
             _checked_bytes(getattr(self, name), name)
             if getattr(self, name) == 0:
@@ -190,7 +190,7 @@ class CCSDGradientResult:
     source_identity: str
     diagnostics: Mapping
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(self, "gradient", _immutable(self.gradient))
         for name in ("physical_components", "integral_components"):
             object.__setattr__(
@@ -214,7 +214,7 @@ class CCSDGradientResult:
         return _immutable(-self.gradient)
 
 
-def _validate_source(source: typing.Any) -> typing.Any:
+def _validate_source(source: typing.Any) -> None:
     if (
         not isinstance(source, NativeSource)
         or source.backend != "cpu-reference-native-shell-tiles"
@@ -539,7 +539,7 @@ class BoundCCSDGradient:
         )
         self._assert_current()
 
-    def _assert_current(self) -> typing.Any:
+    def _assert_current(self) -> None:
         self.source._check_open()
         if (
             self.provider._closed
@@ -789,7 +789,7 @@ class BoundCCSDGradient:
         return result
 
     @staticmethod
-    def _accumulate_resources(target: typing.Any, measured: typing.Any) -> typing.Any:
+    def _accumulate_resources(target: typing.Any, measured: typing.Any) -> None:
         """Aggregate sequential CUDA calls: peak storage, additive transfers/events."""
         for name, value in measured.items():
             if name in ("device_bytes", "host_numeric_bytes"):

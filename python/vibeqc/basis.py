@@ -95,7 +95,7 @@ class BasisProvenance:
     license: str
     checksum: str
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not all(
             isinstance(v, str) and v.strip()
             for v in (self.source, self.version, self.license)
@@ -120,7 +120,7 @@ class BasisShell:
     coefficients: tuple[tuple[str, ...], ...]
     source_group: int = 0
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "angular_momentum",
@@ -160,7 +160,7 @@ class BasisShell:
         object.__setattr__(self, "coefficients", coefficients)
 
 
-def validate_ecp_data(data: typing.Any) -> typing.Any:
+def validate_ecp_data(data: typing.Any) -> None:
     """Validate retained BSE scalar-ECP radial arrays without implementing them."""
     if not isinstance(data, list) or not data:
         raise ValueError("ECP data requires a nonempty potential list")
@@ -205,7 +205,7 @@ class ElementBasis:
     ecp_core_electrons: int = 0
     ecp_data: str | None = None
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "atomic_number",
@@ -251,7 +251,7 @@ class BasisSet:
     exponent_units: str = "bohr^-2"
     ordering: str = ORDERING
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
             raise ValueError("basis requires a nonempty name")
         if not isinstance(self.provenance, BasisProvenance):
@@ -291,7 +291,7 @@ class BasisSet:
         """Full data/provenance identity for result reproducibility."""
         return self.to_payload()["checksum"]
 
-    def write(self, path: typing.Any) -> typing.Any:
+    def write(self, path: typing.Any) -> None:
         """Export locally; no service lookup or runtime download is performed."""
         Path(path).write_text(
             json.dumps(self.to_payload(), indent=2, sort_keys=True) + "\n"

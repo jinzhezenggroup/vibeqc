@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import typing
 import zipfile
 from pathlib import Path
 
@@ -182,7 +181,7 @@ def replay(report_path: Path) -> dict:
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report", type=Path)
     parser.add_argument("--output", type=Path)

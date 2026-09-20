@@ -197,7 +197,7 @@ class SecondDerivative:
     direction_source: str | None = None
     output_sign: int = 1
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         checked_index(
             self.memory_budget_bytes, "second derivative memory budget", minimum=1
         )
@@ -231,7 +231,7 @@ class SecondDerivative:
         return "second_derivative"
 
     @property
-    def kernel_consumer(self) -> typing.Any:
+    def kernel_consumer(self) -> None:
         """Second integral derivatives do not enable direct HF force kernels."""
         return None
 

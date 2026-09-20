@@ -143,7 +143,7 @@ def compare_fields(cpu: typing.Any, gpu: typing.Any, density: typing.Any) -> typ
     return errors
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cuda", action="store_true")
     parser.add_argument(

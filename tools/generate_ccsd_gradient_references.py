@@ -90,7 +90,7 @@ def generate(name: typing.Any) -> typing.Any:
     return record
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT)
     parser.add_argument("--case", choices=CASES, action="append")

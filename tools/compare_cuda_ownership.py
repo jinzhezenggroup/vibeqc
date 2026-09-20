@@ -93,7 +93,7 @@ def compare(
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in (
         "baseline_root",

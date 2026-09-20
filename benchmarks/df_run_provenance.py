@@ -69,7 +69,7 @@ def summarize_profiles(directory: typing.Any) -> typing.Any:
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     """Require native/source agreement without creating a GPU execution context."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)

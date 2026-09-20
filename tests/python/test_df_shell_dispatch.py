@@ -160,7 +160,7 @@ int main(int argc,char** argv) {
 @pytest.mark.parametrize("variant", range(3))
 def test_dispatch_preserves_domains_order_and_explicit_schedules(
     dispatcher: typing.Any, kind: typing.Any, full: typing.Any, variant: typing.Any
-) -> typing.Any:
+) -> None:
     result = dispatcher(kind, full, variant, policy="legacy")
     domain = [
         16 * a + 4 * b + c
@@ -173,7 +173,7 @@ def test_dispatch_preserves_domains_order_and_explicit_schedules(
 @pytest.mark.parametrize("kind", range(3))
 def test_qualified_policy_and_unknown_target_fallback(
     dispatcher: typing.Any, kind: typing.Any
-) -> typing.Any:
+) -> None:
     manifest = json.loads(
         (
             ROOT / "python/vibeqc_compiler/integral/production_df_derivatives.json"
@@ -205,7 +205,7 @@ def test_qualified_policy_and_unknown_target_fallback(
 @pytest.mark.parametrize("kind", range(3))
 def test_errors_stop_dispatch_and_invalid_variant_is_rejected(
     dispatcher: typing.Any, kind: typing.Any
-) -> typing.Any:
+) -> None:
     assert dispatcher(kind, policy="invalid") == {"status": 1, "calls": []}
     assert dispatcher(kind, variant=3) == {"status": 1, "calls": []}
     assert dispatcher(kind, error=7) == {"status": 7, "calls": []}
@@ -214,7 +214,7 @@ def test_errors_stop_dispatch_and_invalid_variant_is_rejected(
     assert [row[0] for row in failed["calls"]] == list(range(22))
 
 
-def test_empty_packet_keeps_early_return_contract(dispatcher: typing.Any) -> typing.Any:
+def test_empty_packet_keeps_early_return_contract(dispatcher: typing.Any) -> None:
     assert dispatcher(2, empty=True, error=7, policy="invalid") == {
         "status": 0,
         "calls": [],

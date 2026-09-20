@@ -48,7 +48,7 @@ def state_library(tmp_path_factory: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("elements,history", [(7, 2), (257, 6), (513, 20)])
 def test_gpu_diis_and_norm_against_dense_reference(
     state_library: typing.Any, elements: typing.Any, history: typing.Any
-) -> typing.Any:
+) -> None:
     rng = np.random.default_rng(149)
     errors = rng.normal(size=(history, elements))
     vectors = rng.normal(size=errors.shape)
@@ -86,7 +86,7 @@ def test_gpu_diis_and_norm_against_dense_reference(
 
 def test_gpu_diis_singular_history_is_explicit_rejection(
     state_library: typing.Any,
-) -> typing.Any:
+) -> None:
     errors = np.ones((2, 7))
     vectors = errors.copy()
     output = np.empty(7)
@@ -115,7 +115,7 @@ def test_gpu_diis_singular_history_is_explicit_rejection(
 
 def test_gpu_diis_zero_error_history_retains_trial_semantics(
     state_library: typing.Any,
-) -> typing.Any:
+) -> None:
     errors = np.zeros((2, 7))
     vectors = np.arange(14, dtype=np.float64).reshape(2, 7)
     output = np.empty(7)

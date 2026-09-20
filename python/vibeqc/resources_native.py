@@ -57,7 +57,7 @@ def observe_method_call(
 
 def check_resource_status(
     library: typing.Any, status: typing.Any, diagnostics: typing.Any
-) -> typing.Any:
+) -> None:
     """Keep resource evidence on failed native calls without guessing OOM space.
 
     CPU allocation failures are host failures. For CUDA, only an actual ledger
@@ -171,7 +171,7 @@ class NativeDeviceLedger:
             "scope": "owned CUDA buffer capacities; excludes driver/graph/pool and library-internal allocations",
         }
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Release the observation handle; any live native buffers keep charges."""
         if self.handle:
             self.library.vibeqc_resource_ledger_destroy_v1(self.handle)

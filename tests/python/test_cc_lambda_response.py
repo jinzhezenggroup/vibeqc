@@ -86,7 +86,7 @@ def _resolved_correlation(
 @pytest.mark.parametrize("parameter", PARAMETERS)
 def test_all_water_blocks_against_reconverged_three_step_differences(
     parameter: typing.Any,
-) -> typing.Any:
+) -> None:
     s, provider, cc, bound, lam, response, _ = _state("h2o")
     weight = response.weight(parameter, reference_identity=s.identity)
     direction = _direction(weight.spec)
@@ -137,7 +137,7 @@ def test_all_water_blocks_against_reconverged_three_step_differences(
 @pytest.mark.parametrize("name", ("h2", "h2o", "nh3"))
 def test_diagonal_fock_shift_invariance_includes_diagonal_dependencies(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     s, _, _, _, _, response, _ = _state(name)
     occupied = response.weight("foo", reference_identity=s.identity)
     virtual = response.weight("fvv", reference_identity=s.identity)
@@ -153,7 +153,7 @@ def test_diagonal_fock_shift_invariance_includes_diagonal_dependencies(
 @pytest.mark.parametrize("o,v", [(1, 2), (2, 2)])
 def test_generated_full_input_directions_against_independent_determinant(
     o: typing.Any, v: typing.Any
-) -> typing.Any:
+) -> None:
     f, g, t1, t2 = random_case(o, v, 152)
     df, dg, l1, l2 = random_case(o, v, 153)
     df /= np.linalg.norm(df)
@@ -192,7 +192,7 @@ def test_generated_full_input_directions_against_independent_determinant(
         )
 
 
-def test_parameter_generator_selection_and_identity() -> typing.Any:
+def test_parameter_generator_selection_and_identity() -> None:
     programs = build_lambda_programs(1, 1)
     first = build_parameter_vjp(programs.primal, "foo")
     second = build_parameter_vjp(programs.primal, "fvv")
@@ -214,10 +214,10 @@ def test_parameter_generator_selection_and_identity() -> typing.Any:
 
 def test_streamed_blocks_are_immutable_and_do_not_reinvoke_solver(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     s, _, _, bound, lam, response, _ = _state()
 
-    def unexpected(*a: typing.Any, **kw: typing.Any) -> typing.Any:
+    def unexpected(*a: typing.Any, **kw: typing.Any) -> None:
         pytest.fail("CC weight generation must not re-solve the adjoint")
 
     monkeypatch.setattr(type(bound.solver), "solve", unexpected)
@@ -246,7 +246,7 @@ def test_streamed_blocks_are_immutable_and_do_not_reinvoke_solver(
         response.max_bytes = 1
 
 
-def test_multiplier_input_is_copied_before_use() -> typing.Any:
+def test_multiplier_input_is_copied_before_use() -> None:
     s, _, _, bound, lam, _, _ = _state()
     copied = replace(
         lam,
@@ -277,7 +277,7 @@ def test_multiplier_input_is_copied_before_use() -> typing.Any:
         "shape",
     ),
 )
-def test_false_lambda_reports_cannot_publish_weights(kind: typing.Any) -> typing.Any:
+def test_false_lambda_reports_cannot_publish_weights(kind: typing.Any) -> None:
     _, _, _, bound, lam, _, _ = _state()
     if kind == "reference":
         lam = replace(lam, reference_identity="other-reference")
@@ -307,7 +307,7 @@ def test_false_lambda_reports_cannot_publish_weights(kind: typing.Any) -> typing
         BoundCCSDResponse(bound, lam)
 
 
-def test_bad_lambda_pair_symmetry_rejected() -> typing.Any:
+def test_bad_lambda_pair_symmetry_rejected() -> None:
     _, _, _, bound, lam, _, _ = _state("h2o")
     values = np.array(lam.lambda2)
     values[0, 1, 0, 1] += 1e-3
@@ -315,7 +315,7 @@ def test_bad_lambda_pair_symmetry_rejected() -> typing.Any:
         BoundCCSDResponse(bound, replace(lam, lambda2=values))
 
 
-def test_stream_rechecks_expected_identity_and_live_lifetime() -> typing.Any:
+def test_stream_rechecks_expected_identity_and_live_lifetime() -> None:
     s, _, cc, _, _, _, _ = _state()
     current = [s.identity]
     bound = BoundCCSDLambda(s, cc, current_reference=lambda: current[0])
@@ -335,7 +335,7 @@ def test_stream_rechecks_expected_identity_and_live_lifetime() -> typing.Any:
 
 def test_state_budget_rejects_before_numeric_execution(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     _, _, _, bound, lam, response, _ = _state()
     from tools.vibeqc_cc import lambda_solver
 
@@ -352,7 +352,7 @@ def test_state_budget_rejects_before_numeric_execution(
 
 def test_block_budget_accounts_for_bound_state_and_rejects_before_execution(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     s, _, _, bound, lam, response, _ = _state()
     needed = response.required_bytes("ovov", reference_identity=s.identity)
     exact = BoundCCSDResponse(bound, lam, max_bytes=needed)
@@ -375,7 +375,7 @@ def test_block_budget_accounts_for_bound_state_and_rejects_before_execution(
 )
 def test_generated_output_cannot_bypass_checks(
     monkeypatch: typing.Any, mode: typing.Any
-) -> typing.Any:
+) -> None:
     s, _, _, _, _, response, _ = _state()
     _, independent, _, _ = response._prepare("ovov")
     original = response_module.execute
@@ -412,7 +412,7 @@ def test_generated_output_cannot_bypass_checks(
 
 def test_stale_during_weight_execution_cannot_publish(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     s, _, cc, _, _, _, _ = _state()
     current = [s.identity]
     bound = BoundCCSDLambda(s, cc, current_reference=lambda: current[0])
@@ -432,20 +432,20 @@ def test_stale_during_weight_execution_cannot_publish(
 @pytest.mark.parametrize(
     "parameters", ("foo", (), ("foo", "foo"), ("foo", "t1"), (True,))
 )
-def test_invalid_stream_requests(parameters: typing.Any) -> typing.Any:
+def test_invalid_stream_requests(parameters: typing.Any) -> None:
     s, _, _, _, _, response, _ = _state()
     with pytest.raises((TypeError, ValueError)):
         list(response.iter_weights(parameters, reference_identity=s.identity))
 
 
 @pytest.mark.parametrize("budget", (-1, True, 1.5))
-def test_invalid_budget_types(budget: typing.Any) -> typing.Any:
+def test_invalid_budget_types(budget: typing.Any) -> None:
     _, _, _, bound, lam, _, _ = _state()
     with pytest.raises(ValueError):
         BoundCCSDResponse(bound, lam, max_bytes=budget)
 
 
-def test_invalid_consumer_types_and_directions() -> typing.Any:
+def test_invalid_consumer_types_and_directions() -> None:
     s, _, _, bound, lam, response, _ = _state("h2o")
     for first, second in ((object(), lam), (bound, object())):
         with pytest.raises(TypeError):
@@ -490,7 +490,7 @@ def _determinant_root(
 @pytest.mark.parametrize("name,shift", [("h2", 0.0), ("h2", 0.15), ("h4", 0.0)])
 def test_native_hf_cc_lambda_weights_vs_resolved_determinant(
     name: typing.Any, shift: typing.Any
-) -> typing.Any:
+) -> None:
     meta, _ = load("h2" if name == "h4" else name)
     inputs = deepcopy(meta["inputs"])
     inputs["coordinates"][1][2] += shift

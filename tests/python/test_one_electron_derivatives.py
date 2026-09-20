@@ -41,7 +41,7 @@ def gaussian_norm(exponent: typing.Any, component: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("angular", list(product(range(4), repeat=2)))
 def test_all_cartesian_derivatives_match_independent_libcint(
     family: typing.Any, angular: typing.Any
-) -> typing.Any:
+) -> None:
     gto = pytest.importorskip("pyscf.gto")
     positions = [(0.2, -0.3, 0.1), (-0.4, 0.15, 0.5), (0.17, -0.11, -0.4)]
     exponents = (0.8, 0.35)
@@ -94,7 +94,7 @@ def test_all_cartesian_derivatives_match_independent_libcint(
 @pytest.mark.parametrize("coincident", [False, True])
 def test_center_sign_translation_and_arbitrary_fixed_weights(
     family: typing.Any, coincident: typing.Any
-) -> typing.Any:
+) -> None:
     positions = np.array([[0.2, -0.3, 0.1], [-0.4, 0.15, 0.5], [0.17, -0.11, -0.4]])
     if coincident:
         positions[:] = positions[0]
@@ -132,7 +132,7 @@ def test_center_sign_translation_and_arbitrary_fixed_weights(
 
 
 def test_derivative_contract_keeps_external_center_and_rejects_unsupported_shells() -> (
-    typing.Any
+    None
 ):
     ir = build_one_electron_derivative_ir("nuclear_attraction", (3, 3), weighted=True)
     assert ir.derivative.independent_centers(ir.operator) == (0, 1)
@@ -145,7 +145,7 @@ def test_derivative_contract_keeps_external_center_and_rejects_unsupported_shell
 
 def test_emitted_derivatives_normalized_raw_and_spherical_blocks(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Exercise emitted CSE/geometry/Boys boundaries against independent blocks."""
     pytest.importorskip("pyscf")
     from vibeqc_compiler.integral.one_electron_derivatives_cuda import (

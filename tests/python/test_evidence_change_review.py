@@ -34,7 +34,7 @@ def exception(data: typing.Any, *, review_change: typing.Any = False) -> typing.
     }
 
 
-def test_complete_modified_bytes_count_and_deletions_are_not_credits() -> typing.Any:
+def test_complete_modified_bytes_count_and_deletions_are_not_credits() -> None:
     before = {ROOT + "old.json": b"0" * 100, ROOT + "changed.json": b"1" * 20}
     after = {
         ROOT + "changed.json": b"1" * 10,
@@ -50,14 +50,14 @@ def test_complete_modified_bytes_count_and_deletions_are_not_credits() -> typing
     assert review_changes(before, after, policy(17))["errors"] == []
 
 
-def test_unchanged_history_does_not_consume_new_review_budget() -> typing.Any:
+def test_unchanged_history_does_not_consume_new_review_budget() -> None:
     blobs = {ROOT + "historical.json": b' {"launch_records":[{"duration":1}]} '}
     report = review_changes(blobs, blobs, policy(1))
     assert report["changed_files"] == report["review_bytes"] == 0
     assert report["errors"] == []
 
 
-def test_many_small_files_and_renames_cannot_escape() -> typing.Any:
+def test_many_small_files_and_renames_cannot_escape() -> None:
     before = {ROOT + "old.json": b"1" * 16}
     after = {ROOT + "new.json": b"1" * 16, ROOT + "publication.json": b"2"}
     report = review_changes(before, after, policy())
@@ -67,7 +67,7 @@ def test_many_small_files_and_renames_cannot_escape() -> typing.Any:
 
 
 @pytest.mark.parametrize("limit", [None, 0, -1, True, 2.5, "16"])
-def test_invalid_change_budget_fails_closed(limit: typing.Any) -> typing.Any:
+def test_invalid_change_budget_fails_closed(limit: typing.Any) -> None:
     with pytest.raises(ValueError, match="change_review_max_bytes"):
         review_changes({}, {}, policy(limit))
 
@@ -75,7 +75,7 @@ def test_invalid_change_budget_fails_closed(limit: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("damage", [None, "hash", "owner", "reason", "flag"])
 def test_review_exception_is_opt_in_and_binds_exact_bytes(
     damage: typing.Any,
-) -> typing.Any:
+) -> None:
     path, data = ROOT + "sample.json", b"x" * 17
     entry = exception(data, review_change=True)
     if damage == "hash":
@@ -93,14 +93,14 @@ def test_review_exception_is_opt_in_and_binds_exact_bytes(
         ]
 
 
-def test_ordinary_exception_is_not_implicitly_a_change_budget_waiver() -> typing.Any:
+def test_ordinary_exception_is_not_implicitly_a_change_budget_waiver() -> None:
     path, data = ROOT + "sample.json", b"x" * 17
     report = review_changes({}, {path: data}, policy(**{path: exception(data)}))
     assert report["review_bytes"] == 17
     assert report["errors"]
 
 
-def test_review_exception_never_waives_checkout_or_hard_file_limits() -> typing.Any:
+def test_review_exception_never_waives_checkout_or_hard_file_limits() -> None:
     path, data = ROOT + "sample.json", b"x" * ((1 << 20) + 1)
     rules = policy(**{path: exception(data, review_change=True)})
     rules["benchmark_results_max_bytes"] = 16
@@ -110,7 +110,7 @@ def test_review_exception_never_waives_checkout_or_hard_file_limits() -> typing.
     assert any("aggregate" in error for error in errors)
 
 
-def test_invalid_exception_flag_is_rejected_even_without_new_evidence() -> typing.Any:
+def test_invalid_exception_flag_is_rejected_even_without_new_evidence() -> None:
     data, path = b"1", ROOT + "sample.json"
     entry = {**exception(data), "review_change": 1}
     assert any(
@@ -121,7 +121,7 @@ def test_invalid_exception_flag_is_rejected_even_without_new_evidence() -> typin
 @pytest.mark.parametrize("field", ["launch_records", "traceEvents"])
 def test_raw_profiler_json_needs_reason_even_when_renamed(
     field: typing.Any,
-) -> typing.Any:
+) -> None:
     path = ROOT + "misleading-summary.json"
     data = json.dumps({"nested": [{field: [{"duration": 1}]}]}).encode()
     assert raw_json_markers(path, data) == [field]
@@ -137,11 +137,11 @@ def test_raw_profiler_json_needs_reason_even_when_renamed(
 @pytest.mark.parametrize(
     "data", [b'{"forces":[1,2]}', b'{"launch_records":[]}', b"not json"]
 )
-def test_no_blanket_numeric_array_ban(data: typing.Any) -> typing.Any:
+def test_no_blanket_numeric_array_ban(data: typing.Any) -> None:
     assert raw_json_markers(ROOT + "result.json", data) == []
 
 
-def test_campaign_audit_does_not_call_arbitrary_json_accepted() -> typing.Any:
+def test_campaign_audit_does_not_call_arbitrary_json_accepted() -> None:
     path, data = ROOT + "legacy/array.npz", b"scientific-array"
     blobs = {
         path: data,
@@ -171,7 +171,7 @@ def test_campaign_audit_does_not_call_arbitrary_json_accepted() -> typing.Any:
 )
 def test_audit_marks_only_complete_hash_bound_publications(
     damage: typing.Any,
-) -> typing.Any:
+) -> None:
     prefix, data = ROOT + "bundle/", b"independently validated elsewhere"
     entries = [{"path": "data.json", "bytes": len(data), "sha256": digest(data)}]
     manifest = {"schema": "vibeqc.benchmark-publication.v1", "files": entries}
@@ -200,7 +200,7 @@ def git(root: typing.Any, *args: typing.Any) -> typing.Any:
 
 def test_change_cli_reads_staged_bytes_and_never_skips_aggregate(
     tmp_path: typing.Any, monkeypatch: typing.Any, capsys: typing.Any
-) -> typing.Any:
+) -> None:
     from tools import evidence as cli
 
     git(tmp_path, "init", "-q")
@@ -260,7 +260,7 @@ def test_change_cli_reads_staged_bytes_and_never_skips_aggregate(
 
 def test_inventory_git_commands_cannot_lazily_fetch(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     calls = []
 
     def run(command: typing.Any, **kwargs: typing.Any) -> typing.Any:

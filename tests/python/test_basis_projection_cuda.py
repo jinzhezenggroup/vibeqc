@@ -17,7 +17,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("fitted", [False, True])
 def test_cuda_target_converges_after_cpu_metric_projection(
     method: typing.Any, charge: typing.Any, multiplicity: typing.Any, fitted: typing.Any
-) -> typing.Any:
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     settings = {
@@ -50,7 +50,7 @@ def test_cuda_target_converges_after_cpu_metric_projection(
     )
 
 
-def test_cuda_batch_projection_and_moved_geometry_are_isolated() -> typing.Any:
+def test_cuda_batch_projection_and_moved_geometry_are_isolated() -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     atoms = [
         [("H", (0, 0, -0.7)), ("H", (0.1 * i, 0, 0.7 + 0.02 * i))] for i in range(3)

@@ -82,7 +82,7 @@ def fake_provider(monkeypatch: typing.Any, source: typing.Any) -> typing.Any:
                 setattr(result, *self.override)
             return result
 
-        def close(self) -> typing.Any:
+        def close(self) -> None:
             self.closed = True
 
     monkeypatch.setattr(direct_cuda, "NativeAO", AO)
@@ -103,7 +103,7 @@ def fake_provider(monkeypatch: typing.Any, source: typing.Any) -> typing.Any:
 )
 def test_invalid_controls_fail_before_provider_creation(
     source: typing.Any, fake_provider: typing.Any, kwargs: typing.Any
-) -> typing.Any:
+) -> None:
     with pytest.raises(ValueError):
         CudaDirectJKBackend(source, **kwargs)
     assert not fake_provider
@@ -111,7 +111,7 @@ def test_invalid_controls_fail_before_provider_creation(
 
 def test_raw_signed_density_and_detached_provenance(
     source: typing.Any, fake_provider: typing.Any
-) -> typing.Any:
+) -> None:
     d = np.array([[-2, 0.2], [0.2, 1]], dtype=np.float32)
     with CudaDirectJKBackend(source) as backend:
         j, k = backend.coulomb_exchange(d)
@@ -149,7 +149,7 @@ def test_raw_signed_density_and_detached_provenance(
 )
 def test_reference_binding_does_not_accept_matching_dimensions_only(
     source: typing.Any, fake_provider: typing.Any, field: typing.Any, value: typing.Any
-) -> typing.Any:
+) -> None:
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
     names = (
@@ -180,7 +180,7 @@ def test_reference_binding_does_not_accept_matching_dimensions_only(
 )
 def test_invalid_density_does_not_count_or_poison_actions(
     source: typing.Any, fake_provider: typing.Any, bad: typing.Any
-) -> typing.Any:
+) -> None:
     with CudaDirectJKBackend(source) as backend:
         with pytest.raises(ValueError):
             backend.coulomb_exchange(bad)
@@ -191,7 +191,7 @@ def test_invalid_density_does_not_count_or_poison_actions(
 
 def test_failure_is_not_replaced_with_cpu_and_replay_is_clean(
     source: typing.Any, fake_provider: typing.Any
-) -> typing.Any:
+) -> None:
     with CudaDirectJKBackend(source) as backend:
         plan = fake_provider[0]
         plan.fail = True
@@ -209,7 +209,7 @@ def test_failure_is_not_replaced_with_cpu_and_replay_is_clean(
 )
 def test_incomplete_results_fail_without_publishing_success(
     source: typing.Any, fake_provider: typing.Any, bad: typing.Any
-) -> typing.Any:
+) -> None:
     with CudaDirectJKBackend(source) as backend:
         fake_provider[0].override = ("exchange", bad)
         with pytest.raises(RuntimeError, match="invalid J/K"):
@@ -221,7 +221,7 @@ def test_incomplete_results_fail_without_publishing_success(
 
 def test_source_close_and_mutation_invalidate_prepared_adapter(
     source: typing.Any, fake_provider: typing.Any
-) -> typing.Any:
+) -> None:
     with CudaDirectJKBackend(source) as backend:
         with pytest.raises(AttributeError, match="immutable"):
             source.geometry_hash = "different"
@@ -234,7 +234,7 @@ def test_source_close_and_mutation_invalidate_prepared_adapter(
 
 def test_cpu_or_altered_provider_is_rejected_and_closed(
     source: typing.Any, fake_provider: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     constructor = direct_cuda.FockPlan
 
     def changed(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
@@ -250,7 +250,7 @@ def test_cpu_or_altered_provider_is_rejected_and_closed(
 
 def test_provider_creation_failure_is_not_suppressed(
     source: typing.Any, fake_provider: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     def unavailable(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise NotImplementedError("CUDA unavailable sentinel")
 

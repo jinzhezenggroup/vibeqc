@@ -48,7 +48,7 @@ def workloads() -> typing.Any:
 @pytest.mark.parametrize("name", NAMES)
 def test_independent_current_state_and_all_sampled_features(
     workloads: typing.Any, name: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = workloads[name]
     assert meta["reference"]["converged"]
     assert meta["reference"]["gradient_norm"] < 1e-6
@@ -75,7 +75,7 @@ def test_independent_current_state_and_all_sampled_features(
 
 def test_producer_runtime_is_not_an_executable_workload_identity(
     workloads: typing.Any, native_factory: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = workloads["water_svp"]
     changed = deepcopy(meta)
     changed["reference"]["seconds"] += 100
@@ -110,7 +110,7 @@ def test_full_independent_ev_and_replica_resource_composition(
     native_factory: typing.Any,
     name: typing.Any,
     functional: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = workloads[name]
     spin = "unpolarized" if meta["layout"] == "total" else "polarized"
     with (

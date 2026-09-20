@@ -46,7 +46,7 @@ class RotationLayout:
     virtual: tuple[int, ...]
     spin_blocks: tuple[str, ...] = ("restricted",)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(self, "occupied", tuple(self.occupied))
         object.__setattr__(self, "virtual", tuple(self.virtual))
         object.__setattr__(self, "spin_blocks", tuple(self.spin_blocks))
@@ -166,7 +166,7 @@ class ResponseProblem:
     perturbation_labels: tuple[str, ...] = ()
     identity: str = field(init=False)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.method not in ("rhf", "cpks"):
             raise ResponseUnsupported(f"unsupported response method {self.method!r}")
         if self.reference.algorithm == "RHF":
@@ -360,7 +360,7 @@ class ResponseProblem:
             raise ValueError("perturbation labels do not match RHS columns")
         return immutable(rhs)
 
-    def assert_compatible(self, other: typing.Any) -> typing.Any:
+    def assert_compatible(self, other: typing.Any) -> None:
         """Reject any retained state that does not describe this exact problem."""
         if not isinstance(other, ResponseProblem):
             raise TypeError("expected ResponseProblem")

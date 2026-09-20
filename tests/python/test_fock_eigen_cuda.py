@@ -41,7 +41,7 @@ def test_independent_fitted_scf_providers_and_complete_forces(
     k: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Compare device setup/iteration/final solves to the independent CPU oracle.
 
     Oxygen's d functions distinguish the AO representations. A separate CUDA
@@ -187,7 +187,7 @@ def test_independent_fitted_scf_providers_and_complete_forces(
 
 def test_independent_fitted_empty_beta_and_failed_replay(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """An empty spin is solved explicitly; a failed replay leaves sources usable."""
     assert os.environ.get("SLURM_JOB_ID")
     atoms = [("H", (0, 0, 0))]

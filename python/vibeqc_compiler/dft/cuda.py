@@ -199,7 +199,7 @@ class CudaGrid:
         )
     )
 
-    def __setattr__(self, name: typing.Any, value: typing.Any) -> typing.Any:
+    def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed and name in self.__dict__:
             raise AttributeError(
                 "CUDA scientific topology is immutable; prepare a new owner"
@@ -415,18 +415,18 @@ class CudaGrid:
                 ct.byref(self._handle),
             )
 
-    def _call(self, name: typing.Any, *args: typing.Any) -> typing.Any:
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def _check_open(self) -> typing.Any:
+    def _check_open(self) -> None:
         if not self._handle:
             raise RuntimeError("CUDA grid plan is closed")
         if self._borrowed:
             raise RuntimeError("CUDA grid buffers are leased to a task consumer")
 
-    def set_density(self, density: typing.Any) -> typing.Any:
+    def set_density(self, density: typing.Any) -> None:
         """Validate and replace both spin matrices; no old-density reuse is implicit."""
         with self._lock:
             self._check_open()
@@ -441,7 +441,7 @@ class CudaGrid:
 
     def set_source(
         self, source: typing.Any, *, stamp: typing.Any, route: typing.Any = "auto"
-    ) -> typing.Any:
+    ) -> None:
         """Upload one checked current D/B pair; never reconstruct D on tile replay.
 
         DensitySource performs external-factor validation before this boundary.
@@ -703,7 +703,7 @@ class CudaGrid:
                 "cublas_version": versions[2],
             }
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with self._lock, _PREPARATION_LOCK:
             if self._borrowed:
                 raise RuntimeError("CUDA grid buffers are leased to a task consumer")

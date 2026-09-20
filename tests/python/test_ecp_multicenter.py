@@ -155,7 +155,7 @@ def endpoint(
 @pytest.mark.parametrize("displacement", [0.0, 0.37])
 def test_mixed_centers_raw_derivatives_and_operator_partition(
     device: typing.Any, displacement: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     atoms, basis, mol = multicenter_fixture(displacement=displacement)
     raw = ecp_integrals(atoms, basis, device=device)
@@ -204,7 +204,7 @@ def test_mixed_centers_raw_derivatives_and_operator_partition(
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_mixed_centers_atom_and_ao_permutation(device: typing.Any) -> typing.Any:
+def test_mixed_centers_atom_and_ao_permutation(device: typing.Any) -> None:
     require_device(device)
     atoms, basis, mol = multicenter_fixture()
     reverse_atoms, reverse_basis, reverse_mol = multicenter_fixture(reverse=True)
@@ -233,7 +233,7 @@ def test_mixed_centers_atom_and_ao_permutation(device: typing.Any) -> typing.Any
 @pytest.mark.parametrize("spin", [0, 1])
 def test_mixed_centers_complete_hf_permutation(
     device: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     first = endpoint(device, spin)
     reverse = endpoint(device, spin, reverse=True)
     np.testing.assert_allclose(first[3].energy, reverse[3].energy, atol=2e-10, rtol=0)
@@ -246,7 +246,7 @@ def test_mixed_centers_complete_hf_permutation(
 @pytest.mark.parametrize("spin", [0, 1])
 def test_mixed_centers_budgeted_replay_and_complete_difference(
     device: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     atoms, basis, mol = multicenter_fixture(spin=spin)
     plan = (

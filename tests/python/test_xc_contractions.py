@@ -29,7 +29,7 @@ def program(
 )
 def test_minimal_contractions_preserve_independent_fixtures(
     case: typing.Any, name: typing.Any, layout: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = fixture(case)
     consumer = program(name, spin)
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -53,7 +53,7 @@ def test_minimal_contractions_preserve_independent_fixtures(
 
 
 def test_r2scan_vtau_potential_matches_complete_density_directional_derivative() -> (
-    typing.Any
+    None
 ):
     rng = np.random.default_rng(164)
     jets = rng.normal(size=(4, 13, 3))
@@ -80,7 +80,7 @@ def test_r2scan_vtau_potential_matches_complete_density_directional_derivative()
 @pytest.mark.parametrize("observable", ["response", "geometry"])
 def test_r2scan_unvalidated_derivative_consumers_fail_closed(
     observable: typing.Any,
-) -> typing.Any:
+) -> None:
     with pytest.raises(UnsupportedXC, match="tau-dependent"):
         program("R2SCAN", observable=observable)
 
@@ -88,7 +88,7 @@ def test_r2scan_unvalidated_derivative_consumers_fail_closed(
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
 def test_spin_resolved_response_finite_differences_transpose_and_exchange(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = fixture("h2")
     primal, response = program(name), program(name, observable="response")
     density = data["density_spin"]
@@ -157,7 +157,7 @@ def test_spin_resolved_response_finite_differences_transpose_and_exchange(
 @pytest.mark.parametrize("case", ["h2", "f_cartesian", "f_spherical"])
 def test_explicit_geometry_sources_against_moved_native_collocation(
     name: typing.Any, spin: typing.Any, case: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = fixture(case)
     args = basis_arguments(meta)
     density = data["density_spin" if spin == "polarized" else "density_total"]
@@ -218,9 +218,7 @@ def test_explicit_geometry_sources_against_moved_native_collocation(
     )
 
 
-def test_contraction_requests_reject_unsupported_axes_domains_and_directions() -> (
-    typing.Any
-):
+def test_contraction_requests_reject_unsupported_axes_domains_and_directions() -> None:
     from vibeqc_compiler.xc.contracts import DerivativeRequest, IngredientContract
     from vibeqc_compiler.xc.spec import UnsupportedXC
 

@@ -17,7 +17,7 @@ from benchmarks import issue206_df_matrix as matrix
 @pytest.mark.parametrize("mode", ("reuse", "mixed", "forced", "cold_correction"))
 def test_final_state_work_ablation_requires_current_physics_and_all_spin_leaves(
     method: typing.Any, forces: typing.Any, mode: typing.Any
-) -> typing.Any:
+) -> None:
     """Zero final solves must not let missing validation or W pass the ledger."""
     import copy
 
@@ -81,7 +81,7 @@ def test_final_state_work_ablation_requires_current_physics_and_all_spin_leaves(
 @pytest.mark.parametrize("flag", ("--final-state-ablation", "--combined-host-ablation"))
 def test_new_host_ablation_cli_rejects_ambiguous_or_non_host_requests(
     flag: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     """Reject protocol ambiguity before any hardware or output is touched."""
     for extra in ([], ["--host-workloads", "--final-eigen-ablation"]):
         monkeypatch.setattr(sys, "argv", ["issue206_df_matrix.py", flag, *extra])
@@ -94,7 +94,7 @@ def test_new_host_ablation_cli_rejects_ambiguous_or_non_host_requests(
 @pytest.mark.parametrize("reference", (False, True))
 def test_final_state_fixed_point_reuses_rejected_probe_without_hiding_solves(
     method: typing.Any, reference: typing.Any
-) -> typing.Any:
+) -> None:
     """Two accepted probes plus one promoted rejection require three solves.
 
     The promoted probe also accounts for the sole density correction. Counting
@@ -149,7 +149,7 @@ def test_final_state_fixed_point_reuses_rejected_probe_without_hiding_solves(
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 def test_strict_provider_ablation_requires_actual_fock_validation_and_correction(
     method: typing.Any,
-) -> typing.Any:
+) -> None:
     """Several real corrections are valid; missing current-F work never is."""
     import copy
 
@@ -190,7 +190,7 @@ def test_strict_provider_ablation_requires_actual_fock_validation_and_correction
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
 def test_final_provider_ablation_rejects_missing_or_unexpected_solves(
     reference: typing.Any, method: typing.Any
-) -> typing.Any:
+) -> None:
     """A disabled trace hook or silent oracle fallback cannot pass promotion."""
     import copy
 
@@ -237,7 +237,7 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
     monkeypatch: typing.Any,
     failure: typing.Any,
     energy_only: typing.Any,
-) -> typing.Any:
+) -> None:
     # subprocess.run is replaced throughout: these tests never execute CUDA.
     monkeypatch.setenv("SLURM_JOB_ID", "protocol-test")
     monkeypatch.setattr(matrix, "_git", lambda *args: "")
@@ -308,7 +308,7 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
     assert Path(rows[1]["result"]).is_file()
 
 
-def test_sbatch_spool_copy_uses_submission_checkout(tmp_path: typing.Any) -> typing.Any:
+def test_sbatch_spool_copy_uses_submission_checkout(tmp_path: typing.Any) -> None:
     root = Path(matrix.ROOT)
     spool = tmp_path / "slurm_script"
     spool.write_text((root / "run_issue206_df.slurm").read_text())
@@ -337,7 +337,7 @@ def test_sbatch_spool_copy_uses_submission_checkout(tmp_path: typing.Any) -> typ
     ]
 
 
-def test_published_archive_uses_verified_repository_format() -> typing.Any:
+def test_published_archive_uses_verified_repository_format() -> None:
     from tools.unpack_evidence import unpack
 
     assert unpack(matrix.ROOT / "benchmarks/results/issue206-df-a") == 9
@@ -349,7 +349,7 @@ def test_published_archive_uses_verified_repository_format() -> typing.Any:
 )
 def test_eager_lazy_timing_rejects_iteration_or_retry_changes(
     field: typing.Any, value: typing.Any
-) -> typing.Any:
+) -> None:
     """Equal endpoints cannot hide a different amount of SCF work."""
     from benchmarks.df_host_workloads import (
         AblationBranchMismatch,
@@ -378,7 +378,7 @@ def test_eager_lazy_timing_rejects_iteration_or_retry_changes(
 
 def test_host_branch_rejection_retains_raw_samples_and_failed_manifest(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """A mocked measurement checks the CLI publication boundary without a GPU."""
     from benchmarks import df_host_workloads as host
 
@@ -447,7 +447,7 @@ def test_host_branch_rejection_retains_raw_samples_and_failed_manifest(
 @pytest.mark.parametrize("selection", ("baseline", "candidate"))
 def test_preparation_ablation_rejects_wrong_actual_counts(
     ablation: typing.Any, workload: typing.Any, selection: typing.Any
-) -> typing.Any:
+) -> None:
     """Reinstated solves or stale changed-item cache hits must fail promotion."""
     import copy
 
@@ -477,7 +477,7 @@ def test_preparation_ablation_rejects_wrong_actual_counts(
         },
     }
 
-    def validate(value: typing.Any) -> typing.Any:
+    def validate(value: typing.Any) -> None:
         validate_preparation_counts(
             value, batch_size=4, workload=workload, eager=eager, rebuild=rebuild
         )
@@ -503,7 +503,7 @@ def test_preparation_ablation_rejects_wrong_actual_counts(
 )
 def test_setup_provider_counts_reject_wrong_provider(
     reference: typing.Any, workload: typing.Any, overlap: typing.Any, core: typing.Any
-) -> typing.Any:
+) -> None:
     """Missing or unexpectedly substituted leaves cannot pass setup promotion."""
     import copy
 

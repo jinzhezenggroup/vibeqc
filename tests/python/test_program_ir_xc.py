@@ -43,7 +43,7 @@ def describe(
 @pytest.mark.parametrize("spin,nspin", [("unpolarized", 1), ("polarized", 2)])
 def test_fixed_density_description_is_bound_to_real_contract(
     name: typing.Any, jets: typing.Any, spin: typing.Any, nspin: typing.Any
-) -> typing.Any:
+) -> None:
     p = describe(name, spin)
     assert ProgramIR.from_payload(p.to_payload()) == p
     sizes = {buffer.name: buffer.bytes for buffer in p.buffers}
@@ -70,12 +70,12 @@ def test_fixed_density_description_is_bound_to_real_contract(
         {"native_identity": None},
     ],
 )
-def test_invalid_tile_boundaries(changes: typing.Any) -> typing.Any:
+def test_invalid_tile_boundaries(changes: typing.Any) -> None:
     with pytest.raises(ValueError):
         describe(**changes)
 
 
-def test_provider_and_shape_changes_invalidate_graph_identity() -> typing.Any:
+def test_provider_and_shape_changes_invalidate_graph_identity() -> None:
     for changes in (
         {"nao": 13},
         {"tile_points": 8},
@@ -89,7 +89,7 @@ def test_provider_and_shape_changes_invalidate_graph_identity() -> typing.Any:
 @pytest.mark.parametrize("name,gradient", [("LDA_XC_PW", False), ("PBE", True)])
 def test_packed_feature_program_records_real_cross_subsystem_layouts(
     name: typing.Any, gradient: typing.Any
-) -> typing.Any:
+) -> None:
     p = describe(name, "polarized", packed_features=True)
     assert tuple(call.name for call in p.calls) == (
         "collocation",
@@ -115,16 +115,14 @@ def test_packed_feature_program_records_real_cross_subsystem_layouts(
     assert ProgramIR.from_payload(p.to_payload()) == p
 
 
-def test_packed_feature_program_rejects_unpolarized_and_non_boolean_selection() -> (
-    typing.Any
-):
+def test_packed_feature_program_rejects_unpolarized_and_non_boolean_selection() -> None:
     with pytest.raises(ValueError, match="polarized"):
         describe("PBE", "unpolarized", packed_features=True)
     with pytest.raises(ValueError, match="bool"):
         describe("PBE", "polarized", packed_features=1)
 
 
-def test_non_potential_contracts_remain_outside_phase_a() -> typing.Any:
+def test_non_potential_contracts_remain_outside_phase_a() -> None:
     with pytest.raises(TypeError):
         fixed_density_tile_program(
             None,
@@ -180,7 +178,7 @@ def test_native_cpu_releases_previous_tile_before_next_ao_allocation(
     monkeypatch: typing.Any,
     name: typing.Any,
     case: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture(case)
     program = native_factory(name)
     refs, observed = [], []
@@ -245,7 +243,7 @@ def test_native_cpu_releases_previous_tile_before_next_ao_allocation(
 
 def test_feature_block_matches_public_features_and_native_scalar_consumes_owner(
     native_factory: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     program = native_factory("PBE")
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -285,7 +283,7 @@ def test_feature_block_matches_public_features_and_native_scalar_consumes_owner(
 
 def test_other_native_observables_do_not_advertise_programir(
     native_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     with (
         NativeAO(**basis_arguments(meta)) as basis,

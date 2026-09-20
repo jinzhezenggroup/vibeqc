@@ -38,7 +38,7 @@ class ProbeControls:
     max_iterations: int = 200
     diis_history: int = 8
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in ("energy_tolerance", "density_tolerance", "screening_tolerance"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, (float, int)):
@@ -76,7 +76,7 @@ class HFProbe:
     solve_seconds: float
     requested_mixed_fock_threshold: float | None = None
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.model, ResolvedModel) or not isinstance(
             self.controls, ProbeControls
         ):
@@ -154,7 +154,7 @@ class HFProbe:
         }
 
 
-def _validate_source_model(source: typing.Any, model: typing.Any) -> typing.Any:
+def _validate_source_model(source: typing.Any, model: typing.Any) -> None:
     """Reuse the public resolver so all audits validate the same scientific inputs."""
     from vibeqc import Calculator
 

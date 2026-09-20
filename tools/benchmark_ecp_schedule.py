@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests/python"))
 from test_ecp import fixture
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=3)
@@ -87,7 +87,7 @@ def main() -> typing.Any:
             elapsed: typing.Any,
             refs: typing.Any = refs,
             case: typing.Any = case,
-        ) -> typing.Any:
+        ) -> None:
             assert result.converged and result.executed_backend == "cuda"
             energy_error = abs(result.energy - refs[which][0])
             force_error = float(np.max(np.abs(result.forces - refs[which][1])))

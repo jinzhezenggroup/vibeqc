@@ -25,7 +25,7 @@ class DenseColumns:
         self.closed = False
         self.fail_pivot = None
 
-    def check(self) -> typing.Any:
+    def check(self) -> None:
         if self.closed:
             raise RuntimeError("closed test source")
 
@@ -49,7 +49,7 @@ def factors(plan: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("nbf", [1, 2, 7])
 def test_pair_inner_products_and_exact_triangular_inverse(
     nbf: typing.Any,
-) -> typing.Any:
+) -> None:
     space = PairSpace(nbf)
     rng = np.random.default_rng(191)
     a, b = rng.normal(size=(2, nbf, nbf))
@@ -73,7 +73,7 @@ def test_pair_inner_products_and_exact_triangular_inverse(
 @pytest.mark.parametrize("pair_tile", [1, 4, 100])
 def test_incremental_prefix_matches_scratch_and_recovers_target(
     pair_tile: typing.Any,
-) -> typing.Any:
+) -> None:
     rng = np.random.default_rng(12)
     raw = rng.normal(size=(10, 10))
     matrix = raw @ raw.T + np.eye(10) * 0.01
@@ -103,7 +103,7 @@ def test_incremental_prefix_matches_scratch_and_recovers_target(
     assert all(call[-1] <= min(pair_tile, 10) for call in source.calls)
 
 
-def test_same_approximation_residual_bounds_and_normalization() -> typing.Any:
+def test_same_approximation_residual_bounds_and_normalization() -> None:
     rng = np.random.default_rng(91)
     raw = rng.normal(size=(6, 6))
     matrix = raw @ raw.T
@@ -130,7 +130,7 @@ def test_same_approximation_residual_bounds_and_normalization() -> typing.Any:
     assert diagnostics["observable_certification"] == "unverified"
 
 
-def test_zero_rank_ties_roundoff_and_ill_conditioning() -> typing.Any:
+def test_zero_rank_ties_roundoff_and_ill_conditioning() -> None:
     zeros = IncrementalCholesky(DenseColumns(np.zeros((3, 3)), 2), rank_capacity=0)
     assert zeros.refine(0).status == "threshold_met"
     assert zeros.factor_tile(0, 0).shape == (0, 3)
@@ -150,7 +150,7 @@ def test_zero_rank_ties_roundoff_and_ill_conditioning() -> typing.Any:
     assert tiny.rank == 3
 
 
-def test_psd_failures_and_source_failure_leave_valid_prefix() -> typing.Any:
+def test_psd_failures_and_source_failure_leave_valid_prefix() -> None:
     with pytest.raises(ValueError, match="negative diagonal"):
         IncrementalCholesky(DenseColumns(np.diag([1, -1, 1]), 2), rank_capacity=3)
     indefinite = DenseColumns([[1, 2, 0], [2, 1, 0], [0, 0, 1]], 2)
@@ -174,7 +174,7 @@ def test_psd_failures_and_source_failure_leave_valid_prefix() -> typing.Any:
         plan.refine(0)
 
 
-def test_budget_preflight_before_source_reads_and_immutable_exports() -> typing.Any:
+def test_budget_preflight_before_source_reads_and_immutable_exports() -> None:
     source = DenseColumns(np.eye(6), 3)
     with pytest.raises(MemoryError):
         IncrementalCholesky(

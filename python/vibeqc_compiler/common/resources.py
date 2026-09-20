@@ -61,7 +61,7 @@ class ResourceBudget:
     headroom_fraction: float = 0.0
     schema_version: int = 1
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 1:
             raise ValueError("unsupported resource budget schema")
         for name in ("host_bytes", "device_bytes", "pinned_host_bytes"):
@@ -127,7 +127,7 @@ class ResourceIdentity:
     schedule: str
     schema_version: int = 1
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 1:
             raise ValueError("unsupported resource identity schema")
         for name in ("method", "provider", "backend", "precision", "schedule"):
@@ -174,7 +174,7 @@ class ResourceEstimate:
     streamed_bytes: int = 0
     accounting: str = "capacity_bound"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name:
             raise ValueError("resource allocation needs an owner name")
         checked_bytes(self.bytes)
@@ -208,7 +208,7 @@ class ResourceCandidate:
     relative_cost: int = 0
     decisions: tuple[tuple[str, str], ...] = ()
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not self.name or self.mode not in (
             "resident",
             "streamed",
@@ -238,7 +238,7 @@ class ResourceRequest:
     unsupported_reason: str | None = None
     infeasible_reason: str | None = None
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not self.name or not isinstance(self.identity, ResourceIdentity):
             raise ValueError("request requires an owner and scientific identity")
         candidates = tuple(
@@ -292,7 +292,7 @@ class ResourcePlan:
     diagnostic: str | None = None
     schema_version: int = field(default=1, init=False)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.budget, ResourceBudget):
             raise TypeError("plan requires a ResourceBudget")
         object.__setattr__(self, "requests", tuple(self.requests))
@@ -612,7 +612,7 @@ class ResourceSession:
         self._closed = False
 
     @staticmethod
-    def _release(owners: typing.Any) -> typing.Any:
+    def _release(owners: typing.Any) -> None:
         # Continue releasing even when a provider's close reports a failure.
         # Propagate the first exception after every other owner was attempted.
         first_error = None
@@ -704,7 +704,7 @@ class ResourceSession:
             )
         return self._live[name]
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Release all owners, including after a scientific execution failure."""
         self._closed = True
         self._release(self._live)
@@ -833,7 +833,7 @@ class CpuResourceObservation:
             ],
         }
 
-    def verify(self, plan: typing.Any) -> typing.Any:
+    def verify(self, plan: typing.Any) -> None:
         """Reject underestimated owned capacities without inventing missing data."""
         for space, observed in (
             ("host", self.peak_bytes),

@@ -34,7 +34,7 @@ class DirectionalMatrixTerm:
     weight_pair: tuple[int, int] | None = None
     coefficient: float = 1.0
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if type(self.output_slot) is not int or not 0 <= self.output_slot < 32:
             raise ValueError("directional output slot must be in [0,32)")
         for name in ("output_pair", "weight_pair"):
@@ -56,7 +56,7 @@ class DirectionalMatrixTerm:
 
 def validate_directional(
     integral: typing.Any, indices: typing.Any, terms: typing.Any
-) -> typing.Any:
+) -> None:
     validate_first_components(integral, indices)
     if any(shell.convention != "cartesian" for shell in integral.signature.shells):
         raise ValueError("directional matrix execution requires Cartesian AO slots")

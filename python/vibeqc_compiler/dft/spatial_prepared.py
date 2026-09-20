@@ -335,7 +335,7 @@ class PreparedSpatialGrid:
             "tiles": 0,
         }
 
-    def _check(self) -> typing.Any:
+    def _check(self) -> None:
         if self._closed:
             raise RuntimeError("prepared spatial grid is closed")
         if self._leased:
@@ -538,7 +538,7 @@ class PreparedSpatialGrid:
 
     def reconfigure(
         self, basis: typing.Any, grid: typing.Any, **changes: typing.Any
-    ) -> typing.Any:
+    ) -> None:
         """Replace immutable scientific state transactionally, charging both owners."""
         with self._lock:
             self._check()
@@ -556,7 +556,7 @@ class PreparedSpatialGrid:
             replacement._cuda = None
             replacement._closed = True
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Close owned native state while leaving caller-owned basis data alive."""
         with self._lock:
             if self._leased:

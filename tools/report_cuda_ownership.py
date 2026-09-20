@@ -261,7 +261,7 @@ def ownership_report(
     }
 
 
-def validate_baseline(baseline: typing.Any) -> typing.Any:
+def validate_baseline(baseline: typing.Any) -> None:
     """Reject internally inconsistent historical totals before claiming a delta."""
     if baseline.get("schema") != "vibeqc.cuda-ownership-report.v1":
         raise ValueError("baseline uses a different ownership report schema")

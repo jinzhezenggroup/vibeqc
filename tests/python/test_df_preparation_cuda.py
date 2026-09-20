@@ -115,7 +115,7 @@ def test_preparation_owns_real_derivatives_and_prior_items(
     forces: typing.Any,
     generated: typing.Any,
     mode: typing.Any,
-) -> typing.Any:
+) -> None:
     values = json.loads(
         subprocess.check_output(
             [

@@ -81,7 +81,7 @@ def _oracle(
 @pytest.mark.parametrize("shape", [(), (5,), (2, 3), (0,)])
 def test_values_and_both_ad_modes_against_decimal(
     op: typing.Any, exponent: typing.Any, dtype: typing.Any, shape: typing.Any
-) -> typing.Any:
+) -> None:
     x = _input(shape, dtype)
     program = Program({"out": _operation(op, x, exponent)})
     n = x.spec.size
@@ -128,9 +128,7 @@ def test_values_and_both_ad_modes_against_decimal(
 
 
 @pytest.mark.parametrize("op,exponent", CASES)
-def test_multistep_finite_differences(
-    op: typing.Any, exponent: typing.Any
-) -> typing.Any:
+def test_multistep_finite_differences(op: typing.Any, exponent: typing.Any) -> None:
     program = Program({"out": _operation(op, _input((4,)), exponent)})
     x = np.array([0.05, 0.5, 1.0, 2.0])
     direction = x * np.array([0.2, -0.3, 0.4, -0.1])
@@ -156,7 +154,7 @@ def test_multistep_finite_differences(
 )
 def test_invalid_primal_not_erased_from_generated_derivatives(
     op: typing.Any, exponent: typing.Any, bad: typing.Any
-) -> typing.Any:
+) -> None:
     program = Program({"out": _operation(op, _input(), exponent)})
     feeds = {"x": np.array(bad)}
     for seed in (np.array(0.0), np.array(1.0)):
@@ -177,7 +175,7 @@ def test_invalid_primal_not_erased_from_generated_derivatives(
 @pytest.mark.parametrize("zero", [0.0, -0.0])
 def test_sqrt_zero_value_is_legal_but_derivative_is_singular(
     zero: typing.Any,
-) -> typing.Any:
+) -> None:
     program = Program({"out": sqrt(_input())})
     feeds = {"x": np.array(zero)}
     assert execute(program, feeds).outputs["out"] == 0
@@ -197,7 +195,7 @@ def test_sqrt_zero_value_is_legal_but_derivative_is_singular(
 @pytest.mark.parametrize("dtype", ["float32", "float64"])
 def test_seeded_derivatives_near_floating_point_boundaries(
     dtype: typing.Any,
-) -> typing.Any:
+) -> None:
     typ = np.dtype(dtype).type
     tiny = np.finfo(dtype).smallest_subnormal
     maximum = np.finfo(dtype).max
@@ -235,7 +233,7 @@ def test_seeded_derivatives_near_floating_point_boundaries(
                 )
 
 
-def test_composed_reused_inputs_and_second_derivative() -> typing.Any:
+def test_composed_reused_inputs_and_second_derivative() -> None:
     x = _input((3,))
     terms = add(exp(x), log(x), sqrt(x), power(x, "3/2"))
     program = Program({"energy": reduce_sum(add(terms, terms), (0,))})
@@ -252,7 +250,7 @@ def test_composed_reused_inputs_and_second_derivative() -> typing.Any:
     np.testing.assert_allclose(result, expected, rtol=5e-13, atol=1e-13)
 
 
-def test_power_exact_exponent_identity_and_rejection() -> typing.Any:
+def test_power_exact_exponent_identity_and_rejection() -> None:
     x = _input()
     graphs = [Program({"out": power(x, p)}) for p in ("1.5", "6/4", Fraction(3, 2))]
     assert len({p.logical_hash for p in graphs}) == 1
@@ -273,7 +271,7 @@ def test_power_exact_exponent_identity_and_rejection() -> typing.Any:
 @pytest.mark.parametrize("op,exponent", CASES)
 def test_nonlinear_symmetry_metadata_and_packed_ad(
     op: typing.Any, exponent: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.tensor import PackedLayout
 
     axis = IndexSpace("a", "batch", 2)
@@ -301,7 +299,7 @@ def test_nonlinear_symmetry_metadata_and_packed_ad(
 @pytest.mark.parametrize("op,exponent", CASES)
 def test_cuda_emission_and_dtype_gate_without_a_device(
     op: typing.Any, exponent: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_emit import emit_cuda
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
@@ -339,7 +337,7 @@ def test_cuda_emission_and_dtype_gate_without_a_device(
 )
 def test_power_ad_uses_dtype_rounded_execution_exponent(
     exponent: typing.Any, value: typing.Any
-) -> typing.Any:
+) -> None:
     x = _input(dtype="float32")
     program = Program({"out": power(x, exponent)})
     feeds = {"x": np.asarray(value)}

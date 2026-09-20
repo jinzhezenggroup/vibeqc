@@ -39,7 +39,7 @@ def _names(
     return values
 
 
-def _keys(payload: typing.Any, expected: typing.Any, name: typing.Any) -> typing.Any:
+def _keys(payload: typing.Any, expected: typing.Any, name: typing.Any) -> None:
     if not isinstance(payload, dict) or set(payload) != set(expected):
         raise ValueError(f"invalid {name} fields")
 
@@ -54,7 +54,7 @@ class ProgramBuffer:
     layout: DenseLayout | None = None
     itemsize: int | None = None
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         # Reuse #203's checked byte/space ABI instead of another resource model.
         _text(self.space, "buffer space")
         ResourceEstimate(self.name, self.bytes, self.space, 0, 0)
@@ -89,7 +89,7 @@ class PlanCall:
     reads: tuple[str, ...]
     writes: tuple[str, ...]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for field in ("name", "provider", "identity"):
             _text(getattr(self, field), field)
         object.__setattr__(self, "reads", _names(self.reads, "reads", unique=False))
@@ -116,7 +116,7 @@ class ProgramIR:
     outputs: tuple[str, ...]
     schema_version: int = 2
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         _text(self.name, "program name")
         if type(self.schema_version) is not int or self.schema_version != 2:
             raise ValueError("unsupported ProgramIR schema")

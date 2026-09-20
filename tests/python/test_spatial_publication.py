@@ -23,7 +23,7 @@ def worker(backend: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("backend", ["cpu", "cuda"])
 def test_published_inventory_resource_plans_and_summary(
     backend: typing.Any,
-) -> typing.Any:
+) -> None:
     root = BUNDLE / backend
     run = validate_run(worker(backend))
     assert len(run["cases"]) == 24
@@ -65,9 +65,7 @@ def test_published_inventory_resource_plans_and_summary(
         ("negative_observation", "observation exceeds plan"),
     ],
 )
-def test_worker_corruption_is_rejected(
-    damage: typing.Any, message: typing.Any
-) -> typing.Any:
+def test_worker_corruption_is_rejected(damage: typing.Any, message: typing.Any) -> None:
     run = worker("cuda")
     row = run["cases"][2]
     sample = row["samples"][0]
@@ -106,7 +104,7 @@ def test_worker_corruption_is_rejected(
         validate_run(run)
 
 
-def test_missing_execution_request_has_a_publication_diagnostic() -> typing.Any:
+def test_missing_execution_request_has_a_publication_diagnostic() -> None:
     run = worker("cuda")
     row = run["cases"][2]
     plan = ResourcePlan.from_dict(row["resource_plan"])
@@ -116,7 +114,7 @@ def test_missing_execution_request_has_a_publication_diagnostic() -> typing.Any:
         validate_run(run)
 
 
-def test_empty_execution_candidates_are_rejected_as_invalid_data() -> typing.Any:
+def test_empty_execution_candidates_are_rejected_as_invalid_data() -> None:
     run = worker("cuda")
     plan = run["cases"][2]["resource_plan"]
     next(r for r in plan["requests"] if r["name"] == "spatial_execution")[
@@ -139,7 +137,7 @@ def restore_dense(directory: typing.Any) -> typing.Any:
 
 def test_historical_dense_statistics_are_reproducible(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     retained = restore_dense(tmp_path)
     samples, rows = dense_comparison(tmp_path)
     assert samples == retained
@@ -150,7 +148,7 @@ def test_historical_dense_statistics_are_reproducible(
 @pytest.mark.parametrize("field", ["revision", "library_sha256", "inputs"])
 def test_dense_comparison_rejects_changed_source_or_problem(
     tmp_path: typing.Any, field: typing.Any
-) -> typing.Any:
+) -> None:
     retained = restore_dense(tmp_path)
     run = copy.deepcopy(retained["runs"]["candidate"][1])
     if field == "inputs":

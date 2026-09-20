@@ -77,7 +77,7 @@ class ResponseGMRES:
     options: GMRESOptions = field(default_factory=GMRESOptions)
     backend: str = field(default="python-response-gmres", init=False)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if type(self.dimension) is not int or self.dimension < 1:
             raise ValueError("response dimension must be a positive integer")
         if not isinstance(self.options, GMRESOptions):
@@ -168,7 +168,7 @@ def checked_transpose_solve(
     rhs = _immutable(_array(rhs, (dimension,), "adjoint RHS"))
     actions = 0
 
-    def check() -> typing.Any:
+    def check() -> None:
         if assert_current is not None:
             assert_current()
         if transpose_solver_contract(solver) != contract:
@@ -339,7 +339,7 @@ class ResponseTransposeBinding:
         object.__setattr__(self, "_operator", operator)
         object.__setattr__(self, "_resource_identity", resource_identity)
 
-    def assert_current(self, reference_identity: typing.Any) -> typing.Any:
+    def assert_current(self, reference_identity: typing.Any) -> None:
         if reference_identity != self.reference_identity:
             raise ResponseCompatibilityError(
                 "response operator belongs to a different reference"
@@ -605,7 +605,7 @@ class BoundImplicitState:
             ),
         }
 
-    def _assert_current(self, reference_identity: typing.Any) -> typing.Any:
+    def _assert_current(self, reference_identity: typing.Any) -> None:
         if reference_identity != self.reference_identity or (
             self._current_reference is not None
             and self._current_reference() != self.reference_identity

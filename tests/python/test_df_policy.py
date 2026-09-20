@@ -14,7 +14,7 @@ from vibeqc_compiler.integral.df_value_candidates import emit_df_value_candidate
 
 def test_shared_df_headers_have_translation_unit_safe_linkage(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Catch duplicate functions/tables without requiring a CUDA device or SDK.
 
     Only CUDA attributes are replaced for host compilation; scientific source

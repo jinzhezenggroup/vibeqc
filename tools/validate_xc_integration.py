@@ -36,7 +36,7 @@ from tools.vibeqc_validation.schema import (
 )
 
 
-def run(output: typing.Any) -> typing.Any:
+def run(output: typing.Any) -> None:
     records = []
     for name in ("LDA_XC_PW", "PBE"):
         for layout, spin in (

@@ -135,7 +135,7 @@ def _supported_dense_program() -> typing.Any:
     return program, feeds, tangents, cotangents
 
 
-def test_generated_jvp_and_vjp_match_the_interpreter_reference() -> typing.Any:
+def test_generated_jvp_and_vjp_match_the_interpreter_reference() -> None:
     program, feeds, tangents, cotangents = _supported_dense_program()
     forward, forward_outputs = _run_generated_jvp(program, feeds, tangents)
     reverse, reverse_outputs = _run_generated_vjp(program, feeds, cotangents)
@@ -166,7 +166,7 @@ def test_generated_jvp_and_vjp_match_the_interpreter_reference() -> typing.Any:
     )
 
 
-def test_generation_is_demand_driven_and_prunes_unrelated_branches() -> typing.Any:
+def test_generation_is_demand_driven_and_prunes_unrelated_branches() -> None:
     i = _axis("i", 3)
     x, y = _parameter("x", (i,)), _parameter("y", (i,))
     left, right = multiply(x, x), multiply(y, y)
@@ -184,7 +184,7 @@ def test_generation_is_demand_driven_and_prunes_unrelated_branches() -> typing.A
     assert live_inputs == {"x", "bar_left"}
 
 
-def test_generated_programs_link_primal_and_derivative_identity() -> typing.Any:
+def test_generated_programs_link_primal_and_derivative_identity() -> None:
     program, _feeds, tangents, cotangents = _supported_dense_program()
     forward = linearize(program, list(tangents))
     reverse = transpose_program(program, list(cotangents))
@@ -198,7 +198,7 @@ def test_generated_programs_link_primal_and_derivative_identity() -> typing.Any:
     assert reverse.provenance()["primal_logical_hash"] == program.logical_hash
 
 
-def test_optimize_before_and_after_generation_agree_numerically() -> typing.Any:
+def test_optimize_before_and_after_generation_agree_numerically() -> None:
     program, feeds, tangents, cotangents = _supported_dense_program()
     forward = linearize(program, list(tangents))
     optimized_forward = optimize(forward.program)
@@ -221,7 +221,7 @@ def test_optimize_before_and_after_generation_agree_numerically() -> typing.Any:
     assert reference.passed
 
 
-def test_generated_programs_are_cpu_plannable_for_cuda_lowering() -> typing.Any:
+def test_generated_programs_are_cpu_plannable_for_cuda_lowering() -> None:
     program, _feeds, tangents, cotangents = _supported_dense_program()
     forward = linearize(program, list(tangents))
     reverse = transpose_program(program, list(cotangents))
@@ -231,7 +231,7 @@ def test_generated_programs_are_cpu_plannable_for_cuda_lowering() -> typing.Any:
         assert plan.peak_bytes > 0
 
 
-def test_generated_reverse_plan_supports_bounded_recomputation() -> typing.Any:
+def test_generated_reverse_plan_supports_bounded_recomputation() -> None:
     program, _feeds, _tangents, cotangents = _supported_dense_program()
     reverse = transpose_program(program, list(cotangents))
     retained = plan_cuda(reverse.program, TARGET)
@@ -249,7 +249,7 @@ def test_generated_reverse_plan_supports_bounded_recomputation() -> typing.Any:
     assert bounded.peak_bytes <= recomputed.peak_bytes
 
 
-def test_generated_vjp_does_not_materialize_a_dense_jacobian() -> typing.Any:
+def test_generated_vjp_does_not_materialize_a_dense_jacobian() -> None:
     i = _axis("i", 2000)
     x = _parameter("x", (i,))
     program = Program({"out": multiply(x, x)})
@@ -260,9 +260,7 @@ def test_generated_vjp_does_not_materialize_a_dense_jacobian() -> typing.Any:
     assert plan.allocation_bytes < 1_000_000
 
 
-def test_generated_reverse_slice_gather_and_repeated_einsum_match_reference() -> (
-    typing.Any
-):
+def test_generated_reverse_slice_gather_and_repeated_einsum_match_reference() -> None:
     i = _axis("i", 4)
     x = _parameter("x", (i,))
     sliced = slice_tensor(x, ((1, 3),))
@@ -299,7 +297,7 @@ def test_generated_reverse_slice_gather_and_repeated_einsum_match_reference() ->
 )
 def test_diagonal_vjp_maps_labels_retained_in_the_output(
     equation: typing.Any, ranks: typing.Any
-) -> typing.Any:
+) -> None:
     space = IndexSpace("o", "occupied", 3)
     operands = [
         _parameter(f"x{k}", tuple(Index(f"i{axis}", space) for axis in range(rank)))
@@ -320,7 +318,7 @@ def test_diagonal_vjp_maps_labels_retained_in_the_output(
         np.testing.assert_array_equal(replayed[name], value)
 
 
-def test_named_input_occurrences_seed_all_requested_reverse_paths() -> typing.Any:
+def test_named_input_occurrences_seed_all_requested_reverse_paths() -> None:
     first, second = _parameter("x", ()), _parameter("x", ())
     program = Program(
         {"out": add(multiply(first, first), second), "unused": multiply(second, second)}
@@ -341,7 +339,7 @@ def test_named_input_occurrences_seed_all_requested_reverse_paths() -> typing.An
 @pytest.mark.parametrize("differentiate_matrix", [False, True])
 def test_inactive_einsum_operand_does_not_consume_projection_budget(
     differentiate_matrix: typing.Any,
-) -> typing.Any:
+) -> None:
     space = IndexSpace("o", "occupied", 1001)
     matrix = input_tensor(
         "A",
@@ -366,7 +364,7 @@ def test_inactive_einsum_operand_does_not_consume_projection_budget(
             transpose_program(program, ["out"], inputs=["A"])
 
 
-def test_unrequested_division_adjoint_is_never_constructed() -> typing.Any:
+def test_unrequested_division_adjoint_is_never_constructed() -> None:
     numerator, denominator = _parameter("x", ()), _parameter("y", ())
     program = Program({"out": divide(numerator, denominator)})
     generated = transpose_program(program, ["out"], inputs=["x"])
@@ -379,7 +377,7 @@ def test_unrequested_division_adjoint_is_never_constructed() -> typing.Any:
     np.testing.assert_array_equal(actual.outputs["bar_x"], np.asarray(0.5))
 
 
-def test_reverse_generation_fails_closed_for_incidence_budgets() -> typing.Any:
+def test_reverse_generation_fails_closed_for_incidence_budgets() -> None:
     i = _axis("i", 4)
     x = _parameter("x", (i,))
     sliced = slice_tensor(x, ((0, 4),))
@@ -395,7 +393,7 @@ def test_reverse_generation_fails_closed_for_incidence_budgets() -> typing.Any:
 @pytest.mark.parametrize("duplicate_input", [False, True])
 def test_packed_inputs_use_the_weighted_unpack_adjoint(
     duplicate_input: typing.Any,
-) -> typing.Any:
+) -> None:
     space = IndexSpace("o", "occupied", 2)
     indices = (Index("i", space), Index("j", space))
     symmetric_spec = TensorSpec(
@@ -454,7 +452,7 @@ def test_packed_inputs_use_the_weighted_unpack_adjoint(
     )
 
 
-def test_cc_like_scalar_fixture_builds_cpu_derivative_references() -> typing.Any:
+def test_cc_like_scalar_fixture_builds_cpu_derivative_references() -> None:
     from tools.tensor_ad_examples import cpu_references, fixture
 
     program, feeds, tangents = fixture(2, 3, seed=151)

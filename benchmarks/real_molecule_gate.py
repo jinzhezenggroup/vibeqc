@@ -23,6 +23,11 @@ from _cases import (
     real_molecule_gate_points,
 )
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 _ENERGY_TOLERANCE = 1.0e-12
 _DENSITY_TOLERANCE = 1.0e-10
 _SCREENING_TOLERANCE = 1.0e-14
@@ -145,7 +150,7 @@ def main() -> None:
         metavar="AO",
         help="disable stock incremental Fock updates only for the selected AO size; repeatable",
     )
-    parser.add_argument("--output-directory", type=Path, required=True)
+    parser.add_argument("--output-directory", type=raw_output_path, required=True)
     parser.add_argument(
         "--dry-run",
         action="store_true",

@@ -45,7 +45,7 @@ class OccupiedLocalization:
     ao_atoms: tuple[int, ...]
     method: str = "pipek_mezey_mulliken"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not self.reference_id or self.method != "pipek_mezey_mulliken":
             raise ValueError("invalid occupied-localization identity")
         u = immutable(self.rotation)

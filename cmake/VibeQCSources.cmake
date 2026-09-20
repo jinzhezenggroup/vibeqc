@@ -22,7 +22,9 @@ function(vibeqc_add_api_sources target)
 endfunction()
 
 function(vibeqc_add_runtime_sources target)
-  target_sources(${target} PRIVATE src/runtime/context.cpp)
+  target_sources(${target} PRIVATE
+    src/runtime/context.cpp
+    src/runtime/cuda_provider.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
       src/runtime/cuda_runtime.cu

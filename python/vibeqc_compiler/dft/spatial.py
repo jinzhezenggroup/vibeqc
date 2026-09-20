@@ -93,7 +93,7 @@ class SpatialPolicy:
     cutoff: float = 0.0
     version: int = 1
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         checked_int(self.region_points, "spatial region points")
         checked_int(self.version, "spatial policy version", high=1)
         object.__setattr__(self, "derivatives", derivative_domain(self.derivatives))
@@ -129,7 +129,7 @@ class SpatialTask:
     generation_id: str
     identity: str = field(init=False)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in ("point_ids", "active_shell_ids", "ao_ids"):
             indices = _indices(getattr(self, name))
             if len(np.unique(indices)) != len(indices):
@@ -189,7 +189,7 @@ class SpatialTasks:
     generation_id: str
     resource_plan: object
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         tasks = tuple(self.tasks)
         if not isinstance(self.policy, SpatialPolicy) or any(
             not isinstance(t, SpatialTask) for t in tasks
@@ -197,7 +197,7 @@ class SpatialTasks:
             raise TypeError("spatial inventory requires typed policy and tasks")
         object.__setattr__(self, "tasks", tasks)
 
-    def validate(self, basis: typing.Any, grid: typing.Any) -> typing.Any:
+    def validate(self, basis: typing.Any, grid: typing.Any) -> None:
         """Validate a task inventory before preparing an execution owner.
 
         This includes O(points) map validation; a prepared owner may retain the

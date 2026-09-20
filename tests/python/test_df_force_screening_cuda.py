@@ -24,7 +24,7 @@ def test_screening_force_budget(
     method: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Charge skipped work to one observable budget, retaining exact other classes."""
     from pyscf import gto, scf
 
@@ -103,7 +103,7 @@ def test_screening_force_budget(
 
 def test_screened_force_matches_energy_finite_differences(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     """Screening changes force work only; compare two independent energy steps."""
     assert os.environ.get("SLURM_JOB_ID")
     atoms = [("O", (0, 0, 0)), ("H", (0, 0, 1.8)), ("H", (1.7, 0, -0.6))]
@@ -131,7 +131,7 @@ def test_screened_force_matches_energy_finite_differences(
 
 def test_invalid_screening_budget_is_rejected_on_strict_fallback(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     """A generic path cannot silently ignore an invalid requested force policy."""
     assert os.environ.get("SLURM_JOB_ID")
     monkeypatch.setenv("VIBEQC_DF_WEIGHTED_EXECUTION", "generic")

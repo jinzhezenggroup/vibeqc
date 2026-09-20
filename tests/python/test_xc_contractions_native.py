@@ -44,7 +44,7 @@ def native_factory(tmp_path_factory: typing.Any) -> typing.Any:
     return build
 
 
-def compare(actual: typing.Any, expected: typing.Any) -> typing.Any:
+def compare(actual: typing.Any, expected: typing.Any) -> None:
     assert set(actual) == set(expected)
     for name in actual:
         if name == "geometry":
@@ -63,7 +63,7 @@ def compare(actual: typing.Any, expected: typing.Any) -> typing.Any:
 
 def test_native_r2scan_generated_point_program_matches_interpreter(
     native_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     rho = np.array([[0.4, 0.2, 0.7], [0.3, 0.5, 0.4]])
     gradient = np.array(
         [
@@ -105,7 +105,7 @@ def test_native_complete_endpoint_tiles_and_two_budgets(
     case: typing.Any,
     name: typing.Any,
     observable: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = fixture(case)
     native = native_factory(name, observable)
     diagnostic = ContractionProgram(functional(name), observable)
@@ -165,7 +165,7 @@ def test_native_complete_endpoint_tiles_and_two_budgets(
 
 def test_native_budget_preflight_precedes_collocation(
     native_factory: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     meta, _, grid = fixture("h2")
     with NativeAO(**basis_arguments(meta)) as basis:
         monkeypatch.setattr(
@@ -184,7 +184,7 @@ def test_native_budget_preflight_precedes_collocation(
 
 def test_native_spatial_mask_matches_independent_zeroed_collocation(
     native_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = fixture("h2")
     program = native_factory("PBE", "potential")
     density = data["density_spin"]
@@ -230,7 +230,7 @@ def test_native_spatial_mask_matches_independent_zeroed_collocation(
 @pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])
 def test_empty_native_spatial_masks_have_zero_native_calls(
     native_factory: typing.Any, monkeypatch: typing.Any, observable: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.dft.ao import jet_indices
 
     meta, data, grid = fixture("h2")
@@ -285,7 +285,7 @@ def test_empty_native_spatial_masks_have_zero_native_calls(
 
 def test_native_full_spin_solver_adapter_and_source_staleness(
     native_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_response.xc import FixedDensityXCDerivativeKernel
 
     meta, data, grid = fixture("h2")
@@ -327,7 +327,7 @@ def test_native_full_spin_solver_adapter_and_source_staleness(
 @pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])
 def test_unpolarized_native_endpoints(
     native_factory: typing.Any, name: typing.Any, observable: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = fixture("f_cartesian")
     density = data["density_total"]
     program = native_factory(name, observable, "unpolarized")
@@ -362,7 +362,7 @@ def test_unpolarized_native_endpoints(
 
 def test_native_energy_rejects_quadrature_overflow(
     native_factory: typing.Any,
-) -> typing.Any:
+) -> None:
     jets, density, weights = np.ones((1, 1, 1)), np.array([[1e9]]), np.array([1e298])
     for consumer in (
         native_factory("LDA_XC_PW", "energy"),
@@ -375,7 +375,7 @@ def test_native_energy_rejects_quadrature_overflow(
 @pytest.mark.parametrize("observable", ["energy", "potential", "response", "geometry"])
 def test_nonempty_strict_spatial_subsets_preserve_all_observables(
     native_factory: typing.Any, observable: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.dft import ExplicitGrid
     from vibeqc_compiler.dft.ao import jet_indices
 
@@ -428,7 +428,7 @@ def test_nonempty_strict_spatial_subsets_preserve_all_observables(
 
 def test_concurrent_native_source_publication_and_matching_cache_hits(
     tmp_path: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     from vibeqc_compiler.common.provenance import canonical_hash

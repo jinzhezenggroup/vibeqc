@@ -43,7 +43,7 @@ class TriplesTileConfig:
     max_bytes: int
     device: int = 0
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if any(type(n) is not int or n < 1 for n in (self.nocc, self.nvir)):
             raise ValueError("triples require nonempty occupied and virtual spaces")
         if type(self.vir_chunk_size) is not int or self.vir_chunk_size < 1:

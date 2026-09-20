@@ -39,12 +39,12 @@ from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
         {"coefficient": 1j},
     ],
 )
-def test_invalid_terms_fail_closed(kwargs: typing.Any) -> typing.Any:
+def test_invalid_terms_fail_closed(kwargs: typing.Any) -> None:
     with pytest.raises((TypeError, ValueError)):
         DirectionalMatrixTerm(**({"output_slot": 0, "output_pair": (0, 1)} | kwargs))
 
 
-def test_identity_covers_contraction_and_component_semantics() -> typing.Any:
+def test_identity_covers_contraction_and_component_semantics() -> None:
     ir = build_weighted_eri_ir((1, 0, 0, 0))
     t = DirectionalMatrixTerm(0, (0, 1), (2, 3), 1)
     key = directional_identity(ir, (0,), (t,))
@@ -59,7 +59,7 @@ def test_identity_covers_contraction_and_component_semantics() -> typing.Any:
     assert key != directional_identity(ir, (1,), (t,))
 
 
-def test_reject_missing_shell_slot_and_invalid_component_inventory() -> typing.Any:
+def test_reject_missing_shell_slot_and_invalid_component_inventory() -> None:
     ir = build_one_electron_derivative_ir("overlap", (0, 0))
     with pytest.raises(ValueError, match="missing shell"):
         directional_identity(ir, (0,), (DirectionalMatrixTerm(0, (0, 1), (2, 3)),))
@@ -71,7 +71,7 @@ def test_reject_missing_shell_slot_and_invalid_component_inventory() -> typing.A
 
 
 def test_generated_sources_declare_device_direction_and_external_weight_contraction() -> (
-    typing.Any
+    None
 ):
     ir = build_weighted_eri_ir((0, 0, 0, 0))
     terms = (
@@ -98,12 +98,12 @@ def test_generated_sources_declare_device_direction_and_external_weight_contract
         (True, 2, 2, 128),
     ],
 )
-def test_storage_admission_before_device_use(dims: typing.Any) -> typing.Any:
+def test_storage_admission_before_device_use(dims: typing.Any) -> None:
     with pytest.raises(ValueError):
         directional_storage(*dims)
 
 
-def test_numeric_storage_counts_host_staging_publication_and_device() -> typing.Any:
+def test_numeric_storage_counts_host_staging_publication_and_device() -> None:
     p = directional_storage(7, 3, 2, 128)
     assert p["output_bytes"] == 2 * 7 * 7 * 8
     assert (
@@ -126,7 +126,7 @@ def test_numeric_storage_counts_host_staging_publication_and_device() -> typing.
         compile_directional_first(None, None, None, component_indices=(0,), terms=())
 
 
-def test_runtime_is_an_installed_compiler_asset() -> typing.Any:
+def test_runtime_is_an_installed_compiler_asset() -> None:
     root = Path(__file__).resolve().parents[2]
     manifest = tomllib.loads((root / "pyproject.toml").read_text())
     mapping = manifest["tool"]["scikit-build"]["wheel"]["force-include"]
@@ -138,7 +138,7 @@ def test_runtime_is_an_installed_compiler_asset() -> typing.Any:
     assert "RHF" not in source and "0.5 *" not in source
 
 
-def test_generation_does_not_load_native_or_probe_cuda() -> typing.Any:
+def test_generation_does_not_load_native_or_probe_cuda() -> None:
     code = r"""
 import ctypes
 ctypes.CDLL=lambda *a,**k: (_ for _ in ()).throw(AssertionError('native library loaded'))
@@ -157,7 +157,7 @@ assert 'vibeqc_directional_append_v1' in source
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_spherical_semantics_are_not_reinterpreted_as_cartesian() -> typing.Any:
+def test_spherical_semantics_are_not_reinterpreted_as_cartesian() -> None:
     ir = build_one_electron_derivative_ir("overlap", (0, 0))
     spherical = replace(
         ir.signature,

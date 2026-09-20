@@ -21,7 +21,7 @@ def run() -> typing.Any:
 
 def test_retained_xc_publication_is_complete_and_reconstructs(
     run: typing.Any,
-) -> typing.Any:
+) -> None:
     assert summarize(run) == json.loads((ROOT / "summary.json").read_text())
     manifest = json.loads((ROOT / "publication.json").read_text())
     validate_publication(
@@ -52,7 +52,7 @@ def test_retained_xc_publication_is_complete_and_reconstructs(
 )
 def test_xc_publication_rejects_corrupt_scientific_evidence(
     run: typing.Any, fault: typing.Any
-) -> typing.Any:
+) -> None:
     broken = copy.deepcopy(run)
     row = broken["cases"][0]
     if fault == "dirty":

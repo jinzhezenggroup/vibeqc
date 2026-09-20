@@ -26,7 +26,7 @@ from vibeqc_compiler.common.resources import ResourcePlan
 from tools.vibeqc_validation.publication import publish
 
 
-def write(path: typing.Any, value: typing.Any) -> typing.Any:
+def write(path: typing.Any, value: typing.Any) -> None:
     """Retain full float precision and deterministic finite JSON."""
     path.write_text(
         json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
@@ -279,7 +279,7 @@ def dense_comparison(directory: typing.Any) -> typing.Any:
     }, rows
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--destination", type=Path, required=True)

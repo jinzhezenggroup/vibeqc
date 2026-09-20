@@ -21,7 +21,7 @@ def check_native(
     backend: typing.Any,
     tiles: typing.Any = (1, 2, 4, 8),
     orders: typing.Any = None,
-) -> typing.Any:
+) -> None:
     lib = source._library
     ptr = ct.POINTER(ct.c_double)
     sizeptr = ct.POINTER(ct.c_size_t)
@@ -119,7 +119,7 @@ def check_native(
 @pytest.mark.parametrize("backend", [0, 1])
 def test_same_orbitals_native_components_and_permutations(
     name: typing.Any, backend: typing.Any
-) -> typing.Any:
+) -> None:
     if backend and os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1":
         pytest.skip("requires allocated CUDA device")
     meta, a = load_fixture(name)

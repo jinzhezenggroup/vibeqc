@@ -1,7 +1,5 @@
 """Reproducibility tests for fixed-root GPU4PySCF table slices."""
 
-import typing
-
 from vibeqc_compiler.integral.extract_rys_table import (
     DEGREE,
     GPU4PYSCF_COMMIT,
@@ -16,7 +14,7 @@ def _cuda_array(name: str, values: list[float]) -> str:
     return f"__device__ double {name}[] = {{" + ",".join(map(str, values)) + "};"
 
 
-def test_extract_fixed_root_tables_uses_gpu4pyscf_offsets() -> typing.Any:
+def test_extract_fixed_root_tables_uses_gpu4pyscf_offsets() -> None:
     """Keep triangular and interpolation offsets aligned with rys_roots.cu."""
 
     fixed_values = [float(index) for index in range(10)]

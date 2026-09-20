@@ -95,7 +95,7 @@ class LowRankProvider:
     def snapshot(self) -> typing.Any:
         return self._snapshot
 
-    def _check(self) -> typing.Any:
+    def _check(self) -> None:
         if self._closed:
             raise RuntimeError("low-rank consumer is closed")
         if self.factor.identity != self._identity:
@@ -251,7 +251,7 @@ class LowRankProvider:
                 },
             )
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with self._lock:
             self._closed = True
 

@@ -91,7 +91,7 @@ def contraction(
 @pytest.mark.parametrize("dtype", ["float32", "float64"])
 def test_plan_storage_precision_constants_and_resident_spans(
     dtype: typing.Any,
-) -> typing.Any:
+) -> None:
     x = tensor("x", (513,), dtype)
     program = Program({"out": add(x, x)})
     plan = plan_cuda(program, TARGET)
@@ -126,7 +126,7 @@ def test_plan_storage_precision_constants_and_resident_spans(
         )
 
 
-def test_dtype_identity_mixed_components_and_integer_tables() -> typing.Any:
+def test_dtype_identity_mixed_components_and_integer_tables() -> None:
     x32, x64 = tensor("s", (513,)), tensor("d", (513,), "float64")
     small, large = [plan_cuda(Program({"x": x}), TARGET) for x in (x32, x64)]
     assert small.identity != large.identity
@@ -145,7 +145,7 @@ def test_dtype_identity_mixed_components_and_integer_tables() -> typing.Any:
 
 
 @pytest.mark.parametrize("dtype", ["float32", "float64"])
-def test_gemm_panels_and_precision_admission(dtype: typing.Any) -> typing.Any:
+def test_gemm_panels_and_precision_admission(dtype: typing.Any) -> None:
     program = contraction("ik,kj->ij", dtype)
     g = gemm_contract(program.outputs["out"])
     assert g.panel_bytes(2, 3, 4) == np.dtype(dtype).itemsize * (2 * 4 + 4 * 3 + 2 * 3)
@@ -199,7 +199,7 @@ def prepare(
 @pytest.mark.parametrize("direct", [False, True])
 def test_fp32_sgemm_transposes_batches_and_partial_panels(
     gpu: typing.Any, expression: typing.Any, direct: typing.Any
-) -> typing.Any:
+) -> None:
     program = contraction(expression)
     rng = np.random.default_rng(482)
     feeds = {
@@ -230,7 +230,7 @@ def test_fp32_sgemm_transposes_batches_and_partial_panels(
 @pytest.mark.parametrize("optimized", [False, True])
 def test_fp32_primitives_views_general_contractions_and_empty_outputs(
     gpu: typing.Any, optimized: typing.Any
-) -> typing.Any:
+) -> None:
     x, y = tensor("x", (3, 5)), tensor("y", (3, 5))
     rows = reduce_sum(multiply(x, y), (1,))
     outputs = {
@@ -275,7 +275,7 @@ def test_fp32_primitives_views_general_contractions_and_empty_outputs(
 @DEVICE
 def test_real_fp32_rounding_denormals_and_mixed_component_boundaries(
     gpu: typing.Any,
-) -> typing.Any:
+) -> None:
     x, y, z = (tensor(n, (3,)) for n in "xyz")
     d = tensor("double_input", (3,), "float64")
     program = Program({"single": add(x, y, z), "double": add(d, d)})
@@ -308,7 +308,7 @@ def test_real_fp32_rounding_denormals_and_mixed_component_boundaries(
 @pytest.mark.parametrize("dtype", ["float32", "float64"])
 def test_resident_typed_spans_transfers_and_validation(
     gpu: typing.Any, dtype: typing.Any
-) -> typing.Any:
+) -> None:
     x = tensor("x", (3, 3), dtype, symmetries=(Symmetry((1, 0)),))
     program = Program({"out": multiply(x, x)})
     data = np.eye(3, dtype=dtype)
@@ -348,14 +348,14 @@ def test_resident_typed_spans_transfers_and_validation(
 )
 def test_strict_fp32_rejects_arithmetic_environment_overrides(
     monkeypatch: typing.Any, flags: typing.Any
-) -> typing.Any:
+) -> None:
     plan = plan_cuda(Program({"x": tensor("x")}), TARGET)
     monkeypatch.setenv("NVCC_APPEND_FLAGS", flags)
     with pytest.raises(ValueError, match="FP32 TensorIR"):
         compile_options(plan)
 
 
-def test_fp32_tuning_requires_independent_promotion_gates() -> typing.Any:
+def test_fp32_tuning_requires_independent_promotion_gates() -> None:
     from vibeqc_compiler.tensor.cuda_tune import tune_cuda
 
     plan = plan_cuda(Program({"x": tensor("x")}), TARGET)

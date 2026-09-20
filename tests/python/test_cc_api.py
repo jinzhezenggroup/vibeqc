@@ -50,7 +50,7 @@ def fixture_problem(name: typing.Any = "h2") -> typing.Any:
     return s, FixtureProvider(s, a["g"]), meta, a
 
 
-def test_capabilities_are_energy_only_and_not_a_native_batch() -> typing.Any:
+def test_capabilities_are_energy_only_and_not_a_native_batch() -> None:
     caps = method_capabilities("rccsd")
     assert caps.method == "rccsd"
     assert caps.family == "coupled_cluster"
@@ -62,7 +62,7 @@ def test_capabilities_are_energy_only_and_not_a_native_batch() -> typing.Any:
 
 
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4"])
-def test_energy_cpu_converges_to_pinned_endpoint(name: typing.Any) -> typing.Any:
+def test_energy_cpu_converges_to_pinned_endpoint(name: typing.Any) -> None:
     s, p, meta, a = fixture_problem(name)
     result = energy(s, p)
     assert result.backend == "cpu"
@@ -79,7 +79,7 @@ def test_energy_cpu_converges_to_pinned_endpoint(name: typing.Any) -> typing.Any
     np.testing.assert_allclose(result.t2, a["t2"], atol=1e-8, rtol=1e-8)
 
 
-def test_energy_rejects_forces_and_unknown_backend() -> typing.Any:
+def test_energy_rejects_forces_and_unknown_backend() -> None:
     s, p, _meta, _ = fixture_problem()
     with pytest.raises(NotImplementedError, match="energy only"):
         energy(s, p, compute_forces=True)
@@ -91,7 +91,7 @@ def test_energy_rejects_forces_and_unknown_backend() -> typing.Any:
         energy(s, p, backend="cuda-resident")
 
 
-def test_nonconvergence_is_a_failed_energy_result_not_an_exception() -> typing.Any:
+def test_nonconvergence_is_a_failed_energy_result_not_an_exception() -> None:
     s, p, _meta, _ = fixture_problem()
     from tools.vibeqc_cc import SolverOptions
 
@@ -101,7 +101,7 @@ def test_nonconvergence_is_a_failed_energy_result_not_an_exception() -> typing.A
     assert result.total_energy is not None  # last finite state retained
 
 
-def test_batch_isolates_failure_and_preserves_input_order() -> typing.Any:
+def test_batch_isolates_failure_and_preserves_input_order() -> None:
     s, p, _meta, _ = fixture_problem("h2")
     problems = [
         (s, p),

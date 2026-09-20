@@ -6,13 +6,17 @@ import json
 import os
 import resource
 import sys
-import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Calculator, _native
 from vibeqc.autotune import source_identity
 from vibeqc.resources import ResourceBudget
@@ -21,7 +25,7 @@ from benchmarks._cases import benchmark_cases
 from tools.vibeqc_validation.schema import file_hash
 
 
-def main() -> typing.Any:
+def main() -> None:
     """Keep baseline/candidate process peaks independent, including startup/driver RSS."""
     cases = benchmark_cases()
     parser = argparse.ArgumentParser(description=__doc__)
@@ -33,8 +37,8 @@ def main() -> typing.Any:
     parser.add_argument("--df-budget", type=int, default=0)
     parser.add_argument(
         "--output",
-        type=Path,
-        default=Path(".artifacts/benchmarks/df_endpoint_memory.json"),
+        type=raw_output_path,
+        default=str(Path(".artifacts/benchmarks/df_endpoint_memory.json")),
     )
     args = parser.parse_args()
     if not os.environ.get("SLURM_JOB_ID") or args.batch < 1 or args.df_budget < 0:

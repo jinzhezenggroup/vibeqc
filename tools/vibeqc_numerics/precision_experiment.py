@@ -196,7 +196,7 @@ def run(baseline_path: Path, output: Path) -> typing.Any:
     return record
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("baseline", type=Path)
     parser.add_argument("--output", type=Path, required=True)

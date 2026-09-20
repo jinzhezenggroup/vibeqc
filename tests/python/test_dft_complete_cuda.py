@@ -91,7 +91,7 @@ def _diagnostic(
         )
 
 
-def _evidence(name: typing.Any, payload: typing.Any) -> typing.Any:
+def _evidence(name: typing.Any, payload: typing.Any) -> None:
     directory = os.environ.get("VIBEQC_STATIONARY_EVIDENCE")
     if directory:
         path = Path(directory)
@@ -105,7 +105,7 @@ def _evidence(name: typing.Any, payload: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
 def test_complete_cuda_independent_analytic(
     method: typing.Any, molecule: typing.Any, compiler: typing.Any
-) -> typing.Any:
+) -> None:
     from test_dft_complete_cpu import ATOMS, independent_gradient
     from vibeqc._dft_gradient import StationaryKsState
     from vibeqc_compiler.common.provenance import file_hash
@@ -186,7 +186,7 @@ def test_complete_cuda_independent_analytic(
 @pytest.mark.parametrize("method", ["lda-uks", "pbe-uks"])
 def test_complete_cuda_open_shell_uks_independent_analytic(
     method: typing.Any, compiler: typing.Any
-) -> typing.Any:
+) -> None:
     """B3 real-device closure: both spin channels share the C1 seven-source plan."""
     from test_dft_complete_cpu import ATOMS, independent_uks_gradient
     from vibeqc._dft_gradient import StationaryKsState
@@ -246,7 +246,7 @@ def test_complete_cuda_open_shell_uks_independent_analytic(
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
 def test_cuda_reconverged_finite_differences_and_replay(
     method: typing.Any, compiler: typing.Any
-) -> typing.Any:
+) -> None:
     from test_dft_complete_cpu import ATOMS
     from vibeqc._dft_gradient import StationaryKsState
     from vibeqc_compiler.dft import NativeAO
@@ -329,7 +329,7 @@ def test_cuda_reconverged_finite_differences_and_replay(
             _diagnostic(replace(current, _source=None), basis, compiler)
 
 
-def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> typing.Any:
+def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> None:
     """Exercise actual source kernels, late failure and a fresh transaction."""
 
     from vibeqc._stationary_cuda import _checked, _CudaSources, _layout, _ptr
@@ -444,7 +444,7 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> typ
 
 def test_cuda_late_owner_replay_and_geometry_replacement(
     compiler: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc._dft_gradient import StationaryKsState
     from vibeqc._stationary_cuda import _CudaSources
     from vibeqc_compiler.dft import NativeAO
@@ -491,7 +491,7 @@ def test_cuda_late_owner_replay_and_geometry_replacement(
 )
 def test_public_cuda_calculator_forces_match_independent_gradient(
     method: typing.Any, charge: typing.Any, multiplicity: typing.Any
-) -> typing.Any:
+) -> None:
     """C2: public Calculator publishes force=-gradient from the shared CUDA plan."""
     from test_dft_complete_cpu import (
         ATOMS,
@@ -526,7 +526,7 @@ def test_public_cuda_calculator_forces_match_independent_gradient(
     np.testing.assert_allclose(public.forces, -gradient, atol=1e-7, rtol=0)
 
 
-def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> typing.Any:
+def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
     """C2: rebuilt owners get fresh forces and a bad neighbor cannot poison them."""
     from test_dft_complete_cpu import ATOMS
 
@@ -552,7 +552,7 @@ def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> typing.An
         assert np.isfinite(isolated.items[1].forces).all()
 
 
-def test_cuda_ks_resource_plan_accounts_for_public_force_staging() -> typing.Any:
+def test_cuda_ks_resource_plan_accounts_for_public_force_staging() -> None:
     from test_dft_complete_cpu import ATOMS
 
     calc = _calculator("pbe-rks")

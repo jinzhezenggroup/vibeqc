@@ -7,19 +7,23 @@ import hashlib
 import json
 import os
 import time
-import typing
 from pathlib import Path
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Calculator
 
 from benchmarks._cases import benchmark_cases
 from benchmarks.df_component_ledger import aggregate, read_host_trace, read_trace
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--separation", type=float, default=3.0)
     parser.add_argument("--repeats", type=int, default=5)
     args = parser.parse_args()

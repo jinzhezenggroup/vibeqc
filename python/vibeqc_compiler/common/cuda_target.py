@@ -96,7 +96,9 @@ class CudaTargetInfo:
     shared_memory_per_block: int
     shared_memory_per_block_optin: int
     shared_memory_per_sm: int
-    sm_count: int = 0
+    # Device topology is not an architecture property. Static catalog targets
+    # leave it unknown until a runtime probe enriches the target.
+    sm_count: int | None = None
     required_cuda_features: tuple[str, ...] = ("fp64", "fp64_atomic_add")
     minimum_cuda_toolkit: str = "12.0"
     cuda_toolkit_version: str = ""
@@ -133,6 +135,12 @@ class CudaTargetInfo:
             raise ValueError("CUDA shared-memory limits must be positive")
         if self.shared_memory_per_block_optin < self.shared_memory_per_block:
             raise ValueError("opt-in shared memory cannot be below the base limit")
+        if self.sm_count is not None and (
+            type(self.sm_count) is not int or self.sm_count < 1
+        ):
+            raise ValueError(
+                "CUDA SM count must be positive and integer when runtime-probed"
+            )
         if self.generator_abi < 1:
             raise ValueError("generator ABI must be positive")
 
@@ -159,6 +167,15 @@ class CudaTargetInfo:
 
         return replace(self, **values)
 
+    def require_sm_count(self) -> int:
+        """Return the probed SM count or reject architecture-only targets."""
+
+        if self.sm_count is None:
+            raise ValueError(
+                "CUDA SM count is unknown; use a runtime-probed CudaTargetInfo"
+            )
+        return self.sm_count
+
     def to_payload(self) -> dict[str, object]:
         """Serialize all resource and provenance fields for tuning artifacts."""
 
@@ -177,7 +194,6 @@ def _target(
     shared_memory_per_block_optin: int,
     shared_memory_per_sm: int,
     minimum_cuda_toolkit: str,
-    sm_count: int = 0,
 ) -> CudaTargetInfo:
     major, minor = compute_capability_from_architecture(architecture)
     return CudaTargetInfo(
@@ -193,7 +209,6 @@ def _target(
         shared_memory_per_block=49152,
         shared_memory_per_block_optin=shared_memory_per_block_optin,
         shared_memory_per_sm=shared_memory_per_sm,
-        sm_count=sm_count,
         minimum_cuda_toolkit=minimum_cuda_toolkit,
     )
 
@@ -238,7 +253,6 @@ CUDA_TARGETS: dict[str, CudaTargetInfo] = {
         shared_memory_per_block_optin=101376,
         shared_memory_per_sm=102400,
         minimum_cuda_toolkit="12.8",
-        sm_count=170,
     ),
 }
 
@@ -272,4 +286,7 @@ def cuda_target_info(architecture: str | int) -> CudaTargetInfo:
     )
 
 
+# Compatibility-only explicit target for downstream callers that imported the
+# historical name. Generic compiler APIs must not use this object as an
+# implicit default; callers select a concrete target with cuda_target_info().
 DEFAULT_CUDA_TARGET = CUDA_TARGETS["sm_120"]

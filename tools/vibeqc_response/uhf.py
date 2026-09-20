@@ -59,7 +59,7 @@ class UHFReferenceSnapshot:
     validation_tolerance: float = 1e-8
     identity: str = field(init=False)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.precision != "float64":
             raise ValueError("UHF response requires real FP64 reference buffers")
         if self.representation not in ("cartesian", "real_spherical"):
@@ -211,7 +211,7 @@ class UHFSpinRotationLayout:
     beta_occupied: tuple[int, ...]
     beta_virtual: tuple[int, ...]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for spin in ("alpha", "beta"):
             occupied = tuple(getattr(self, f"{spin}_occupied"))
             virtual = tuple(getattr(self, f"{spin}_virtual"))
@@ -331,7 +331,7 @@ class UHFResponseProblem:
     perturbation_labels: tuple[str, ...] = ()
     identity: str = field(init=False)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.reference, UHFReferenceSnapshot):
             raise TypeError("UHF response requires UHFReferenceSnapshot")
         if not isinstance(self.layout, UHFSpinRotationLayout):
@@ -405,7 +405,7 @@ class UHFResponseProblem:
             raise ValueError("UHF RHS values must be finite real FP64")
         return immutable(array)
 
-    def assert_compatible(self, other: typing.Any) -> typing.Any:
+    def assert_compatible(self, other: typing.Any) -> None:
         """Reject stale alpha/beta recycle spaces before any projection."""
         if not isinstance(other, UHFResponseProblem) or self.identity != other.identity:
             raise ResponseCompatibilityError(

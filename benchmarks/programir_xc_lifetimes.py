@@ -27,7 +27,7 @@ from vibeqc_compiler.xc.native import NativeContractionProgram
 from vibeqc_compiler.xc.prepared import PreparedXCContractions
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", choices=("h2", "f_spherical"), default="h2")
     parser.add_argument("--functional", choices=("LDA_XC_PW", "PBE"), default="PBE")

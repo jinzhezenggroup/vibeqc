@@ -24,6 +24,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 BENCHMARK = ROOT / "benchmarks" / "compare_gpu4pyscf_batch.py"
@@ -325,7 +330,9 @@ def main() -> None:
         default=ROOT / "build" / "cuda-dev-fast" / "libvibeqc.so",
     )
     parser.add_argument(
-        "--output-dir", type=Path, default=ROOT / ".artifacts" / "issue206-df"
+        "--output-dir",
+        type=raw_output_path,
+        default=str(ROOT / ".artifacts" / "issue206-df"),
     )
     parser.add_argument("--manifest", type=Path)
     args = parser.parse_args()

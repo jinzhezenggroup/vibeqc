@@ -15,7 +15,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_localized_uhf_force_error_survives_small_density_rms() -> typing.Any:
+def test_localized_uhf_force_error_survives_small_density_rms() -> None:
     """Cold OH can satisfy density RMS while its transverse force is still bad.
 
     The CPU fixture fixes the predeclared tolerances and both geometries. Frozen
@@ -40,7 +40,7 @@ def test_localized_uhf_force_error_survives_small_density_rms() -> typing.Any:
 
     def compare(
         result: typing.Any, references: typing.Any, forces: typing.Any = True
-    ) -> typing.Any:
+    ) -> None:
         assert all(x.converged and x.executed_backend == "cuda" for x in result.items)
         np.testing.assert_allclose(
             result.energies,

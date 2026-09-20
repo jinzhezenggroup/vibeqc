@@ -32,7 +32,7 @@ class RefinementStage:
     maximum_rank: int | None = None
     residual_tolerance: float = 1e-5
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if (
             isinstance(self.threshold, (bool, str))
             or not math.isfinite(self.threshold)

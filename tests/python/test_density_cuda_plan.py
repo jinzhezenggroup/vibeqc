@@ -14,9 +14,7 @@ def basis() -> typing.Any:
     return SimpleNamespace(nao=32, natom=3, numeric_bytes=8192, packed=np.zeros(256))
 
 
-def test_occupied_capacity_does_not_materialize_full_point_by_orbital_data() -> (
-    typing.Any
-):
+def test_occupied_capacity_does_not_materialize_full_point_by_orbital_data() -> None:
     small, large = [
         plan_tiles(
             basis(),
@@ -53,7 +51,7 @@ def test_occupied_capacity_does_not_materialize_full_point_by_orbital_data() -> 
 )
 def test_shared_budget_rejects_before_loading_or_allocating_cuda(
     budget: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("CUDA must not load before resource preflight")
 
@@ -67,12 +65,12 @@ def test_shared_budget_rejects_before_loading_or_allocating_cuda(
 )
 def test_invalid_orbital_topology_fails_before_allocation(
     counts: typing.Any, tile: typing.Any
-) -> typing.Any:
+) -> None:
     with pytest.raises(ValueError):
         plan_tiles(basis(), backend="cuda", orbital_capacity=counts, orbital_tile=tile)
 
 
-def test_legacy_and_shared_budget_are_not_silently_combined() -> typing.Any:
+def test_legacy_and_shared_budget_are_not_silently_combined() -> None:
     with pytest.raises(ValueError, match="shared resource budget or"):
         CudaGrid(
             basis(), None, budget_bytes=128 << 20, resource_budget=ResourceBudget()

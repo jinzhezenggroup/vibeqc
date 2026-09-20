@@ -71,7 +71,7 @@ def _median_ms(function: typing.Any, samples: typing.Any) -> typing.Any:
     return statistics.median(timings)
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--samples", type=int, default=50)
     parser.add_argument("--tile-size", type=int, default=5)

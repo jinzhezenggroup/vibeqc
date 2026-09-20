@@ -370,7 +370,7 @@ def run(
     return result
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--backend", choices=("cpu", "cuda"), default="cpu")

@@ -12,10 +12,16 @@ import json
 import os
 import statistics
 import subprocess
+import sys
 import typing
 from pathlib import Path
 
+_BENCHMARKS_DIR = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "benchmarks"
+)
+sys.path.insert(0, str(_BENCHMARKS_DIR))
 import numpy as np
+from _retention import raw_output_path
 from vibeqc.resources import (
     ResourceBudget,
     ResourceCandidate,
@@ -35,7 +41,7 @@ def digest(path: typing.Any) -> typing.Any:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def dump(path: typing.Any, value: typing.Any) -> typing.Any:
+def dump(path: typing.Any, value: typing.Any) -> None:
     path.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n")
 
 
@@ -163,7 +169,7 @@ def work(fixture: typing.Any, mode: typing.Any) -> typing.Any:
     return result
 
 
-def prepare(args: typing.Any) -> typing.Any:
+def prepare(args: typing.Any) -> None:
     """Freeze hashes, resource reservations and diagnostic input derivations."""
     if args.output.exists():
         raise RuntimeError("refusing to overwrite prepared experiment")
@@ -253,7 +259,7 @@ def prepare(args: typing.Any) -> typing.Any:
     )
 
 
-def run(args: typing.Any) -> typing.Any:
+def run(args: typing.Any) -> None:
     """Persist every sample before numerical gates; never weaken a failed gate."""
     if not os.environ.get("SLURM_JOB_ID"):
         raise RuntimeError("GPU trial requires finite Slurm allocation")
@@ -360,7 +366,7 @@ if __name__ == "__main__":
     parser.add_argument("action", choices=("prepare", "run"))
     parser.add_argument("--captures", type=Path)
     parser.add_argument("--executable", type=Path)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--budget", type=int, default=12 << 30)
     parser.add_argument("--fixture")
     arguments = parser.parse_args()

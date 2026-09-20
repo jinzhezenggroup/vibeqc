@@ -295,7 +295,7 @@ class FirstDerivativeCpuLaneEvaluator:
         result = np.zeros(self.shape)
         count = 0
 
-        def flush(size: typing.Any) -> typing.Any:
+        def flush(size: typing.Any) -> None:
             status = self.run(
                 records.ctypes.data,
                 size,

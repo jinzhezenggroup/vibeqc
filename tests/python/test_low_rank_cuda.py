@@ -37,7 +37,7 @@ def artifact(tmp_path_factory: typing.Any) -> typing.Any:
     )
 
 
-def test_cuda_budget_preflight_never_reads_source_or_loads_a_device() -> typing.Any:
+def test_cuda_budget_preflight_never_reads_source_or_loads_a_device() -> None:
     source = DenseColumns(np.eye(3), 2)
     with pytest.raises(MemoryError):
         CudaIncrementalCholesky(
@@ -49,7 +49,7 @@ def test_cuda_budget_preflight_never_reads_source_or_loads_a_device() -> typing.
 @pytest.mark.parametrize("spins", [1, 2])
 def test_resident_cuda_prefix_and_jk_match_independent_dense_tensor(
     artifact: typing.Any, spins: typing.Any
-) -> typing.Any:
+) -> None:
     rng = np.random.default_rng(19)
     raw = rng.normal(size=(6, 6))
     matrix = raw @ raw.T + np.eye(6) * 0.1
@@ -108,7 +108,7 @@ def test_resident_cuda_prefix_and_jk_match_independent_dense_tensor(
         factor.refine(0)
 
 
-def test_cuda_native_source_extension_and_zero_rank(artifact: typing.Any) -> typing.Any:
+def test_cuda_native_source_extension_and_zero_rank(artifact: typing.Any) -> None:
     source, arrays = source_for("water")
     with (
         source,
@@ -140,7 +140,7 @@ def test_cuda_native_source_extension_and_zero_rank(artifact: typing.Any) -> typ
 
 def test_cuda_rejected_schur_column_preserves_native_prefix(
     artifact: typing.Any,
-) -> typing.Any:
+) -> None:
     source = DenseColumns([[1, 2, 0], [2, 1, 0], [0, 0, 1]], 2)
     with CudaIncrementalCholesky(source, artifact, rank_capacity=3) as factor:
         with pytest.raises(ValueError, match="PSD Cauchy"):
@@ -151,7 +151,7 @@ def test_cuda_rejected_schur_column_preserves_native_prefix(
 
 def test_cuda_staged_initializer_matches_exact_cleanup_under_budget(
     artifact: typing.Any,
-) -> typing.Any:
+) -> None:
     from test_low_rank_refinement import basis_for
     from vibeqc.fock import FockPlan
 

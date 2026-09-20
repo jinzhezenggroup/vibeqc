@@ -156,6 +156,7 @@ jobs:
             -DPython3_EXECUTABLE="${GITHUB_WORKSPACE}/.venv/bin/python" \
             -DVIBEQC_CUDA_ARCHITECTURES=80 \
             -DVIBEQC_CUDA_COMPILE_ARCHITECTURES=80 \
+            -DVIBEQC_CUDA_PROVIDER=cumetal \
             -DVIBEQC_BUILD_TESTS=ON \
             -DVIBEQC_COMPILER_CACHE=ccache
 

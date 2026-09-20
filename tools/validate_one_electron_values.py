@@ -7,7 +7,6 @@ inside an existing allocation. These isolated timings do not promote HF paths.
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
-import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -41,7 +40,7 @@ from tools.vibeqc_validation.one_electron_values import one_electron_value_matri
 from tools.vibeqc_validation.schema import block_error, file_hash
 
 
-def main() -> typing.Any:
+def main() -> None:
     """Archive complete inputs, exact source/binary identity and every block error."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)

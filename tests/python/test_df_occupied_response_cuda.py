@@ -30,7 +30,7 @@ def test_occupied_response_replay_and_zero_rank_spin(
     elements: typing.Any,
     batch_size: typing.Any,
     pairs: typing.Any,
-) -> typing.Any:
+) -> None:
     """Independent forces, changed geometry, rank-zero beta and dense fallback."""
     from pyscf import gto, scf
 
@@ -173,7 +173,7 @@ def test_occupied_response_replay_and_zero_rank_spin(
 @pytest.mark.parametrize("batch_products", ["off", "auto"])
 def test_packed_response_crosses_ao_blocks_and_auxiliary_panels(
     monkeypatch: typing.Any, tmp_path: typing.Any, batch_products: typing.Any
-) -> typing.Any:
+) -> None:
     """A 96-AO oracle covers the ragged second GEMM block and two packed panels.
 
     Smaller molecular fixtures fit in a single AO block and cannot detect a
@@ -247,7 +247,7 @@ def test_packed_response_crosses_ao_blocks_and_auxiliary_panels(
 @pytest.mark.parametrize("method", ["rhf", "uhf"])
 def test_batched_full_response_keeps_rectangular_output(
     method: typing.Any, monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """Exercise the full batched expansion with both nonempty UHF spin factors.
 
     Tiny full-output fixtures exhaust the shared tensor with their weight

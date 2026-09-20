@@ -14,16 +14,21 @@ import json
 import os
 import subprocess
 import sys
-import typing
 from pathlib import Path
+
+_BENCHMARKS_DIR = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "benchmarks"
+)
+sys.path.insert(0, str(_BENCHMARKS_DIR))
+from _retention import raw_output_path
 
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def main() -> typing.Any:
+def main() -> None:
     """Keep the existing endpoint admission and numerical gates authoritative."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--library", type=Path, required=True)
     parser.add_argument(
         "--aos",
@@ -85,7 +90,7 @@ def main() -> typing.Any:
         "checks": [],
     }
 
-    def save() -> typing.Any:
+    def save() -> None:
         (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     save()

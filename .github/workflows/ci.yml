@@ -517,7 +517,9 @@ jobs:
         env:
           VIBEQC_LIBRARY: ${{ github.workspace }}/build-benchmark/libvibeqc.so
         with:
-          mode: walltime
+          # Hosted GitHub runners are noisy for wall-clock gating; simulation
+          # provides the stable PR/master regression signal without Macro Runner quota.
+          mode: simulation
           run: .venv/bin/python -m pytest benchmarks/test_cpu_codspeed.py --codspeed -q
 
   upload-coverage:

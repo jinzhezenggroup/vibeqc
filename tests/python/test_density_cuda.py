@@ -44,7 +44,7 @@ def artifact() -> typing.Any:
     )
 
 
-def check(actual: typing.Any, expected: typing.Any) -> typing.Any:
+def check(actual: typing.Any, expected: typing.Any) -> None:
     np.testing.assert_allclose(actual, expected, atol=1e-11, rtol=1e-10)
 
 
@@ -66,7 +66,7 @@ def factors(
 @pytest.mark.parametrize("points,orbitals", [(7, 1), (13, 3)])
 def test_native_routes_match_independent_features_with_partial_tiles(
     artifact: typing.Any, name: typing.Any, points: typing.Any, orbitals: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data = load_fixture(name)
     with NativeAO(**basis_arguments(meta)) as basis:
         source = DensitySource(data["density"], basis_identity=basis.identity)
@@ -103,7 +103,7 @@ def test_native_routes_match_independent_features_with_partial_tiles(
 @pytest.mark.parametrize("counts", [(11, 0), (0, 0)])
 def test_requested_features_and_empty_spin_channels(
     artifact: typing.Any, ingredients: typing.Any, counts: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data = load_fixture("water")
     order = 0 if ingredients == ("rho",) else 1
     with NativeAO(**basis_arguments(meta)) as basis:
@@ -133,7 +133,7 @@ def test_requested_features_and_empty_spin_channels(
 
 def test_local_maps_keep_all_occupied_columns_and_cross_terms(
     artifact: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data = load_fixture("f_spherical")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = factors(basis, (17, 9))
@@ -171,7 +171,7 @@ def test_local_maps_keep_all_occupied_columns_and_cross_terms(
 
 def test_current_stamp_fallback_capacity_and_changed_density(
     artifact: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data = load_fixture("water")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = factors(basis)
@@ -220,7 +220,7 @@ def test_current_stamp_fallback_capacity_and_changed_density(
 
 def test_two_independent_owners_can_replay_concurrently(
     artifact: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data = load_fixture("water")
     with NativeAO(**basis_arguments(meta)) as basis:
         sources = (factors(basis, (5, 3)), factors(basis, (2, 0)))
@@ -235,7 +235,7 @@ def test_two_independent_owners_can_replay_concurrently(
             ) as second,
         ):
 
-            def run(cuda: typing.Any, source: typing.Any) -> typing.Any:
+            def run(cuda: typing.Any, source: typing.Any) -> None:
                 cuda.set_source(source, stamp=source.stamp)
                 for _ in range(3):
                     actual = cuda.evaluate(points, stamp=source.stamp)
@@ -254,7 +254,7 @@ def test_two_independent_owners_can_replay_concurrently(
 @pytest.mark.parametrize("invalid", ["negative", "complex", "response", "missing"])
 def test_unavailable_factors_execute_the_original_signed_density(
     artifact: typing.Any, invalid: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data = load_fixture("water")
     with NativeAO(**basis_arguments(meta)) as basis:
         valid = factors(basis, (3, 2))
@@ -285,7 +285,7 @@ def test_unavailable_factors_execute_the_original_signed_density(
 
 def test_source_topology_and_failed_upload_cannot_publish_stale_features(
     artifact: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data = load_fixture("water")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = factors(basis, (3, 2))
@@ -304,7 +304,7 @@ def test_source_topology_and_failed_upload_cannot_publish_stale_features(
             assert cuda.source_statistics["source_kind"] == "orbitals"
             native_call = cuda._call
 
-            def failed_upload(name: typing.Any, *args: typing.Any) -> typing.Any:
+            def failed_upload(name: typing.Any, *args: typing.Any) -> None:
                 if name == "grid_cuda_source_v1":
                     raise RuntimeError("injected transport failure")
                 native_call(name, *args)
@@ -327,7 +327,7 @@ def test_source_topology_and_failed_upload_cannot_publish_stale_features(
 
 def test_pruned_features_cannot_borrow_full_feature_task_abi(
     artifact: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data = load_fixture("water")
     with NativeAO(**basis_arguments(meta)) as basis:
         source = factors(basis, (3, 2))
@@ -386,7 +386,7 @@ def test_same_grid_xc_energy_potential_and_composed_budgets(
     layout: typing.Any,
     spin: typing.Any,
     device_budget: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture(case)
     native = program(name, spin)
     budget = ResourceBudget(host_bytes=32 << 20, device_bytes=device_budget)
@@ -437,7 +437,7 @@ def test_same_grid_xc_energy_potential_and_composed_budgets(
 
 def test_xc_density_direction_uses_the_current_orbitals(
     artifact: typing.Any,
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     native = program("PBE", "polarized")
     with NativeAO(**basis_arguments(meta)) as basis:

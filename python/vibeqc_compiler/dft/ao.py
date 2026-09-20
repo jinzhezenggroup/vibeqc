@@ -65,7 +65,7 @@ class NativeAO:
         )
     )
 
-    def __setattr__(self, name: typing.Any, value: typing.Any) -> typing.Any:
+    def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed and name in self.__dict__:
             raise AttributeError(
                 "AO scientific state is immutable; prepare a new basis"
@@ -211,7 +211,7 @@ class NativeAO:
             }
         )
 
-    def _call(self, name: typing.Any, *args: typing.Any) -> typing.Any:
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(2048)
         if getattr(self._library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
@@ -301,7 +301,7 @@ class NativeAO:
             )
             return immutable(result)
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Release only this basis; previously returned detached jets survive."""
         with self._lock:
             if self._handle:

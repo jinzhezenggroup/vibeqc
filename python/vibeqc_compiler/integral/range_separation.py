@@ -34,7 +34,7 @@ class CoulombKernel:
     family: CoulombKernelFamily | str = CoulombKernelFamily.FULL_RANGE
     omega: float = 0.0
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(self, "family", CoulombKernelFamily(self.family))
         if isinstance(self.omega, bool):
             raise TypeError("omega must be a real inverse-bohr parameter")

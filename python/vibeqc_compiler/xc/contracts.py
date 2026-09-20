@@ -27,7 +27,7 @@ class IngredientContract:
     spin: str = "polarized"
     family: str = "gga"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.spin not in ("polarized", "unpolarized") or self.family not in (
             "lda",
             "gga",
@@ -75,7 +75,7 @@ class DerivativeRequest:
 
     observable: str = "potential"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.observable not in ("energy", "potential", "response", "geometry"):
             raise UnsupportedXC("unsupported XC contraction observable/order")
 
@@ -116,7 +116,7 @@ class DiscreteEnergyContract:
     functional: FunctionalSpec
     request: DerivativeRequest = DerivativeRequest()
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.functional, FunctionalSpec) or not isinstance(
             self.request, DerivativeRequest
         ):

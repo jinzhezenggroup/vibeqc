@@ -154,7 +154,7 @@ class PreparedImplicitCuda:
         self.last_metrics[stage] = result.metrics
         return result
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Release every prepared provider, including after an execution failure."""
         if self._session is not None:
             self._session.close()

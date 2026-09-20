@@ -108,7 +108,7 @@ def reference(mol: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("d_shell", [False, True])
 def test_raw_matrices_libcint_and_quadrature(
     representation: typing.Any, d_shell: typing.Any
-) -> typing.Any:
+) -> None:
     atoms, basis, mol = fixture(representation=representation, d_shell=d_shell)
     actual = ecp_integrals(atoms, basis)
     refined = ecp_integrals(atoms, basis, radial_points=224, polar_points=44)
@@ -133,7 +133,7 @@ def test_raw_matrices_libcint_and_quadrature(
 @pytest.mark.parametrize("step", [2e-4, 7e-5])
 def test_all_atom_derivatives_against_independent_libcint(
     step: typing.Any,
-) -> typing.Any:
+) -> None:
     atoms, basis, mol = fixture(d_shell=True)
     actual = ecp_integrals(atoms, basis)
     analytical = actual.local_derivative + actual.nonlocal_derivative
@@ -155,7 +155,7 @@ def test_all_atom_derivatives_against_independent_libcint(
 
 
 @pytest.mark.parametrize("spin", [0, 1])
-def test_complete_hf_energy_force_and_core_bookkeeping(spin: typing.Any) -> typing.Any:
+def test_complete_hf_energy_force_and_core_bookkeeping(spin: typing.Any) -> None:
     scf = pytest.importorskip("pyscf.scf")
     atoms, basis, mol = fixture(spin=spin)
     method = "uhf" if spin else "rhf"
@@ -170,21 +170,21 @@ def test_complete_hf_energy_force_and_core_bookkeeping(spin: typing.Any) -> typi
     assert sum(resolve_ecp(basis, tuple(Atom.from_value(a) for a in atoms))[0]) == 10
 
 
-def test_ecp_cannot_be_labeled_as_an_all_electron_accuracy_model() -> typing.Any:
+def test_ecp_cannot_be_labeled_as_an_all_electron_accuracy_model() -> None:
     """ECP execution is available, but the accuracy schema needs its own identity."""
     atoms, basis, _ = fixture()
     with pytest.raises(NotImplementedError, match="ECP accuracy model"):
         Calculator(basis=basis).resolved_model(atoms)
 
 
-def test_ecp_does_not_enable_unvalidated_canonical_mp2() -> typing.Any:
+def test_ecp_does_not_enable_unvalidated_canonical_mp2() -> None:
     """The native method validator must preserve MP2's all-electron domain."""
     atoms, basis, _ = fixture()
     with pytest.raises(NotImplementedError, match="canonical MP2 with ECP"):
         Calculator(method="mp2", basis=basis).singlepoint(atoms)
 
 
-def test_parameters_invalidate_identity_and_malformed_channels_fail() -> typing.Any:
+def test_parameters_invalidate_identity_and_malformed_channels_fail() -> None:
     atoms, basis, _ = fixture()
     potentials = json.loads(basis.by_element[11].ecp_data)
     potentials[0]["coefficients"][0][0] = str(
@@ -338,7 +338,7 @@ def detached_reference(
     return np.array([local, nonlocal_]) / norms[None, :, None] / norms[None, None, :]
 
 
-def test_ecp_and_basis_centers_move_independently() -> typing.Any:
+def test_ecp_and_basis_centers_move_independently() -> None:
     xyz = np.array([[0.13, -0.27, 0.32], [0.43, 0.38, 1.12], [-0.31, 0.12, -0.62]])
     actual = detached_native(xyz)
     np.testing.assert_allclose(
@@ -360,7 +360,7 @@ def test_ecp_and_basis_centers_move_independently() -> typing.Any:
     )
 
 
-def test_isolated_valence_atom_and_wrong_core_count() -> typing.Any:
+def test_isolated_valence_atom_and_wrong_core_count() -> None:
     scf = pytest.importorskip("pyscf.scf")
     atoms, basis, mol = fixture()
     isolated = mol.copy()
@@ -387,7 +387,7 @@ def test_isolated_valence_atom_and_wrong_core_count() -> typing.Any:
         Calculator(basis=bad).singlepoint(atoms)
 
 
-def test_unresolved_quadrature_rejects_full_method() -> typing.Any:
+def test_unresolved_quadrature_rejects_full_method() -> None:
     atoms, basis, _ = fixture()
     potentials = json.loads(basis.by_element[11].ecp_data)
     for p in potentials:
@@ -407,7 +407,7 @@ def test_unresolved_quadrature_rejects_full_method() -> typing.Any:
     os.getenv("VIBEQC_ECP_CUDA_TEST") != "1", reason="requires explicit real CUDA run"
 )
 @pytest.mark.parametrize("spin", [0, 1])
-def test_real_cuda_matrices_complete_hf_and_replay(spin: typing.Any) -> typing.Any:
+def test_real_cuda_matrices_complete_hf_and_replay(spin: typing.Any) -> None:
     atoms, basis, _ = fixture(spin=spin)
     cpu = ecp_integrals(atoms, basis, charge=spin, multiplicity=spin + 1)
     gpu = ecp_integrals(atoms, basis, charge=spin, multiplicity=spin + 1, device="cuda")
@@ -450,7 +450,7 @@ def test_real_cuda_matrices_complete_hf_and_replay(spin: typing.Any) -> typing.A
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_ecp_resource_budget_and_parameter_invalidation(
     device: typing.Any,
-) -> typing.Any:
+) -> None:
     if device == "cuda" and os.getenv("VIBEQC_ECP_CUDA_TEST") != "1":
         pytest.skip("requires explicit real CUDA run")
     from vibeqc import ResourceBudget
@@ -500,7 +500,7 @@ def test_ecp_resource_budget_and_parameter_invalidation(
 )
 def test_unsupported_ecp_formats_reject_before_execution(
     field: typing.Any, value: typing.Any, match: typing.Any
-) -> typing.Any:
+) -> None:
     atoms, basis, _ = fixture()
     potentials = [
         {
@@ -529,7 +529,7 @@ def test_unsupported_ecp_formats_reject_before_execution(
 @pytest.mark.parametrize("representation", ["spherical", "cartesian"])
 def test_cuda_d_shell_and_independent_potential_center(
     representation: typing.Any,
-) -> typing.Any:
+) -> None:
     atoms, basis, _ = fixture(representation=representation, d_shell=True)
     cpu = ecp_integrals(atoms, basis)
     gpu = ecp_integrals(atoms, basis, device="cuda")
@@ -550,7 +550,7 @@ def test_cuda_d_shell_and_independent_potential_center(
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_all_radial_powers_and_d_projector_libcint(
     power: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     if device == "cuda" and os.getenv("VIBEQC_ECP_CUDA_TEST") != "1":
         pytest.skip("requires explicit real CUDA run")
     xyz = np.array([[0.13, -0.27, 0.32], [0.43, 0.38, 1.12], [-0.31, 0.12, -0.62]])

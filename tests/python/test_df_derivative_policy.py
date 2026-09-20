@@ -61,7 +61,7 @@ int main() {
 
 def test_work_model_boundaries_and_unknown_architecture(
     policy: typing.Any,
-) -> typing.Any:
+) -> None:
     rows = [
         (n, a, op, ap, v, arch)
         for n, a in [
@@ -96,7 +96,7 @@ def test_work_model_boundaries_and_unknown_architecture(
 
 def test_controls_restore_absent_and_present_variables_on_failure(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     monkeypatch.setenv("VIBEQC_DF_WEIGHTED_EXECUTION", "generic")
     monkeypatch.delenv("VIBEQC_DF_PRIMITIVE_BUCKETS", raising=False)
     monkeypatch.setenv("VIBEQC_DF_TRACE", "caller-trace")
@@ -115,7 +115,7 @@ def test_controls_restore_absent_and_present_variables_on_failure(
 
 
 @pytest.mark.parametrize("invalid", ["shape", "energy_nan", "force_inf", "oracle_nan"])
-def test_probe_rejects_invalid_numerical_evidence(invalid: typing.Any) -> typing.Any:
+def test_probe_rejects_invalid_numerical_evidence(invalid: typing.Any) -> None:
     result = SimpleNamespace(
         energies=np.array([1.0]), items=[SimpleNamespace(forces=np.ones((2, 3)))]
     )
@@ -134,7 +134,7 @@ def test_probe_rejects_invalid_numerical_evidence(invalid: typing.Any) -> typing
 
 def test_architecture_query_only_reads_required_attributes(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Mock the runtime to test failure propagation and forbid full queries."""
     compiler = shutil.which("c++")
     if not compiler:

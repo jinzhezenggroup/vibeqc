@@ -17,7 +17,7 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def test_generated_table_matches_manifest() -> typing.Any:
+def test_generated_table_matches_manifest() -> None:
     folder = ROOT / "src/dft/dispersion"
     manifest = json.loads((folder / "d4_manifest.json").read_text())
     assert manifest["reference_model"] == "gfn2"
@@ -27,7 +27,7 @@ def test_generated_table_matches_manifest() -> typing.Any:
     assert digest(folder / manifest["output"]) == manifest["output_sha256"]
 
 
-def test_independent_oracle_assets_match_manifest() -> typing.Any:
+def test_independent_oracle_assets_match_manifest() -> None:
     manifest = json.loads((ROOT / "tests/data/d4/oracle_manifest.json").read_text())
     assert manifest["oracle_version"] == "dftd4 version 4.2.0"
     assert manifest["reference_model"] == "gfn2"
@@ -51,7 +51,7 @@ def load_generator() -> typing.Any:
     return module
 
 
-def test_packing_refuses_nonsymmetric_matrix() -> typing.Any:
+def test_packing_refuses_nonsymmetric_matrix() -> None:
     gen = load_generator()
     refs = [
         {"coordination_number": float(i), "charge": 0.0, "gaussian_count": 1}
@@ -64,13 +64,13 @@ def test_packing_refuses_nonsymmetric_matrix() -> typing.Any:
     assert "kReferenceCount * (kReferenceCount + 1) / 2" in packed
 
 
-def test_exporter_rejects_nonfinite_table_values() -> typing.Any:
+def test_exporter_rejects_nonfinite_table_values() -> None:
     gen = load_generator()
     with pytest.raises(gen.D4DataError, match="NaN or infinity"):
         gen.format_double(float("nan"))
 
 
-def test_migration_records_original_source_blobs() -> typing.Any:
+def test_migration_records_original_source_blobs() -> None:
     manifest = json.loads(
         (ROOT / "src/dft/dispersion/xtbloom_manifest.json").read_text()
     )
@@ -85,7 +85,7 @@ def test_migration_records_original_source_blobs() -> typing.Any:
     )
 
 
-def test_eeq_tables_and_charge_parameters_match_pinned_manifest() -> typing.Any:
+def test_eeq_tables_and_charge_parameters_match_pinned_manifest() -> None:
     folder = ROOT / "src/dft/dispersion"
     manifest = json.loads((folder / "d4_eeq_manifest.json").read_text())
     assert manifest["reference_model"] == "eeq"
@@ -115,7 +115,7 @@ def test_eeq_tables_and_charge_parameters_match_pinned_manifest() -> typing.Any:
     )
 
 
-def test_independent_eeq_oracle_assets_match_manifest() -> typing.Any:
+def test_independent_eeq_oracle_assets_match_manifest() -> None:
     manifest = json.loads((ROOT / "tests/data/d4/eeq_oracle_manifest.json").read_text())
     assert manifest["oracle_version"] == "dftd4 version 4.2.0"
     assert manifest["cases"] == [

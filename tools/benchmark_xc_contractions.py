@@ -344,7 +344,7 @@ def diagnostic(
     return result
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", required=True, type=Path)
     parser.add_argument("--cache", required=True, type=Path)

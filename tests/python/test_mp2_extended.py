@@ -16,7 +16,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_fourteen_ao_all_electron_public_reference_and_tail(
     device: typing.Any,
-) -> typing.Any:
+) -> None:
     if device == "cuda" and os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1":
         pytest.skip("requires allocated CUDA device")
     pyscf = pytest.importorskip("pyscf")

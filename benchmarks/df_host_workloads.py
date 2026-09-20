@@ -53,7 +53,7 @@ class AblationBranchMismatch(ValueError):
         }
 
 
-def validate_ablation_branches(rows: typing.Any) -> typing.Any:
+def validate_ablation_branches(rows: typing.Any) -> None:
     """Reject timing promotion when either selection took different SCF work.
 
     A frozen seed must give one iteration/retry branch per workload and item.
@@ -111,7 +111,7 @@ def validate_preparation_counts(
     workload: typing.Any,
     eager: typing.Any,
     rebuild: typing.Any,
-) -> typing.Any:
+) -> None:
     """Require actual solves and matching cache scopes, including partial rebuilds.
 
     The changed-geometry workload moves only the last item and restores the
@@ -155,7 +155,7 @@ def validate_final_eigen_counts(
     method: typing.Any,
     reference: typing.Any,
     strict_final_state: typing.Any = False,
-) -> typing.Any:
+) -> None:
     """Require actual finalizer leaves; a flag or omitted observer is insufficient.
 
     Provider ablations force rebuilding after retained-state integration. Cold
@@ -208,7 +208,7 @@ def validate_final_state_counts(
     force: typing.Any,
     reference: typing.Any,
     compute_forces: typing.Any,
-) -> typing.Any:
+) -> None:
     """Distinguish retained work from real correction, even at zero solves.
 
     Every item must still read and validate its candidate against current F.
@@ -272,7 +272,7 @@ def validate_setup_eigen_counts(
     reference: typing.Any,
     eager: typing.Any = False,
     rebuild: typing.Any = False,
-) -> typing.Any:
+) -> None:
     """Gate setup substitution separately from work elimination and final solves."""
     expected = {
         "overlap": batch_size

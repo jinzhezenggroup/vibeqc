@@ -10,7 +10,7 @@ from vibeqc import Calculator, ResourceBudget
 from vibeqc.ecp import ecp_integrals
 
 
-def require_device(device: typing.Any) -> typing.Any:
+def require_device(device: typing.Any) -> None:
     if device == "cuda" and os.environ.get("VIBEQC_ECP_CUDA_TEST") != "1":
         pytest.skip("requires an allocated CUDA device")
 
@@ -19,7 +19,7 @@ def require_device(device: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("power", range(5))
 def test_f_projector_detached_all_center_jets_and_weights(
     device: typing.Any, power: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     xyz = np.array([[0.13, -0.21, 0.17], [0.43, 0.19, 1.2], [-0.21, 0.11, -0.7]])
     options = {"power": power, "orbital": 3, "d_projector": True, "f_projector": True}
@@ -56,7 +56,7 @@ def test_f_projector_detached_all_center_jets_and_weights(
 @pytest.mark.parametrize("spin", [0, 1])
 def test_f_projector_complete_hf(
     device: typing.Any, representation: typing.Any, spin: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     scf = pytest.importorskip("pyscf.scf")
     atoms, basis, mol = fixture(
@@ -80,7 +80,7 @@ def test_f_projector_complete_hf(
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_f_projector_budgeted_replay_and_energy_difference(
     device: typing.Any,
-) -> typing.Any:
+) -> None:
     require_device(device)
     atoms, basis, mol = fixture(f_projector=True)
     calculator = Calculator(basis=basis, device=device)
@@ -117,7 +117,7 @@ def test_f_projector_budgeted_replay_and_energy_difference(
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 def test_f_projector_f_orbital_refinement(
     device: typing.Any, representation: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     atoms, basis, mol = fixture(
         representation=representation, f_shell=True, f_projector=True

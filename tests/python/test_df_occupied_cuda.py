@@ -21,7 +21,7 @@ def test_occupied_scf_matches_dense_across_warm_replays(
     budget: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Policy changes rebuild captured shapes; imported warm D seeds dense K."""
     assert os.environ.get("SLURM_JOB_ID")
     # The smaller positive allowance covers the complete three-item plan and

@@ -16,7 +16,7 @@ def executable(path: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("command_name", [False, True])
 def test_cudacxx_selects_the_advertised_compiler(
     monkeypatch: typing.Any, tmp_path: typing.Any, command_name: typing.Any
-) -> typing.Any:
+) -> None:
     compiler = executable(tmp_path / "bin" / "nvcc-requested")
     monkeypatch.delenv("VIBEQC_NVCC", raising=False)
     monkeypatch.delenv("CUDA_PATH", raising=False)
@@ -27,7 +27,7 @@ def test_cudacxx_selects_the_advertised_compiler(
 
 def test_project_override_precedes_cudacxx_and_toolkit_root(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     override = executable(tmp_path / "project-nvcc")
     cudacxx = executable(tmp_path / "cmake-nvcc")
     toolkit = executable(tmp_path / "toolkit/bin/nvcc")

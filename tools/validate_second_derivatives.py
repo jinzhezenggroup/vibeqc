@@ -101,7 +101,7 @@ def run(args: typing.Any) -> typing.Any:
     args.output.mkdir(parents=True, exist_ok=False)
     rows, artifacts, resources, errors = [], {}, {}, {}
 
-    def save(name: typing.Any, value: typing.Any) -> typing.Any:
+    def save(name: typing.Any, value: typing.Any) -> None:
         (args.output / name).write_text(
             json.dumps(value, sort_keys=True, indent=2, allow_nan=False) + "\n"
         )

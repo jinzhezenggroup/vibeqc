@@ -6,7 +6,7 @@ import pytest
 from vibeqc import Calculator, Primitive, Shell, _native, method_capabilities
 
 
-def test_h2_energy_and_force_invariance() -> typing.Any:
+def test_h2_energy_and_force_invariance() -> None:
     calculator = Calculator(method="rhf", basis="sto-3g", device="cpu")
     result = calculator.singlepoint([("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))])
     assert abs(result.energy - (-1.11671432506255)) < 2.0e-9
@@ -15,7 +15,7 @@ def test_h2_energy_and_force_invariance() -> typing.Any:
     assert result.physical_residual_rms is None
 
 
-def test_precision_provenance_reports_the_policy_that_actually_ran() -> typing.Any:
+def test_precision_provenance_reports_the_policy_that_actually_ran() -> None:
     """The public policy round-trips and the provenance stays honest.
 
     The CPU host plan always builds the FP64 Fock, so an ``auto`` request must
@@ -54,7 +54,7 @@ def test_energy_only_output_selection_omits_forces(
     charge: typing.Any,
     multiplicity: typing.Any,
     density_fitting: typing.Any,
-) -> typing.Any:
+) -> None:
     """The public energy endpoint must not disguise completed force work."""
 
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
@@ -78,7 +78,7 @@ def test_energy_only_output_selection_omits_forces(
 )
 def test_singlepoint_rejects_invalid_output_selection(
     properties: typing.Any,
-) -> typing.Any:
+) -> None:
     calculator = Calculator()
     expected = TypeError if isinstance(properties, str) else ValueError
     with pytest.raises(expected):
@@ -97,7 +97,7 @@ def test_cuda_energy_only_output_selection_omits_forces(
     multiplicity: typing.Any,
     density_fitting: typing.Any,
     budget: typing.Any,
-) -> typing.Any:
+) -> None:
     """Exercise public output selection above the persistent-ERI AO limit."""
 
     atoms = [
@@ -138,7 +138,7 @@ def test_cuda_energy_only_output_selection_omits_forces(
     assert energy_and_forces.forces is not None
 
 
-def test_wb97m_v_is_reserved_not_implemented() -> typing.Any:
+def test_wb97m_v_is_reserved_not_implemented() -> None:
     try:
         Calculator(method="wb97m-v")
     except NotImplementedError:
@@ -147,7 +147,7 @@ def test_wb97m_v_is_reserved_not_implemented() -> typing.Any:
         raise AssertionError("wB97M-V must report that it is not implemented")
 
 
-def test_method_capabilities_report_families_and_properties() -> typing.Any:
+def test_method_capabilities_report_families_and_properties() -> None:
     rhf = method_capabilities("rhf")
     assert rhf.family == "hartree_fock"
     assert rhf.available
@@ -179,7 +179,7 @@ def test_method_capabilities_report_families_and_properties() -> typing.Any:
         assert uks.supported_properties == frozenset(("energy",))
 
 
-def test_lda_rks_public_contract_is_cpu_energy_only() -> typing.Any:
+def test_lda_rks_public_contract_is_cpu_energy_only() -> None:
     calculator = Calculator(method="lda-rks", basis="sto-3g", device="cpu")
     result = calculator.singlepoint([("He", (0.0, 0.0, 0.0))])
 
@@ -196,7 +196,7 @@ def test_lda_rks_public_contract_is_cpu_energy_only() -> typing.Any:
     assert plan.status == "feasible" and plan.requests[0].name == "ks"
 
 
-def test_pbe_rks_public_contract_is_cpu_energy_only() -> typing.Any:
+def test_pbe_rks_public_contract_is_cpu_energy_only() -> None:
     calculator = Calculator(method="pbe-rks", basis="sto-3g", device="cpu")
     result = calculator.singlepoint([("He", (0.0, 0.0, 0.0))])
 
@@ -212,7 +212,7 @@ def test_pbe_rks_public_contract_is_cpu_energy_only() -> typing.Any:
 
 
 @pytest.mark.parametrize("method", ("lda-uks", "pbe-uks"))
-def test_uks_public_contract_on_cpu_is_energy_only(method: typing.Any) -> typing.Any:
+def test_uks_public_contract_on_cpu_is_energy_only(method: typing.Any) -> None:
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
     calculator = Calculator(method=method, basis="sto-3g", device="cpu")
     result = calculator.singlepoint(atoms, charge=-1, multiplicity=2)
@@ -235,7 +235,7 @@ def test_uks_public_contract_on_cpu_is_energy_only(method: typing.Any) -> typing
 
 
 @pytest.mark.parametrize("method", ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks"))
-def test_ks_separate_physical_residual_is_published(method: typing.Any) -> typing.Any:
+def test_ks_separate_physical_residual_is_published(method: typing.Any) -> None:
     """A true zero commutator is available, not confused with a missing value."""
     uks = method.endswith("uks")
     result = Calculator(method=method, basis="sto-3g", device="cpu").singlepoint(
@@ -248,7 +248,7 @@ def test_ks_separate_physical_residual_is_published(method: typing.Any) -> typin
     assert result.density_rms < 1e-8
 
 
-def test_ks_older_library_without_scf_getter(monkeypatch: typing.Any) -> typing.Any:
+def test_ks_older_library_without_scf_getter(monkeypatch: typing.Any) -> None:
     """Python keeps the legacy result usable when the additive symbol is absent."""
     calculator = Calculator(method="lda-rks", basis="sto-3g", device="cpu")
     library = calculator._library
@@ -273,7 +273,7 @@ def test_ks_older_library_without_scf_getter(monkeypatch: typing.Any) -> typing.
 )
 def test_uks_rejects_invalid_spin_occupations(
     method: typing.Any, charge: typing.Any, multiplicity: typing.Any
-) -> typing.Any:
+) -> None:
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
     calculator = Calculator(method=method, basis="sto-3g", device="cpu")
     with pytest.raises(RuntimeError, match="integer nonnegative spin occupations"):
@@ -289,12 +289,12 @@ def test_uks_rejects_invalid_spin_occupations(
 )
 def test_lda_rks_rejects_unimplemented_execution_modes(
     kwargs: typing.Any,
-) -> typing.Any:
+) -> None:
     with pytest.raises(NotImplementedError):
         Calculator(method="lda-rks", basis="sto-3g", **kwargs)
 
 
-def test_helium_sto3g_reference() -> typing.Any:
+def test_helium_sto3g_reference() -> None:
     """Match PySCF when it consumes the exact bundled BSE coefficients.
 
     PySCF's built-in STO-3G table rounds the helium exponents and contraction
@@ -308,7 +308,7 @@ def test_helium_sto3g_reference() -> typing.Any:
     assert np.max(np.abs(result.forces)) == 0.0
 
 
-def test_bundled_def2_tzvp_h2_cpu_reference() -> typing.Any:
+def test_bundled_def2_tzvp_h2_cpu_reference() -> None:
     """Keep generated named-basis data available without optional packages."""
 
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
@@ -323,7 +323,7 @@ def test_bundled_def2_tzvp_h2_cpu_reference() -> typing.Any:
     assert result.forces[1, 2] == pytest.approx(-0.00427329, abs=2.0e-8)
 
 
-def test_real_spherical_d_energy_and_force_match_pyscf() -> typing.Any:
+def test_real_spherical_d_energy_and_force_match_pyscf() -> None:
     """Validate the Python/ABI path for normalized real spherical AOs."""
 
     atoms = [("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
@@ -345,7 +345,7 @@ def test_real_spherical_d_energy_and_force_match_pyscf() -> typing.Any:
     assert result.forces[1, 2] == pytest.approx(-0.3502792384052438, abs=8.0e-12)
 
 
-def test_cuda_real_spherical_d_energy_and_force_match_pyscf() -> typing.Any:
+def test_cuda_real_spherical_d_energy_and_force_match_pyscf() -> None:
     """Expose the validated sparse d transform through the public CUDA ABI."""
 
     atoms = [("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
@@ -371,7 +371,7 @@ def test_cuda_real_spherical_d_energy_and_force_match_pyscf() -> typing.Any:
     assert result.forces[1, 2] == pytest.approx(-0.3502792384052438, abs=3.0e-8)
 
 
-def test_cuda_spherical_def2_svp_water_matches_pyscf() -> typing.Any:
+def test_cuda_spherical_def2_svp_water_matches_pyscf() -> None:
     """Validate pure def2-SVP through CUDA's spherical direct-J/K path."""
 
     atoms = [
@@ -402,7 +402,7 @@ def test_cuda_spherical_def2_svp_water_matches_pyscf() -> typing.Any:
     assert np.allclose(result.forces, expected_forces, atol=3.0e-8)
 
 
-def test_cuda_def2_tzvp_water_uses_graph_native_eigensolver() -> typing.Any:
+def test_cuda_def2_tzvp_water_uses_graph_native_eigensolver() -> None:
     """Validate the capture-safe batched provider on a realistic AO matrix."""
 
     atoms = [
@@ -432,7 +432,7 @@ def test_cuda_def2_tzvp_water_uses_graph_native_eigensolver() -> typing.Any:
     assert np.allclose(result.forces, expected_forces, atol=3.0e-8)
 
 
-def test_cuda_spherical_uhf_doublet_matches_pyscf() -> typing.Any:
+def test_cuda_spherical_uhf_doublet_matches_pyscf() -> None:
     """Exercise public CUDA UHF with a multi-term real-spherical d shell."""
 
     atoms = [("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
@@ -459,7 +459,7 @@ def test_cuda_spherical_uhf_doublet_matches_pyscf() -> typing.Any:
     assert result.forces[1, 2] == pytest.approx(0.34919100072002696, abs=3.0e-8)
 
 
-def test_cuda_spherical_named_basis_uhf_breaks_excited_state_symmetry() -> typing.Any:
+def test_cuda_spherical_named_basis_uhf_breaks_excited_state_symmetry() -> None:
     """Keep linear OH out of the high-energy sigma-hole UHF fixed point."""
 
     atoms = [
@@ -489,7 +489,7 @@ def test_cuda_spherical_named_basis_uhf_breaks_excited_state_symmetry() -> typin
     assert np.allclose(result.forces, expected_forces, atol=3.0e-8)
 
 
-def test_h3_plus_exercises_diis_and_force_invariants() -> typing.Any:
+def test_h3_plus_exercises_diis_and_force_invariants() -> None:
     coordinates = np.array([[-1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
     atoms = [("H", coordinate) for coordinate in coordinates]
     result = Calculator().singlepoint(atoms, charge=1)
@@ -500,9 +500,7 @@ def test_h3_plus_exercises_diis_and_force_invariants() -> typing.Any:
     assert np.max(np.abs(total_torque)) < 2.0e-10
 
 
-def test_single_system_cuda_executes_full_scientific_path_when_available() -> (
-    typing.Any
-):
+def test_single_system_cuda_executes_full_scientific_path_when_available() -> None:
     atoms = [("H", (-1.0, 0.0, 0.0)), ("H", (0.0, 0.0, 0.0)), ("H", (1.0, 0.0, 0.0))]
     reference = Calculator(device="cpu").singlepoint(atoms, charge=1)
     try:
@@ -515,7 +513,7 @@ def test_single_system_cuda_executes_full_scientific_path_when_available() -> (
     assert np.allclose(candidate.forces, reference.forces, atol=2.0e-10)
 
 
-def test_cartesian_p_shell_energy_force_and_cuda_agreement() -> typing.Any:
+def test_cartesian_p_shell_energy_force_and_cuda_agreement() -> None:
     """Exercise s/p one-electron, ERI, Pulay, and two-electron derivatives."""
 
     basis = (
@@ -552,7 +550,7 @@ def test_cartesian_p_shell_energy_force_and_cuda_agreement() -> typing.Any:
     assert np.allclose(candidate.forces, reference.forces, atol=3.0e-11)
 
 
-def test_bundled_def2_svp_water_matches_pyscf_cartesian_reference() -> typing.Any:
+def test_bundled_def2_svp_water_matches_pyscf_cartesian_reference() -> None:
     """Validate named H-Ar basis ingestion on a realistic direct-J/K case."""
 
     atoms = [
@@ -581,7 +579,7 @@ def test_bundled_def2_svp_water_matches_pyscf_cartesian_reference() -> typing.An
     assert np.max(np.abs(result.forces.sum(axis=0))) < 2.0e-9
 
 
-def test_cartesian_d_f_cuda_matches_pyscf_libcint_reference() -> typing.Any:
+def test_cartesian_d_f_cuda_matches_pyscf_libcint_reference() -> None:
     """Gate the full device path through mixed s/d/f values and derivatives."""
 
     basis = (
@@ -613,7 +611,7 @@ def test_cartesian_d_f_cuda_matches_pyscf_libcint_reference() -> typing.Any:
 
 def test_screened_direct_jk_force_matches_energy_finite_difference(
     monkeypatch: pytest.MonkeyPatch,
-) -> typing.Any:
+) -> None:
     """Keep the direct-J/K screening decision variational and force-consistent."""
 
     basis = (
@@ -674,7 +672,7 @@ def test_screened_direct_jk_force_matches_energy_finite_difference(
 
 def test_cuda_final_fock_reuse_matches_forced_rebuild(
     monkeypatch: pytest.MonkeyPatch,
-) -> typing.Any:
+) -> None:
     """Bound the force impact when an accepted raw Fock skips final rebuild."""
 
     basis = (
@@ -708,7 +706,7 @@ def test_cuda_final_fock_reuse_matches_forced_rebuild(
     assert np.max(np.abs(reused.forces - rebuilt.forces)) < 5.0e-7
 
 
-def test_larger_direct_jk_matches_cpu_oracle() -> typing.Any:
+def test_larger_direct_jk_matches_cpu_oracle() -> None:
     """Validate a larger high-accuracy direct J/K workload on the GPU."""
 
     atoms = [
@@ -752,7 +750,7 @@ def test_larger_direct_jk_matches_cpu_oracle() -> typing.Any:
     assert np.allclose(repeated.forces, first.forces, atol=2.0e-12)
 
 
-def test_cuda_uhf_h2_plus_matches_pyscf_and_cpu_oracles() -> typing.Any:
+def test_cuda_uhf_h2_plus_matches_pyscf_and_cpu_oracles() -> None:
     """Validate the public all-GPU UHF energy and analytic-force path."""
 
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
@@ -782,7 +780,7 @@ def test_cuda_uhf_h2_plus_matches_pyscf_and_cpu_oracles() -> typing.Any:
     assert np.allclose(gpu.forces, cpu.forces, atol=3.0e-9)
 
 
-def test_cuda_uhf_closed_shell_limit_matches_rhf() -> typing.Any:
+def test_cuda_uhf_closed_shell_limit_matches_rhf() -> None:
     """Require alpha=beta UHF to reduce exactly to closed-shell HF."""
 
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
@@ -796,7 +794,7 @@ def test_cuda_uhf_closed_shell_limit_matches_rhf() -> typing.Any:
     assert np.allclose(uhf.forces, rhf.forces, atol=3.0e-9)
 
 
-def test_cuda_uhf_direct_quartet_closed_shell_matches_rhf() -> typing.Any:
+def test_cuda_uhf_direct_quartet_closed_shell_matches_rhf() -> None:
     """Exercise the spin-resolved symmetry-reduced s/d quartet path."""
 
     atoms = [
@@ -828,7 +826,7 @@ def test_cuda_uhf_direct_quartet_closed_shell_matches_rhf() -> typing.Any:
     assert np.allclose(uhf.forces, rhf.forces, atol=8.0e-9)
 
 
-def test_cuda_uhf_direct_jk_matches_pyscf_and_force_finite_difference() -> typing.Any:
+def test_cuda_uhf_direct_jk_matches_pyscf_and_force_finite_difference() -> None:
     """Exercise spin-resolved screened direct J/K above the ERI-cache limit."""
 
     basis = (
@@ -871,9 +869,7 @@ def test_cuda_uhf_direct_jk_matches_pyscf_and_force_finite_difference() -> typin
     assert np.max(np.abs(center.forces.sum(axis=0))) < 5.0e-9
 
 
-def test_screened_cuda_uhf_direct_force_matches_energy_finite_difference() -> (
-    typing.Any
-):
+def test_screened_cuda_uhf_direct_force_matches_energy_finite_difference() -> None:
     """Keep approximate spin-resolved J/K and its analytic force consistent."""
 
     basis = (
@@ -914,7 +910,7 @@ def test_screened_cuda_uhf_direct_force_matches_energy_finite_difference() -> (
 
 
 def test_dft_prepared_batch_preserves_order_isolates_failures_and_rebuilds_geometry() -> (
-    typing.Any
+    None
 ):
     h2 = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
     calculator = Calculator(method="lda-rks", basis="sto-3g", device="cpu")
@@ -945,7 +941,7 @@ def test_dft_prepared_batch_preserves_order_isolates_failures_and_rebuilds_geome
     assert changed_warm.items[1].warm_start_used
 
 
-def test_dft_prepared_ragged_batch_matches_independent_endpoints() -> typing.Any:
+def test_dft_prepared_ragged_batch_matches_independent_endpoints() -> None:
     systems = [
         [("He", (0.0, 0.0, 0.0))],
         [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))],

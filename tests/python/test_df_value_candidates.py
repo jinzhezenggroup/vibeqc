@@ -88,7 +88,7 @@ extern "C" void probe(unsigned math,const Input* in,double* out,unsigned count) 
 @pytest.mark.parametrize("variant", ("asymmetric", "coincident"))
 def test_value_lowerings_against_libcint(
     evaluator: typing.Any, angular: typing.Any, variant: typing.Any
-) -> typing.Any:
+) -> None:
     """Signed contractions, every component, spherical projection and fallback."""
     pytest.importorskip("pyscf")
     fixture = make_df_value_fixture(

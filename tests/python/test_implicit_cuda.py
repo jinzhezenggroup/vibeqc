@@ -57,7 +57,7 @@ def prepared(tmp_path_factory: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("changed", [False, True])
 def test_real_cuda_implicit_vjp_same_graph_true_residual_and_no_cpu_fallback(
     prepared: typing.Any, changed: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     import tools.vibeqc_response.implicit as runtime
 
     def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
@@ -116,7 +116,7 @@ def test_real_cuda_implicit_vjp_same_graph_true_residual_and_no_cpu_fallback(
 
 def test_cuda_primal_failure_does_not_poison_next_bound_state(
     prepared: typing.Any,
-) -> typing.Any:
+) -> None:
     spec, feeds = rank_one_problem()
     bad = {**feeds, "q": feeds["q"] + 1.0}
     with pytest.raises(ImplicitSolveError, match="primal is not converged"):
@@ -129,7 +129,7 @@ def test_cuda_primal_failure_does_not_poison_next_bound_state(
 
 def test_cuda_adjoint_nonconvergence_is_not_published(
     prepared: typing.Any,
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_response.implicit import BoundImplicitState
 
     spec, feeds = rank_one_problem()

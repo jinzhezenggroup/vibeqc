@@ -38,7 +38,7 @@ class RuntimeCapabilities:
     device_enqueue: bool = False
     graphs: bool = False
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.backend, str) or not self.backend:
             raise ValueError("runtime backend must be named")
         for name in (
@@ -76,7 +76,7 @@ class ExecutionShape:
     requires_device_enqueue: bool = False
     requires_graphs: bool = False
 
-    def validate_for(self, target: RuntimeCapabilities) -> typing.Any:
+    def validate_for(self, target: RuntimeCapabilities) -> None:
         """Check actual queried limits without inserting CUDA warp assumptions."""
         for name in (
             "requires_fp64",
@@ -156,7 +156,7 @@ class CompiledArtifactIdentity:
     schedule_hash: str
     abi: int = 1
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in ("backend", "device", "runtime", "compiler", "driver", "language"):
             if not isinstance(getattr(self, name), str) or not getattr(self, name):
                 raise ValueError(f"verified {name} identity is required")
@@ -178,7 +178,7 @@ class CompiledArtifactIdentity:
     def key(self) -> typing.Any:
         return canonical_hash(asdict(self))
 
-    def require_compatible(self, other: typing.Any) -> typing.Any:
+    def require_compatible(self, other: typing.Any) -> None:
         """Reject executable reuse across any compilation/runtime boundary."""
         if self != other:
             raise ValueError(
@@ -203,7 +203,7 @@ class LibraryRequest:
     workspace_limit_bytes: int = 0
     residual_tolerance: float = 1e-11
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         import math
 
         rank = 3 if self.operation == "gemm" else 1

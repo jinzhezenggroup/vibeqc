@@ -1,4 +1,4 @@
-"""Matched-grid LDA/PBE ECP energies; complete DFT forces remain unsupported."""
+"""Matched-grid LDA/PBE ECP energies, independent of public force qualification."""
 
 import os
 import typing
@@ -13,7 +13,7 @@ from vibeqc_compiler.dft.grid import MolecularGrid
 METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks")
 
 
-def require_device(device: typing.Any) -> typing.Any:
+def require_device(device: typing.Any) -> None:
     if device == "cuda" and os.environ.get("VIBEQC_ECP_CUDA_TEST") != "1":
         pytest.skip("requires an allocated CUDA device")
 
@@ -101,10 +101,14 @@ def endpoint(
         )
         < 1e-12
     )
-    with pytest.raises(ValueError, match="does not support properties.*forces"):
-        calc.singlepoint(
-            atoms, charge=spin, multiplicity=spin + 1, properties=("energy", "forces")
-        )
+    if device == "cpu":
+        with pytest.raises(ValueError, match="does not support properties.*forces"):
+            calc.singlepoint(
+                atoms,
+                charge=spin,
+                multiplicity=spin + 1,
+                properties=("energy", "forces"),
+            )
     return {
         "method": method,
         "device": device,
@@ -128,7 +132,7 @@ def endpoint(
 @pytest.mark.parametrize("representation", ("cartesian", "spherical"))
 def test_ecp_dft_independent_energy_components(
     method: typing.Any, device: typing.Any, representation: typing.Any
-) -> typing.Any:
+) -> None:
     endpoint(method, device, representation)
 
 
@@ -136,7 +140,7 @@ def test_ecp_dft_independent_energy_components(
 @pytest.mark.parametrize("device", ("cpu", "cuda"))
 def test_ecp_dft_budgeted_ragged_replay_and_isolation(
     method: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     spin = int(method.endswith("uks"))
     atoms, basis, mol = fixture(spin=spin)
@@ -159,13 +163,15 @@ def test_ecp_dft_budgeted_ragged_replay_and_isolation(
     with bounded.prepare_batch(
         systems, charges=charges, multiplicities=multiplicities
     ) as batch:
-        cold = batch.execute(strict=True)
-        warm = batch.execute(strict=True)
+        cold = batch.execute(strict=True, properties=("energy",))
+        warm = batch.execute(strict=True, properties=("energy",))
         assert all(item.warm_start_used for item in warm.items)
         np.testing.assert_allclose(warm.energies, cold.energies, atol=2e-9, rtol=0)
         xyz = mol.atom_coords()
         xyz[1] += [0.03, -0.02, 0.19]
-        moved = batch.execute(coordinates=[xyz, None], strict=True)
+        moved = batch.execute(
+            coordinates=[xyz, None], strict=True, properties=("energy",)
+        )
         moved_mol = mol.copy().set_geom_(xyz, unit="Bohr")
         moved_atoms = [
             (symbol, tuple(position)) for (symbol, _), position in zip(atoms, xyz)
@@ -173,9 +179,13 @@ def test_ecp_dft_budgeted_ragged_replay_and_isolation(
         target, _, _, _ = reference(moved_mol, moved_atoms, method)
         assert abs(moved.items[0].energy - target) < 1e-8
         assert abs(moved.items[1].energy - cold.items[1].energy) < 2e-9
-        bad = batch.execute(coordinates=[[0.0], None], strict=False)
+        bad = batch.execute(
+            coordinates=[[0.0], None], strict=False, properties=("energy",)
+        )
         assert not bad.items[0].succeeded and bad.items[1].succeeded
-        restored = batch.execute(coordinates=[mol.atom_coords(), None], strict=True)
+        restored = batch.execute(
+            coordinates=[mol.atom_coords(), None], strict=True, properties=("energy",)
+        )
         np.testing.assert_allclose(restored.energies, cold.energies, atol=2e-9, rtol=0)
         if device == "cuda":
             ledger = batch.resource_diagnostics["observation"]["device_ledger"]

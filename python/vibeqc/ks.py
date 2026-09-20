@@ -39,7 +39,7 @@ class KsOptions:
     scf_domain: str = SCF_DOMAIN
     _method_ir: MethodIR | None = field(default=None, init=False, repr=False)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.functional is not None and not isinstance(
             self.functional, FunctionalSpec
         ):

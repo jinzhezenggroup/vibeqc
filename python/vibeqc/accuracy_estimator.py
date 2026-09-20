@@ -37,7 +37,7 @@ class HFErrorFeatures:
     backend: str = "cpu"
     precision: str = "fp64"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in ("model_id", "basis_family_id", "backend", "precision"):
             _identity(getattr(self, name), name)
         numbers = tuple(
@@ -83,7 +83,7 @@ class HFCalibrationDomain:
     backend: str = "cpu"
     schema_version: int = 1
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         _identity(self.basis_family_id, "basis family")
         if type(self.schema_version) is not int or self.schema_version != 1:
             raise ValueError("unsupported calibration domain schema")
@@ -176,7 +176,7 @@ class HFCalibrationSample:
     force_max_error: float
     reference_id: str
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for name in ("family", "sample_id", "reference_id"):
             _identity(getattr(self, name), name)
         if not isinstance(self.model, ResolvedModel) or not isinstance(
@@ -210,7 +210,7 @@ class EmpiricalHFEstimator:
     force_floor: float = 1e-10
     schema_version: int = 1
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.domain, HFCalibrationDomain):
             raise TypeError("estimator requires a typed calibration domain")
         if type(self.schema_version) is not int or self.schema_version != 1:

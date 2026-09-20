@@ -45,7 +45,7 @@ def fixed_grid() -> typing.Any:
 )
 def test_fixed_grid_energy_regression(
     fixed_grid: typing.Any, variant: typing.Any, expected: typing.Any
-) -> typing.Any:
+) -> None:
     coords, weights, density, gradient = fixed_grid
     energy = nonlocal_energy_reference(
         coords,
@@ -58,7 +58,7 @@ def test_fixed_grid_energy_regression(
     assert energy == pytest.approx(expected, rel=2e-14, abs=1e-16)
 
 
-def test_reference_kernel_is_pair_symmetric(fixed_grid: typing.Any) -> typing.Any:
+def test_reference_kernel_is_pair_symmetric(fixed_grid: typing.Any) -> None:
     coords, _, density, gradient = fixed_grid
     kernel = nonlocal_kernel_matrix_reference(
         coords,
@@ -72,7 +72,7 @@ def test_reference_kernel_is_pair_symmetric(fixed_grid: typing.Any) -> typing.An
 
 def test_tiling_and_grid_permutation_do_not_change_energy(
     fixed_grid: typing.Any,
-) -> typing.Any:
+) -> None:
     coords, weights, density, gradient = fixed_grid
     spec = original_nonlocal_correlation("vv10")
     reference = nonlocal_energy_reference(
@@ -96,7 +96,7 @@ def test_tiling_and_grid_permutation_do_not_change_energy(
     assert permuted == pytest.approx(reference, rel=2e-15, abs=1e-17)
 
 
-def test_energy_is_weighted_density_contraction(fixed_grid: typing.Any) -> typing.Any:
+def test_energy_is_weighted_density_contraction(fixed_grid: typing.Any) -> None:
     coords, weights, density, gradient = fixed_grid
     spec = original_nonlocal_correlation("rvv10")
     eps = nonlocal_energy_density_reference(
@@ -112,7 +112,7 @@ def test_energy_is_weighted_density_contraction(fixed_grid: typing.Any) -> typin
 
 def test_reference_oracle_fails_closed_outside_its_domain(
     fixed_grid: typing.Any,
-) -> typing.Any:
+) -> None:
     coords, weights, density, gradient = fixed_grid
     spec = original_nonlocal_correlation("vv10")
     with pytest.raises(ValueError, match="strictly positive"):
@@ -128,7 +128,7 @@ def test_reference_oracle_fails_closed_outside_its_domain(
 @pytest.mark.parametrize("variant", ["vv10", "rvv10"])
 def test_feature_derivatives_match_fixed_grid_directional_difference(
     fixed_grid: typing.Any, variant: typing.Any
-) -> typing.Any:
+) -> None:
     coords, weights, density, gradient = fixed_grid
     spec = original_nonlocal_correlation(variant)
     vrho, vsigma = nonlocal_feature_derivatives_reference(
@@ -183,7 +183,7 @@ def _features_from_total_density(jets: typing.Any, density: typing.Any) -> typin
 @pytest.mark.parametrize("variant", ["vv10", "rvv10"])
 def test_ao_potential_is_derivative_of_same_nonlocal_energy(
     variant: typing.Any,
-) -> typing.Any:
+) -> None:
     coords = np.array(
         [[0.0, 0.0, 0.0], [0.6, 0.1, -0.2], [-0.4, 0.7, 0.3], [0.9, -0.5, 0.8]]
     )
@@ -232,7 +232,7 @@ def test_ao_potential_is_derivative_of_same_nonlocal_energy(
 @pytest.mark.parametrize("field", [0, 1, 2, 3])
 def test_reference_rejects_complex_input_before_casting(
     variant: typing.Any, field: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.dft.nonlocal_reference import nonlocal_energy_reference
 
     args = [np.zeros((2, 3)), np.ones(2), np.array([0.1, 0.7]), np.zeros((2, 3))]
@@ -242,7 +242,7 @@ def test_reference_rejects_complex_input_before_casting(
 
 
 @pytest.mark.parametrize("variant", ["vv10", "rvv10"])
-def test_reference_rejects_nonfinite_intermediates(variant: typing.Any) -> typing.Any:
+def test_reference_rejects_nonfinite_intermediates(variant: typing.Any) -> None:
     with pytest.raises(
         (ValueError, FloatingPointError), match="finite|overflow|invalid|divide"
     ):
@@ -255,7 +255,7 @@ def test_reference_rejects_nonfinite_intermediates(variant: typing.Any) -> typin
         )
 
 
-def test_rvv10_differs_from_reparameterized_vv10_for_unequal_densities() -> typing.Any:
+def test_rvv10_differs_from_reparameterized_vv10_for_unequal_densities() -> None:
     from dataclasses import replace
 
     spec = original_nonlocal_correlation("rvv10")
@@ -310,7 +310,7 @@ def _published_rvv10_decimal(
 @pytest.mark.parametrize("tile_size", [1, 2, 7])
 def test_rvv10_matches_published_density_rescaled_kernel(
     fixed_grid: typing.Any, tile_size: typing.Any
-) -> typing.Any:
+) -> None:
     spec = original_nonlocal_correlation("rvv10")
     expected = _published_rvv10_decimal(*fixed_grid, spec)
     actual = nonlocal_energy_reference(*fixed_grid, spec, tile_size=tile_size)
@@ -319,7 +319,7 @@ def test_rvv10_matches_published_density_rescaled_kernel(
 
 def test_historical_reparameterized_vv10_value_is_not_rvv10(
     fixed_grid: typing.Any,
-) -> typing.Any:
+) -> None:
     from dataclasses import replace
 
     spec = replace(original_nonlocal_correlation("rvv10"), variant="vv10")

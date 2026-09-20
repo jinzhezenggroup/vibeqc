@@ -49,7 +49,7 @@ def _rounded(value: typing.Any, dtype: typing.Any) -> typing.Any:
         return dtype(np.inf if value > 0 else -np.inf)
 
 
-def _close(actual: typing.Any, expected: typing.Any, dtype: typing.Any) -> typing.Any:
+def _close(actual: typing.Any, expected: typing.Any, dtype: typing.Any) -> None:
     actual, expected = np.asarray(actual), np.asarray(expected, dtype=dtype)
     assert actual.dtype == np.dtype(dtype)
     np.testing.assert_array_equal(actual[expected == 0], expected[expected == 0])
@@ -110,7 +110,7 @@ def _cases(dtype: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_division_ad_extreme_scales_and_compensated_cancellation(
     dtype: typing.Any,
-) -> typing.Any:
+) -> None:
     program = _program(dtype)
     for x, y, dx, dy, w in _cases(dtype):
         feeds = {"x": x, "y": y}
@@ -154,7 +154,7 @@ def test_division_ad_extreme_scales_and_compensated_cancellation(
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_unrequested_overflowing_adjoint_does_not_poison_requested_one(
     dtype: typing.Any,
-) -> typing.Any:
+) -> None:
     x, y, w = (1e-300, 1e-100, 1e300) if dtype == np.float64 else (1e-35, 1e-10, 1e30)
     x, y, w = (np.asarray(a, dtype=dtype) for a in (x, y, w))
     program, feeds = _program(dtype), {"x": x, "y": y}
@@ -177,7 +177,7 @@ def test_unrequested_overflowing_adjoint_does_not_poison_requested_one(
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_seeded_random_exponent_sweep_against_exact_rationals(
     dtype: typing.Any,
-) -> typing.Any:
+) -> None:
     rng = np.random.default_rng(477)
     limit = 1000 if dtype == np.float64 else 120
     program = _program(dtype)
@@ -223,7 +223,7 @@ def test_seeded_random_exponent_sweep_against_exact_rationals(
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_fused_primitive_replay_adjoint_and_higher_derivatives(
     dtype: typing.Any,
-) -> typing.Any:
+) -> None:
     spec = TensorSpec(dtype=np.dtype(dtype).name, role="parameter", differentiable=True)
     nodes = [input_tensor(name, spec) for name in "abcdef"]
     program = Program({"out": scaled_bilinear(*nodes)})
@@ -266,7 +266,7 @@ def test_fused_primitive_replay_adjoint_and_higher_derivatives(
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
-def test_vector_empty_shape_and_explicit_errors(dtype: typing.Any) -> typing.Any:
+def test_vector_empty_shape_and_explicit_errors(dtype: typing.Any) -> None:
     for shape in ((2, 3), (0,)):
         program = _program(dtype, shape)
         x = np.full(shape, 1e20, dtype=dtype)
@@ -302,7 +302,7 @@ def test_vector_empty_shape_and_explicit_errors(dtype: typing.Any) -> typing.Any
 @pytest.mark.parametrize("mode", ["jvp", "vjp", "vjp_y"])
 def test_scaled_division_on_allocated_cuda(
     mode: typing.Any, fuse: typing.Any, dtype: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """No implicit GPU probing; execute only in an explicitly allocated job."""
     import os
     from pathlib import Path
@@ -377,7 +377,7 @@ def test_scaled_division_on_allocated_cuda(
             _close(actual[name], np.asarray(expected, dtype=dtype)[:, i], dtype)
 
 
-def test_scaled_cuda_source_contract_without_runtime_or_device() -> typing.Any:
+def test_scaled_cuda_source_contract_without_runtime_or_device() -> None:
     from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_emit import emit_cuda
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda

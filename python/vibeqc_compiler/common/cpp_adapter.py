@@ -20,7 +20,7 @@ class CppCompilerAdapter:
     cxx: Path
     compile_timeout: float = 300.0
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         executable = shutil.which(str(self.cxx))
         if executable is None:
             raise ValueError("the requested C++ compiler is unavailable")

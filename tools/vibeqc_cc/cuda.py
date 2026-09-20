@@ -74,7 +74,7 @@ class PreparedRCCSDResidual:
     def execute(self, feeds: typing.Any, *, profile: typing.Any = False) -> typing.Any:
         return self.executor.execute(feeds, profile=profile)
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         self.executor.close()
 
     def __enter__(self) -> typing.Any:

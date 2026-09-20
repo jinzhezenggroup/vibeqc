@@ -65,7 +65,7 @@ class CCSDParameterWeight:
     logical_reserved_host_bytes: int
     provenance: Mapping
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "values",

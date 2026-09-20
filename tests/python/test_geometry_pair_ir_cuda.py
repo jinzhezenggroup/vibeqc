@@ -40,7 +40,7 @@ def cache(tmp_path_factory: typing.Any) -> typing.Any:
 
 def test_cuda_energy_and_generated_coordinate_vjp_match_reference_and_fd(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 

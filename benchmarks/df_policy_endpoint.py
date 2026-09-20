@@ -19,6 +19,11 @@ import typing
 from pathlib import Path
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Calculator, _native
 
 from benchmarks._cases import benchmark_cases
@@ -171,11 +176,11 @@ def endpoint_errors(
     return differences[0], differences[1] if force is not None else None
 
 
-def main() -> typing.Any:
+def main() -> None:
     """Retain each numerical result before enforcing unchanged strict gates."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--aos", type=int, choices=CASES, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument(
         "--df-budget",
@@ -282,7 +287,7 @@ def main() -> typing.Any:
     if any(names != control_sets[0] for names in control_sets):
         parser.error("policy-controls must set the same controls for every policy")
 
-    def select_policy(policy: typing.Any) -> typing.Any:
+    def select_policy(policy: typing.Any) -> None:
         """Apply the complete declared arm before rebuilding/priming its owner."""
         os.environ[args.control] = policy
         os.environ.update(args.policy_controls.get(policy, {}))
@@ -377,7 +382,7 @@ def main() -> typing.Any:
         "samples": [],
     }
 
-    def save() -> typing.Any:
+    def save() -> None:
         """Keep raw numerical evidence even if a subsequent gate fails."""
         args.output.write_text(json.dumps(payload, indent=2) + "\n")
 

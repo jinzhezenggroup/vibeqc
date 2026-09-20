@@ -19,7 +19,7 @@ def report(tmp_path: typing.Any) -> typing.Any:
 
 def test_strict_operator_replay_and_corruption(
     report: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("an operator replay must not launch SCF")
 
@@ -35,7 +35,7 @@ def test_strict_operator_replay_and_corruption(
 
 def test_replay_checks_report_identity_before_array_allocation(
     report: typing.Any,
-) -> typing.Any:
+) -> None:
     record = json.loads(report.read_text())
     record["cases"][0]["model"]["basis_hash"] = "altered"
     report.write_text(json.dumps(record))
@@ -48,7 +48,7 @@ def test_replay_checks_report_identity_before_array_allocation(
 )
 def test_replay_requires_successful_reference_evidence(
     report: typing.Any, cases: typing.Any
-) -> typing.Any:
+) -> None:
     record = json.loads(report.read_text())
     record.pop("record_hash")
     record["cases"] = cases
@@ -57,7 +57,7 @@ def test_replay_requires_successful_reference_evidence(
     assert replay(report)["passed"] is False
 
 
-def test_extra_holdouts_have_stable_independent_reference_generations() -> typing.Any:
+def test_extra_holdouts_have_stable_independent_reference_generations() -> None:
     from tools.vibeqc_numerics.fixtures import REFERENCE_DIRECTORY, accuracy_suite
 
     assert {r["inputs"]["name"] for r in accuracy_suite()} >= {"hf", "h2-def2-svp"}

@@ -29,7 +29,7 @@ class HessianLayout:
     centers: tuple[int, ...]
     packing: str = "dense"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(self, "centers", tuple(self.centers))
         if not 1 <= len(self.centers) <= 4 or len(set(self.centers)) != len(
             self.centers
@@ -107,7 +107,7 @@ class CenterRecovery:
     independent: tuple[int, ...]
     rows: tuple[tuple[int, ...], ...]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(self, "centers", tuple(self.centers))
         object.__setattr__(self, "independent", tuple(self.independent))
         object.__setattr__(self, "rows", tuple(tuple(row) for row in self.rows))
@@ -172,7 +172,7 @@ class SecondAtomMap:
     centers: tuple[int, ...]
     center_atoms: tuple[int, ...]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(self, "centers", tuple(self.centers))
         object.__setattr__(self, "center_atoms", tuple(self.center_atoms))
         HessianLayout(self.centers)

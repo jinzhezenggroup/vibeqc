@@ -62,7 +62,7 @@ int main() {
 
 def test_policy_minimizes_actual_source_work_and_handles_tails(
     policy_query: typing.Any,
-) -> typing.Any:
+) -> None:
     # Exhaustively compare both row and Q choices for many nondivisible shapes.
     # This independently enumerates the traversal, rather than repeating the
     # production quotient search or using VibeQC-to-VibeQC numeric parity.
@@ -96,7 +96,7 @@ def test_policy_minimizes_actual_source_work_and_handles_tails(
 
 def test_reported_768_shape_uses_raw_panel_for_multiple_outputs(
     policy_query: typing.Any,
-) -> typing.Any:
+) -> None:
     ns = [96, 192, 384, 768]
     shapes = [(n, n, (min(n * n, 8192) // n) * n * min(n, 128)) for n in ns]
     panels = policy_query(shapes)
@@ -116,7 +116,7 @@ def test_reported_768_shape_uses_raw_panel_for_multiple_outputs(
 
 def test_generated_positive_budget_reduces_raw_passes_monotonically(
     policy_query: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc import Calculator
     from vibeqc.resources_df import density_fitting_tile_plan
 

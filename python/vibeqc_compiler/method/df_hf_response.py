@@ -68,7 +68,7 @@ class DensityFittingRHFResponsePlan:
     coulomb_coefficient: Fraction = RHF_COULOMB_COEFFICIENT
     exchange_coefficient: Fraction = RHF_EXCHANGE_COEFFICIENT
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         _positive(self.nbf, "nbf")
         _positive(self.naux, "naux")
         _coefficient(self.coulomb_coefficient, "coulomb_coefficient")

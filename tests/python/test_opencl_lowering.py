@@ -44,7 +44,7 @@ def integral_program() -> typing.Any:
     )
 
 
-def test_real_integral_dag_retains_identical_cuda_scalar_arithmetic() -> typing.Any:
+def test_real_integral_dag_retains_identical_cuda_scalar_arithmetic() -> None:
     kernel = integral_program()
     emitters = [emitter(kernel.graph, {}) for emitter in (CudaEmitter, ScalarCEmitter)]
     for emitter in emitters:
@@ -63,7 +63,7 @@ def test_real_integral_dag_retains_identical_cuda_scalar_arithmetic() -> typing.
     assert "if (item >= count) return" in first
 
 
-def test_missing_scientific_inputs_or_injected_identifiers_are_rejected() -> typing.Any:
+def test_missing_scientific_inputs_or_injected_identifiers_are_rejected() -> None:
     kernel = integral_program()
     with pytest.raises(ValueError, match="no primitive ABI column"):
         replace(kernel, inputs=kernel.inputs[:-1])

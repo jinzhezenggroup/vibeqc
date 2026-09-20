@@ -26,7 +26,7 @@ class BasisBinding:
     ecp_core_electrons: int = 0
     version: str = BASIS_BINDING_VERSION
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
             raise ValueError("basis binding requires a nonempty name")
         for field in ("basis_identity", "source_sha256"):
@@ -81,7 +81,7 @@ class BasisBinding:
     def identity(self) -> typing.Any:
         return canonical_hash(self.semantic_payload())
 
-    def require_atomic_numbers(self, atomic_numbers: typing.Any) -> typing.Any:
+    def require_atomic_numbers(self, atomic_numbers: typing.Any) -> None:
         values = tuple(atomic_numbers)
         if any(type(z) is not int for z in values):
             raise TypeError("atomic numbers must be integers")

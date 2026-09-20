@@ -23,7 +23,7 @@ def test_raw_upload_attribution_preserves_complete_response(
     representation: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Diagnostic transfers and sink layouts preserve complete weighted response.
 
     Returning to default on the same prepared plan also exercises the pinned
@@ -99,7 +99,7 @@ def test_response_route_and_host_ablation(
     metric_dot: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Switch only force-weight placement, including reuse of a warm value plan.
 
     The source route must remain on device even when the diagnostic host switch

@@ -31,7 +31,7 @@ from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
 from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
 
-def benchmark(args: typing.Any) -> typing.Any:
+def benchmark(args: typing.Any) -> None:
     nvcc = find_nvcc()
     if nvcc is None:
         raise RuntimeError("set VIBEQC_NVCC to a CUDA compiler")
@@ -151,7 +151,7 @@ def benchmark(args: typing.Any) -> typing.Any:
         print(json.dumps(result, indent=2))
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--arch", default=os.environ.get("VIBEQC_TENSOR_ARCH", "sm_120")

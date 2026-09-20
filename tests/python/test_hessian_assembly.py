@@ -13,7 +13,7 @@ def _component(seed: typing.Any, n: typing.Any = 2) -> typing.Any:
     return rng.normal(size=(n, 3, n, 3))
 
 
-def test_skeleton_keeps_components_and_sums_without_extra_prefactors() -> typing.Any:
+def test_skeleton_keeps_components_and_sums_without_extra_prefactors() -> None:
     components = [_component(seed) for seed in range(4)]
     report = assemble_frozen_skeleton(
         nuclear_repulsion=components[0],
@@ -35,7 +35,7 @@ def test_skeleton_keeps_components_and_sums_without_extra_prefactors() -> typing
     assert np.any(report["skeleton"] != 0.0)
 
 
-def test_skeleton_rejects_mismatched_or_nonfinite_components() -> typing.Any:
+def test_skeleton_rejects_mismatched_or_nonfinite_components() -> None:
     base = _component(10)
     with pytest.raises(ValueError, match="identical shapes"):
         assemble_frozen_skeleton(
@@ -55,7 +55,7 @@ def test_skeleton_rejects_mismatched_or_nonfinite_components() -> typing.Any:
         )
 
 
-def test_skeleton_rejects_transposed_layout_instead_of_broadcasting() -> typing.Any:
+def test_skeleton_rejects_transposed_layout_instead_of_broadcasting() -> None:
     base = _component(12)
     with pytest.raises(ValueError, match="shape"):
         assemble_frozen_skeleton(

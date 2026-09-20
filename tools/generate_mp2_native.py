@@ -50,7 +50,7 @@ def cpu_header() -> typing.Any:
     return "\n".join(lines) + "\n"
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cpu-header", type=Path)
     parser.add_argument("--cuda-dir", type=Path)
@@ -92,7 +92,7 @@ def _numeric_architectures(value: typing.Any) -> typing.Any:
     return result
 
 
-def cuda_sources(directory: typing.Any, architectures: typing.Any) -> typing.Any:
+def cuda_sources(directory: typing.Any, architectures: typing.Any) -> None:
     from tools.vibeqc_codegen.cuda_target import cuda_target_info
     from tools.vibeqc_tensor.cuda_emit import emit_cuda
     from tools.vibeqc_tensor.cuda_plan import plan_cuda

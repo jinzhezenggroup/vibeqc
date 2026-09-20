@@ -162,7 +162,7 @@ def reference_components(mol: typing.Any) -> typing.Any:
     return np.array(blocks)
 
 
-def require_device(device: typing.Any) -> typing.Any:
+def require_device(device: typing.Any) -> None:
     if device == "cuda" and os.environ.get("VIBEQC_ECP_CUDA_TEST") != "1":
         pytest.skip("requires an allocated CUDA device")
 
@@ -171,7 +171,7 @@ def require_device(device: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_heavy_components_refinement_and_all_center_derivatives(
     symbol: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     for displacement in (0.0, 0.37):
         atoms, basis, mol = heavy_fixture(symbol, displacement=displacement)
@@ -221,7 +221,7 @@ def test_heavy_components_refinement_and_all_center_derivatives(
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_heavy_complete_hf_and_core_bookkeeping(
     symbol: typing.Any, spin: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     atoms, basis, mol = heavy_fixture(symbol, spin=spin)
     z, core, _ = CASES[symbol]
@@ -255,7 +255,7 @@ def test_heavy_complete_hf_and_core_bookkeeping(
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_heavy_resource_boundary_replay_complete_energy_difference(
     symbol: typing.Any, spin: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     atoms, basis, mol = heavy_fixture(symbol, spin=spin)
     method = "uhf" if spin else "rhf"
@@ -317,7 +317,7 @@ def test_heavy_resource_boundary_replay_complete_energy_difference(
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_gold_real_f_channel_is_nonzero_and_independently_resolved(
     device: typing.Any,
-) -> typing.Any:
+) -> None:
     require_device(device)
     gto = pytest.importorskip("pyscf.gto")
     atoms, basis, mol = heavy_fixture("Au")

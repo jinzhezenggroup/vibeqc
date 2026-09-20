@@ -34,7 +34,7 @@ def dense_approximation(factor: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("rank", [0, 1, 4, 6])
 def test_raw_jk_matches_same_approximation_with_exact_spin_factors(
     spins: typing.Any, rank: typing.Any
-) -> typing.Any:
+) -> None:
     rng = np.random.default_rng(190)
     seed = rng.normal(size=(6, 6))
     factor = IncrementalCholesky(DenseColumns(seed @ seed.T, 3), rank_capacity=6)
@@ -57,7 +57,7 @@ def test_raw_jk_matches_same_approximation_with_exact_spin_factors(
         provider.jk(density[0] if spins == 1 else density)
 
 
-def test_shared_consumer_budget_preflight_and_generation_invalidation() -> typing.Any:
+def test_shared_consumer_budget_preflight_and_generation_invalidation() -> None:
     factor = IncrementalCholesky(DenseColumns(np.eye(3), 2), rank_capacity=3)
     factor.refine(0, maximum_rank=1)
     provider = LowRankProvider(factor)
@@ -77,7 +77,7 @@ def test_shared_consumer_budget_preflight_and_generation_invalidation() -> typin
 
 
 def test_mo_blocks_retain_exact_reference_and_approximate_correlation_identity() -> (
-    typing.Any
+    None
 ):
     source, arrays = source_for("water")
     metadata, _ = load_fixture("water")
@@ -138,7 +138,7 @@ def test_mo_blocks_retain_exact_reference_and_approximate_correlation_identity()
 @pytest.mark.parametrize("charge,multiplicity", [(2, 1), (0, 3)])
 def test_mo_reference_rejects_changed_electronic_ensemble_at_identical_ao_topology(
     charge: typing.Any, multiplicity: typing.Any
-) -> typing.Any:
+) -> None:
     original, arrays = source_for("water")
     metadata, _ = load_fixture("water")
     snapshot = fixture_snapshot(metadata, arrays)
@@ -169,7 +169,7 @@ def test_mo_reference_rejects_changed_electronic_ensemble_at_identical_ao_topolo
 
 
 def test_fixed_density_accuracy_evidence_cannot_certify_the_exact_relaxed_target() -> (
-    typing.Any
+    None
 ):
     source, arrays = source_for("h2")
     metadata, _ = load_fixture("h2")

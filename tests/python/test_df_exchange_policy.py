@@ -64,7 +64,7 @@ int main() {
 
 def test_work_policy_tracks_contraction_costs(
     exchange_policy: typing.Any,
-) -> typing.Any:
+) -> None:
     """Compare modeled operation counts, including odd sizes and rank boundaries."""
     shapes = [
         (n, a, 1, rank)
@@ -83,7 +83,7 @@ def test_work_policy_tracks_contraction_costs(
 
 def test_invalid_indexing_batch_and_explicit_controls(
     exchange_policy: typing.Any,
-) -> typing.Any:
+) -> None:
     """Invalid/overflowing dimensions reject before products; overrides survive."""
     invalid = [
         (0, 3, 1, 1),

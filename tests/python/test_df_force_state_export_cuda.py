@@ -59,7 +59,7 @@ def test_actual_force_weighted_density(
     forces: typing.Any,
     budget: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     binary, fixture = scf_export_probe
     arrays = tmp_path / "state.bin"
     completed = subprocess.run(

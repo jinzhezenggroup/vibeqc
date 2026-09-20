@@ -180,7 +180,7 @@ class AmplitudeSnapshot:
     t1: np.ndarray
     t2: np.ndarray
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.reference_id, str) or not self.reference_id:
             raise ValueError("warm start requires a reference identity")
         for name in ("t1", "t2"):

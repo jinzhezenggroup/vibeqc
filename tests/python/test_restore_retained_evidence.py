@@ -65,7 +65,7 @@ def historical(tmp_path: typing.Any, monkeypatch: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("legacy", [False, True])
 def test_restore_keeps_original_bytes_and_refuses_overwrite(
     historical: typing.Any, legacy: typing.Any
-) -> typing.Any:
+) -> None:
     root, name, payload, manifest, audit = historical
     if legacy:
         audit = {
@@ -85,7 +85,7 @@ def test_restore_keeps_original_bytes_and_refuses_overwrite(
 @pytest.mark.parametrize("damage", ["hash", "size", "revision", "duplicate", "schema"])
 def test_invalid_manifest_fails_before_writing(
     historical: typing.Any, damage: typing.Any
-) -> typing.Any:
+) -> None:
     root, name, _, manifest, audit = historical
     if damage == "hash":
         audit["files"][0]["sha256"] = "0" * 64
@@ -105,7 +105,7 @@ def test_invalid_manifest_fails_before_writing(
 
 def test_missing_git_object_does_not_fetch_implicitly(
     historical: typing.Any,
-) -> typing.Any:
+) -> None:
     root, name, _, manifest, audit = historical
     audit["source_revision"] = "a" * 40
     manifest.write_text(json.dumps(audit))
@@ -131,7 +131,7 @@ def test_missing_git_object_does_not_fetch_implicitly(
 )
 def test_unsafe_path_is_rejected_before_git(
     historical: typing.Any, name: typing.Any
-) -> typing.Any:
+) -> None:
     root, _, _, manifest, _ = historical
     with pytest.raises(ValueError, match="unsafe"):
         module.restore(name, manifest=manifest)
@@ -140,7 +140,7 @@ def test_unsafe_path_is_rejected_before_git(
 
 def test_default_destination_rejects_escaping_symlink(
     historical: typing.Any,
-) -> typing.Any:
+) -> None:
     root, name, _, manifest, _ = historical
     output = root / ".artifacts/retention-restore"
     output.mkdir(parents=True)
@@ -152,7 +152,7 @@ def test_default_destination_rejects_escaping_symlink(
     assert not list(outside.iterdir())
 
 
-def test_explicit_output_remains_supported(historical: typing.Any) -> typing.Any:
+def test_explicit_output_remains_supported(historical: typing.Any) -> None:
     root, name, payload, manifest, _ = historical
     target = root / "chosen" / "raw.json"
     assert module.restore(name, target, manifest=manifest) == target
@@ -205,7 +205,7 @@ def snapshot(historical: typing.Any) -> typing.Any:
 
 def test_complete_snapshot_preserves_text_binary_and_single_file_api(
     snapshot: typing.Any,
-) -> typing.Any:
+) -> None:
     root, manifest, _, originals = snapshot
     target = module.restore_snapshot(manifest=manifest)
     assert target == root / ".artifacts/retention-snapshot"
@@ -238,7 +238,7 @@ def test_complete_snapshot_preserves_text_binary_and_single_file_api(
 )
 def test_complete_snapshot_failure_leaves_no_partial_destination(
     snapshot: typing.Any, damage: typing.Any
-) -> typing.Any:
+) -> None:
     root, manifest, audit, _ = snapshot
     last = audit["files"][-1]
     if damage == "hash":
@@ -268,7 +268,7 @@ def test_complete_snapshot_failure_leaves_no_partial_destination(
 
 def test_snapshot_git_reads_disable_network_and_lazy_fetch(
     snapshot: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     _, manifest, _, originals = snapshot
     original_run = subprocess.run
     calls = []
@@ -288,7 +288,7 @@ def test_snapshot_git_reads_disable_network_and_lazy_fetch(
 
 def test_snapshot_does_not_overwrite_destination_created_during_verification(
     snapshot: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     root, manifest, _, _ = snapshot
     target = root / "other-writer"
     read = module._read
@@ -306,7 +306,7 @@ def test_snapshot_does_not_overwrite_destination_created_during_verification(
     assert (target / "keep.txt").read_text() == "unrelated work"
 
 
-def test_snapshot_rejects_default_storage_symlink(snapshot: typing.Any) -> typing.Any:
+def test_snapshot_rejects_default_storage_symlink(snapshot: typing.Any) -> None:
     root, manifest, _, _ = snapshot
     elsewhere = root / "elsewhere"
     elsewhere.mkdir()
@@ -318,7 +318,7 @@ def test_snapshot_rejects_default_storage_symlink(snapshot: typing.Any) -> typin
 
 def test_snapshot_cli_requires_exactly_one_selection(
     snapshot: typing.Any, capsys: typing.Any
-) -> typing.Any:
+) -> None:
     root, manifest, _, _ = snapshot
     for selection in ([], ["some.json", "--all"]):
         with pytest.raises(SystemExit) as error:
@@ -330,7 +330,7 @@ def test_snapshot_cli_requires_exactly_one_selection(
     assert target.is_dir()
 
 
-def test_checked_in_snapshot_has_only_git_identity() -> typing.Any:
+def test_checked_in_snapshot_has_only_git_identity() -> None:
     manifest = (
         module.ROOT / "benchmarks/results/retention-checkout/snapshot.manifest.json"
     )
@@ -341,6 +341,6 @@ def test_checked_in_snapshot_has_only_git_identity() -> typing.Any:
     assert len(records) == audit["file_count"] == 955
     assert sum(record["bytes"] for record in records) == audit["total_bytes"]
     removed = [record for record in records if record["checkout"] == "git-history"]
-    assert len(removed) == audit["moved_files"] == 205
+    assert len(removed) == audit["moved_files"] == 209
     assert sum(record["bytes"] for record in removed) == audit["moved_bytes"]
     assert audit["history_rewritten"] is False

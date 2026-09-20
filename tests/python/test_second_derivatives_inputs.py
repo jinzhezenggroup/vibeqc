@@ -99,7 +99,7 @@ def public_fixture(family: typing.Any, spherical: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("spherical", [False, True])
 def test_contracted_public_hvp_matches_three_step_independent_gradient_fd(
     compiler: typing.Any, family: typing.Any, spherical: typing.Any
-) -> typing.Any:
+) -> None:
     ir, inputs, centers, primitives, signature, projections, weights = public_fixture(
         family, spherical
     )
@@ -154,7 +154,7 @@ def test_contracted_public_hvp_matches_three_step_independent_gradient_fd(
 
 def test_public_coverage_and_composed_budget_fail_before_execution(
     compiler: typing.Any,
-) -> typing.Any:
+) -> None:
     ir, _, centers, primitives, signature, projections, weights = public_fixture(
         "nuclear_attraction", True
     )
@@ -221,9 +221,7 @@ def test_public_coverage_and_composed_budget_fail_before_execution(
         plan.contract(stream)
 
 
-def test_atom_chain_rule_uses_both_hessian_indices_and_noncontiguous_labels() -> (
-    typing.Any
-):
+def test_atom_chain_rule_uses_both_hessian_indices_and_noncontiguous_labels() -> None:
     mapping = SecondAtomMap((0, 1, 2, 3), (8, 8, 1, 5))
     random = np.random.default_rng(178)
     matrix = random.normal(size=(12, 12))
@@ -242,7 +240,7 @@ def test_atom_chain_rule_uses_both_hessian_indices_and_noncontiguous_labels() ->
 @pytest.mark.parametrize("family", ["nuclear_attraction", "eri"])
 def test_public_hvp_arbitrary_rotation_and_bra_shell_permutation(
     compiler: typing.Any, family: typing.Any
-) -> typing.Any:
+) -> None:
     ir, _, centers, primitives, signature, _, weights = public_fixture(family, False)
     direction = np.random.default_rng(18).normal(size=centers.shape)
     artifact = compile_second_derivative(ir, *compiler)

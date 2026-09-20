@@ -366,7 +366,7 @@ def run(args: typing.Any) -> typing.Any:
         "Per-sample shared factor/initializer plans and observed native arena/provider bytes; target FockPlan reported separately. Reference tensors, driver/context, Python and BLAS host overhead excluded."
     )
 
-    def save(name: typing.Any, value: typing.Any) -> typing.Any:
+    def save(name: typing.Any, value: typing.Any) -> None:
         (args.output / name).write_text(
             json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n"
         )

@@ -57,7 +57,7 @@ def evaluate(
 @pytest.mark.parametrize("coincident", [False, True])
 def test_fused_external_weights_match_raw_component_derivatives(
     angular: typing.Any, coincident: typing.Any
-) -> typing.Any:
+) -> None:
     integral = build_weighted_eri_ir(angular)
     kernel = build_weighted_eri_kernel(integral)
     assert not integral.consumers  # No hidden direct-HF category or density.
@@ -81,7 +81,7 @@ def test_fused_external_weights_match_raw_component_derivatives(
     np.testing.assert_allclose(gradient.sum(axis=0), 0, atol=3e-14)
 
 
-def test_partial_component_subsets_and_explicit_output_scale() -> typing.Any:
+def test_partial_component_subsets_and_explicit_output_scale() -> None:
     integral = build_weighted_eri_ir((1, 0, 1, 0))
     consumer = integral.contractions[0]
     integral = replace(
@@ -110,7 +110,7 @@ def test_partial_component_subsets_and_explicit_output_scale() -> typing.Any:
     )
 
 
-def test_nonfinal_translation_recovery_keeps_physical_shell_slots() -> typing.Any:
+def test_nonfinal_translation_recovery_keeps_physical_shell_slots() -> None:
     integral = build_weighted_eri_ir((1, 0, 1, 0))
     invariant = TranslationInvariant(dependent_center=1)
     changed = replace(
@@ -133,7 +133,7 @@ def test_nonfinal_translation_recovery_keeps_physical_shell_slots() -> typing.An
 
 
 def test_arbitrary_weight_atomic_gradient_matches_multistep_raw_scalar_differences() -> (
-    typing.Any
+    None
 ):
     integral = build_weighted_eri_ir((1, 0, 1, 0))
     fused = build_weighted_eri_kernel(integral)
@@ -177,9 +177,7 @@ def test_arbitrary_weight_atomic_gradient_matches_multistep_raw_scalar_differenc
     assert errors[2] < 2e-6
 
 
-def test_large_classes_require_explicit_bounded_lowering_without_truncation() -> (
-    typing.Any
-):
+def test_large_classes_require_explicit_bounded_lowering_without_truncation() -> None:
     with pytest.raises(ValueError, match="64 explicit"):
         build_weighted_eri_kernel(build_weighted_eri_ir((3, 3, 3, 3)))
     with pytest.raises(ValueError, match="unique"):

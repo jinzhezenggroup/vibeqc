@@ -13,6 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 from vibeqc import Calculator, projected_singlepoint
 from vibeqc.autotune import source_identity
 from vibeqc.progressive import _retained_density
@@ -44,15 +49,15 @@ def item_record(item: typing.Any, density: typing.Any) -> typing.Any:
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", choices=CASES, default="h2-rhf-small-large")
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument(
         "--output",
-        type=Path,
-        default=Path(".artifacts/benchmarks/basis_projection_gate.json"),
+        type=raw_output_path,
+        default=str(Path(".artifacts/benchmarks/basis_projection_gate.json")),
     )
     args = parser.parse_args()
     if args.device == "cuda" and not os.environ.get("SLURM_JOB_ID"):
@@ -88,7 +93,7 @@ def main() -> typing.Any:
     inputs_hash = canonical_hash(inputs)
     runtime = ctypes.CDLL("libcudart.so.12") if args.device == "cuda" else None
 
-    def synchronize() -> typing.Any:
+    def synchronize() -> None:
         if runtime is not None and runtime.cudaDeviceSynchronize() != 0:
             raise RuntimeError("CUDA synchronization failed")
 

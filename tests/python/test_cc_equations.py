@@ -10,7 +10,7 @@ from tools.vibeqc_cc import amplitude_layouts, build_program
 from tools.vibeqc_cc.oracle import DeterminantOracle, dense_feeds, random_case
 
 
-def check(actual: typing.Any, expected: typing.Any) -> typing.Any:
+def check(actual: typing.Any, expected: typing.Any) -> None:
     np.testing.assert_allclose(actual, expected, atol=1e-11, rtol=1e-10)
 
 
@@ -19,7 +19,7 @@ def check(actual: typing.Any, expected: typing.Any) -> typing.Any:
 )
 def test_random_unconverged_against_exact_fermionic_projection(
     o: typing.Any, v: typing.Any, seed: typing.Any
-) -> typing.Any:
+) -> None:
     f, g, t1, t2 = random_case(o, v, seed)
     reference = DeterminantOracle(f, g, o)
     energy, singles = reference.evaluate(t1, t2)
@@ -33,7 +33,7 @@ def test_random_unconverged_against_exact_fermionic_projection(
     assert program.logical_hash == build_program(o, v).logical_hash
 
 
-def test_homogeneous_groups_against_independent_polynomial_projections() -> typing.Any:
+def test_homogeneous_groups_against_independent_polynomial_projections() -> None:
     f, g, x, y = random_case()
     o, v = x.shape
     # f-only and g-only Hamiltonians separate the one-/two-body contributions.
@@ -65,7 +65,7 @@ def test_homogeneous_groups_against_independent_polynomial_projections() -> typi
         assert np.max(np.abs(value)) > 1e-6, key
 
 
-def test_missing_disconnected_terms_and_exchange_factors_are_detected() -> typing.Any:
+def test_missing_disconnected_terms_and_exchange_factors_are_detected() -> None:
     f, g, t1, t2 = random_case()
     result = execute(build_program(2, 2), dense_feeds(f, g, t1, t2)).outputs
     e, r = DeterminantOracle(f, g, 2).evaluate(t1, t2)
@@ -95,7 +95,7 @@ def test_missing_disconnected_terms_and_exchange_factors_are_detected() -> typin
         assert np.max(np.abs(result[key])) > 1e-8
 
 
-def test_zero_amplitudes_and_full_offdiagonal_fock() -> typing.Any:
+def test_zero_amplitudes_and_full_offdiagonal_fock() -> None:
     f, g, x, y = random_case()
     p = build_program(2, 2)
     zero = execute(p, dense_feeds(f, g, x * 0, y * 0)).outputs
@@ -119,7 +119,7 @@ def test_zero_amplitudes_and_full_offdiagonal_fock() -> typing.Any:
         assert np.max(np.abs(actual)) > 1e-3
 
 
-def test_packed_metric_pair_symmetry_and_invalid_inputs() -> typing.Any:
+def test_packed_metric_pair_symmetry_and_invalid_inputs() -> None:
     one, two = amplitude_layouts(2, 3)
     assert one.size == 6 and two.size == 21
     f, g, x, y = random_case(2, 3)
@@ -153,7 +153,7 @@ def test_packed_metric_pair_symmetry_and_invalid_inputs() -> typing.Any:
         build_program(1, 0)
 
 
-def test_total_energy_cancellation_cannot_hide_component_failure() -> typing.Any:
+def test_total_energy_cancellation_cannot_hide_component_failure() -> None:
     f, g, x, y = random_case()
     program = build_program(2, 2)
     initial = execute(program, dense_feeds(f, g, x, y)).outputs
@@ -172,7 +172,7 @@ def test_total_energy_cancellation_cannot_hide_component_failure() -> typing.Any
 @pytest.mark.parametrize("key", ["foo", "fvv", "ovov", "oovv", "ovvv", "ovoo", "ovvo"])
 def test_declared_fock_and_eri_symmetries_reject_corruption(
     key: typing.Any,
-) -> typing.Any:
+) -> None:
     feeds = dense_feeds(*random_case())
     corrupt = feeds[key].copy()
     index = (0,) * (corrupt.ndim - 1) + (1,)

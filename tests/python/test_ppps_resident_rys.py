@@ -30,7 +30,7 @@ __device__ __forceinline__ void boys_values(
     return boys_stub + emit_ppps_resident_bra_rys3_cuda()
 
 
-def test_ppps_resident_bra_source_shape_is_complete() -> typing.Any:
+def test_ppps_resident_bra_source_shape_is_complete() -> None:
     """Keep the 1110 mapping and force invariants visible in generated CUDA."""
 
     source = emit_ppps_resident_bra_rys3_cuda()
@@ -72,7 +72,7 @@ def test_ppps_resident_bra_source_shape_is_complete() -> typing.Any:
 
 def test_ppps_resident_bra_sm120_resource_probe_when_nvcc_is_configured(
     tmp_path: Path,
-) -> typing.Any:
+) -> None:
     """Compile both RHF/UHF entries and record the accepted sm_120 footprint."""
 
     nvcc = os.environ.get("VIBEQC_NVCC")

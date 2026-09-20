@@ -151,7 +151,7 @@ def bridge_source(workloads: typing.Any) -> typing.Any:
     return BRIDGE.replace("@INPUTS@", "\n".join(blocks))
 
 
-def run(args: typing.Any) -> typing.Any:
+def run(args: typing.Any) -> None:
     """Compile via the standard CPU adapter and retain every native timing row."""
     if (
         args.samples < 5

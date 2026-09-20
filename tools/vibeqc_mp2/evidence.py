@@ -31,7 +31,7 @@ def record_public_result(
     same_spin: typing.Any,
     seconds: typing.Any,
     destination: typing.Any,
-) -> typing.Any:
+) -> None:
     """Save observed outputs, exact library identity and declared staging.
 
     Capacity estimates remain separate from allocator/whole-process metrics;

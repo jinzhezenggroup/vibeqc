@@ -11,7 +11,7 @@ from vibeqc.resources_hf import _ecp_workspace
 from vibeqc_compiler.integral.ecp_schedule import cuda_radial_tile
 
 
-def test_radial_workspace_public_vs_cartesian_counts() -> typing.Any:
+def test_radial_workspace_public_vs_cartesian_counts() -> None:
     # A spherical f-shell case has 16 public AOs and 19 Cartesian components.
     # Native schedule selection uses the former; storage bounds use the latter.
     item = {
@@ -32,7 +32,7 @@ def test_radial_workspace_public_vs_cartesian_counts() -> typing.Any:
 @pytest.mark.parametrize("derivatives", [False, True])
 def test_cuda_radial_tail_and_grid_fallback(
     polar: typing.Any, derivatives: typing.Any, f_projector: typing.Any
-) -> typing.Any:
+) -> None:
     require_device("cuda")
     atoms, basis, mol = fixture(f_projector=f_projector)
     # 161 leaves a one-layer tail in the four-layer schedule; 45 polar points

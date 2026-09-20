@@ -61,7 +61,7 @@ class ProjectedVirtualSpace:
     rank_crossing: bool
     cluster_tolerance: float
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         q, values = immutable(self.columns), immutable(self.gram_eigenvalues)
         if q.ndim != 2 or not q.shape[0] or not q.shape[1] or orthogonality(q) > 1e-8:
             raise ValueError("invalid projected virtual metric basis")
@@ -190,7 +190,7 @@ class PairSpace:
     rank_crossing: bool
     keep_full_space: bool
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         q, eigenvalues = immutable(self.columns), immutable(self.occupation_eigenvalues)
         pair, retained = tuple(self.pair), tuple(self.retained_indices)
         if (

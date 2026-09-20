@@ -18,7 +18,7 @@ ATOMS = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.0, 0.7))]
 @pytest.mark.parametrize("fitted", [False, True])
 def test_small_to_large_matches_independent_target_energy_force(
     method: typing.Any, charge: typing.Any, multiplicity: typing.Any, fitted: typing.Any
-) -> typing.Any:
+) -> None:
     options = {
         "method": method,
         "energy_tolerance": 1e-12,
@@ -68,7 +68,7 @@ def test_small_to_large_matches_independent_target_energy_force(
 
 def test_projected_density_cannot_be_exported_as_a_converged_target_checkpoint(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     with (
         Calculator().prepare_batch([ATOMS]) as source,
         Calculator(basis="def2-svp").prepare_batch([ATOMS]) as target,
@@ -84,9 +84,7 @@ def test_projected_density_cannot_be_exported_as_a_converged_target_checkpoint(
         target.save_checkpoint(tmp_path / "converged.vqcp")
 
 
-def test_geometry_order_charge_and_failed_source_cannot_silently_seed_target() -> (
-    typing.Any
-):
+def test_geometry_order_charge_and_failed_source_cannot_silently_seed_target() -> None:
     with Calculator().prepare_batch([ATOMS]) as source:
         source.execute(strict=True)
         moved = [(z, (r[0] + 0.01, r[1], r[2])) for z, r in ATOMS]
@@ -103,7 +101,7 @@ def test_geometry_order_charge_and_failed_source_cannot_silently_seed_target() -
             target.initialize_from(source)
 
 
-def test_failed_source_and_strict_projection_loss_fall_back_completely() -> typing.Any:
+def test_failed_source_and_strict_projection_loss_fall_back_completely() -> None:
     source = Calculator(basis="def2-svp", max_iterations=1)
     target = Calculator()
     result = projected_singlepoint(target, source, ATOMS)
@@ -120,7 +118,7 @@ def test_failed_source_and_strict_projection_loss_fall_back_completely() -> typi
     assert "projection residual" in result.diagnostics["items"][0]["reason"]
 
 
-def test_fleet_projection_budget_rejection_precedes_seed_install() -> typing.Any:
+def test_fleet_projection_budget_rejection_precedes_seed_install() -> None:
     with (
         Calculator().prepare_batch([ATOMS]) as source,
         Calculator(basis="def2-svp").prepare_batch([ATOMS]) as target,
@@ -131,7 +129,7 @@ def test_fleet_projection_budget_rejection_precedes_seed_install() -> typing.Any
         assert target.execute(strict=True).items[0].restart_origin == "cold"
 
 
-def test_failed_fleet_neighbor_does_not_discard_a_valid_projection() -> typing.Any:
+def test_failed_fleet_neighbor_does_not_discard_a_valid_projection() -> None:
     other = [("He", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     with (
         Calculator(max_iterations=3).prepare_batch(
@@ -157,7 +155,7 @@ def test_failed_fleet_neighbor_does_not_discard_a_valid_projection() -> typing.A
 )
 def test_same_and_reverse_basis_transfers_still_rebuild_target_equations(
     source_basis: typing.Any, target_basis: typing.Any
-) -> typing.Any:
+) -> None:
     source, target = Calculator(basis=source_basis), Calculator(basis=target_basis)
     result = projected_singlepoint(target, source, ATOMS)
     cold = target.singlepoint(ATOMS)

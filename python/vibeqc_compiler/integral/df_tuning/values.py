@@ -20,7 +20,7 @@ class DfValueTrial:
     lanes: int
     consumer: str = "raw_cartesian"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if (
             not isinstance(self.angular, tuple)
             or any(type(l) is not int for l in self.angular)

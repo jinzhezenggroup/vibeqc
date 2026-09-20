@@ -16,6 +16,11 @@ import typing
 from collections import defaultdict
 from pathlib import Path
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 
 def interval_union(intervals: typing.Any) -> typing.Any:
     """Merge overlapping clock intervals, preserving gaps and exact ns units."""
@@ -337,10 +342,10 @@ def summarize(database: typing.Any) -> typing.Any:
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("database", type=Path)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     args = parser.parse_args()
     payload = summarize(args.database)
     with args.output.open("x") as stream:

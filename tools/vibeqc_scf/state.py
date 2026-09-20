@@ -107,7 +107,7 @@ class ScfSnapshot:
     baseline: np.ndarray
     identity: str = field(init=False)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.model, ResolvedModel):
             raise TypeError("snapshot requires a resolved model")
         if not isinstance(self.owner, str) or not self.owner:
@@ -223,7 +223,7 @@ class DensityProposal:
     repair_seconds: float = 0.0
     repair: str = "none"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         raw = np.asarray(self.density)
         # The host proposal bridge is explicitly capped at two 12-AO blocks.
         # Reject a malformed model output before making another owned copy.
@@ -248,7 +248,7 @@ class DensityProposal:
         if not np.isfinite(self.repair_seconds) or self.repair_seconds < 0:
             raise ValueError("invalid repair timing")
 
-    def validate(self, state: typing.Any) -> typing.Any:
+    def validate(self, state: typing.Any) -> None:
         if self.parent_id != state.identity:
             raise ValueError("stale_state")
         if self.representation == "reset":

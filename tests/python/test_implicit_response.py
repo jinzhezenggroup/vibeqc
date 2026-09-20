@@ -102,7 +102,7 @@ def _rhf_equation(
 @pytest.mark.parametrize("name", ["h2", "water"])
 def test_generated_implicit_response_matches_existing_physical_mp2_zvector(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     metadata, arrays = load_fixture(name)
     reference = fixture_snapshot(metadata, arrays)
     backend = DenseAOResponseBackend(arrays["ao"])
@@ -170,7 +170,7 @@ def test_generated_implicit_response_matches_existing_physical_mp2_zvector(
 @pytest.mark.parametrize("name", ["h2", "water"])
 def test_native_response_operator_is_bound_to_generated_implicit_vjp(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     metadata, arrays = load_fixture(name)
     reference = fixture_snapshot(metadata, arrays)
     try:
@@ -265,7 +265,7 @@ def test_native_response_operator_is_bound_to_generated_implicit_vjp(
             bound.vjp(-rhs.response_rhs, reference_identity=reference.identity)
 
 
-def test_response_operator_binding_rejects_wrong_operator_identity() -> typing.Any:
+def test_response_operator_binding_rejects_wrong_operator_identity() -> None:
     metadata, arrays = load_fixture("h2")
     reference = fixture_snapshot(metadata, arrays)
     dense = DenseAOResponseBackend(arrays["ao"])
@@ -289,7 +289,7 @@ def test_response_operator_binding_rejects_wrong_operator_identity() -> typing.A
             )
 
 
-def test_response_operator_device_resources_require_joint_budget() -> typing.Any:
+def test_response_operator_device_resources_require_joint_budget() -> None:
     metadata, arrays = load_fixture("h2")
     reference = fixture_snapshot(metadata, arrays)
     backend = DenseAOResponseBackend(arrays["ao"])
@@ -346,7 +346,7 @@ def test_response_operator_device_resources_require_joint_budget() -> typing.Any
         )
 
 
-def test_response_binding_rejects_cpks_even_with_declared_resources() -> typing.Any:
+def test_response_binding_rejects_cpks_even_with_declared_resources() -> None:
     from dataclasses import replace
     from types import SimpleNamespace
 

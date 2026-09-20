@@ -66,7 +66,7 @@ def _results_summary_module() -> typing.Any:
 
 def test_batch_native_metadata_identifies_loaded_profile_library(
     tmp_path: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     """A replaced library must not inherit the requested base binary's identity."""
     import hashlib
 
@@ -145,7 +145,7 @@ def _comparison_basis_fixture(
 
 def test_comparison_basis_preserves_general_contractions(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Neither backend may lose a contraction column or its zero coefficients."""
     from vibeqc import Atom
 
@@ -167,7 +167,7 @@ def test_comparison_basis_preserves_general_contractions(
 )
 def test_comparison_basis_rejects_model_changes_before_gpu_import(
     tmp_path: typing.Any, change: typing.Any
-) -> typing.Any:
+) -> None:
     """A loadable file must not silently change the reference Hamiltonian/domain."""
     options = {"representation": "cartesian"} if change == "representation" else {}
     if change == "ecp":
@@ -187,7 +187,7 @@ def test_comparison_basis_rejects_model_changes_before_gpu_import(
 
 def test_auxiliary_override_requires_df_before_gpu_import(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     """Direct comparisons cannot silently ignore a supplied auxiliary model."""
     monkeypatch.setattr(
         sys, "argv", ["benchmark", "--auxiliary-basis-file", "unused.json"]
@@ -219,7 +219,7 @@ def _issue174_precision_module() -> typing.Any:
     return module
 
 
-def test_batch_benchmark_writes_reproducible_json(tmp_path: typing.Any) -> typing.Any:
+def test_batch_benchmark_writes_reproducible_json(tmp_path: typing.Any) -> None:
     """Keep benchmark artifacts tied to raw samples and exact source state."""
 
     output = tmp_path / "batch.json"
@@ -260,7 +260,7 @@ def test_batch_benchmark_writes_reproducible_json(tmp_path: typing.Any) -> typin
     assert payload["environment"]["packages"]["numpy"]
 
 
-def test_benchmark_source_status_ignores_only_pending_result_json() -> typing.Any:
+def test_benchmark_source_status_ignores_only_pending_result_json() -> None:
     support = _benchmark_support_module()
     assert support._source_status_payload(
         "",
@@ -280,7 +280,7 @@ def test_benchmark_source_status_ignores_only_pending_result_json() -> typing.An
 
 def test_benchmark_toolchain_metadata_prefers_cuda_path(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     """Tie CUDA resource and timing artifacts to the selected toolkit."""
 
     support = _benchmark_support_module()
@@ -308,7 +308,7 @@ def test_benchmark_toolchain_metadata_prefers_cuda_path(
 
 def test_cuda_metadata_records_scheduler_visible_power_state(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     """Preserve the post-run GPU state required by the issue-41 protocol."""
 
     support = _benchmark_support_module()
@@ -352,7 +352,7 @@ def test_cuda_metadata_records_scheduler_visible_power_state(
     }
 
 
-def test_issue174_fock_profile_parser_preserves_precision_work_counts() -> typing.Any:
+def test_issue174_fock_profile_parser_preserves_precision_work_counts() -> None:
     """Keep CUDA-event class rows distinct from actual FP32/FP64 tile counts."""
 
     benchmark = _issue174_precision_module()
@@ -392,9 +392,7 @@ bounded-direct-fock-precision-profile enabled=1 threshold=9.9999999999999995e-07
     }
 
 
-def test_issue174_fixed_density_rejects_cold_retries_and_extra_evaluations() -> (
-    typing.Any
-):
+def test_issue174_fixed_density_rejects_cold_retries_and_extra_evaluations() -> None:
     """A parsed profile alone cannot certify the density or endpoint timed."""
 
     benchmark = _issue174_precision_module()
@@ -425,7 +423,7 @@ bounded-direct-fock-precision-profile enabled=0 threshold=0
         benchmark._validate_fixed_density_sample(item, diagnostic)
 
 
-def test_issue174_help_does_not_initialize_cuda() -> typing.Any:
+def test_issue174_help_does_not_initialize_cuda() -> None:
     """Allow benchmark discovery before requesting the mandatory Slurm job."""
 
     environment = os.environ.copy()
@@ -446,7 +444,7 @@ def test_issue174_help_does_not_initialize_cuda() -> typing.Any:
     assert "--experimental-fp32-threshold" in completed.stdout
 
 
-def test_gpu_comparison_help_does_not_require_an_allocated_device() -> typing.Any:
+def test_gpu_comparison_help_does_not_require_an_allocated_device() -> None:
     """Keep benchmark discovery usable on scheduler login nodes."""
 
     environment = os.environ.copy()
@@ -488,7 +486,7 @@ def test_gpu_comparison_help_does_not_require_an_allocated_device() -> typing.An
             assert "--max-iterations" in completed.stdout
 
 
-def test_aot_endpoint_order_and_class_parser_are_deterministic() -> typing.Any:
+def test_aot_endpoint_order_and_class_parser_are_deterministic() -> None:
     """Keep the endpoint's pair count and typo rejection independent of CUDA."""
 
     endpoint = _aot_shell_gate_module()
@@ -525,7 +523,7 @@ def test_aot_endpoint_order_and_class_parser_are_deterministic() -> typing.Any:
 
 def test_aot_endpoint_default_fock_selection_ignores_ambient_filter(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     """Make an omitted Fock CLI selection mean the reproducible full registry."""
 
     endpoint = _aot_shell_gate_module()
@@ -538,7 +536,7 @@ def test_aot_endpoint_default_fock_selection_ignores_ambient_filter(
 
 def test_aot_endpoint_environment_overrides_parse_and_restore(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     """Keep side-specific runtime env changes isolated within each replay."""
 
     endpoint = _aot_shell_gate_module()
@@ -598,16 +596,14 @@ def test_aot_endpoint_environment_overrides_parse_and_restore(
             endpoint._parse_environment_overrides(values)
 
 
-def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema() -> (
-    typing.Any
-):
+def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema() -> None:
     """Verify fixed-dm0 control flow with a fake prepared batch."""
 
     endpoint = _aot_shell_gate_module()
 
     class FakeStream:
         @staticmethod
-        def synchronize() -> typing.Any:
+        def synchronize() -> None:
             return None
 
     fake_cupy = SimpleNamespace(
@@ -646,7 +642,7 @@ def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema() -> (
             )
             return FakeResult()
 
-        def set_warm_start_updates(self, enabled: typing.Any) -> typing.Any:
+        def set_warm_start_updates(self, enabled: typing.Any) -> None:
             self.freeze_calls.append(enabled)
 
     batch = FakeBatch()
@@ -710,7 +706,7 @@ def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema() -> (
     assert measurement["gate"]["passed"]
 
 
-def test_aot_endpoint_pairwise_accuracy_and_median_speedup() -> typing.Any:
+def test_aot_endpoint_pairwise_accuracy_and_median_speedup() -> None:
     """Check branch-aware parity and robust median speedup arithmetic."""
 
     endpoint = _aot_shell_gate_module()
@@ -762,7 +758,7 @@ def test_aot_endpoint_pairwise_accuracy_and_median_speedup() -> typing.Any:
 
 def test_aot_endpoint_dry_run_does_not_import_gpu_packages(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Make --dry-run safe on login nodes with no CUDA/PySCF installation."""
 
     script = REPOSITORY_ROOT / "benchmarks" / "aot_shell_batch_gate.py"
@@ -824,7 +820,7 @@ runpy.run_path(script_path, run_name="__main__")
 
 def test_real_molecule_gate_has_four_explicit_dry_run_points(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Lock the 96/192-AO, batch-1/batch-4 acceptance matrix in CI."""
 
     environment = os.environ.copy()
@@ -874,7 +870,7 @@ def test_real_molecule_gate_has_four_explicit_dry_run_points(
 
 def test_density_fitting_gate_has_five_explicit_dry_run_points(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Lock the 96/192 parity plus the 384-AO DF scaling point."""
 
     environment = os.environ.copy()
@@ -938,7 +934,7 @@ def test_density_fitting_gate_has_five_explicit_dry_run_points(
 
 def test_density_fitting_gate_forwards_positive_memory_budget(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Lock the bounded planner budget into every CUDA-DF child command."""
 
     environment = os.environ.copy()
@@ -996,7 +992,7 @@ def test_density_fitting_gate_forwards_positive_memory_budget(
     )
 
 
-def test_gpu_comparison_gate_reports_all_threshold_failures() -> typing.Any:
+def test_gpu_comparison_gate_reports_all_threshold_failures() -> None:
     """Keep allocated benchmark gates deterministic and independently testable."""
 
     support = _benchmark_support_module()
@@ -1037,7 +1033,7 @@ def test_gpu_comparison_gate_reports_all_threshold_failures() -> typing.Any:
     ]
 
 
-def test_gpu_comparison_gate_can_reject_a_large_topology_regression() -> typing.Any:
+def test_gpu_comparison_gate_can_reject_a_large_topology_regression() -> None:
     """Keep the 768-AO comparison gate from silently accepting slowdowns."""
 
     support = _benchmark_support_module()
@@ -1065,7 +1061,7 @@ def test_gpu_comparison_gate_can_reject_a_large_topology_regression() -> typing.
     ) == ["VibeQC/reference warm ratio infx exceeds 1.3x"]
 
 
-def test_batch_comparison_pairs_each_timing_with_convergence_state() -> typing.Any:
+def test_batch_comparison_pairs_each_timing_with_convergence_state() -> None:
     """Preserve every replay's SCF diagnostics for straggler analysis."""
 
     comparison = _batch_comparison_module()
@@ -1098,7 +1094,7 @@ def test_batch_comparison_pairs_each_timing_with_convergence_state() -> typing.A
     assert payload[0]["warm_start"] == {"used": True, "fallback": False}
 
 
-def test_batch_comparison_records_fixed_post_cold_warm_policy() -> typing.Any:
+def test_batch_comparison_records_fixed_post_cold_warm_policy() -> None:
     """Keep each engine on one dm0 and document the unmeasured priming pass."""
 
     comparison = _batch_comparison_module()
@@ -1132,7 +1128,7 @@ def test_batch_comparison_records_fixed_post_cold_warm_policy() -> typing.Any:
     }
 
 
-def test_batch_comparison_uses_exact_abba_counts_and_iteration_matching() -> typing.Any:
+def test_batch_comparison_uses_exact_abba_counts_and_iteration_matching() -> None:
     comparison = _batch_comparison_module()
 
     order = comparison.interleaved_engine_order(5)
@@ -1166,7 +1162,7 @@ def test_batch_comparison_uses_exact_abba_counts_and_iteration_matching() -> typ
     assert matched["speedup"] == pytest.approx(4.1 / 2.1)
 
 
-def test_gpu_cycle_tracker_retains_explicit_final_residuals() -> typing.Any:
+def test_gpu_cycle_tracker_retains_explicit_final_residuals() -> None:
     comparison = _batch_comparison_module()
     tracker = comparison.GpuCycleTracker()
     tracker({"cycle": 0, "e_tot": -10.0, "norm_ddm": 0.2})
@@ -1187,7 +1183,7 @@ def test_gpu_cycle_tracker_retains_explicit_final_residuals() -> typing.Any:
 @pytest.mark.parametrize("last_branch_matches", [False, True])
 def test_accuracy_gate_rejects_an_earlier_failed_repeat(
     last_branch_matches: typing.Any,
-) -> typing.Any:
+) -> None:
     """A passing final or matched pair cannot qualify an inaccurate median."""
     comparison = _batch_comparison_module()
     summary = comparison.accuracy_gate_summary(
@@ -1224,14 +1220,12 @@ def test_accuracy_gate_rejects_an_earlier_failed_repeat(
     assert any("force error" in failure for failure in failures)
 
 
-def test_accuracy_gate_requires_measured_pairs() -> typing.Any:
+def test_accuracy_gate_requires_measured_pairs() -> None:
     with pytest.raises(ValueError, match="at least one measured pair"):
         _batch_comparison_module().accuracy_gate_summary([])
 
 
-def test_energy_only_pairs_reject_mismatched_properties_and_nonfinite_values() -> (
-    typing.Any
-):
+def test_energy_only_pairs_reject_mismatched_properties_and_nonfinite_values() -> None:
     comparison = _batch_comparison_module()
     sample = {
         "convergence": [{"iterations": 2}],
@@ -1253,14 +1247,14 @@ def test_energy_only_pairs_reject_mismatched_properties_and_nonfinite_values() -
         )
 
 
-def test_gpu_energy_sample_never_calls_gradient() -> typing.Any:
+def test_gpu_energy_sample_never_calls_gradient() -> None:
     from types import SimpleNamespace
 
     import numpy as np
 
     comparison = _batch_comparison_module()
 
-    def forbidden() -> typing.Any:
+    def forbidden() -> None:
         pytest.fail("energy-only reference attempted force evaluation")
 
     engine = SimpleNamespace(
@@ -1284,7 +1278,7 @@ def test_gpu_energy_sample_never_calls_gradient() -> typing.Any:
 
 def test_results_summary_selects_latest_clean_five_repeat_artifacts(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     summary = _results_summary_module()
     readme = tmp_path / "README.md"
     readme.write_text(
@@ -1344,7 +1338,7 @@ def test_results_summary_selects_latest_clean_five_repeat_artifacts(
 
 def test_results_summary_excludes_newer_density_fitting_artifacts(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Prevent DF evidence from replacing the historical direct table."""
 
     summary = _results_summary_module()
@@ -1383,7 +1377,7 @@ def test_results_summary_excludes_newer_density_fitting_artifacts(
     assert selected[(96, 1)][0] == direct
 
 
-def test_shell_class_histogram_matches_direct_pair_symmetry() -> typing.Any:
+def test_shell_class_histogram_matches_direct_pair_symmetry() -> None:
     histogram = _shell_histogram_module()
     shells = [
         histogram.ShellWork(angular=2, ao_count=6, primitive_count=1),
@@ -1396,7 +1390,7 @@ def test_shell_class_histogram_matches_direct_pair_symmetry() -> typing.Any:
     assert sum(row["primitive_work_fraction"] for row in rows) == pytest.approx(1.0)
 
 
-def test_shell_class_histogram_grouping_preserves_diagonal_correction() -> typing.Any:
+def test_shell_class_histogram_grouping_preserves_diagonal_correction() -> None:
     """Aggregate pair-shape groups exactly like the reference enumeration."""
 
     histogram = _shell_histogram_module()
@@ -1456,7 +1450,7 @@ def test_shell_class_histogram_grouping_preserves_diagonal_correction() -> typin
     assert actual == expected
 
 
-def test_gpu4pyscf_rys_ip1_canonicalization_merges_all_orientations() -> typing.Any:
+def test_gpu4pyscf_rys_ip1_canonicalization_merges_all_orientations() -> None:
     """Map pair/within-pair Rys directions to one generic class key."""
 
     histogram = _shell_histogram_module()
@@ -1486,7 +1480,7 @@ def test_gpu4pyscf_rys_ip1_canonicalization_merges_all_orientations() -> typing.
 
 def test_gpu4pyscf_rys_ip1_sqlite_aggregation_sums_canonical_directions(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Aggregate Nsight rows by canonical class, not raw kernel suffix."""
 
     histogram = _shell_histogram_module()
@@ -1540,7 +1534,7 @@ def test_gpu4pyscf_rys_ip1_sqlite_aggregation_sums_canonical_directions(
     }
 
 
-def test_active_shell_class_histogram_ranks_screened_primitive_work() -> typing.Any:
+def test_active_shell_class_histogram_ranks_screened_primitive_work() -> None:
     histogram = _shell_histogram_module()
     entries = [
         SimpleNamespace(
@@ -1578,9 +1572,7 @@ def test_active_shell_class_histogram_ranks_screened_primitive_work() -> typing.
     assert sum(row["primitive_work_fraction"] for row in all_rows) == pytest.approx(1.0)
 
 
-def test_ppps_queue_summary_labels_block_orientation_and_overflow_buckets() -> (
-    typing.Any
-):
+def test_ppps_queue_summary_labels_block_orientation_and_overflow_buckets() -> None:
     histogram = _shell_histogram_module()
     profile = SimpleNamespace(
         descriptor_slots=10,
@@ -1625,7 +1617,7 @@ def test_ppps_queue_summary_labels_block_orientation_and_overflow_buckets() -> (
     ]
 
 
-def test_shell_histogram_runtime_switch_matches_native_opt_out() -> typing.Any:
+def test_shell_histogram_runtime_switch_matches_native_opt_out() -> None:
     histogram = _shell_histogram_module()
     assert histogram.runtime_switch_enabled(None)
     assert histogram.runtime_switch_enabled("1")

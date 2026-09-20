@@ -148,7 +148,7 @@ def benchmark(cache: typing.Any, repeats: typing.Any) -> typing.Any:
     }
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--cache", type=Path, default=Path(".cache/stationary-consumers")

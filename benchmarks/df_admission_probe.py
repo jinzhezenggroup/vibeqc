@@ -20,6 +20,11 @@ from pathlib import Path
 
 import numpy as np
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 from benchmarks._cases import benchmark_cases
 from benchmarks.compare_gpu4pyscf_batch import (
     convergence_payload,
@@ -85,7 +90,7 @@ def errors(
     )
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", choices=benchmark_cases(), required=True)
     parser.add_argument("--orbital-basis-file", type=Path)
@@ -106,7 +111,7 @@ def main() -> typing.Any:
         default=1,
         help="Replicate the molecular fixture along x with 8-bohr separation",
     )
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--source-patch", type=Path, required=True)
     parser.add_argument("--warm-checkpoint-in", type=Path)
     args = parser.parse_args()
@@ -234,7 +239,7 @@ def main() -> typing.Any:
         "samples": [],
     }
 
-    def save() -> typing.Any:
+    def save() -> None:
         args.output.write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n")
 
     save()
@@ -254,7 +259,7 @@ def main() -> typing.Any:
                     variant: typing.Any,
                     repeat: typing.Any,
                     trace: typing.Any = None,
-                ) -> typing.Any:
+                ) -> None:
                     start = time.perf_counter()
                     result = batch.execute(strict=True)
                     seconds = time.perf_counter() - start

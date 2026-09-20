@@ -60,7 +60,7 @@ def test_qualified_lowering_without_ao_shape_admission(
     production_profile: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """Exercise panel/group/packet consumers against independent full forces.
 
     The practical basis includes auxiliary f shells, which must retain the

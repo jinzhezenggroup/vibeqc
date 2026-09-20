@@ -61,7 +61,7 @@ def _fixture() -> typing.Any:
     return primitives, centers
 
 
-def test_cpu_tune_candidates_cover_targets_and_static_resources() -> typing.Any:
+def test_cpu_tune_candidates_cover_targets_and_static_resources() -> None:
     ir = build_weighted_eri_ir((1, 0, 0, 0))
     limits = CpuTuneLimits(maximum_candidates=8)
     candidates = cpu_tune_candidates(
@@ -102,7 +102,7 @@ def test_cpu_tune_candidates_cover_targets_and_static_resources() -> typing.Any:
     )
 
 
-def test_cpu_tune_dpss_space_includes_component_tiling() -> typing.Any:
+def test_cpu_tune_dpss_space_includes_component_tiling() -> None:
     ir = build_weighted_eri_ir((2, 1, 0, 0))
     candidates = cpu_tune_candidates(
         ir,
@@ -116,7 +116,7 @@ def test_cpu_tune_dpss_space_includes_component_tiling() -> typing.Any:
 
 def test_cpu_autotune_numerical_gate_timing_and_parallel_evidence(
     compiler: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     ir = build_weighted_eri_ir((1, 0, 0, 0))
     primitives, centers = _fixture()
     reference_artifact = compile_first_derivative_shell(
@@ -200,7 +200,7 @@ def test_cpu_autotune_numerical_gate_timing_and_parallel_evidence(
 
 def test_cpu_autotune_rejects_bad_reference_before_compilation(
     compiler: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     ir = build_weighted_eri_ir((1, 0, 0, 0))
     primitives, centers = _fixture()
     with pytest.raises(ValueError, match="independent reference"):
@@ -219,7 +219,7 @@ def test_cpu_autotune_rejects_bad_reference_before_compilation(
 
 def test_cpu_autotune_rejects_numerically_wrong_reference(
     compiler: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     ir = build_weighted_eri_ir((1, 0, 0, 0))
     primitives, centers = _fixture()
     wrong = np.zeros((ir.signature.component_count, 13))
@@ -242,7 +242,7 @@ def test_cpu_autotune_rejects_numerically_wrong_reference(
         )
 
 
-def test_cpu_static_cost_accounts_for_record_storage() -> typing.Any:
+def test_cpu_static_cost_accounts_for_record_storage() -> None:
     """The complete consumer owns its AoS record buffer, not only SIMD lanes."""
     ir = build_weighted_eri_ir((1, 0, 0, 0))
     schedule = cpu_tune_candidates(ir, targets=(GENERIC_CPU_TARGET,))[0]
@@ -258,7 +258,7 @@ def test_cpu_static_cost_accounts_for_record_storage() -> typing.Any:
 
 def test_cpu_autotune_rejects_record_budget_before_compilation(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     import vibeqc_compiler.integral.cpu_tune as tuning
 
     ir = build_weighted_eri_ir((1, 0, 0, 0))
@@ -297,7 +297,7 @@ def test_cpu_autotune_rejects_record_budget_before_compilation(
 @pytest.mark.parametrize("value", [True, 8.5, float("nan"), float("inf")])
 def test_cpu_tune_integer_limits_reject_lossy_or_nonfinite_values(
     field: typing.Any, value: typing.Any
-) -> typing.Any:
+) -> None:
     with pytest.raises(ValueError):
         CpuTuneLimits(**{field: value})
 
@@ -308,7 +308,7 @@ def test_cpu_tune_integer_limits_reject_lossy_or_nonfinite_values(
 )
 def test_cpu_tune_compile_limit_must_be_finite_positive_real(
     value: typing.Any,
-) -> typing.Any:
+) -> None:
     with pytest.raises(ValueError):
         CpuTuneLimits(maximum_compile_seconds=value)
 
@@ -316,5 +316,5 @@ def test_cpu_tune_compile_limit_must_be_finite_positive_real(
 @pytest.mark.parametrize("value", [1, 0.5, 30.0])
 def test_cpu_tune_accepts_finite_integer_or_fractional_compile_seconds(
     value: typing.Any,
-) -> typing.Any:
+) -> None:
     assert CpuTuneLimits(maximum_compile_seconds=value).maximum_compile_seconds == value

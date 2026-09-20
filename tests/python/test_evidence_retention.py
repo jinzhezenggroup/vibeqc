@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 @pytest.mark.parametrize("corrupt", [False, True])
 def test_cli_publication_uses_git_paths_on_windows(
     monkeypatch: typing.Any, corrupt: typing.Any, capsys: typing.Any
-) -> typing.Any:
+) -> None:
     from pathlib import PureWindowsPath
 
     from tools import evidence as cli
@@ -64,9 +64,10 @@ def policy(**exceptions: typing.Any) -> typing.Any:
         "tests/reference_data/example.xml",
         "tests/data/checkpoint.npz",
         "external/libxc/a.log",
+        "tests/reference_data/oracle.zip",
     ],
 )
-def test_reference_context_precedes_suffix(path: typing.Any) -> typing.Any:
+def test_reference_context_precedes_suffix(path: typing.Any) -> None:
     assert classify(path) == "reference"
     assert check({path: b"independent oracle"}, policy()) == []
 
@@ -80,9 +81,16 @@ def test_reference_context_precedes_suffix(path: typing.Any) -> typing.Any:
         "benchmarks/results/run/profile.sqlite.gz",
         "benchmarks/results/run/state.chk",
         "benchmarks/results/run/kernel.cubin",
+        "benchmarks/results/run/raw.zip",
+        "benchmarks/results/run/raw.tar",
+        "benchmarks/results/run/raw.tar.gz",
+        "benchmarks/results/run/raw.tgz",
+        "benchmarks/results/run/raw.tar.xz",
+        "benchmarks/results/run/raw.tar.zst",
+        "benchmarks/results/run/raw.7z",
     ],
 )
-def test_transient_patterns_need_explicit_exception(path: typing.Any) -> typing.Any:
+def test_transient_patterns_need_explicit_exception(path: typing.Any) -> None:
     assert check({path: b"data"}, policy())
     exception = {
         "sha256": digest(b"data"),
@@ -97,7 +105,7 @@ def test_transient_patterns_need_explicit_exception(path: typing.Any) -> typing.
     assert any("stale" in error for error in check({}, policy(**{path: exception})))
 
 
-def test_size_guard_is_reviewable_and_covers_references() -> typing.Any:
+def test_size_guard_is_reviewable_and_covers_references() -> None:
     path = "tests/reference_data/large.json"
     data = b"x" * 33
     assert check({path: data}, policy())
@@ -109,7 +117,7 @@ def test_size_guard_is_reviewable_and_covers_references() -> typing.Any:
     assert check({path: data}, policy(**{path: exception})) == []
 
 
-def test_hard_size_limit_cannot_be_waived_or_raised_in_policy() -> typing.Any:
+def test_hard_size_limit_cannot_be_waived_or_raised_in_policy() -> None:
     """An exact-hash rationale must not admit another oversized archive."""
     path = "benchmarks/results/run/evidence.zip"
     data = b"x" * ((1 << 20) + 1)
@@ -122,7 +130,7 @@ def test_hard_size_limit_cannot_be_waived_or_raised_in_policy() -> typing.Any:
 
 def test_publisher_rejects_large_file_even_with_review_reason(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     spec = publication_inputs(tmp_path)
     (tmp_path / "large.json").write_text('"' + "x" * (1 << 20) + '"')
     spec["files"].append(
@@ -135,7 +143,7 @@ def test_publisher_rejects_large_file_even_with_review_reason(
 
 def test_inventory_reads_staged_bytes_not_worktree_or_symlink_target(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     path = tmp_path / "file.json"
     path.write_bytes(b"staged")
@@ -151,7 +159,7 @@ def test_inventory_reads_staged_bytes_not_worktree_or_symlink_target(
     assert report["classes"]["unknown"]["files"] == 1
 
 
-def test_stdout_json_measurements_and_negative_diagnostics_survive() -> typing.Any:
+def test_stdout_json_measurements_and_negative_diagnostics_survive() -> None:
     log = b'SLURM_JOB_ID=1\n{"seconds": [1.25, 0.5], "error": 1e-12}\nFAILED allocation budget\n[1/1] progress\n{"peak": 128}\n'
     result = extract_log(log)
     assert result["measurements"] == [
@@ -192,7 +200,7 @@ def publication_inputs(tmp_path: typing.Any) -> typing.Any:
 
 def test_publication_selects_exact_bytes_and_never_overwrites(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     spec = publication_inputs(tmp_path)
     (tmp_path / "stdout.log").write_text("not selected")
     output = tmp_path / "published"
@@ -226,7 +234,7 @@ def test_publication_selects_exact_bytes_and_never_overwrites(
 )
 def test_invalid_publication_fails_before_creating_output(
     tmp_path: typing.Any, damage: typing.Any
-) -> typing.Any:
+) -> None:
     spec = publication_inputs(tmp_path)
     if damage == "traversal":
         spec["files"][0]["path"] = "../evidence.json"
@@ -259,7 +267,7 @@ def test_invalid_publication_fails_before_creating_output(
     assert not (tmp_path / "published").exists()
 
 
-def test_committed_publications_retain_valid_scientific_gates() -> typing.Any:
+def test_committed_publications_retain_valid_scientific_gates() -> None:
     """Manually edited publications must meet the same gates as the CLI."""
     for path in (ROOT / "benchmarks/results").rglob("publication.json"):
         manifest = json.loads(path.read_text())
@@ -273,7 +281,7 @@ def test_committed_publications_retain_valid_scientific_gates() -> typing.Any:
 @pytest.mark.parametrize("damage", ["numerical", "attachment", "missing-tolerance"])
 def test_publication_rejects_false_numerical_pass_or_lost_measurements(
     tmp_path: typing.Any, damage: typing.Any
-) -> typing.Any:
+) -> None:
     spec = publication_inputs(tmp_path)
     path = tmp_path / "evidence.json"
     evidence = json.loads(path.read_text())
@@ -296,7 +304,7 @@ def test_publication_rejects_false_numerical_pass_or_lost_measurements(
     assert not (tmp_path / "published").exists()
 
 
-def test_migration_keeps_exported_profiler_evidence_and_xc_manifest() -> typing.Any:
+def test_migration_keeps_exported_profiler_evidence_and_xc_manifest() -> None:
     audit = json.loads(
         (ROOT / "benchmarks/results/retention-238/migration.json").read_text()
     )

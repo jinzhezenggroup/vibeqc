@@ -104,7 +104,7 @@ def overlap_reference(
     ]
 
 
-def main() -> typing.Any:
+def main() -> None:
     import pyscf
     from pyscf import gto, scf
 

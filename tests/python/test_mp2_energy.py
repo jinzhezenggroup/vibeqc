@@ -39,7 +39,7 @@ class FixtureSource:
         self.reads = 0
         self.closed = False
 
-    def _check_open(self) -> typing.Any:
+    def _check_open(self) -> None:
         if self.closed:
             raise RuntimeError("fixture source is closed")
 
@@ -89,7 +89,7 @@ def spin_components(snapshot: typing.Any, mo: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("tiles", [(1, 2), (2, 3)])
 def test_independent_molecular_components_and_final_tiles(
     name: typing.Any, tiles: typing.Any
-) -> typing.Any:
+) -> None:
     s, source, meta, arrays = fixture(name)
     with PreparedMP2Energy(
         s, source, occupied_tile=tiles[0], virtual_tile=tiles[1], axis_tile=4
@@ -116,7 +116,7 @@ def test_independent_molecular_components_and_final_tiles(
     assert not source.closed
 
 
-def test_rectangular_equations_exchange_prefactors_and_replay() -> typing.Any:
+def test_rectangular_equations_exchange_prefactors_and_replay() -> None:
     rng = np.random.default_rng(193)
     shape = (2, 1, 3, 2)
     feeds = {
@@ -158,7 +158,7 @@ def test_rectangular_equations_exchange_prefactors_and_replay() -> typing.Any:
     assert abs(sum(expected) - 2 * expected[0]) > 0.01
 
 
-def test_budget_before_integrals_exact_boundary_and_tile_storage() -> typing.Any:
+def test_budget_before_integrals_exact_boundary_and_tile_storage() -> None:
     s, source, *_ = fixture()
     p = PreparedMP2Energy(s, source, axis_tile=4)
     required = p.numeric_capacity_bytes
@@ -174,7 +174,7 @@ def test_budget_before_integrals_exact_boundary_and_tile_storage() -> typing.Any
         exact.execute()
 
 
-def test_force_rejection_invalidation_failure_and_neighbors() -> typing.Any:
+def test_force_rejection_invalidation_failure_and_neighbors() -> None:
     s, source, *_ = fixture("h2")
     p, neighbor = PreparedMP2Energy(s, source), PreparedMP2Energy(s, source)
     with pytest.raises(NotImplementedError, match="energy only"):
@@ -197,7 +197,7 @@ def test_force_rejection_invalidation_failure_and_neighbors() -> typing.Any:
     neighbor.close()
 
 
-def test_nonfinite_blocks_fail_without_partial_result() -> typing.Any:
+def test_nonfinite_blocks_fail_without_partial_result() -> None:
     s, source, *_ = fixture("h2")
     with PreparedMP2Energy(s, source) as p:
         p.execute()
@@ -207,7 +207,7 @@ def test_nonfinite_blocks_fail_without_partial_result() -> typing.Any:
         assert p.state == "failed" and p.last_result is None
 
 
-def test_finite_integrals_with_overflow_do_not_publish_energy() -> typing.Any:
+def test_finite_integrals_with_overflow_do_not_publish_energy() -> None:
     shape = (1, 1, 1, 1)
     feeds = {
         "g": np.full(shape, 1e200),
@@ -221,7 +221,7 @@ def test_finite_integrals_with_overflow_do_not_publish_energy() -> typing.Any:
         execute(energy_program(shape), feeds)
 
 
-def test_denominator_and_invalid_reference_preflight() -> typing.Any:
+def test_denominator_and_invalid_reference_preflight() -> None:
     s, source, *_ = fixture("h2")
     threshold = denominator_check(s, 1e-10)
     with pytest.raises(ValueError, match="near-zero.*global ijab"):
@@ -269,14 +269,14 @@ def test_denominator_and_invalid_reference_preflight() -> typing.Any:
         {"device_id": -1},
     ],
 )
-def test_invalid_configuration(kw: typing.Any) -> typing.Any:
+def test_invalid_configuration(kw: typing.Any) -> None:
     s, source, *_ = fixture("h2")
     with pytest.raises(ValueError):
         PreparedMP2Energy(s, source, **kw)
     assert source.reads == 0
 
 
-def test_cuda_source_and_plan_are_not_device_validation() -> typing.Any:
+def test_cuda_source_and_plan_are_not_device_validation() -> None:
     p = energy_program((2, 1, 3, 2))
     plan = plan_cuda(p, cuda_target_info("sm_80"), max_bytes=1 << 20)
     assert plan.peak_bytes <= 1 << 20

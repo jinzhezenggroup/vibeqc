@@ -23,9 +23,7 @@ def spaces() -> typing.Any:
     return source, target, coefficients
 
 
-def test_nonnested_projection_matches_independent_least_squares_and_rotations() -> (
-    typing.Any
-):
+def test_nonnested_projection_matches_independent_least_squares_and_rotations() -> None:
     source, target, coefficients = spaces()
     source_metric, target_metric = source.T @ source, target.T @ target
     cross = target.T @ source
@@ -61,7 +59,7 @@ def test_nonnested_projection_matches_independent_least_squares_and_rotations() 
 @pytest.mark.parametrize("occupation", [1, 2])
 def test_same_basis_and_density_reconstruction_preserve_metric_electron_properties(
     occupation: typing.Any,
-) -> typing.Any:
+) -> None:
     source, _, coefficients = spaces()
     metric = source.T @ source
     density = occupation * coefficients @ coefficients.T
@@ -78,7 +76,7 @@ def test_same_basis_and_density_reconstruction_preserve_metric_electron_properti
 
 
 def test_conditioning_discards_small_metric_modes_but_does_not_invent_missing_orbitals() -> (
-    typing.Any
+    None
 ):
     source_metric = np.eye(2)
     target_metric = np.diag([1, 1, 1e-14])
@@ -92,9 +90,7 @@ def test_conditioning_discards_small_metric_modes_but_does_not_invent_missing_or
         project_occupied(source_metric, np.eye(2), np.diag([1, 0]), np.eye(2))
 
 
-def test_poor_projection_inconsistent_overlap_and_source_states_are_rejected() -> (
-    typing.Any
-):
+def test_poor_projection_inconsistent_overlap_and_source_states_are_rejected() -> None:
     metric = np.eye(2)
     occupied = np.eye(2)[:, :1]
     with pytest.raises(ProjectionRejected, match="projection residual"):
@@ -112,7 +108,7 @@ def test_poor_projection_inconsistent_overlap_and_source_states_are_rejected() -
         project_occupied(metric, metric, metric, occupied.astype(complex))
 
 
-def test_empty_spin_channel_preserves_zero_electrons() -> typing.Any:
+def test_empty_spin_channel_preserves_zero_electrons() -> None:
     result = project_density(
         np.eye(2),
         np.eye(3),

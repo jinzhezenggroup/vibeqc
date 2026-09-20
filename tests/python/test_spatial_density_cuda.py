@@ -89,7 +89,7 @@ def test_spatial_current_features_match_masked_global_d(
     local_case: typing.Any,
     screening: typing.Any,
     empty_spin: typing.Any,
-) -> typing.Any:
+) -> None:
     basis, grid, _ = local_case
     counts = (basis.nao + 3, 0 if empty_spin else 5)
     source = factors(basis, counts)
@@ -141,7 +141,7 @@ def test_spatial_xc_current_routes_and_two_budgets(
     spin: typing.Any,
     layout: typing.Any,
     cap: typing.Any,
-) -> typing.Any:
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, 5))
     if layout == "total":
@@ -213,7 +213,7 @@ def test_spatial_xc_current_routes_and_two_budgets(
 
 def test_spatial_native_cuda_rejects_potential_at_vacuum(
     artifact: typing.Any, local_case: typing.Any
-) -> typing.Any:
+) -> None:
     basis, grid, _ = local_case
     source = DensitySource(
         np.zeros((2, basis.nao, basis.nao)), basis_identity=basis.identity
@@ -238,7 +238,7 @@ def test_spatial_native_cuda_rejects_potential_at_vacuum(
 )
 def test_spatial_native_cuda_requires_complete_canonical_spec(
     artifact: typing.Any, local_case: typing.Any, ingredients: typing.Any
-) -> typing.Any:
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, 5))
     canonical = functional("PBE", spin="polarized")
@@ -270,7 +270,7 @@ def test_spatial_native_cuda_requires_complete_canonical_spec(
 
 def test_spatial_unpolarized_cuda_rejects_unequal_orbital_features(
     artifact: typing.Any, local_case: typing.Any
-) -> typing.Any:
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, basis.nao + 3))
     density = np.stack((source.density[0], source.density[0]))
@@ -298,7 +298,7 @@ def test_spatial_unpolarized_cuda_rejects_unequal_orbital_features(
 def test_spatial_source_lifetime_fallback_and_device_leases(
     artifact: typing.Any,
     local_case: typing.Any,
-) -> typing.Any:
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, 5))
     with owner(basis, grid, artifact) as spatial:
@@ -350,7 +350,7 @@ def test_spatial_source_lifetime_fallback_and_device_leases(
 
 def test_spatial_empty_masks_and_pruned_abi(
     artifact: typing.Any, local_case: typing.Any
-) -> typing.Any:
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, 0))
     far = replace(grid, points=grid.points + 100)
@@ -384,7 +384,7 @@ def test_spatial_empty_masks_and_pruned_abi(
 
 def test_spatial_density_direction_tracks_current_factors(
     artifact: typing.Any, local_case: typing.Any
-) -> typing.Any:
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (basis.nao + 3, 5))
     rng = np.random.default_rng(299)
@@ -438,7 +438,7 @@ def test_spatial_density_direction_tracks_current_factors(
 
 def test_spatial_capacity_fallback_and_failed_upload_expire_old_execution(
     artifact: typing.Any, local_case: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     basis, grid, _ = local_case
     source = factors(basis, (7, 5))
     with owner(basis, grid, artifact, orbital_capacity=(2, 2)) as spatial:
@@ -473,7 +473,7 @@ def test_spatial_capacity_fallback_and_failed_upload_expire_old_execution(
 
 def test_xc_rejects_borrowed_device_tasks_before_waiting_for_cuda_lock(
     artifact: typing.Any, local_case: typing.Any
-) -> typing.Any:
+) -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     basis, grid, _ = local_case

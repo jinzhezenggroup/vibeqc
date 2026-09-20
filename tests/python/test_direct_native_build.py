@@ -24,7 +24,7 @@ def test_direct_device_link_preserves_architecture_request(
     enabled: typing.Any,
     linked: typing.Any,
     global_link: typing.Any,
-) -> typing.Any:
+) -> None:
     """Keep architecture intent and the angular-force compilation boundary."""
     nvcc = os.environ.get("VIBEQC_NVCC")
     if nvcc is None:

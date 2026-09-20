@@ -131,7 +131,7 @@ def reference_components(mol: typing.Any) -> typing.Any:
     return np.array(blocks)
 
 
-def require_device(device: typing.Any) -> typing.Any:
+def require_device(device: typing.Any) -> None:
     if device == "cuda" and os.environ.get("VIBEQC_ECP_CUDA_TEST") != "1":
         pytest.skip("requires an allocated CUDA device")
 
@@ -140,7 +140,7 @@ def require_device(device: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_stuttgart_components_refinement_and_all_center_derivatives(
     symbol: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     for displacement in (0.0, 0.37):
         atoms, basis, mol = stuttgart_fixture(symbol, displacement=displacement)
@@ -195,7 +195,7 @@ def test_stuttgart_components_refinement_and_all_center_derivatives(
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_stuttgart_complete_hf_and_core_bookkeeping(
     symbol: typing.Any, spin: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     scf = pytest.importorskip("pyscf.scf")
     atoms, basis, mol = stuttgart_fixture(symbol, spin=spin)
@@ -227,7 +227,7 @@ def test_stuttgart_complete_hf_and_core_bookkeeping(
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 def test_stuttgart_budgeted_replay_complete_energy_difference(
     symbol: typing.Any, spin: typing.Any, device: typing.Any
-) -> typing.Any:
+) -> None:
     require_device(device)
     atoms, basis, mol = stuttgart_fixture(symbol, spin=spin)
     method = "uhf" if spin else "rhf"

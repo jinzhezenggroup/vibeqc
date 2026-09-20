@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "generated_one_electron_st_cpu.hpp"
 #include "integrals/ecp.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/raw_source.hpp"
@@ -28,9 +29,10 @@ std::size_t checked_sum(std::size_t a, std::size_t b) {
   return a + b;
 }
 
-// Dynamic forward derivatives make the CPU implementation a compact and
-// independent oracle for both integral values and every nuclear coordinate.
-// The optimized CUDA backend uses a one-coordinate dual scalar instead.
+// Dynamic forward derivatives remain the structurally independent host reference
+// for raw integral validation and for families not yet promoted to generated CPU
+// production code.  Production s/p/d/f overlap/kinetic instead consumes the same
+// compiler-owned mathematical DAG used by the CUDA one-electron lowering.
 struct Jet {
   double value{};
   std::vector<double> derivative;
@@ -270,7 +272,9 @@ CoulombAuxiliary fill_coulomb(unsigned maximum_angular, double exponent, const V
   return auxiliary;
 }
 
-Jet primitive_overlap_cartesian(double alpha, const Vec3& a,
+// Retained as the structurally independent S/T oracle and the explicit g-shell
+// CPU fallback. Production s/p/d/f S/T uses the compiler-owned generated DAG.
+Jet reference_overlap_cartesian(double alpha, const Vec3& a,
                                 const molecule::CartesianComponent& angular_a, double beta,
                                 const Vec3& b, const molecule::CartesianComponent& angular_b) {
   const double p = alpha + beta;
@@ -284,25 +288,77 @@ Jet primitive_overlap_cartesian(double alpha, const Vec3& a,
   return result;
 }
 
-Jet primitive_kinetic_cartesian(double alpha, const Vec3& a,
+Jet reference_kinetic_cartesian(double alpha, const Vec3& a,
                                 const molecule::CartesianComponent& angular_a, double beta,
                                 const Vec3& b, const molecule::CartesianComponent& angular_b) {
   const unsigned total_b = angular_b[0] + angular_b[1] + angular_b[2];
   Jet result = beta * (2.0 * static_cast<double>(total_b) + 3.0) *
-               primitive_overlap_cartesian(alpha, a, angular_a, beta, b, angular_b);
+               reference_overlap_cartesian(alpha, a, angular_a, beta, b, angular_b);
   for (std::size_t axis = 0; axis < 3; ++axis) {
     molecule::CartesianComponent raised = angular_b;
     raised[axis] += 2;
     result = result -
-             2.0 * beta * beta * primitive_overlap_cartesian(alpha, a, angular_a, beta, b, raised);
+             2.0 * beta * beta * reference_overlap_cartesian(alpha, a, angular_a, beta, b, raised);
     if (angular_b[axis] >= 2) {
       molecule::CartesianComponent lowered = angular_b;
       lowered[axis] -= 2;
       result = result - 0.5 * static_cast<double>(angular_b[axis] * (angular_b[axis] - 1)) *
-                            primitive_overlap_cartesian(alpha, a, angular_a, beta, b, lowered);
+                            reference_overlap_cartesian(alpha, a, angular_a, beta, b, lowered);
     }
   }
   return result;
+}
+
+struct ProductionST {
+  Jet overlap;
+  Jet kinetic;
+};
+
+unsigned generated_component(const molecule::CartesianComponent& angular) {
+  if (angular[0] + angular[1] + angular[2] > 3U) return 20U;
+  return generated_one_electron_cpu::component_index(angular[0], angular[1], angular[2]);
+}
+
+ProductionST production_overlap_kinetic_cartesian(double alpha, const Vec3& a,
+                                                  const molecule::CartesianComponent& angular_a,
+                                                  std::size_t atom_a, double beta, const Vec3& b,
+                                                  const molecule::CartesianComponent& angular_b,
+                                                  std::size_t atom_b) {
+  const unsigned first = generated_component(angular_a);
+  const unsigned second = generated_component(angular_b);
+  const std::size_t ncoord = a[0].derivative.size();
+  if (first >= 20 || second >= 20) {
+    return {reference_overlap_cartesian(alpha, a, angular_a, beta, b, angular_b),
+            reference_kinetic_cartesian(alpha, a, angular_a, beta, b, angular_b)};
+  }
+  const auto pair = generated_one_electron_cpu::make_pair(
+      alpha, beta, a[0].value, a[1].value, a[2].value, b[0].value, b[1].value, b[2].value);
+  const auto values = generated_one_electron_cpu::overlap_kinetic(pair, first, second);
+  ProductionST result{Jet(values.overlap, ncoord), Jet(values.kinetic, ncoord)};
+  if (ncoord == 0) return result;
+
+  const auto gradient = generated_one_electron_cpu::overlap_kinetic_gradient(pair, first, second);
+  for (std::size_t axis = 0; axis < 3; ++axis) {
+    const std::size_t ca = 3 * atom_a + axis, cb = 3 * atom_b + axis;
+    result.overlap.derivative[ca] += gradient.first[axis];
+    result.overlap.derivative[cb] -= gradient.first[axis];
+    result.kinetic.derivative[ca] += gradient.second[axis];
+    result.kinetic.derivative[cb] -= gradient.second[axis];
+  }
+  return result;
+}
+
+double production_overlap_value_cartesian(double alpha, const Vec3& a,
+                                          const molecule::CartesianComponent& angular_a,
+                                          double beta, const Vec3& b,
+                                          const molecule::CartesianComponent& angular_b) {
+  const unsigned first = generated_component(angular_a);
+  const unsigned second = generated_component(angular_b);
+  if (first >= 20 || second >= 20)
+    return reference_overlap_cartesian(alpha, a, angular_a, beta, b, angular_b).value;
+  const auto pair = generated_one_electron_cpu::make_pair(
+      alpha, beta, a[0].value, a[1].value, a[2].value, b[0].value, b[1].value, b[2].value);
+  return generated_one_electron_cpu::overlap_kinetic(pair, first, second).overlap;
 }
 
 Jet primitive_coulomb_potential_cartesian(double alpha, const Vec3& a,
@@ -796,10 +852,9 @@ void cross_overlap(const core::System& target, const core::System& source,
           for (const auto& p : a.shell->primitives) {
             for (const auto& q : b.shell->primitives) {
               value += factor * p.coefficient * q.coefficient *
-                       primitive_overlap_cartesian(p.exponent, target_centers[a.shell->atom_index],
-                                                   a.angular, q.exponent,
-                                                   source_centers[b.shell->atom_index], b.angular)
-                           .value;
+                       production_overlap_value_cartesian(
+                           p.exponent, target_centers[a.shell->atom_index], a.angular, q.exponent,
+                           source_centers[b.shell->atom_index], b.angular);
             }
           }
         }
@@ -983,13 +1038,13 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
       for (const core::Primitive& pi : ao_i.shell->primitives) {
         for (const core::Primitive& pj : ao_j.shell->primitives) {
           const double weight = component_factor * pi.coefficient * pj.coefficient;
-          sij = sij + weight * primitive_overlap_cartesian(pi.exponent, a, ao_i.angular,
-                                                           pj.exponent, b, ao_j.angular);
-          hij = hij + weight * (primitive_kinetic_cartesian(pi.exponent, a, ao_i.angular,
-                                                            pj.exponent, b, ao_j.angular) +
-                                primitive_nuclear_attraction_cartesian(pi.exponent, a, ao_i.angular,
-                                                                       pj.exponent, b, ao_j.angular,
-                                                                       atom_coordinates, system));
+          const ProductionST st = production_overlap_kinetic_cartesian(
+              pi.exponent, a, ao_i.angular, ao_i.shell->atom_index, pj.exponent, b, ao_j.angular,
+              ao_j.shell->atom_index);
+          sij = sij + weight * st.overlap;
+          hij = hij + weight * (st.kinetic + primitive_nuclear_attraction_cartesian(
+                                                 pi.exponent, a, ao_i.angular, pj.exponent, b,
+                                                 ao_j.angular, atom_coordinates, system));
         }
       }
       overlap[matrix_index(i, j, n)] = std::move(sij);
@@ -1234,20 +1289,18 @@ std::vector<double> contract_weighted_one_electron_derivative(
                 for (const auto& pj : shell_j.primitives) {
                   const double primitive_weight =
                       component_weight * pi.coefficient * pj.coefficient;
+                  const ProductionST st = production_overlap_kinetic_cartesian(
+                      pi.exponent, center_i, ei.component, shell_i.atom_index, pj.exponent,
+                      center_j, ej.component, shell_j.atom_index);
                   if (overlap_weight != 0.0)
-                    contracted = contracted + overlap_weight * primitive_weight *
-                                                  primitive_overlap_cartesian(
-                                                      pi.exponent, center_i, ei.component,
-                                                      pj.exponent, center_j, ej.component);
+                    contracted = contracted + overlap_weight * primitive_weight * st.overlap;
                   if (hcore_weight != 0.0)
                     contracted =
                         contracted +
                         hcore_weight * primitive_weight *
-                            (primitive_kinetic_cartesian(pi.exponent, center_i, ei.component,
-                                                         pj.exponent, center_j, ej.component) +
-                             primitive_nuclear_attraction_cartesian(
-                                 pi.exponent, center_i, ei.component, pj.exponent, center_j,
-                                 ej.component, atoms, system));
+                            (st.kinetic + primitive_nuclear_attraction_cartesian(
+                                              pi.exponent, center_i, ei.component, pj.exponent,
+                                              center_j, ej.component, atoms, system));
                 }
             }
         }
@@ -1299,12 +1352,12 @@ struct RawSource::Impl {
       if (one) {
         if (op == Operator::overlap) {
           result +=
-              weight * primitive_overlap_cartesian(primitive[0].exponent, a, slots[0]->angular,
+              weight * reference_overlap_cartesian(primitive[0].exponent, a, slots[0]->angular,
                                                    primitive[1].exponent, b, slots[1]->angular)
                            .value;
         } else {
           result +=
-              weight * (primitive_kinetic_cartesian(primitive[0].exponent, a, slots[0]->angular,
+              weight * (reference_kinetic_cartesian(primitive[0].exponent, a, slots[0]->angular,
                                                     primitive[1].exponent, b, slots[1]->angular) +
                         primitive_nuclear_attraction_cartesian(
                             primitive[0].exponent, a, slots[0]->angular, primitive[1].exponent, b,

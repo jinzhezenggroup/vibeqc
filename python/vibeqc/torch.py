@@ -31,7 +31,7 @@ def _validated_atomic_numbers(
     )
 
 
-def _require_first_order_backward() -> typing.Any:
+def _require_first_order_backward() -> None:
     """Reject differentiable backward before detached forces lose Hessian terms.
 
     Checking grad mode also covers functional Hessian/HVP APIs whose default

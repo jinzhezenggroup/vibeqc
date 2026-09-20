@@ -115,7 +115,7 @@ def _direct_fields(
 @pytest.mark.parametrize("o,v", [(1, 2), (2, 2)])
 def test_generated_raw_hamiltonian_and_full_pullback_directions(
     o: typing.Any, v: typing.Any
-) -> typing.Any:
+) -> None:
     n = o + v
     programs = build_hamiltonian_programs(o, v)
     h, g, _, _ = random_case(o, v, 152)
@@ -164,7 +164,7 @@ def test_generated_raw_hamiltonian_and_full_pullback_directions(
     assert not any(node.op == "gather" for node in programs.weights.live_nodes)
 
 
-def test_blocked_ao_eri_transform_matches_dense_slices() -> typing.Any:
+def test_blocked_ao_eri_transform_matches_dense_slices() -> None:
     rng = np.random.default_rng(153)
     n = 5
     c = rng.normal(size=(n, n))
@@ -196,7 +196,7 @@ def test_blocked_ao_eri_transform_matches_dense_slices() -> typing.Any:
         build_ao_eri_weight_block_program(n, (2, 0, 1, 1))
 
 
-def test_full_orbital_population_is_not_relabelled_as_ao_or_occupied() -> typing.Any:
+def test_full_orbital_population_is_not_relabelled_as_ao_or_occupied() -> None:
     mo = IndexSpace("all_mo", "orbital", 4)
     assert mo != IndexSpace("all_mo", "ao", 4)
     assert mo != IndexSpace("all_mo", "occupied", 4)
@@ -214,7 +214,7 @@ def test_full_orbital_population_is_not_relabelled_as_ao_or_occupied() -> typing
         build_ao_weight_program(13)
 
 
-def test_ao_transform_preserves_ordered_contractions() -> typing.Any:
+def test_ao_transform_preserves_ordered_contractions() -> None:
     rng = np.random.default_rng(153)
     n = 4
     c = rng.normal(size=(n, n))
@@ -247,7 +247,7 @@ def test_ao_transform_preserves_ordered_contractions() -> typing.Any:
 @pytest.mark.parametrize("name", CASES)
 def test_complete_native_endpoint_matches_pinned_pyscf_gradient(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     result = _result(name)
     oracle = load(name)
     np.testing.assert_allclose(
@@ -309,7 +309,7 @@ def _fresh_energy(value: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("name", ("h2", "h2o", "nh3", "h2_d_spherical"))
 def test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     result = _result(name)
     value = inputs(name)
     direction = np.random.default_rng(153).normal(size=result.gradient.shape)
@@ -333,7 +333,7 @@ def test_nuclear_finite_differences_resolve_hf_and_cc_at_three_steps(
     assert min(errors[1:]) < 2e-7, errors
 
 
-def test_overlap_and_orbital_omissions_are_detectable() -> typing.Any:
+def test_overlap_and_orbital_omissions_are_detectable() -> None:
     result = _result("h2o")
     oracle = np.array(load("h2o")["gradient"])
     without_overlap = result.gradient - result.integral_components["overlap"]
@@ -342,7 +342,7 @@ def test_overlap_and_orbital_omissions_are_detectable() -> typing.Any:
     assert np.max(abs(without_z - oracle)) > 1e-6
 
 
-def test_rigid_motion_covariance_and_changed_geometry() -> typing.Any:
+def test_rigid_motion_covariance_and_changed_geometry() -> None:
     name = "h2_d_spherical"
     value = inputs(name)
     result = _result(name)
@@ -366,7 +366,7 @@ def test_rigid_motion_covariance_and_changed_geometry() -> typing.Any:
 
 def test_shared_z_operator_matches_generated_and_independent_mo_matrix(
     water_state: typing.Any,
-) -> typing.Any:
+) -> None:
     state = water_state
     expected = explicit_rhf_response_matrix(state.operator.problem, state.provider)
     np.testing.assert_allclose(state.orbital_matrix, expected, atol=1e-10, rtol=1e-10)
@@ -408,7 +408,7 @@ def test_shared_z_operator_matches_generated_and_independent_mo_matrix(
         )
 
 
-def test_complete_gradient_capability_is_separate_from_energy_facade() -> typing.Any:
+def test_complete_gradient_capability_is_separate_from_energy_facade() -> None:
     caps = gradient_capabilities()
     assert caps.method == "rccsd" and caps.family == "coupled_cluster"
     assert caps.available and not caps.public_calculator
@@ -418,7 +418,7 @@ def test_complete_gradient_capability_is_separate_from_energy_facade() -> typing
     assert any("perturbative-(T)" in item for item in caps.restrictions)
 
 
-def test_cuda_ffi_integer_ranges_reject_python_wraparound() -> typing.Any:
+def test_cuda_ffi_integer_ranges_reject_python_wraparound() -> None:
     assert _valid_cuda_device(0)
     assert not _valid_cuda_device(2**31)
     assert _valid_size_t_budget(4096)
@@ -433,7 +433,7 @@ def test_cuda_ffi_integer_ranges_reject_python_wraparound() -> typing.Any:
 
 def test_exact_nuclear_gradient_matches_dense_native_oracle(
     tiny_state: typing.Any,
-) -> typing.Any:
+) -> None:
     raw = tiny_state.source.integral_derivatives(
         output_budget_bytes=tiny_state.options.max_bytes
     )["nuclear"]
@@ -445,7 +445,7 @@ def test_exact_nuclear_gradient_matches_dense_native_oracle(
 
 def test_bounded_cuda_composition_matches_cpu_without_dense_derivative_tensor(
     tiny_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     """Exercise the GPU consumer composition with independent dense TEST oracles."""
     source = tiny_state.source
     raw = source.integral_derivatives(output_budget_bytes=tiny_state.options.max_bytes)
@@ -521,7 +521,7 @@ def test_bounded_cuda_composition_matches_cpu_without_dense_derivative_tensor(
 
 def test_shell_streamed_cuda_eri_weights_match_dense_oracle_without_full_ao_n4(
     tiny_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     source = tiny_state.source
     raw = source.integral_derivatives(output_budget_bytes=tiny_state.options.max_bytes)
     offsets = np.cumsum((0, *source.shell_sizes))
@@ -616,7 +616,7 @@ def test_shell_streamed_cuda_eri_weights_match_dense_oracle_without_full_ao_n4(
 
 def test_source_cuda_weight_validation_precedes_native_call(
     tiny_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     source = tiny_state.source
     monkeypatch.setattr(
         source, "_call", lambda *a, **kw: pytest.fail("native call after invalid input")
@@ -668,14 +668,14 @@ def test_source_cuda_weight_validation_precedes_native_call(
         {"z_options": object()},
     ],
 )
-def test_invalid_options(changes: typing.Any) -> typing.Any:
+def test_invalid_options(changes: typing.Any) -> None:
     with pytest.raises((ValueError, TypeError)):
         CCSDGradientOptions(**changes)
 
 
 def test_budget_rejects_before_hf_and_before_raw_integrals(
     tiny_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     with _source(inputs("h2")) as source:
         monkeypatch.setattr(
             module,
@@ -706,7 +706,7 @@ def test_budget_rejects_before_hf_and_before_raw_integrals(
 
 def test_shell_streaming_combined_budget_rejects_before_integral_read(
     tiny_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     base = replace(
         tiny_state.options,
         derivative_backend="cuda",
@@ -737,7 +737,7 @@ def test_shell_streaming_combined_budget_rejects_before_integral_read(
         )
 
 
-def test_unsupported_source_and_cpu_scope(monkeypatch: typing.Any) -> typing.Any:
+def test_unsupported_source_and_cpu_scope(monkeypatch: typing.Any) -> None:
     with pytest.raises(TypeError):
         complete_gradient_validation(object())
     with _source(inputs("h2")) as source:
@@ -757,7 +757,7 @@ def test_unsupported_source_and_cpu_scope(monkeypatch: typing.Any) -> typing.Any
 
 def test_false_scf_and_cc_success_cannot_return_gradient(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     with _source(inputs("h2")) as source:
         with monkeypatch.context() as m:
             m.setattr(
@@ -781,7 +781,7 @@ def test_false_scf_and_cc_success_cannot_return_gradient(
 
 def test_real_cc_and_z_nonconvergence_fail_closed(
     tiny_state: typing.Any, water_state: typing.Any
-) -> typing.Any:
+) -> None:
     with _source(inputs("h2")) as source:
         options = CCSDGradientOptions(
             cc_options=replace(CCSDGradientOptions().cc_options, max_iterations=1)
@@ -797,7 +797,7 @@ def test_real_cc_and_z_nonconvergence_fail_closed(
 
 def test_false_z_report_rechecked_against_independent_equation(
     water_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     def false(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         return replace(
             water_state.z_result,
@@ -812,7 +812,7 @@ def test_false_z_report_rechecked_against_independent_equation(
 
 def test_negative_or_near_singular_orbital_curvature_rejected(
     tiny_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     original = BoundCCSDGradient._generated_orbital_action
     monkeypatch.setattr(
         BoundCCSDGradient,
@@ -826,7 +826,7 @@ def test_negative_or_near_singular_orbital_curvature_rejected(
 @pytest.mark.parametrize("kind", ("missing", "shape", "nonfinite", "dtype"))
 def test_native_derivative_outputs_are_validated(
     tiny_state: typing.Any, monkeypatch: typing.Any, kind: typing.Any
-) -> typing.Any:
+) -> None:
     original = tiny_state.source.integral_derivatives
 
     def broken(**kwargs: typing.Any) -> typing.Any:
@@ -848,7 +848,7 @@ def test_native_derivative_outputs_are_validated(
 
 def test_changed_tensor_backend_and_live_provider_rejected(
     tiny_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     original = module.execute
     with monkeypatch.context() as m:
         m.setattr(
@@ -869,7 +869,7 @@ def test_changed_tensor_backend_and_live_provider_rejected(
 
 def test_raw_integrals_cannot_be_swapped_under_a_cc_result(
     tiny_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     original = tiny_state.provider.get
 
     def wrong(block: typing.Any) -> typing.Any:
@@ -883,7 +883,7 @@ def test_raw_integrals_cannot_be_swapped_under_a_cc_result(
 
 def test_no_external_qc_solver_is_a_runtime_dependency(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     original = builtins.__import__
 
     def guarded(
@@ -904,7 +904,7 @@ def test_no_external_qc_solver_is_a_runtime_dependency(
 )
 def test_cli_input_schema_never_drops_unsupported_physics(
     kind: typing.Any,
-) -> typing.Any:
+) -> None:
     value = inputs("h2")
     if kind == "spin":
         value["multiplicity"] = 3
@@ -926,7 +926,7 @@ def test_cli_input_schema_never_drops_unsupported_physics(
 
 def test_cli_json_and_existing_output_are_safe(
     tmp_path: typing.Any, monkeypatch: typing.Any, tiny_state: typing.Any
-) -> typing.Any:
+) -> None:
     import json
 
     from tools import run_ccsd_gradient as driver
@@ -977,7 +977,7 @@ def test_cli_json_and_existing_output_are_safe(
     assert path.read_bytes() == content
 
 
-def test_closed_source_cannot_publish_a_gradient() -> typing.Any:
+def test_closed_source_cannot_publish_a_gradient() -> None:
     with _prepared() as pair:
         state = BoundCCSDGradient(*pair)
         state.source.close()

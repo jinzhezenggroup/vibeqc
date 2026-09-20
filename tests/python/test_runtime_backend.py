@@ -18,7 +18,7 @@ from vibeqc_compiler.integral.runtime_backend import (
 @pytest.mark.parametrize("subgroup", [8, 16, 32, 64])
 def test_synthetic_subgroups_and_partial_final_workgroups(
     subgroup: typing.Any,
-) -> typing.Any:
+) -> None:
     target = RuntimeCapabilities("synthetic", True, 256, 32768, subgroup)
     shape = ExecutionShape(2 * subgroup, 128, subgroup)
     shape.validate_for(target)
@@ -30,7 +30,7 @@ def test_synthetic_subgroups_and_partial_final_workgroups(
 
 
 def test_unknown_subgroup_and_optional_graphs_do_not_preclude_scalar_execution() -> (
-    typing.Any
+    None
 ):
     generic = TargetInfo("opencl", "queried device", None, 256, None)
     TargetScheduleShape(17, None).validate_for(generic)
@@ -54,7 +54,7 @@ def test_unknown_subgroup_and_optional_graphs_do_not_preclude_scalar_execution()
 @pytest.mark.parametrize("value", [0, -1, True, 1.5])
 def test_invalid_runtime_extents_fail_before_submission(
     value: typing.Any,
-) -> typing.Any:
+) -> None:
     target = RuntimeCapabilities("opencl", True, 1024, 0)
     with pytest.raises(ValueError):
         ExecutionShape(value).validate_for(target)
@@ -63,7 +63,7 @@ def test_invalid_runtime_extents_fail_before_submission(
 @pytest.mark.parametrize("value", [0, 1, "false", None])
 def test_capabilities_and_requirements_reject_truthy_nonbooleans(
     value: typing.Any,
-) -> typing.Any:
+) -> None:
     with pytest.raises(ValueError, match="boolean capability"):
         RuntimeCapabilities("opencl", value, 256, 32768)
     target = RuntimeCapabilities("opencl", True, 256, 32768)
@@ -71,9 +71,7 @@ def test_capabilities_and_requirements_reject_truthy_nonbooleans(
         ExecutionShape(32, requires_graphs=value).validate_for(target)
 
 
-def test_executable_identity_changes_without_changing_scientific_identity() -> (
-    typing.Any
-):
+def test_executable_identity_changes_without_changing_scientific_identity() -> None:
     identity = CompiledArtifactIdentity(
         "opencl",
         "uuid",
@@ -111,7 +109,7 @@ def test_executable_identity_changes_without_changing_scientific_identity() -> (
 )
 def test_missing_vendor_library_never_reports_cpu_success(
     operation: typing.Any, shape: typing.Any
-) -> typing.Any:
+) -> None:
     request = LibraryRequest(operation, shape, workspace_limit_bytes=8192)
     provider = UnsupportedLibraryProvider(
         "opencl", "no native library provider configured"
@@ -122,7 +120,7 @@ def test_missing_vendor_library_never_reports_cpu_success(
 
 def test_atomic_local_executable_cache_rejects_corruption_and_wrong_identity(
     tmp_path: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     import json
 
     from vibeqc import profiles
@@ -171,7 +169,7 @@ def test_atomic_local_executable_cache_rejects_corruption_and_wrong_identity(
 
 def test_cache_rejects_shared_write_directories_and_symlink_records(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     from vibeqc_compiler.integral.artifact_cache import LocalArtifactCache
 
     shared = tmp_path / "shared"

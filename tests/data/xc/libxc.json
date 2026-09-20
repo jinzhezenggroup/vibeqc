@@ -11,12 +11,15 @@
     "GGA_C_PBE": "GGA_C_PBE",
     "LDA_XC_PW": "LDA_X,LDA_C_PW",
     "PBE": "GGA_X_PBE,GGA_C_PBE",
+    "MGGA_X_SCAN": "MGGA_X_SCAN",
+    "MGGA_C_SCAN": "MGGA_C_SCAN",
+    "SCAN": "MGGA_X_SCAN,MGGA_C_SCAN",
     "MGGA_X_R2SCAN": "MGGA_X_R2SCAN",
     "MGGA_C_R2SCAN": "MGGA_C_R2SCAN",
     "R2SCAN": "MGGA_X_R2SCAN,MGGA_C_R2SCAN"
   },
-  "script_sha256": "16faef8b76fcb916676b07346bc3c769085cc10c6a87c94df4732237676d1f66",
-  "arrays_sha256": "34787400c9ecabc5890ed75a87c0d868734c9e1c4263e5b235f691bc534bca7d",
+  "script_sha256": "3bab0593617dc3efe08ba3b493d5e25ebb3f2e5b0c4992146a31fba289ac2012",
+  "arrays_sha256": "7a0547d317dfcdd32a90b3797564db28e5b0cb3341fcccca0577aca984ebcf30",
   "conventions": "energy per volume; spin sigma_ab without factor two; tau=one-half gradient square; packed upper Hessian",
   "typical_tolerance": {
     "atol": 1e-11,

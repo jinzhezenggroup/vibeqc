@@ -58,7 +58,7 @@ class ReferenceSnapshot:
     identity: str = field(init=False)
     diagnostics: tuple[tuple[str, float], ...] = field(init=False)
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.algorithm not in ("RHF", "KS") or self.precision != "float64":
             raise ValueError("only real FP64 RHF/KS references are supported")
         if self.algorithm == "KS":

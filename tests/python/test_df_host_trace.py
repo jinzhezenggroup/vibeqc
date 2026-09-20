@@ -38,7 +38,7 @@ def host_record() -> typing.Any:
 
 def test_host_ledger_counts_actual_leaves_and_keeps_clocks_separate(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     record = host_record()
     path = tmp_path / "host.jsonl"
     path.write_text(json.dumps(record) + "\n")
@@ -67,7 +67,7 @@ def test_host_ledger_counts_actual_leaves_and_keeps_clocks_separate(
 )
 def test_device_solver_reasons_separate_setup_and_finalization(
     tmp_path: typing.Any, reason: typing.Any
-) -> typing.Any:
+) -> None:
     """Adding cold setup calls must not inflate the final-provider ablation."""
     record = host_record()
     record["regions"][1]["reason"] = reason
@@ -83,7 +83,7 @@ def test_device_solver_reasons_separate_setup_and_finalization(
 @pytest.mark.parametrize("suffix", ("", "\n{"))
 def test_host_trace_rejects_missing_record_terminator(
     tmp_path: typing.Any, suffix: typing.Any
-) -> typing.Any:
+) -> None:
     """Even valid JSON must carry the writer's final record terminator."""
     path = tmp_path / "interrupted.host.jsonl"
     path.write_text(json.dumps(host_record()) + suffix)
@@ -104,7 +104,7 @@ def test_host_trace_rejects_missing_record_terminator(
 )
 def test_partial_or_mistimed_host_records_cannot_pass(
     key: typing.Any, value: typing.Any
-) -> typing.Any:
+) -> None:
     record = copy.deepcopy(host_record())
     record["regions"][1][key] = value
     with pytest.raises(ValueError):
@@ -118,7 +118,7 @@ def test_native_solver_calls_include_warm_preparation_and_finalization(
     monkeypatch: typing.Any,
     method: typing.Any,
     device: typing.Any,
-) -> typing.Any:
+) -> None:
     """Actual leaves detect reintroduced warm guesses, retaining other solves.
 
     Both spin modes still require actual physical-F validation; removing
@@ -205,7 +205,7 @@ def test_overlap_cache_survives_output_replans_and_isolates_changed_items(
     method: typing.Any,
     representation: typing.Any,
     budget: typing.Any,
-) -> typing.Any:
+) -> None:
     """Same-sized neighbors keep separate X; geometry and failures cannot alias it."""
     if os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1":
         pytest.skip("requires an explicitly Slurm-allocated GPU")
@@ -292,7 +292,7 @@ def test_prepared_single_overlap_survives_energy_force_dispatch(
     monkeypatch: typing.Any,
     method: typing.Any,
     representation: typing.Any,
-) -> typing.Any:
+) -> None:
     """The C prepared single owner retains X across all output selections.
 
     Its API has no warm-density input: core guesses remain necessary while
@@ -379,7 +379,7 @@ def test_independent_fock_overlap_owners_distinguish_same_size_basis(
     monkeypatch: typing.Any,
     spin: typing.Any,
     representation: typing.Any,
-) -> typing.Any:
+) -> None:
     """Equal AO counts cannot let distinct basis owners share an orthogonalizer."""
     if os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1":
         pytest.skip("requires an explicitly Slurm-allocated GPU")

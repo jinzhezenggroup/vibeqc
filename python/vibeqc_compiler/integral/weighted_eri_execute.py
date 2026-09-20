@@ -81,7 +81,7 @@ class CompiledWeightedEri:
     backend: str
     program_identity: str
 
-    def validate(self) -> typing.Any:
+    def validate(self) -> None:
         """Check the mathematical/subset binding before loading a native library.
 
         Frozen dataclasses can still be replaced, and native artifact metadata
@@ -434,7 +434,7 @@ class PreparedWeightedEri:
         """The shared planner's immutable estimate for this owner's buffers."""
         return self._resource_plan
 
-    def _call(self, name: typing.Any, *args: typing.Any) -> typing.Any:
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         error = ct.create_string_buffer(1024)
         status = getattr(self._library, name)(*args, error, len(error))
         if status:
@@ -499,7 +499,7 @@ class PreparedWeightedEri:
             }
             started = time.perf_counter()
 
-            def flush(count: typing.Any) -> typing.Any:
+            def flush(count: typing.Any) -> None:
                 nonlocal chunks
                 self._call(
                     "vibeqc_weighted_run_v2",
@@ -571,7 +571,7 @@ class PreparedWeightedEri:
             }
             return WeightedEriExecution(result, diagnostics)
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Release native resources once, with the shared allocation snapshot lock."""
         with self._lock, _PREPARATION_LOCK:
             if self._handle.value:

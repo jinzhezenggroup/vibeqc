@@ -15,7 +15,7 @@ from tools.vibeqc_posthf.providers import BlockResult
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
-def test_dense_elements_and_independent_mp2(name: typing.Any) -> typing.Any:
+def test_dense_elements_and_independent_mp2(name: typing.Any) -> None:
     meta, a = load_fixture(name)
     s = fixture_snapshot(meta, a)
     mo = dense_ao_to_mo(a["ao"], s.coefficients)
@@ -47,7 +47,7 @@ def test_dense_elements_and_independent_mp2(name: typing.Any) -> typing.Any:
     assert abs(wrong - result.correlation_energy) > 1e-7
 
 
-def test_complete_tiny_transform_explicit_eight_loops() -> typing.Any:
+def test_complete_tiny_transform_explicit_eight_loops() -> None:
     rng = np.random.default_rng(147)
     g = rng.normal(size=(2,) * 4)
     c = rng.normal(size=(2, 2))
@@ -62,7 +62,7 @@ def test_complete_tiny_transform_explicit_eight_loops() -> typing.Any:
         dense_ao_to_mo(None, np.eye(13))
 
 
-def test_snapshot_deep_ownership_and_invalidation() -> typing.Any:
+def test_snapshot_deep_ownership_and_invalidation() -> None:
     meta, a = load_fixture("h2")
     s = fixture_snapshot(meta, a)
     before = s.coefficients.copy()
@@ -91,9 +91,7 @@ def test_snapshot_deep_ownership_and_invalidation() -> typing.Any:
         ({"validation_tolerance": 1}, "tolerances"),
     ],
 )
-def test_invalid_reference_metadata(
-    change: typing.Any, match: typing.Any
-) -> typing.Any:
+def test_invalid_reference_metadata(change: typing.Any, match: typing.Any) -> None:
     meta, a = load_fixture("h2")
     s = fixture_snapshot(meta, a)
     with pytest.raises(ValueError, match=match):
@@ -103,7 +101,7 @@ def test_invalid_reference_metadata(
 @pytest.mark.parametrize(
     "field", ["coefficients", "overlap", "fock", "occupations", "orbital_energies"]
 )
-def test_invalid_reference_arrays(field: typing.Any) -> typing.Any:
+def test_invalid_reference_arrays(field: typing.Any) -> None:
     meta, a = load_fixture("h2")
     s = fixture_snapshot(meta, a)
     bad = getattr(s, field).copy()
@@ -116,7 +114,7 @@ def test_invalid_reference_arrays(field: typing.Any) -> typing.Any:
         replace(s, overlap=np.zeros_like(s.overlap))
 
 
-def test_small_denominators_are_not_clamped() -> typing.Any:
+def test_small_denominators_are_not_clamped() -> None:
     meta, a = load_fixture("h2")
     s = fixture_snapshot(meta, a)
     eps = np.array([-1.0, -1.0 + 1e-12])
@@ -132,7 +130,7 @@ def test_small_denominators_are_not_clamped() -> typing.Any:
         restricted_mp2(s, provider)
 
 
-def test_restricted_mp2_rejects_ks_reference() -> typing.Any:
+def test_restricted_mp2_rejects_ks_reference() -> None:
     meta, a = load_fixture("h2")
     s = fixture_snapshot(meta, a)
     ks = replace(
@@ -150,7 +148,7 @@ def test_restricted_mp2_rejects_ks_reference() -> typing.Any:
         restricted_mp2(ks, provider)
 
 
-def test_explicit_slot_order_and_invalid_indices() -> typing.Any:
+def test_explicit_slot_order_and_invalid_indices() -> None:
     meta, a = load_fixture("water")
     s = fixture_snapshot(meta, a)
     b = MOBlock.from_spaces(s, "ovov")

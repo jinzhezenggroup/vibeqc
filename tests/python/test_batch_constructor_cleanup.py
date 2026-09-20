@@ -18,7 +18,7 @@ from vibeqc.resources import ResourceAllocationError
 )
 def test_preparation_failure_releases_native_owners(
     monkeypatch: typing.Any, resource_aware: typing.Any, failure: typing.Any
-) -> typing.Any:
+) -> None:
     calculator = Calculator(
         device="cpu", resource_budget=ResourceBudget() if resource_aware else None
     )

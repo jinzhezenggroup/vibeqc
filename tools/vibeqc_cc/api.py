@@ -32,7 +32,7 @@ class Capabilities:
     supports_batch: bool
     supported_properties: frozenset
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.method != "rccsd" or self.family != "coupled_cluster":
             raise ValueError("RCCSD capability identity mismatch")
         if "energy" not in self.supported_properties:

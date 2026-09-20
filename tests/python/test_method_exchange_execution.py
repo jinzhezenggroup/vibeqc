@@ -28,7 +28,7 @@ DEVICE = os.environ.get("VIBEQC_TEST_FOCK_DEVICE", "cpu")
 )
 def test_exact_exchange_primitive_lowers_to_common_jk_provider(
     method: typing.Any, spin: typing.Any, expected: typing.Any
-) -> typing.Any:
+) -> None:
     graph = resolve_method(method, spin=spin)
     plan = compile_fixed_density_method(graph)
 
@@ -43,7 +43,7 @@ def test_exact_exchange_primitive_lowers_to_common_jk_provider(
     assert plan.to_payload()["method_identity"] == graph.identity
 
 
-def test_exact_exchange_execution_is_composition_driven_not_pbe0_named() -> typing.Any:
+def test_exact_exchange_execution_is_composition_driven_not_pbe0_named() -> None:
     custom = MethodSpec(
         "custom-global-hybrid",
         (("GGA_X_PBE", Fraction(2, 3)), ("GGA_C_PBE", Fraction(1))),
@@ -61,14 +61,14 @@ def test_exact_exchange_execution_is_composition_driven_not_pbe0_named() -> typi
     assert unrestricted.fock_spec.exchange.approximation == "density_fitted"
 
 
-def test_pure_pbe_compiles_to_same_boundary_with_absent_exchange() -> typing.Any:
+def test_pure_pbe_compiles_to_same_boundary_with_absent_exchange() -> None:
     plan = compile_fixed_density_method(resolve_method("PBE"))
     assert plan.fock_spec.coulomb.present
     assert not plan.fock_spec.exchange.present
     assert plan.fock_spec.exchange.coefficient == 0.0
 
 
-def test_method_binding_compares_resolved_absent_exchange_semantics() -> typing.Any:
+def test_method_binding_compares_resolved_absent_exchange_semantics() -> None:
     meta, data, grid = load_integration_fixture("h2")
     graph = resolve_method("PBE")
     requested = FockBuildSpec(
@@ -106,7 +106,7 @@ def test_method_binding_compares_resolved_absent_exchange_semantics() -> typing.
 )
 def test_pbe0_energy_and_fock_use_same_exact_exchange_weight(
     method_spin: typing.Any, density_key: typing.Any
-) -> typing.Any:
+) -> None:
     meta, data, grid = load_integration_fixture("h2")
     density = data[density_key]
     graph = resolve_method("PBE0", spin=method_spin)
@@ -172,7 +172,7 @@ def test_pbe0_energy_and_fock_use_same_exact_exchange_weight(
         )
 
 
-def test_method_binding_rejects_wrong_exchange_factor_before_execution() -> typing.Any:
+def test_method_binding_rejects_wrong_exchange_factor_before_execution() -> None:
     meta, _, _ = load_integration_fixture("h2")
     graph = resolve_method("PBE0")
     executable = compile_fixed_density_method(graph)
@@ -191,7 +191,7 @@ def test_method_binding_rejects_wrong_exchange_factor_before_execution() -> typi
 @pytest.mark.parametrize("field", ["functional", "exchange", "method", "spin"])
 def test_executable_plan_rejects_inconsistent_declared_physics(
     field: typing.Any,
-) -> typing.Any:
+) -> None:
     plan = compile_fixed_density_method(resolve_method("PBE0"))
     changes = {
         "functional": {"functional": functional("PBE")},

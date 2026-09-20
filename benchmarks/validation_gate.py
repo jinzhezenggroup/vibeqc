@@ -18,6 +18,11 @@ sys.path.insert(0, str(ROOT))
 
 import numpy as np
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 from benchmarks._support import environment_metadata
 from tools.vibeqc_validation.fixtures import (
     calculator_inputs,
@@ -60,7 +65,7 @@ def _cuda() -> typing.Any:
     if driver.cuInit(0) != 0 or driver.cuDeviceGetName(name, len(name), 0) != 0:
         raise RuntimeError("cannot identify CUDA device")
 
-    def synchronize() -> typing.Any:
+    def synchronize() -> None:
         if runtime.cudaDeviceSynchronize() != 0:
             raise RuntimeError("CUDA synchronization failed")
 
@@ -73,7 +78,7 @@ def _cuda() -> typing.Any:
     }, synchronize
 
 
-def _provenance(record: typing.Any) -> typing.Any:
+def _provenance(record: typing.Any) -> None:
     metadata = environment_metadata(distributions={"numpy": ("numpy",)})
     record["revision"] = metadata["git"]["commit"]
     record["environment"] = metadata
@@ -241,7 +246,7 @@ def hf_evidence(
                 {**inputs, "coordinates": changed.tolist()}
             )
 
-            def reset_geometry(_selection: typing.Any) -> typing.Any:
+            def reset_geometry(_selection: typing.Any) -> None:
                 # Reset outside the measured region so every sample measures
                 # one changed-geometry execution from the frozen post-cold dm0.
                 batch.execute([inputs["coordinates"]], strict=True)
@@ -425,7 +430,7 @@ def command_evidence(args: typing.Any) -> typing.Any:
     return record
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="mode", required=True)
     hf = commands.add_parser(
@@ -469,7 +474,7 @@ def main() -> typing.Any:
     for child in (hf, run):
         child.add_argument(
             "--output",
-            type=Path,
+            type=raw_output_path,
             required=True,
             help="validated JSON evidence destination",
         )

@@ -29,7 +29,7 @@ class NonlocalCorrelationPrimitive:
     coefficient: Fraction = Fraction(1)
     kind: ClassVar[str] = "nonlocal_correlation"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if not isinstance(self.spec, NonlocalCorrelationSpec):
             raise TypeError("nonlocal primitive requires NonlocalCorrelationSpec")
         _require_fraction(self.coefficient, "nonlocal-correlation coefficient")

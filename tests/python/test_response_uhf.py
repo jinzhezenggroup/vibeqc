@@ -116,7 +116,7 @@ def _finite_action(
     return (gradient(1.0) - gradient(-1.0)) / (2.0 * step)
 
 
-def test_uhf_matrix_free_action_matches_finite_rotation_and_transpose() -> typing.Any:
+def test_uhf_matrix_free_action_matches_finite_rotation_and_transpose() -> None:
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
     problem = UHFResponseOperator.build_problem(reference, backend)
@@ -130,7 +130,7 @@ def test_uhf_matrix_free_action_matches_finite_rotation_and_transpose() -> typin
     assert operator.dot_identity(left, right) < 1e-12
 
 
-def test_uhf_multirhs_and_recycling_reuse_the_shared_krylov_interface() -> typing.Any:
+def test_uhf_multirhs_and_recycling_reuse_the_shared_krylov_interface() -> None:
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
     problem = UHFResponseOperator.build_problem(reference, backend)
@@ -150,7 +150,7 @@ def test_uhf_multirhs_and_recycling_reuse_the_shared_krylov_interface() -> typin
 @pytest.mark.parametrize("backend_class", [CudaDFJKBackend, CudaDirectJKBackend])
 def test_uhf_response_rejects_an_unvalidated_cuda_backend(
     backend_class: typing.Any,
-) -> typing.Any:
+) -> None:
     """The RHF-only CUDA DF plan cannot be promoted as UHF evidence."""
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
@@ -161,9 +161,7 @@ def test_uhf_response_rejects_an_unvalidated_cuda_backend(
         UHFResponseOperator(problem, cuda_backend)
 
 
-def test_uhf_problem_rejects_stale_spin_reference_even_at_matching_dimension() -> (
-    typing.Any
-):
+def test_uhf_problem_rejects_stale_spin_reference_even_at_matching_dimension() -> None:
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
     problem = UHFResponseOperator.build_problem(reference, backend)
@@ -173,9 +171,7 @@ def test_uhf_problem_rejects_stale_spin_reference_even_at_matching_dimension() -
         problem.assert_compatible(other)
 
 
-def test_uhf_operator_rejects_a_different_backend_with_matching_dimensions() -> (
-    typing.Any
-):
+def test_uhf_operator_rejects_a_different_backend_with_matching_dimensions() -> None:
     """A changed ERI Hamiltonian must not inherit an old recycle-space key."""
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())
@@ -185,13 +181,13 @@ def test_uhf_operator_rejects_a_different_backend_with_matching_dimensions() -> 
         UHFResponseOperator(problem, changed)
 
 
-def test_uhf_snapshot_rejects_reported_unconverged_residual() -> typing.Any:
+def test_uhf_snapshot_rejects_reported_unconverged_residual() -> None:
     """Canonical-looking orbitals cannot override a failed SCF diagnostic."""
     with pytest.raises(ValueError, match="scf_residual exceeds"):
         replace(_reference(), scf_residual=1e-4)
 
 
-def test_one_electron_doublet_has_a_zero_sized_beta_response_block() -> typing.Any:
+def test_one_electron_doublet_has_a_zero_sized_beta_response_block() -> None:
     """A physically valid N-beta=0 reference keeps its active alpha block."""
     reference = replace(
         _reference(),
@@ -214,7 +210,7 @@ def test_one_electron_doublet_has_a_zero_sized_beta_response_block() -> typing.A
     )
 
 
-def test_native_one_electron_uhf_export_accepts_an_empty_beta_spin() -> typing.Any:
+def test_native_one_electron_uhf_export_accepts_an_empty_beta_spin() -> None:
     """Export a real N-beta=0 SCF state through the response boundary."""
     from tools.vibeqc_posthf.export import export_uhf
     from tools.vibeqc_posthf.sources import NativeSource
@@ -252,7 +248,7 @@ def test_native_one_electron_uhf_export_accepts_an_empty_beta_spin() -> typing.A
             assert all(item.residual_norm == 0.0 for item in result.results)
 
 
-def test_native_open_shell_uhf_export_builds_a_response_problem() -> typing.Any:
+def test_native_open_shell_uhf_export_builds_a_response_problem() -> None:
     """Export Li doublet UHF from native SCF into the shared response layer."""
     from tools.vibeqc_posthf.export import export_uhf
     from tools.vibeqc_posthf.sources import NativeSource

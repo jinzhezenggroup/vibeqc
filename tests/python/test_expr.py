@@ -25,9 +25,7 @@ from vibeqc_compiler.integral.cuda import CudaEmitter, format_constant
 from vibeqc_compiler.integral.expr import Graph
 
 
-def test_deep_associative_regions_preserve_multiplicity_and_canonical_order() -> (
-    typing.Any
-):
+def test_deep_associative_regions_preserve_multiplicity_and_canonical_order() -> None:
     """Large shell contractions must not depend on Python's call-stack limit."""
     graph = Graph()
     variables = [graph.variable(f"v{i}") for i in range(17)]
@@ -40,7 +38,7 @@ def test_deep_associative_regions_preserve_multiplicity_and_canonical_order() ->
     assert left.nodes == right.nodes
 
 
-def test_deep_scalar_evaluation_does_not_depend_on_python_call_stack() -> typing.Any:
+def test_deep_scalar_evaluation_does_not_depend_on_python_call_stack() -> None:
     """Deep non-associative scalar DAGs must keep the iterative evaluator path."""
 
     graph = Graph()
@@ -58,7 +56,7 @@ def test_deep_scalar_evaluation_does_not_depend_on_python_call_stack() -> typing
     )
 
 
-def test_ssa_analysis_records_shared_last_uses_and_peak_liveness() -> typing.Any:
+def test_ssa_analysis_records_shared_last_uses_and_peak_liveness() -> None:
     """Count a shared operand through its final consumer and root output."""
 
     graph = Graph()
@@ -102,7 +100,7 @@ def test_ssa_analysis_records_shared_last_uses_and_peak_liveness() -> typing.Any
     }
 
 
-def test_ssa_analysis_counts_duplicate_edges_and_ordered_root_reads() -> typing.Any:
+def test_ssa_analysis_counts_duplicate_edges_and_ordered_root_reads() -> None:
     """Treat repeated operands and repeated output consumers as real uses."""
 
     graph = Graph()
@@ -118,7 +116,7 @@ def test_ssa_analysis_counts_duplicate_edges_and_ordered_root_reads() -> typing.
     assert analysis.peak_live_values == 2
 
 
-def test_ssa_analysis_handles_empty_and_external_only_roots() -> typing.Any:
+def test_ssa_analysis_handles_empty_and_external_only_roots() -> None:
     """Keep degenerate static models well-defined without fake temporaries."""
 
     graph = Graph()
@@ -139,7 +137,7 @@ def test_ssa_analysis_handles_empty_and_external_only_roots() -> typing.Any:
     assert analysis.peak_live_values == 0
 
 
-def test_ssa_materialized_count_matches_current_cuda_emitter() -> typing.Any:
+def test_ssa_materialized_count_matches_current_cuda_emitter() -> None:
     """Anchor the static model to the temporaries emitted for a real shell DAG."""
 
     kernel = build_weighted_shell_contraction_kernel(PSSS_SPEC)
@@ -166,7 +164,7 @@ def test_ssa_materialized_count_matches_current_cuda_emitter() -> typing.Any:
     )
 
 
-def test_materialized_cse_plan_preserves_existing_cuda_source_shape() -> typing.Any:
+def test_materialized_cse_plan_preserves_existing_cuda_source_shape() -> None:
     """Keep the default placement byte-compatible with the legacy emitter."""
 
     graph = Graph()
@@ -193,9 +191,7 @@ def test_materialized_cse_plan_preserves_existing_cuda_source_shape() -> typing.
     assert planned.reference(root) == legacy.reference(root)
 
 
-def test_single_use_plan_inlines_roots_with_exact_parentheses_and_metrics() -> (
-    typing.Any
-):
+def test_single_use_plan_inlines_roots_with_exact_parentheses_and_metrics() -> None:
     """Inline a one-use chain without changing its arithmetic operation count."""
 
     graph = Graph()
@@ -229,9 +225,7 @@ def test_single_use_plan_inlines_roots_with_exact_parentheses_and_metrics() -> (
     assert emitter.reference(root) == "((input_x + input_y) * input_z)"
 
 
-def test_pressure_plan_trades_bounded_recomputation_for_a_shorter_live_set() -> (
-    typing.Any
-):
+def test_pressure_plan_trades_bounded_recomputation_for_a_shorter_live_set() -> None:
     """Rematerialize a cheap long-lived shared value within the operation cap."""
 
     graph = Graph()
@@ -268,9 +262,7 @@ def test_pressure_plan_trades_bounded_recomputation_for_a_shorter_live_set() -> 
     assert shared_decision.reason == "live_range_benefit"
 
 
-def test_pressure_aware_ordering_reduces_exact_materialized_peak_liveness() -> (
-    typing.Any
-):
+def test_pressure_aware_ordering_reduces_exact_materialized_peak_liveness() -> None:
     """Delay ready definitions and free effective inlined dependencies early."""
 
     kernel = build_weighted_shell_contraction_kernel(PSSS_SPEC)
@@ -312,9 +304,7 @@ def test_pressure_aware_ordering_reduces_exact_materialized_peak_liveness() -> (
     assert all(emitter.reference(root) for root in roots)
 
 
-def test_pressure_aware_ordering_falls_back_when_exact_peak_does_not_improve() -> (
-    typing.Any
-):
+def test_pressure_aware_ordering_falls_back_when_exact_peak_does_not_improve() -> None:
     """Avoid source churn when the greedy candidate is not actually better."""
 
     kernel = build_weighted_shell_contraction_kernel(PSSS_SPEC)
@@ -333,7 +323,7 @@ def test_pressure_aware_ordering_falls_back_when_exact_peak_does_not_improve() -
     assert guarded.reordered_value_count == 0
 
 
-def test_fma_fusion_removes_one_use_multiply_and_counts_one_operation() -> typing.Any:
+def test_fma_fusion_removes_one_use_multiply_and_counts_one_operation() -> None:
     """Contract a direct multiply/add pair in both the plan and CUDA source."""
 
     graph = Graph()
@@ -360,9 +350,7 @@ def test_fma_fusion_removes_one_use_multiply_and_counts_one_operation() -> typin
     assert emitter.reference(root) == "v0"
 
 
-def test_fma_fusion_preserves_shared_multiply_cse_and_supports_inline_root() -> (
-    typing.Any
-):
+def test_fma_fusion_preserves_shared_multiply_cse_and_supports_inline_root() -> None:
     """Do not duplicate shared products, but inline a fused single-use root."""
 
     graph = Graph()
@@ -395,7 +383,7 @@ def test_fma_fusion_preserves_shared_multiply_cse_and_supports_inline_root() -> 
     assert emitter.reference(inline_root) == "fma(a, b, c)"
 
 
-def test_canonical_nary_rebuild_flattens_and_folds_associative_regions() -> typing.Any:
+def test_canonical_nary_rebuild_flattens_and_folds_associative_regions() -> None:
     """Represent equal sums identically with one scalar-counted n-ary node."""
 
     graph = Graph()
@@ -424,7 +412,7 @@ def test_canonical_nary_rebuild_flattens_and_folds_associative_regions() -> typi
     assert emitter.lines[0].count(" + ") == 3
 
 
-def test_canonical_forms_ignore_binary_parenthesization() -> typing.Any:
+def test_canonical_forms_ignore_binary_parenthesization() -> None:
     """Emit one stable associative form for equivalent binary source trees."""
 
     graph = Graph()
@@ -447,7 +435,7 @@ def test_canonical_forms_ignore_binary_parenthesization() -> typing.Any:
         )
 
 
-def test_exact_rational_coefficients_fold_before_cuda_lowering() -> typing.Any:
+def test_exact_rational_coefficients_fold_before_cuda_lowering() -> None:
     """Keep coefficient algebra exact until the final double literal."""
 
     graph = Graph()
@@ -486,7 +474,7 @@ def test_exact_rational_coefficients_fold_before_cuda_lowering() -> typing.Any:
 
 
 def test_small_integer_power_lowering_reuses_squares_and_preserves_other_powers() -> (
-    typing.Any
+    None
 ):
     """Expand bounded integer powers without duplicating shared squares."""
 
@@ -529,7 +517,7 @@ def test_small_integer_power_lowering_reuses_squares_and_preserves_other_powers(
     )
 
 
-def test_cuda_emitter_assignment_binds_stored_root_for_later_cse() -> typing.Any:
+def test_cuda_emitter_assignment_binds_stored_root_for_later_cse() -> None:
     """Use a structured output field as the next expression's CSE input."""
 
     graph = Graph()
@@ -546,7 +534,7 @@ def test_cuda_emitter_assignment_binds_stored_root_for_later_cse() -> typing.Any
     assert "geometry.stored * 2" in source
 
 
-def test_packed_force_geometry_algebra_matches_scalar_formulas() -> typing.Any:
+def test_packed_force_geometry_algebra_matches_scalar_formulas() -> None:
     """Describe packed geometry completely before choosing CUDA storage."""
 
     geometry = build_packed_force_geometry_algebra()
@@ -599,7 +587,7 @@ def test_packed_force_geometry_algebra_matches_scalar_formulas() -> typing.Any:
     assert len(geometry.roots_for_pair_shift_rows(4)) == 31
 
 
-def test_factored_nary_extracts_common_factors_and_collects_like_terms() -> typing.Any:
+def test_factored_nary_extracts_common_factors_and_collects_like_terms() -> None:
     """Turn repeated multiplicative terms into deterministic Horner-like sums."""
 
     graph = Graph()
@@ -628,9 +616,7 @@ def test_factored_nary_extracts_common_factors_and_collects_like_terms() -> typi
     assert any(factored.nodes[item].operation == "add" for item in root_node.arguments)
 
 
-def test_nary_differentiation_and_fma_lowering_cover_variable_arity_nodes() -> (
-    typing.Any
-):
+def test_nary_differentiation_and_fma_lowering_cover_variable_arity_nodes() -> None:
     """Keep symbolic AD and explicit contraction correct beyond binary nodes."""
 
     graph = Graph()

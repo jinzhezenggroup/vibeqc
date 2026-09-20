@@ -86,7 +86,7 @@ def fixture_systems(
     return systems
 
 
-def write_input(path: typing.Any, systems: typing.Any) -> typing.Any:
+def write_input(path: typing.Any, systems: typing.Any) -> None:
     """Serialize physical shell inputs, before either implementation normalizes."""
     representation = int(systems[0][0]["basis_representation"] == "spherical")
     if any(o["basis_representation"] != a["basis_representation"] for o, a in systems):
@@ -163,7 +163,7 @@ def references(systems: typing.Any, *, derivatives: typing.Any = False) -> typin
     return {key: np.asarray(value) for key, value in result.items()}, diagnostics
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--probe", type=Path, required=True)
     parser.add_argument("--derivatives", action="store_true")

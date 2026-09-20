@@ -40,7 +40,7 @@ from tools.vibeqc_validation.schema import validate_evidence
 
 def test_cli_exports_replayable_examples_and_shared_evidence(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     root = Path(__file__).resolve().parents[2]
     script = root / "tools/tensor_ir_examples.py"
     help_result = subprocess.run(
@@ -88,7 +88,7 @@ def test_cli_exports_replayable_examples_and_shared_evidence(
 
 
 def test_integral_raw_tile_to_tensor_weights_and_back_has_explicit_order_and_sign() -> (
-    typing.Any
+    None
 ):
     """Exchange a bounded two-center tile; no shell semantics enter TensorIR."""
     signature = ShellSignature(

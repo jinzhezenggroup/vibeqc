@@ -42,7 +42,7 @@ def artifact() -> typing.Any:
 @pytest.mark.parametrize("tile", [1, 2, 4])
 def test_cuda_mo_blocks_mp2_and_owned_memory(
     artifact: typing.Any, name: typing.Any, tile: typing.Any
-) -> typing.Any:
+) -> None:
     meta, a = load_fixture(name)
     snapshot = fixture_snapshot(meta, a)
     with NativeSource(**source_arguments(meta)) as source:
@@ -82,7 +82,7 @@ def test_cuda_mo_blocks_mp2_and_owned_memory(
             provider.get(block)
 
 
-def test_independent_cuda_items_and_closed_exports(artifact: typing.Any) -> typing.Any:
+def test_independent_cuda_items_and_closed_exports(artifact: typing.Any) -> None:
     meta, a = load_fixture("h2")
     snapshot = fixture_snapshot(meta, a)
     with NativeSource(**source_arguments(meta)) as source:
@@ -108,7 +108,7 @@ def test_independent_cuda_items_and_closed_exports(artifact: typing.Any) -> typi
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
 def test_generated_df_source_staging_and_same_hamiltonian(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     assert os.environ.get("SLURM_JOB_ID")
     meta, a = load_fixture(name)
     with CudaDFSource(**source_arguments(meta), tile_capacity=64) as source:
@@ -138,6 +138,14 @@ def test_generated_df_source_staging_and_same_hamiltonian(
         np.testing.assert_allclose(
             tile, a["raw_three_center"][slices], atol=1e-11, rtol=1e-10
         )
+        staged = source.source_metrics()
+        assert staged["execution_path"] == "host-staged-compatibility"
+        assert staged["generated_bytes"] >= tile.nbytes
+        assert staged["d2h_bytes"] >= tile.nbytes
+        assert staged["tile_count"] >= 1
+        assert staged["host_staged_tiles"] >= 1
+        assert staged["device_handoffs"] == 0
+        assert staged["subsequent_h2d_bytes"] == 0
         with DFProvider(snapshot, source, factor, auxiliary_tile=3) as provider:
             result = restricted_mp2(snapshot, provider)
             np.testing.assert_allclose(
@@ -150,4 +158,11 @@ def test_generated_df_source_staging_and_same_hamiltonian(
                 )
                 < 1e-9
             )
+            cached = provider.get(MOBlock.from_spaces(snapshot, "ovov"))
+            assert cached.diagnostics["execution_path"] == "host-staged-compatibility"
+            assert not cached.diagnostics["performance_claim_eligible"]
+            assert cached.diagnostics["generated_bytes"] > 0
+            assert cached.diagnostics["d2h_bytes"] > 0
+            assert cached.diagnostics["host_transform_calls"] > 0
+            assert cached.diagnostics["subsequent_h2d_bytes"] == 0
         assert source.source_device_bytes > 0

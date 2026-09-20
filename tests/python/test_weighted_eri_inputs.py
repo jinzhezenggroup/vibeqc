@@ -34,7 +34,7 @@ CENTERS = ((0.0, 0.1, 0.2),) * 4
 @pytest.mark.parametrize("generated", [False, True])
 def test_range_stream_reuses_weights_and_tags_exact_operator(
     family: typing.Any, tag: typing.Any, generated: typing.Any
-) -> typing.Any:
+) -> None:
     """V1 weight arithmetic stays identical; a v1 executor rejects the v2 prefix."""
     ordinary = build_weighted_eri_ir((1, 0, 0, 0))
     radial = replace(
@@ -71,7 +71,7 @@ def request_for(
 
 
 def test_padded_partial_weights_are_frozen_and_psss_is_one_record_per_primitive() -> (
-    typing.Any
+    None
 ):
     integral = build_weighted_eri_ir((1, 0, 0, 0))
     consumer = integral.contractions[0]
@@ -108,7 +108,7 @@ def test_padded_partial_weights_are_frozen_and_psss_is_one_record_per_primitive(
         )
 
 
-def test_spherical_pullback_and_angular_normalization_are_applied_once() -> typing.Any:
+def test_spherical_pullback_and_angular_normalization_are_applied_once() -> None:
     integral = build_weighted_eri_ir((2, 0, 0, 0))
     signature = replace(
         integral.signature,
@@ -145,7 +145,7 @@ def test_spherical_pullback_and_angular_normalization_are_applied_once() -> typi
     )
 
 
-def test_zero_weights_and_fallback_record_count() -> typing.Any:
+def test_zero_weights_and_fallback_record_count() -> None:
     request = request_for(build_weighted_eri_ir((1, 0, 0, 0)))
     for values, count in (([0.0] * 3, 0), ([1.0, 0.0, -2.0], 4)):
         stream = prepare_weighted_eri_stream(
@@ -161,7 +161,7 @@ def test_zero_weights_and_fallback_record_count() -> typing.Any:
 
 def test_budget_rejection_precedes_provider_and_dense_allocation(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     integral = build_weighted_eri_ir((3, 3, 3, 3), memory_budget_bytes=65536)
     consumer = integral.contractions[0]
     layout = TensorLayout(consumer.weights.layout.indices, (1, 1, 1, 1))
@@ -181,9 +181,7 @@ def test_budget_rejection_precedes_provider_and_dense_allocation(
         prepare_weighted_eri_stream(request, PRIMITIVES, CENTERS, forbidden)
 
 
-def test_response_maps_physical_atoms_after_translation_with_padded_output() -> (
-    typing.Any
-):
+def test_response_maps_physical_atoms_after_translation_with_padded_output() -> None:
     integral = build_weighted_eri_ir((1, 0, 0, 0))
     consumer = replace(
         integral.contractions[0],
@@ -205,15 +203,13 @@ def test_response_maps_physical_atoms_after_translation_with_padded_output() -> 
     np.testing.assert_allclose(response.values, [-3, -5, -7, 0, 0, 3, 5, 7])
 
 
-def test_executor_capability_does_not_widen_direct_hf_lowering() -> typing.Any:
+def test_executor_capability_does_not_widen_direct_hf_lowering() -> None:
     integral = build_weighted_eri_ir((3, 0, 0, 0))
     assert query_integral_capability(integral, backend="cuda_weighted_eri").supported
     assert not query_integral_capability(integral).supported
 
 
-def test_noncanonical_center_slots_fail_before_response_or_native_execution() -> (
-    typing.Any
-):
+def test_noncanonical_center_slots_fail_before_response_or_native_execution() -> None:
     integral = build_weighted_eri_ir((1, 0, 0, 0))
     signature = replace(
         integral.signature,

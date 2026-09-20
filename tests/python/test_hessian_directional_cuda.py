@@ -20,7 +20,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("name", ["h2", "water"])
 def test_directional_native_response_with_cuda_jk_and_independent_D_W_differences(
     name: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     with NativeSource(**fixture_inputs(name)) as source:
         s = NativeRHFState.from_source(source)
@@ -79,7 +79,7 @@ def test_directional_native_response_with_cuda_jk_and_independent_D_W_difference
         assert actual.diagnostics["first_order_matrix_bytes"] == 2 * s.nbf**2 * 8
 
 
-def test_directional_cuda_budget_failure_and_valid_replay() -> typing.Any:
+def test_directional_cuda_budget_failure_and_valid_replay() -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
@@ -92,7 +92,7 @@ def test_directional_cuda_budget_failure_and_valid_replay() -> typing.Any:
 
 def test_directional_cuda_closes_plan_after_derivative_failure(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_hessian import directional
     from tools.vibeqc_response import CudaDirectJKBackend
 

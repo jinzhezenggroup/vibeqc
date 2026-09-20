@@ -101,7 +101,7 @@ class ScalarKernel:
     scientific_hash: str
     name: str = "integral_values"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         object.__setattr__(self, "roots", tuple(self.roots))
         object.__setattr__(self, "inputs", tuple(self.inputs))
         if (

@@ -83,7 +83,7 @@ def check(
 )
 def test_generic_producers_with_physical_output_order(
     kind: typing.Any, compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     program, feeds, _ = producer_case(kind)
     plan = check(program, feeds, compiler, cache)
     assert plan.layout_decision.changed_steps
@@ -98,7 +98,7 @@ def test_direct_and_packed_gemm_read_write_alternate_layouts(
     packed_consumer: typing.Any,
     compiler: typing.Any,
     cache: typing.Any,
-) -> typing.Any:
+) -> None:
     program, feeds, _ = gemm_producer_case(
         packed_producer=packed_producer, packed_consumer=packed_consumer
     )
@@ -107,7 +107,7 @@ def test_direct_and_packed_gemm_read_write_alternate_layouts(
 
 def test_both_operands_require_joint_producer_selection(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     program, feeds, _ = producer_case(both=True)
     plan = check(program, feeds, compiler, cache)
     assert len(plan.layout_decision.changed_steps) == 2
@@ -116,7 +116,7 @@ def test_both_operands_require_joint_producer_selection(
 @pytest.mark.parametrize("caller_layout", ["fortran", "negative", "broadcast"])
 def test_caller_strides_remain_a_staging_contract(
     caller_layout: typing.Any, compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     program, feeds, _ = producer_case()
     transforms = {
         "fortran": np.asfortranarray,
@@ -136,7 +136,7 @@ def test_caller_strides_remain_a_staging_contract(
 )
 def test_empty_and_singleton_domains(
     axis: typing.Any, size: typing.Any, compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     program, feeds, _ = producer_case(
         dimensions={"i": 3, "b": 2, "k": 7, "j": 5, axis: size}
     )
@@ -153,7 +153,7 @@ def test_existing_view_fusion_recomputation_schedules(
     recompute: typing.Any,
     compiler: typing.Any,
     cache: typing.Any,
-) -> typing.Any:
+) -> None:
     program, feeds, _ = producer_case("transpose")
     check(
         program,
@@ -169,7 +169,7 @@ def test_existing_view_fusion_recomputation_schedules(
 @pytest.mark.parametrize("direction", ["jvp", "vjp"])
 def test_generated_derivatives_match_independent_analytic_equations(
     direction: typing.Any, compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     program, feeds, _ = producer_case()
     x, y = feeds["x"], feeds["y"]
     rng = np.random.default_rng(1509)
@@ -189,7 +189,7 @@ def test_generated_derivatives_match_independent_analytic_equations(
 
 def test_resident_abi_and_artifact_guards_keep_logical_outputs(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     program, feeds, _ = producer_case()
     plan = plan_cuda(program, compiler.target, schedule=TensorSchedule(layouts=True))
     expected = execute(program, feeds).outputs
@@ -215,7 +215,7 @@ def test_resident_abi_and_artifact_guards_keep_logical_outputs(
 )
 def test_error_boundaries_and_recovery_after_layout_change(
     kind: typing.Any, error: typing.Any, compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     program, feeds, _ = producer_case(kind)
     plan = plan_cuda(program, compiler.target, schedule=TensorSchedule(layouts=True))
     artifact = compile_cuda(plan, compiler, cache)
@@ -236,7 +236,7 @@ def test_error_boundaries_and_recovery_after_layout_change(
 
 def test_budget_shrunk_packed_scatter_with_noncanonical_intermediate(
     compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     program, feeds, _ = gemm_producer_case(packed_producer=True)
     plan = plan_cuda(
         program,
@@ -256,7 +256,7 @@ def test_budget_shrunk_packed_scatter_with_noncanonical_intermediate(
 @pytest.mark.parametrize("kind", ["shared", "grouped"])
 def test_shared_operands_and_grouped_label_orders(
     kind: typing.Any, compiler: typing.Any, cache: typing.Any
-) -> typing.Any:
+) -> None:
     from test_tensor_layout import grouped_output_case, self_product_case
 
     program, feeds, _ = (

@@ -173,12 +173,12 @@ class _ResidentCCOwner(PreparedResident):
         ]
         lib.resident_cc_download_amplitudes.restype = ctypes.c_int
 
-    def _call_cc(self, name: typing.Any, *args: typing.Any) -> typing.Any:
+    def _call_cc(self, name: typing.Any, *args: typing.Any) -> None:
         error = ctypes.create_string_buffer(2048)
         if getattr(self._library, name)(self._pointer, *args, error, len(error)):
             raise RuntimeError(error.value.decode())
 
-    def initialize_cc(self) -> typing.Any:
+    def initialize_cc(self) -> None:
         with self._lock:
             self._call_cc("resident_cc_initialize")
             self._history_count = self._restarts = 0
@@ -202,7 +202,7 @@ class _ResidentCCOwner(PreparedResident):
             self.control_transfers["scalar_synchronizations"] += 1
             return tuple(float(v) for v in values)
 
-    def advance_trial(self) -> typing.Any:
+    def advance_trial(self) -> None:
         with self._lock:
             if not self._ready:
                 raise RuntimeError(
@@ -211,7 +211,7 @@ class _ResidentCCOwner(PreparedResident):
             self._call_cc("resident_cc_advance_trial")
             self._invalidate()
 
-    def diis_update(self) -> typing.Any:
+    def diis_update(self) -> None:
         with self._lock:
             if not self._ready:
                 raise RuntimeError(
@@ -383,7 +383,7 @@ class PreparedResidentCCSD:
             raise RuntimeError("resident CC owner has no qualified solved state")
         return self._solved_state_identity
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         self.primary.close()
         self.replay.close()
 

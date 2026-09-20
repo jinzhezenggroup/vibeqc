@@ -1,6 +1,9 @@
 """Bounded multi-RHS and full conventional RHF Hessian assembly gates."""
 
+from __future__ import annotations
+
 import typing
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -28,7 +31,7 @@ def h2_case() -> typing.Any:
 
 def test_hvp_many_recycled_matches_dense_columns_and_reports_shared_solve(
     h2_case: typing.Any,
-) -> typing.Any:
+) -> None:
     state, dense, directions = h2_case
     result = rhf_hvp_many(state, directions, strategy="recycled")
     expected = np.stack(
@@ -48,7 +51,7 @@ def test_hvp_many_recycled_matches_dense_columns_and_reports_shared_solve(
 
 def test_hvp_many_uses_solve_many_not_single_solver(
     h2_case: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_hessian import perturbation
 
     state, dense, directions = h2_case
@@ -67,7 +70,7 @@ def test_hvp_many_uses_solve_many_not_single_solver(
 
 def test_full_hessian_blocked_matches_independent_dense_reference(
     h2_case: typing.Any,
-) -> typing.Any:
+) -> None:
     state, dense, _ = h2_case
     result = rhf_hessian(state, block_size=2, strategy="recycled")
     expected = dense.transpose(0, 2, 1, 3).reshape(6, 6)
@@ -84,7 +87,7 @@ def test_full_hessian_blocked_matches_independent_dense_reference(
 
 def test_block_budget_rejects_before_first_integral_work(
     h2_case: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_hessian import block
 
     state, _, directions = h2_case
@@ -99,7 +102,7 @@ def test_block_budget_rejects_before_first_integral_work(
 
 def test_full_output_budget_rejects_without_partial_hessian(
     h2_case: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_hessian import block
 
     state, _, _ = h2_case
@@ -136,7 +139,7 @@ def assembly_only_state(monkeypatch: typing.Any) -> typing.Any:
 
 def test_full_hessian_releases_previous_block_before_next_call(
     assembly_only_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     import weakref
 
     from tools.vibeqc_hessian import block
@@ -166,10 +169,10 @@ def test_full_hessian_releases_previous_block_before_next_call(
 
 def test_full_hessian_reserves_output_publication_before_any_block(
     assembly_only_state: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     from tools.vibeqc_hessian import block
 
-    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("output publication budget was not preflighted")
 
     monkeypatch.setattr(block, "rhf_hvp_many", forbidden)
@@ -183,7 +186,7 @@ def test_full_hessian_reserves_output_publication_before_any_block(
 @pytest.mark.parametrize("natoms", [1, 2])
 def test_full_hessian_default_block_size_adapts_to_coordinate_count(
     assembly_only_state: typing.Any, monkeypatch: typing.Any, natoms: typing.Any
-) -> typing.Any:
+) -> None:
     from types import SimpleNamespace
 
     from tools.vibeqc_hessian import block
@@ -210,3 +213,28 @@ def test_full_hessian_default_block_size_adapts_to_coordinate_count(
     assert block_sizes[0] == min(4, coordinates)
     with pytest.raises(ValueError, match="block_size"):
         block.rhf_hessian(state, block_size=coordinates + 1)
+
+
+def test_cuda_relaxation_budget_rejects_before_response_work(
+    h2_case: typing.Any, monkeypatch: typing.Any
+) -> None:
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+    from tools.vibeqc_hessian import block
+
+    state, _, directions = h2_case
+    compiler = CudaCompilerAdapter(Path("/bin/false"), cuda_target_info("sm_80"))
+
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+        raise AssertionError("CUDA relaxation budget failure reached response work")
+
+    monkeypatch.setattr(block, "NativeJKBackend", forbidden)
+    with pytest.raises(MemoryError, match="relaxation numeric storage"):
+        rhf_hvp_many(
+            state,
+            directions[:1],
+            relaxation_backend="cuda",
+            relaxation_compiler=compiler,
+            relaxation_budget_bytes=1,
+        )

@@ -25,7 +25,7 @@ from vibeqc_compiler.tensor import (
     input_tensor,
 )
 from vibeqc_compiler.tensor.cuda_emit import emit_cuda
-from vibeqc_compiler.tensor.cuda_execute import tensor_capture_contract
+from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, tensor_capture_contract
 from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,7 +56,7 @@ def contract(size: typing.Any = 16, schedule: typing.Any = None) -> typing.Any:
     )
 
 
-def test_contract_is_pure_deterministic_and_uses_specialization_records() -> typing.Any:
+def test_contract_is_pure_deterministic_and_uses_specialization_records() -> None:
     plan, artifact, first = contract()
     assert isinstance(first, CaptureContract)
     assert first.eligible
@@ -69,7 +69,7 @@ def test_contract_is_pure_deterministic_and_uses_specialization_records() -> typ
 
 
 @pytest.mark.parametrize("field", ["artifact_key", "schedule_hash", "runtime_hash"])
-def test_relevant_hash_change_invalidates_contract(field: typing.Any) -> typing.Any:
+def test_relevant_hash_change_invalidates_contract(field: typing.Any) -> None:
     first = contract()[2]
     second = dataclasses.replace(first, **{field: "b" * 64})
     assert first.identity != second.identity
@@ -80,7 +80,7 @@ def test_relevant_hash_change_invalidates_contract(field: typing.Any) -> typing.
 @pytest.mark.parametrize("feature", ["precision", "layout", "plan"])
 def test_workload_shape_layout_precision_guards_invalidate(
     feature: typing.Any,
-) -> typing.Any:
+) -> None:
     first = contract()[2]
     facts = dict(first.workload.features)
     facts[feature] = "changed"
@@ -92,7 +92,7 @@ def test_workload_shape_layout_precision_guards_invalidate(
     assert first.identity != contract(schedule=TensorSchedule(threads=64))[2].identity
 
 
-def test_compiler_and_scientific_identity_invalidate() -> typing.Any:
+def test_compiler_and_scientific_identity_invalidate() -> None:
     first = contract()[2]
     for field in ("scientific_hash", "compiler_hash"):
         new_compilation = dataclasses.replace(first.compilation, **{field: "c" * 64})
@@ -105,7 +105,7 @@ def test_compiler_and_scientific_identity_invalidate() -> typing.Any:
 @pytest.mark.parametrize("field", ["uuid", "driver", "runtime", "cublas"])
 def test_device_and_provider_identity_changes_invalidate(
     field: typing.Any,
-) -> typing.Any:
+) -> None:
     plan, artifact, first = contract()
     runtime = {
         "uuid": "device-a",
@@ -117,7 +117,7 @@ def test_device_and_provider_identity_changes_invalidate(
     assert first.identity != tensor_capture_contract(plan, artifact, runtime).identity
 
 
-def test_unbudgeted_graph_storage_and_oversized_regions_fall_back() -> typing.Any:
+def test_unbudgeted_graph_storage_and_oversized_regions_fall_back() -> None:
     plan, artifact, first = contract()
     budgeted = tensor_capture_contract(plan, artifact, {}, resource_plan=object())
     assert not budgeted.eligible
@@ -142,7 +142,7 @@ def test_unbudgeted_graph_storage_and_oversized_regions_fall_back() -> typing.An
     assert unsupported.failures == ("host callback",)
 
 
-def test_emitted_capture_excludes_host_transfers_and_keeps_error_checks() -> typing.Any:
+def test_emitted_capture_excludes_host_transfers_and_keeps_error_checks() -> None:
     source = emit_cuda(contract()[0])
     start = source.index("ctx.submit_region(")
     end = source.index("int arithmetic_error", start)
@@ -164,7 +164,7 @@ def test_emitted_capture_excludes_host_transfers_and_keeps_error_checks() -> typ
 def test_native_shared_lifecycle_recovers_capture_failure_and_never_retries_launch(
     tmp_path: typing.Any,
     minimal_headers: typing.Any,
-) -> typing.Any:
+) -> None:
     """Compile the real lifecycle against a deterministic fake CUDA API.
 
     No fake numerics: actual GPU numerical coverage lives in the allocated suite.
@@ -302,7 +302,7 @@ int main() {
     )
 
 
-def test_capture_does_not_relabel_fp32_as_qualified_fp64() -> typing.Any:
+def test_capture_does_not_relabel_fp32_as_qualified_fp64() -> None:
     x = input_tensor("x", TensorSpec(dtype="float32", role="input"))
     plan = plan_cuda(Program({"out": add(x, x)}), cuda_target_info("sm_120"))
     artifact = CudaArtifact(Path("not-loaded.so"), {"key": "a" * 64})
@@ -310,3 +310,30 @@ def test_capture_does_not_relabel_fp32_as_qualified_fp64() -> typing.Any:
     assert dict(capture.workload.features)["precision"] == "fp32"
     assert not capture.eligible
     assert any("precision" in reason for reason in capture.failures)
+
+
+def test_capture_rejects_a_gemm_schedule_on_a_noncontraction_node() -> None:
+    plan, artifact, _ = contract()
+    steps = tuple(
+        dataclasses.replace(step, gemm="direct-test")
+        if not step.virtual and step.node.op not in ("input", "constant")
+        else step
+        for step in plan.steps
+    )
+    assert steps != plan.steps
+    malformed = dataclasses.replace(plan, steps=steps)
+    with pytest.raises(ValueError, match="requires a contraction node"):
+        tensor_capture_contract(malformed, artifact, {})
+
+
+def test_resource_plan_requires_owner_before_loading_native_binary() -> None:
+    plan, artifact, _ = contract()
+    with pytest.raises(ValueError, match="requires a named owner"):
+        PreparedCuda(plan, artifact, resource_plan=object())
+
+
+def test_closed_validation_scratch_fails_before_touching_inputs() -> None:
+    prepared = object.__new__(PreparedCuda)
+    prepared._mask = None
+    with pytest.raises(RuntimeError, match="validation scratch is closed"):
+        prepared._validate(None, None)

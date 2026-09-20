@@ -158,7 +158,7 @@ def _generated_first_order(
         u: typing.Any,
         v: typing.Any,
         coefficient: typing.Any = 1.0,
-    ) -> typing.Any:
+    ) -> None:
         if direction is not None:
             out[u, v] += coefficient * np.einsum(
                 "ca,ca->", derivative, direction[list(atoms)]
@@ -240,7 +240,7 @@ def generated_rhf_relaxation_contraction(
 
     def accumulate(
         atoms: typing.Any, derivative: typing.Any, coefficient: typing.Any
-    ) -> typing.Any:
+    ) -> None:
         if coefficient == 0:
             return
         for center, atom in enumerate(atoms):

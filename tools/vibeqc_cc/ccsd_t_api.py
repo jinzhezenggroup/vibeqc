@@ -54,7 +54,7 @@ class RCCSDTCapabilities:
     supported_properties: frozenset = frozenset({"energy"})
     batch_shape_policy: str = "homogeneous"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if self.method != "rccsd(t)" or self.family != "coupled_cluster":
             raise ValueError("RCCSD(T) capability identity mismatch")
         if self.supported_properties != frozenset({"energy"}):
@@ -277,7 +277,7 @@ def _validate_execution(
     triples_oracle: typing.Any = False,
     profile: typing.Any = False,
     compute_forces: typing.Any = False,
-) -> typing.Any:
+) -> None:
     """Validate shared execution controls before any solver work, even if empty."""
     if compute_forces:
         raise NotImplementedError(

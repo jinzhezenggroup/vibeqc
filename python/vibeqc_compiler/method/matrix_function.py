@@ -52,7 +52,7 @@ class SymmetricMatrixFunctionSpec:
     version: str = VERSION
     kind: ClassVar[str] = "symmetric_matrix_function"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if type(self.size) is not int or self.size <= 0 or self.size > 2**31 - 1:
             raise ValueError("matrix size must be a positive bounded integer")
         if self.logical_workspace_bytes > 2**63 - 1:

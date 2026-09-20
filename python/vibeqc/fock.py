@@ -39,7 +39,7 @@ class FockTerm:
     omega: float = 0.0
     approximation: str = "exact"
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if type(self.present) is not bool:
             raise TypeError("Fock presence must be bool")
         if self.operator not in _OPERATORS or self.approximation not in _APPROXIMATIONS:
@@ -65,7 +65,7 @@ class FockBuildSpec:
     coulomb: FockTerm = field(default_factory=FockTerm)
     exchange: FockTerm = field(default_factory=lambda: FockTerm(coefficient=-0.5))
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         if (
             self.spin not in _SPINS
             or type(self.derivative_order) is not int
@@ -265,7 +265,7 @@ def _spec_dict(spec: typing.Any) -> typing.Any:
     }
 
 
-def _bind(lib: typing.Any) -> typing.Any:
+def _bind(lib: typing.Any) -> None:
     lib.vibeqc_get_source_identity.argtypes = []
     lib.vibeqc_get_source_identity.restype = ct.c_char_p
     lib.vibeqc_fock_plan_create.argtypes = [
@@ -306,7 +306,7 @@ def _bind(lib: typing.Any) -> typing.Any:
         storage.restype = ct.c_int
 
 
-def _check(lib: typing.Any, status: typing.Any, detail: typing.Any) -> typing.Any:
+def _check(lib: typing.Any, status: typing.Any, detail: typing.Any) -> None:
     if status:
         message = (detail or lib.vibeqc_status_message(status)).decode("utf-8")
         exception = {1: ValueError, 3: NotImplementedError, 7: MemoryError}.get(
@@ -521,7 +521,7 @@ class FockPlan:
         """Prepared source/backend provenance, distinct from mathematical identity."""
         return self._execution_identity
 
-    def _ensure_open(self) -> typing.Any:
+    def _ensure_open(self) -> None:
         if not self._handle:
             raise RuntimeError("Fock plan is closed")
 
@@ -771,7 +771,7 @@ class FockPlan:
                 self.diagnostics,
             )
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         with self._lock:
             if self._handle:
                 self._library.vibeqc_fock_plan_destroy(self._handle)

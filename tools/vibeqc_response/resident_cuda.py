@@ -42,7 +42,7 @@ class _Diagnostic(ct.Structure):
     ]
 
 
-def _bind(lib: typing.Any) -> typing.Any:
+def _bind(lib: typing.Any) -> None:
     handle = ct.c_void_p
     lib.vibeqc_rhf_response_resident_create.argtypes = [
         ct.c_void_p,
@@ -88,7 +88,7 @@ class _ResidentVector:
     def __init__(self, owner: typing.Any, slot: typing.Any) -> None:
         self.owner, self.slot, self._released = owner, slot, False
 
-    def release(self) -> typing.Any:
+    def release(self) -> None:
         if not self._released:
             self._released = True
             self.owner._release_slot(self.slot)
@@ -180,7 +180,7 @@ class CudaResidentRHFResponse:
             }
         )
 
-    def _call(self, name: typing.Any, *args: typing.Any) -> typing.Any:
+    def _call(self, name: typing.Any, *args: typing.Any) -> None:
         if self._closed or not self._handle:
             raise RuntimeError("resident RHF response owner is closed")
         # The native adapter borrows the parent's stream and direct-J/K plan.
@@ -232,12 +232,12 @@ class CudaResidentRHFResponse:
             for vector in list(self._vectors.values()):
                 vector.release()
 
-    def reset(self) -> typing.Any:
+    def reset(self) -> None:
         if self._live:
             raise RuntimeError("resident Krylov reset with live vector leases")
         self._free = list(reversed(range(self.vector_slots)))
 
-    def _validate_vector(self, value: typing.Any) -> typing.Any:
+    def _validate_vector(self, value: typing.Any) -> None:
         if self._closed or not self._handle:
             raise RuntimeError("resident RHF response owner is closed")
         if not isinstance(value, _ResidentVector) or value.owner is not self:
@@ -256,7 +256,7 @@ class CudaResidentRHFResponse:
         self._vectors[slot] = vector
         return vector
 
-    def _release_slot(self, slot: typing.Any) -> typing.Any:
+    def _release_slot(self, slot: typing.Any) -> None:
         if slot in self._live:
             self._live.remove(slot)
             self._vectors.pop(slot, None)
@@ -395,7 +395,7 @@ class CudaResidentRHFResponse:
             return np.empty((self.dimension, 0))
         return np.column_stack([self.to_host(value) for value in values])
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         if not self._closed:
             if self._live:
                 raise RuntimeError(

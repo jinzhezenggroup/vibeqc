@@ -15,7 +15,7 @@ def _number(value: typing.Any) -> typing.Any:
     return str(int(value)) if value.is_integer() else repr(value)
 
 
-def main() -> typing.Any:
+def main() -> None:
     data = json.loads(SOURCE.read_text())
     if data["schema"] != "vibeqc.gcp-r2scan3c-parameters":
         raise SystemExit("unexpected gCP parameter schema")

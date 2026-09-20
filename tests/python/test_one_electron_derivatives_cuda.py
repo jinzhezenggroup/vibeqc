@@ -22,7 +22,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
 def test_arbitrary_nonsymmetric_weights_raw_fused_and_bounded_schedules(
     representation: typing.Any,
-) -> typing.Any:
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     inputs = {
         "atomic_numbers": [2, 1],
@@ -110,7 +110,7 @@ def test_generated_derivatives_preserve_complete_scf_forces(
     representation: typing.Any,
     fitted: typing.Any,
     count: typing.Any,
-) -> typing.Any:
+) -> None:
     from test_one_electron_values_cuda import run_case
 
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
@@ -140,7 +140,7 @@ def test_generated_derivatives_preserve_complete_scf_forces(
 @pytest.mark.parametrize("fitted", [False, True])
 def test_derivative_selectors_on_reused_plan_match_fresh_execution(
     monkeypatch: typing.Any, fitted: typing.Any
-) -> typing.Any:
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     calc = Calculator(
@@ -174,7 +174,7 @@ def test_generated_target_forces_against_independent_pyscf(
     charge: typing.Any,
     multiplicity: typing.Any,
     fitted: typing.Any,
-) -> typing.Any:
+) -> None:
     from pyscf import gto, scf
 
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
@@ -231,7 +231,7 @@ def test_generated_target_forces_against_independent_pyscf(
 
 def test_failed_item_does_not_contaminate_generated_neighbor(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
@@ -254,7 +254,7 @@ def test_screened_target_energy_force_domain(
     charge: typing.Any,
     multiplicity: typing.Any,
     fitted: typing.Any,
-) -> typing.Any:
+) -> None:
     """Measure total force errors; a value-screen threshold alone is no bound.
 
     One-electron contractions are always unscreened. The positive-threshold API

@@ -53,7 +53,7 @@ def fixture_problem(name: typing.Any = "h2") -> typing.Any:
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4"])
 def test_same_C_solver_against_pinned_ccsd_and_two_electron_fci(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     s, p, meta, a = fixture_problem(name)
     result = solve(
         s, p, options=SolverOptions(residual_tolerance=1e-10, energy_tolerance=1e-12)
@@ -76,7 +76,7 @@ def test_same_C_solver_against_pinned_ccsd_and_two_electron_fci(
 @pytest.mark.parametrize("shift,damping,diis", [(0.4, 0.15, 6), (0.0, 0.2, 0)])
 def test_shift_damping_and_diis_do_not_change_target_root(
     shift: typing.Any, damping: typing.Any, diis: typing.Any
-) -> typing.Any:
+) -> None:
     s, p, meta, _ = fixture_problem()
     result = solve(
         s, p, options=SolverOptions(level_shift=shift, damping=damping, diis_size=diis)
@@ -87,7 +87,7 @@ def test_shift_damping_and_diis_do_not_change_target_root(
 
 def test_preflight_failure_happens_before_integrals_and_iteration_failures_replay(
     tmp_path: typing.Any, monkeypatch: typing.Any
-) -> typing.Any:
+) -> None:
     s, p, _meta, a = fixture_problem()
     from tools.vibeqc_cc import evaluate
 
@@ -160,7 +160,7 @@ def test_preflight_failure_happens_before_integrals_and_iteration_failures_repla
 
 def test_false_shared_residual_cannot_bypass_expanded_acceptance(
     monkeypatch: typing.Any,
-) -> typing.Any:
+) -> None:
     s, p, _meta, _ = fixture_problem()
     original = PreparedCCSD.evaluate
 
@@ -179,7 +179,7 @@ def test_false_shared_residual_cannot_bypass_expanded_acceptance(
     assert result.history[-1]["independent_r2_max"] > 1e-9
 
 
-def test_prepared_ccsd_rejects_ks_reference() -> typing.Any:
+def test_prepared_ccsd_rejects_ks_reference() -> None:
     s, p, _meta, _ = fixture_problem()
     ks = replace(
         s,
@@ -194,7 +194,7 @@ def test_prepared_ccsd_rejects_ks_reference() -> typing.Any:
 
 def test_nonfinite_initial_equation_has_no_fabricated_energy_and_replays(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     s, p, _meta, a = fixture_problem()
     result = solve(
         s, p, t1=np.full_like(a["t1"], 1e150), t2=np.full_like(a["t2"], 1e150)
@@ -207,7 +207,7 @@ def test_nonfinite_initial_equation_has_no_fabricated_energy_and_replays(
 
 
 def test_collective_provider_budget_rejects_before_any_read_and_accepts_cache_hits() -> (
-    typing.Any
+    None
 ):
     s, _p, _meta, a = fixture_problem()
     source = SimpleNamespace(
@@ -250,7 +250,7 @@ def test_collective_provider_budget_rejects_before_any_read_and_accepts_cache_hi
 
 
 @pytest.mark.parametrize("name", ["h2", "he", "h2o", "nh3", "ch4"])
-def test_fresh_native_HF_to_converged_CCSD(name: typing.Any) -> typing.Any:
+def test_fresh_native_HF_to_converged_CCSD(name: typing.Any) -> None:
     meta, a = load(name)
     try:
         source = NativeSource(**source_arguments(meta["inputs"]))

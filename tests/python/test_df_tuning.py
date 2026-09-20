@@ -51,7 +51,7 @@ def rank(profiles: typing.Any, rows: typing.Any) -> typing.Any:
     return rank_profiles(profiles, rows, baselines={"000": "000:polynomial:compact"})
 
 
-def test_available_trials_and_identity() -> typing.Any:
+def test_available_trials_and_identity() -> None:
     trials = enumerate_trials()
     assert len(trials) == 42
     assert len({t.key for t in trials}) == len(trials)
@@ -76,7 +76,7 @@ def test_available_trials_and_identity() -> typing.Any:
     assert "prepare_geometry" not in source
 
 
-def test_profiles_remain_separate_and_conflicts_block_combination() -> typing.Any:
+def test_profiles_remain_separate_and_conflicts_block_combination() -> None:
     profiles, rows = fixture()
     result = rank(profiles, rows)
     assert result["proposed_mapping"] == {"000": "000:rys:compact"}
@@ -92,7 +92,7 @@ def test_profiles_remain_separate_and_conflicts_block_combination() -> typing.An
     }
 
 
-def test_explicit_high_angular_campaign_preserves_both_profiles() -> typing.Any:
+def test_explicit_high_angular_campaign_preserves_both_profiles() -> None:
     """A hot-class campaign must not silently discard classes outside the old seven."""
     profiles, rows = fixture()
     for payload in profiles.values():
@@ -122,7 +122,7 @@ def test_explicit_high_angular_campaign_preserves_both_profiles() -> typing.Any:
 @pytest.mark.parametrize(
     "fault", ["missing", "work", "numeric", "compile", "nan", "repeats"]
 )
-def test_bad_signature_rejects_whole_candidate(fault: typing.Any) -> typing.Any:
+def test_bad_signature_rejects_whole_candidate(fault: typing.Any) -> None:
     profiles, rows = fixture()
     for row in rows[:]:
         if ":rys:" not in row["candidate"]:
@@ -142,7 +142,7 @@ def test_bad_signature_rejects_whole_candidate(fault: typing.Any) -> typing.Any:
     assert rank(profiles, rows)["proposed_mapping"] == {"000": "000:polynomial:compact"}
 
 
-def test_missing_baseline_cannot_select_a_winner() -> typing.Any:
+def test_missing_baseline_cannot_select_a_winner() -> None:
     profiles, rows = fixture()
     rows = [r for r in rows if r["candidate"] != "000:polynomial:compact"]
     result = rank(profiles, rows)
@@ -150,7 +150,7 @@ def test_missing_baseline_cannot_select_a_winner() -> typing.Any:
     assert result["conflicts"]
 
 
-def test_profile_frequency_validation_and_duplicate_rows() -> typing.Any:
+def test_profile_frequency_validation_and_duplicate_rows() -> None:
     profiles, rows = fixture()
     with pytest.raises(ValueError, match="duplicate"):
         rank(profiles, rows + [rows[0]])
@@ -161,7 +161,7 @@ def test_profile_frequency_validation_and_duplicate_rows() -> typing.Any:
 
 def test_runtime_preserves_scheduler_visibility(
     monkeypatch: typing.Any, tmp_path: typing.Any
-) -> typing.Any:
+) -> None:
     for value in ("", "0", "GPU-unique-token"):
         monkeypatch.setenv("CUDA_VISIBLE_DEVICES", value)
         assert (
@@ -171,7 +171,7 @@ def test_runtime_preserves_scheduler_visibility(
 
 def test_manifests_require_complete_independent_qualification(
     tmp_path: typing.Any,
-) -> typing.Any:
+) -> None:
     """A partial numerical run cannot turn on either automatic production policy."""
     import copy
     import json
@@ -229,7 +229,7 @@ def campaign_manifest() -> typing.Any:
 @pytest.mark.parametrize("promoted", [False, True])
 def test_compiled_campaign_selection_preserves_qualified_baseline(
     tmp_path: typing.Any, promoted: typing.Any
-) -> typing.Any:
+) -> None:
     """Promotion removes the comparison arm without changing candidate math."""
     import json
     import shutil
@@ -270,7 +270,7 @@ static_assert(!DfProductionPolicy<1,1,1>::select(120,true).available);
 )
 def test_campaign_baseline_requires_qualified_independent_evidence(
     tmp_path: typing.Any, fault: typing.Any
-) -> typing.Any:
+) -> None:
     import json
 
     from vibeqc_compiler.integral.df_tuning.manifest import load_manifest
@@ -294,7 +294,7 @@ def test_campaign_baseline_requires_qualified_independent_evidence(
         load_manifest(path)
 
 
-def test_value_identity_and_profile_disagreements() -> typing.Any:
+def test_value_identity_and_profile_disagreements() -> None:
     """Class scoring retains both workloads and excludes incomplete/changed work."""
     import copy
 

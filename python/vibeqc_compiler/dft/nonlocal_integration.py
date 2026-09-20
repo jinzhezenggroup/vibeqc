@@ -63,7 +63,7 @@ class FixedDensityNonlocalCorrelation:
         self.coefficient = coefficient
         self.max_points = max_points
 
-    def _validate_grid(self, basis: typing.Any, grid: typing.Any) -> typing.Any:
+    def _validate_grid(self, basis: typing.Any, grid: typing.Any) -> None:
         if not isinstance(basis, NativeAO):
             raise TypeError("expected NativeAO")
         if not isinstance(grid, (MolecularGrid, ExplicitGrid)):

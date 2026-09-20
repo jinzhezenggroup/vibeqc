@@ -7,7 +7,6 @@ do not promote a production DF source or establish endpoint improvement.
 
 # Source-tree CLI bootstrap; importing the compiler needs no native runtime.
 import sys as _compiler_sys
-import typing
 from pathlib import Path as _CompilerPath
 
 _compiler_sys.path.insert(
@@ -42,7 +41,7 @@ from tools.vibeqc_validation.f_shell_numerics import numerical_error
 from tools.vibeqc_validation.schema import file_hash
 
 
-def main() -> typing.Any:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
     parser.add_argument("--nvcc", type=Path, required=True)

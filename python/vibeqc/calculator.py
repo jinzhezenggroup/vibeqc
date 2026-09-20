@@ -48,7 +48,7 @@ class Atom:
     atomic_number: int
     position: tuple[float, float, float]
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         """Own finite coordinates and validate nuclei independently of basis data."""
         z = element_number(self.atomic_number)
         xyz = tuple(float(v) for v in self.position)
@@ -534,6 +534,15 @@ class Calculator:
         if (
             self._capabilities.family == "density_functional"
             and self._device_name == "cuda"
+            and not (
+                isinstance(self._basis, BasisSet)
+                and any(element.ecp_core_electrons for element in self._basis.elements)
+                and any(
+                    shell.angular_momentum > 1
+                    for element in self._basis.elements
+                    for shell in element.shells
+                )
+            )
             and self._method
             in (
                 _native.METHOD_LDA_RKS,
@@ -546,6 +555,9 @@ class Calculator:
             # prepared owner plus the compiler-owned CUDA gradient consumer.
             # Keep the backend-neutral C registry conservative: CPU/native-C
             # callers do not inherit a force capability they cannot execute.
+            # ECP promotion is bounded to Cartesian/real-spherical s/p records. The shared
+            # nine-source consumer also enforces shape, byte and work caps;
+            # higher-angular ECP domains remain energy-only.
             self._capabilities = replace(
                 self._capabilities,
                 supported_properties=self._capabilities.supported_properties
@@ -889,7 +901,7 @@ class Calculator:
 
     def _preflight_hf_basis(
         self, atoms: typing.Any, *, compute_forces: typing.Any = True
-    ) -> typing.Any:
+    ) -> None:
         """Check operators and AO jets needed by the selected mean-field outputs.
 
         Runtime shape/resource and occupation checks remain native. This data

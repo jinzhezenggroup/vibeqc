@@ -243,7 +243,7 @@ class ConventionalProvider:
             self.statistics["source_tiles"] += tiles
             return result
 
-    def clear(self) -> typing.Any:
+    def clear(self) -> None:
         """Release retained outputs; CUDA block objects become explicitly closed."""
         with self._lock:
             for value, _ in self._cache.values():
@@ -252,7 +252,7 @@ class ConventionalProvider:
             self._cache.clear()
             self._retained = 0
 
-    def close(self) -> typing.Any:
+    def close(self) -> None:
         """Close this provider, without taking ownership of the source lifetime."""
         self.clear()
         self._closed = True

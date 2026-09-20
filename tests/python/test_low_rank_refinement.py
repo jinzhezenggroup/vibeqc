@@ -30,7 +30,7 @@ def basis_for(source: typing.Any) -> typing.Any:
 @pytest.mark.parametrize("name", ["h2", "water", "lih"])
 def test_staged_initialization_reconverges_exact_energy_density_and_forces(
     name: typing.Any,
-) -> typing.Any:
+) -> None:
     source, arrays = source_for(name)
     with (
         source,
@@ -77,7 +77,7 @@ def test_staged_initialization_reconverges_exact_energy_density_and_forces(
 
 
 def test_refinement_rejects_target_mismatch_and_nonmonotone_stages_before_mutation() -> (
-    typing.Any
+    None
 ):
     source, _ = source_for("h2")
     columns = CoulombColumns(source)
@@ -122,7 +122,7 @@ def test_refinement_rejects_target_mismatch_and_nonmonotone_stages_before_mutati
                 solve_refined_rhf(factor, target, [RefinementStage(0.1, 1, 1)])
 
 
-def test_invalid_stage_controls() -> typing.Any:
+def test_invalid_stage_controls() -> None:
     for controls in (
         {"threshold": -1},
         {"threshold": True},

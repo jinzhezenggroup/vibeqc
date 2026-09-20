@@ -87,7 +87,7 @@ class SolverOptions:
     diis_size: int = 6
     max_bytes: int = 256 << 20
 
-    def __post_init__(self) -> typing.Any:
+    def __post_init__(self) -> None:
         for key in ("max_iterations", "max_bytes", "diis_size"):
             v = getattr(self, key)
             if type(v) is not int or v < (0 if key == "diis_size" else 1):
@@ -232,7 +232,7 @@ class PreparedCCSD:
             else (np.array(t1, copy=True), np.array(t2, copy=True))
         )
 
-    def validate_amplitudes(self, t1: typing.Any, t2: typing.Any) -> typing.Any:
+    def validate_amplitudes(self, t1: typing.Any, t2: typing.Any) -> None:
         execute(
             self.amplitude_check, {"t1": t1, "t2": t2}, max_bytes=self.options.max_bytes
         )
@@ -329,7 +329,7 @@ class CCSDResult:
     def converged(self) -> typing.Any:
         return self.status == "converged"
 
-    def write(self, path: typing.Any) -> typing.Any:
+    def write(self, path: typing.Any) -> None:
         """Save successful or failed finite state and enough input to replay it."""
         record = {
             "schema": "vibeqc.ccsd.result",

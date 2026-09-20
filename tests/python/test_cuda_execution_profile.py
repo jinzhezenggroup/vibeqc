@@ -11,7 +11,7 @@ from vibeqc_compiler.common.cuda_adapter import (
 )
 
 
-def test_cuda_execution_profile_preserves_current_cluster_default() -> typing.Any:
+def test_cuda_execution_profile_preserves_current_cluster_default() -> None:
     profile = resolve_cuda_execution_profile(environment={})
     assert profile == CudaExecutionProfile(
         local=False,
@@ -34,7 +34,7 @@ def test_cuda_execution_profile_preserves_current_cluster_default() -> typing.An
     ]
 
 
-def test_cuda_execution_profile_environment_overrides_project_defaults() -> typing.Any:
+def test_cuda_execution_profile_environment_overrides_project_defaults() -> None:
     profile = resolve_cuda_execution_profile(
         environment={
             "VIBEQC_BENCHMARK_PARTITION": "accelerated",
@@ -53,7 +53,7 @@ def test_cuda_execution_profile_environment_overrides_project_defaults() -> typi
     assert profile.srun == "/opt/slurm/bin/srun"
 
 
-def test_explicit_execution_arguments_override_environment() -> typing.Any:
+def test_explicit_execution_arguments_override_environment() -> None:
     profile = resolve_cuda_execution_profile(
         environment={
             "VIBEQC_BENCHMARK_PARTITION": "environment",
@@ -76,7 +76,7 @@ def test_explicit_execution_arguments_override_environment() -> typing.Any:
     assert profile.wrap(["worker"]) == ["worker"]
 
 
-def test_empty_environment_scheduler_fields_disable_optional_flags() -> typing.Any:
+def test_empty_environment_scheduler_fields_disable_optional_flags() -> None:
     profile = resolve_cuda_execution_profile(
         environment={
             "VIBEQC_BENCHMARK_PARTITION": "",
@@ -92,9 +92,7 @@ def test_empty_environment_scheduler_fields_disable_optional_flags() -> typing.A
     ]
 
 
-def test_executor_uses_caller_time_as_default_but_environment_can_override() -> (
-    typing.Any
-):
+def test_executor_uses_caller_time_as_default_but_environment_can_override() -> None:
     executor = CudaBenchmarkExecutor.from_environment(
         30,
         default_slurm_time="00:30:00",
@@ -113,7 +111,7 @@ def test_executor_uses_caller_time_as_default_but_environment_can_override() -> 
 )
 def test_invalid_execution_environment_fails_closed(
     environment: typing.Any, match: typing.Any
-) -> typing.Any:
+) -> None:
     with pytest.raises(ValueError, match=match):
         resolve_cuda_execution_profile(environment=environment)
 
@@ -132,7 +130,7 @@ def test_f_shell_cli_preserves_timeout_precedence(
     explicit: typing.Any,
     environment_time: typing.Any,
     expected: typing.Any,
-) -> typing.Any:
+) -> None:
     """Trace the CLI argument into the numerical owner's actual executor."""
     import sys
     from types import SimpleNamespace
@@ -151,7 +149,7 @@ def test_f_shell_cli_preserves_timeout_precedence(
         monkeypatch.setenv("VIBEQC_BENCHMARK_TIME", environment_time)
     original = CudaBenchmarkExecutor.from_environment
 
-    def capture(cls: typing.Any, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def capture(cls: typing.Any, *args: typing.Any, **kwargs: typing.Any) -> None:
         executor = original(*args, **kwargs)
         assert executor.slurm_time == expected
         raise ReachedProfile
@@ -173,7 +171,7 @@ def test_f_shell_cli_preserves_timeout_precedence(
 @pytest.mark.parametrize("nodes,ntasks", [(1, 2), (2, 1), (2, 4)])
 def test_distributed_requests_cannot_duplicate_single_process_benchmarks(
     nodes: typing.Any, ntasks: typing.Any
-) -> typing.Any:
+) -> None:
     profile = resolve_cuda_execution_profile(environment={}, nodes=nodes, ntasks=ntasks)
     assert profile.nodes == nodes and profile.ntasks == ntasks
     with pytest.raises(ValueError, match="one node and one task"):
