@@ -247,48 +247,44 @@ SpinXcIntegral integrate_pbe_uks(const AoBasis& basis, const MolecularGrid& grid
   return integrate_pbe_uks_scaled(basis, grid, alpha_density, beta_density, tile_points, 1.0, 1.0);
 }
 
-CamB3lypPointValue evaluate_cam_b3lyp_point(const double rho[2], const double (&gradient)[2][3]) {
-  double sigma[3]{};
-  generated::sigma(gradient, sigma);
+namespace {
+
+std::array<double, 3> validate_b3_gga_point(const double rho[2], const double (&gradient)[2][3],
+                                            const char* method) {
+  std::array<double, 3> sigma{};
+  generated::sigma(gradient, sigma.data());
   const double total = rho[0] + rho[1];
   if (!std::isfinite(total) || total < 1.0e-12 || total > 1.0e12)
-    throw std::domain_error("CAM-B3LYP requires interior-v1 total density");
-  constexpr double pi = 3.141592653589793238462643383279502884;
-  constexpr double beta_b88 = 0.0042;
-  constexpr double gamma_b88 = 6.0;
-  const double cx = 0.375 * std::pow(3.0 / pi, 1.0 / 3.0) * std::pow(4.0, 2.0 / 3.0);
+    throw std::domain_error(std::string(method) + " requires interior-v1 total density");
   for (unsigned spin = 0; spin < 2; ++spin) {
-    if (!std::isfinite(rho[spin]) || rho[spin] <= 0.0 || rho[spin] / total < 1.0e-10 ||
-        !std::isfinite(sigma[spin == 0 ? 0 : 2]) || sigma[spin == 0 ? 0 : 2] <= 0.0)
-      throw std::domain_error("CAM-B3LYP requires interior-v1 spin density/gradient");
     const double same_sigma = sigma[spin == 0 ? 0 : 2];
+    if (!std::isfinite(rho[spin]) || rho[spin] <= 0.0 || rho[spin] / total < 1.0e-10 ||
+        !std::isfinite(same_sigma) || same_sigma <= 0.0)
+      throw std::domain_error(std::string(method) + " requires interior-v1 spin density/gradient");
     const double reduced = std::sqrt(same_sigma) / std::pow(rho[spin], 4.0 / 3.0);
     if (!std::isfinite(reduced) || reduced > 1.0e6)
-      throw std::domain_error("CAM-B3LYP reduced gradient exceeds interior-v1");
-    const double x2 = same_sigma * std::pow(rho[spin], -8.0 / 3.0);
-    const double x = std::sqrt(x2);
-    const double enhancement =
-        1.0 + beta_b88 / cx * x2 / (1.0 + gamma_b88 * beta_b88 * x * std::asinh(x));
-    const double k_gga = std::sqrt(9.0 * pi / (2.0 * cx * enhancement)) * std::cbrt(rho[spin]);
-    if (!std::isfinite(k_gga) || generated::kCamB3lypOmega / (2.0 * k_gga) >= 1.35)
-      throw std::domain_error("CAM-B3LYP ITYH attenuation exceeds rsh-interior-v1");
+      throw std::domain_error(std::string(method) + " reduced gradient exceeds interior-v1");
     for (double component : gradient[spin])
       if (!std::isfinite(component))
-        throw std::domain_error("CAM-B3LYP requires finite density gradients");
+        throw std::domain_error(std::string(method) + " requires finite density gradients");
   }
   const double bound = std::sqrt(sigma[0]) * std::sqrt(sigma[2]);
   if (!std::isfinite(sigma[1]) ||
       std::abs(sigma[1]) > bound * (1.0 + 16.0 * std::numeric_limits<double>::epsilon()))
-    throw std::domain_error("CAM-B3LYP spin-gradient Gram matrix is invalid");
+    throw std::domain_error(std::string(method) + " spin-gradient Gram matrix is invalid");
+  return sigma;
+}
 
-  const auto raw = generated::cam_b3lyp_polarized(rho[0], rho[1], sigma[0], sigma[1], sigma[2]);
+template <class Raw>
+B3GgaPointValue map_b3_gga_point(const Raw& raw, const double (&gradient)[2][3],
+                                 const char* method) {
   if (!std::isfinite(raw.energy_density))
-    throw std::domain_error("nonfinite generated CAM-B3LYP semilocal energy");
+    throw std::domain_error(std::string("nonfinite generated ") + method + " semilocal energy");
   for (double derivative : raw.feature_derivative)
     if (!std::isfinite(derivative))
-      throw std::domain_error("nonfinite generated CAM-B3LYP semilocal derivative");
-
-  CamB3lypPointValue out;
+      throw std::domain_error(std::string("nonfinite generated ") + method +
+                              " semilocal derivative");
+  B3GgaPointValue out;
   out.energy = raw.energy_density;
   out.rho[0] = raw.feature_derivative[0];
   out.rho[1] = raw.feature_derivative[1];
@@ -301,9 +297,12 @@ CamB3lypPointValue evaluate_cam_b3lyp_point(const double rho[2], const double (&
   return out;
 }
 
-XcIntegral integrate_cam_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
-                                   const std::vector<double>& density, std::size_t tile_points,
-                                   XcDensitySource source) {
+using B3GgaEvaluator = B3GgaPointValue (*)(const double[2], const double (&)[2][3]);
+
+XcIntegral integrate_b3_gga_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                const std::vector<double>& density, std::size_t tile_points,
+                                XcDensitySource source, B3GgaEvaluator evaluate,
+                                const char* method) {
   const std::size_t n = basis.nao;
   validate_density_matrix(basis, grid, density, tile_points);
   XcIntegral result;
@@ -327,7 +326,7 @@ XcIntegral integrate_cam_b3lyp_rks(const AoBasis& basis, const MolecularGrid& gr
       const double rho[2]{0.5 * total[0], 0.5 * total[0]};
       const double gradient[2][3]{{0.5 * total[1], 0.5 * total[2], 0.5 * total[3]},
                                   {0.5 * total[1], 0.5 * total[2], 0.5 * total[3]}};
-      const auto xc = evaluate_cam_b3lyp_point(rho, gradient);
+      const auto xc = evaluate(rho, gradient);
       const double weight = grid.weights()[begin + point];
       result.energy += weight * xc.energy;
       result.electrons += weight * total[0];
@@ -345,14 +344,15 @@ XcIntegral integrate_cam_b3lyp_rks(const AoBasis& basis, const MolecularGrid& gr
     }
   }
   if (!std::isfinite(result.energy))
-    throw std::runtime_error("nonfinite CAM-B3LYP RKS semilocal energy");
+    throw std::runtime_error(std::string("nonfinite ") + method + " RKS semilocal energy");
   return result;
 }
 
-SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid& grid,
-                                       const std::vector<double>& alpha_density,
-                                       const std::vector<double>& beta_density,
-                                       std::size_t tile_points) {
+SpinXcIntegral integrate_b3_gga_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                    const std::vector<double>& alpha_density,
+                                    const std::vector<double>& beta_density,
+                                    std::size_t tile_points, B3GgaEvaluator evaluate,
+                                    const char* method) {
   validate_density_matrix(basis, grid, alpha_density, tile_points);
   validate_density_matrix(basis, grid, beta_density, tile_points);
   const std::size_t n = basis.nao;
@@ -375,7 +375,7 @@ SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid
         rho[spin] = features[0];
         for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
       }
-      const auto xc = evaluate_cam_b3lyp_point(rho, gradient);
+      const auto xc = evaluate(rho, gradient);
       const double weight = grid.weights()[begin + point];
       result.energy += weight * xc.energy;
       for (unsigned spin = 0; spin < 2; ++spin) {
@@ -391,8 +391,67 @@ SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid
     }
   }
   if (!std::isfinite(result.energy))
-    throw std::runtime_error("nonfinite CAM-B3LYP UKS semilocal energy");
+    throw std::runtime_error(std::string("nonfinite ") + method + " UKS semilocal energy");
   return result;
+}
+
+}  // namespace
+
+B3lypPointValue evaluate_b3lyp_point(const double rho[2], const double (&gradient)[2][3]) {
+  const auto sigma = validate_b3_gga_point(rho, gradient, "B3LYP");
+  return map_b3_gga_point(generated::b3lyp_polarized(rho[0], rho[1], sigma[0], sigma[1], sigma[2]),
+                          gradient, "B3LYP");
+}
+
+CamB3lypPointValue evaluate_cam_b3lyp_point(const double rho[2], const double (&gradient)[2][3]) {
+  const auto sigma = validate_b3_gga_point(rho, gradient, "CAM-B3LYP");
+  constexpr double pi = 3.141592653589793238462643383279502884;
+  constexpr double beta_b88 = 0.0042;
+  constexpr double gamma_b88 = 6.0;
+  const double cx = 0.375 * std::pow(3.0 / pi, 1.0 / 3.0) * std::pow(4.0, 2.0 / 3.0);
+  for (unsigned spin = 0; spin < 2; ++spin) {
+    const double same_sigma = sigma[spin == 0 ? 0 : 2];
+    const double x2 = same_sigma * std::pow(rho[spin], -8.0 / 3.0);
+    const double x = std::sqrt(x2);
+    const double enhancement =
+        1.0 + beta_b88 / cx * x2 / (1.0 + gamma_b88 * beta_b88 * x * std::asinh(x));
+    const double k_gga = std::sqrt(9.0 * pi / (2.0 * cx * enhancement)) * std::cbrt(rho[spin]);
+    if (!std::isfinite(k_gga) || generated::kCamB3lypOmega / (2.0 * k_gga) >= 1.35)
+      throw std::domain_error("CAM-B3LYP ITYH attenuation exceeds rsh-interior-v1");
+  }
+  return map_b3_gga_point(
+      generated::cam_b3lyp_polarized(rho[0], rho[1], sigma[0], sigma[1], sigma[2]), gradient,
+      "CAM-B3LYP");
+}
+
+XcIntegral integrate_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
+                               const std::vector<double>& density, std::size_t tile_points,
+                               XcDensitySource source) {
+  return integrate_b3_gga_rks(basis, grid, density, tile_points, source, evaluate_b3lyp_point,
+                              "B3LYP");
+}
+
+SpinXcIntegral integrate_b3lyp_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& alpha_density,
+                                   const std::vector<double>& beta_density,
+                                   std::size_t tile_points) {
+  return integrate_b3_gga_uks(basis, grid, alpha_density, beta_density, tile_points,
+                              evaluate_b3lyp_point, "B3LYP");
+}
+
+XcIntegral integrate_cam_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& density, std::size_t tile_points,
+                                   XcDensitySource source) {
+  return integrate_b3_gga_rks(basis, grid, density, tile_points, source, evaluate_cam_b3lyp_point,
+                              "CAM-B3LYP");
+}
+
+SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                       const std::vector<double>& alpha_density,
+                                       const std::vector<double>& beta_density,
+                                       std::size_t tile_points) {
+  return integrate_b3_gga_uks(basis, grid, alpha_density, beta_density, tile_points,
+                              evaluate_cam_b3lyp_point, "CAM-B3LYP");
 }
 
 R2scanPointValue evaluate_r2scan_point(const double rho[2], const double (&gradient)[2][3],

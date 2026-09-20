@@ -152,6 +152,68 @@ void run_case(unsigned atoms, bool pbe) {
             "stable/loose energy and density gates replaced physical stationarity");
   }
 }
+void run_b3lyp_global_case() {
+  const auto system = closed_shell_h2();
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 1, 2, 4, 3, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  scf::ScfOptions options;
+  options.compute_forces = false;
+  options.max_iterations = 150;
+  options.energy_tolerance = 1e-12;
+  options.density_tolerance = 1e-10;
+
+  const auto rks_strategy = scf::resolve_fock_build(
+      scf::make_global_hybrid_fock_spec(scf::FockSpin::Restricted, 0.2), scf::FockBackend::Cpu);
+  const scf::PreparedFockPlan rks_plan(system, nullptr, rks_strategy);
+  const auto rks = scf::run_b3lyp_rks(rks_plan, basis, grid, options);
+  require(rks.converged && std::isfinite(rks.energy) && rks.physical_residual_rms < 1e-9,
+          "B3LYP native RKS did not converge on the audited interior grid");
+  const auto rks_jk = rks_plan.build(rks.density);
+  const auto rks_jk_energy =
+      scf::contract_fock_energy_components(rks_strategy, rks_jk, rks.density);
+  require(
+      std::abs(rks.dft_diagnostic.components.hartree - rks_jk_energy.coulomb) < 1e-12 &&
+          std::abs(rks.dft_diagnostic.components.exact_exchange - rks_jk_energy.exchange) < 1e-12,
+      "B3LYP diagnostics disagree with the common full-range J/K provider");
+
+  const auto warm = scf::run_b3lyp_rks(rks_plan, basis, grid, options, &rks.density);
+  require(warm.converged && warm.initial_density_used && std::abs(warm.energy - rks.energy) < 1e-10,
+          "B3LYP RKS warm replay changed the physical endpoint");
+
+  const auto uks_strategy = scf::resolve_fock_build(
+      scf::make_global_hybrid_fock_spec(scf::FockSpin::Unrestricted, 0.2), scf::FockBackend::Cpu);
+  const scf::PreparedFockPlan uks_plan(system, nullptr, uks_strategy);
+  const std::size_t n2 = basis.nao * basis.nao;
+  std::vector<double> uks_seed(2 * n2);
+  for (std::size_t i = 0; i < n2; ++i) uks_seed[i] = uks_seed[n2 + i] = 0.5 * rks.density[i];
+  const auto uks = scf::run_b3lyp_uks(uks_plan, basis, grid, options, &uks_seed);
+  require(uks.converged && std::isfinite(uks.energy) && uks.physical_residual_rms < 1e-9,
+          "B3LYP native UKS did not converge on the audited interior grid");
+  require(std::abs(uks.energy - rks.energy) < 2e-10,
+          "B3LYP closed-shell RKS/UKS spin accounting disagrees");
+
+  const auto wrong_strategy = scf::resolve_fock_build(
+      scf::make_global_hybrid_fock_spec(scf::FockSpin::Restricted, 0.25), scf::FockBackend::Cpu);
+  const scf::PreparedFockPlan wrong_plan(system, nullptr, wrong_strategy);
+  bool rejected = false;
+  try {
+    (void)scf::run_b3lyp_rks(wrong_plan, basis, grid, options);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "B3LYP accepted a stale/wrong exact-exchange coefficient");
+
+  options.compute_forces = true;
+  rejected = false;
+  try {
+    (void)scf::run_b3lyp_rks(rks_plan, basis, grid, options);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "B3LYP interior value slice incorrectly advertised complete forces");
+}
+
 void run_cam_rsh_case() {
   const auto system = closed_shell_h2();
   const dft::AoBasis basis(system);
@@ -253,6 +315,7 @@ int main() {
   try {
     for (unsigned atoms : {1U, 2U, 3U})
       for (bool pbe : {false, true}) run_case(atoms, pbe);
+    run_b3lyp_global_case();
     run_cam_rsh_case();
     std::cout << "UKS physical state, spin, warm and stale-input gates passed\n";
   } catch (const std::exception& error) {

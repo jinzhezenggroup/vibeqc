@@ -510,7 +510,7 @@ vibeqc_status vibeqc_xc_point_batch_v3(std::uint32_t functional, double exchange
   constexpr std::size_t stride = 11;
   if (!std::isfinite(exchange_scale) || !std::isfinite(correlation_scale) || exchange_scale < 0 ||
       correlation_scale < 0 ||
-      (functional != 1 && (exchange_scale != 1.0 || correlation_scale != 1.0)) || functional > 2 ||
+      (functional != 1 && (exchange_scale != 1.0 || correlation_scale != 1.0)) || functional > 3 ||
       !rho || !gradient || !tau || !values || point_count == 0 ||
       point_count > std::numeric_limits<std::size_t>::max() / stride ||
       value_count != stride * point_count)
@@ -535,7 +535,7 @@ vibeqc_status vibeqc_xc_point_batch_v3(std::uint32_t functional, double exchange
           for (std::size_t axis = 0; axis < 3; ++axis)
             output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
         output[9] = output[10] = 0.0;
-      } else {
+      } else if (functional == 2) {
         const auto xc = vibeqc::dft::evaluate_r2scan_point(local_rho, local_gradient, local_tau);
         output[0] = xc.energy;
         output[1] = xc.rho[0];
@@ -545,6 +545,15 @@ vibeqc_status vibeqc_xc_point_batch_v3(std::uint32_t functional, double exchange
             output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
         output[9] = xc.kinetic[0];
         output[10] = xc.kinetic[1];
+      } else {
+        const auto xc = vibeqc::dft::evaluate_b3lyp_point(local_rho, local_gradient);
+        output[0] = xc.energy;
+        output[1] = xc.rho[0];
+        output[2] = xc.rho[1];
+        for (std::size_t spin = 0; spin < 2; ++spin)
+          for (std::size_t axis = 0; axis < 3; ++axis)
+            output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
+        output[9] = output[10] = 0.0;
       }
     }
     return VIBEQC_STATUS_SUCCESS;

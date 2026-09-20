@@ -23,14 +23,18 @@
 
 namespace vibeqc::scf {
 
-FockBuildSpec make_rsh_primary_fock_spec(FockSpin spin, double short_range_exchange) {
-  if (!std::isfinite(short_range_exchange))
-    throw std::invalid_argument("RSH short-range exchange fraction must be finite");
+FockBuildSpec make_global_hybrid_fock_spec(FockSpin spin, double exact_exchange) {
+  if (!std::isfinite(exact_exchange))
+    throw std::invalid_argument("global exact-exchange fraction must be finite");
   auto spec = make_hf_fock_spec(spin);
   spec.derivative_order = 0;
   const double spin_factor = spin == FockSpin::Restricted ? -0.5 : -1.0;
-  spec.exchange.coefficient = spin_factor * short_range_exchange;
+  spec.exchange.coefficient = spin_factor * exact_exchange;
   return spec;
+}
+
+FockBuildSpec make_rsh_primary_fock_spec(FockSpin spin, double short_range_exchange) {
+  return make_global_hybrid_fock_spec(spin, short_range_exchange);
 }
 
 FockBuildSpec make_rsh_correction_fock_spec(FockSpin spin, double short_range_exchange,
@@ -111,6 +115,15 @@ dft::XcIntegral evaluate_r2scan_xc_rks(const dft::AoBasis& basis, const dft::Mol
   if (exchange_scale != 1.0 || correlation_scale != 1.0)
     throw std::invalid_argument("scaled r2SCAN RKS is not qualified");
   return dft::integrate_r2scan_rks(basis, grid, density, tile, source);
+}
+
+dft::XcIntegral evaluate_b3lyp_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                                      const Matrix& density, dft::XcDensitySource source,
+                                      std::size_t tile, double exchange_scale,
+                                      double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled B3LYP RKS is not qualified");
+  return dft::integrate_b3lyp_rks(basis, grid, density, tile, source);
 }
 
 dft::XcIntegral evaluate_cam_b3lyp_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
@@ -449,6 +462,18 @@ ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis
                          const std::vector<double>* initial_density) {
   return run_rks(plan, nullptr, basis, grid, options, initial_density, evaluate_r2scan_xc_rks,
                  "R2SCAN");
+}
+
+ScfResult run_b3lyp_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                        const dft::MolecularGrid& grid, const ScfOptions& options,
+                        const std::vector<double>* initial_density) {
+  const auto expected = resolve_fock_build(
+      make_global_hybrid_fock_spec(FockSpin::Restricted, dft::generated::kB3lypExactExchange),
+      FockBackend::Cpu);
+  if (plan.strategy() != expected)
+    throw std::invalid_argument("B3LYP plan does not match the generated MethodIR composition");
+  return run_rks(plan, nullptr, basis, grid, options, initial_density, evaluate_b3lyp_xc_rks,
+                 "B3LYP");
 }
 
 ScfResult run_cam_b3lyp_rks(const PreparedFockPlan& primary,
