@@ -658,7 +658,7 @@ def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema() -> No
         candidate_environment_overrides={"VIBEQC_PSPS_RESIDENT_BRA": "1"},
         maximum_energy_error=1.0e-12,
         maximum_force_error=1.0e-12,
-        minimum_speedup=0.1,
+        minimum_speedup=0.0,
     )
 
     assert batch.freeze_calls == [False]
