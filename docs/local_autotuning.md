@@ -97,6 +97,23 @@ errors, noisy timings, and slower endpoints preserve the working configuration.
 Only complete accepted bundles are activated through an atomic index update.
 Unfinished staging directories are never read by runtime selection.
 
+DFT grid/XC schedule tuning reuses the same bundle and activation index. Its
+optional `dft_schedules` winners have a separate scientific workload identity
+(architecture, functional/ingredients and jet outputs, grid/screening model,
+FP64 precision, spin/observable, density route, and source identity) plus a
+schedule hash. Before a DFT winner can be stored, legality and measured resource
+bounds, an independent numerical reference, and at least five synchronized,
+interleaved, matched complete energy-plus-analytic-force endpoint samples must
+all pass. Schedule JSON alone is not acceptance evidence. A slower/noisy DFT
+candidate simply leaves no winner and keeps the unfused or current path usable.
+
+The prepared grid/XC layer currently exposes two real lowerings: supported
+LDA/PBE potential work can remain device-fused, while `host_unfused` keeps CUDA
+AO/features but downloads them for the generated CPU XC/Vxc contraction. The
+public CUDA KS/force endpoint is still native C++ and does not yet switch these
+prepared schedules, so fixed-density E/V measurements cannot activate a DFT
+schedule for complete SCF calculations.
+
 ## Reuse and diagnostics
 
 Profiles live under `$XDG_CACHE_HOME/vibeqc/profiles`, defaulting to
@@ -127,7 +144,8 @@ print(calculator.profile_diagnostics)
 ```
 
 Diagnostics report `official`, `local`, or `portable`, the selected identity,
-tuned consumers, and incompatible-cache rejection reasons. `vibeqc profile
+tuned consumers, optional validated DFT schedule winners, and incompatible-cache
+rejection reasons. `vibeqc profile
 diagnose` probes the allocated GPU and prints the same selection. Static
 management commands require no GPU:
 

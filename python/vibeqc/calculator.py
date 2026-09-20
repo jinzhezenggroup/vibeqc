@@ -729,6 +729,7 @@ class Calculator:
                     "source": "cpu",
                     "identity": None,
                     "kernels": [],
+                    "dft_schedules": [],
                     "rejected": [],
                 },
             )
