@@ -8,6 +8,7 @@
 
 namespace {
 
+using vibeqc::scf::solver::run_bounded_iterations;
 using vibeqc::scf::solver::run_self_consistent;
 using vibeqc::scf::solver::SelfConsistentPolicy;
 using vibeqc::scf::solver::SelfConsistentProgress;
@@ -22,6 +23,36 @@ struct ScalarEvaluation {
   double state_rms{};
   double residual_rms{};
 };
+
+void verify_bounded_iteration_control() {
+  unsigned calls = 0;
+  const auto stopped = run_bounded_iterations(8, [&](unsigned iteration) {
+    ++calls;
+    require(iteration == calls, "bounded iteration numbering changed");
+    return iteration < 3;
+  });
+  require(stopped.completed_iterations == 3, "bounded early-stop count changed");
+  require(stopped.stopped_by_callback, "bounded callback stop was not reported");
+  require(calls == 3, "bounded driver executed after stop");
+
+  calls = 0;
+  const auto exhausted = run_bounded_iterations(2, [&](unsigned) {
+    ++calls;
+    return true;
+  });
+  require(exhausted.completed_iterations == 2, "bounded maximum was not enforced");
+  require(!exhausted.stopped_by_callback, "bounded exhaustion was marked callback-stopped");
+  require(calls == 2, "bounded driver call count changed");
+
+  calls = 0;
+  const auto empty = run_bounded_iterations(0, [&](unsigned) {
+    ++calls;
+    return true;
+  });
+  require(empty.completed_iterations == 0, "zero iteration budget changed");
+  require(!empty.stopped_by_callback, "zero iteration budget was marked callback-stopped");
+  require(calls == 0, "zero iteration budget invoked the callback");
+}
 
 void verify_basic_convergence() {
   const SelfConsistentPolicy policy{8, 1.0e-12, 1.0e-12, 1.0e-12, false};
@@ -115,6 +146,7 @@ void verify_terminal_accept_can_keep_current_state() {
 
 int main() {
   try {
+    verify_bounded_iteration_control();
     verify_basic_convergence();
     verify_residual_gate();
     verify_nonconverged_state_retention();
