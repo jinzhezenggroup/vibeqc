@@ -27,8 +27,14 @@ jobs:
           set -euo pipefail
 
           current_files="$(mktemp)"
-          gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" \
-            --jq '.[].filename' | sort -u > "$current_files"
+          if ! gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" \
+            --jq '.[].filename' | sort -u > "$current_files"; then
+            rm -f "$current_files"
+            echo "::warning title=PR overlap unavailable::Unable to list current PR files; overlap status is unknown."
+            echo "## PR overlap report" >> "$GITHUB_STEP_SUMMARY"
+            echo "Current-PR file enumeration failed. Overlap status is unknown; no clean result is claimed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           open_numbers="$(mktemp)"
           if ! gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" \
@@ -57,8 +63,13 @@ jobs:
 
           for other in "${open_prs[@]}"; do
             other_files="$(mktemp)"
-            gh api --paginate "repos/$REPO/pulls/$other/files?per_page=100" \
-              --jq '.[].filename' | sort -u > "$other_files"
+            if ! gh api --paginate "repos/$REPO/pulls/$other/files?per_page=100" \
+              --jq '.[].filename' | sort -u > "$other_files"; then
+              rm -f "$other_files" "$current_files"
+              echo "::warning title=PR overlap incomplete::Unable to list files for PR #$other; overlap status is incomplete."
+              echo "**Incomplete:** file enumeration failed for PR #$other. Any overlaps above are partial; no clean result is claimed." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
 
             shared="$(comm -12 "$current_files" "$other_files" || true)"
             rm -f "$other_files"
