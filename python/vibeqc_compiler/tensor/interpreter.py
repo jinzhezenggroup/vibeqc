@@ -161,10 +161,28 @@ def _evaluate(
             target[segment] = np.sum(source[start:stop], axis=0, dtype=node.spec.dtype)
         return result
     if op == "reduce":
-        return np.asarray(
-            np.sum(value, axis=a["axes"], dtype=accumulation_dtype),
-            dtype=node.spec.dtype,
-        )
+        if accumulation_dtype == node.spec.dtype:
+            return np.sum(value, axis=a["axes"], dtype=node.spec.dtype)
+        # Match the generated CUDA reduction exactly: iterate reduced
+        # coordinates in C order and widen each FP32 term before one serial
+        # FP64 round-to-nearest addition. NumPy's pairwise sum is intentionally
+        # avoided here because it is a different numerical program.
+        axes = tuple(a["axes"])
+        kept = tuple(axis for axis in range(value.ndim) if axis not in axes)
+        output_shape = tuple(value.shape[axis] for axis in kept)
+        reduction_shape = tuple(value.shape[axis] for axis in axes)
+        result = np.empty(output_shape, dtype=node.spec.dtype)
+        accumulate = np.dtype(accumulation_dtype).type
+        compute = np.dtype(node.spec.dtype).type
+        for output_index in np.ndindex(output_shape):
+            coordinates = dict(zip(kept, output_index, strict=True))
+            total = accumulate(0.0)
+            for reduction_index in np.ndindex(reduction_shape):
+                coordinates.update(zip(axes, reduction_index, strict=True))
+                index = tuple(coordinates[axis] for axis in range(value.ndim))
+                total = accumulate(total + accumulate(compute(value[index])))
+            result[output_index] = compute(total)
+        return result
     if op == "broadcast":
         # The map need not preserve input order: transpose before inserting
         # singleton storage axes so each population lands on its declared slot.

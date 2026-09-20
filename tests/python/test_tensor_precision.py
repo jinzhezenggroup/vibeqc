@@ -260,6 +260,57 @@ def test_qualified_fp32_reduce_uses_fp64_accumulation_reference_oracle() -> None
     assert describe_precision(replayed).identity == describe_precision(lowered).identity
     assert execute(replayed, {"x": values}).outputs["out"] == expected
 
+    # NumPy may pairwise-reduce FP64 values, while the generated CUDA contract
+    # is a left-to-right serial accumulator. Lock the interpreter to the latter.
+    serial_order_probe = np.array(
+        [
+            3.3881317890172014e-21,
+            -5.764607523034235e17,
+            4.951760157141521e27,
+            1.0842021724855044e-19,
+            -68719476736.0,
+            1.4411518807585587e17,
+            -4.930380657631324e-32,
+            -64.0,
+            -7.555786372591432e22,
+            -7.105427357601002e-15,
+            -2.524354896707238e-29,
+            -0.015625,
+            -140737488355328.0,
+            1.2676506002282294e30,
+            4.0,
+            9007199254740992.0,
+        ],
+        dtype=np.float32,
+    )
+    serial = np.float64(0.0)
+    for value in serial_order_probe:
+        serial = np.float64(serial + np.float64(value))
+    assert serial != np.sum(serial_order_probe, dtype=np.float64)
+    probe_space = IndexSpace(
+        "mixed_serial_order_probe", "batch", len(serial_order_probe)
+    )
+    probe = input_tensor(
+        "probe",
+        TensorSpec((Index("i", probe_space),), dtype="float64", role="parameter"),
+    )
+    probe_reduce = reduce_sum(probe, (0,))
+    probe_program = Program({"out": probe_reduce})
+    probe_lowered = lower_precision(
+        probe_program,
+        {
+            probe_program.debug_names[probe_reduce]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="unit/serial-order-probe",
+            )
+        },
+    )
+    assert execute(
+        probe_lowered, {"probe": serial_order_probe.astype(np.float64)}
+    ).outputs["out"] == np.float32(serial)
+
     schedule = describe_precision(lowered)
     reduction = next(value for value in schedule.values if value.op == "reduce")
     assert schedule.to_payload()["schema"] == "vibeqc.tensor.precision-schedule.v3"
