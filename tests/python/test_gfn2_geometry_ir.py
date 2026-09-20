@@ -1,5 +1,7 @@
 """GFN2 CN/repulsion compiler vertical slice qualification (#504)."""
 
+from typing import Any
+
 import numpy as np
 import pytest
 from vibeqc_compiler.geometry import (
@@ -196,7 +198,7 @@ REP_COORDINATES = np.array(
 REP_EXPECTED_ENERGY = 0.49222837261241
 
 
-def _compiled(elements, coordinates):
+def _compiled(elements: Any, coordinates: Any) -> Any:
     geometry = gfn2_geometry(elements)
     topology = build_gfn2_pair_topology(geometry, coordinates)
     return build_gfn2_short_range_program(
@@ -205,7 +207,7 @@ def _compiled(elements, coordinates):
     )
 
 
-def test_parameter_subset_covers_complete_gfn2_element_domain():
+def test_parameter_subset_covers_complete_gfn2_element_domain() -> None:
     assert len({gfn2_element_parameters(z).atomic_number for z in range(1, 87)}) == 86
     for z in range(1, 87):
         item = gfn2_element_parameters(z)
@@ -216,7 +218,7 @@ def test_parameter_subset_covers_complete_gfn2_element_domain():
         gfn2_element_parameters(87)
 
 
-def test_gfn2_coordination_matches_pinned_mctc_xtbloom_oracle():
+def test_gfn2_coordination_matches_pinned_mctc_xtbloom_oracle() -> None:
     compiled = _compiled(
         CN_ATOMIC_NUMBERS,
         CN_COORDINATES,
@@ -235,7 +237,7 @@ def test_gfn2_coordination_matches_pinned_mctc_xtbloom_oracle():
     assert compiled.parameter_identity == GFN2_SHORT_RANGE_PARAMETER_IDENTITY
 
 
-def test_gfn2_repulsion_matches_pinned_xtb_oracle():
+def test_gfn2_repulsion_matches_pinned_xtb_oracle() -> None:
     compiled = _compiled(
         REP_ATOMIC_NUMBERS,
         REP_COORDINATES,
@@ -255,7 +257,7 @@ def test_gfn2_repulsion_matches_pinned_xtb_oracle():
     )
 
 
-def test_generated_repulsion_vjp_matches_finite_difference_and_translation():
+def test_generated_repulsion_vjp_matches_finite_difference_and_translation() -> None:
     compiled = _compiled(
         REP_ATOMIC_NUMBERS,
         REP_COORDINATES,
@@ -310,7 +312,7 @@ def test_generated_repulsion_vjp_matches_finite_difference_and_translation():
         )
 
 
-def test_generated_coordination_vjp_matches_weighted_finite_difference():
+def test_generated_coordination_vjp_matches_weighted_finite_difference() -> None:
     compiled = _compiled(
         CN_ATOMIC_NUMBERS,
         CN_COORDINATES,
@@ -361,7 +363,7 @@ def test_generated_coordination_vjp_matches_weighted_finite_difference():
         )
 
 
-def test_changed_geometry_requires_rebuilt_25_bohr_topology():
+def test_changed_geometry_requires_rebuilt_25_bohr_topology() -> None:
     geometry = gfn2_geometry((1, 1))
     near = np.array([[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]])
     far = np.array(
@@ -394,7 +396,7 @@ def test_changed_geometry_requires_rebuilt_25_bohr_topology():
         compiled.validate_coordinates(far)
 
 
-def test_gfn2_primal_and_generated_vjps_lower_through_shared_cuda_tensorir():
+def test_gfn2_primal_and_generated_vjps_lower_through_shared_cuda_tensorir() -> None:
     from vibeqc_compiler.common.cuda_target import (
         CUDA_TARGETS,
     )
