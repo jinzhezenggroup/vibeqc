@@ -375,7 +375,9 @@ def static_data_slices(
         values = _index_table_values(node)
         if values:
             size = len(values) * 8
-            result.append((step_index, "index", tables[step_index], payload_offset, size))
+            result.append(
+                (step_index, "index", tables[step_index], payload_offset, size)
+            )
             payload_offset += size
     return tuple(result)
 

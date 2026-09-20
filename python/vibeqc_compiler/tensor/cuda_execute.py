@@ -119,7 +119,9 @@ def tensor_static_data(plan: TensorPlan) -> bytes:
     """Serialize immutable constants/maps without device-alignment padding."""
     parts = []
     payload_bytes = 0
-    for step_index, kind, _arena, payload_offset, size_bytes in static_data_slices(plan):
+    for step_index, kind, _arena, payload_offset, size_bytes in static_data_slices(
+        plan
+    ):
         node = plan.steps[step_index].node
         if kind == "constant":
             scalar = scalar_type(node.spec.dtype)
@@ -252,7 +254,9 @@ def compile_cuda(
         or static_path.stat().st_size != metadata.get("static_data_bytes")
         or file_hash(static_path) != metadata.get("static_data_sha256")
     ):
-        raise ValueError("tensor artifact identity, binary, or static-data hash mismatch")
+        raise ValueError(
+            "tensor artifact identity, binary, or static-data hash mismatch"
+        )
     return CudaArtifact(library, metadata)
 
 
