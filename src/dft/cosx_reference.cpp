@@ -124,4 +124,80 @@ CosxReferenceResult build_cosx_reference(const core::System& system,
   return result;
 }
 
+CosxPointDerivativeResult build_cosx_point_derivative_reference(
+    const core::System& system, std::span<const double> points_xyz, std::span<const double> weights,
+    std::span<const double> density, CosxDensityConvention convention, CosxReferenceSpec spec) {
+  CosxPointDerivativeResult result;
+  result.value = build_cosx_reference(system, points_xyz, weights, density, convention, spec);
+  const std::size_t nbf = result.value.nbf;
+  const std::size_t npoint = result.value.npoint;
+  const std::size_t matrix_size = checked_product(nbf, nbf);
+
+  const AoBasis basis(system);
+  const std::size_t ao_jet_elements = checked_product(checked_product(4, npoint), nbf);
+  std::vector<double> ao_jets(ao_jet_elements);
+  basis.evaluate(points_xyz.data(), npoint, 1, 0, nbf, ao_jets.data(), ao_jets.size());
+
+  const auto esp = integrals::build_esp_integrals_with_probe_derivatives(system, points_xyz);
+  if (esp.nbf != nbf || esp.npoint != npoint ||
+      esp.values.size() != checked_product(npoint, matrix_size) ||
+      esp.probe_derivative.size() != checked_product(checked_product(3, npoint), matrix_size)) {
+    throw std::logic_error("COSX ESP derivative reference dimensions are inconsistent");
+  }
+
+  result.point_gradient.resize(checked_product(3, npoint));
+  std::vector<double> projected(nbf), potential(nbf), projected_derivative(nbf),
+      potential_derivative(nbf);
+  const double energy_factor = convention == CosxDensityConvention::rhf_spin_summed ? -0.25 : -0.5;
+  const std::size_t ao_jet_stride = checked_product(npoint, nbf);
+
+  for (std::size_t point = 0; point < npoint; ++point) {
+    const double* phi = ao_jets.data() + point * nbf;
+    const double* esp_matrix = esp.values.data() + point * matrix_size;
+
+    std::fill(projected.begin(), projected.end(), 0.0);
+    for (std::size_t k = 0; k < nbf; ++k)
+      for (std::size_t l = 0; l < nbf; ++l) projected[l] += phi[k] * density[k * nbf + l];
+
+    for (std::size_t j = 0; j < nbf; ++j) {
+      double value = 0.0;
+      for (std::size_t l = 0; l < nbf; ++l) value += esp_matrix[j * nbf + l] * projected[l];
+      potential[j] = value;
+    }
+
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      const double* phi_derivative = ao_jets.data() + (axis + 1) * ao_jet_stride + point * nbf;
+      const double* esp_derivative = esp.probe_derivative.data() + (3 * point + axis) * matrix_size;
+
+      std::fill(projected_derivative.begin(), projected_derivative.end(), 0.0);
+      for (std::size_t k = 0; k < nbf; ++k)
+        for (std::size_t l = 0; l < nbf; ++l)
+          projected_derivative[l] += phi_derivative[k] * density[k * nbf + l];
+
+      for (std::size_t j = 0; j < nbf; ++j) {
+        double value = 0.0;
+        for (std::size_t l = 0; l < nbf; ++l) {
+          value += esp_derivative[j * nbf + l] * projected[l] +
+                   esp_matrix[j * nbf + l] * projected_derivative[l];
+        }
+        potential_derivative[j] = value;
+      }
+
+      double contraction = 0.0;
+      for (std::size_t i = 0; i < nbf; ++i) {
+        for (std::size_t j = 0; j < nbf; ++j) {
+          const double raw_ij = phi_derivative[i] * potential[j] + phi[i] * potential_derivative[j];
+          const double raw_ji = phi_derivative[j] * potential[i] + phi[j] * potential_derivative[i];
+          contraction += density[i * nbf + j] * 0.5 * (raw_ij + raw_ji);
+        }
+      }
+      const double derivative = energy_factor * weights[point] * contraction;
+      if (!std::isfinite(derivative))
+        throw std::runtime_error("nonfinite COSX explicit-point derivative");
+      result.point_gradient[3 * point + axis] = derivative;
+    }
+  }
+  return result;
+}
+
 }  // namespace vibeqc::dft

@@ -53,6 +53,22 @@ struct EspIntegralData {
   std::vector<double> values;
 };
 
+/** AO ESP matrices and analytic derivatives with respect to each probe point.
+ *
+ * probe_derivative is point-major, then Cartesian-axis, then row-major AO
+ * matrix:
+ *   probe_derivative[((point * 3 + axis) * nbf + mu) * nbf + nu].
+ *
+ * Only the explicit probe coordinate moves. Gaussian centers, contractions,
+ * and all other probes are held fixed.
+ */
+struct EspProbeDerivativeData {
+  std::size_t nbf{};
+  std::size_t npoint{};
+  std::vector<double> values;
+  std::vector<double> probe_derivative;
+};
+
 /**
  * Evaluate normalized, contracted Cartesian or real-spherical integrals.
  *
@@ -67,6 +83,10 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
 
 /** Evaluate analytic AO ESP matrices on explicit probe points. */
 EspIntegralData build_esp_integrals(const core::System& system, std::span<const double> points_xyz);
+
+/** Evaluate AO ESP matrices and analytic explicit-probe coordinate derivatives. */
+EspProbeDerivativeData build_esp_integrals_with_probe_derivatives(
+    const core::System& system, std::span<const double> points_xyz);
 
 /** Contract one ordered public-AO shell quartet with arbitrary weights.
  *

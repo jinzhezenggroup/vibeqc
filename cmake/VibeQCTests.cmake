@@ -170,12 +170,18 @@ macro(vibeqc_add_native_tests)
     add_executable(vibeqc_cosx_cuda_tests
       tests/native/test_cosx_cuda.cu
       src/dft/cuda_cosx.cu
+      src/dft/cuda_cosx_derivative.cu
       "${VIBEQC_ONE_ELECTRON_HEADER}"
+      "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
+      "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}"
+      "${VIBEQC_DF_VALUE_CPU_HEADER}"
+      "${VIBEQC_DF_DERIVATIVE_CPU_HEADER}"
       "${VIBEQC_GRID_SOURCE}"
       src/dft/ao_grid.cpp
       src/dft/grid.cpp
       src/dft/cosx_reference.cpp
       src/integrals/s_integrals.cpp
+      src/integrals/generated_df_cpu.cpp
       src/integrals/ecp.cpp
       src/molecule/basis.cpp)
     add_dependencies(vibeqc_cosx_cuda_tests vibeqc_ecp_codegen)

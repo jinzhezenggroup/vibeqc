@@ -44,6 +44,17 @@ struct CosxReferenceResult {
   double exchange_energy{};
 };
 
+/** Explicit quadrature-point partial derivative of the discrete COSX energy.
+ *
+ * point_gradient is point-major xyz. Density, quadrature weights, Gaussian
+ * centers and basis data are held fixed. This is a derivative primitive for
+ * later force assembly, not a complete molecular nuclear gradient.
+ */
+struct CosxPointDerivativeResult {
+  CosxReferenceResult value;
+  std::vector<double> point_gradient;
+};
+
 /** Small CPU oracle for the discrete COSX exchange model.
  *
  * points_xyz contains explicit Bohr xyz triples and weights contains the
@@ -52,6 +63,11 @@ struct CosxReferenceResult {
  * AO values and ESP matrices; production COSX must use bounded tiles instead.
  */
 CosxReferenceResult build_cosx_reference(
+    const core::System& system, std::span<const double> points_xyz, std::span<const double> weights,
+    std::span<const double> density, CosxDensityConvention convention, CosxReferenceSpec spec = {});
+
+/** Differentiate the discrete COSX energy with respect to explicit point coordinates only. */
+CosxPointDerivativeResult build_cosx_point_derivative_reference(
     const core::System& system, std::span<const double> points_xyz, std::span<const double> weights,
     std::span<const double> density, CosxDensityConvention convention, CosxReferenceSpec spec = {});
 

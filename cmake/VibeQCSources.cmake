@@ -50,6 +50,7 @@ function(vibeqc_add_dft_sources target)
       src/dft/cosx_fock_provider.cpp
       src/dft/cosx_scf.cpp
       src/dft/cuda_cosx.cu
+      src/dft/cuda_cosx_derivative.cu
       src/dft/cuda_xc.cpp
       src/dft/cuda_ks.cpp
       src/dft/cuda_ks_kernels.cu

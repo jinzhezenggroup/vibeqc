@@ -1030,8 +1030,11 @@ void cross_overlap(const core::System& target, const core::System& source,
   }
 }
 
-EspIntegralData build_esp_integrals(const core::System& system,
-                                    std::span<const double> points_xyz) {
+namespace {
+
+EspProbeDerivativeData build_esp_integrals_impl(const core::System& system,
+                                                std::span<const double> points_xyz,
+                                                bool include_probe_derivatives) {
   if (points_xyz.size() % 3 != 0) {
     throw std::invalid_argument("ESP probe coordinates must be xyz triples");
   }
@@ -1049,43 +1052,62 @@ EspIntegralData build_esp_integrals(const core::System& system,
   const std::size_t npoint = points_xyz.size() / 3;
   const std::size_t cartesian_matrix_size = checked_product(cartesian_nbf, cartesian_nbf);
   const std::size_t matrix_size = checked_product(nbf, nbf);
+  const std::size_t derivative_count = include_probe_derivatives ? 3 : 0;
 
   std::vector<Vec3> centers;
   centers.reserve(system.atoms.size());
   for (const auto& atom : system.atoms) {
-    centers.push_back(
-        {Jet(atom.position[0], 0), Jet(atom.position[1], 0), Jet(atom.position[2], 0)});
+    centers.push_back({Jet(atom.position[0], derivative_count),
+                       Jet(atom.position[1], derivative_count),
+                       Jet(atom.position[2], derivative_count)});
   }
 
-  EspIntegralData result;
+  EspProbeDerivativeData result;
   result.nbf = nbf;
   result.npoint = npoint;
   result.values.resize(checked_product(npoint, matrix_size));
+  if (include_probe_derivatives)
+    result.probe_derivative.resize(checked_product(checked_product(3, npoint), matrix_size));
+
   std::vector<double> cartesian(cartesian_matrix_size);
+  std::vector<double> cartesian_derivative;
+  if (include_probe_derivatives) cartesian_derivative.resize(3 * cartesian_matrix_size);
 
   for (std::size_t point = 0; point < npoint; ++point) {
-    const Vec3 probe{Jet(points_xyz[3 * point], 0), Jet(points_xyz[3 * point + 1], 0),
-                     Jet(points_xyz[3 * point + 2], 0)};
+    Vec3 probe;
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      const double coordinate = points_xyz[3 * point + axis];
+      probe[axis] =
+          include_probe_derivatives ? Jet::variable(coordinate, 3, axis) : Jet(coordinate, 0);
+    }
+
     for (std::size_t i = 0; i < cartesian_nbf; ++i) {
       const auto& first = cartesian_aos[i];
       const auto& first_center = centers[first.shell->atom_index];
       for (std::size_t j = 0; j <= i; ++j) {
         const auto& second = cartesian_aos[j];
         const auto& second_center = centers[second.shell->atom_index];
-        double value = 0.0;
+        Jet value(0.0, derivative_count);
         const double angular_normalization =
             first.component_normalization * second.component_normalization;
         for (const auto& p : first.shell->primitives) {
           for (const auto& q : second.shell->primitives) {
-            value += angular_normalization * p.coefficient * q.coefficient *
-                     primitive_coulomb_potential_cartesian(p.exponent, first_center, first.angular,
-                                                           q.exponent, second_center,
-                                                           second.angular, probe)
-                         .value;
+            value = value + angular_normalization * p.coefficient * q.coefficient *
+                                primitive_coulomb_potential_cartesian(
+                                    p.exponent, first_center, first.angular, q.exponent,
+                                    second_center, second.angular, probe);
           }
         }
-        cartesian[matrix_index(i, j, cartesian_nbf)] = value;
-        cartesian[matrix_index(j, i, cartesian_nbf)] = value;
+        const auto ij = matrix_index(i, j, cartesian_nbf);
+        const auto ji = matrix_index(j, i, cartesian_nbf);
+        cartesian[ij] = cartesian[ji] = value.value;
+        if (include_probe_derivatives) {
+          for (unsigned axis = 0; axis < 3; ++axis) {
+            const auto offset = axis * cartesian_matrix_size;
+            cartesian_derivative[offset + ij] = value.derivative[axis];
+            cartesian_derivative[offset + ji] = value.derivative[axis];
+          }
+        }
       }
     }
 
@@ -1096,8 +1118,35 @@ EspIntegralData build_esp_integrals(const core::System& system,
       source = transformed.data();
     }
     std::copy(source, source + matrix_size, result.values.begin() + point * matrix_size);
+
+    if (include_probe_derivatives) {
+      for (unsigned axis = 0; axis < 3; ++axis) {
+        const double* derivative_source =
+            cartesian_derivative.data() + axis * cartesian_matrix_size;
+        std::vector<double> transformed_derivative;
+        if (nbf != cartesian_nbf) {
+          transformed_derivative = transform_matrix(derivative_source, cartesian_nbf, public_aos);
+          derivative_source = transformed_derivative.data();
+        }
+        std::copy(derivative_source, derivative_source + matrix_size,
+                  result.probe_derivative.begin() + (3 * point + axis) * matrix_size);
+      }
+    }
   }
   return result;
+}
+
+}  // namespace
+
+EspIntegralData build_esp_integrals(const core::System& system,
+                                    std::span<const double> points_xyz) {
+  auto result = build_esp_integrals_impl(system, points_xyz, false);
+  return {result.nbf, result.npoint, std::move(result.values)};
+}
+
+EspProbeDerivativeData build_esp_integrals_with_probe_derivatives(
+    const core::System& system, std::span<const double> points_xyz) {
+  return build_esp_integrals_impl(system, points_xyz, true);
 }
 
 IntegralData transform_integrals(const IntegralData& cartesian, const core::System& system) {
