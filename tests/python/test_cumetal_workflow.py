@@ -79,3 +79,16 @@ def test_real_endpoint_selects_typed_ieee64_backend(step_name: str) -> None:
     step = step.split("\n      - name:", 1)[0]
     assert "CUMETAL_PTX_BACKEND: cumetal-ir" in step
     assert "CUMETAL_FP64_MODE: ieee64" in step
+
+
+def test_real_endpoint_benchmark_environment_does_not_build_native_wheel() -> None:
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    job = workflow.split("CuMetal performance (CodSpeed / Apple GPU)", 1)[1]
+    prepare = job.split("- name: Prepare benchmark environment", 1)[1]
+    prepare = prepare.split("\n      - name:", 1)[0]
+    assert "--editable ." not in prepare
+    assert (
+        "uv pip install --python .venv/bin/python numpy pytest-codspeed==5.0.3"
+        in prepare
+    )
+    assert "PYTHONPATH: ${{ github.workspace }}/python:${{ github.workspace }}" in job

@@ -258,6 +258,7 @@ jobs:
       CUMETAL_CCACHE_DIR: /tmp/cumetal-ccache
       VIBEQC_CCACHE_DIR: /tmp/vibeqc-cumetal-benchmark-ccache
       VIBEQC_BENCH_BUILD: ${{ github.workspace }}/build-cumetal-benchmark
+      PYTHONPATH: ${{ github.workspace }}/python:${{ github.workspace }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -279,8 +280,7 @@ jobs:
       - name: Prepare benchmark environment
         run: |
           uv venv --python 3.11
-          uv pip install --python .venv/bin/python --editable .
-          uv pip install --python .venv/bin/python pytest-codspeed==5.0.3
+          uv pip install --python .venv/bin/python numpy pytest-codspeed==5.0.3
           brew install llvm z3 ninja ccache
 
       - name: Cache CuMetal toolchain
