@@ -130,10 +130,12 @@ scientific branch. The stationary plan adds a same-spin
 CPU hybrid snapshots retain those coefficients so the derivative consumer
 cannot reinterpret PBE0 as pure PBE.
 
-This does **not** promote public Calculator DFT forces or CUDA hybrid execution.
+This does **not** promote public Calculator PBE0 forces or CUDA hybrid execution.
 Those remain fail-closed under #163/#165 until their complete endpoint gates are
-satisfied. B3LYP is likewise not synthesized from PBE: audited B88/LYP/VWN
-primitives and an explicitly versioned manifest are still required.
+satisfied; existing qualified semilocal force paths are unchanged. B3LYP is not
+synthesized from PBE: its audited MethodIR and scalar B88/LYP/VWN-RPA inventory
+already exist, but this slice does not supply their native KS SCF/geometry
+lowering or independent end-to-end qualification.
 
 ## Densities, operators, and coefficients
 

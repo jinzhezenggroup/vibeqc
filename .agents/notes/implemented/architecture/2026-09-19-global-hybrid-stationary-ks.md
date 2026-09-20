@@ -130,3 +130,22 @@ audited scalar-XC inventory.
 - `tests/python/test_stationary_gradient_plan.py`
 - `tests/python/test_dft_complete_cpu.py`
 - `tests/native/test_dft_api.cpp`
+
+
+## Integration correction (2026-09-20 final review)
+
+The mathematical ownership decision above is unchanged. Its historical statements
+about the missing B3LYP scalar inventory are superseded: audited B3LYP MethodIR
+and B88/LYP/VWN-RPA scalar components now exist. Remaining native KS SCF/geometry
+lowering and complete endpoint qualification are separate from this PBE0 slice.
+Likewise, the public-force restriction here is specific to the unpromoted hybrid
+endpoint, not a withdrawal of subsequently qualified semilocal force paths.
+
+Resolved KS options must retain their MethodIR when passed from Calculator to
+resource planning. Rebinding only the descriptive PBE selector loses a custom
+hybrid composition. Re-resolution now preserves and revalidates the resolved
+graph and canonical functional identity. Named-selector idempotence and actual
+budgeted PBE50 RKS/UKS SCF are regression-tested.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

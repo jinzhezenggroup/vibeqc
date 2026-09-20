@@ -39,6 +39,27 @@ snapshot family IDs, v1/v2 wire equivalence, scaled-PBE component linearity, and
 CPKS rejection of PBE0. Existing native DFT/UKS/final-state tests and Python
 stationary-gradient/options regressions cover the shared numerical paths.
 
+## Integration correction (2026-09-20 final review)
+
+The preceding allocation described the earlier merge. Current master also
+publishes RCCSD as ID 12, so final integration preserves r2SCAN IDs 10/11 and
+RCCSD ID 12, and appends PBE0 RKS/UKS as IDs **13/14**. Generated registration
+artifacts and provider-set tests follow that manifest; no published ID is reused.
+
+The energy-only r2SCAN statement above is also superseded by the subsequently
+qualified stationary-gradient paths. Preserve those paths and snapshot support.
+The native point bridge exposes the AO kinetic coefficient `vtau/2` under
+`kinetic`, not a raw `tau` derivative. Wire compatibility tests use that contract.
+
+The response lease is now shared by RKS and UKS. Its existing selector gate owns
+spin admission; the added unit-X/C, zero-K gate must apply to both spins rather
+than accidentally restricting the shared lease to RKS. Pure LDA/PBE RKS and UKS
+remain valid, while PBE0, r2SCAN, and custom PBE50 response remain fail-closed.
+
+Final CPU evidence: 44/44 native tests and 233 Python tests pass, including
+independent PySCF and reconverged finite-difference checks. Four explicitly
+GPU-gated tests are skipped in the CPU allocation, not scientific oracle tests.
+
 Refs #618, #620, #649, #165, #164.
 
 Agent: ChatGPT
