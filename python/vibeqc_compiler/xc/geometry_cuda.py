@@ -17,12 +17,16 @@ def _functional_code(functional: typing.Any, pbe: typing.Any) -> int:
     """Resolve the stationary semilocal selector without weakening old callers."""
     if functional is None:
         if type(pbe) is not bool:
-            raise TypeError("geometry lowering requires functional=0/1/2 or a boolean PBE flag")
+            raise TypeError(
+                "geometry lowering requires functional=0/1/2 or a boolean PBE flag"
+            )
         return int(pbe)
     if pbe is not None:
         raise ValueError("specify functional or pbe, not both")
     if type(functional) is not int or functional not in (0, 1, 2):
-        raise ValueError("geometry lowering functional must be 0 (LDA), 1 (PBE), or 2 (r2SCAN)")
+        raise ValueError(
+            "geometry lowering functional must be 0 (LDA), 1 (PBE), or 2 (r2SCAN)"
+        )
     return functional
 
 
@@ -53,7 +57,10 @@ def _emit_stationary_point(functional: int) -> str:
 
     spec = resolve_functional("R2SCAN", spin="polarized")
     graph, energy, feature_variables = energy_expression(spec, production=True)
-    roots = (energy, *(graph.differentiate(energy, value) for value in feature_variables))
+    roots = (
+        energy,
+        *(graph.differentiate(energy, value) for value in feature_variables),
+    )
     graph, roots = graph.apply_algebra_form(roots, AlgebraForm.FACTORED_NARY)
     graph, roots = graph.lower_small_integer_powers(roots)
     variables = {

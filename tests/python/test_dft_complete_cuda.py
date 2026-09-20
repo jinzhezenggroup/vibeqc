@@ -261,7 +261,9 @@ def test_complete_cuda_r2scan_independent_analytic(
     from vibeqc._dft_gradient import StationaryKsState
     from vibeqc_compiler.dft import NativeAO
 
-    pytest.importorskip("pyscf", reason="independent r2SCAN analytic reference requires PySCF")
+    pytest.importorskip(
+        "pyscf", reason="independent r2SCAN analytic reference requires PySCF"
+    )
     calc = _calculator(method)
     with (
         calc.prepare_batch(

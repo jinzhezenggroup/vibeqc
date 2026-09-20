@@ -31,11 +31,10 @@ def emit_stationary_cuda(
     """
     return (
         primitive_source
-        + emit_geometry_cuda(
-            functional=functional, pbe=pbe, iterations=iterations
-        )
+        + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
         + '#include "dft/stationary_gradient_cuda.cuh"\n'
     )
+
 
 def compile_stationary_cuda(
     primitive_source: typing.Any,

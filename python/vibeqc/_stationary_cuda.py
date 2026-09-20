@@ -266,7 +266,9 @@ class _CudaSources:
         raw = _checked(raw, (view.npoint,))
         if functional is None:
             if type(pbe) is not bool:
-                raise TypeError("stationary geometry requires functional=0/1/2 or pbe bool")
+                raise TypeError(
+                    "stationary geometry requires functional=0/1/2 or pbe bool"
+                )
             functional = int(pbe)
         elif pbe is not None:
             raise ValueError("specify functional or pbe, not both")
@@ -422,7 +424,9 @@ def complete_rks_cuda_gradient_diagnostic(
         )
     functional = {"lda": 0, "gga": 1, "mgga": 2}[contract.family]
     if functional == 2 and ecp:
-        raise NotImplementedError("r2SCAN CUDA stationary gradients do not inherit ECP support")
+        raise NotImplementedError(
+            "r2SCAN CUDA stationary gradients do not inherit ECP support"
+        )
     needs_first = functional != 0
     functional_name = ("LDA_XC_PW", "PBE", "R2SCAN")[functional]
     device = int(state._source.metadata[12])
