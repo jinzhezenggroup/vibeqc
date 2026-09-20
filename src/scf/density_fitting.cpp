@@ -985,6 +985,58 @@ DensityFittingUhfGradient build_density_fitting_uhf_gradient(
   return result;
 }
 
+DensityFittingRhfGradient build_density_fitting_rhf_weighted_gradient(
+    const core::System& orbital_system, const core::System& auxiliary_system,
+    const integrals::DensityFittingIntegralData& integrals, const std::vector<double>& density,
+    double relative_threshold, JkCoefficients coefficients) {
+  if (integrals.ncoord != orbital_system.atoms.size() * 3 ||
+      integrals.nbf != molecule::ao_count(orbital_system) ||
+      integrals.naux != molecule::ao_count(auxiliary_system)) {
+    throw std::invalid_argument("DF weighted RHF gradient geometry dimensions are inconsistent");
+  }
+  const DensityFittingReverseWeights weights = density_fitting_reverse_weights(
+      integrals, {{&density, coefficients}}, relative_threshold);
+  DensityFittingRhfGradient result;
+  result.ncoord = integrals.ncoord;
+  result.derivative = integrals::contract_weighted_density_fitting_derivative(
+      orbital_system, auxiliary_system, weights.metric, weights.three_center);
+  result.forces.resize(result.derivative.size());
+  for (std::size_t coordinate = 0; coordinate < result.derivative.size(); ++coordinate)
+    result.forces[coordinate] = -result.derivative[coordinate];
+  return result;
+}
+
+DensityFittingUhfGradient build_density_fitting_uhf_weighted_gradient(
+    const core::System& orbital_system, const core::System& auxiliary_system,
+    const integrals::DensityFittingIntegralData& integrals,
+    const std::vector<double>& alpha_density, const std::vector<double>& beta_density,
+    double relative_threshold, JkCoefficients coefficients) {
+  if (integrals.ncoord != orbital_system.atoms.size() * 3 ||
+      integrals.nbf != molecule::ao_count(orbital_system) ||
+      integrals.naux != molecule::ao_count(auxiliary_system)) {
+    throw std::invalid_argument("DF weighted UHF gradient geometry dimensions are inconsistent");
+  }
+  validate_gradient_density(alpha_density, integrals.nbf,
+                            "DF UHF alpha weighted gradient density is inconsistent");
+  validate_gradient_density(beta_density, integrals.nbf,
+                            "DF UHF beta weighted gradient density is inconsistent");
+  std::vector<double> total_density(alpha_density.size());
+  for (std::size_t item = 0; item < total_density.size(); ++item)
+    total_density[item] = alpha_density[item] + beta_density[item];
+  const DensityFittingReverseWeights weights = density_fitting_reverse_weights(
+      integrals, {{&total_density, {coefficients.coulomb, 0.0}},
+                  {&alpha_density, {0.0, coefficients.exchange}},
+                  {&beta_density, {0.0, coefficients.exchange}}},
+      relative_threshold);
+  DensityFittingUhfGradient result;
+  result.ncoord = integrals.ncoord;
+  result.derivative = integrals::contract_weighted_density_fitting_derivative(
+      orbital_system, auxiliary_system, weights.metric, weights.three_center);
+  result.forces.resize(result.derivative.size());
+  for (std::size_t coordinate = 0; coordinate < result.derivative.size(); ++coordinate)
+    result.forces[coordinate] = -result.derivative[coordinate];
+  return result;
+}
 void validate_one_electron_force_data(
     const integrals::IntegralData& one_electron,
     const integrals::DensityFittingIntegralData& density_fitting) {
