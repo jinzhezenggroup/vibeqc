@@ -176,7 +176,9 @@ def test_ecp_dft_budgeted_ragged_replay_and_isolation(
         moved_atoms = [
             (symbol, tuple(position)) for (symbol, _), position in zip(atoms, xyz)
         ]
-        target, _, _, _ = reference(moved_mol, moved_atoms, method, calc.ks_options.grid)
+        target, _, _, _ = reference(
+            moved_mol, moved_atoms, method, calc.ks_options.grid
+        )
         assert abs(moved.items[0].energy - target) < 1e-8
         assert abs(moved.items[1].energy - cold.items[1].energy) < 2e-9
         bad = batch.execute(
