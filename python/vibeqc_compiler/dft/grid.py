@@ -255,7 +255,7 @@ class GridPolicy:
         return GridProfile(f"{family}-{'tight' if tight else 'standard'}-v2", *shape)
 
     @property
-    def provenance(self):
+    def provenance(self) -> dict[str, typing.Any]:
         return {
             "policy_version": 2,
             "radii_source": GRID_POLICY_RADII_SOURCE,
@@ -280,7 +280,7 @@ class GridPolicy:
         )
 
 
-def grid_policy_provenance(spec: GridSpec):
+def grid_policy_provenance(spec: GridSpec) -> dict[str, typing.Any]:
     """Canonical policy provenance participating in resolved-grid identity."""
     if spec.version == 1:
         return {"policy_version": 1, "contract": "reference-grid-v1"}

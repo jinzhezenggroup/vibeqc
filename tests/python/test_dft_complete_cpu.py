@@ -122,7 +122,7 @@ def independent_gradient(
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
-def test_production_grid_light_element_energy_and_force(method):
+def test_production_grid_light_element_energy_and_force(method: typing.Any) -> None:
     """Production v2 survives the independent full-response water oracle."""
     pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
     calc = production_calculator(method, max_iterations=200)
@@ -146,7 +146,7 @@ def test_production_grid_light_element_energy_and_force(method):
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=3e-10, rtol=0)
 
 
-def test_production_grid_transition_metal_energy_and_force():
+def test_production_grid_transition_metal_energy_and_force() -> None:
     """Pinned synthetic Fe/H basis exercises a real v2 transition-metal KS solve."""
     pytest.importorskip("pyscf", reason="independent analytic reference requires PySCF")
     from test_external_basis import imported

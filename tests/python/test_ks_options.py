@@ -65,7 +65,7 @@ def test_functional_composition_resolves_only_required_ingredients() -> None:
     assert pbe.to_payload()["scf_domain"].endswith("pbe-spin-c2-1e-18")
 
 
-def test_production_grid_policy_is_resolved_element_aware_and_versioned():
+def test_production_grid_policy_is_resolved_element_aware_and_versioned() -> None:
     lda = resolve_ks_options("lda-rks")
     pbe = resolve_ks_options("pbe-rks")
     tight = resolve_ks_options("pbe-rks", KsOptions(grid_accuracy="tight"))
@@ -125,7 +125,7 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned():
     assert native.element_radii[87] == 0.0
 
 
-def test_production_grid_radii_match_pinned_provenance_and_unknowns_fail_closed():
+def test_production_grid_radii_match_pinned_provenance_and_unknowns_fail_closed() -> None:
     root = Path(__file__).resolve().parents[2]
     source = json.loads((root / "external/xtbloom-d3/covalent_radii.json").read_text())
     policy = GridPolicy()
@@ -145,7 +145,7 @@ def test_production_grid_radii_match_pinned_provenance_and_unknowns_fail_closed(
         MolecularGrid([Atom(87, (0.0, 0.0, 0.0))], spec=spec)
 
 
-def test_grid_policy_capability_boundaries_fail_closed():
+def test_grid_policy_capability_boundaries_fail_closed() -> None:
     policy = GridPolicy()
     for method in ("r2scan-rks", "scan-rks", "vv10-rks", "pbe0-rks"):
         with pytest.raises(NotImplementedError, match="qualified only"):

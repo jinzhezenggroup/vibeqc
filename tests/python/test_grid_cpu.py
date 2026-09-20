@@ -123,8 +123,8 @@ def test_partition_unity_coincidence_extremes_and_permutation() -> None:
 
 @pytest.mark.parametrize("atomic_number", [26, 54])
 def test_production_grid_transition_and_heavy_elements_are_finite_and_translation_covariant(
-    atomic_number,
-):
+    atomic_number: typing.Any,
+) -> None:
     """Fe and Xe exercise sourced v2 radii beyond the light-element fixtures."""
     spec = GridPolicy().resolve("lda-rks")
     center = np.array([0.31, -0.27, 0.19])

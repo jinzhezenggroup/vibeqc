@@ -197,7 +197,9 @@ def test_complete_cuda_independent_analytic(
 
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
-def test_production_grid_cuda_energy_and_force(method, compiler):
+def test_production_grid_cuda_energy_and_force(
+    method: typing.Any, compiler: typing.Any
+) -> None:
     """Production v2 default is qualified on the real-device water endpoint."""
     from test_dft_complete_cpu import ATOMS, independent_gradient
     from vibeqc._dft_gradient import StationaryKsState
