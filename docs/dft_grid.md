@@ -47,9 +47,13 @@ radii or topology differ is identified as `explicit-grid-v2` and does not claim
 xTBloom upstream provenance. The pinned table currently covers atomic numbers
 1–86. A version-2 grid must carry a positive radius for every element it uses;
 unsupported elements fail closed instead of silently receiving 1 Bohr.
-LDA and PBE/GGA are the qualified families. meta-GGA/r2SCAN, VV10 and hybrid
-requests remain outside this policy boundary and fail closed until separately
-qualified.
+LDA and PBE/GGA are the qualified version-2 policy families. Explicit
+`GridPolicy.resolve` requests for meta-GGA/r2SCAN, VV10 or hybrids fail closed
+until separately qualified. The KS options resolver preserves the already
+qualified r2SCAN RKS/UKS default as `GridSpec(version=1)` when no explicit grid
+is supplied and `grid_accuracy="standard"`. A nonstandard r2SCAN accuracy
+profile requires an explicit `GridSpec`; this compatibility path does not
+qualify r2SCAN for the version-2 production policy.
 
 The resolved version, point counts, partition controls and complete radius table
 enter the KS calculation payload and native snapshot identity. Serialization
