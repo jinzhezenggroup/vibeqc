@@ -5,8 +5,8 @@ import pytest
 from vibeqc_compiler.geometry import (
     GFN2_CUTOFF_BOHR,
     GFN2_SHORT_RANGE_PARAMETER_IDENTITY,
-    build_gfn2_geometry_program,
     build_gfn2_pair_topology,
+    build_gfn2_short_range_program,
     gfn2_element_parameters,
     gfn2_geometry,
 )
@@ -199,8 +199,7 @@ REP_EXPECTED_ENERGY = 0.49222837261241
 def _compiled(elements, coordinates):
     geometry = gfn2_geometry(elements)
     topology = build_gfn2_pair_topology(geometry, coordinates)
-    return build_gfn2_geometry_program(
-        "GFN2-xTB",
+    return build_gfn2_short_range_program(
         geometry,
         topology,
     )
@@ -383,8 +382,7 @@ def test_changed_geometry_requires_rebuilt_25_bohr_topology():
     assert second.pairs == ()
     assert first.identity != second.identity
 
-    compiled = build_gfn2_geometry_program(
-        "GFN2-xTB",
+    compiled = build_gfn2_short_range_program(
         geometry,
         first,
     )
@@ -419,8 +417,7 @@ def test_gfn2_primal_and_generated_vjps_lower_through_shared_cuda_tensorir():
         geometry,
         coordinates,
     )
-    compiled = build_gfn2_geometry_program(
-        "GFN2-xTB",
+    compiled = build_gfn2_short_range_program(
         geometry,
         topology,
     )

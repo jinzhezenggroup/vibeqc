@@ -10,6 +10,7 @@ convention used by xTB/tblite and the pinned xTBloom reference.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import pairwise
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor import (
@@ -39,7 +40,7 @@ def _offsets(values, label: str) -> tuple[int, ...]:
         len(values) < 2
         or values[0] != 0
         or any(type(value) is not int or value < 0 for value in values)
-        or any(left >= right for left, right in zip(values, values[1:]))
+        or any(left >= right for left, right in pairwise(values))
     ):
         raise ValueError(f"{label} must be a nonempty strictly increasing partition")
     return values

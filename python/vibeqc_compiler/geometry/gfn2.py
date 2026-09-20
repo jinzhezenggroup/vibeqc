@@ -13,11 +13,6 @@ from types import MappingProxyType
 import numpy as np
 
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.method.xtb import (
-    GFN2_PARAMETER_SET,
-    XtbMethodIR,
-    resolve_xtb_method,
-)
 from vibeqc_compiler.tensor import (
     Program,
     TensorSpec,
@@ -284,8 +279,9 @@ def _logistic(argument, one, minus_one):
 
 
 @dataclass(frozen=True)
-class Gfn2GeometryProgram:
-    method: XtbMethodIR
+class Gfn2ShortRangeProgram:
+    """Geometry-owned GFN2 CN/repulsion graph with no MethodIR dependency."""
+
     geometry: GeometryIR
     topology: PairTopology
     program: Program
@@ -293,12 +289,6 @@ class Gfn2GeometryProgram:
     version: str = GFN2_SHORT_RANGE_VERSION
 
     def __post_init__(self) -> None:
-        if self.method.model_flavor != "gfn2":
-            raise ValueError("GFN2 geometry program requires the GFN2 method graph")
-        if self.method.parameter_set.identity != GFN2_PARAMETER_SET.identity:
-            raise ValueError(
-                "GFN2 geometry program requires the audited parameter manifest"
-            )
         if self.geometry.parameter_identity != self.parameter_identity:
             raise ValueError("GFN2 geometry parameter identity mismatch")
         _require_gfn2_topology(self.geometry, self.topology)
@@ -307,17 +297,15 @@ class Gfn2GeometryProgram:
 
     @property
     def identity(self) -> str:
-        return canonical_hash(self.to_payload())
-
-    def to_payload(self) -> dict:
-        return {
-            "version": self.version,
-            "method": self.method.identity,
-            "geometry": self.geometry.to_payload(),
-            "topology": self.topology.to_payload(),
-            "equation": self.program.logical_hash,
-            "parameter_identity": self.parameter_identity,
-        }
+        return canonical_hash(
+            {
+                "version": self.version,
+                "geometry": self.geometry.to_payload(),
+                "topology": self.topology.to_payload(),
+                "equation": self.program.logical_hash,
+                "parameter_identity": self.parameter_identity,
+            }
+        )
 
     def validate_execution_identity(self, identity: str) -> None:
         if identity != self.identity:
@@ -329,10 +317,6 @@ class Gfn2GeometryProgram:
             raise ValueError("stale GFN2 pair topology for changed coordinates")
 
     def coordinate_vjp(self, output: str):
-        if "nuclear-gradient" not in self.method.requested_products:
-            raise ValueError(
-                "GFN2 coordinate VJP requires nuclear-gradient compiler product"
-            )
         if output not in ("coordination", "repulsion_energy"):
             raise ValueError("unknown GFN2 short-range derivative output")
         return transpose_program(
@@ -342,27 +326,16 @@ class Gfn2GeometryProgram:
         )
 
 
-def build_gfn2_geometry_program(
-    method: str | XtbMethodIR,
+def build_gfn2_short_range_program(
     geometry: GeometryIR,
     topology: PairTopology,
-) -> Gfn2GeometryProgram:
+) -> Gfn2ShortRangeProgram:
     """Compile GFN2 CN and nuclear repulsion through PairIR/TensorIR."""
 
-    if isinstance(method, str):
-        method = resolve_xtb_method(
-            method,
-            requested_products=("energy", "nuclear-gradient"),
-        )
-    elif not isinstance(method, XtbMethodIR):
-        raise TypeError("method must be a GFN2 catalog name or XtbMethodIR")
-
-    if method.model_flavor != "gfn2":
-        raise ValueError("GFN2 short-range lowering requires model_flavor='gfn2'")
-    if method.parameter_set.identity != GFN2_PARAMETER_SET.identity:
-        raise ValueError(
-            "GFN2 short-range lowering requires the audited parameter manifest"
-        )
+    if not isinstance(geometry, GeometryIR):
+        raise TypeError("geometry must be GeometryIR")
+    if not isinstance(topology, PairTopology):
+        raise TypeError("topology must be PairTopology")
     if geometry.parameter_identity != GFN2_SHORT_RANGE_PARAMETER_IDENTITY:
         raise ValueError(
             "geometry is not bound to the GFN2 short-range parameter identity"
@@ -457,23 +430,21 @@ def build_gfn2_geometry_program(
     )
     repulsion_energy = pair_to_system(pair_repulsion, context)
 
-    provenance = {
-        "kind": "gfn2-short-range",
-        "version": GFN2_SHORT_RANGE_VERSION,
-        "method_identity": method.identity,
-        "parameter_identity": GFN2_SHORT_RANGE_PARAMETER_IDENTITY,
-        "xtbloom_revision": GFN2_XTBLOOM_REVISION,
-        "topology": topology.to_payload(),
-    }
     program = Program(
         {
             "coordination": coordination,
             "repulsion_energy": repulsion_energy,
         },
-        provenance=provenance,
+        provenance={
+            "kind": "gfn2-short-range",
+            "version": GFN2_SHORT_RANGE_VERSION,
+            "parameter_identity": GFN2_SHORT_RANGE_PARAMETER_IDENTITY,
+            "xtbloom_revision": GFN2_XTBLOOM_REVISION,
+            "topology": topology.to_payload(),
+        },
     )
-    return Gfn2GeometryProgram(
-        method,
+
+    return Gfn2ShortRangeProgram(
         geometry,
         topology,
         program,
