@@ -5,6 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from vibeqc import _generated_methods, _native
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -53,3 +54,40 @@ def test_public_method_provider_sets_are_generated() -> None:
 def test_native_binding_reexports_generated_method_constants() -> None:
     for symbol, value in _generated_methods.METHOD_CONSTANTS.items():
         assert getattr(_native, symbol) == value
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("abi_id", 2**31),
+        ("supports_batch", "false"),
+        ("supports_batch", 1),
+        ("properties", {"energy": True}),
+        ("properties", ["energy", "energy"]),
+    ],
+)
+def test_manifest_rejects_lossy_abi_and_capability_values(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    value: object,
+) -> None:
+    from tools import generate_method_manifest as generator
+
+    payload = json.loads(generator.MANIFEST.read_text())
+    payload["methods"][0][field] = value
+    path = tmp_path / "invalid.json"
+    path.write_text(json.dumps(payload))
+    monkeypatch.setattr(generator, "MANIFEST", path)
+    with pytest.raises(ValueError):
+        generator.load_manifest()
+
+
+def test_generated_python_supports_an_empty_provider_group() -> None:
+    from tools import generate_method_manifest as generator
+
+    methods = [m for m in generator.load_manifest() if m["provider"] == "reserved"]
+    generated = generator.emit_python(methods)
+    compile(generated, "generated-methods", "exec")
+    assert "HF_METHOD_IDS = frozenset(())" in generated
+    assert "NATIVE_DFT_METHOD_IDS = frozenset(())" in generated

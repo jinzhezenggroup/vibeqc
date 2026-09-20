@@ -73,8 +73,14 @@ def load_manifest() -> list[dict]:
             or not symbol.replace("_", "").isalnum()
         ):
             raise ValueError(f"invalid C/Python method symbol {symbol!r}")
-        if not isinstance(abi_id, int) or isinstance(abi_id, bool) or abi_id <= 0:
-            raise ValueError(f"method {name} requires one explicit positive ABI id")
+        if (
+            not isinstance(abi_id, int)
+            or isinstance(abi_id, bool)
+            or not 0 < abi_id < 2**31
+        ):
+            raise ValueError(
+                f"method {name} requires one explicit positive int32 ABI id"
+            )
         if name in names or symbol in symbols or abi_id in ids:
             raise ValueError("public method names, symbols and ABI ids must be unique")
         names.add(name)
@@ -85,7 +91,16 @@ def load_manifest() -> list[dict]:
             raise ValueError(f"unknown method family {method['family']!r}")
         if method["provider"] not in PROVIDERS:
             raise ValueError(f"unknown native provider {method['provider']!r}")
-        if any(prop not in PROPERTIES for prop in method["properties"]):
+        properties = method["properties"]
+        if not isinstance(properties, list) or any(
+            not isinstance(prop, str) for prop in properties
+        ):
+            raise ValueError(f"{name}: properties must be a list of names")
+        if len(set(properties)) != len(properties):
+            raise ValueError(f"{name}: public properties must be unique")
+        if type(method["supports_batch"]) is not bool:
+            raise ValueError(f"{name}: supports_batch must be a boolean")
+        if any(prop not in PROPERTIES for prop in properties):
             raise ValueError(f"unknown public property in {name}")
 
         provider_executable = PROVIDERS[method["provider"]][1]
@@ -179,8 +194,10 @@ def emit_python(methods: list[dict]) -> str:
 
     hf = [f"METHOD_{m['symbol']}" for m in methods if m["provider"] == "hf"]
     dft = [f"METHOD_{m['symbol']}" for m in methods if m["provider"] == "dft"]
-    lines.append(f"HF_METHOD_IDS = frozenset(({', '.join(hf)},))")
-    lines.append(f"NATIVE_DFT_METHOD_IDS = frozenset(({', '.join(dft)},))")
+    lines.append(f"HF_METHOD_IDS = frozenset(({', '.join(hf)}{',' if hf else ''}))")
+    lines.append(
+        f"NATIVE_DFT_METHOD_IDS = frozenset(({', '.join(dft)}{',' if dft else ''}))"
+    )
     lines.extend(["# fmt: on", ""])
     return "\n".join(lines)
 
