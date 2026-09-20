@@ -4,6 +4,8 @@ Primitive recurrences, Becke local AD and AO bilinear AD remain their existing
 compiler programs; their bounded primitive/geometry contractions are emitted here.
 Native code owns allocation, validation, transfers, launches and ABI only.
 Generation is host-only and does not import the public runtime or probe CUDA.
+
+Rationale: .agents/notes/implemented/architecture/2026-09-20-stationary-cuda-emitted-contractions.md
 """
 
 import os
