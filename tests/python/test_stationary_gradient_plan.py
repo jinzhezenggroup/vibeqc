@@ -11,7 +11,12 @@ from itertools import product
 import numpy as np
 import pytest
 from vibeqc_compiler.common.cuda_target import cuda_target_info
-from vibeqc_compiler.method import MethodSpec, UnsupportedMethod, resolve_method
+from vibeqc_compiler.method import (
+    MethodSpec,
+    UnsupportedMethod,
+    original_nonlocal_correlation,
+    resolve_method,
+)
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
     StationaryGradientPlan,
@@ -159,6 +164,52 @@ def test_tau_semilocal_method_reuses_stationary_source_inventory(
         block = r2scan.integral_block(source, terms=3)
         assert block.source == source
         assert block.plan_identity == r2scan.identity
+
+
+def test_nonlocal_correlation_extends_shared_stationary_source_inventory() -> None:
+    method = MethodSpec(
+        "PBE+VV10-test",
+        (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+        nonlocal_correlation=original_nonlocal_correlation("vv10"),
+    )
+    p = plan(method=method)
+    assert p.source_names == (
+        "one_electron",
+        "coulomb",
+        "xc_ao",
+        "xc_grid",
+        "xc_weight",
+        "nonlocal_ao",
+        "nonlocal_grid",
+        "nonlocal_weight",
+        "overlap_pulay",
+        "nuclear",
+    )
+    nonlocal_sources = p.sources[5:8]
+    assert tuple(source.primitive for source in nonlocal_sources) == (
+        "nonlocal_correlation",
+        "nonlocal_correlation",
+        "nonlocal_correlation",
+    )
+    assert tuple(source.geometric_sources for source in nonlocal_sources) == (
+        ("ao_center",),
+        ("grid_point",),
+        ("partition_weight",),
+    )
+    components = {
+        name: np.full((2, 3), i + 1.0) for i, name in enumerate(p.source_names)
+    }
+    expected = sum(components.values())
+    np.testing.assert_array_equal(p.reduce_diagnostic(components, atoms=2), expected)
+    with pytest.raises(ValueError, match="coverage"):
+        p.reduce_diagnostic(
+            {
+                name: value
+                for name, value in components.items()
+                if name != "nonlocal_grid"
+            },
+            atoms=2,
+        )
 
 
 def test_uks_coulomb_includes_cross_spin_and_recovers_total_density_rks() -> None:

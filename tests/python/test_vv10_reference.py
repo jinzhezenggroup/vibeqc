@@ -8,6 +8,7 @@ from vibeqc_compiler.dft import (
     assemble_nonlocal_potential_reference,
     nonlocal_energy_density_reference,
     nonlocal_energy_reference,
+    nonlocal_explicit_geometry_derivatives_reference,
     nonlocal_feature_derivatives_reference,
     nonlocal_kernel_matrix_reference,
 )
@@ -167,6 +168,57 @@ def test_feature_derivatives_match_fixed_grid_directional_difference(
         finite_difference = (plus - minus) / (2.0 * step)
         errors.append(abs(finite_difference - predicted))
     assert max(errors) < 2e-10
+
+
+@pytest.mark.parametrize("variant", ["vv10", "rvv10"])
+def test_explicit_geometry_derivatives_match_multistep_fixed_feature_difference(
+    fixed_grid: typing.Any, variant: typing.Any
+) -> None:
+    coords, weights, density, gradient = fixed_grid
+    spec = original_nonlocal_correlation(variant)
+    point, weight = nonlocal_explicit_geometry_derivatives_reference(
+        coords, weights, density, gradient, spec, tile_size=2
+    )
+    point_direction = np.array(
+        [
+            [0.03, -0.02, 0.01],
+            [-0.01, 0.04, -0.02],
+            [0.02, 0.01, -0.03],
+            [-0.04, 0.02, 0.01],
+        ]
+    )
+    weight_direction = np.array([0.02, -0.01, 0.015, -0.005])
+    predicted = float(
+        np.sum(point * point_direction) + np.dot(weight, weight_direction)
+    )
+    errors = []
+    for step in (2e-4, 7e-5, 2e-5):
+        plus = nonlocal_energy_reference(
+            coords + step * point_direction,
+            weights + step * weight_direction,
+            density,
+            gradient,
+            spec,
+            tile_size=2,
+        )
+        minus = nonlocal_energy_reference(
+            coords - step * point_direction,
+            weights - step * weight_direction,
+            density,
+            gradient,
+            spec,
+            tile_size=2,
+        )
+        errors.append(abs((plus - minus) / (2 * step) - predicted))
+    assert max(errors) < 3e-12
+    np.testing.assert_allclose(point.sum(axis=0), 0.0, atol=2e-18, rtol=0.0)
+
+    # The nonlocal pair measure has two quadrature legs.  Reusing the semilocal
+    # `rho * epsilon` weight derivative silently loses one half of the pair term.
+    epsilon = nonlocal_energy_density_reference(
+        coords, weights, density, gradient, spec, tile_size=2
+    )
+    assert np.max(np.abs(weight - density * epsilon)) > 1e-5
 
 
 def _features_from_total_density(jets: typing.Any, density: typing.Any) -> typing.Any:

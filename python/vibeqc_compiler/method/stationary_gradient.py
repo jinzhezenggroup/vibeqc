@@ -29,10 +29,11 @@ from vibeqc_compiler.tensor import (
     transpose_program,
 )
 
+from .nonlocal_correlation import NonlocalCorrelationPrimitive
 from .spec import MethodIR, SemilocalXCPrimitive, UnsupportedMethod
 from .typecheck import BackendCapability, verify_method_ir
 
-VERSION = "stationary-gradient-plan-v2"
+VERSION = "stationary-gradient-plan-v3"
 SCF_POINT_MODEL = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
 
 _STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
@@ -41,7 +42,7 @@ _STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
     ("unpolarized", "polarized"),
     (1,),
     ("rho", "sigma", "tau"),
-    ("semilocal-xc",),
+    ("semilocal-xc", "nonlocal-correlation"),
 )
 
 
@@ -94,6 +95,11 @@ _SOURCES = (
     GradientSource("xc_weight", "semilocal_xc", ("partition_weight",)),
     GradientSource("overlap_pulay", "overlap_constraint", ("ao_center",)),
     GradientSource("nuclear", "nuclear_repulsion", ("nuclear_center",)),
+)
+_NONLOCAL_SOURCES = (
+    GradientSource("nonlocal_ao", "nonlocal_correlation", ("ao_center",)),
+    GradientSource("nonlocal_grid", "nonlocal_correlation", ("grid_point",)),
+    GradientSource("nonlocal_weight", "nonlocal_correlation", ("partition_weight",)),
 )
 _INTEGRAL_SOURCES = ("one_electron", "coulomb", "overlap_pulay")
 _ECP_SOURCES = (
@@ -186,9 +192,20 @@ class StationaryGradientPlan:
             raise TypeError(
                 "stationary gradient requires an explicit mean-field envelope"
             )
+        semilocal = tuple(
+            primitive
+            for primitive in self.method.primitives
+            if type(primitive) is SemilocalXCPrimitive
+        )
+        nonlocal_primitives = tuple(
+            primitive
+            for primitive in self.method.primitives
+            if type(primitive) is NonlocalCorrelationPrimitive
+        )
         if (
-            len(self.method.primitives) != 1
-            or type(self.method.primitives[0]) is not SemilocalXCPrimitive
+            len(semilocal) != 1
+            or len(nonlocal_primitives) > 1
+            or len(self.method.primitives) != len(semilocal) + len(nonlocal_primitives)
         ):
             raise UnsupportedMethod(
                 "required primitive has no stationary-gradient rule"
@@ -200,19 +217,37 @@ class StationaryGradientPlan:
             derivative_order=1,
         )
         required = {"energy-density", "feature-gradient"}
-        if not required <= set(self.method.primitives[0].derivative_capabilities):
+        if not required <= set(semilocal[0].derivative_capabilities):
             raise UnsupportedMethod("required XC feature derivative is unavailable")
+        if nonlocal_primitives and "nuclear-gradient" not in set(
+            nonlocal_primitives[0].derivative_capabilities
+        ):
+            raise UnsupportedMethod(
+                "required nonlocal-correlation nuclear derivative is unavailable"
+            )
 
     @property
     def sources(self) -> typing.Any:
         if self.mean_field.hamiltonian == "scalar-semilocal-ecp":
-            return (
+            base = (
                 replace(_SOURCES[0], primitive="kinetic_effective_charge_attraction"),
                 *_ECP_SOURCES,
                 *_SOURCES[1:-1],
                 replace(_SOURCES[-1], primitive="effective_charge_nuclear_repulsion"),
             )
-        return _SOURCES
+        else:
+            base = _SOURCES
+        if not any(
+            type(primitive) is NonlocalCorrelationPrimitive
+            for primitive in self.method.primitives
+        ):
+            return base
+        result = []
+        for source in base:
+            result.append(source)
+            if source.name == "xc_weight":
+                result.extend(_NONLOCAL_SOURCES)
+        return tuple(result)
 
     @property
     def source_names(self) -> typing.Any:
@@ -232,6 +267,10 @@ class StationaryGradientPlan:
             "density_convention": "occupation-weighted; sum alpha/beta for Coulomb",
             "integral_layout": "full ordered tuples; no implicit symmetry factors",
             "xc_coefficients": "already applied inside the resolved semilocal primitive",
+            "nonlocal_chain_rule": (
+                "AO-center, grid-point, and partition-weight sources are distinct "
+                "and must each be consumed exactly once"
+            ),
         }
 
     @property
