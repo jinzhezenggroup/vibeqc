@@ -115,8 +115,10 @@ def test_resident_source_reuses_values_for_full_and_partial_force_panels(
                 )
             monkeypatch.delenv("VIBEQC_DF_TRACE")
             if response_budget is None:
-                energy_only = batch.execute(strict=True, properties=("energy",)).items[
-                    0
-                ]
+                # Each replay's coordinates are explicit; omitting them uses
+                # the prepared geometry, not the prior call's displaced frame.
+                energy_only = batch.execute(
+                    [coordinates], strict=True, properties=("energy",)
+                ).items[0]
                 assert energy_only.energy == pytest.approx(energy, abs=1e-9, rel=0)
                 assert energy_only.forces is None
