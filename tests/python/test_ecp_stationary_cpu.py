@@ -163,13 +163,7 @@ def test_ecp_complete_cpu_gradient_analytic_fd_and_live_owner(
         current = StationaryKsState.from_native(batch, basis)
         assert current.identity.solve_epoch > state.identity.solve_epoch
         assert current._source.ecp_terms == state._source.ecp_terms
-        with pytest.raises(ValueError, match="forces"):
-            calc.singlepoint(
-                atoms,
-                charge=spin,
-                multiplicity=spin + 1,
-                properties=("energy", "forces"),
-            )
+        assert "forces" in calc._capabilities.supported_properties
 
 
 def test_same_core_count_different_ecp_is_bound_to_actual_energy_owner() -> None:
@@ -198,7 +192,7 @@ def test_same_core_count_different_ecp_is_bound_to_actual_energy_owner() -> None
         NativeAO(atoms, basis=record) as basis,
     ):
         batch.execute(strict=True, properties=("energy",))
-        other.execute(strict=True)
+        other.execute(strict=True, properties=("energy",))
         state = StationaryKsState.from_native(batch, basis)
         changed_state = StationaryKsState.from_native(other, basis)
         assert state.identity.basis_identity == changed_state.identity.basis_identity

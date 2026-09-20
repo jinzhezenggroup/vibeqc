@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import typing
-from contextlib import nullcontext
 from time import perf_counter
 
 import numpy as np
@@ -48,8 +47,7 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
         public_basis = path
     calc = calculator(public_basis, method)
     started = perf_counter()
-    with nullcontext():
-        result = calc.singlepoint(atoms, charge=spin, multiplicity=spin + 1)
+    result = calc.singlepoint(atoms, charge=spin, multiplicity=spin + 1)
     record_property("complete_endpoint_seconds", perf_counter() - started)
     assert result.executed_backend == "cpu_reference"
     assert result.converged and np.isfinite(result.forces).all()
@@ -100,8 +98,7 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
         from dataclasses import replace
 
         cartesian = calculator(replace(record, representation="cartesian"), method)
-        with nullcontext():
-            other = cartesian.singlepoint(atoms, charge=spin, multiplicity=spin + 1)
+        other = cartesian.singlepoint(atoms, charge=spin, multiplicity=spin + 1)
         assert abs(result.energy - other.energy) < 2e-9
         np.testing.assert_allclose(result.forces, other.forces, atol=1e-9, rtol=0)
         record_property(
@@ -123,7 +120,7 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
     plan = calc.estimate_resources(
         systems, charges=charges, multiplicities=multiplicities
     ).require_feasible()
-    assert "forces" in plan.requests[0].identity.outputs
+    assert "forces" in plan.requests[0].identity.observables
     too_small = calculator(
         record,
         method,
@@ -142,17 +139,15 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
     with bounded.prepare_batch(
         systems, charges=charges, multiplicities=multiplicities
     ) as batch:
-        with nullcontext():
-            cold = batch.execute(strict=True)
-            warm = batch.execute(strict=True)
+        cold = batch.execute(strict=True)
+        warm = batch.execute(strict=True)
         assert all(item.warm_start_used for item in warm.items)
         for a, b in zip(cold.items, warm.items):
             np.testing.assert_allclose(a.forces, b.forces, atol=1e-9, rtol=0)
         xyz = mol.atom_coords()
         moved = xyz.copy()
         moved[1] += [0.03, -0.02, 0.09]
-        with nullcontext():
-            replay = batch.execute(coordinates=[moved, None], strict=True)
+        replay = batch.execute(coordinates=[moved, None], strict=True)
         fresh_atoms = [(a, r) for (a, _), r in zip(atoms, moved)]
         fresh = calc.singlepoint(fresh_atoms, charge=spin, multiplicity=spin + 1)
         np.testing.assert_allclose(
@@ -224,8 +219,7 @@ def test_public_ecp_force_failure_is_transactional_and_closes_snapshot(
         assert sources and all(not source._handle for source in sources)
         energy = batch.execute(strict=True, properties=("energy",))
         assert all(item.forces is None for item in energy.items)
-        with nullcontext():
-            recovered = batch.execute(strict=True)
+        recovered = batch.execute(strict=True)
         assert all(
             item.succeeded and np.isfinite(item.forces).all()
             for item in recovered.items
