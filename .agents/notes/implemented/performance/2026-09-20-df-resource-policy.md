@@ -28,7 +28,9 @@ Value and response ownership are proportional to estimated staged work with boun
 
 ## Evidence
 
-The synthetic policy test covers explicit hard caps, energy/force ownership, small/large workloads, deterministic no-probe fallback, live constrained/roomy envelopes and infeasible tiny force budgets. Native replay tests bind the generated response budget to the prepared owner. `benchmarks/df_policy_endpoint.py` is the driver for recording resolved fields with DF-plan and process peak-memory evidence. A driver and green CI are not a completed campaign: retained final-head real-device RHF/UHF force, constrained/roomy memory and warm-replay qualification remain pending.
+The synthetic policy test covers explicit hard caps, energy/force ownership, small/large workloads, deterministic no-probe fallback, live constrained/roomy envelopes and infeasible tiny force budgets. Native replay tests bind the generated response budget to the prepared owner. `benchmarks/df_policy_endpoint.py` records resolved fields with DF-plan and process peak-memory evidence.
+
+The final production source `8b2b90ed` was qualified on a real NVIDIA GeForce RTX 4090 (CUDA 12.9, `sm_89`) in qz/Inspire job `vibeqc-598-final-8b2b90ed`, which completed successfully. RHF water-tetramer and UHF OH force endpoints both passed roomy and real-allocation constrained envelopes against fresh PySCF energy/force references. Resolved total/value/response budgets, observed free/total memory, actual reserved headroom, value-plan peak device bytes and response scratch are retained under `benchmarks/results/issue598-df-resource-policy/`; every peak stays within its owner cap and constrained headroom is no larger than observed free memory. Roomy prepares were followed by an additional 2 GiB live CUDA allocation; two warm replays retained byte-identical observed-memory and resolved-policy records, proving the prepared owner does not re-probe.
 
 ## Subbudget provenance review
 
@@ -39,8 +41,7 @@ subplan reporting no reservation. The subbudget helper preserves parent request,
 probe and headroom identity, and rejects exhaustion before subtraction. It
 never re-probes CUDA. A compiled host regression covers energy/force, explicit
 and automatic requests, and exhausted or overdrawn remainders.
-These host checks do not supply the still-pending #598 real-device default-policy
-qualification. No new endpoint timing or whole-device memory claim is made.
+The final-head RTX 4090 campaign above supplements these host checks with live-device default-policy qualification; the retained archive binds the exact runner and raw traces/journals by SHA-256.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
