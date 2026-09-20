@@ -130,7 +130,7 @@ energy to about 2.9e-13 Eh.
 ## C: native/public promotion
 
 Slice C promotes restricted closed-shell CCSD as a genuine native method without
-reusing the reserved `VIBEQC_METHOD_RCCSD_T` identifier. `VIBEQC_METHOD_RCCSD=10`
+reusing the reserved `VIBEQC_METHOD_RCCSD_T` identifier. `VIBEQC_METHOD_RCCSD=12`
 is an additive method id; all earlier values remain unchanged. The registry reports
 energy only and prepared-batch support. A force buffer/request therefore fails
 explicitly instead of returning an HF derivative under a CC label.
