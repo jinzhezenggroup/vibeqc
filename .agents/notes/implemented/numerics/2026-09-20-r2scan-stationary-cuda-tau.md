@@ -59,8 +59,8 @@ duplicated.
 
 ## Invariants
 
-- LDA/PBE generated source remains byte-semantically equivalent through the
-  compatibility selector.
+- LDA/PBE generated execution remains numerically/scientifically equivalent through
+  the compatibility selector; source text may change as shared plumbing evolves.
 - r²SCAN point coefficients come from the audited production DAG.
 - `vtau/2` is applied exactly once.
 - All CUDA AO geometry remains generated from the common jet pullback graph.
