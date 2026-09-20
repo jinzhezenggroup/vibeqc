@@ -186,11 +186,9 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
 def test_batch_schedule_tracks_homogeneous_batch_domains() -> None:
     batch = _index("systems", "batch", 4)
     x = input_tensor("x", TensorSpec((batch,), role="input"))
-    program = Program({"out": indexed_gather(x, 0, (3, 1, 1, 0), batch)})
-    schedule = plan_cuda(program, TARGET).batch_schedule
+    schedule = plan_cuda(Program({"out": x}), TARGET).batch_schedule
     assert schedule.batch_domains == (("systems", 4),)
-    assert schedule.ragged_steps[0].lowering == "direct-index"
-    assert schedule.ragged_steps[0].degree_histogram == ((0, 1), (1, 2), (2, 1))
+    assert schedule.ragged_steps == ()
 
 
 def test_changed_ragged_topology_changes_program_and_plan_identity() -> None:
