@@ -39,6 +39,12 @@ function(vibeqc_collect_source_identity_inputs output_variable)
       foreach(_pattern_index RANGE 0 ${_pattern_last})
         string(JSON _pattern GET "${_manifest_json}" recursive_groups
                ${_group_index} patterns ${_pattern_index})
+        string(JSON _pattern_type TYPE "${_manifest_json}" recursive_groups
+               ${_group_index} patterns ${_pattern_index})
+        if(NOT _pattern_type STREQUAL "STRING" OR _pattern STREQUAL "" OR
+           IS_ABSOLUTE "${_pattern}" OR _pattern MATCHES "(^|/)\\.\\.(/|$)")
+          message(FATAL_ERROR "Unsafe source identity pattern: ${_pattern}")
+        endif()
         file(GLOB_RECURSE _matches CONFIGURE_DEPENDS
              RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
              "${CMAKE_CURRENT_SOURCE_DIR}/${_root}/${_pattern}")
