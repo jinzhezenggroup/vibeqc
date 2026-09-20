@@ -40,7 +40,10 @@ def test_all_problem_fields_rejected_before_cuda_owner(tmp_path: Path) -> None:
     exe = tmp_path / "preflight"
     subprocess.run(
         [compiler, "-std=c++20", "-I" + str(ROOT / "src"), str(source), "-o", str(exe)],
-        check=True, capture_output=True, text=True, timeout=60,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     result = subprocess.run([str(exe)], capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stdout + result.stderr
