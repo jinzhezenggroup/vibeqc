@@ -57,9 +57,7 @@ def test_density_uses_explicit_uhf_occupation_weights() -> None:
         density_program(1, 3, spin_count=2),
         {"coefficients": coefficients, "occupations": occupations},
     ).outputs["density"]
-    expected = np.einsum(
-        "bspi,bsi,bsqi->bspq", coefficients, occupations, coefficients
-    )
+    expected = np.einsum("bspi,bsi,bsqi->bspq", coefficients, occupations, coefficients)
     np.testing.assert_allclose(result, expected, atol=1e-13, rtol=1e-13)
 
 

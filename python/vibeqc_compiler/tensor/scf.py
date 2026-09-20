@@ -32,7 +32,9 @@ def _positive(value: int, name: str) -> int:
 
 def _fraction(value: ExactCoefficient, name: str) -> Fraction:
     if type(value) not in (int, str, Fraction):
-        raise TypeError(f"{name} must be an exact integer, Fraction, or rational string")
+        raise TypeError(
+            f"{name} must be an exact integer, Fraction, or rational string"
+        )
     result = Fraction(value)
     if result < 0:
         raise ValueError(f"{name} must be nonnegative")
@@ -77,15 +79,9 @@ def density_program(
         Index("q", ao),
         Index("i", orbital),
     )
-    coefficients = input_tensor(
-        "coefficients", TensorSpec((b, s, p, i), role="input")
-    )
-    occupations = input_tensor(
-        "occupations", TensorSpec((b, s, i), role="input")
-    )
-    density = einsum(
-        "bspi,bsi,bsqi->bspq", coefficients, occupations, coefficients
-    )
+    coefficients = input_tensor("coefficients", TensorSpec((b, s, p, i), role="input"))
+    occupations = input_tensor("occupations", TensorSpec((b, s, i), role="input"))
+    density = einsum("bspi,bsi,bsqi->bspq", coefficients, occupations, coefficients)
     return Program(
         {"density": density},
         provenance={
@@ -115,12 +111,8 @@ def weighted_density_program(
         Index("q", ao),
         Index("i", orbital),
     )
-    coefficients = input_tensor(
-        "coefficients", TensorSpec((b, s, p, i), role="input")
-    )
-    occupations = input_tensor(
-        "occupations", TensorSpec((b, s, i), role="input")
-    )
+    coefficients = input_tensor("coefficients", TensorSpec((b, s, p, i), role="input"))
+    occupations = input_tensor("occupations", TensorSpec((b, s, i), role="input"))
     orbital_energies = input_tensor(
         "orbital_energies", TensorSpec((b, s, i), role="input")
     )
@@ -198,16 +190,12 @@ def energy_program(
     """Build E = E_nuc + 1/2 sum_spq D_spq (H_pq + F_spq)."""
     batch, spin, ao, _ = _orbital_spaces(batch_size, spin_count, nbf, nbf)
     b, s, p, q = Index("b", batch), Index("s", spin), Index("p", ao), Index("q", ao)
-    density = input_tensor(
-        "density", TensorSpec((b, s, p, q), role="input")
-    )
+    density = input_tensor("density", TensorSpec((b, s, p, q), role="input"))
     fock = input_tensor("fock", TensorSpec((b, s, p, q), role="input"))
     hcore = input_tensor("hcore", TensorSpec((b, p, q), role="input"))
     nuclear = input_tensor("nuclear_repulsion", TensorSpec((b,), role="input"))
     hcore_spin = broadcast(hcore, (b, s, p, q), (0, 2, 3))
-    electronic = reduce_sum(
-        multiply(density, add(hcore_spin, fock)), axes=(1, 2, 3)
-    )
+    electronic = reduce_sum(multiply(density, add(hcore_spin, fock)), axes=(1, 2, 3))
     total = add(nuclear, electronic, coefficients=(1, Fraction(1, 2)))
     return Program(
         {"energy": total},
@@ -242,9 +230,7 @@ def diis_gram_program(
     residual_history = input_tensor(
         "residual_history", TensorSpec((b, h, s, p, q), role="input")
     )
-    gram = einsum(
-        "bhspq,bkspq->bhk", residual_history, residual_history
-    )
+    gram = einsum("bhspq,bkspq->bhk", residual_history, residual_history)
     return Program(
         {"gram": gram},
         provenance={
@@ -275,12 +261,8 @@ def diis_extrapolation_program(
     fock_history = input_tensor(
         "fock_history", TensorSpec((b, h, s, p, q), role="input")
     )
-    coefficients = input_tensor(
-        "diis_coefficients", TensorSpec((b, h), role="input")
-    )
-    effective_fock = einsum(
-        "bhspq,bh->bspq", fock_history, coefficients
-    )
+    coefficients = input_tensor("diis_coefficients", TensorSpec((b, h), role="input"))
+    effective_fock = einsum("bhspq,bh->bspq", fock_history, coefficients)
     return Program(
         {"effective_fock": effective_fock},
         provenance={
