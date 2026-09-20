@@ -135,8 +135,12 @@ class CudaTargetInfo:
             raise ValueError("CUDA shared-memory limits must be positive")
         if self.shared_memory_per_block_optin < self.shared_memory_per_block:
             raise ValueError("opt-in shared memory cannot be below the base limit")
-        if self.sm_count is not None and self.sm_count < 1:
-            raise ValueError("CUDA SM count must be positive when runtime-probed")
+        if self.sm_count is not None and (
+            type(self.sm_count) is not int or self.sm_count < 1
+        ):
+            raise ValueError(
+                "CUDA SM count must be positive and integer when runtime-probed"
+            )
         if self.generator_abi < 1:
             raise ValueError("generator ABI must be positive")
 

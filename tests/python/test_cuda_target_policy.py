@@ -91,3 +91,10 @@ def test_capability_target_and_architecture_must_agree():
             architecture="sm_90",
             specifications=(PSSS_SPEC,),
         )
+
+
+@pytest.mark.parametrize("count", [True, 1.5, float("nan"), float("inf")])
+def test_probed_sm_count_is_a_finite_integer(count):
+    target = cuda_target_info("sm_120")
+    with pytest.raises(ValueError, match="SM count must be positive"):
+        target.with_runtime_probe(sm_count=count)
