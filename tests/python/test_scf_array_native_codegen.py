@@ -1,4 +1,4 @@
-"""Build-time native SCF helpers must remain tied to Array frontend TensorIR."""
+"""Build-time native SCF helpers must remain tied to canonical SCF TensorIR."""
 
 from __future__ import annotations
 
@@ -23,7 +23,6 @@ def test_array_scf_native_template_identity_is_shape_independent() -> None:
     assert template_hash(small_density) == template_hash(large_density)
     assert template_hash(small_weighted) == template_hash(large_weighted)
     assert template_hash(small_density) != template_hash(small_weighted)
-
 
     small_gram = diis_gram_program(1, 2, 3)
     large_gram = diis_gram_program(4, 7, 5, spin_count=2)
@@ -117,17 +116,14 @@ def test_fixed_native_specialization_rejects_changed_coefficient_layout(
 
 
 @pytest.mark.parametrize(
-    ("builder_name", "replacement"),
-    (
-        ("diis_gram_program", lambda: density_program(1, 2)),
-        ("diis_extrapolation_program", lambda: density_program(1, 2)),
-    ),
+    "builder_name", ("diis_gram_program", "diis_extrapolation_program")
 )
 def test_fixed_native_specialization_rejects_changed_diis_topology(
-    monkeypatch: pytest.MonkeyPatch, builder_name: str, replacement: object
+    monkeypatch: pytest.MonkeyPatch, builder_name: str
 ) -> None:
     from tools import generate_scf_array_native as generator
 
-    monkeypatch.setattr(generator, builder_name, lambda *args, **kwargs: replacement())
+    replacement = density_program(1, 2)
+    monkeypatch.setattr(generator, builder_name, lambda *args, **kwargs: replacement)
     with pytest.raises(ValueError, match="DIIS"):
         generator.native_header()
