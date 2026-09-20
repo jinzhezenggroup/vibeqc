@@ -21,7 +21,7 @@ _PRODUCTION_MANIFEST = Path(production.__file__).with_name(
 )
 
 
-def _selection(name: str):
+def _selection(name: str) -> production.KernelSelection:
     return next(
         selection
         for selection in load_production_kernel_selections(
