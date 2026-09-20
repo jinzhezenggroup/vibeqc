@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 #include <numeric>
 #include <stdexcept>
@@ -705,6 +706,11 @@ std::vector<double> metric_function_response_from_value(
 }
 
 }  // namespace
+
+bool cpu_materialized_df_derivatives_requested() noexcept {
+  const char* value = std::getenv("VIBEQC_CPU_DF_MATERIALIZED_DERIVATIVES");
+  return value && value[0] == '1' && value[1] == '\0';
+}
 
 std::vector<double> density_fitting_metric_pseudoinverse(
     const integrals::DensityFittingIntegralData& integrals, double relative_threshold) {
