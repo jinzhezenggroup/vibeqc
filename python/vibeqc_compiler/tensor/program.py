@@ -19,7 +19,7 @@ from .types import spec_from_payload, spec_to_payload
 
 SCHEMA = "vibeqc.tensor"
 VERSION = 1
-PRIMITIVE_VERSION = 2
+PRIMITIVE_VERSION = 1
 CONVENTIONS = {
     "indexing": "zero-based; half-open ranges; ordered gather coordinates",
     "reshape": "logical C order; physical copies/views are executor decisions",

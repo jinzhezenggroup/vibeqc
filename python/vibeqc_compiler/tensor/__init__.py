@@ -51,7 +51,12 @@ from .ir import (
 from .layout import DenseLayout
 from .optimize import PASSES, optimize, rewrite
 from .packing import PackedLayout
-from .precision import CastBoundary, PrecisionSchedule, ValuePrecision, describe_precision
+from .precision import (
+    CastBoundary,
+    PrecisionSchedule,
+    ValuePrecision,
+    describe_precision,
+)
 from .program import Program
 from .types import Index, IndexSpace, Symmetry, TensorSpec
 

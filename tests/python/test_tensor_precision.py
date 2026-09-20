@@ -1,5 +1,7 @@
 """First-class TensorIR precision/cast contracts for #528."""
 
+import typing
+
 import numpy as np
 import pytest
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
@@ -24,7 +26,7 @@ from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 from vibeqc_compiler.tensor.cuda_search import estimate_schedule
 
 
-def _parameter(name: str, *, dtype: str = "float64"):
+def _parameter(name: str, *, dtype: str = "float64") -> typing.Any:
     space = IndexSpace("values", "batch", 4)
     return input_tensor(
         name,
