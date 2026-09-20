@@ -270,6 +270,18 @@ def lower_precision(
         normalized[name] = directive
 
     mapping: dict[Node, Node] = {}
+    cast_cache: dict[tuple[Node, str], Node] = {}
+
+    def ensure_dtype(node: Node, dtype: str) -> Node:
+        if node.spec.dtype == dtype:
+            return node
+        key = (node, dtype)
+        converted = cast_cache.get(key)
+        if converted is None:
+            converted = cast(node, dtype)
+            cast_cache[key] = converted
+        return converted
+
     for node in program.nodes:
         if node.op in ("input", "constant"):
             mapping[node] = node
@@ -285,7 +297,7 @@ def lower_precision(
             node.spec.dtype if directive is None else directive.storage_dtype
         )
         inputs = tuple(
-            _ensure_dtype(mapping[child], compute_dtype) for child in node.inputs
+            ensure_dtype(mapping[child], compute_dtype) for child in node.inputs
         )
         declared = replace(
             node.spec,
@@ -293,10 +305,10 @@ def lower_precision(
             role="intermediate",
         )
         rebuilt = Node(node.op, inputs, declared, node.attributes)
-        mapping[node] = _ensure_dtype(rebuilt, storage_dtype)
+        mapping[node] = ensure_dtype(rebuilt, storage_dtype)
 
     outputs = {
-        name: _ensure_dtype(mapping[node], node.spec.dtype)
+        name: ensure_dtype(mapping[node], node.spec.dtype)
         for name, node in program.outputs.items()
     }
     source_equation = program.provenance.get(
