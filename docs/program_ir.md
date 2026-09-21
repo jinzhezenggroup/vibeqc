@@ -114,6 +114,20 @@ owners. Tests require the complete prepared endpoint to run with the legacy
 `scalar_values` repacking entry point disabled and verify that the native scalar
 input shares storage with the DFT-owned feature buffer.
 
+## Shared storage analysis
+
+The first #831 compiler slice adds `ProgramIR.storage_analysis()` on top of the
+backend-neutral `common.storage` contract. The same analysis is also adapted by
+TensorIR CUDA plans, so ownership groups, aliases, live ranges, interference,
+reusable slots and simultaneous-live bytes have one fail-closed representation.
+ProgramIR last-use resource intervals now consume these shared ranges.
+
+This remains analysis, not a second allocator. Unknown alias metadata blocks
+reuse for its memory space and opaque effects retain touched owners through the
+region boundary. TensorIR keeps its qualified arena offsets as the execution plan
+of record until a later #831 slice independently validates allocator migration or
+cross-subsystem materialization removal.
+
 ## Validation and reproduction
 
 ```bash

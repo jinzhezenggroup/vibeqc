@@ -54,6 +54,7 @@ class BatchItemResult:
     physical_residual_rms: float | None = None
     ks_diagnostic: KsDiagnostic | None = None
     correlation: CorrelationResult | None = None
+    dispersion: object | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -363,6 +364,7 @@ class PreparedBatch:
         if not systems:
             raise ValueError("a batch requires at least one system")
         self._last_statuses = None
+        self._dispersion_batch: typing.Any = None
         # The KS ResourcePlan reserves one serialized generated-force staging cap.
         # Keep one retained execution per PreparedBatch and reprepare on topology drift.
         self._stationary_cuda_execution: typing.Any = None
@@ -534,6 +536,22 @@ class PreparedBatch:
                     phase="preparation",
                 )
                 check_resource_status(self._library, status, self.resource_diagnostics)
+            if calculator._dispersion_method_ir is not None:
+                from .dispersion import D3CorrectionBatch
+
+                self._dispersion_batch = D3CorrectionBatch(
+                    calculator._dispersion_method_ir,
+                    [
+                        (
+                            self._atomic_numbers[index],
+                            [atom.position for atom in atoms],
+                        )
+                        for index, atoms in enumerate(self._systems)
+                    ],
+                    device=calculator._device_name,
+                    device_id=calculator._device_id,
+                    maximum_bytes=calculator._dispersion_memory_budget_bytes,
+                )
         except Exception:
             # Construction owns native handles before resource-status conversion,
             # which can raise MemoryError as well as ordinary validation errors.
@@ -570,6 +588,16 @@ class PreparedBatch:
     def basis_metadata(self) -> typing.Any:
         """Detached resolved provenance/identities for benchmark and result records."""
         return deepcopy(self._basis_metadata)
+
+    @property
+    def dispersion_diagnostic(self) -> typing.Any:
+        """Return the retained D3 owner diagnostic, or None for an uncorrected model."""
+        self._ensure_open()
+        return (
+            None
+            if self._dispersion_batch is None
+            else self._dispersion_batch.diagnostic()
+        )
 
     @property
     def ks_transport_diagnostics(self) -> tuple[KsTransportDiagnostic | None, ...]:
@@ -927,6 +955,29 @@ class PreparedBatch:
 
             check_resource_status(self._library, status, self.resource_diagnostics)
 
+        d3_results = None
+        if self._dispersion_batch is not None:
+            d3_geometries = None
+            if coordinates is not None:
+                d3_geometries = []
+                for index, output in enumerate(output_array):
+                    if (
+                        output.status == _native.STATUS_SUCCESS
+                        and coordinates[index] is not None
+                    ):
+                        d3_geometries.append(
+                            np.asarray(coordinates[index], dtype=np.float64).reshape(
+                                self._atom_counts[index], 3
+                            )
+                        )
+                    else:
+                        # Preserve the native per-item malformed-input boundary:
+                        # D3 does not inspect a coordinate update already rejected by KS.
+                        d3_geometries.append(None)
+            d3_results = self._dispersion_batch.execute(
+                d3_geometries, gradients=compute_forces
+            )
+
         if self.resource_diagnostics is not None:
             # Separate from the native SCF ledger: generated libraries own
             # their own bounded allocations and export/work observations.
@@ -943,6 +994,14 @@ class PreparedBatch:
             ):
                 _native.check(self._library, count_status)
             succeeded = output.status == _native.STATUS_SUCCESS
+            dispersion = None if d3_results is None else d3_results[index]
+            dispersion_failure_message = None
+            if succeeded and dispersion is not None and not dispersion.ok:
+                output.status = dispersion.status
+                succeeded = False
+                dispersion_failure_message = (
+                    f"D3 correction failed ({dispersion.status}): {dispersion.message}"
+                )
             public_force = None
             if succeeded and public_dft_forces:
                 atoms = self._systems[index]
@@ -994,7 +1053,24 @@ class PreparedBatch:
                 if succeeded and native_compute_forces
                 else None
             )
-            message = self._library.vibeqc_status_message(output.status).decode("utf-8")
+            if succeeded and dispersion is not None and compute_forces:
+                if dispersion.gradient is None:
+                    raise RuntimeError("successful D3 force composition omitted dE/dR")
+                if forces is None:
+                    raise RuntimeError(
+                        "D3 force composition requires an electronic force"
+                    )
+                forces = forces - dispersion.gradient
+            message = (
+                dispersion_failure_message
+                if dispersion_failure_message is not None
+                else self._library.vibeqc_status_message(output.status).decode("utf-8")
+            )
+            total_energy = (
+                output.energy + dispersion.energy
+                if succeeded and dispersion is not None
+                else output.energy
+            )
             correlation = None
             if self._calculator._method in (_native.METHOD_MP2, _native.METHOD_RCCSD):
                 correlation = _read_correlation_result(
@@ -1028,7 +1104,7 @@ class PreparedBatch:
                     if count_status == _native.STATUS_SUCCESS
                     else None,
                     status_message=message,
-                    energy=output.energy,
+                    energy=total_energy,
                     forces=forces,
                     converged=bool(output.converged),
                     iterations=output.iterations,
@@ -1039,6 +1115,7 @@ class PreparedBatch:
                     if self._calculator._ks_options is not None
                     else None,
                     correlation=correlation,
+                    dispersion=dispersion if succeeded else None,
                     executed_backend={
                         _native.BACKEND_CPU_REFERENCE: "cpu_reference",
                         _native.BACKEND_CUDA: "cuda",
@@ -1478,6 +1555,10 @@ class PreparedBatch:
         )
 
     def close(self) -> None:
+        if self._dispersion_batch is not None:
+            with suppress(Exception):
+                self._dispersion_batch.close()
+            self._dispersion_batch = None
         if self._stationary_cuda_execution is not None:
             with suppress(Exception):
                 self._stationary_cuda_execution.close()
