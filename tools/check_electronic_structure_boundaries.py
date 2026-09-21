@@ -47,7 +47,7 @@ def _without_comments(text: str) -> str:
     """Remove comments while preserving line numbering."""
 
     def replacement(match: re.Match[str]) -> str:
-        return "\n" * match.group(0).count("\n")
+        return " " + "\n" * match.group(0).count("\n")
 
     return COMMENT_RE.sub(replacement, text)
 
@@ -56,16 +56,17 @@ def _source_target(source: Path, path: Path, include: str) -> str | None:
     """Resolve a repository-local include to its src-relative spelling."""
     if include.startswith(("./", "../")):
         candidate = (path.parent / include).resolve()
-        try:
-            return candidate.relative_to(source).as_posix()
-        except ValueError:
-            return None
-
-    candidate = source / include
-    if candidate.exists() or include.startswith(
+    else:
+        local = path.parent / include
+        candidate = (local if local.exists() else source / include).resolve()
+    try:
+        relative = candidate.relative_to(source).as_posix()
+    except ValueError:
+        return None
+    if candidate.exists() or relative.startswith(
         ("core/", "runtime/", "tensor/", "response/", *METHOD_PREFIXES)
     ):
-        return include
+        return relative
     return None
 
 

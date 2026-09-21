@@ -130,3 +130,32 @@ def test_metrics_separate_generated_lines(tmp_path: typing.Any) -> None:
     assert metrics["files"] == 2
     assert metrics["lines"] == 3
     assert metrics["generated_lines"] == 1
+
+
+@pytest.mark.parametrize(
+    "include", ["tensor/../cc/solver.hpp", "tensor/./../cc/solver.hpp"]
+)
+def test_noncanonical_source_root_include_cannot_hide_dependency(
+    tmp_path: typing.Any, include: str
+) -> None:
+    source = tmp_path / "src"
+    (source / "tensor").mkdir(parents=True)
+    (source / "cc").mkdir()
+    (source / "cc/solver.hpp").write_text("// concrete method\n")
+    (source / "tensor/helper.cpp").write_text(f'#include "{include}"\n')
+    assert any(
+        "forbidden tensor dependency on cc/solver.hpp" in error
+        for error in audit_electronic_structure_boundaries(tmp_path)["errors"]
+    )
+
+
+def test_comments_separate_tokens_in_duplicate_guard(tmp_path: typing.Any) -> None:
+    cc = tmp_path / "src/cc"
+    cc.mkdir(parents=True)
+    (cc / "first.cpp").write_text("struct/**/Diis {};\n")
+    (cc / "second.cpp").write_text("struct/* ownership */Diis {};\n")
+    report = audit_electronic_structure_boundaries(tmp_path)
+    assert report["duplicate_infrastructure"]["cc_cpu_diis_owner"]["count"] == 2
+    assert any(
+        "duplicate infrastructure debt grew" in error for error in report["errors"]
+    )
