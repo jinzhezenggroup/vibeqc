@@ -57,6 +57,8 @@ def _coordinates(
     Expr,
     Expr,
     Expr,
+    Expr,
+    Expr,
 ]:
     if spin == "polarized":
         variables = tuple(graph.variable(name) for name in POLARIZED_FEATURES)
@@ -64,47 +66,59 @@ def _coordinates(
         density = rho_a + rho_b
         zeta = (rho_a - rho_b) / density
         total_sigma = sigma_aa + 2 * sigma_ab + sigma_bb
-        xs_a = sigma_aa.pow(0.5) * rho_a.pow(-4.0 / 3.0)
-        xs_b = sigma_bb.pow(0.5) * rho_b.pow(-4.0 / 3.0)
+        channel_a, channel_b = rho_a, rho_b
+        xs_a = sigma_aa.pow(0.5) * channel_a.pow(-4.0 / 3.0)
+        xs_b = sigma_bb.pow(0.5) * channel_b.pow(-4.0 / 3.0)
     else:
         variables = tuple(graph.variable(name) for name in UNPOLARIZED_FEATURES)
         density, sigma, _ = variables
         zeta = graph.constant(0)
         total_sigma = sigma
-        rho_a = density / 2
-        rho_b = density / 2
-        xs_a = (sigma / 4).pow(0.5) * rho_a.pow(-4.0 / 3.0)
-        xs_b = (sigma / 4).pow(0.5) * rho_b.pow(-4.0 / 3.0)
+        channel_a = channel_b = density / 2
+        xs_a = (sigma / 4).pow(0.5) * channel_a.pow(-4.0 / 3.0)
+        xs_b = (sigma / 4).pow(0.5) * channel_b.pow(-4.0 / 3.0)
 
     rs = graph.approximate_constant(
         (3.0 / (4.0 * math.pi)) ** (1.0 / 3.0)
     ) * density.pow(-1.0 / 3.0)
     xt = total_sigma.pow(0.5) * density.pow(-4.0 / 3.0)
-    return variables, density, rs, zeta, xt, xs_a, xs_b
+    return variables, density, rs, zeta, xt, xs_a, xs_b, channel_a, channel_b
 
 
 def _imported_component(
     name: str, spin: str
 ) -> tuple[MapleModule, Graph, tuple[Expr, ...], tuple[Expr, ...]]:
     graph = Graph()
-    variables, density, rs, zeta, xt, xs_a, xs_b = _coordinates(graph, spin)
+    (
+        variables,
+        density,
+        rs,
+        zeta,
+        xt,
+        xs_a,
+        xs_b,
+        channel_a,
+        channel_b,
+    ) = _coordinates(graph, spin)
     if name == "GGA_X_PW91":
         module = import_maple_file(
             LIBXC_ROOT,
             "gga_x_pw91.mpl",
             defines={"gga_x_pw91_params"},
         )
-        epsilon = module.call(graph, "f", rs, zeta, 0, xs_a, xs_b)
+        cx = 3.0 / 8.0 * (3.0 / math.pi) ** (1.0 / 3.0) * 4.0 ** (2.0 / 3.0)
+        energy = -cx * channel_a.pow(4.0 / 3.0) * module.call(
+            graph, "pw91_f", xs_a
+        ) - cx * channel_b.pow(4.0 / 3.0) * module.call(graph, "pw91_f", xs_b)
     elif name == "GGA_C_PW91":
         module = import_maple_file(
             LIBXC_ROOT,
             "gga_c_pw91.mpl",
             support_files=("util.mpl",),
         )
-        epsilon = module.call(graph, "f", rs, zeta, xt, 0, 0)
+        energy = density * module.call(graph, "f", rs, zeta, xt, 0, 0)
     else:
         raise ValueError(name)
-    energy = density * epsilon
     return module, graph, _feature_roots(graph, energy, variables), variables
 
 
