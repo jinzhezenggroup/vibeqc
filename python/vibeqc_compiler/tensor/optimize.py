@@ -186,7 +186,7 @@ def rewrite(program: Program, pass_name: str) -> Program:
         )
         return Program(outputs, definitions=definitions, provenance=provenance)
     execution_contracts = precision_execution_contracts(program)
-    replacements, interned, hashes, execution_keys = {}, {}, {}, {}
+    replacements, interned, hashes, execution_classes = {}, {}, {}, {}
     for node in program.nodes:
         inputs = tuple(replacements[n] for n in node.inputs)
         updated = node
@@ -210,10 +210,12 @@ def rewrite(program: Program, pass_name: str) -> Program:
             key = (
                 hashes[updated],
                 execution_contracts.get(node),
-                tuple(execution_keys[child] for child in updated.inputs),
+                tuple(execution_classes[child] for child in updated.inputs),
             )
             updated = interned.setdefault(key, updated)
-            execution_keys[updated] = key
+            # Compact bottom-up classes preserve transitive execution semantics
+            # without recursively hashing a shared DAG as an exponential tree.
+            execution_classes.setdefault(updated, len(execution_classes))
         replacements[node] = updated
     outputs = {name: replacements[n] for name, n in program.outputs.items()}
     definitions = tuple(replacements[n] for n in program.definitions)
