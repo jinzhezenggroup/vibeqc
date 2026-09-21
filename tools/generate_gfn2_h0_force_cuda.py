@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 import types
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,8 +34,10 @@ from vibeqc_compiler.method.gfn2_h0_force_runtime import (
     build_gfn2_h0_onsite_vjp_program,
     build_gfn2_h0_pulay_seed_program,
 )
-from vibeqc_compiler.tensor.program import Program
 from vibeqc_compiler.tensor.scalar_cpp import emit_scalar_cpp
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.tensor.program import Program
 
 PAIR_INPUT_ORDER = (
     "first_shell_level",
