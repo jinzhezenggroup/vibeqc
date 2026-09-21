@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <limits>
 #include <memory>
@@ -127,8 +128,8 @@ class RccsdtPrepared final : public PreparedCalculation {
       auto diagnostic = state.diagnostic;
       diagnostic.minimum_absolute_denominator =
           std::min(diagnostic.minimum_absolute_denominator, triples.minimum_absolute_denominator);
-      diagnostic.numeric_capacity_bytes = std::max(diagnostic.numeric_capacity_bytes,
-                                                   checked_add(retained, triples.workspace_bytes));
+      diagnostic.numeric_capacity_bytes = std::max<std::uint64_t>(
+          diagnostic.numeric_capacity_bytes, checked_add(retained, triples.workspace_bytes));
       diagnostic.ccsd_t_triples_energy = triples.energy;
       diagnostic.ccsd_t_virtual_triples = triples.virtual_triples;
       diagnostic.ccsd_t_workspace_bytes = triples.workspace_bytes;
