@@ -49,7 +49,7 @@ Local managed-worktree validation before native/qz execution:
 - A deliberate unit counterexample has energy error below target while force error is above target; the controller tightens.
 - A synthetic held-family test explicitly exercises both false-success and overconservative reporting.
 
-Real qz/Inspire evidence is appended to this note after running the exact pushed commit.
+Real qz/Inspire measurements are retained in PR #828 and its compact persistent benchmark artifact rather than duplicating mutable benchmark numbers in this rationale note.
 
 ## Consequences
 
