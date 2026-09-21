@@ -861,8 +861,11 @@ ExactIncrementalXcIntegral integrate_pbe_rks_incremental_exact(
     }
   }
   result.energy_difference = result.total.energy - result.anchor_energy;
+  const auto finite = [](double value) { return std::isfinite(value); };
   if (!std::isfinite(result.total.energy) || !std::isfinite(result.anchor_energy) ||
-      !std::isfinite(result.energy_difference))
+      !std::isfinite(result.energy_difference) || !std::isfinite(result.total.electrons) ||
+      !std::all_of(result.total.potential.begin(), result.total.potential.end(), finite) ||
+      !std::all_of(result.potential_difference.begin(), result.potential_difference.end(), finite))
     throw std::runtime_error("nonfinite incremental PBE result");
   return result;
 }
