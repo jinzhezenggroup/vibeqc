@@ -110,8 +110,7 @@ def _emit_rys_uniform_warp_force_consumer_cuda(
     # worthwhile for a target; scientific recurrence semantics are unchanged.
     component_group = (
         1
-        if plan.schedule.algebra_placement
-        == AlgebraPlacement.PRESSURE_REMATERIALIZED
+        if plan.schedule.algebra_placement == AlgebraPlacement.PRESSURE_REMATERIALIZED
         else 3
     )
     root_cases: list[str] = []

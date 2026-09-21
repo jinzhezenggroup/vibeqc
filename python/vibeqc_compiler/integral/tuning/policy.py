@@ -251,9 +251,10 @@ def supported_schedule_trials(
     ]
     if selected_consumer == KernelConsumer.FOCK:
         schedules.extend(_known_production_fock_subgroup_schedules(spec, target))
-    elif (
-        explicit_integral is not None
-        and integral.recurrence in ("rys3", "rys4", "rys5")
+    elif explicit_integral is not None and integral.recurrence in (
+        "rys3",
+        "rys4",
+        "rys5",
     ):
         # High-order production mappings can intentionally be absent from the
         # generic schedule search (for example 1296-component dddd).  An

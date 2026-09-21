@@ -918,8 +918,7 @@ def test_high_order_rys5_tuning_exposes_pressure_rematerialization(
         trial
         for trial in trials
         if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
-        and trial.schedule.algebra_placement
-        == AlgebraPlacement.PRESSURE_REMATERIALIZED
+        and trial.schedule.algebra_placement == AlgebraPlacement.PRESSURE_REMATERIALIZED
         and replace(
             trial.schedule,
             algebra_placement=AlgebraPlacement.MATERIALIZED_CSE,

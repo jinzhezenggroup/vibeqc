@@ -110,8 +110,7 @@ class CudaScheduleIR:
             packed_algebra = self.kind == ScheduleKind.PACKED_TASKS
             subgroup_rematerialization = (
                 self.kind == ScheduleKind.SUBGROUP_TASKS
-                and self.algebra_placement
-                == AlgebraPlacement.PRESSURE_REMATERIALIZED
+                and self.algebra_placement == AlgebraPlacement.PRESSURE_REMATERIALIZED
             )
             if not (packed_algebra or subgroup_rematerialization):
                 raise ValueError(
@@ -423,9 +422,7 @@ def tuning_schedule_candidates(
         elif schedule.kind == ScheduleKind.SUBGROUP_TASKS:
             algebra_placements = (AlgebraPlacement.MATERIALIZED_CSE,)
             if integral.recurrence in ("rys3", "rys4", "rys5"):
-                algebra_placements += (
-                    AlgebraPlacement.PRESSURE_REMATERIALIZED,
-                )
+                algebra_placements += (AlgebraPlacement.PRESSURE_REMATERIALIZED,)
             for pair_orientation in PairOrientation:
                 for unroll_pair_terms in (True, False):
                     for algebra_placement in algebra_placements:
