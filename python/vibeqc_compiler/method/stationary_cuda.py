@@ -21,7 +21,6 @@ from vibeqc_compiler.common.native_runtime import compile_runtime
 from vibeqc_compiler.common.paths import asset_path, source_hashes
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from vibeqc_compiler.common.source_cache import cache_source
-from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cuda
 from vibeqc_compiler.xc.geometry_cuda import emit_geometry_cuda
 
 from .spec import resolve_method
@@ -382,6 +381,7 @@ def stationary_aot_plan_identity(functional: int, *, spin: str) -> str:
 def emit_stationary_aot_cuda(
     functional: int,
     *,
+    primitive_source: str,
     spin: str = "unpolarized",
     iterations: int = QUALIFIED_PARTITION_ITERATIONS,
 ) -> str:
@@ -390,10 +390,11 @@ def emit_stationary_aot_cuda(
         raise ValueError(
             "AOT stationary CUDA currently qualifies partition_iterations=3 only"
         )
+    if not isinstance(primitive_source, str) or not primitive_source:
+        raise ValueError("AOT stationary CUDA requires generated primitive source")
     plan = _qualified_aot_plan(functional, spin)
-    primitive = emit_first_derivative_cuda(qualified_sp_requests())
     return emit_stationary_cuda(
-        primitive,
+        primitive_source,
         functional=functional,
         plan=plan,
         iterations=iterations,
@@ -403,12 +404,18 @@ def emit_stationary_aot_cuda(
 def stationary_aot_source_identity(
     functional: int,
     *,
+    primitive_source: str,
     spin: str = "unpolarized",
     iterations: int = QUALIFIED_PARTITION_ITERATIONS,
 ) -> str:
     """Content identity shared by checkout builds and installed artifacts."""
     return canonical_hash(
-        emit_stationary_aot_cuda(functional, spin=spin, iterations=iterations)
+        emit_stationary_aot_cuda(
+            functional,
+            primitive_source=primitive_source,
+            spin=spin,
+            iterations=iterations,
+        )
     )
 
 
