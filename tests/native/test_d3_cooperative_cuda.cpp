@@ -33,7 +33,7 @@ struct Fleet {
 
 Fleet make_fleet() {
   Fleet fleet;
-  for (std::size_t atoms : {std::size_t{9}, std::size_t{17}}) {
+  for (std::size_t atoms : {std::size_t{64}, std::size_t{96}}) {
     fleet.numbers.emplace_back(atoms);
     fleet.coordinates.emplace_back(3 * atoms);
     auto& z = fleet.numbers.back();
@@ -41,9 +41,9 @@ Fleet make_fleet() {
     for (std::size_t atom = 0; atom < atoms; ++atom) {
       constexpr std::array<std::int32_t, 4> species{6, 8, 7, 1};
       z[atom] = species[atom % species.size()];
-      const double layer = static_cast<double>(atom / 9);
-      const double row = static_cast<double>((atom / 3) % 3);
-      const double col = static_cast<double>(atom % 3);
+      const double layer = static_cast<double>(atom / 16);
+      const double row = static_cast<double>((atom / 4) % 4);
+      const double col = static_cast<double>(atom % 4);
       xyz[3 * atom] = 2.35 * col + 0.07 * row;
       xyz[3 * atom + 1] = 2.55 * row + 0.11 * layer;
       xyz[3 * atom + 2] = 2.75 * layer + 0.05 * col;
@@ -235,4 +235,3 @@ int main() {
     return 1;
   }
 }
-

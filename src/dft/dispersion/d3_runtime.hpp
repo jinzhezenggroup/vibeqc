@@ -16,7 +16,7 @@ namespace vibeqc::dft::dispersion {
 
 inline constexpr const char* kD3ProductionProviderIdentity = "vibeqc-native-d3-v2";
 inline constexpr const char* kD3ProductionSchedulerIdentity =
-    "ragged-system-serial-v1";
+    "adaptive-pair-cooperative-ragged-v1";
 
 // Aggregate ragged storage is not subject to the per-system physics cap.
 inline std::size_t d3_ragged_workspace_elements(std::size_t atoms) {
