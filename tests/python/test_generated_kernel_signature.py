@@ -43,7 +43,16 @@ def test_signature_manifest_drives_declaration_and_forwarding_order() -> None:
     assert signature.parameter_list() == ("    const void* input,\n    double* output")
     assert signature.argument_list() == "input, output"
     assert signature.argument_list(wrapper=True) == "typed_input, output"
-    assert signature.without("input").names == ("output",)
+    pruned = signature.without("input")
+    assert pruned.names == ("output",)
+    diagnostics = pruned.pruning_diagnostics(signature)
+    assert diagnostics["schema"] == "vibeqc.compiler.signature-pruning.v1"
+    assert diagnostics["parameters_before"] == ["input", "output"]
+    assert diagnostics["parameters_after"] == ["output"]
+    assert diagnostics["removed_parameters"] == ["input"]
+    assert diagnostics["parameter_count_before"] == 2
+    assert diagnostics["parameter_count_after"] == 1
+    assert diagnostics["reason"] == "compile-time liveness"
     with pytest.raises(ValueError, match="unknown generated arguments"):
         signature.without("missing")
 

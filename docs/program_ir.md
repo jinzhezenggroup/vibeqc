@@ -114,6 +114,46 @@ owners. Tests require the complete prepared endpoint to run with the legacy
 `scalar_values` repacking entry point disabled and verify that the native scalar
 input shares storage with the DFT-owned feature buffer.
 
+## Logical SPMD lowering contract
+
+`vibeqc_compiler.common.spmd` adds a backend-neutral lowering plan around the
+immutable ProgramIR. The scientific ProgramIR remains schema v2 and does not
+contain physical GPU ordinals, product names, links or topology assumptions.
+A `DeviceMesh` names only logical axes. `BufferPlacement` describes whether a
+boundary buffer is replicated or deterministically sharded along one dense tensor
+axis, and `CollectiveSpec` makes all-reduce, reduce-scatter and all-gather
+synchronization explicit. Scatter/gather tensor axes are explicit, and their
+result placement is validated against the buffer contract. All-to-all is
+intentionally absent until a real consumer requires it.
+
+The same ProgramIR identity can therefore be lowered to a one-device mesh or a
+larger mesh. Size-one collectives canonicalize away, so the one-device lowering is
+the fallback rather than a separate scientific equation. Mesh shape, placement,
+collective order and logical shard coordinates participate in the SPMD plan and
+provenance identities. Replaying serialized SPMD metadata revalidates the bound
+ProgramIR identity and all placement/collective invariants.
+
+The v1 accounting contract charges one communication scratch allocation per
+logical rank and records collective source-plus-result traffic as the resource
+candidate's relative-cost work count. This is deliberately not a hardware
+latency/bandwidth prediction:
+collective-library internals and physical interconnect properties remain explicit
+scope exclusions until a target/backend supplies measured profitability evidence.
+Backends must declare support for every required collective before execution.
+
+A result publication boundary must call `require_complete_shards()`; missing,
+duplicate or unexpected logical ranks fail instead of publishing a partial
+scientific result. `reference_collective()` supplies pure CPU semantics for the
+three v1 collectives so backend implementations can be qualified independently.
+
+This contract does **not** yet make any existing XC/SCF path multi-GPU. The first
+real bounded consumer, runtime collective binding and measured 1/2/4+ GPU endpoint
+scaling remain follow-up work under #834. That qualification must reuse this
+logical contract rather than adding method- or GPU-name-specific scientific IR.
+
+Rationale:
+[ProgramIR SPMD contract decision](../.agents/notes/implemented/architecture/2026-09-21-programir-spmd-contract.md).
+
 ## Structured bounded solver regions
 
 `vibeqc_compiler.common.solver_region.SolverRegion` adds a structured loop
@@ -173,8 +213,9 @@ cross-subsystem materialization removal.
 
 ```bash
 PYTHONPATH=python:. python -m pytest -q \
-  tests/python/test_program_ir.py tests/python/test_solver_region.py \
-  tests/python/test_cc_solver.py tests/python/test_program_ir_xc.py \
+  tests/python/test_program_ir.py tests/python/test_program_spmd.py \
+  tests/python/test_solver_region.py tests/python/test_cc_solver.py \
+  tests/python/test_program_ir_xc.py \
   tests/python/test_xc_contractions_native.py
 PYTHONPATH=python:. python tools/check_compiler_structure.py
 ```

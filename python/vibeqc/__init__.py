@@ -62,6 +62,17 @@ from .force_aware_numerics import (
     PairedDifferenceEstimator,
     TargetErrorBudget,
 )
+from .force_aware_scf import (
+    ForceAwareScfPolicy,
+    OptimizationFinalVerification,
+    ScfEffortDecision,
+    ScfEffortLevel,
+    ScfEffortState,
+    ScfEffortTransition,
+    ScfForceCalibrationSample,
+    ScfForceErrorEstimate,
+    ScfForceErrorEstimator,
+)
 from .ks import FunctionalSpec, KsOptions
 from .ks_diagnostics import (
     KsDiagnostic,
@@ -137,6 +148,7 @@ __all__ = [
     "FockPlan",
     "FockScfResult",
     "FockTerm",
+    "ForceAwareScfPolicy",
     "FunctionalSpec",
     "GridPolicy",
     "GridProfile",
@@ -157,6 +169,7 @@ __all__ = [
     "ObservableDelta",
     "ObservableTarget",
     "OccupiedProjection",
+    "OptimizationFinalVerification",
     "PairedCalibrationSample",
     "PairedDifferenceEstimator",
     "PppsQueueProfile",
@@ -176,6 +189,13 @@ __all__ = [
     "ResourceRequest",
     "ResourceSession",
     "Result",
+    "ScfEffortDecision",
+    "ScfEffortLevel",
+    "ScfEffortState",
+    "ScfEffortTransition",
+    "ScfForceCalibrationSample",
+    "ScfForceErrorEstimate",
+    "ScfForceErrorEstimator",
     "Shell",
     "ShellClassProfileEntry",
     "TargetAccuracy",
