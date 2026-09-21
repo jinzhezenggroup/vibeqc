@@ -111,10 +111,11 @@ int main() {
                 lda_vacuum.feature_derivative[1] == 0.0,
             "compiler-owned polarized LDA vacuum limit is wrong");
     const double zero_gradient[2][3]{};
-    const auto pbe_vacuum =
+    const auto generated_pbe_vacuum =
         vibeqc::dft::generated::pbe_polarized_production(0.0, 0.0, zero_gradient);
-    require(pbe_vacuum.energy_density == 0.0 && pbe_vacuum.rho[0] == 0.0 &&
-                pbe_vacuum.rho[1] == 0.0,
+    require(generated_pbe_vacuum.energy_density == 0.0 &&
+                generated_pbe_vacuum.rho[0] == 0.0 &&
+                generated_pbe_vacuum.rho[1] == 0.0,
             "compiler-owned polarized PBE vacuum limit is wrong");
 
     const auto cam_point =
