@@ -585,19 +585,23 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
                 sources.geometry(task, owners, np.ones(3), np.ones(3), pbe=False)
             for k, v in sources.finish().items():
                 np.testing.assert_array_equal(v, zero[k])
-            # A late invalid primitive also poisons the transaction. No result
+            # A late invalid task charge also poisons the transaction. No result
             # is copied, and reset clears previous successful accumulation.
-            records = np.ones((2, 26))
-            records[-1, -1] = np.nan
-            maps = np.zeros((2, 8), dtype=np.int64)
+            tasks = np.full((2, 9), -1, dtype=np.int64)
+            kind = sources.kinds[
+                "kinetic", (sources.components[0], sources.components[0])
+            ]
+            tasks[:, :4] = kind, 0, 2, -1
+            tasks[:, 4:6] = 0
+            tasks[:, 8] = int(sources.aos[0, 2]) ** 2
+            charges = np.ones(2)
+            charges[-1] = np.nan
             with pytest.raises(RuntimeError, match="invalid stationary CUDA"):
                 sources._call(
-                    "stationary_records",
+                    "stationary_tasks",
                     sources.handle,
-                    0,
-                    0,
-                    _ptr(records),
-                    _ptr(maps),
+                    _ptr(tasks),
+                    _ptr(charges),
                     2,
                 )
             with pytest.raises(RuntimeError, match="reset"):

@@ -34,12 +34,15 @@ class MapleImportError(ValueError):
     """The pinned Maple source uses syntax outside the qualified importer."""
 
 
-IMPORTER_SEMANTICS = "libxc-maple-graph/v5"
+IMPORTER_SEMANTICS = "libxc-maple-graph/v7"
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _RESERVED = frozenset(
     (
         "Pi",
         "X2S",
+        "K_FACTOR_C",
+        "MU_GE",
+        "DBL_EPSILON",
         "gga_exchange",
         "mgga_exchange",
         "my_piecewise3",
@@ -598,7 +601,7 @@ def _expand_bounded_add(expression: str) -> str:
         if upper < lower or upper - lower > 32:
             raise MapleImportError("bounded Maple add range is unsupported")
         terms = [
-            re.sub(rf"\b{re.escape(variable)}\b", str(value), body)
+            re.sub(rf"\b{re.escape(variable)}\b", f"({value})", body)
             for value in range(lower, upper + 1)
         ]
         expanded = "(" + " + ".join(f"({term})" for term in terms) + ")"
@@ -623,6 +626,8 @@ def _translate_eval_diff(expression: str) -> str:
             )
         return expression
     function, first, second, derivative, value0, value1 = match.groups()
+    if first == second:
+        raise MapleImportError("Maple diff placeholders must be distinct")
     if derivative == first:
         index = 0
     elif derivative == second:

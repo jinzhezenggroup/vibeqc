@@ -2718,8 +2718,8 @@ def test_psss_force_codegen_emits_only_independent_gradient_roots() -> None:
             assert f"result.center[{center}][{axis}]" in psss_force
 
 
-def test_psss_generated_candidate_resolves_route_outside_primitive_loop() -> None:
-    """Make psss A/B selection a shell-task decision, not primitive-loop work."""
+def test_psss_force_math_is_unconditionally_generated() -> None:
+    """Keep retired handwritten psss force math and its route selector absent."""
 
     native_source = (REPOSITORY_ROOT / "src/scf/cuda/direct_native_psss.cuh").read_text(
         encoding="utf-8"
@@ -2727,15 +2727,20 @@ def test_psss_generated_candidate_resolves_route_outside_primitive_loop() -> Non
     low_order_source = (
         REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
     ).read_text(encoding="utf-8")
-    assert "template <bool ResidentBra, bool GeneratedMath>" in native_source
-    assert "if constexpr (GeneratedMath)" in native_source
-    assert "if (batch.generated_psss_weighted)" not in native_source
+    policy_source = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text(
+        encoding="utf-8"
+    )
+    assert "GeneratedMath" not in native_source
+    assert "if constexpr (GeneratedMath)" not in native_source
     assert "generated_weighted_eri::Geometry geometry;" in native_source
     assert "generated_weighted_eri::Geometry geometry{};" not in native_source
     assert "generated_weighted_eri::psss_force" in native_source
-    assert low_order_source.count("batch.generated_psss_weighted") == 1
-    assert "<ResidentBra, true>" in low_order_source
-    assert "<ResidentBra, false>" in low_order_source
+    assert "generated_psss_weighted" not in low_order_source
+    assert "VIBEQC_PSSS_WEIGHTED" not in policy_source
+    assert (
+        "contracted_eri_cartesian_source_psss_weighted_gradient<ResidentBra>"
+        in low_order_source
+    )
 
 
 def test_ssss_force_codegen_emits_only_independent_gradient_roots() -> None:

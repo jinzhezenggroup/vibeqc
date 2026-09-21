@@ -34,3 +34,21 @@ under #665; the compiler-owned scientific-contraction boundary remains unchanged
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Native task-batch integration (2026-09-21)
+
+The #664 task-batching slice keeps the #665 resident D/W source-weight boundary.
+Python submits bounded AO tuple descriptors plus only the physical nuclear charge;
+the emitted CUDA task kernel evaluates the current `StationaryGradientPlan` source
+weight from resident density/weighted-density before enumerating primitive products.
+Immutable primitive/AO topology is uploaded once per prepared owner, while geometry
+reset refreshes centers and the current D/W frame. This avoids restoring the retired
+host source-weight handoff while removing expanded primitive-record uploads.
+
+The runtime therefore admits both spin-block identity and per-reset primitive work,
+and prepared geometry replay must preserve the immutable topology identity. The
+source-owner byte formula includes resident D/W, topology, compact tasks, and task
+outputs; task metrics remain cumulative while the primitive-work cap is per reset.
+
+Agent: ChatGPT
+Model: GPT-5.6 Sol

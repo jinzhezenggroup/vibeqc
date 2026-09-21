@@ -354,6 +354,24 @@ CpuLinalgProvider resolve_cpu_linalg_provider(const CpuLinalgPlan& plan, bool re
   return usable ? CpuLinalgProvider::openblas : CpuLinalgProvider::scalar;
 }
 
+std::string_view cpu_linalg_target_name() noexcept {
+#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__AVX512F__) && defined(__FMA__)
+  return "x86_64-avx512f-fma";
+#elif defined(__AVX2__) && defined(__FMA__)
+  return "x86_64-avx2-fma";
+#elif defined(__AVX2__)
+  return "x86_64-avx2";
+#else
+  return "x86_64-generic";
+#endif
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  return "aarch64-generic";
+#else
+  return "generic";
+#endif
+}
+
 std::string_view cpu_linalg_provider_name(CpuLinalgProvider provider) noexcept {
   switch (provider) {
     case CpuLinalgProvider::automatic:
@@ -374,7 +392,8 @@ CpuLinalgDiagnostic cpu_linalg_diagnostic(const CpuLinalgPlan& plan) {
           .external_provider = provider == CpuLinalgProvider::openblas,
           .lapack_available = cpu_openblas_lapack_built(),
           .local_thread_control = cpu_openblas_local_thread_control_built(),
-          .global_thread_control = cpu_openblas_global_thread_control_built()};
+          .global_thread_control = cpu_openblas_global_thread_control_built(),
+          .cpu_target = cpu_linalg_target_name()};
 }
 
 void cpu_gemm(char a_trans, char b_trans, std::size_t m, std::size_t n, std::size_t k,

@@ -301,6 +301,10 @@ def test_each_rewrite_has_an_effect_without_erasing_original_equation() -> None:
     identity = transpose(first, (0, 1))
     restored = transpose(transpose(identity, (1, 0)), (1, 0))
     result = add(restored, duplicate, coefficients=("1/2", "1/2"))
+    ones = constant(
+        (1,) * result.spec.size, TensorSpec(result.spec.indices, role="constant")
+    )
+    result = multiply(result, ones)
     folded = divide(add(constant("1/2"), constant("1/4")), constant(3))
     dead = multiply(constant(2), constant(3))
     source = Program({"value": result, "folded": folded}, definitions=(dead,))

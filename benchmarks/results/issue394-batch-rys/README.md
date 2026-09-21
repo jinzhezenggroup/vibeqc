@@ -1,5 +1,23 @@
 # Complete low-angular Rys derivative candidates (#394)
 
+> **Checkout retention (2026-09-21):** `raw-evidence.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue394-batch-rys/raw-evidence.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue394-batch-rys/raw-evidence.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
+For commands below that previously unpacked the checkout directly, pass the
+restored archive explicitly:
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/issue394-batch-rys \
+  --archive .artifacts/issue394-batch-rys/raw-evidence.zip \
+  --output .artifacts/issue394-batch-rys-unpacked
+```
+
 One compiler-owned Gaussian-moment lowering now emits `000/001/002/100/101/110/200`.
 All six added classes share one independently generated two-root evaluator. The
 existing production manifest remains unchanged; #404 owns combined endpoint
@@ -95,7 +113,8 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
 srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
   compute-sanitizer --tool initcheck --error-exitcode=1 \
   build/df-batch/run/benchmark --qualify-only
-python -m tools.unpack_evidence benchmarks/results/issue394-batch-rys
+python -m tools.unpack_evidence benchmarks/results/issue394-batch-rys \
+  --archive .artifacts/issue394-batch-rys/raw-evidence.zip
 ```
 
 The batch helper itself allocates one finite Slurm job after compilation. Preserve
