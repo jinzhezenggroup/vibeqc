@@ -104,7 +104,6 @@ def test_every_public_cartesian_component_against_pyscf(
                 )
 
 
-
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
 @pytest.mark.parametrize("angular", [(4, 0), (0, 4), (4, 4)])
 def test_selected_g_cartesian_components_against_pyscf(
@@ -189,9 +188,7 @@ def test_g_codegen_is_explicit_and_production_capability_stays_fail_closed() -> 
     assert "static_assert(Order <= 8);" in _emit_support_cuda(8)
 
     request = build_one_electron_value_ir("kinetic", (4, 0))
-    production = query_integral_capability(
-        request, backend="cuda_one_electron_values"
-    )
+    production = query_integral_capability(request, backend="cuda_one_electron_values")
     assert not production.supported
     assert "production one-electron CUDA tables support l<=3" in production.reasons[0]
     bounded = query_integral_capability(
