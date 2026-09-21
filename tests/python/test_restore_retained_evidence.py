@@ -351,12 +351,12 @@ def test_2026_09_21_trim_manifest_tracks_only_removed_git_objects() -> None:
     audit = json.loads(manifest.read_text())
     assert audit["schema"] == "vibeqc.git-snapshot.v1"
     records = module._records(manifest)
-    assert len(records) == audit["file_count"] == audit["moved_files"] == 24
+    assert len(records) == audit["file_count"] == audit["moved_files"] == 15
     assert (
         sum(record["bytes"] for record in records)
         == audit["total_bytes"]
         == audit["moved_bytes"]
-        == 8_235_992
+        == 4_840_512
     )
     assert all(entry["checkout"] == "git-history" for entry in audit["files"])
     assert all(not (module.ROOT / record["path"]).exists() for record in records)

@@ -1,11 +1,5 @@
 # Generated DF value promotion (#142)
 
-> **Retention note (2026-09-21):** selected bulky historical records from this
-> campaign were moved out of the current checkout. Pinned historical links below
-> still open the original bytes at `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5`; exact byte restoration is available
-> through `benchmarks/results/retention-2026-09-21/migration.json`. Scientific
-> acceptance thresholds and retained summaries are unchanged.
-
 The generated raw Coulomb metric `M[P,Q]` and three-center tensor
 `A[mu,nu,P]` passed the numerical, native integration, resource, and public
 endpoint gates below. Generated values are selected by default. The bounded

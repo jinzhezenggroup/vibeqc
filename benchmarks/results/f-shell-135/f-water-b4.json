@@ -1,0 +1,7068 @@
+{
+  "active_shell_classes": [
+    {
+      "class": "ppps",
+      "primitive_quartets": 641088,
+      "primitive_work_fraction": 0.05952457442521639,
+      "shell_angular": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 3300,
+      "tile_fraction": 0.04330708661417323,
+      "tiles": 3300,
+      "unique_ao_quartets": 79200
+    },
+    {
+      "class": "dpps",
+      "primitive_quartets": 580608,
+      "primitive_work_fraction": 0.05390904853604503,
+      "shell_angular": [
+        2,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 2200,
+      "tile_fraction": 0.028871391076115485,
+      "tiles": 2200,
+      "unique_ao_quartets": 118800
+    },
+    {
+      "class": "psps",
+      "primitive_quartets": 515832,
+      "primitive_work_fraction": 0.04789464203807935,
+      "shell_angular": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 6160,
+      "tile_fraction": 0.08083989501312336,
+      "tiles": 6160,
+      "unique_ao_quartets": 54780
+    },
+    {
+      "class": "psss",
+      "primitive_quartets": 510048,
+      "primitive_work_fraction": 0.04735760166534511,
+      "shell_angular": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 14520,
+      "tile_fraction": 0.19055118110236222,
+      "tiles": 14520,
+      "unique_ao_quartets": 43560
+    },
+    {
+      "class": "dsps",
+      "primitive_quartets": 508032,
+      "primitive_work_fraction": 0.0471704174690394,
+      "shell_angular": [
+        2,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 4840,
+      "tile_fraction": 0.06351706036745407,
+      "tiles": 4840,
+      "unique_ao_quartets": 87120
+    },
+    {
+      "class": "fpps",
+      "primitive_quartets": 483840,
+      "primitive_work_fraction": 0.044924207113370855,
+      "shell_angular": [
+        3,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 1100,
+      "tile_fraction": 0.014435695538057743,
+      "tiles": 1100,
+      "unique_ao_quartets": 99000
+    },
+    {
+      "class": "fsps",
+      "primitive_quartets": 423360,
+      "primitive_work_fraction": 0.0393086812241995,
+      "shell_angular": [
+        3,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 2420,
+      "tile_fraction": 0.031758530183727034,
+      "tiles": 2420,
+      "unique_ao_quartets": 72600
+    },
+    {
+      "class": "dppp",
+      "primitive_quartets": 366336,
+      "primitive_work_fraction": 0.034014042528695075,
+      "shell_angular": [
+        2,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 600,
+      "tile_fraction": 0.007874015748031496,
+      "tiles": 600,
+      "unique_ao_quartets": 86400
+    },
+    {
+      "class": "ppss",
+      "primitive_quartets": 321816,
+      "primitive_work_fraction": 0.02988039152694394,
+      "shell_angular": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 3960,
+      "tile_fraction": 0.05196850393700787,
+      "tiles": 3960,
+      "unique_ao_quartets": 31680
+    },
+    {
+      "class": "dspp",
+      "primitive_quartets": 320544,
+      "primitive_work_fraction": 0.029762287212608193,
+      "shell_angular": [
+        2,
+        0,
+        1,
+        1
+      ],
+      "shell_quartets": 1320,
+      "tile_fraction": 0.01732283464566929,
+      "tiles": 1320,
+      "unique_ao_quartets": 63360
+    },
+    {
+      "class": "fppp",
+      "primitive_quartets": 305280,
+      "primitive_work_fraction": 0.02834503544057923,
+      "shell_angular": [
+        3,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 300,
+      "tile_fraction": 0.006561679790026247,
+      "tiles": 500,
+      "unique_ao_quartets": 72000
+    },
+    {
+      "class": "dpss",
+      "primitive_quartets": 291456,
+      "primitive_work_fraction": 0.027061486665911492,
+      "shell_angular": [
+        2,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 2640,
+      "tile_fraction": 0.03464566929133858,
+      "tiles": 2640,
+      "unique_ao_quartets": 47520
+    },
+    {
+      "class": "dpds",
+      "primitive_quartets": 290304,
+      "primitive_work_fraction": 0.026954524268022514,
+      "shell_angular": [
+        2,
+        1,
+        2,
+        0
+      ],
+      "shell_quartets": 880,
+      "tile_fraction": 0.011548556430446194,
+      "tiles": 880,
+      "unique_ao_quartets": 95040
+    },
+    {
+      "class": "fpdp",
+      "primitive_quartets": 276480,
+      "primitive_work_fraction": 0.025670975493354776,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        1
+      ],
+      "shell_quartets": 200,
+      "tile_fraction": 0.007874015748031496,
+      "tiles": 600,
+      "unique_ao_quartets": 108000
+    },
+    {
+      "class": "fspp",
+      "primitive_quartets": 267120,
+      "primitive_work_fraction": 0.024801906010506827,
+      "shell_angular": [
+        3,
+        0,
+        1,
+        1
+      ],
+      "shell_quartets": 660,
+      "tile_fraction": 0.008661417322834646,
+      "tiles": 660,
+      "unique_ao_quartets": 52800
+    },
+    {
+      "class": "dsss",
+      "primitive_quartets": 255024,
+      "primitive_work_fraction": 0.023678800832672556,
+      "shell_angular": [
+        2,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 5808,
+      "tile_fraction": 0.07622047244094488,
+      "tiles": 5808,
+      "unique_ao_quartets": 34848
+    },
+    {
+      "class": "fpss",
+      "primitive_quartets": 242880,
+      "primitive_work_fraction": 0.022551238888259578,
+      "shell_angular": [
+        3,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 1320,
+      "tile_fraction": 0.01732283464566929,
+      "tiles": 1320,
+      "unique_ao_quartets": 39600
+    },
+    {
+      "class": "fsdp",
+      "primitive_quartets": 241920,
+      "primitive_work_fraction": 0.022462103556685428,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        1
+      ],
+      "shell_quartets": 440,
+      "tile_fraction": 0.005774278215223097,
+      "tiles": 440,
+      "unique_ao_quartets": 79200
+    },
+    {
+      "class": "fpds",
+      "primitive_quartets": 241920,
+      "primitive_work_fraction": 0.022462103556685428,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        0
+      ],
+      "shell_quartets": 440,
+      "tile_fraction": 0.005774278215223097,
+      "tiles": 440,
+      "unique_ao_quartets": 79200
+    },
+    {
+      "class": "fdps",
+      "primitive_quartets": 241920,
+      "primitive_work_fraction": 0.022462103556685428,
+      "shell_angular": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "shell_quartets": 440,
+      "tile_fraction": 0.005774278215223097,
+      "tiles": 440,
+      "unique_ao_quartets": 79200
+    },
+    {
+      "class": "fsss",
+      "primitive_quartets": 212520,
+      "primitive_work_fraction": 0.01973233402722713,
+      "shell_angular": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 2904,
+      "tile_fraction": 0.03811023622047244,
+      "tiles": 2904,
+      "unique_ao_quartets": 29040
+    },
+    {
+      "class": "fsds",
+      "primitive_quartets": 211680,
+      "primitive_work_fraction": 0.01965434061209975,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        0
+      ],
+      "shell_quartets": 968,
+      "tile_fraction": 0.012703412073490813,
+      "tiles": 968,
+      "unique_ao_quartets": 58080
+    },
+    {
+      "class": "pppp",
+      "primitive_quartets": 206628,
+      "primitive_work_fraction": 0.019185265929690793,
+      "shell_angular": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 480,
+      "tile_fraction": 0.006299212598425197,
+      "tiles": 480,
+      "unique_ao_quartets": 29040
+    },
+    {
+      "class": "fpfs",
+      "primitive_quartets": 201600,
+      "primitive_work_fraction": 0.01871841963057119,
+      "shell_angular": [
+        3,
+        1,
+        3,
+        0
+      ],
+      "shell_quartets": 220,
+      "tile_fraction": 0.005774278215223097,
+      "tiles": 440,
+      "unique_ao_quartets": 66000
+    },
+    {
+      "class": "dpdp",
+      "primitive_quartets": 167328,
+      "primitive_work_fraction": 0.015536288293374088,
+      "shell_angular": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "shell_quartets": 220,
+      "tile_fraction": 0.005249343832020997,
+      "tiles": 400,
+      "unique_ao_quartets": 65160
+    },
+    {
+      "class": "ddps",
+      "primitive_quartets": 157248,
+      "primitive_work_fraction": 0.014600367311845528,
+      "shell_angular": [
+        2,
+        2,
+        1,
+        0
+      ],
+      "shell_quartets": 660,
+      "tile_fraction": 0.008661417322834646,
+      "tiles": 660,
+      "unique_ao_quartets": 51480
+    },
+    {
+      "class": "fdpp",
+      "primitive_quartets": 152640,
+      "primitive_work_fraction": 0.014172517720289615,
+      "shell_angular": [
+        3,
+        2,
+        1,
+        1
+      ],
+      "shell_quartets": 120,
+      "tile_fraction": 0.004199475065616798,
+      "tiles": 320,
+      "unique_ao_quartets": 57600
+    },
+    {
+      "class": "fddp",
+      "primitive_quartets": 138240,
+      "primitive_work_fraction": 0.012835487746677388,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        1
+      ],
+      "shell_quartets": 80,
+      "tile_fraction": 0.005249343832020997,
+      "tiles": 400,
+      "unique_ao_quartets": 86400
+    },
+    {
+      "class": "ssss",
+      "primitive_quartets": 133724,
+      "primitive_work_fraction": 0.012416180291063998,
+      "shell_angular": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 8844,
+      "tile_fraction": 0.11606299212598425,
+      "tiles": 8844,
+      "unique_ao_quartets": 8844
+    },
+    {
+      "class": "dsds",
+      "primitive_quartets": 128568,
+      "primitive_work_fraction": 0.011937449281067842,
+      "shell_angular": [
+        2,
+        0,
+        2,
+        0
+      ],
+      "shell_quartets": 1012,
+      "tile_fraction": 0.013280839895013124,
+      "tiles": 1012,
+      "unique_ao_quartets": 35112
+    },
+    {
+      "class": "fdss",
+      "primitive_quartets": 121440,
+      "primitive_work_fraction": 0.011275619444129789,
+      "shell_angular": [
+        3,
+        2,
+        0,
+        0
+      ],
+      "shell_quartets": 528,
+      "tile_fraction": 0.006929133858267717,
+      "tiles": 528,
+      "unique_ao_quartets": 31680
+    },
+    {
+      "class": "fdds",
+      "primitive_quartets": 120960,
+      "primitive_work_fraction": 0.011231051778342714,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        0
+      ],
+      "shell_quartets": 176,
+      "tile_fraction": 0.004619422572178478,
+      "tiles": 352,
+      "unique_ao_quartets": 63360
+    },
+    {
+      "class": "fpfp",
+      "primitive_quartets": 116400,
+      "primitive_work_fraction": 0.01080765895336551,
+      "shell_angular": [
+        3,
+        1,
+        3,
+        1
+      ],
+      "shell_quartets": 60,
+      "tile_fraction": 0.0026246719160104987,
+      "tiles": 200,
+      "unique_ao_quartets": 45300
+    },
+    {
+      "class": "fdfp",
+      "primitive_quartets": 115200,
+      "primitive_work_fraction": 0.010696239788897824,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        1
+      ],
+      "shell_quartets": 40,
+      "tile_fraction": 0.004199475065616798,
+      "tiles": 320,
+      "unique_ao_quartets": 72000
+    },
+    {
+      "class": "ffps",
+      "primitive_quartets": 110880,
+      "primitive_work_fraction": 0.010295130796814154,
+      "shell_angular": [
+        3,
+        3,
+        1,
+        0
+      ],
+      "shell_quartets": 220,
+      "tile_fraction": 0.0028871391076115485,
+      "tiles": 220,
+      "unique_ao_quartets": 36300
+    },
+    {
+      "class": "fdfs",
+      "primitive_quartets": 100800,
+      "primitive_work_fraction": 0.009359209815285595,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        0
+      ],
+      "shell_quartets": 88,
+      "tile_fraction": 0.0034645669291338585,
+      "tiles": 264,
+      "unique_ao_quartets": 52800
+    },
+    {
+      "class": "ddpp",
+      "primitive_quartets": 99216,
+      "primitive_work_fraction": 0.00921213651818825,
+      "shell_angular": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "shell_quartets": 180,
+      "tile_fraction": 0.0028871391076115485,
+      "tiles": 220,
+      "unique_ao_quartets": 37440
+    },
+    {
+      "class": "dddp",
+      "primitive_quartets": 89856,
+      "primitive_work_fraction": 0.008343067035340303,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "shell_quartets": 120,
+      "tile_fraction": 0.003674540682414698,
+      "tiles": 280,
+      "unique_ao_quartets": 56160
+    },
+    {
+      "class": "fsfs",
+      "primitive_quartets": 89500,
+      "primitive_work_fraction": 0.008310012683214888,
+      "shell_angular": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "shell_quartets": 264,
+      "tile_fraction": 0.0034645669291338585,
+      "tiles": 264,
+      "unique_ao_quartets": 24420
+    },
+    {
+      "class": "ddss",
+      "primitive_quartets": 78936,
+      "primitive_work_fraction": 0.007329152638684363,
+      "shell_angular": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "shell_quartets": 792,
+      "tile_fraction": 0.010393700787401575,
+      "tiles": 792,
+      "unique_ao_quartets": 20592
+    },
+    {
+      "class": "ddds",
+      "primitive_quartets": 78624,
+      "primitive_work_fraction": 0.007300183655922764,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        0
+      ],
+      "shell_quartets": 264,
+      "tile_fraction": 0.0034645669291338585,
+      "tiles": 264,
+      "unique_ao_quartets": 41184
+    },
+    {
+      "class": "fpdd",
+      "primitive_quartets": 74880,
+      "primitive_work_fraction": 0.006952555862783585,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        2
+      ],
+      "shell_quartets": 60,
+      "tile_fraction": 0.0028871391076115485,
+      "tiles": 220,
+      "unique_ao_quartets": 46800
+    },
+    {
+      "class": "ffpp",
+      "primitive_quartets": 69960,
+      "primitive_work_fraction": 0.006495737288466074,
+      "shell_angular": [
+        3,
+        3,
+        1,
+        1
+      ],
+      "shell_quartets": 60,
+      "tile_fraction": 0.0015748031496062992,
+      "tiles": 120,
+      "unique_ao_quartets": 26400
+    },
+    {
+      "class": "fsdd",
+      "primitive_quartets": 65520,
+      "primitive_work_fraction": 0.006083486379935637,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        2
+      ],
+      "shell_quartets": 132,
+      "tile_fraction": 0.002309711286089239,
+      "tiles": 176,
+      "unique_ao_quartets": 34320
+    },
+    {
+      "class": "ffdp",
+      "primitive_quartets": 63360,
+      "primitive_work_fraction": 0.005882931883893803,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        1
+      ],
+      "shell_quartets": 40,
+      "tile_fraction": 0.002099737532808399,
+      "tiles": 160,
+      "unique_ao_quartets": 39600
+    },
+    {
+      "class": "ffss",
+      "primitive_quartets": 55660,
+      "primitive_work_fraction": 0.005167992245226153,
+      "shell_angular": [
+        3,
+        3,
+        0,
+        0
+      ],
+      "shell_quartets": 264,
+      "tile_fraction": 0.0034645669291338585,
+      "tiles": 264,
+      "unique_ao_quartets": 14520
+    },
+    {
+      "class": "ffds",
+      "primitive_quartets": 55440,
+      "primitive_work_fraction": 0.005147565398407077,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        0
+      ],
+      "shell_quartets": 88,
+      "tile_fraction": 0.002309711286089239,
+      "tiles": 176,
+      "unique_ao_quartets": 29040
+    },
+    {
+      "class": "fffp",
+      "primitive_quartets": 52800,
+      "primitive_work_fraction": 0.004902443236578169,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        1
+      ],
+      "shell_quartets": 20,
+      "tile_fraction": 0.001837270341207349,
+      "tiles": 140,
+      "unique_ao_quartets": 33000
+    },
+    {
+      "class": "fffs",
+      "primitive_quartets": 46200,
+      "primitive_work_fraction": 0.004289637832005898,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        0
+      ],
+      "shell_quartets": 44,
+      "tile_fraction": 0.0017322834645669292,
+      "tiles": 132,
+      "unique_ao_quartets": 24200
+    },
+    {
+      "class": "fddd",
+      "primitive_quartets": 37440,
+      "primitive_work_fraction": 0.0034762779313917925,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        2
+      ],
+      "shell_quartets": 24,
+      "tile_fraction": 0.001994750656167979,
+      "tiles": 152,
+      "unique_ao_quartets": 37440
+    },
+    {
+      "class": "fdfd",
+      "primitive_quartets": 29040,
+      "primitive_work_fraction": 0.0026963437801179927,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        2
+      ],
+      "shell_quartets": 12,
+      "tile_fraction": 0.0016272965879265092,
+      "tiles": 124,
+      "unique_ao_quartets": 29040
+    },
+    {
+      "class": "fffd",
+      "primitive_quartets": 26400,
+      "primitive_work_fraction": 0.0024512216182890844,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        2
+      ],
+      "shell_quartets": 8,
+      "tile_fraction": 0.0013648293963254593,
+      "tiles": 104,
+      "unique_ao_quartets": 26400
+    },
+    {
+      "class": "ffdd",
+      "primitive_quartets": 17160,
+      "primitive_work_fraction": 0.0015932940518879049,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        2
+      ],
+      "shell_quartets": 12,
+      "tile_fraction": 0.0009448818897637795,
+      "tiles": 72,
+      "unique_ao_quartets": 17160
+    },
+    {
+      "class": "dddd",
+      "primitive_quartets": 12324,
+      "primitive_work_fraction": 0.0011442748190831316,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "shell_quartets": 24,
+      "tile_fraction": 0.0006824146981627297,
+      "tiles": 52,
+      "unique_ao_quartets": 12324
+    },
+    {
+      "class": "ffff",
+      "primitive_quartets": 6160,
+      "primitive_work_fraction": 0.0005719517109341197,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "shell_quartets": 4,
+      "tile_fraction": 0.0003674540682414698,
+      "tiles": 28,
+      "unique_ao_quartets": 6160
+    }
+  ],
+  "atoms_bohr": [
+    [
+      "O",
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    [
+      "H",
+      [
+        0.0,
+        -1.43233673,
+        1.10715266
+      ]
+    ],
+    [
+      "H",
+      [
+        0.0,
+        1.43233673,
+        1.10715266
+      ]
+    ]
+  ],
+  "baseline_force": [
+    "dppp",
+    "dpdp",
+    "dddp",
+    "dddd",
+    "dpss",
+    "dsds",
+    "ddss",
+    "ddpp",
+    "ddds",
+    "dpds",
+    "ddps",
+    "ppps",
+    "dpps",
+    "dsps",
+    "dspp",
+    "pppp",
+    "psps",
+    "ppss",
+    "dsss"
+  ],
+  "basis": {
+    "ao_count": 48,
+    "f_shell_count": 1,
+    "reference_shells": [
+      [
+        0,
+        0,
+        6
+      ],
+      [
+        0,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        1,
+        4
+      ],
+      [
+        0,
+        1,
+        1
+      ],
+      [
+        0,
+        1,
+        1
+      ],
+      [
+        0,
+        2,
+        1
+      ],
+      [
+        0,
+        2,
+        1
+      ],
+      [
+        0,
+        3,
+        1
+      ],
+      [
+        1,
+        0,
+        3
+      ],
+      [
+        1,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        1
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        2,
+        0,
+        3
+      ],
+      [
+        2,
+        0,
+        1
+      ],
+      [
+        2,
+        0,
+        1
+      ],
+      [
+        2,
+        1,
+        1
+      ]
+    ],
+    "representation": "cartesian",
+    "shells": [
+      [
+        0,
+        0,
+        6
+      ],
+      [
+        0,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        1,
+        4
+      ],
+      [
+        0,
+        1,
+        1
+      ],
+      [
+        0,
+        1,
+        1
+      ],
+      [
+        0,
+        2,
+        1
+      ],
+      [
+        0,
+        2,
+        1
+      ],
+      [
+        0,
+        3,
+        1
+      ],
+      [
+        1,
+        0,
+        3
+      ],
+      [
+        1,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        1
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        2,
+        0,
+        3
+      ],
+      [
+        2,
+        0,
+        1
+      ],
+      [
+        2,
+        0,
+        1
+      ],
+      [
+        2,
+        1,
+        1
+      ]
+    ]
+  },
+  "batch_size": 4,
+  "candidate_force": [
+    "dppp",
+    "dpdp",
+    "dddp",
+    "dddd",
+    "dpss",
+    "dsds",
+    "ddss",
+    "ddpp",
+    "ddds",
+    "dpds",
+    "ddps",
+    "ppps",
+    "dpps",
+    "dsps",
+    "dspp",
+    "pppp",
+    "psps",
+    "ppss",
+    "dsss",
+    "fpps"
+  ],
+  "case": "water-def2-tzvp",
+  "environment": {
+    "accelerator": {
+      "backend": "cuda",
+      "clock_rate_khz": 2407000,
+      "compute_capability": [
+        12,
+        0
+      ],
+      "device_id": 0,
+      "driver_version": 13000,
+      "multiprocessor_count": 170,
+      "name": "NVIDIA GeForce RTX 5090",
+      "nvidia_smi": {
+        "memory_clock_mhz": 13801.0,
+        "performance_state": "P1",
+        "power_draw_watts": 62.65,
+        "power_limit_watts": 575.0,
+        "sampling_point": "after benchmark measurements",
+        "sm_clock_mhz": 2557.0,
+        "temperature_celsius": 46.0
+      },
+      "runtime_version": 12090,
+      "total_global_memory_bytes": 33666498560
+    },
+    "git": {
+      "commit": "09eba83656b3833c231498493ba7322267efc453",
+      "dirty": true,
+      "pending_generated_benchmark_artifacts": 0
+    },
+    "host": {
+      "machine": "x86_64",
+      "node": "node3",
+      "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+      "processor": "x86_64"
+    },
+    "packages": {
+      "cupy": "14.2.0",
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "python": {
+      "executable": "/home/jzzeng/codes/qc/build/gpu4pyscf-venv/bin/python",
+      "version": "3.11.14"
+    },
+    "runtime": {
+      "cuda_visible_devices": "0",
+      "vibeqc_library": "/home/jzzeng/codes/qc-f-shell-gates/build/f-shell-endpoint/libvibeqc.so"
+    },
+    "timestamp_utc": "2026-09-07T20:04:28.539125+00:00",
+    "toolchain": {
+      "cuobjdump": {
+        "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+        "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+      },
+      "host_cxx": {
+        "path": "/usr/bin/c++",
+        "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+      },
+      "nvcc": {
+        "path": "/group/software/cuda-12.9.1/bin/nvcc",
+        "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      },
+      "ptxas": {
+        "path": "/group/software/cuda-12.9.1/bin/ptxas",
+        "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+      }
+    }
+  },
+  "f_primitive_work_fraction": 0.4657878170571599,
+  "fock": [
+    "ssss",
+    "psss",
+    "dppp",
+    "dpdp",
+    "dddp",
+    "dddd",
+    "dpss",
+    "dsds",
+    "ddss",
+    "ddpp",
+    "ddds",
+    "dpds",
+    "ddps",
+    "ppps",
+    "dpps",
+    "dsps",
+    "dspp",
+    "pppp",
+    "psps",
+    "ppss",
+    "dsss"
+  ],
+  "independent_numerical_passed": true,
+  "measurement": {
+    "accuracy": {
+      "maximum_energy_error_hartree": 2.7000623958883807e-13,
+      "maximum_force_error_hartree_per_bohr": 7.839805193921023e-13,
+      "pair_count": 6
+    },
+    "baseline_median_seconds": 0.6357678009662777,
+    "baseline_samples": [
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.736160270950322e-12,
+            "energy_change_hartree": 1.9895196601282805e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.91218852838306e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0126011210585593e-11,
+            "energy_change_hartree": 2.842170943040401e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.029521923493174e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079645,
+          -76.05946676968686,
+          -76.05933956939788,
+          -76.05919794123952
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.914192466460373e-14,
+              -1.1547660662308157e-13,
+              0.02156010959407943
+            ],
+            [
+              -8.064443819686889e-15,
+              0.010030202797266099,
+              -0.01078005479705314
+            ],
+            [
+              -1.1077480844917858e-14,
+              -0.0100302027971584,
+              -0.01078005479702726
+            ]
+          ],
+          [
+            [
+              3.543223437227596e-14,
+              8.429652498143283e-14,
+              0.023852459257388724
+            ],
+            [
+              -1.771989430688952e-14,
+              0.011712704521524642,
+              -0.011926229628666912
+            ],
+            [
+              -1.771234006538773e-14,
+              -0.011712704521610164,
+              -0.011926229628724373
+            ]
+          ],
+          [
+            [
+              1.1696187511992978e-14,
+              1.7958045473657976e-13,
+              0.026114007508573088
+            ],
+            [
+              -4.7140594709694564e-15,
+              0.013373519552059357,
+              -0.01305700375421026
+            ],
+            [
+              -6.982128041024561e-15,
+              -0.013373519552236446,
+              -0.01305700375437296
+            ]
+          ],
+          [
+            [
+              -3.7450442591376674e-14,
+              4.6423097613637944e-14,
+              0.028345131016474782
+            ],
+            [
+              1.8280206809357354e-14,
+              0.015012900951123022,
+              -0.014172565508164769
+            ],
+            [
+              1.9170235782019194e-14,
+              -0.015012900951171325,
+              -0.014172565508316717
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6400040101725608,
+        "selection": "baseline",
+        "sequence_index": 0,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.736876964369643e-12,
+            "energy_change_hartree": 1.8474111129762605e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.906991347790687e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0128586892175216e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0300247628639374e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079653,
+          -76.05946676968682,
+          -76.05933956939796,
+          -76.05919794123943
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              2.0317833680737248e-14,
+              -2.833547443097332e-14,
+              0.02156010959354294
+            ],
+            [
+              -7.54583670656275e-15,
+              0.01003020279692771,
+              -0.010780054796742511
+            ],
+            [
+              -1.2771996974174989e-14,
+              -0.010030202796901626,
+              -0.010780054796797453
+            ]
+          ],
+          [
+            [
+              -3.606428316122122e-14,
+              -3.988214966938775e-14,
+              0.02385245925737105
+            ],
+            [
+              1.8110027221838216e-14,
+              0.011712704521564518,
+              -0.01192622962870478
+            ],
+            [
+              1.79542559393846e-14,
+              -0.011712704521523757,
+              -0.011926229628672949
+            ]
+          ],
+          [
+            [
+              1.6499112337993432e-14,
+              2.0461011061347788e-13,
+              0.026114007508108175
+            ],
+            [
+              -8.491068586548868e-15,
+              0.01337351955175854,
+              -0.013057003753989917
+            ],
+            [
+              -8.008043751446387e-15,
+              -0.013373519551948657,
+              -0.013057003754118827
+            ]
+          ],
+          [
+            [
+              -5.239137347495757e-14,
+              -3.4985693773451054e-14,
+              0.02834513101655518
+            ],
+            [
+              2.6359992333887898e-14,
+              0.015012900951212983,
+              -0.0141725655082678
+            ],
+            [
+              2.6031381141070668e-14,
+              -0.015012900951166403,
+              -0.014172565508286732
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.629786767065525,
+        "selection": "baseline",
+        "sequence_index": 3,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.725706700595298e-12,
+            "energy_change_hartree": 1.9895196601282805e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.911290372616803e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0129820365088042e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.02951540948195e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079637,
+          -76.0594667696869,
+          -76.0593395693979,
+          -76.05919794123959
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.9551922091816758e-14,
+              5.3328122358767644e-14,
+              0.021560109594134135
+            ],
+            [
+              -9.898451302102764e-15,
+              0.01003020279718738,
+              -0.010780054797051491
+            ],
+            [
+              -9.653470789713603e-15,
+              -0.010030202797242427,
+              -0.01078005479708038
+            ]
+          ],
+          [
+            [
+              -9.32489529710259e-15,
+              -1.6157058538975212e-13,
+              0.023852459257194043
+            ],
+            [
+              4.467406580367049e-15,
+              0.011712704521577253,
+              -0.011926229628657132
+            ],
+            [
+              4.8574887167359454e-15,
+              -0.011712704521418371,
+              -0.01192622962854418
+            ]
+          ],
+          [
+            [
+              1.9626269601537027e-15,
+              3.063747289001666e-13,
+              0.02611400750812704
+            ],
+            [
+              -2.6198550213431284e-15,
+              0.013373519551701721,
+              -0.013057003754013963
+            ],
+            [
+              6.572280611898935e-16,
+              -0.013373519552000208,
+              -0.013057003754136903
+            ]
+          ],
+          [
+            [
+              -9.428297028614272e-15,
+              1.2005611824853364e-13,
+              0.028345131016037327
+            ],
+            [
+              6.347458112010228e-15,
+              0.01501290095082161,
+              -0.01417256550794852
+            ],
+            [
+              3.080838916604174e-15,
+              -0.015012900950952101,
+              -0.014172565508073534
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6335761279333383,
+        "selection": "baseline",
+        "sequence_index": 4,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.74520443422655e-12,
+            "energy_change_hartree": 1.9895196601282805e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.905528787971752e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0135611169562306e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0293362167580202e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079654,
+          -76.05946676968688,
+          -76.05933956939788,
+          -76.05919794123946
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.752107964362747e-14,
+              1.7516571764485045e-13,
+              0.02156010959366943
+            ],
+            [
+              -8.51582483116091e-15,
+              0.01003020279694904,
+              -0.010780054796760127
+            ],
+            [
+              -9.00525481246577e-15,
+              -0.01003020279711634,
+              -0.010780054796928399
+            ]
+          ],
+          [
+            [
+              6.785913027695193e-14,
+              -1.4440035378785498e-13,
+              0.02385245925712873
+            ],
+            [
+              -3.3483997892500333e-14,
+              0.01171270452155122,
+              -0.011926229628573088
+            ],
+            [
+              -3.437513238445137e-14,
+              -0.011712704521399008,
+              -0.011926229628558365
+            ]
+          ],
+          [
+            [
+              2.9053678342888463e-15,
+              1.6057315289544536e-13,
+              0.026114007508245062
+            ],
+            [
+              -1.6289643639009611e-15,
+              0.013373519551872506,
+              -0.013057003754105217
+            ],
+            [
+              -1.2764034703877085e-15,
+              -0.013373519552027601,
+              -0.013057003754166869
+            ]
+          ],
+          [
+            [
+              -3.9092420789296597e-14,
+              1.7598526333029403e-13,
+              0.028345131016096058
+            ],
+            [
+              2.0007737998192226e-14,
+              0.015012900950801572,
+              -0.014172565507952695
+            ],
+            [
+              1.908468279110471e-14,
+              -0.015012900950972123,
+              -0.014172565508136585
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6409235161263496,
+        "selection": "baseline",
+        "sequence_index": 7,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.726991338882639e-12,
+            "energy_change_hartree": 2.1316282072803006e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.910581987385022e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0126585582538615e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0292593521384325e-11,
+            "energy_change_hartree": 7.105427357601002e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079658,
+          -76.05946676968688,
+          -76.05933956939788,
+          -76.0591979412396
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.9888800571272566e-14,
+              1.8474274261150026e-14,
+              0.02156010959356784
+            ],
+            [
+              -6.585211230854462e-15,
+              0.01003020279700343,
+              -0.010780054796739944
+            ],
+            [
+              -1.3303589340414796e-14,
+              -0.010030202797026109,
+              -0.010780054796823438
+            ]
+          ],
+          [
+            [
+              -3.176915578333112e-14,
+              -1.363012706794633e-13,
+              0.02385245925696439
+            ],
+            [
+              1.348536105307367e-14,
+              0.011712704521382362,
+              -0.01192622962854454
+            ],
+            [
+              1.8283794730259392e-14,
+              -0.011712704521249322,
+              -0.011926229628432731
+            ]
+          ],
+          [
+            [
+              1.1826050207529854e-14,
+              2.403782627711561e-13,
+              0.026114007508649655
+            ],
+            [
+              -5.847766065714904e-15,
+              0.013373519552013168,
+              -0.013057003754232329
+            ],
+            [
+              -5.9782841418157565e-15,
+              -0.013373519552251082,
+              -0.013057003754416499
+            ]
+          ],
+          [
+            [
+              -4.828240520892048e-14,
+              -1.1839798896375257e-14,
+              0.028345131016680025
+            ],
+            [
+              2.6954003201773694e-14,
+              0.01501290095124982,
+              -0.014172565508342392
+            ],
+            [
+              2.132840200714778e-14,
+              -0.015012900951235282,
+              -0.01417256550833983
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6379594739992172,
+        "selection": "baseline",
+        "sequence_index": 8,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.746178458524577e-12,
+            "energy_change_hartree": 1.8474111129762605e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.916263540263113e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.013410272658846e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0290817839823652e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079653,
+          -76.05946676968682,
+          -76.05933956939785,
+          -76.05919794123952
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.8183464479415595e-14,
+              -2.910395693585933e-16,
+              0.02156010959398861
+            ],
+            [
+              -7.86895222782394e-15,
+              0.01003020279717448,
+              -0.0107800547969729
+            ],
+            [
+              -1.031451225159208e-14,
+              -0.01003020279718204,
+              -0.010780054797037754
+            ]
+          ],
+          [
+            [
+              1.5444852193045704e-14,
+              8.269869206119718e-14,
+              0.023852459256946058
+            ],
+            [
+              -7.552789476586936e-15,
+              0.011712704521269417,
+              -0.011926229628449378
+            ],
+            [
+              -7.892062716458322e-15,
+              -0.011712704521344906,
+              -0.011926229628483671
+            ]
+          ],
+          [
+            [
+              4.0673542259362644e-15,
+              1.9460947498126627e-13,
+              0.026114007508075684
+            ],
+            [
+              -3.0605911837338468e-15,
+              0.013373519551733064,
+              -0.013057003753950481
+            ],
+            [
+              -1.0067630422029965e-15,
+              -0.01337351955192288,
+              -0.013057003754128365
+            ]
+          ],
+          [
+            [
+              -1.0434675315612807e-14,
+              1.6595364691033913e-13,
+              0.028345131016125933
+            ],
+            [
+              6.230251798217109e-15,
+              0.01501290095082169,
+              -0.014172565507996627
+            ],
+            [
+              4.204423517395216e-15,
+              -0.015012900950990456,
+              -0.014172565508142713
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6295698489993811,
+        "selection": "baseline",
+        "sequence_index": 11,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      }
+    ],
+    "baseline_seconds": [
+      0.6400040101725608,
+      0.629786767065525,
+      0.6335761279333383,
+      0.6409235161263496,
+      0.6379594739992172,
+      0.6295698489993811
+    ],
+    "candidate_median_seconds": 0.6313249605009332,
+    "candidate_samples": [
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.73562286276694e-12,
+            "energy_change_hartree": 2.1316282072803006e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.904564810257491e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0131768339927993e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0296528687482868e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079647,
+          -76.05946676968689,
+          -76.0593395693979,
+          -76.05919794123946
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.8090144066895794e-14,
+              -1.4648865474034807e-13,
+              0.021560109594008125
+            ],
+            [
+              -7.994010547333031e-15,
+              0.010030202797251633,
+              -0.010780054797038082
+            ],
+            [
+              -1.0096133519563614e-14,
+              -0.010030202797106359,
+              -0.010780054796999585
+            ]
+          ],
+          [
+            [
+              9.268830101290056e-15,
+              -5.3013116061247375e-14,
+              0.023852459257221504
+            ],
+            [
+              -2.4962111204360075e-15,
+              0.011712704521544248,
+              -0.011926229628632044
+            ],
+            [
+              -6.772618980853987e-15,
+              -0.01171270452149086,
+              -0.011926229628577402
+            ]
+          ],
+          [
+            [
+              4.410819933748598e-15,
+              9.16115714379399e-15,
+              0.026114007507789107
+            ],
+            [
+              -1.9151005599886268e-15,
+              0.013373519551734592,
+              -0.013057003753903545
+            ],
+            [
+              -2.4957193737604826e-15,
+              -0.01337351955173926,
+              -0.013057003753890498
+            ]
+          ],
+          [
+            [
+              -2.1749733454563806e-15,
+              -1.0902258729335364e-13,
+              0.028345131016345067
+            ],
+            [
+              1.1510904642811117e-15,
+              0.015012900951037054,
+              -0.014172565508162094
+            ],
+            [
+              1.0238828811757824e-15,
+              -0.015012900950925069,
+              -0.014172565508169505
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6342318339738995,
+        "selection": "candidate",
+        "sequence_index": 1,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.732170983199296e-12,
+            "energy_change_hartree": 1.8474111129762605e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.902137026810567e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0129425815175725e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0292387744197686e-11,
+            "energy_change_hartree": 7.105427357601002e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079655,
+          -76.05946676968685,
+          -76.05933956939782,
+          -76.05919794123955
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.731240051662191e-14,
+              -2.2844169512498274e-14,
+              0.021560109593632033
+            ],
+            [
+              -7.407429297082402e-15,
+              0.010030202797047716,
+              -0.010780054796796433
+            ],
+            [
+              -9.904971219539937e-15,
+              -0.010030202797024726,
+              -0.010780054796841404
+            ]
+          ],
+          [
+            [
+              -6.114230320762506e-14,
+              1.884214345869689e-14,
+              0.02385245925706325
+            ],
+            [
+              3.13557141612939e-14,
+              0.011712704521401359,
+              -0.01192622962849291
+            ],
+            [
+              2.9786589046331354e-14,
+              -0.01171270452142466,
+              -0.011926229628568484
+            ]
+          ],
+          [
+            [
+              3.5371845384061807e-15,
+              7.82798619837802e-14,
+              0.026114007508007655
+            ],
+            [
+              -2.1352625659932305e-15,
+              0.013373519551733519,
+              -0.01305700375399715
+            ],
+            [
+              -1.4019219724124283e-15,
+              -0.013373519551808443,
+              -0.01305700375399356
+            ]
+          ],
+          [
+            [
+              -7.140221759972112e-15,
+              -2.1634250683469335e-13,
+              0.02834513101623748
+            ],
+            [
+              4.952137266437678e-15,
+              0.015012900951071204,
+              -0.014172565508095784
+            ],
+            [
+              2.1880844935351932e-15,
+              -0.0150129009508625,
+              -0.014172565508135388
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6295665469951928,
+        "selection": "candidate",
+        "sequence_index": 2,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.735076271077576e-12,
+            "energy_change_hartree": 2.1316282072803006e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.906405488478121e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0134730287974523e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0295790665180621e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079664,
+          -76.05946676968676,
+          -76.05933956939788,
+          -76.05919794123955
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.869621802549157e-14,
+              6.181220165003322e-14,
+              0.021560109593648097
+            ],
+            [
+              -1.1327323127950686e-14,
+              0.010030202796926053,
+              -0.010780054796761432
+            ],
+            [
+              -7.368894897542479e-15,
+              -0.010030202796993399,
+              -0.01078005479687974
+            ]
+          ],
+          [
+            [
+              -5.2392676675407677e-14,
+              -2.330295760295002e-13,
+              0.023852459257043813
+            ],
+            [
+              2.5375917778934222e-14,
+              0.01171270452149815,
+              -0.011926229628573823
+            ],
+            [
+              2.701675889647137e-14,
+              -0.011712704521271433,
+              -0.01192622962847157
+            ]
+          ],
+          [
+            [
+              1.1829812401218344e-14,
+              8.733571521212681e-14,
+              0.026114007508278952
+            ],
+            [
+              -6.690606512492872e-15,
+              0.013373519551914464,
+              -0.013057003754097136
+            ],
+            [
+              -5.1392058887263755e-15,
+              -0.013373519552006061,
+              -0.013057003754204282
+            ]
+          ],
+          [
+            [
+              -5.275491130275004e-15,
+              -4.46230480576923e-14,
+              0.028345131016214525
+            ],
+            [
+              3.3256615475656583e-15,
+              0.015012900950973834,
+              -0.014172565508123364
+            ],
+            [
+              1.9498295827087977e-15,
+              -0.01501290095092622,
+              -0.014172565508100714
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6349333450198174,
+        "selection": "candidate",
+        "sequence_index": 5,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.743145621326816e-12,
+            "energy_change_hartree": 1.9895196601282805e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.911195230996146e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0136623411109364e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0297111846964403e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079653,
+          -76.05946676968688,
+          -76.05933956939785,
+          -76.05919794123952
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.3629243219498026e-14,
+              -2.451048973347213e-13,
+              0.021560109593874454
+            ],
+            [
+              -5.850711639470433e-15,
+              0.010030202797317835,
+              -0.010780054796971967
+            ],
+            [
+              -7.778531580027603e-15,
+              -0.010030202797073241,
+              -0.010780054796928477
+            ]
+          ],
+          [
+            [
+              2.7839323457564206e-14,
+              1.5355723590565423e-14,
+              0.023852459257038394
+            ],
+            [
+              -1.3570984647604948e-14,
+              0.011712704521323027,
+              -0.011926229628519677
+            ],
+            [
+              -1.4268338809958875e-14,
+              -0.011712704521347235,
+              -0.011926229628510672
+            ]
+          ],
+          [
+            [
+              1.3964038983596759e-14,
+              1.5994854611008009e-13,
+              0.026114007508375517
+            ],
+            [
+              -7.345393275539991e-15,
+              0.01337351955195796,
+              -0.013057003754115563
+            ],
+            [
+              -6.618645708055725e-15,
+              -0.013373519552119524,
+              -0.013057003754265877
+            ]
+          ],
+          [
+            [
+              -6.480759631699828e-15,
+              -3.0810929283120124e-13,
+              0.028345131016446756
+            ],
+            [
+              3.897529390606487e-15,
+              0.01501290095125034,
+              -0.014172565508261776
+            ],
+            [
+              2.583230241093181e-15,
+              -0.015012900950933992,
+              -0.01417256550815716
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6330833740066737,
+        "selection": "candidate",
+        "sequence_index": 6,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.729259237768936e-12,
+            "energy_change_hartree": 1.9895196601282805e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.909634192186053e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0119614187648298e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0298025883960707e-11,
+            "energy_change_hartree": 7.105427357601002e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079647,
+          -76.05946676968682,
+          -76.05933956939796,
+          -76.05919794123952
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              2.067532729091148e-14,
+              3.993682608688613e-14,
+              0.02156010959401126
+            ],
+            [
+              -8.795270619416551e-15,
+              0.010030202797121194,
+              -0.010780054796977004
+            ],
+            [
+              -1.188005667149506e-14,
+              -0.010030202797163445,
+              -0.010780054797031036
+            ]
+          ],
+          [
+            [
+              -8.586387227224215e-15,
+              -1.9454530693413987e-14,
+              0.023852459257249495
+            ],
+            [
+              5.4655193127463686e-15,
+              0.011712704521494633,
+              -0.011926229628628994
+            ],
+            [
+              3.120867914479429e-15,
+              -0.011712704521461654,
+              -0.011926229628605154
+            ]
+          ],
+          [
+            [
+              1.6368306341341202e-14,
+              1.845435181157162e-13,
+              0.026114007508193683
+            ],
+            [
+              -7.143602903031321e-15,
+              0.013373519551781994,
+              -0.013057003754035547
+            ],
+            [
+              -9.224703438311173e-15,
+              -0.013373519551968775,
+              -0.013057003754157871
+            ]
+          ],
+          [
+            [
+              -4.825143479927234e-14,
+              -9.463848301594682e-15,
+              0.028345131016293258
+            ],
+            [
+              2.5799518659061662e-14,
+              0.015012900950994385,
+              -0.0141725655081312
+            ],
+            [
+              2.245191614020895e-14,
+              -0.015012900950983028,
+              -0.014172565508149649
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6283001699484885,
+        "selection": "candidate",
+        "sequence_index": 9,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.728692050641255e-12,
+            "energy_change_hartree": 1.8474111129762605e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.909057279127604e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0125104543104835e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0293498789201887e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079654,
+          -76.0594667696868,
+          -76.05933956939785,
+          -76.05919794123952
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.9252483756355265e-14,
+              -9.941604329474606e-14,
+              0.02156010959381033
+            ],
+            [
+              -7.402977104242843e-15,
+              0.010030202797080296,
+              -0.010780054796878758
+            ],
+            [
+              -1.1849506652112365e-14,
+              -0.01003020279699236,
+              -0.010780054796927764
+            ]
+          ],
+          [
+            [
+              -1.7508098528172628e-14,
+              2.5269124475718566e-13,
+              0.023852459257054846
+            ],
+            [
+              9.814489331635226e-15,
+              0.011712704521270094,
+              -0.011926229628494503
+            ],
+            [
+              7.69360919653717e-15,
+              -0.011712704521515117,
+              -0.011926229628578743
+            ]
+          ],
+          [
+            [
+              1.3099497760103145e-14,
+              -1.1187711705779536e-13,
+              0.02611400750803413
+            ],
+            [
+              -7.016130721142323e-15,
+              0.013373519551882708,
+              -0.01305700375405604
+            ],
+            [
+              -6.0833670389611954e-15,
+              -0.013373519551768933,
+              -0.013057003753984251
+            ]
+          ],
+          [
+            [
+              -5.5474163050312685e-15,
+              -1.1257244535884508e-14,
+              0.02834513101618217
+            ],
+            [
+              4.504676955039429e-15,
+              0.015012900950990896,
+              -0.014172565508025863
+            ],
+            [
+              1.0427393499921467e-15,
+              -0.015012900950974567,
+              -0.014172565508159582
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.626955296844244,
+        "selection": "candidate",
+        "sequence_index": 10,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      }
+    ],
+    "candidate_seconds": [
+      0.6342318339738995,
+      0.6295665469951928,
+      0.6349333450198174,
+      0.6330833740066737,
+      0.6283001699484885,
+      0.626955296844244
+    ],
+    "classes": [
+      "dppp",
+      "dpdp",
+      "dddp",
+      "dddd",
+      "dpss",
+      "dsds",
+      "ddss",
+      "ddpp",
+      "ddds",
+      "dpds",
+      "ddps",
+      "ppps",
+      "dpps",
+      "dsps",
+      "dspp",
+      "pppp",
+      "psps",
+      "ppss",
+      "dsss",
+      "fpps"
+    ],
+    "cold_baseline": {
+      "convergence": [
+        {
+          "bucket_id": 0,
+          "converged": true,
+          "density_rms": 3.163832927603511e-11,
+          "energy_change_hartree": 2.842170943040401e-14,
+          "executed_backend": "cuda",
+          "iterations": 16,
+          "warm_start_fallback": false,
+          "warm_start_used": false
+        },
+        {
+          "bucket_id": 0,
+          "converged": true,
+          "density_rms": 3.216718582275387e-11,
+          "energy_change_hartree": 8.526512829121202e-14,
+          "executed_backend": "cuda",
+          "iterations": 16,
+          "warm_start_fallback": false,
+          "warm_start_used": false
+        },
+        {
+          "bucket_id": 0,
+          "converged": true,
+          "density_rms": 3.282285365638417e-11,
+          "energy_change_hartree": 2.842170943040401e-14,
+          "executed_backend": "cuda",
+          "iterations": 16,
+          "warm_start_fallback": false,
+          "warm_start_used": false
+        },
+        {
+          "bucket_id": 0,
+          "converged": true,
+          "density_rms": 3.3301120381887567e-11,
+          "energy_change_hartree": 9.947598300641403e-14,
+          "executed_backend": "cuda",
+          "iterations": 16,
+          "warm_start_fallback": false,
+          "warm_start_used": false
+        }
+      ],
+      "energies_hartree": [
+        -76.05957935079657,
+        -76.05946676968689,
+        -76.05933956939782,
+        -76.05919794123943
+      ],
+      "environment_overrides": {},
+      "fock_classes": [
+        "ssss",
+        "psss",
+        "dppp",
+        "dpdp",
+        "dddp",
+        "dddd",
+        "dpss",
+        "dsds",
+        "ddss",
+        "ddpp",
+        "ddds",
+        "dpds",
+        "ddps",
+        "ppps",
+        "dpps",
+        "dsps",
+        "dspp",
+        "pppp",
+        "psps",
+        "ppss",
+        "dsss"
+      ],
+      "forces_hartree_per_bohr": [
+        [
+          [
+            2.1352472071848266e-16,
+            -1.2297891486706994e-13,
+            0.02156010969106732
+          ],
+          [
+            2.002751770380822e-15,
+            0.010030202845573474,
+            -0.010780054845620977
+          ],
+          [
+            -2.2162764910993254e-15,
+            -0.010030202845458936,
+            -0.010780054845469041
+          ]
+        ],
+        [
+          [
+            -1.4971072899416283e-15,
+            -3.1816651025069685e-14,
+            0.02385245935646306
+          ],
+          [
+            9.41441133467147e-17,
+            0.011712704571065612,
+            -0.011926229678211173
+          ],
+          [
+            1.4029631765947204e-15,
+            -0.011712704571018527,
+            -0.011926229678216377
+          ]
+        ],
+        [
+          [
+            6.141633508970648e-15,
+            -1.640870900615024e-13,
+            0.026114007611189358
+          ],
+          [
+            -3.0876738143856087e-15,
+            0.013373519603733256,
+            -0.013057003805613449
+          ],
+          [
+            -3.0539596945843e-15,
+            -0.013373519603589271,
+            -0.013057003805561143
+          ]
+        ],
+        [
+          [
+            -1.0364838237659424e-14,
+            -9.418251207000184e-14,
+            0.02834513112300382
+          ],
+          [
+            4.9070650018502776e-15,
+            0.015012901004916526,
+            -0.014172565561586463
+          ],
+          [
+            5.457773235808802e-15,
+            -0.015012901004832348,
+            -0.014172565561401703
+          ]
+        ]
+      ],
+      "iteration_branches": [
+        16,
+        16,
+        16,
+        16
+      ],
+      "seconds": 2.3289759459439665,
+      "shell_classes": [
+        "dppp",
+        "dpdp",
+        "dddp",
+        "dddd",
+        "dpss",
+        "dsds",
+        "ddss",
+        "ddpp",
+        "ddds",
+        "dpds",
+        "ddps",
+        "ppps",
+        "dpps",
+        "dsps",
+        "dspp",
+        "pppp",
+        "psps",
+        "ppss",
+        "dsss"
+      ],
+      "warm_start_updates_after_run": false
+    },
+    "convergence": {
+      "all_iteration_branches_match": true,
+      "baseline_all_converged": true,
+      "candidate_all_converged": true
+    },
+    "failures": [],
+    "fixed_dm0": {
+      "enabled": true,
+      "source": "measured baseline cold result",
+      "warm_start_updates": false
+    },
+    "gate": {
+      "failures": [],
+      "maximum_energy_error_hartree": 1e-10,
+      "maximum_force_error_hartree_per_bohr": 1e-09,
+      "minimum_speedup": 0.9803921568627451,
+      "passed": true
+    },
+    "iteration_branches": {
+      "baseline": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "candidate": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ]
+    },
+    "iterations": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "maximum_energy_error_hartree": 2.7000623958883807e-13,
+    "maximum_force_error_hartree_per_bohr": 7.839805193921023e-13,
+    "measurement_order": [
+      "baseline",
+      "candidate",
+      "candidate",
+      "baseline",
+      "baseline",
+      "candidate",
+      "candidate",
+      "baseline",
+      "baseline",
+      "candidate",
+      "candidate",
+      "baseline"
+    ],
+    "pairwise_accuracy": [
+      {
+        "baseline_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "candidate_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 5.684341886080802e-14,
+        "maximum_force_error_hartree_per_bohr": 7.839805193921023e-13,
+        "repeat": 0
+      },
+      {
+        "baseline_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "candidate_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 1.4210854715202004e-13,
+        "maximum_force_error_hartree_per_bohr": 3.177007268373444e-13,
+        "repeat": 1
+      },
+      {
+        "baseline_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "candidate_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.7000623958883807e-13,
+        "maximum_force_error_hartree_per_bohr": 4.860382929461338e-13,
+        "repeat": 2
+      },
+      {
+        "baseline_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "candidate_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 5.684341886080802e-14,
+        "maximum_force_error_hartree_per_bohr": 4.840945561614953e-13,
+        "repeat": 3
+      },
+      {
+        "baseline_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "candidate_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 1.1368683772161603e-13,
+        "maximum_force_error_hartree_per_bohr": 4.559720656605037e-13,
+        "repeat": 4
+      },
+      {
+        "baseline_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "candidate_iteration_branch": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.842170943040401e-14,
+        "maximum_force_error_hartree_per_bohr": 3.064865920390616e-13,
+        "repeat": 5
+      }
+    ],
+    "passed": true,
+    "raw_samples": [
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.736160270950322e-12,
+            "energy_change_hartree": 1.9895196601282805e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.91218852838306e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0126011210585593e-11,
+            "energy_change_hartree": 2.842170943040401e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.029521923493174e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079645,
+          -76.05946676968686,
+          -76.05933956939788,
+          -76.05919794123952
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.914192466460373e-14,
+              -1.1547660662308157e-13,
+              0.02156010959407943
+            ],
+            [
+              -8.064443819686889e-15,
+              0.010030202797266099,
+              -0.01078005479705314
+            ],
+            [
+              -1.1077480844917858e-14,
+              -0.0100302027971584,
+              -0.01078005479702726
+            ]
+          ],
+          [
+            [
+              3.543223437227596e-14,
+              8.429652498143283e-14,
+              0.023852459257388724
+            ],
+            [
+              -1.771989430688952e-14,
+              0.011712704521524642,
+              -0.011926229628666912
+            ],
+            [
+              -1.771234006538773e-14,
+              -0.011712704521610164,
+              -0.011926229628724373
+            ]
+          ],
+          [
+            [
+              1.1696187511992978e-14,
+              1.7958045473657976e-13,
+              0.026114007508573088
+            ],
+            [
+              -4.7140594709694564e-15,
+              0.013373519552059357,
+              -0.01305700375421026
+            ],
+            [
+              -6.982128041024561e-15,
+              -0.013373519552236446,
+              -0.01305700375437296
+            ]
+          ],
+          [
+            [
+              -3.7450442591376674e-14,
+              4.6423097613637944e-14,
+              0.028345131016474782
+            ],
+            [
+              1.8280206809357354e-14,
+              0.015012900951123022,
+              -0.014172565508164769
+            ],
+            [
+              1.9170235782019194e-14,
+              -0.015012900951171325,
+              -0.014172565508316717
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6400040101725608,
+        "selection": "baseline",
+        "sequence_index": 0,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.73562286276694e-12,
+            "energy_change_hartree": 2.1316282072803006e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.904564810257491e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0131768339927993e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0296528687482868e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079647,
+          -76.05946676968689,
+          -76.0593395693979,
+          -76.05919794123946
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.8090144066895794e-14,
+              -1.4648865474034807e-13,
+              0.021560109594008125
+            ],
+            [
+              -7.994010547333031e-15,
+              0.010030202797251633,
+              -0.010780054797038082
+            ],
+            [
+              -1.0096133519563614e-14,
+              -0.010030202797106359,
+              -0.010780054796999585
+            ]
+          ],
+          [
+            [
+              9.268830101290056e-15,
+              -5.3013116061247375e-14,
+              0.023852459257221504
+            ],
+            [
+              -2.4962111204360075e-15,
+              0.011712704521544248,
+              -0.011926229628632044
+            ],
+            [
+              -6.772618980853987e-15,
+              -0.01171270452149086,
+              -0.011926229628577402
+            ]
+          ],
+          [
+            [
+              4.410819933748598e-15,
+              9.16115714379399e-15,
+              0.026114007507789107
+            ],
+            [
+              -1.9151005599886268e-15,
+              0.013373519551734592,
+              -0.013057003753903545
+            ],
+            [
+              -2.4957193737604826e-15,
+              -0.01337351955173926,
+              -0.013057003753890498
+            ]
+          ],
+          [
+            [
+              -2.1749733454563806e-15,
+              -1.0902258729335364e-13,
+              0.028345131016345067
+            ],
+            [
+              1.1510904642811117e-15,
+              0.015012900951037054,
+              -0.014172565508162094
+            ],
+            [
+              1.0238828811757824e-15,
+              -0.015012900950925069,
+              -0.014172565508169505
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6342318339738995,
+        "selection": "candidate",
+        "sequence_index": 1,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.732170983199296e-12,
+            "energy_change_hartree": 1.8474111129762605e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.902137026810567e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0129425815175725e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0292387744197686e-11,
+            "energy_change_hartree": 7.105427357601002e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079655,
+          -76.05946676968685,
+          -76.05933956939782,
+          -76.05919794123955
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.731240051662191e-14,
+              -2.2844169512498274e-14,
+              0.021560109593632033
+            ],
+            [
+              -7.407429297082402e-15,
+              0.010030202797047716,
+              -0.010780054796796433
+            ],
+            [
+              -9.904971219539937e-15,
+              -0.010030202797024726,
+              -0.010780054796841404
+            ]
+          ],
+          [
+            [
+              -6.114230320762506e-14,
+              1.884214345869689e-14,
+              0.02385245925706325
+            ],
+            [
+              3.13557141612939e-14,
+              0.011712704521401359,
+              -0.01192622962849291
+            ],
+            [
+              2.9786589046331354e-14,
+              -0.01171270452142466,
+              -0.011926229628568484
+            ]
+          ],
+          [
+            [
+              3.5371845384061807e-15,
+              7.82798619837802e-14,
+              0.026114007508007655
+            ],
+            [
+              -2.1352625659932305e-15,
+              0.013373519551733519,
+              -0.01305700375399715
+            ],
+            [
+              -1.4019219724124283e-15,
+              -0.013373519551808443,
+              -0.01305700375399356
+            ]
+          ],
+          [
+            [
+              -7.140221759972112e-15,
+              -2.1634250683469335e-13,
+              0.02834513101623748
+            ],
+            [
+              4.952137266437678e-15,
+              0.015012900951071204,
+              -0.014172565508095784
+            ],
+            [
+              2.1880844935351932e-15,
+              -0.0150129009508625,
+              -0.014172565508135388
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6295665469951928,
+        "selection": "candidate",
+        "sequence_index": 2,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.736876964369643e-12,
+            "energy_change_hartree": 1.8474111129762605e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.906991347790687e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0128586892175216e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0300247628639374e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079653,
+          -76.05946676968682,
+          -76.05933956939796,
+          -76.05919794123943
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              2.0317833680737248e-14,
+              -2.833547443097332e-14,
+              0.02156010959354294
+            ],
+            [
+              -7.54583670656275e-15,
+              0.01003020279692771,
+              -0.010780054796742511
+            ],
+            [
+              -1.2771996974174989e-14,
+              -0.010030202796901626,
+              -0.010780054796797453
+            ]
+          ],
+          [
+            [
+              -3.606428316122122e-14,
+              -3.988214966938775e-14,
+              0.02385245925737105
+            ],
+            [
+              1.8110027221838216e-14,
+              0.011712704521564518,
+              -0.01192622962870478
+            ],
+            [
+              1.79542559393846e-14,
+              -0.011712704521523757,
+              -0.011926229628672949
+            ]
+          ],
+          [
+            [
+              1.6499112337993432e-14,
+              2.0461011061347788e-13,
+              0.026114007508108175
+            ],
+            [
+              -8.491068586548868e-15,
+              0.01337351955175854,
+              -0.013057003753989917
+            ],
+            [
+              -8.008043751446387e-15,
+              -0.013373519551948657,
+              -0.013057003754118827
+            ]
+          ],
+          [
+            [
+              -5.239137347495757e-14,
+              -3.4985693773451054e-14,
+              0.02834513101655518
+            ],
+            [
+              2.6359992333887898e-14,
+              0.015012900951212983,
+              -0.0141725655082678
+            ],
+            [
+              2.6031381141070668e-14,
+              -0.015012900951166403,
+              -0.014172565508286732
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.629786767065525,
+        "selection": "baseline",
+        "sequence_index": 3,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.725706700595298e-12,
+            "energy_change_hartree": 1.9895196601282805e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.911290372616803e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0129820365088042e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.02951540948195e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079637,
+          -76.0594667696869,
+          -76.0593395693979,
+          -76.05919794123959
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.9551922091816758e-14,
+              5.3328122358767644e-14,
+              0.021560109594134135
+            ],
+            [
+              -9.898451302102764e-15,
+              0.01003020279718738,
+              -0.010780054797051491
+            ],
+            [
+              -9.653470789713603e-15,
+              -0.010030202797242427,
+              -0.01078005479708038
+            ]
+          ],
+          [
+            [
+              -9.32489529710259e-15,
+              -1.6157058538975212e-13,
+              0.023852459257194043
+            ],
+            [
+              4.467406580367049e-15,
+              0.011712704521577253,
+              -0.011926229628657132
+            ],
+            [
+              4.8574887167359454e-15,
+              -0.011712704521418371,
+              -0.01192622962854418
+            ]
+          ],
+          [
+            [
+              1.9626269601537027e-15,
+              3.063747289001666e-13,
+              0.02611400750812704
+            ],
+            [
+              -2.6198550213431284e-15,
+              0.013373519551701721,
+              -0.013057003754013963
+            ],
+            [
+              6.572280611898935e-16,
+              -0.013373519552000208,
+              -0.013057003754136903
+            ]
+          ],
+          [
+            [
+              -9.428297028614272e-15,
+              1.2005611824853364e-13,
+              0.028345131016037327
+            ],
+            [
+              6.347458112010228e-15,
+              0.01501290095082161,
+              -0.01417256550794852
+            ],
+            [
+              3.080838916604174e-15,
+              -0.015012900950952101,
+              -0.014172565508073534
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6335761279333383,
+        "selection": "baseline",
+        "sequence_index": 4,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.735076271077576e-12,
+            "energy_change_hartree": 2.1316282072803006e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.906405488478121e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0134730287974523e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0295790665180621e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079664,
+          -76.05946676968676,
+          -76.05933956939788,
+          -76.05919794123955
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.869621802549157e-14,
+              6.181220165003322e-14,
+              0.021560109593648097
+            ],
+            [
+              -1.1327323127950686e-14,
+              0.010030202796926053,
+              -0.010780054796761432
+            ],
+            [
+              -7.368894897542479e-15,
+              -0.010030202796993399,
+              -0.01078005479687974
+            ]
+          ],
+          [
+            [
+              -5.2392676675407677e-14,
+              -2.330295760295002e-13,
+              0.023852459257043813
+            ],
+            [
+              2.5375917778934222e-14,
+              0.01171270452149815,
+              -0.011926229628573823
+            ],
+            [
+              2.701675889647137e-14,
+              -0.011712704521271433,
+              -0.01192622962847157
+            ]
+          ],
+          [
+            [
+              1.1829812401218344e-14,
+              8.733571521212681e-14,
+              0.026114007508278952
+            ],
+            [
+              -6.690606512492872e-15,
+              0.013373519551914464,
+              -0.013057003754097136
+            ],
+            [
+              -5.1392058887263755e-15,
+              -0.013373519552006061,
+              -0.013057003754204282
+            ]
+          ],
+          [
+            [
+              -5.275491130275004e-15,
+              -4.46230480576923e-14,
+              0.028345131016214525
+            ],
+            [
+              3.3256615475656583e-15,
+              0.015012900950973834,
+              -0.014172565508123364
+            ],
+            [
+              1.9498295827087977e-15,
+              -0.01501290095092622,
+              -0.014172565508100714
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6349333450198174,
+        "selection": "candidate",
+        "sequence_index": 5,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.743145621326816e-12,
+            "energy_change_hartree": 1.9895196601282805e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.911195230996146e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0136623411109364e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0297111846964403e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079653,
+          -76.05946676968688,
+          -76.05933956939785,
+          -76.05919794123952
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.3629243219498026e-14,
+              -2.451048973347213e-13,
+              0.021560109593874454
+            ],
+            [
+              -5.850711639470433e-15,
+              0.010030202797317835,
+              -0.010780054796971967
+            ],
+            [
+              -7.778531580027603e-15,
+              -0.010030202797073241,
+              -0.010780054796928477
+            ]
+          ],
+          [
+            [
+              2.7839323457564206e-14,
+              1.5355723590565423e-14,
+              0.023852459257038394
+            ],
+            [
+              -1.3570984647604948e-14,
+              0.011712704521323027,
+              -0.011926229628519677
+            ],
+            [
+              -1.4268338809958875e-14,
+              -0.011712704521347235,
+              -0.011926229628510672
+            ]
+          ],
+          [
+            [
+              1.3964038983596759e-14,
+              1.5994854611008009e-13,
+              0.026114007508375517
+            ],
+            [
+              -7.345393275539991e-15,
+              0.01337351955195796,
+              -0.013057003754115563
+            ],
+            [
+              -6.618645708055725e-15,
+              -0.013373519552119524,
+              -0.013057003754265877
+            ]
+          ],
+          [
+            [
+              -6.480759631699828e-15,
+              -3.0810929283120124e-13,
+              0.028345131016446756
+            ],
+            [
+              3.897529390606487e-15,
+              0.01501290095125034,
+              -0.014172565508261776
+            ],
+            [
+              2.583230241093181e-15,
+              -0.015012900950933992,
+              -0.01417256550815716
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6330833740066737,
+        "selection": "candidate",
+        "sequence_index": 6,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.74520443422655e-12,
+            "energy_change_hartree": 1.9895196601282805e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.905528787971752e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0135611169562306e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0293362167580202e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079654,
+          -76.05946676968688,
+          -76.05933956939788,
+          -76.05919794123946
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.752107964362747e-14,
+              1.7516571764485045e-13,
+              0.02156010959366943
+            ],
+            [
+              -8.51582483116091e-15,
+              0.01003020279694904,
+              -0.010780054796760127
+            ],
+            [
+              -9.00525481246577e-15,
+              -0.01003020279711634,
+              -0.010780054796928399
+            ]
+          ],
+          [
+            [
+              6.785913027695193e-14,
+              -1.4440035378785498e-13,
+              0.02385245925712873
+            ],
+            [
+              -3.3483997892500333e-14,
+              0.01171270452155122,
+              -0.011926229628573088
+            ],
+            [
+              -3.437513238445137e-14,
+              -0.011712704521399008,
+              -0.011926229628558365
+            ]
+          ],
+          [
+            [
+              2.9053678342888463e-15,
+              1.6057315289544536e-13,
+              0.026114007508245062
+            ],
+            [
+              -1.6289643639009611e-15,
+              0.013373519551872506,
+              -0.013057003754105217
+            ],
+            [
+              -1.2764034703877085e-15,
+              -0.013373519552027601,
+              -0.013057003754166869
+            ]
+          ],
+          [
+            [
+              -3.9092420789296597e-14,
+              1.7598526333029403e-13,
+              0.028345131016096058
+            ],
+            [
+              2.0007737998192226e-14,
+              0.015012900950801572,
+              -0.014172565507952695
+            ],
+            [
+              1.908468279110471e-14,
+              -0.015012900950972123,
+              -0.014172565508136585
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6409235161263496,
+        "selection": "baseline",
+        "sequence_index": 7,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.726991338882639e-12,
+            "energy_change_hartree": 2.1316282072803006e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.910581987385022e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0126585582538615e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0292593521384325e-11,
+            "energy_change_hartree": 7.105427357601002e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079658,
+          -76.05946676968688,
+          -76.05933956939788,
+          -76.0591979412396
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.9888800571272566e-14,
+              1.8474274261150026e-14,
+              0.02156010959356784
+            ],
+            [
+              -6.585211230854462e-15,
+              0.01003020279700343,
+              -0.010780054796739944
+            ],
+            [
+              -1.3303589340414796e-14,
+              -0.010030202797026109,
+              -0.010780054796823438
+            ]
+          ],
+          [
+            [
+              -3.176915578333112e-14,
+              -1.363012706794633e-13,
+              0.02385245925696439
+            ],
+            [
+              1.348536105307367e-14,
+              0.011712704521382362,
+              -0.01192622962854454
+            ],
+            [
+              1.8283794730259392e-14,
+              -0.011712704521249322,
+              -0.011926229628432731
+            ]
+          ],
+          [
+            [
+              1.1826050207529854e-14,
+              2.403782627711561e-13,
+              0.026114007508649655
+            ],
+            [
+              -5.847766065714904e-15,
+              0.013373519552013168,
+              -0.013057003754232329
+            ],
+            [
+              -5.9782841418157565e-15,
+              -0.013373519552251082,
+              -0.013057003754416499
+            ]
+          ],
+          [
+            [
+              -4.828240520892048e-14,
+              -1.1839798896375257e-14,
+              0.028345131016680025
+            ],
+            [
+              2.6954003201773694e-14,
+              0.01501290095124982,
+              -0.014172565508342392
+            ],
+            [
+              2.132840200714778e-14,
+              -0.015012900951235282,
+              -0.01417256550833983
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6379594739992172,
+        "selection": "baseline",
+        "sequence_index": 8,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.729259237768936e-12,
+            "energy_change_hartree": 1.9895196601282805e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.909634192186053e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0119614187648298e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0298025883960707e-11,
+            "energy_change_hartree": 7.105427357601002e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079647,
+          -76.05946676968682,
+          -76.05933956939796,
+          -76.05919794123952
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              2.067532729091148e-14,
+              3.993682608688613e-14,
+              0.02156010959401126
+            ],
+            [
+              -8.795270619416551e-15,
+              0.010030202797121194,
+              -0.010780054796977004
+            ],
+            [
+              -1.188005667149506e-14,
+              -0.010030202797163445,
+              -0.010780054797031036
+            ]
+          ],
+          [
+            [
+              -8.586387227224215e-15,
+              -1.9454530693413987e-14,
+              0.023852459257249495
+            ],
+            [
+              5.4655193127463686e-15,
+              0.011712704521494633,
+              -0.011926229628628994
+            ],
+            [
+              3.120867914479429e-15,
+              -0.011712704521461654,
+              -0.011926229628605154
+            ]
+          ],
+          [
+            [
+              1.6368306341341202e-14,
+              1.845435181157162e-13,
+              0.026114007508193683
+            ],
+            [
+              -7.143602903031321e-15,
+              0.013373519551781994,
+              -0.013057003754035547
+            ],
+            [
+              -9.224703438311173e-15,
+              -0.013373519551968775,
+              -0.013057003754157871
+            ]
+          ],
+          [
+            [
+              -4.825143479927234e-14,
+              -9.463848301594682e-15,
+              0.028345131016293258
+            ],
+            [
+              2.5799518659061662e-14,
+              0.015012900950994385,
+              -0.0141725655081312
+            ],
+            [
+              2.245191614020895e-14,
+              -0.015012900950983028,
+              -0.014172565508149649
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6283001699484885,
+        "selection": "candidate",
+        "sequence_index": 9,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.728692050641255e-12,
+            "energy_change_hartree": 1.8474111129762605e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.909057279127604e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0125104543104835e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0293498789201887e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079654,
+          -76.0594667696868,
+          -76.05933956939785,
+          -76.05919794123952
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.9252483756355265e-14,
+              -9.941604329474606e-14,
+              0.02156010959381033
+            ],
+            [
+              -7.402977104242843e-15,
+              0.010030202797080296,
+              -0.010780054796878758
+            ],
+            [
+              -1.1849506652112365e-14,
+              -0.01003020279699236,
+              -0.010780054796927764
+            ]
+          ],
+          [
+            [
+              -1.7508098528172628e-14,
+              2.5269124475718566e-13,
+              0.023852459257054846
+            ],
+            [
+              9.814489331635226e-15,
+              0.011712704521270094,
+              -0.011926229628494503
+            ],
+            [
+              7.69360919653717e-15,
+              -0.011712704521515117,
+              -0.011926229628578743
+            ]
+          ],
+          [
+            [
+              1.3099497760103145e-14,
+              -1.1187711705779536e-13,
+              0.02611400750803413
+            ],
+            [
+              -7.016130721142323e-15,
+              0.013373519551882708,
+              -0.01305700375405604
+            ],
+            [
+              -6.0833670389611954e-15,
+              -0.013373519551768933,
+              -0.013057003753984251
+            ]
+          ],
+          [
+            [
+              -5.5474163050312685e-15,
+              -1.1257244535884508e-14,
+              0.02834513101618217
+            ],
+            [
+              4.504676955039429e-15,
+              0.015012900950990896,
+              -0.014172565508025863
+            ],
+            [
+              1.0427393499921467e-15,
+              -0.015012900950974567,
+              -0.014172565508159582
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.626955296844244,
+        "selection": "candidate",
+        "sequence_index": 10,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss",
+          "fpps"
+        ]
+      },
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.746178458524577e-12,
+            "energy_change_hartree": 1.8474111129762605e-13,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.916263540263113e-12,
+            "energy_change_hartree": 4.263256414560601e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.013410272658846e-11,
+            "energy_change_hartree": 5.684341886080802e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0290817839823652e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079653,
+          -76.05946676968682,
+          -76.05933956939785,
+          -76.05919794123952
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              1.8183464479415595e-14,
+              -2.910395693585933e-16,
+              0.02156010959398861
+            ],
+            [
+              -7.86895222782394e-15,
+              0.01003020279717448,
+              -0.0107800547969729
+            ],
+            [
+              -1.031451225159208e-14,
+              -0.01003020279718204,
+              -0.010780054797037754
+            ]
+          ],
+          [
+            [
+              1.5444852193045704e-14,
+              8.269869206119718e-14,
+              0.023852459256946058
+            ],
+            [
+              -7.552789476586936e-15,
+              0.011712704521269417,
+              -0.011926229628449378
+            ],
+            [
+              -7.892062716458322e-15,
+              -0.011712704521344906,
+              -0.011926229628483671
+            ]
+          ],
+          [
+            [
+              4.0673542259362644e-15,
+              1.9460947498126627e-13,
+              0.026114007508075684
+            ],
+            [
+              -3.0605911837338468e-15,
+              0.013373519551733064,
+              -0.013057003753950481
+            ],
+            [
+              -1.0067630422029965e-15,
+              -0.01337351955192288,
+              -0.013057003754128365
+            ]
+          ],
+          [
+            [
+              -1.0434675315612807e-14,
+              1.6595364691033913e-13,
+              0.028345131016125933
+            ],
+            [
+              6.230251798217109e-15,
+              0.01501290095082169,
+              -0.014172565507996627
+            ],
+            [
+              4.204423517395216e-15,
+              -0.015012900950990456,
+              -0.014172565508142713
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6295698489993811,
+        "selection": "baseline",
+        "sequence_index": 11,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      }
+    ],
+    "speedup": 1.007037327435651,
+    "timing_summary": {
+      "baseline": {
+        "maximum_seconds": 0.6409235161263496,
+        "median_seconds": 0.6357678009662777,
+        "minimum_seconds": 0.6295698489993811,
+        "raw_seconds": [
+          0.6400040101725608,
+          0.629786767065525,
+          0.6335761279333383,
+          0.6409235161263496,
+          0.6379594739992172,
+          0.6295698489993811
+        ],
+        "samples": 6
+      },
+      "candidate": {
+        "maximum_seconds": 0.6349333450198174,
+        "median_seconds": 0.6313249605009332,
+        "minimum_seconds": 0.626955296844244,
+        "raw_seconds": [
+          0.6342318339738995,
+          0.6295665469951928,
+          0.6349333450198174,
+          0.6330833740066737,
+          0.6283001699484885,
+          0.626955296844244
+        ],
+        "samples": 6
+      },
+      "speedup": 1.007037327435651
+    },
+    "warmups": [
+      {
+        "convergence": [
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.734840864065131e-12,
+            "energy_change_hartree": 1.4210854715202004e-14,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 9.914042440310844e-12,
+            "energy_change_hartree": 0.0,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.013587166532877e-11,
+            "energy_change_hartree": 0.0,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          },
+          {
+            "bucket_id": 0,
+            "converged": true,
+            "density_rms": 1.0289434476708813e-11,
+            "energy_change_hartree": 0.0,
+            "executed_backend": "cuda",
+            "iterations": 1,
+            "warm_start_fallback": false,
+            "warm_start_used": true
+          }
+        ],
+        "energies_hartree": [
+          -76.05957935079657,
+          -76.05946676968685,
+          -76.05933956939788,
+          -76.05919794123956
+        ],
+        "environment_overrides": {},
+        "fock_classes": [
+          "ssss",
+          "psss",
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ],
+        "forces_hartree_per_bohr": [
+          [
+            [
+              2.1409834542613473e-14,
+              -1.0406104151050623e-13,
+              0.021560109593576623
+            ],
+            [
+              -1.032080155915957e-14,
+              0.010030202796989159,
+              -0.010780054796797856
+            ],
+            [
+              -1.1089032983454807e-14,
+              -0.010030202796880541,
+              -0.010780054796780228
+            ]
+          ],
+          [
+            [
+              -2.1053764526168712e-14,
+              8.135804467911068e-14,
+              0.02385245925689265
+            ],
+            [
+              1.135363524592656e-14,
+              0.011712704521350946,
+              -0.011926229628429121
+            ],
+            [
+              9.700129280242224e-15,
+              -0.01171270452142023,
+              -0.011926229628461654
+            ]
+          ],
+          [
+            [
+              8.48560313172708e-16,
+              -5.921632546837378e-14,
+              0.02611400750817455
+            ],
+            [
+              1.0344017736411915e-15,
+              0.01337351955193575,
+              -0.013057003754111857
+            ],
+            [
+              -1.882962086814126e-15,
+              -0.013373519551891826,
+              -0.013057003754075907
+            ]
+          ],
+          [
+            [
+              -1.1260962437079606e-15,
+              3.1622125517760775e-14,
+              0.02834513101615638
+            ],
+            [
+              5.999241414011493e-16,
+              0.015012900950954549,
+              -0.014172565507991038
+            ],
+            [
+              5.26172102306935e-16,
+              -0.015012900950982159,
+              -0.014172565508179457
+            ]
+          ]
+        ],
+        "iteration_branches": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "seconds": 0.6329866328742355,
+        "selection": "warmup",
+        "sequence_index": 0,
+        "shell_classes": [
+          "dppp",
+          "dpdp",
+          "dddp",
+          "dddd",
+          "dpss",
+          "dsds",
+          "ddss",
+          "ddpp",
+          "ddds",
+          "dpds",
+          "ddps",
+          "ppps",
+          "dpps",
+          "dsps",
+          "dspp",
+          "pppp",
+          "psps",
+          "ppss",
+          "dsss"
+        ]
+      }
+    ]
+  },
+  "profiled": false,
+  "promotion_passed": true,
+  "reference": [
+    {
+      "converged": true,
+      "energy_hartree": -76.05957935079653,
+      "forces_hartree_per_bohr": [
+        [
+          1.825919614427494e-16,
+          -3.8904397185644587e-16,
+          0.021560109532195337
+        ],
+        [
+          -1.0936927570505837e-15,
+          0.01003020277785005,
+          -0.010780054766097669
+        ],
+        [
+          9.11100795609116e-16,
+          -0.010030202777843833,
+          -0.01078005476609345
+        ]
+      ],
+      "iterations": 41,
+      "orbital_gradient_norm": 4.401193307821578e-11
+    },
+    {
+      "converged": true,
+      "energy_hartree": -76.05946676968696,
+      "forces_hartree_per_bohr": [
+        [
+          -7.117655769539289e-16,
+          6.917912546299184e-16,
+          0.023852459195631504
+        ],
+        [
+          1.1116835458402095e-15,
+          0.011712704502108817,
+          -0.011926229597814864
+        ],
+        [
+          -3.9991796888768795e-16,
+          -0.011712704502110594,
+          -0.011926229597816418
+        ]
+      ],
+      "iterations": 41,
+      "orbital_gradient_norm": 4.0656101311988755e-11
+    },
+    {
+      "converged": true,
+      "energy_hartree": -76.05933956939796,
+      "forces_hartree_per_bohr": [
+        [
+          4.8214215970642935e-17,
+          -9.687988585922427e-16,
+          0.02611400744552217
+        ],
+        [
+          8.72630764825402e-16,
+          0.013373519532387856,
+          -0.01305700372276708
+        ],
+        [
+          -9.208449807990006e-16,
+          -0.013373519532390077,
+          -0.013057003722764415
+        ]
+      ],
+      "iterations": 40,
+      "orbital_gradient_norm": 4.415031730265325e-11
+    },
+    {
+      "converged": true,
+      "energy_hartree": -76.05919794123984,
+      "forces_hartree_per_bohr": [
+        [
+          1.676703280507718e-17,
+          5.180517937919813e-16,
+          0.02834513095279645
+        ],
+        [
+          -3.338659401818975e-15,
+          0.015012900931442363,
+          -0.014172565476396448
+        ],
+        [
+          3.3218923690128277e-15,
+          -0.01501290093144414,
+          -0.014172565476399113
+        ]
+      ],
+      "iterations": 39,
+      "orbital_gradient_norm": 4.749140103660223e-11
+    }
+  ],
+  "reference_errors": [
+    {
+      "energy": 3.268496584496461e-13,
+      "force": 6.367833343956519e-11,
+      "side": "baseline"
+    },
+    {
+      "energy": 4.121147867408581e-13,
+      "force": 6.375873093378281e-11,
+      "side": "baseline"
+    },
+    {
+      "energy": 2.5579538487363607e-13,
+      "force": 6.324087781228727e-11,
+      "side": "baseline"
+    },
+    {
+      "energy": 3.836930773104541e-13,
+      "force": 6.329960861028994e-11,
+      "side": "baseline"
+    },
+    {
+      "energy": 2.4158453015843406e-13,
+      "force": 6.388357551290191e-11,
+      "side": "baseline"
+    },
+    {
+      "energy": 3.268496584496461e-13,
+      "force": 6.332948401799321e-11,
+      "side": "baseline"
+    },
+    {
+      "energy": 3.836930773104541e-13,
+      "force": 6.354861775692555e-11,
+      "side": "candidate"
+    },
+    {
+      "energy": 2.984279490192421e-13,
+      "force": 6.344103020694547e-11,
+      "side": "candidate"
+    },
+    {
+      "energy": 2.984279490192421e-13,
+      "force": 6.341807634591135e-11,
+      "side": "candidate"
+    },
+    {
+      "energy": 3.268496584496461e-13,
+      "force": 6.365030724708731e-11,
+      "side": "candidate"
+    },
+    {
+      "energy": 3.268496584496461e-13,
+      "force": 6.349680850559203e-11,
+      "side": "candidate"
+    },
+    {
+      "energy": 3.268496584496461e-13,
+      "force": 6.338572028363743e-11,
+      "side": "candidate"
+    }
+  ],
+  "release_library": {
+    "cmake_cache_sha256": "bbbc05d6d952ed7e44f0ca2e69ba1aaa4856f64274efff70e9c37c17ca518b16",
+    "final_generator_source_match": true,
+    "generated_source_hashes": {
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dddd.cu": "1a83d30188a77d4c7d770f9bef97638b0e3508d8774ae1b34cb6df078bf7ed4e",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dddp.cu": "b741819e791e8b72c2e4b664999ed888d5413ce8300fa972fd97fa738737254b",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddds.cu": "eae7ba553dfad9d595da1249a89bde716b442c715783c3a712b34245996cfbe5",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddpp.cu": "97949303a1a4266ee6beba7118fb8a3c843b6972350c7783dbe88a654fcf83a9",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddps.cu": "89882e967d40e0ad7ffc98d5f830b2f1e84f5f153c2b42f4248b3ff9ba39fb61",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ddss.cu": "0fffe11efc1ed3861e8d3dcc608e65377adcfd2d9f236741600d7132c7940def",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpdp.cu": "7692e601d9f40ffbbd5c20578b8e8b5f8554797b6ad008c9eabc8d9b0f728387",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpds.cu": "e4fa482f9b0a67a7c75bef31dc515b4452625bd1af63406be04712a25535ae88",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dppp.cu": "bd4e17c3bf30bcba27799c7508e22b7e43bf2f60c22e1ea4668449106d96ea58",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpps.cu": "bfc3d4c2d239813ab50b7b35b02caea009230f8d7fd513346a6f94d808ba847e",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dpss.cu": "9d565b8462275445be6ee547572e3f44d1eddff240b7d7e065f04257ba4ece24",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsds.cu": "ece8b5e0a327164f918014a0c14a9c712712662485fc9cac7d093a7293bdf053",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dspp.cu": "90e593a86aa66ca24484a18781dfef9b320363ee00707c3fa9ab7c45eecaca25",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsps.cu": "c998b5bef8047e37afb7828303d6b9796efb58c3a8af29d6cec334f811484615",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_dsss.cu": "79ce2d6b8db81e8e56e48759c59eb0cb49049fa074cfd970567ce6cd8ecd4afe",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fddd.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fddp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fdds.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fdfd.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fdfp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fdfs.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fdpp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fdps.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fdss.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ffdd.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ffdp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ffds.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fffd.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ffff.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fffp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fffs.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ffpp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ffps.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ffss.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fpdd.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fpdp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fpds.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fpfp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fpfs.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fppp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fpps.cu": "f389a40baa5147885b462ec6d8948f9b46ec2affecfc823dac9ff547281267f1",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fpss.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fsdd.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fsdp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fsds.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fsfs.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fspp.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fsps.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_fsss.cu": "9391263d104cd62a02c1eb512efcfd0b5c4b8989d313ab9c9a45dd4e13f50a93",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_pppp.cu": "b6540e49c9eab84da7fb9c8c230a495a203648e1dc58748d88dd2af94fab6c55",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ppps.cu": "e1cac699695b58aa556fcbf5ce7d5e3581142c76de8817cce70a5d63e4355728",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ppss.cu": "f0808cbd02205cc7dcbd821fa8a9765bb803d4785e14d0f95b4637e1e43f13de",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_psps.cu": "45eba86d582083322be34eddc1cecd0828a579449bde6adb3648936e2eee86b8",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_psss.cu": "cba5749c734acfd0dbf7951f99e6a142b449ba8eeb14368d9896b0a862e8958a",
+      "generated/production_shell_kernels/sm_120/vibeqc_generated_shell_sm120_ssss.cu": "0103c9e1615d09fefb5b9809df79659d949144319e1059dbdb00d61104e9b073",
+      "generated/production_shell_kernels/vibeqc_generated_shell_registry.cu": "24ba39e2a14dcb2795faf0526ff7140dccee1d766fa5916f85f283fb387ba6ae",
+      "generated/production_shell_kernels/vibeqc_generated_shell_registry.hpp": "c92c38b48c8d4368f98620f1455c44427a340b834c3d7315fb0f628ecc2a33a9"
+    },
+    "library_bytes": 104195696,
+    "library_sha256": "9da1fe8e50665aabdf7091ddf5b1419c9fa73fa8ca7a39b6404506d2eeafde6d",
+    "settings": {
+      "CMAKE_BUILD_TYPE": "Release",
+      "CMAKE_CUDA_COMPILER": "/group/software/cuda-12.9.1/bin/nvcc",
+      "VIBEQC_AOT_PROFILE": "sm_120",
+      "VIBEQC_AOT_PROFILES": "",
+      "VIBEQC_AOT_SHARDS": "8",
+      "VIBEQC_AOT_SHELL_MANIFEST": "/home/jzzeng/codes/qc-f-shell-gates/tools/vibeqc_codegen/production_shell_classes.json",
+      "VIBEQC_AOT_UNIT_MODE": "class",
+      "VIBEQC_AOT_UNIT_MODE-STRINGS": "stable-shards;class",
+      "VIBEQC_BUILD_TESTS": "OFF",
+      "VIBEQC_COMPILER_CACHE": "auto",
+      "VIBEQC_CUDA_ARCHITECTURES": "",
+      "VIBEQC_CUDA_COMPILE_ARCHITECTURES": "120-real",
+      "VIBEQC_CUDA_COMPILE_JOBS": "2",
+      "VIBEQC_CUDA_FAST_COMPILE": "OFF",
+      "VIBEQC_CUDA_SEPARABLE_COMPILATION": "OFF",
+      "VIBEQC_CUDA_SPLIT_COMPILE_THREADS": "1",
+      "VIBEQC_ENABLE_AOT_SHELLS": "ON",
+      "VIBEQC_ENABLE_CUDA": "ON"
+    }
+  },
+  "schema": "vibeqc.f_shell_endpoint",
+  "schema_version": 1,
+  "settings": {
+    "density_tolerance": 1e-10,
+    "energy_tolerance": 1e-12,
+    "non_regression_budget": 0.02,
+    "reference_gradient_tolerance": 1e-10,
+    "screening_tolerance": 1e-14
+  },
+  "slurm_job_id": "8931",
+  "topology_before_screening": [
+    {
+      "class": "ppps",
+      "primitive_quartets": 160272,
+      "primitive_work_fraction": 0.05952457442521639,
+      "shell_angular": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 825,
+      "tiles": 825,
+      "unique_ao_quartets": 19800
+    },
+    {
+      "class": "dpps",
+      "primitive_quartets": 145152,
+      "primitive_work_fraction": 0.05390904853604503,
+      "shell_angular": [
+        2,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 550,
+      "tiles": 550,
+      "unique_ao_quartets": 29700
+    },
+    {
+      "class": "psps",
+      "primitive_quartets": 128958,
+      "primitive_work_fraction": 0.04789464203807935,
+      "shell_angular": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 1540,
+      "tiles": 1540,
+      "unique_ao_quartets": 13695
+    },
+    {
+      "class": "psss",
+      "primitive_quartets": 127512,
+      "primitive_work_fraction": 0.04735760166534511,
+      "shell_angular": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 3630,
+      "tiles": 3630,
+      "unique_ao_quartets": 10890
+    },
+    {
+      "class": "dsps",
+      "primitive_quartets": 127008,
+      "primitive_work_fraction": 0.0471704174690394,
+      "shell_angular": [
+        2,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 1210,
+      "tiles": 1210,
+      "unique_ao_quartets": 21780
+    },
+    {
+      "class": "fpps",
+      "primitive_quartets": 120960,
+      "primitive_work_fraction": 0.044924207113370855,
+      "shell_angular": [
+        3,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 275,
+      "tiles": 275,
+      "unique_ao_quartets": 24750
+    },
+    {
+      "class": "fsps",
+      "primitive_quartets": 105840,
+      "primitive_work_fraction": 0.0393086812241995,
+      "shell_angular": [
+        3,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 605,
+      "tiles": 605,
+      "unique_ao_quartets": 18150
+    },
+    {
+      "class": "dppp",
+      "primitive_quartets": 91584,
+      "primitive_work_fraction": 0.034014042528695075,
+      "shell_angular": [
+        2,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 150,
+      "tiles": 150,
+      "unique_ao_quartets": 21600
+    },
+    {
+      "class": "ppss",
+      "primitive_quartets": 80454,
+      "primitive_work_fraction": 0.02988039152694394,
+      "shell_angular": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 990,
+      "tiles": 990,
+      "unique_ao_quartets": 7920
+    },
+    {
+      "class": "dspp",
+      "primitive_quartets": 80136,
+      "primitive_work_fraction": 0.029762287212608193,
+      "shell_angular": [
+        2,
+        0,
+        1,
+        1
+      ],
+      "shell_quartets": 330,
+      "tiles": 330,
+      "unique_ao_quartets": 15840
+    },
+    {
+      "class": "fppp",
+      "primitive_quartets": 76320,
+      "primitive_work_fraction": 0.02834503544057923,
+      "shell_angular": [
+        3,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 75,
+      "tiles": 125,
+      "unique_ao_quartets": 18000
+    },
+    {
+      "class": "dpss",
+      "primitive_quartets": 72864,
+      "primitive_work_fraction": 0.027061486665911492,
+      "shell_angular": [
+        2,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 660,
+      "tiles": 660,
+      "unique_ao_quartets": 11880
+    },
+    {
+      "class": "dpds",
+      "primitive_quartets": 72576,
+      "primitive_work_fraction": 0.026954524268022514,
+      "shell_angular": [
+        2,
+        1,
+        2,
+        0
+      ],
+      "shell_quartets": 220,
+      "tiles": 220,
+      "unique_ao_quartets": 23760
+    },
+    {
+      "class": "fpdp",
+      "primitive_quartets": 69120,
+      "primitive_work_fraction": 0.025670975493354776,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        1
+      ],
+      "shell_quartets": 50,
+      "tiles": 150,
+      "unique_ao_quartets": 27000
+    },
+    {
+      "class": "fspp",
+      "primitive_quartets": 66780,
+      "primitive_work_fraction": 0.024801906010506827,
+      "shell_angular": [
+        3,
+        0,
+        1,
+        1
+      ],
+      "shell_quartets": 165,
+      "tiles": 165,
+      "unique_ao_quartets": 13200
+    },
+    {
+      "class": "dsss",
+      "primitive_quartets": 63756,
+      "primitive_work_fraction": 0.023678800832672556,
+      "shell_angular": [
+        2,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 1452,
+      "tiles": 1452,
+      "unique_ao_quartets": 8712
+    },
+    {
+      "class": "fpss",
+      "primitive_quartets": 60720,
+      "primitive_work_fraction": 0.022551238888259578,
+      "shell_angular": [
+        3,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 330,
+      "tiles": 330,
+      "unique_ao_quartets": 9900
+    },
+    {
+      "class": "fsdp",
+      "primitive_quartets": 60480,
+      "primitive_work_fraction": 0.022462103556685428,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        1
+      ],
+      "shell_quartets": 110,
+      "tiles": 110,
+      "unique_ao_quartets": 19800
+    },
+    {
+      "class": "fpds",
+      "primitive_quartets": 60480,
+      "primitive_work_fraction": 0.022462103556685428,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        0
+      ],
+      "shell_quartets": 110,
+      "tiles": 110,
+      "unique_ao_quartets": 19800
+    },
+    {
+      "class": "fdps",
+      "primitive_quartets": 60480,
+      "primitive_work_fraction": 0.022462103556685428,
+      "shell_angular": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "shell_quartets": 110,
+      "tiles": 110,
+      "unique_ao_quartets": 19800
+    },
+    {
+      "class": "fsss",
+      "primitive_quartets": 53130,
+      "primitive_work_fraction": 0.01973233402722713,
+      "shell_angular": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 726,
+      "tiles": 726,
+      "unique_ao_quartets": 7260
+    },
+    {
+      "class": "fsds",
+      "primitive_quartets": 52920,
+      "primitive_work_fraction": 0.01965434061209975,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        0
+      ],
+      "shell_quartets": 242,
+      "tiles": 242,
+      "unique_ao_quartets": 14520
+    },
+    {
+      "class": "pppp",
+      "primitive_quartets": 51657,
+      "primitive_work_fraction": 0.019185265929690793,
+      "shell_angular": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 120,
+      "tiles": 120,
+      "unique_ao_quartets": 7260
+    },
+    {
+      "class": "fpfs",
+      "primitive_quartets": 50400,
+      "primitive_work_fraction": 0.01871841963057119,
+      "shell_angular": [
+        3,
+        1,
+        3,
+        0
+      ],
+      "shell_quartets": 55,
+      "tiles": 110,
+      "unique_ao_quartets": 16500
+    },
+    {
+      "class": "dpdp",
+      "primitive_quartets": 41832,
+      "primitive_work_fraction": 0.015536288293374088,
+      "shell_angular": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "shell_quartets": 55,
+      "tiles": 100,
+      "unique_ao_quartets": 16290
+    },
+    {
+      "class": "ddps",
+      "primitive_quartets": 39312,
+      "primitive_work_fraction": 0.014600367311845528,
+      "shell_angular": [
+        2,
+        2,
+        1,
+        0
+      ],
+      "shell_quartets": 165,
+      "tiles": 165,
+      "unique_ao_quartets": 12870
+    },
+    {
+      "class": "fdpp",
+      "primitive_quartets": 38160,
+      "primitive_work_fraction": 0.014172517720289615,
+      "shell_angular": [
+        3,
+        2,
+        1,
+        1
+      ],
+      "shell_quartets": 30,
+      "tiles": 80,
+      "unique_ao_quartets": 14400
+    },
+    {
+      "class": "fddp",
+      "primitive_quartets": 34560,
+      "primitive_work_fraction": 0.012835487746677388,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        1
+      ],
+      "shell_quartets": 20,
+      "tiles": 100,
+      "unique_ao_quartets": 21600
+    },
+    {
+      "class": "ssss",
+      "primitive_quartets": 33431,
+      "primitive_work_fraction": 0.012416180291063998,
+      "shell_angular": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 2211,
+      "tiles": 2211,
+      "unique_ao_quartets": 2211
+    },
+    {
+      "class": "dsds",
+      "primitive_quartets": 32142,
+      "primitive_work_fraction": 0.011937449281067842,
+      "shell_angular": [
+        2,
+        0,
+        2,
+        0
+      ],
+      "shell_quartets": 253,
+      "tiles": 253,
+      "unique_ao_quartets": 8778
+    },
+    {
+      "class": "fdss",
+      "primitive_quartets": 30360,
+      "primitive_work_fraction": 0.011275619444129789,
+      "shell_angular": [
+        3,
+        2,
+        0,
+        0
+      ],
+      "shell_quartets": 132,
+      "tiles": 132,
+      "unique_ao_quartets": 7920
+    },
+    {
+      "class": "fdds",
+      "primitive_quartets": 30240,
+      "primitive_work_fraction": 0.011231051778342714,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        0
+      ],
+      "shell_quartets": 44,
+      "tiles": 88,
+      "unique_ao_quartets": 15840
+    },
+    {
+      "class": "fpfp",
+      "primitive_quartets": 29100,
+      "primitive_work_fraction": 0.01080765895336551,
+      "shell_angular": [
+        3,
+        1,
+        3,
+        1
+      ],
+      "shell_quartets": 15,
+      "tiles": 50,
+      "unique_ao_quartets": 11325
+    },
+    {
+      "class": "fdfp",
+      "primitive_quartets": 28800,
+      "primitive_work_fraction": 0.010696239788897824,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        1
+      ],
+      "shell_quartets": 10,
+      "tiles": 80,
+      "unique_ao_quartets": 18000
+    },
+    {
+      "class": "ffps",
+      "primitive_quartets": 27720,
+      "primitive_work_fraction": 0.010295130796814154,
+      "shell_angular": [
+        3,
+        3,
+        1,
+        0
+      ],
+      "shell_quartets": 55,
+      "tiles": 55,
+      "unique_ao_quartets": 9075
+    },
+    {
+      "class": "fdfs",
+      "primitive_quartets": 25200,
+      "primitive_work_fraction": 0.009359209815285595,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        0
+      ],
+      "shell_quartets": 22,
+      "tiles": 66,
+      "unique_ao_quartets": 13200
+    },
+    {
+      "class": "ddpp",
+      "primitive_quartets": 24804,
+      "primitive_work_fraction": 0.00921213651818825,
+      "shell_angular": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "shell_quartets": 45,
+      "tiles": 55,
+      "unique_ao_quartets": 9360
+    },
+    {
+      "class": "dddp",
+      "primitive_quartets": 22464,
+      "primitive_work_fraction": 0.008343067035340303,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "shell_quartets": 30,
+      "tiles": 70,
+      "unique_ao_quartets": 14040
+    },
+    {
+      "class": "fsfs",
+      "primitive_quartets": 22375,
+      "primitive_work_fraction": 0.008310012683214888,
+      "shell_angular": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "shell_quartets": 66,
+      "tiles": 66,
+      "unique_ao_quartets": 6105
+    },
+    {
+      "class": "ddss",
+      "primitive_quartets": 19734,
+      "primitive_work_fraction": 0.007329152638684363,
+      "shell_angular": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "shell_quartets": 198,
+      "tiles": 198,
+      "unique_ao_quartets": 5148
+    },
+    {
+      "class": "ddds",
+      "primitive_quartets": 19656,
+      "primitive_work_fraction": 0.007300183655922764,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        0
+      ],
+      "shell_quartets": 66,
+      "tiles": 66,
+      "unique_ao_quartets": 10296
+    },
+    {
+      "class": "fpdd",
+      "primitive_quartets": 18720,
+      "primitive_work_fraction": 0.006952555862783585,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        2
+      ],
+      "shell_quartets": 15,
+      "tiles": 55,
+      "unique_ao_quartets": 11700
+    },
+    {
+      "class": "ffpp",
+      "primitive_quartets": 17490,
+      "primitive_work_fraction": 0.006495737288466074,
+      "shell_angular": [
+        3,
+        3,
+        1,
+        1
+      ],
+      "shell_quartets": 15,
+      "tiles": 30,
+      "unique_ao_quartets": 6600
+    },
+    {
+      "class": "fsdd",
+      "primitive_quartets": 16380,
+      "primitive_work_fraction": 0.006083486379935637,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        2
+      ],
+      "shell_quartets": 33,
+      "tiles": 44,
+      "unique_ao_quartets": 8580
+    },
+    {
+      "class": "ffdp",
+      "primitive_quartets": 15840,
+      "primitive_work_fraction": 0.005882931883893803,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        1
+      ],
+      "shell_quartets": 10,
+      "tiles": 40,
+      "unique_ao_quartets": 9900
+    },
+    {
+      "class": "ffss",
+      "primitive_quartets": 13915,
+      "primitive_work_fraction": 0.005167992245226153,
+      "shell_angular": [
+        3,
+        3,
+        0,
+        0
+      ],
+      "shell_quartets": 66,
+      "tiles": 66,
+      "unique_ao_quartets": 3630
+    },
+    {
+      "class": "ffds",
+      "primitive_quartets": 13860,
+      "primitive_work_fraction": 0.005147565398407077,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        0
+      ],
+      "shell_quartets": 22,
+      "tiles": 44,
+      "unique_ao_quartets": 7260
+    },
+    {
+      "class": "fffp",
+      "primitive_quartets": 13200,
+      "primitive_work_fraction": 0.004902443236578169,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        1
+      ],
+      "shell_quartets": 5,
+      "tiles": 35,
+      "unique_ao_quartets": 8250
+    },
+    {
+      "class": "fffs",
+      "primitive_quartets": 11550,
+      "primitive_work_fraction": 0.004289637832005898,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        0
+      ],
+      "shell_quartets": 11,
+      "tiles": 33,
+      "unique_ao_quartets": 6050
+    },
+    {
+      "class": "fddd",
+      "primitive_quartets": 9360,
+      "primitive_work_fraction": 0.0034762779313917925,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        2
+      ],
+      "shell_quartets": 6,
+      "tiles": 38,
+      "unique_ao_quartets": 9360
+    },
+    {
+      "class": "fdfd",
+      "primitive_quartets": 7260,
+      "primitive_work_fraction": 0.0026963437801179927,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        2
+      ],
+      "shell_quartets": 3,
+      "tiles": 31,
+      "unique_ao_quartets": 7260
+    },
+    {
+      "class": "fffd",
+      "primitive_quartets": 6600,
+      "primitive_work_fraction": 0.0024512216182890844,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        2
+      ],
+      "shell_quartets": 2,
+      "tiles": 26,
+      "unique_ao_quartets": 6600
+    },
+    {
+      "class": "ffdd",
+      "primitive_quartets": 4290,
+      "primitive_work_fraction": 0.0015932940518879049,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        2
+      ],
+      "shell_quartets": 3,
+      "tiles": 18,
+      "unique_ao_quartets": 4290
+    },
+    {
+      "class": "dddd",
+      "primitive_quartets": 3081,
+      "primitive_work_fraction": 0.0011442748190831316,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "shell_quartets": 6,
+      "tiles": 13,
+      "unique_ao_quartets": 3081
+    },
+    {
+      "class": "ffff",
+      "primitive_quartets": 1540,
+      "primitive_work_fraction": 0.0005719517109341197,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "shell_quartets": 1,
+      "tiles": 7,
+      "unique_ao_quartets": 1540
+    }
+  ]
+}

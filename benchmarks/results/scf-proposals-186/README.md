@@ -1,11 +1,5 @@
 # SCF proposal baseline evidence (#186)
 
-> **Retention note (2026-09-21):** selected bulky historical records from this
-> campaign were moved out of the current checkout. Pinned historical links below
-> still open the original bytes at `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5`; exact byte restoration is available
-> through `benchmarks/results/retention-2026-09-21/migration.json`. Scientific
-> acceptance thresholds and retained summaries are unchanged.
-
 This archive measures the native CPU proposal interface using 15 independent
 reference cases: H2/STO-3G, H2/def2-SVP, water, methane, and HF+ UHF, each at
 geometry scale 0.98, 1, and 1.02. Whole molecule families stay in one split,

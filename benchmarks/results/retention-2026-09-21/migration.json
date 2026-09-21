@@ -2,74 +2,11 @@
   "schema": "vibeqc.git-snapshot.v1",
   "source_revision": "d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5",
   "history_rewritten": false,
-  "file_count": 24,
-  "total_bytes": 8235992,
-  "moved_files": 24,
-  "moved_bytes": 8235992,
+  "file_count": 15,
+  "total_bytes": 4840512,
+  "moved_files": 15,
+  "moved_bytes": 4840512,
   "files": [
-    {
-      "path": "benchmarks/results/f-shell-135/f-dimer-b4.json",
-      "bytes": 220872,
-      "sha256": "cfde8105078c091674c66b81c02acc857ca17d6c4ef666d93c19e75763a3fc21",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
-    {
-      "path": "benchmarks/results/f-shell-135/f-tetramer-b1.json",
-      "bytes": 148854,
-      "sha256": "a9ce0fd144f0ec5f4ab66522b1cf359ddd87231ee93f79d0990d78199d38d46c",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
-    {
-      "path": "benchmarks/results/f-shell-135/f-water-b4.json",
-      "bytes": 175116,
-      "sha256": "c46caf8975f5b11fcfcb172697063fb10814671421b372f02de5c8606ec381ef",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
-    {
-      "path": "benchmarks/results/f-shell-135/fpps.json",
-      "bytes": 457321,
-      "sha256": "d211c628261ab6564be29ab09344be2892c2801c13a6415537d1e7db1f893ce6",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
-    {
-      "path": "benchmarks/results/f-shell-135/fsps.json",
-      "bytes": 455970,
-      "sha256": "62794db50c55658d6e005638b8b81e831d0bc378429976b99b676fc0269dc37a",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
-    {
-      "path": "benchmarks/results/f-shell-135/fsss.json",
-      "bytes": 455535,
-      "sha256": "60f742e3ce1eefaefd1a3faec49906a53a7aed55d7b7c1aba8f38820eabac0d5",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
-    {
-      "path": "benchmarks/results/generated-df-values-142/endpoints.json",
-      "bytes": 391121,
-      "sha256": "544255203a137fa646e65b0304ccecf820ba8b56ac1511c8b8a8c651007a4e05",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
-    {
-      "path": "benchmarks/results/generated-df-values-142/isolated.json",
-      "bytes": 577110,
-      "sha256": "8fc91a883b9fe2ca723f84cc6a1b9a49bb30f45902e0d9a8bcebe1d9cde6f18a",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
-    {
-      "path": "benchmarks/results/scf-proposals-186/report.json",
-      "bytes": 513581,
-      "sha256": "e67a2b0115276bb00bc4d9d9c537a13f420af0c9ad82088ee3fbf8a14c286f87",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
     {
       "path": "benchmarks/results/issue206-device-diis-baseline/evidence.zip",
       "bytes": 759957,
