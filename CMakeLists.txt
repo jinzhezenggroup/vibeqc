@@ -233,6 +233,17 @@ endif()
 target_compile_options(vibeqc PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>)
 
 if(VIBEQC_ENABLE_CUDA)
+  # A single-architecture build may use that architecture's measured host-side
+  # candidate schedule. Fat binaries keep host scheduling portable because the
+  # active device is not a compile-time property of their shared host code.
+  list(LENGTH _vibeqc_cuda_compile_architectures _vibeqc_cuda_architecture_count)
+  if(_vibeqc_cuda_architecture_count EQUAL 1)
+    list(GET _vibeqc_cuda_compile_architectures 0 _vibeqc_cuda_profile_architecture)
+    string(REGEX REPLACE "-.*$" "" _vibeqc_cuda_profile_architecture
+           "${_vibeqc_cuda_profile_architecture}")
+    target_compile_definitions(
+      vibeqc PRIVATE VIBEQC_CUDA_PROFILE_ARCHITECTURE=${_vibeqc_cuda_profile_architecture})
+  endif()
   vibeqc_register_cuda_generated_sources(vibeqc)
   vibeqc_configure_cuda_backend(vibeqc)
 else()
