@@ -71,7 +71,23 @@ def select_fixture(
         record_property("nao", mol.nao_nr())
         return atoms, basis, mol
 
+    original_reference = gates.reference
+
+    def selected_reference(
+        mol: typing.Any, state: typing.Any, method: str
+    ) -> typing.Any:
+        if not method.endswith("uks"):
+            return original_reference(mol, state, method)
+        # The independent atomic guess avoids the slowly rotating open-shell
+        # basin reached from the one-electron guess. Do not seed from VibeQC.
+        record_property("independent_initial_guess", "atom")
+        record_property("independent_maximum_cycles", 600)
+        return original_reference(
+            mol, state, method, initial_guess="atom", maximum_cycles=600
+        )
+
     monkeypatch.setattr(gates, "fixture", selected)
+    monkeypatch.setattr(gates, "reference", selected_reference)
     return gates
 
 
