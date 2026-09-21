@@ -137,8 +137,8 @@ PRIMITIVES = {
     )
 }
 PRIMITIVES["runtime_indexed_select"] = PrimitiveContract(
-    "one real source plus one or more non-differentiable int64 runtime index maps",
-    "pure indexed read; repeated runtime coordinates do not imply accumulation",
+    "all real operands (source only); int64 runtime index maps are non-differentiable",
+    "pure indexed read; VJP accumulates repeated runtime coordinates by scatter-add",
 )
 
 
