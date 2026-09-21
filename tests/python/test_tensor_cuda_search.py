@@ -73,6 +73,8 @@ def test_structured_search_is_bounded_reproducible_and_covers_each_axis() -> Non
         assert {getattr(s, name) for s in schedules} == set(values)
     custom = replace(space, threads=(32, 128, 512, 1024))
     assert {s.threads for s in custom.generate()} == {32, 128, 512, 1024}
+    streaming = replace(space, stream_reductions=(False, True))
+    assert {s.stream_reductions for s in streaming.generate()} == {False, True}
 
 
 @pytest.mark.parametrize(
@@ -81,6 +83,7 @@ def test_structured_search_is_bounded_reproducible_and_covers_each_axis() -> Non
         {"threads": ()},
         {"tile_m": (0,)},
         {"views": (1,)},
+        {"stream_reductions": (1,)},
         {"threads": (128, 128)},
         {"tile_n": (False,)},
         {"elements_per_thread": (3,)},
