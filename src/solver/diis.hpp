@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstddef>
 #include <numeric>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -29,6 +30,8 @@ class Diis {
   }
 
   std::vector<double> update(std::vector<double> vector, std::vector<double> error) {
+    if (vector.size() != elements_ || error.size() != elements_)
+      throw std::invalid_argument("DIIS vector/error dimensions do not match the state size");
     if (!capacity_) return vector;
     vectors_.push_back(vector);
     errors_.push_back(std::move(error));
