@@ -231,3 +231,25 @@ def test_final_verification_requires_original_model_strict_scf_and_force_gate() 
         force_max_abs=5e-5,
     )
     assert mismatch.status == "unverified"
+
+
+@pytest.mark.parametrize("field", ("energy_tolerance", "density_tolerance"))
+@pytest.mark.parametrize("index", (1, 2))
+def test_level_rank_cannot_hide_looser_convergence(field: str, index: int) -> None:
+    controller = policy()
+    values = list(controller.levels)
+    values[index] = replace(
+        values[index], **{field: getattr(values[index - 1], field) * 10}
+    )
+    with pytest.raises(ValueError, match="tolerances"):
+        replace(controller, levels=tuple(values))
+
+
+def test_equal_convergence_thresholds_remain_valid() -> None:
+    controller = policy()
+    last = replace(
+        controller.levels[-1], energy_tolerance=controller.levels[-2].energy_tolerance
+    )
+    assert (
+        replace(controller, levels=(*controller.levels[:-1], last)).strict_level == last
+    )

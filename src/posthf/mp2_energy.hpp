@@ -1,6 +1,7 @@
 #pragma once
 
 #include "posthf/native_provider.hpp"
+#include "posthf/raw_source.hpp"
 
 namespace vibeqc::mp2 {
 struct Energy {

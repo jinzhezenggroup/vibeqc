@@ -8,21 +8,10 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "generated_gfn2_electronic_native.hpp"
 #include "model/gfn2/mulliken_kernels.hpp"
 
 namespace xtbloom::detail::gfn2::kernel_implementation {
-
-static bool add_product(double left, double right, double& accumulator) noexcept {
-  /* std::fma is part of the existing numerical and overflow-classification
-   * contract. The AVX2/FMA TU turns it into hardware FMA; baseline remains safe
-   * on the wheel's oldest supported x86-64 CPUs. */
-  const double updated = std::fma(left, right, accumulator);
-  if (!std::isfinite(updated)) {
-    return false;
-  }
-  accumulator = updated;
-  return true;
-}
 
 static void population_record_failure(MullikenPopulationTask& task,
                                       std::uint64_t candidate) noexcept {
@@ -79,7 +68,8 @@ static void population_chunk(void* opaque, std::size_t chunk) noexcept {
           population_fail(task, 1, element_position);
           return;
         }
-        if (!add_product(-density_value, overlap_value, shell_charge)) {
+        if (!::vibeqc::xtb::generated::gfn2_population_update_tensor(
+                density_value, overlap_value, shell_charge, shell_charge)) {
           population_fail(task, 4, element_position + 1u);
           return;
         }
@@ -92,7 +82,8 @@ static void population_chunk(void* opaque, std::size_t chunk) noexcept {
             population_fail(task, 2, element_position + 2u + static_cast<std::uint64_t>(component));
             return;
           }
-          if (!add_product(-density_value, integral, value)) {
+          if (!::vibeqc::xtb::generated::gfn2_population_update_tensor(
+                  density_value, integral, value, value)) {
             population_fail(task, 5, element_position + 2u + static_cast<std::uint64_t>(component));
             return;
           }
@@ -106,7 +97,8 @@ static void population_chunk(void* opaque, std::size_t chunk) noexcept {
             population_fail(task, 3, element_position + 5u + static_cast<std::uint64_t>(component));
             return;
           }
-          if (!add_product(-density_value, integral, value)) {
+          if (!::vibeqc::xtb::generated::gfn2_population_update_tensor(
+                  density_value, integral, value, value)) {
             population_fail(task, 6, element_position + 5u + static_cast<std::uint64_t>(component));
             return;
           }
@@ -173,7 +165,6 @@ static void hamiltonian_chunk(void* opaque, std::size_t chunk) noexcept {
         double shift = 0.0;
         const double overlap = task.overlap[static_cast<std::size_t>(forward_matrix)];
         const double reverse_overlap = task.overlap[static_cast<std::size_t>(reverse_matrix)];
-        const double half_overlap = -0.5 * overlap;
         const std::uint64_t element_position =
             static_cast<std::uint64_t>(
                 ((spin * task.orbitals + local_row) * task.orbitals + local_column)) *
@@ -182,10 +173,8 @@ static void hamiltonian_chunk(void* opaque, std::size_t chunk) noexcept {
           hamiltonian_fail(task, 1, element_position);
           return;
         }
-        if (!std::isfinite(half_overlap) || !add_product(half_overlap, row_vat, shift) ||
-            !add_product(half_overlap, row_vsh, shift) ||
-            !add_product(half_overlap, column_vat, shift) ||
-            !add_product(half_overlap, column_vsh, shift)) {
+        if (!::vibeqc::xtb::generated::gfn2_scalar_hamiltonian_update_tensor(
+                overlap, row_vat, row_vsh, column_vat, column_vsh, shift, shift)) {
           hamiltonian_fail(task, 4, element_position + 1u);
           return;
         }
@@ -195,20 +184,19 @@ static void hamiltonian_chunk(void* opaque, std::size_t chunk) noexcept {
               task.dipole_base + (spin * task.atoms + local_row_atom) * 3 + component)];
           const double column_potential = task.dipole_scratch[static_cast<std::size_t>(
               task.dipole_base + (spin * task.atoms + local_column_atom) * 3 + component)];
-          const double forward_integral =
-              -0.5 * task.dipole_integrals[static_cast<std::size_t>(
-                         component * task.matrix_elements + forward_matrix)];
-          const double reverse_integral =
-              -0.5 * task.dipole_integrals[static_cast<std::size_t>(
-                         component * task.matrix_elements + reverse_matrix)];
+          const double forward_integral = task.dipole_integrals[static_cast<std::size_t>(
+              component * task.matrix_elements + forward_matrix)];
+          const double reverse_integral = task.dipole_integrals[static_cast<std::size_t>(
+              component * task.matrix_elements + reverse_matrix)];
           if (!std::isfinite(forward_integral) || !std::isfinite(reverse_integral)) {
             hamiltonian_fail(task, 2,
                              element_position + 2u + static_cast<std::uint64_t>(component));
             return;
           }
           if (!std::isfinite(row_potential) || !std::isfinite(column_potential) ||
-              !add_product(forward_integral, column_potential, shift) ||
-              !add_product(reverse_integral, row_potential, shift)) {
+              !::vibeqc::xtb::generated::gfn2_multipole_hamiltonian_update_tensor(
+                  forward_integral, reverse_integral, row_potential, column_potential, shift,
+                  shift)) {
             hamiltonian_fail(task, 5,
                              element_position + 2u + static_cast<std::uint64_t>(component));
             return;
@@ -220,20 +208,19 @@ static void hamiltonian_chunk(void* opaque, std::size_t chunk) noexcept {
               task.quadrupole_base + (spin * task.atoms + local_row_atom) * 6 + component)];
           const double column_potential = task.quadrupole_scratch[static_cast<std::size_t>(
               task.quadrupole_base + (spin * task.atoms + local_column_atom) * 6 + component)];
-          const double forward_integral =
-              -0.5 * task.quadrupole_integrals[static_cast<std::size_t>(
-                         component * task.matrix_elements + forward_matrix)];
-          const double reverse_integral =
-              -0.5 * task.quadrupole_integrals[static_cast<std::size_t>(
-                         component * task.matrix_elements + reverse_matrix)];
+          const double forward_integral = task.quadrupole_integrals[static_cast<std::size_t>(
+              component * task.matrix_elements + forward_matrix)];
+          const double reverse_integral = task.quadrupole_integrals[static_cast<std::size_t>(
+              component * task.matrix_elements + reverse_matrix)];
           if (!std::isfinite(forward_integral) || !std::isfinite(reverse_integral)) {
             hamiltonian_fail(task, 3,
                              element_position + 5u + static_cast<std::uint64_t>(component));
             return;
           }
           if (!std::isfinite(row_potential) || !std::isfinite(column_potential) ||
-              !add_product(forward_integral, column_potential, shift) ||
-              !add_product(reverse_integral, row_potential, shift)) {
+              !::vibeqc::xtb::generated::gfn2_multipole_hamiltonian_update_tensor(
+                  forward_integral, reverse_integral, row_potential, column_potential, shift,
+                  shift)) {
             hamiltonian_fail(task, 6,
                              element_position + 5u + static_cast<std::uint64_t>(component));
             return;

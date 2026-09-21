@@ -15,7 +15,6 @@ import threading
 import typing
 from contextlib import ExitStack, contextmanager
 from hashlib import sha256
-from itertools import product
 from pathlib import Path
 from time import perf_counter
 from types import MappingProxyType
@@ -23,7 +22,15 @@ from types import MappingProxyType
 import numpy as np
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.common.provenance import file_hash
+from vibeqc_compiler.common.cuda_runtime import CudaArtifact
+from vibeqc_compiler.common.cuda_target import CudaTargetInfo
+from vibeqc_compiler.common.prepared_execution import (
+    PreparedArtifactBinding,
+    PreparedExecutionLease,
+    PreparedExecutionMismatch,
+    PreparedExecutionRequest,
+)
+from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from vibeqc_compiler.common.runtime_domain import RuntimeTaskDomain
 from vibeqc_compiler.dft.cuda import (
     CudaGrid,
@@ -37,6 +44,8 @@ from vibeqc_compiler.integral.first_derivative_native import emit_first_derivati
 from vibeqc_compiler.method.stationary_cuda import (
     STATIONARY_RUNTIME_SOURCE_NAMES,
     compile_stationary_cuda,
+    load_stationary_aot_artifact,
+    qualified_sp_requests,
 )
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
@@ -103,16 +112,7 @@ def _layout(basis: typing.Any) -> typing.Any:
     if any(int(r[3]) != 1 for r in aos):
         raise NotImplementedError("CUDA diagnostic requires single-component AOs")
     components = tuple("".join(a * int(l) for a, l in zip("xyz", r[4:7])) for r in aos)
-    domain = sorted(set(components))
-    requests = tuple(
-        [
-            (op, c)
-            for op in ("overlap", "kinetic", "nuclear_attraction")
-            for c in product(domain, repeat=2)
-        ]
-        + [("four_center_eri", c) for c in product(domain, repeat=4)]
-        + [("nuclear", ())]
-    )
+    requests = qualified_sp_requests()
     return primitives, aos, components, requests
 
 
@@ -129,6 +129,7 @@ class _CudaSources:
         records: typing.Any,
         budget: typing.Any,
         spin_blocks: typing.Any = 1,
+        target: typing.Any = None,
         work_budget: typing.Any = 2_000_000,
     ) -> None:
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
@@ -218,7 +219,7 @@ class _CudaSources:
         self._call(
             "stationary_create",
             device,
-            *compiler.target.compute_capability,
+            *(compiler.target if target is None else target).compute_capability,
             basis.natom,
             basis.nao,
             basis.nprimitive,
@@ -425,22 +426,137 @@ class _CudaSources:
             self.close()
 
 
+def _native_grid_artifact(library: typing.Any, architecture: str) -> CudaArtifact:
+    """Bind the already built native CUDA grid code without recompilation."""
+    path = Path(library).resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"native CUDA library not found: {path}")
+    digest = file_hash(path)
+    identity = {
+        "schema": "vibeqc.native-grid-aot.v1",
+        "target": {"architecture": architecture},
+    }
+    return CudaArtifact(
+        path,
+        {
+            "identity": identity,
+            "binary_sha256": digest,
+            "key": canonical_hash({"identity": identity, "binary_sha256": digest}),
+            "artifact_kind": "native-build-aot",
+        },
+    )
+
+
 class PreparedStationaryCudaTopologyMismatch(ValueError):
     """Retained execution is incompatible with the requested scientific topology."""
 
 
 class PreparedStationaryCudaExecution:
-    """Retain verified artifacts and bounded CUDA owners for force replay."""
+    """Retain method-owned CUDA resources behind the shared prepared-region lease."""
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._stack: ExitStack | None = None
-        self._key: tuple[typing.Any, ...] | None = None
-        self._failed = False
-        self._executions = 0
-        self._geometry_rebinds = 0
+        self._lease = PreparedExecutionLease()
         self.preparation_seconds = 0.0
-        self.identity: str | None = None
+
+    @property
+    def identity(self) -> str | None:
+        return self._lease.identity
+
+    @property
+    def host_bound(self) -> int:
+        contract = self._lease.contract
+        return 0 if contract is None else contract.host_bytes
+
+    @property
+    def device_peak_bound(self) -> int:
+        contract = self._lease.contract
+        return 0 if contract is None else contract.device_bytes
+
+    def _request(
+        self,
+        *,
+        state: typing.Any,
+        basis: typing.Any,
+        contract: typing.Any,
+        plan: typing.Any,
+        tensor_plans: typing.Any,
+        target: typing.Any,
+        aot_directory: typing.Any,
+        native_grid_library: typing.Any,
+        ecp: bool,
+        device: int,
+        spec: typing.Any,
+        grid_plan: typing.Any,
+        source_bytes: int,
+        tile_points: int,
+        primitive_tile: int,
+        integral_terms: int,
+        work_budget: int,
+    ) -> PreparedExecutionRequest:
+        topology = _basis_topology_identity(basis)
+        scientific_identity = canonical_hash(
+            {
+                "plan": plan.identity,
+                "method": state.identity.method,
+                "family": contract.family,
+                "spin": contract.spin,
+                "ecp": ecp,
+                "topology": topology,
+                "backend": state._source.backend,
+                "functional": state.identity.functional_identity,
+                "regularization": state.identity.regularization_identity,
+                "ecp_model": repr(
+                    (state._source.ecp_cores, state._source.ecp_terms)
+                    if ecp
+                    else ("all-electron",)
+                ),
+                "grid_spec": repr(spec),
+            }
+        )
+        schedule_identity = canonical_hash(
+            {
+                "partition_iterations": spec.partition_iterations,
+                "tile_points": tile_points,
+                "primitive_tile": primitive_tile,
+                "integral_terms": integral_terms,
+                "work_budget": work_budget,
+                "grid_allocation_bytes": grid_plan.allocation_bytes,
+                "tensor_plans": [
+                    (name, value.identity)
+                    for name, value in sorted(tensor_plans.items())
+                ],
+                "aot_directory": (
+                    None
+                    if aot_directory is None
+                    else str(Path(aot_directory).resolve())
+                ),
+                "native_grid_library": (
+                    None
+                    if native_grid_library is None
+                    else str(Path(native_grid_library).resolve())
+                ),
+            }
+        )
+        workspace_identity = canonical_hash(
+            {
+                "grid_peak_bytes": grid_plan.peak_bytes,
+                "source_bytes": source_bytes,
+                "tensor": [
+                    (name, value.peak_bytes, value.host_bytes)
+                    for name, value in sorted(tensor_plans.items())
+                ],
+            }
+        )
+        return PreparedExecutionRequest(
+            "stationary-dft-cuda",
+            scientific_identity,
+            canonical_hash(target.to_payload()),
+            schedule_identity,
+            workspace_identity,
+            device=device,
+        )
 
     def ensure(
         self,
@@ -452,6 +568,9 @@ class PreparedStationaryCudaExecution:
         tensor_plans: typing.Any,
         compiler: typing.Any,
         cache: typing.Any,
+        aot_directory: typing.Any = None,
+        native_grid_library: typing.Any = None,
+        target: typing.Any = None,
         requests: typing.Any,
         functional: int,
         ecp: bool,
@@ -467,45 +586,41 @@ class PreparedStationaryCudaExecution:
         max_host_bytes: int,
         host_bound: int,
     ) -> None:
-        topology = _basis_topology_identity(basis)
-        key = (
-            plan.identity,
-            state.identity.method,
-            contract.family,
-            contract.spin,
-            ecp,
-            topology,
-            state._source.backend,
-            state.identity.functional_identity,
-            state.identity.regularization_identity,
-            repr(
-                (state._source.ecp_cores, state._source.ecp_terms)
-                if ecp
-                else ("all-electron",)
-            ),
-            device,
-            repr(compiler.target.to_payload()),
-            repr(spec),
-            spec.partition_iterations,
-            tile_points,
-            primitive_tile,
-            integral_terms,
-            work_budget,
-            grid_plan.allocation_bytes,
-            tuple(
-                (name, value.identity) for name, value in sorted(tensor_plans.items())
-            ),
+        target = compiler.target if target is None else target
+        request = self._request(
+            state=state,
+            basis=basis,
+            contract=contract,
+            plan=plan,
+            tensor_plans=tensor_plans,
+            target=target,
+            aot_directory=aot_directory,
+            native_grid_library=native_grid_library,
+            ecp=ecp,
+            device=device,
+            spec=spec,
+            grid_plan=grid_plan,
+            source_bytes=source_bytes,
+            tile_points=tile_points,
+            primitive_tile=primitive_tile,
+            integral_terms=integral_terms,
+            work_budget=work_budget,
         )
-        if self._key is not None:
-            if key != self._key:
+        if self._lease.contract is not None:
+            try:
+                self._lease.require(
+                    request,
+                    max_host_bytes=max_host_bytes,
+                    max_device_bytes=max_device_bytes,
+                )
+            except PreparedExecutionMismatch as error:
                 raise PreparedStationaryCudaTopologyMismatch(
                     "stationary CUDA prepared execution topology changed"
-                )
-            if self.host_bound > max_host_bytes:
-                raise ValueError("prepared stationary CUDA host budget exceeded")
-            if self.device_peak_bound > max_device_bytes:
-                raise ValueError("prepared stationary CUDA device budget exceeded")
-            if basis.identity != self._bound_basis_identity or self._failed:
+                ) from error
+            if (
+                basis.identity != self._bound_basis_identity
+                or self._lease.needs_refresh
+            ):
                 if any(
                     file_hash(artifact.library) != artifact.metadata["binary_sha256"]
                     for artifact in self.artifacts
@@ -518,31 +633,45 @@ class PreparedStationaryCudaExecution:
                     )
                 )
                 self._bound_basis_identity = basis.identity
-                self._geometry_rebinds += 1
+                self._lease.mark_refresh()
             return
 
         tensor_peak = sum(value.peak_bytes for value in tensor_plans.values())
-        self.device_peak_bound = grid_plan.peak_bytes + source_bytes + tensor_peak
-        if self.device_peak_bound > max_device_bytes:
+        device_peak_bound = grid_plan.peak_bytes + source_bytes + tensor_peak
+        if device_peak_bound > max_device_bytes:
             raise ValueError("prepared stationary CUDA device budget exceeded")
         retained_host = host_bound + sum(
             value.host_bytes for value in tensor_plans.values()
         )
         if retained_host > max_host_bytes:
             raise ValueError("prepared stationary CUDA host budget exceeded")
-        self.host_bound = retained_host
 
         started = perf_counter()
         cache = Path(cache)
-        stationary_artifact = compile_stationary_cuda(
-            emit_first_derivative_cuda(requests),
-            functional=functional,
-            plan=plan,
-            iterations=spec.partition_iterations,
-            compiler=compiler,
-            cache=cache,
+        stationary_artifact = (
+            compile_stationary_cuda(
+                emit_first_derivative_cuda(requests),
+                functional=functional,
+                plan=plan,
+                iterations=spec.partition_iterations,
+                compiler=compiler,
+                cache=cache,
+            )
+            if aot_directory is None or ecp
+            else load_stationary_aot_artifact(
+                aot_directory,
+                functional=functional,
+                spin=contract.spin,
+                plan=plan,
+                architecture=target.architecture,
+                iterations=spec.partition_iterations,
+            )
         )
-        grid_artifact = compile_grid(compiler, cache)
+        grid_artifact = (
+            compile_grid(compiler, cache)
+            if native_grid_library is None
+            else _native_grid_artifact(native_grid_library, target.architecture)
+        )
         tensor_artifacts = {
             name: compile_cuda(value, compiler, cache)
             for name, value in tensor_plans.items()
@@ -559,6 +688,7 @@ class PreparedStationaryCudaExecution:
                     primitive_tile,
                     source_bytes,
                     spin_blocks=plan.spin_blocks,
+                    target=target,
                     work_budget=work_budget,
                 )
             )
@@ -572,7 +702,9 @@ class PreparedStationaryCudaExecution:
                     budget_bytes=grid_plan.peak_bytes,
                     device_id=device,
                     active_ao_capacity=basis.nao,
-                    ingredients=("rho", "gradient", "tau") if needs_first else ("rho",),
+                    ingredients=(
+                        ("rho", "gradient", "tau") if needs_first else ("rho",)
+                    ),
                 )
             )
             tensors = {
@@ -584,8 +716,22 @@ class PreparedStationaryCudaExecution:
         except Exception:
             stack.close()
             raise
+        artifacts = (
+            stationary_artifact,
+            grid_artifact,
+            *(tensor_artifacts[name] for name in sorted(tensor_artifacts)),
+        )
+        try:
+            self._lease.install(
+                request,
+                tuple(PreparedArtifactBinding.from_artifact(a) for a in artifacts),
+                host_bytes=retained_host,
+                device_bytes=device_peak_bound,
+            )
+        except Exception:
+            stack.close()
+            raise
         self._stack = stack
-        self._key = key
         self.sources, self.grid, self.tensors = sources, grid, tensors
         self.stationary_plan = plan
         self.tensor_plans = dict(tensor_plans)
@@ -593,31 +739,16 @@ class PreparedStationaryCudaExecution:
         self.stationary_artifact = stationary_artifact
         self.grid_artifact = grid_artifact
         self.tensor_artifacts = tensor_artifacts
-        self.artifacts = (
-            stationary_artifact,
-            grid_artifact,
-            *(tensor_artifacts[name] for name in sorted(tensor_artifacts)),
-        )
+        self.artifacts = artifacts
         self._bound_basis_identity = basis.identity
         self.preparation_seconds = perf_counter() - started
-        self.identity = sha256(
-            repr(
-                (
-                    key,
-                    tuple(
-                        (artifact.metadata["key"], artifact.metadata["binary_sha256"])
-                        for artifact in self.artifacts
-                    ),
-                )
-            ).encode()
-        ).hexdigest()
 
     def close(self) -> None:
         with self._lock:
             if self._stack is not None:
                 self._stack.close()
                 self._stack = None
-            self._key = None
+            self._lease.invalidate()
 
     def __enter__(self) -> typing.Any:
         return self
@@ -685,9 +816,12 @@ def _complete_rks_cuda_gradient_diagnostic(
     *,
     compiler: typing.Any,
     cache: typing.Any,
+    aot_directory: typing.Any = None,
+    native_grid_library: typing.Any = None,
+    target: CudaTargetInfo | None = None,
     tile_points: typing.Any = 256,
     integral_terms: typing.Any = 32,
-    primitive_tile: typing.Any = 128,
+    primitive_tile: typing.Any = 4096,
     max_device_bytes: typing.Any = 512 << 20,
     max_host_bytes: typing.Any = 256 << 20,
     max_grid_points: typing.Any = 1_000_000,
@@ -731,8 +865,21 @@ def _complete_rks_cuda_gradient_diagnostic(
         - basis.charge
     ):
         raise NotImplementedError("CUDA gradient diagnostic requires bound ECP states")
-    if not isinstance(compiler, CudaCompilerAdapter):
+    if compiler is None:
+        if ecp or aot_directory is None or native_grid_library is None:
+            raise TypeError(
+                "runtime compilation requires an explicit CUDA compiler adapter"
+            )
+        if not isinstance(target, CudaTargetInfo):
+            raise TypeError(
+                "packaged stationary CUDA requires an explicit execution target"
+            )
+    elif not isinstance(compiler, CudaCompilerAdapter):
         raise TypeError("an explicit CUDA compiler adapter is required")
+    elif target is not None and target != compiler.target:
+        raise ValueError("stationary CUDA compiler/execution target mismatch")
+    else:
+        target = compiler.target
     for value, name, cap in (
         (tile_points, "tile_points", 4096),
         (primitive_tile, "primitive_tile", 4096),
@@ -811,7 +958,7 @@ def _complete_rks_cuda_gradient_diagnostic(
     tensor_plans = {}
     if ecp:
         tensor_plans["reduction"] = plan_cuda(
-            plan.reduction_program(atoms=na), compiler.target, max_bytes=available
+            plan.reduction_program(atoms=na), target, max_bytes=available
         )
     # Conservative numeric-array bound: compact task pages/sort staging, resident
     # topology mirrors, D/W admission copies, adapter staging,
@@ -880,7 +1027,7 @@ def _complete_rks_cuda_gradient_diagnostic(
         for name in ("ecp_local", "ecp_nonlocal"):
             tensor_plans[name] = plan_cuda(
                 plan.integral_block(name, terms=n * n, coordinates=3 * na).contraction,
-                compiler.target,
+                target,
                 max_bytes=available,
             )
         # Provider export occurs before the grid/source/TensorIR owners exist.
@@ -895,15 +1042,30 @@ def _complete_rks_cuda_gradient_diagnostic(
     cache = Path(cache)
     spec = state._source.grid_spec
     if prepared is None:
-        artifact = compile_stationary_cuda(
-            emit_first_derivative_cuda(requests),
-            functional=functional,
-            plan=plan,
-            iterations=spec.partition_iterations,
-            compiler=compiler,
-            cache=cache,
+        artifact = (
+            compile_stationary_cuda(
+                emit_first_derivative_cuda(requests),
+                functional=functional,
+                plan=plan,
+                iterations=spec.partition_iterations,
+                compiler=compiler,
+                cache=cache,
+            )
+            if aot_directory is None or ecp
+            else load_stationary_aot_artifact(
+                aot_directory,
+                functional=functional,
+                spin=contract.spin,
+                plan=plan,
+                architecture=target.architecture,
+                iterations=spec.partition_iterations,
+            )
         )
-        grid_artifact = compile_grid(compiler, cache)
+        grid_artifact = (
+            compile_grid(compiler, cache)
+            if native_grid_library is None
+            else _native_grid_artifact(native_grid_library, target.architecture)
+        )
         artifacts = [artifact, grid_artifact]
     else:
         prepared.ensure(
@@ -914,6 +1076,9 @@ def _complete_rks_cuda_gradient_diagnostic(
             tensor_plans=tensor_plans,
             compiler=compiler,
             cache=cache,
+            aot_directory=aot_directory,
+            native_grid_library=native_grid_library,
+            target=target,
             requests=requests,
             functional=functional,
             ecp=ecp,
@@ -977,6 +1142,7 @@ def _complete_rks_cuda_gradient_diagnostic(
                     primitive_tile,
                     source_bytes,
                     spin_blocks=plan.spin_blocks,
+                    target=target,
                     work_budget=records,
                 )
             )
@@ -1136,22 +1302,31 @@ def _complete_rks_cuda_gradient_diagnostic(
         prepared_execution=prepared is not None,
         prepared_execution_identity=None if prepared is None else prepared.identity,
         prepared_execution_reused=(
-            False if prepared is None else prepared._executions > 0
+            False if prepared is None else prepared._lease.executions > 0
         ),
         prepared_execution_index=(
-            None if prepared is None else prepared._executions + 1
+            None if prepared is None else prepared._lease.executions + 1
         ),
         prepared_owner_preparation_seconds=(
             0.0 if prepared is None else prepared.preparation_seconds
         ),
         prepared_geometry_rebinds=(
-            0 if prepared is None else prepared._geometry_rebinds
+            0 if prepared is None else prepared._lease.refreshes
         ),
         snapshot_host_bytes=state._source.values.nbytes,
         snapshot_export_work=dict(state._source.export_work),
         snapshot_export="explicit native CUDA final-state export; W/frame validation is host work",
         host_scope="snapshot validation; primitive enumeration/record packing; one D/W owner upload; final TensorIR reduction; immutable result copies",
         endpoint_seconds=perf_counter() - started,
+        stationary_artifact_kind=artifact.metadata.get("artifact_kind", "runtime-jit"),
+        stationary_runtime_module_load=True,
+        stationary_driver_ptx_jit_possible=artifact.metadata.get(
+            "driver_ptx_jit_possible", True
+        ),
+        stationary_driver_ptx_jit_required=artifact.metadata.get(
+            "driver_ptx_jit_required", False
+        ),
+        grid_artifact_kind=grid_artifact.metadata.get("artifact_kind", "runtime-jit"),
         artifacts=tuple(
             {
                 "library": str(a.library),
@@ -1178,9 +1353,12 @@ def complete_rks_cuda_gradient_diagnostic(
     *,
     compiler: typing.Any,
     cache: typing.Any,
+    aot_directory: typing.Any = None,
+    native_grid_library: typing.Any = None,
+    target: CudaTargetInfo | None = None,
     tile_points: typing.Any = 256,
     integral_terms: typing.Any = 32,
-    primitive_tile: typing.Any = 128,
+    primitive_tile: typing.Any = 4096,
     max_device_bytes: typing.Any = 512 << 20,
     max_host_bytes: typing.Any = 256 << 20,
     max_grid_points: typing.Any = 1_000_000,
@@ -1193,6 +1371,9 @@ def complete_rks_cuda_gradient_diagnostic(
     kwargs = {
         "compiler": compiler,
         "cache": cache,
+        "aot_directory": aot_directory,
+        "native_grid_library": native_grid_library,
+        "target": target,
         "tile_points": tile_points,
         "integral_terms": integral_terms,
         "primitive_tile": primitive_tile,
@@ -1212,8 +1393,7 @@ def complete_rks_cuda_gradient_diagnostic(
         try:
             result = _complete_rks_cuda_gradient_diagnostic(state, basis, **kwargs)
         except Exception:
-            prepared._failed = True
+            prepared._lease.mark_failure()
             raise
-        prepared._failed = False
-        prepared._executions += 1
+        prepared._lease.mark_success()
         return result

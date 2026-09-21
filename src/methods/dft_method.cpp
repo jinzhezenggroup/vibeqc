@@ -13,6 +13,7 @@
 #include "dft/ao_grid.hpp"
 #include "dft/dispersion/d4_runtime.hpp"
 #include "dft/grid.hpp"
+#include "dft/nonlocal_correlation/vv10_runtime.hpp"
 #include "generated_method_parameters.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_usage.hpp"
@@ -53,6 +54,9 @@ struct NativeKsExecutionPlan {
   std::uint32_t semilocal_family{kKsSemilocalLda};
   bool compiler_resolved{};
   bool d4_correction{};
+  bool nonlocal_correlation{};
+  dft::nlc::Vv10Parameters nonlocal_parameters{};
+  std::uint64_t nonlocal_maximum_bytes{};
 };
 
 std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method method) noexcept {
@@ -131,11 +135,13 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
     constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
     constexpr auto v3_size = offsetof(vibeqc_ks_options, execution_plan_version);
-    constexpr auto v4_size = sizeof(vibeqc_ks_options);
+    constexpr auto v4_size = offsetof(vibeqc_ks_options, nonlocal_correlation_version);
+    constexpr auto v5_size = sizeof(vibeqc_ks_options);
     if (ks_input->struct_size < v1_size || ks_input->abi_version != VIBEQC_ABI_VERSION)
       throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
     if (ks_input->struct_size != v1_size && ks_input->struct_size != v2_size &&
-        ks_input->struct_size != v3_size && ks_input->struct_size < v4_size)
+        ks_input->struct_size != v3_size && ks_input->struct_size != v4_size &&
+        ks_input->struct_size < v5_size)
       throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS option suffix");
     if (ks_input->struct_size >= v4_size) {
       if (ks_input->execution_plan_version > 1)
@@ -152,6 +158,34 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
                             execution_plan.semilocal_family != legacy_plan->semilocal_family))
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                             "KS execution plan disagrees with the legacy selector family/spin");
+      }
+    }
+    if (ks_input->struct_size >= v5_size) {
+      if (ks_input->nonlocal_correlation_version > 1)
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                          "unsupported KS nonlocal-correlation plan version");
+      if (ks_input->nonlocal_correlation_version == 1) {
+        if (!execution_plan_seen)
+          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                            "nonlocal correlation requires a compiler-resolved KS execution plan");
+        dft::nlc::Vv10Variant variant;
+        if (ks_input->nonlocal_variant == VIBEQC_NONLOCAL_VV10)
+          variant = dft::nlc::Vv10Variant::vv10;
+        else if (ks_input->nonlocal_variant == VIBEQC_NONLOCAL_RVV10)
+          variant = dft::nlc::Vv10Variant::rvv10;
+        else
+          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                            "invalid KS nonlocal-correlation variant");
+        if (!std::isfinite(ks_input->nonlocal_b) || ks_input->nonlocal_b <= 0.0 ||
+            !std::isfinite(ks_input->nonlocal_c) || ks_input->nonlocal_c <= 0.0 ||
+            !std::isfinite(ks_input->nonlocal_coefficient) ||
+            ks_input->nonlocal_coefficient <= 0.0 || !ks_input->nonlocal_maximum_bytes)
+          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                            "invalid KS nonlocal-correlation parameters or budget");
+        execution_plan.nonlocal_correlation = true;
+        execution_plan.nonlocal_parameters = {variant, ks_input->nonlocal_b, ks_input->nonlocal_c,
+                                              ks_input->nonlocal_coefficient};
+        execution_plan.nonlocal_maximum_bytes = ks_input->nonlocal_maximum_bytes;
       }
     }
   }
@@ -192,6 +226,15 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     options.precision_mode = descriptor.precision_mode;
   }
 
+  if (execution_plan.nonlocal_correlation && execution_plan.semilocal_family != kKsSemilocalPbe)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                      "self-consistent nonlocal correlation currently requires the PBE family");
+  if (execution_plan.nonlocal_correlation && backend != VIBEQC_BACKEND_CPU_REFERENCE)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                      "self-consistent nonlocal correlation currently requires CPU");
+  if (options.precision_mode == VIBEQC_PRECISION_AUTO && execution_plan.nonlocal_correlation)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                      "self-consistent nonlocal correlation currently requires strict FP64");
   if (backend == VIBEQC_BACKEND_CUDA && execution_plan.semilocal_family == kKsSemilocalB3lyp)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "B3LYP CPU execution only");
 
@@ -398,6 +441,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
                                                 execution_plan_.semilocal_family,
                                                 options_.xc_tile_points);
 #endif
+    if (execution_plan_.nonlocal_correlation) prepare_nonlocal(device);
     if (execution_plan_.d4_correction) prepare_d4(device);
     runtime::sample_cpu_capacity(host_numeric_capacity());
   }
@@ -425,6 +469,11 @@ class KsPreparedCalculation final : public PreparedCalculation {
       bytes = runtime::add_capacity(bytes, static_cast<std::size_t>(resources.plan_host_bytes));
       bytes =
           runtime::add_capacity(bytes, static_cast<std::size_t>(resources.execution_host_bytes));
+    }
+    if (nonlocal_) {
+      const auto& resources = nonlocal_->resources();
+      bytes =
+          runtime::add_capacity(bytes, static_cast<std::size_t>(resources.host_workspace_bytes));
     }
     return bytes;
   }
@@ -609,6 +658,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
       native = unrestricted(execution_plan_)
                    ? scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed)
                    : scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
+    else if (execution_plan_.semilocal_family == kKsSemilocalPbe && nonlocal_)
+      native = unrestricted(execution_plan_)
+                   ? scf::run_pbe_uks_nonlocal(fock_, basis_, grid_, options_, seed, *nonlocal_)
+                   : scf::run_pbe_rks_nonlocal(fock_, basis_, grid_, options_, seed, *nonlocal_);
     else if (unrestricted(execution_plan_))
       native = scf::run_uks(fock_, basis_, grid_, options_,
                             execution_plan_.semilocal_family == kKsSemilocalPbe, seed);
@@ -669,6 +722,21 @@ class KsPreparedCalculation final : public PreparedCalculation {
   }
 
  private:
+  void prepare_nonlocal(int device) {
+    if (grid_.point_count() > std::numeric_limits<std::uint32_t>::max())
+      throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
+                        "KS grid exceeds the VV10 public point-count domain");
+    vibeqc_status status = VIBEQC_STATUS_INTERNAL_ERROR;
+    std::string detail;
+    nonlocal_ = dft::nlc::Vv10Plan::prepare(
+        backend_, device, static_cast<std::uint32_t>(grid_.point_count()),
+        static_cast<std::uint32_t>(options_.xc_tile_points), execution_plan_.nonlocal_parameters,
+        execution_plan_.nonlocal_maximum_bytes, detail, status);
+    if (!nonlocal_)
+      throw MethodError(
+          status, detail.empty() ? "self-consistent nonlocal plan preparation failed" : detail);
+  }
+
   void prepare_d4(int device) {
     const auto source = ::vibeqc::generated::method_parameters::pbeD4();
     dft::dispersion::D4Parameters parameters{dft::dispersion::D4ReferenceModel::eeq,
@@ -716,6 +784,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
   std::uint64_t cpu_epoch_{};
   std::optional<dft::KsPhysicalState> cpu_physical_;
   std::unique_ptr<dft::dispersion::D4Plan> d4_;
+  std::unique_ptr<dft::nlc::Vv10Plan> nonlocal_;
 #if VIBEQC_HAS_CUDA
   std::unique_ptr<dft::CudaKsPlan> cuda_;
 #endif

@@ -18,8 +18,8 @@ from vibeqc_compiler.xc.rsh_expressions import energy_expression
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
-LIBXC_ROOT = ROOT / "external/libxc-7.0.0"
-RSH_MANIFEST = LIBXC_ROOT / "rsh-manifest.json"
+LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
+RSH_MANIFEST = ROOT / "external/libxc-7.0.0/rsh-manifest.json"
 POLARIZED_FEATURES = (
     "rho_a",
     "rho_b",

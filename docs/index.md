@@ -31,6 +31,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
 - [Architecture](architecture.md): scientific and runtime design decisions.
 - [Scientific compiler ownership](compiler_architecture.md): package boundaries,
   source generation, compatibility and dependency checks.
+- [Electronic method orchestration IR](electronic_method_ir.md): shared HF/KS/RCCSD
+  state, operator dataflow, iteration contracts, and lower-level IR identities.
 - [Experimental OpenCL contracts](opencl_backend.md): optional compiler/runtime
   execution, queried capabilities and the boundary before native HF integration.
 - [Shared Fock construction](fock_build.md): method-neutral J/K requests, exact
@@ -45,6 +47,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   gradients, bounded CUDA contractions and Direct/DF HF adapters.
 - [Density-fitting derivatives](df_derivatives.md): generic A/M responses,
   bounded HF weights, metric subspace response, and fused CUDA contractions.
+- [DF-CCSD(T) gradient composition](df_ccsdt_gradient.md): factorized B
+  cotangents, raw A/M pullback, fixed-rank metric response, and #158 boundaries.
 - [Integral IR contracts](integral_ir.md): operator centers, bounded raw blocks,
   external weights, serialization, and backend capability boundaries.
 - [TensorIR](tensor_ir.md): typed tensor equations, exact factors, symmetry-packed

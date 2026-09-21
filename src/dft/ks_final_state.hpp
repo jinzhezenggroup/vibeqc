@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "core/electronic_reference.hpp"
 #include "dft/grid.hpp"
 #include "dft/scf_diagnostic.hpp"
 #include "scf/solver/final_state.hpp"
@@ -72,6 +73,12 @@ struct VerifiedKsFinalState {
   EnergyComponents components;
   KsFinalStateDiagnostic diagnostic;
 };
+
+/** Borrow a validated RKS/UKS snapshot through the common core reference
+ * contract. The caller retains overlap/hcore and state storage ownership. */
+core::ElectronicReferenceView electronic_reference(const VerifiedKsFinalState& state,
+                                                   const scf::reference::Matrix& overlap,
+                                                   const scf::reference::Matrix& hcore);
 
 bool validate_ks_final_state(const KsFinalStateIdentity& current,
                              const scf::reference::Matrix& overlap,

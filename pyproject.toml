@@ -82,11 +82,14 @@ wheel.py-api = "py3"
 "include/vibeqc/vibeqc.h" = "vibeqc_compiler/assets/include/vibeqc/vibeqc.h"
 "include/vibeqc/generated_method_ids.h" = "vibeqc_compiler/assets/include/vibeqc/generated_method_ids.h"
 "external/libxc-7.0.0" = "vibeqc_compiler/assets/external/libxc-7.0.0"
+"upstream/libxc/7.0.0" = "vibeqc_compiler/assets/upstream/libxc/7.0.0"
+"upstream/libxc-fulltree/7.0.0" = "vibeqc_compiler/assets/upstream/libxc-fulltree/7.0.0"
 "external/xtbloom-d3" = "vibeqc_compiler/assets/external/xtbloom-d3"
 
 [tool.scikit-build.cmake.define]
 VIBEQC_ENABLE_CUDA = { env = "VIBEQC_ENABLE_CUDA", default = "ON" }
 VIBEQC_ENABLE_AOT_SHELLS = { env = "VIBEQC_ENABLE_AOT_SHELLS", default = "ON" }
+VIBEQC_ENABLE_STATIONARY_FORCE_AOT = { env = "VIBEQC_ENABLE_STATIONARY_FORCE_AOT", default = "ON" }
 VIBEQC_CUDA_ARCHITECTURES = { env = "VIBEQC_CUDA_ARCHITECTURES", default = "" }
 
 # Keep wheel production aligned with xTBloom's proven cibuildwheel path. Because
@@ -114,7 +117,7 @@ relative_files = true
 source = ["python/vibeqc"]
 
 [tool.ruff]
-extend-exclude = ["external/libxc-7.0.0", "cmake/3rdparty/implib", "benchmarks/results"]
+extend-exclude = ["upstream", "external/libxc-7.0.0", "cmake/3rdparty/implib", "benchmarks/results"]
 
 [tool.ruff.lint]
 extend-select = [

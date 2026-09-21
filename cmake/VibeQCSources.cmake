@@ -14,6 +14,7 @@ function(vibeqc_add_api_sources target)
     src/api/c_api_d3.cpp
     src/api/c_api_d4.cpp
     src/api/c_api_nonlocal.cpp
+    src/api/c_api_gcp.cpp
     src/api/c_api_common.cpp
     src/api/c_api_context.cpp
     src/api/c_api_resources.cpp
@@ -48,6 +49,7 @@ function(vibeqc_add_dft_sources target)
     src/dft/dispersion/d3_runtime.cpp
     src/dft/dispersion/d4_runtime.cpp
     src/dft/nonlocal_correlation/vv10_runtime.cpp
+    src/dft/nonlocal_correlation/vv10_integration.cpp
     src/methods/dft_method.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
@@ -68,6 +70,8 @@ endfunction()
 function(vibeqc_add_posthf_cc_sources target)
   target_sources(${target} PRIVATE
     src/cc/solver.cpp
+    src/cc/lambda_response.cpp
+    src/cc/triples_response.cpp
     src/methods/mp2_method.cpp
     src/methods/rccsd_method.cpp
     src/methods/rccsdt_method.cpp

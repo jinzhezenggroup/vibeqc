@@ -439,7 +439,23 @@ def _selections_from_rows(
             )
         fock_schedule_payload = row.get("fock_schedule")
         if fock_schedule_payload is None:
-            fock_schedule = None
+            if (
+                recurrence == "rys2"
+                and KernelConsumer.FOCK in consumers
+                and schedule.kind == ScheduleKind.THREAD_TASKS
+            ):
+                # The accepted low-order force path uses scalar Rys2, while
+                # its value consumer remains the compact subset/Wick mapping.
+                # Derive that companion through the same compiler scheduler
+                # instead of repeating an identical Fock table per class.
+                fock_schedule = build_fused_shell_plan(
+                    spec,
+                    consumers=(KernelConsumer.FOCK,),
+                    recurrence="subset_wick",
+                    target=target,
+                ).schedule
+            else:
+                fock_schedule = None
         else:
             if KernelConsumer.FOCK not in consumers:
                 raise ValueError(f"{name} fock_schedule requires a Fock consumer")

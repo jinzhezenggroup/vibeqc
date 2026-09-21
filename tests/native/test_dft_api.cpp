@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -12,6 +13,11 @@
 #include <utility>
 
 #include "vibeqc/vibeqc.h"
+
+#if defined(__unix__) || defined(__APPLE__)
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
 
 #if VIBEQC_HAS_CUDA
 extern "C" void ks_cuda_fail_next_runtime_for_test_v1();
@@ -110,8 +116,87 @@ vibeqc_method_descriptor lda_method() {
           0};
 }
 
+void ks_legacy_method_prefix_guard() {
+#if defined(__unix__) || defined(__APPLE__)
+  // The public ABI borrows a possibly short caller allocation, not a padded
+  // current descriptor. Put its absent suffix on an inaccessible page.
+  const auto page_size = static_cast<std::size_t>(sysconf(_SC_PAGESIZE));
+  require(page_size > sizeof(vibeqc_method_descriptor), "invalid system page size");
+  struct Pages {
+    void* address;
+    std::size_t bytes;
+    ~Pages() { munmap(address, bytes); }
+  };
+  void* address =
+      mmap(nullptr, 2 * page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  require(address != MAP_FAILED, "cannot allocate guarded descriptor pages");
+  Pages pages{address, 2 * page_size};
+  auto* boundary = static_cast<unsigned char*>(address) + page_size;
+  require(mprotect(boundary, page_size, PROT_NONE) == 0,
+          "cannot protect the absent descriptor suffix");
+  Fixture fixture;
+  for (const auto size : {offsetof(vibeqc_method_descriptor, density_fitting_mode),
+                          offsetof(vibeqc_method_descriptor, precision_mode)}) {
+    auto method = lda_method();
+    method.struct_size = static_cast<std::uint32_t>(size);
+    auto* legacy = reinterpret_cast<vibeqc_method_descriptor*>(boundary - size);
+    std::memcpy(legacy, &method, size);
+    vibeqc_calculation* calculation = nullptr;
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, legacy, &calculation) ==
+                VIBEQC_STATUS_SUCCESS,
+            "short legacy method preparation read an absent suffix");
+    vibeqc_calculation_destroy(calculation);
+    vibeqc_system* systems[]{fixture.system};
+    vibeqc_batch* batch = nullptr;
+    require(vibeqc_batch_prepare(fixture.context, systems, 1, legacy, 0, &batch) ==
+                VIBEQC_STATUS_SUCCESS,
+            "short legacy batch preparation read an absent suffix");
+    vibeqc_batch_destroy(batch);
+  }
+  // The newly extended nested KS descriptor also accepts physically short
+  // v1-v4 allocations, not only a full object with a smaller size tag.
+  vibeqc_ks_options options{};
+  options.abi_version = VIBEQC_ABI_VERSION;
+  options.scf_domain_version = 1;
+  options.grid_version = 1;
+  options.radial_points = 3;
+  options.angular_polar = 2;
+  options.angular_azimuth = 4;
+  options.partition_iterations = 2;
+  options.coincident_tolerance = 1e-12;
+  options.tile_points = 16;
+  options.composition_version = 1;
+  options.semilocal_exchange_scale = 1.0;
+  options.semilocal_correlation_scale = 1.0;
+  options.execution_plan_version = 1;
+  options.spin_channels = 1;
+  for (const auto size :
+       {offsetof(vibeqc_ks_options, composition_version),
+        offsetof(vibeqc_ks_options, xc_execution_schedule),
+        offsetof(vibeqc_ks_options, execution_plan_version),
+        offsetof(vibeqc_ks_options, nonlocal_correlation_version), sizeof(vibeqc_ks_options)}) {
+    options.struct_size = static_cast<std::uint32_t>(size);
+    auto* legacy = reinterpret_cast<vibeqc_ks_options*>(boundary - size);
+    std::memcpy(legacy, &options, size);
+    auto method = lda_method();
+    method.ks_options = legacy;
+    vibeqc_calculation* calculation = nullptr;
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+                VIBEQC_STATUS_SUCCESS,
+            "KS preparation read beyond its versioned prefix");
+    vibeqc_calculation_destroy(calculation);
+    vibeqc_system* systems[]{fixture.system};
+    vibeqc_batch* batch = nullptr;
+    require(vibeqc_batch_prepare(fixture.context, systems, 1, &method, 0, &batch) ==
+                VIBEQC_STATUS_SUCCESS,
+            "KS batch preparation read beyond its versioned prefix");
+    vibeqc_batch_destroy(batch);
+  }
+#endif
+}
+
 void ks_option_snapshot() {
-  require(vibeqc_ks_options_version() == 4, "KS option version unavailable");
+  require(vibeqc_ks_options_version() == 5, "KS option version unavailable");
   Fixture fixture;
   auto method = lda_method();
   std::array<double, 119> radii;
@@ -206,16 +291,17 @@ void ks_option_versioned_prefixes() {
   options.spin_channels = 1;
   options.semilocal_family = 0;
   method.ks_options = &options;
-  const std::array<std::size_t, 4> sizes{offsetof(vibeqc_ks_options, composition_version),
+  const std::array<std::size_t, 5> sizes{offsetof(vibeqc_ks_options, composition_version),
                                          offsetof(vibeqc_ks_options, xc_execution_schedule),
                                          offsetof(vibeqc_ks_options, execution_plan_version),
+                                         offsetof(vibeqc_ks_options, nonlocal_correlation_version),
                                          sizeof(vibeqc_ks_options)};
   for (const auto size : sizes) {
     options.struct_size = static_cast<std::uint32_t>(size);
     vibeqc_calculation* calculation = nullptr;
     require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
                 VIBEQC_STATUS_SUCCESS,
-            "valid KS v1/v2/v3/v4 prefix was rejected");
+            "valid KS v1/v2/v3/v4/v5 prefix was rejected");
     vibeqc_calculation_destroy(calculation);
   }
   // v3 owns the schedule bytes; it must neither consume nor reinterpret v4 identity.
@@ -399,6 +485,7 @@ void warm_execution_allocation_failure() {
 
 int main() {
   try {
+    ks_legacy_method_prefix_guard();
     ks_option_snapshot();
     ks_option_versioned_prefixes();
     pbe0_composition_snapshot();

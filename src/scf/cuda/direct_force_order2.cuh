@@ -8,22 +8,152 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <weighted_eri.cuh>
 
+#include "scf/cuda/boys_table.cuh"
+#include "scf/cuda/cartesian_angular.cuh"
 #include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_force_density.cuh"
 #include "scf/cuda/direct_metadata.hpp"
-#include "scf/cuda/direct_native_dsss_gradient.cuh"
-#include "scf/cuda/direct_native_gradient_types.cuh"
-#include "scf/cuda/direct_native_ppss_gradient.cuh"
-#include "scf/cuda/direct_native_psps_gradient.cuh"
 #include "scf/cuda/direct_queue_index.cuh"
+#include "scf/cuda/gaussian_geometry.cuh"
 #include "scf/cuda/matrix_index.cuh"
 #include "scf/cuda/packed_basis.hpp"
+#include "scf/cuda/scalar_math.cuh"
 
 // Retained direct force order2 contraction helpers.
 // Borrow immutable metadata and density/output views; host plans own lifetime.
 
 namespace vibeqc::scf::cuda_execution {
+
+/**
+ * Contract one canonical order-two shell class through compiler-owned Weighted IntegralIR math.
+ *
+ * Queueing, screening, density folding and atom accumulation remain native scheduler concerns.
+ * This adapter only binds the existing primitive-pair representation to the generated geometry
+ * vocabulary; no independent ERI/gradient recurrence is retained here.
+ */
+template <unsigned TargetShellClass>
+__device__ inline __noinline__ generated_weighted_eri::IndependentGradient
+contracted_eri_cartesian_source_order2_generated_weighted_gradient(
+    const DeviceBatch& batch, std::size_t first_shell_pair, std::size_t second_shell_pair,
+    std::int32_t first_shell, std::int32_t second_shell, std::int32_t third_shell,
+    std::int32_t fourth_shell, const double* component_weight) {
+  static_assert(TargetShellClass == kPspsShellClass || TargetShellClass == kPpssShellClass ||
+                TargetShellClass == kDsssShellClass);
+
+  const Vec3<double> first = atom_position<double>(batch, batch.shell_atoms[first_shell], -1);
+  const Vec3<double> second = atom_position<double>(batch, batch.shell_atoms[second_shell], -1);
+  const Vec3<double> third = atom_position<double>(batch, batch.shell_atoms[third_shell], -1);
+  const Vec3<double> fourth = atom_position<double>(batch, batch.shell_atoms[fourth_shell], -1);
+  const bool first_pair_matches_canonical_order =
+      batch.shell_pair_first[first_shell_pair] == first_shell;
+  const bool second_pair_matches_canonical_order =
+      batch.shell_pair_first[second_shell_pair] == third_shell;
+  const std::int64_t first_pair_begin = batch.shell_pair_primitive_offsets[first_shell_pair];
+  const std::int64_t first_pair_end = batch.shell_pair_primitive_offsets[first_shell_pair + 1];
+  const std::int64_t second_pair_begin = batch.shell_pair_primitive_offsets[second_shell_pair];
+  const std::int64_t second_pair_end = batch.shell_pair_primitive_offsets[second_shell_pair + 1];
+
+  generated_weighted_eri::IndependentGradient result{};
+  for (std::int64_t first_primitive = first_pair_begin; first_primitive < first_pair_end;
+       ++first_primitive) {
+    const PrimitivePairData first_pair = batch.shell_primitive_pairs[first_primitive];
+    const double p = first_pair.exponent_sum;
+    const double mu = first_pair.reduced_exponent;
+    const Vec3<double> product_p = first_pair.product_center;
+    const double first_product_scale = first_pair_matches_canonical_order
+                                           ? first_pair.first_product_scale
+                                           : first_pair.second_product_scale;
+    const double second_product_scale = first_pair_matches_canonical_order
+                                            ? first_pair.second_product_scale
+                                            : first_pair.first_product_scale;
+    for (std::int64_t second_primitive = second_pair_begin; second_primitive < second_pair_end;
+         ++second_primitive) {
+      const PrimitivePairData second_pair = batch.shell_primitive_pairs[second_primitive];
+      const double q = second_pair.exponent_sum;
+      const double nu = second_pair.reduced_exponent;
+      const Vec3<double> product_q = second_pair.product_center;
+      const double third_product_scale = second_pair_matches_canonical_order
+                                             ? second_pair.first_product_scale
+                                             : second_pair.second_product_scale;
+
+      generated_weighted_eri::Geometry geometry;
+      geometry.inverse_two_p = 0.5 / p;
+      if constexpr (TargetShellClass == kPspsShellClass) {
+        geometry.inverse_two_q = 0.5 / q;
+      }
+      geometry.rho = p * q / (p + q);
+      geometry.prefactor = first_pair.weighted_coefficient * second_pair.weighted_coefficient *
+                           2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
+      geometry.product_scales[0] = first_product_scale;
+      geometry.product_scales[1] = second_product_scale;
+      geometry.product_scales[2] = third_product_scale;
+
+      const Vec3<double> difference{
+          product_p.x - product_q.x,
+          product_p.y - product_q.y,
+          product_p.z - product_q.z,
+      };
+      const Vec3<double> pa{
+          product_p.x - first.x,
+          product_p.y - first.y,
+          product_p.z - first.z,
+      };
+      Vec3<double> pb{};
+      Vec3<double> qc{};
+      if constexpr (TargetShellClass == kPpssShellClass) {
+        pb = {
+            product_p.x - second.x,
+            product_p.y - second.y,
+            product_p.z - second.z,
+        };
+      } else if constexpr (TargetShellClass == kPspsShellClass) {
+        qc = {
+            product_q.x - third.x,
+            product_q.y - third.y,
+            product_q.z - third.z,
+        };
+      }
+
+      boys_values<3>(
+          geometry.rho * distance_squared(first_pair.product_center, second_pair.product_center),
+          geometry.boys);
+#pragma unroll
+      for (unsigned axis = 0; axis < 3; ++axis) {
+        geometry.difference[axis] = vec_axis(difference, axis);
+        geometry.shifts[0][axis] = vec_axis(pa, axis);
+        if constexpr (TargetShellClass == kPpssShellClass) {
+          geometry.shifts[1][axis] = vec_axis(pb, axis);
+        } else if constexpr (TargetShellClass == kPspsShellClass) {
+          geometry.shifts[2][axis] = vec_axis(qc, axis);
+        }
+        const double first_separation = vec_axis(first, axis) - vec_axis(second, axis);
+        const double second_separation = vec_axis(third, axis) - vec_axis(fourth, axis);
+        geometry.decay[0][axis] = -2.0 * mu * first_separation;
+        geometry.decay[1][axis] = -geometry.decay[0][axis];
+        geometry.decay[2][axis] = -2.0 * nu * second_separation;
+      }
+
+      generated_weighted_eri::IndependentGradient primitive{};
+      if constexpr (TargetShellClass == kPspsShellClass) {
+        primitive = generated_weighted_eri::psps_force(geometry, component_weight);
+      } else if constexpr (TargetShellClass == kPpssShellClass) {
+        primitive = generated_weighted_eri::ppss_force(geometry, component_weight);
+      } else {
+        primitive = generated_weighted_eri::dsss_force(geometry, component_weight);
+      }
+#pragma unroll
+      for (unsigned center = 0; center < 3; ++center) {
+#pragma unroll
+        for (unsigned axis = 0; axis < 3; ++axis) {
+          result.center[center][axis] += primitive.center[center][axis];
+        }
+      }
+    }
+  }
+  return result;
+}
 
 /** Evaluate and write one complete density-weighted psps force shell task. */
 template <bool Unrestricted>
@@ -141,9 +271,10 @@ __device__ inline __noinline__ void contract_two_electron_force_psps_task(
   }
   if (!any_component) return;
 
-  const PspsWeightedGradient gradient = contracted_eri_cartesian_source_psps_weighted_gradient(
-      batch, first_pair, second_pair, canonical_shell[0], canonical_shell[1], canonical_shell[2],
-      canonical_shell[3], component_weight);
+  const auto gradient =
+      contracted_eri_cartesian_source_order2_generated_weighted_gradient<kPspsShellClass>(
+          batch, first_pair, second_pair, canonical_shell[0], canonical_shell[1],
+          canonical_shell[2], canonical_shell[3], component_weight);
   double derivative_sum[3]{};
   for (unsigned atom = 0; atom + 1 < unique_center_count; ++atom) {
     const std::int64_t coordinate = static_cast<std::int64_t>(unique_center_atoms[atom]) * 3;
@@ -308,16 +439,10 @@ __device__ inline __noinline__ void contract_two_electron_force_pair_order2_task
   }
   if (!any_component) return;
 
-  PspsWeightedGradient gradient{};
-  if constexpr (TargetShellClass == kPpssShellClass) {
-    gradient = contracted_eri_cartesian_source_ppss_weighted_gradient(
-        batch, canonical_pair[0], canonical_pair[1], canonical_shell[0], canonical_shell[1],
-        canonical_shell[2], canonical_shell[3], component_weight);
-  } else {
-    gradient = contracted_eri_cartesian_source_dsss_weighted_gradient(
-        batch, canonical_pair[0], canonical_pair[1], canonical_shell[0], canonical_shell[1],
-        canonical_shell[2], canonical_shell[3], component_weight);
-  }
+  const auto gradient =
+      contracted_eri_cartesian_source_order2_generated_weighted_gradient<TargetShellClass>(
+          batch, canonical_pair[0], canonical_pair[1], canonical_shell[0], canonical_shell[1],
+          canonical_shell[2], canonical_shell[3], component_weight);
 
   double derivative_sum[3]{};
   for (unsigned atom = 0; atom + 1 < unique_center_count; ++atom) {

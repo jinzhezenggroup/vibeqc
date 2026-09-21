@@ -12,6 +12,7 @@
 #include "molecule/basis.hpp"
 #include "posthf/mp2_gradient.hpp"
 #include "posthf/native_provider.hpp"
+#include "posthf/raw_source.hpp"
 #include "response/native_gmres.hpp"
 #include "scf/mean_field.hpp"
 

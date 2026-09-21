@@ -9,10 +9,14 @@ and the tile sum equals :func:`triples_energy` to machine precision.
 No DIIS, no approximated denominator, no GPU dependency here.
 """
 
+from __future__ import annotations
+
 import typing
 from fractions import Fraction
 
-import numpy as np
+if typing.TYPE_CHECKING:
+    import numpy as np
+
 from vibeqc_compiler.common.runtime_domain import RuntimeTaskDomain
 from vibeqc_compiler.tensor import (
     Index,
@@ -185,6 +189,8 @@ def tile_triples_energy(
     The occupied space is processed in full.  This function is the per-tile
     ground truth for GPU-vs-CPU comparison (gate ≤ 1e-10).
     """
+    import numpy as np
+
     nvir_full = len(eps_v)
     _validate(nocc, nvir_full, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
     views = _views(ovvv, ovoo, ovov, fov, t1, t2)
@@ -232,6 +238,8 @@ def tile_triples_energy_masked(
     value that is the exact counterpart of the CUDA tile scalar — same
     occupied space, same full input tensors, just restricted a-range.
     """
+    import numpy as np
+
     nvir = len(eps_v)
     _validate(
         nocc,
@@ -461,6 +469,8 @@ def _tile_input_feeds(arrays: typing.Any, a_end: typing.Any) -> typing.Any:
     Label axes use ``[0, a_end)``.  The W1 ``f`` summation stays full:
     ``ovvv`` axis 2 and ``t2`` axis 3 retain the complete virtual population.
     """
+    import numpy as np
+
     ovvv = arrays["ovvv"]
     ovoo = arrays["ovoo"]
     ovov = arrays["ovov"]
@@ -498,6 +508,8 @@ def _runtime_controls(
     coordinates: typing.Iterable[tuple[int, int, int]], capacity: int
 ) -> dict[str, np.ndarray]:
     """Pack at most capacity triangular coordinates into runtime controls."""
+    import numpy as np
+
     if type(capacity) is not int or capacity < 1:
         raise ValueError("runtime triples capacity must be a positive integer")
     coordinates = tuple(coordinates)
@@ -539,6 +551,8 @@ def runtime_tile_control_batches(
 
 def runtime_tile_static_feeds(arrays: typing.Any) -> dict[str, np.ndarray]:
     """Contiguous full-system scientific inputs uploaded once per owner."""
+    import numpy as np
+
     return {
         name: np.ascontiguousarray(arrays[name])
         for name in ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v")

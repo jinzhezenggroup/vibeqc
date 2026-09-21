@@ -14,7 +14,7 @@ from .expr import (
     AlgebraOrdering,
     RematerializationPolicy,
 )
-from .ir import IntegralIR, OperatorFamily
+from .ir import IntegralIR, KernelConsumer, OperatorFamily
 from .shell_spec import ShellClassSpec
 
 if TYPE_CHECKING:
@@ -239,6 +239,31 @@ def schedule_candidates(
     warp_size = target.warp_size
     candidates: list[CudaScheduleIR] = []
 
+    # Low-order fixed-root force lowering owns one complete shell task per
+    # lane. Keep this as a recurrence/capability rule rather than a
+    # shell-class production table so any mathematically compatible class can
+    # inherit the accepted scalar Rys2 execution model.
+    if (
+        isinstance(integral.spec, ShellClassSpec)
+        and integral.recurrence == "rys2"
+        and warp_size == 32
+    ):
+        candidates.append(
+            CudaScheduleIR(
+                kind=ScheduleKind.THREAD_TASKS,
+                block_threads=warp_size,
+                component_tile=component_count,
+                tasks_per_warp=warp_size,
+                shared_coulomb=False,
+                minimum_blocks_per_sm=min(
+                    8,
+                    target.maximum_blocks_per_sm,
+                    target.maximum_threads_per_sm // warp_size,
+                ),
+                warp_size=warp_size,
+            )
+        )
+
     if component_count <= 9:
         candidates.append(
             CudaScheduleIR(
@@ -324,9 +349,17 @@ def default_schedule(
     integral: IntegralIR,
     target: CudaTargetInfo,
 ) -> CudaScheduleIR:
-    """Return the conservative component schedule for ``target``."""
+    """Return a conservative target-legal schedule for ``integral``."""
 
     candidates = schedule_candidates(integral, target)
+    if integral.recurrence == "rys2":
+        for candidate in candidates:
+            if candidate.kind == ScheduleKind.THREAD_TASKS:
+                return candidate
+    if integral.consumers == frozenset((KernelConsumer.FOCK,)):
+        for candidate in candidates:
+            if candidate.kind == ScheduleKind.PACKED_TASKS:
+                return candidate
     for candidate in candidates:
         if candidate.kind == ScheduleKind.COMPONENT_LANES:
             return candidate

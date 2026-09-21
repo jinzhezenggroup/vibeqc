@@ -586,9 +586,10 @@ typedef struct vibeqc_system_descriptor {
 } vibeqc_system_descriptor;
 
 /** Native KS model snapshot, copied during preparation. Suffixes supply resolved
- * composition (v2), XC execution schedule (v3), and compiler-resolved spin/family
- * identity (v4). Legacy v1/v2/v3 callers retain method-selector compatibility
- * projection; v1/v2 retain device-fused CUDA XC. */
+ * composition (v2), XC execution schedule (v3), compiler-resolved spin/family
+ * identity (v4), and optional nonlocal-correlation primitive parameters (v5).
+ * Legacy v1/v2/v3/v4 callers retain method-selector compatibility projection;
+ * v1/v2 retain device-fused CUDA XC. */
 typedef struct vibeqc_ks_options {
   uint32_t struct_size;
   uint32_t abi_version;
@@ -631,9 +632,19 @@ typedef struct vibeqc_ks_options {
   uint32_t spin_channels;
   uint32_t semilocal_family;
   uint32_t reserved_v4_padding;
+  /** Optional v5 suffix: one MethodIR NonlocalCorrelation contribution.
+   * Version 0 means absent; version 1 makes the fields below authoritative.
+   * This is a scientific primitive description, not a named-method selector.
+   * maximum_bytes bounds the retained/native pair-provider workspace. */
+  uint32_t nonlocal_correlation_version;
+  vibeqc_nonlocal_variant nonlocal_variant;
+  double nonlocal_b;
+  double nonlocal_c;
+  double nonlocal_coefficient;
+  uint64_t nonlocal_maximum_bytes;
 } vibeqc_ks_options;
 
-/** Pure capability query. Version 4 accepts the v1/v2/v3 prefixes and v4 suffix. */
+/** Pure capability query. Version 5 accepts the v1/v2/v3/v4 prefixes and v5 suffix. */
 VIBEQC_API uint32_t vibeqc_ks_options_version(void);
 
 typedef struct vibeqc_method_descriptor {
@@ -1322,6 +1333,20 @@ VIBEQC_API vibeqc_status vibeqc_d3_batch_execute(vibeqc_d3_batch* batch,
                                                  uint32_t input_count,
                                                  vibeqc_d3_batch_item_result_descriptor* results,
                                                  uint32_t result_count);
+
+/**
+ * Evaluate the canonical r2SCAN-3c gCP correction on CPU.
+ *
+ * Coordinates are Bohr and gradient, when supplied, is dE/dR. Passing
+ * gradient=NULL,gradient_count=0 requests energy only. The supported element
+ * domain is the canonical H-Ar r2SCAN-3c profile.
+ */
+VIBEQC_API const char* vibeqc_r2scan3c_gcp_provider_identity(void);
+VIBEQC_API vibeqc_status vibeqc_r2scan3c_gcp_evaluate(const int32_t* atomic_numbers,
+                                                      uint32_t atom_count,
+                                                      const double* coordinates,
+                                                      uint32_t coordinate_count, double* energy,
+                                                      double* gradient, uint32_t gradient_count);
 
 /** Audited identities compiled into the production D4(BJ)-EEQ provider. */
 VIBEQC_API const char* vibeqc_d4_table_sha256(void);

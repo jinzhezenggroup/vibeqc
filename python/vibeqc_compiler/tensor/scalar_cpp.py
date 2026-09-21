@@ -86,6 +86,7 @@ def emit_scalar_cpp(
     output_order: typing.Iterable[str] | None = None,
     direct_scaled_bilinear: bool = False,
     check_intermediates: bool = True,
+    fused_accumulation: bool = False,
 ) -> str:
     """Lower a scalar FP64 Program to one checked inline C++ function.
 
@@ -93,6 +94,9 @@ def emit_scalar_cpp(
     already proved bounded nonzero denominator domains. check_intermediates
     may likewise be disabled only for a bounded domain; inputs and published
     outputs remain finite-checked. Defaults retain the conservative behavior.
+    fused_accumulation explicitly contracts single-use product addends with
+    coefficient +/-1 into std::fma, retaining the addend order and finite result
+    checks. It is opt-in because fused rounding is part of the caller contract.
     """
 
     if not isinstance(program, Program):
@@ -124,6 +128,27 @@ def emit_scalar_cpp(
     for name in ordered_outputs:
         _identifier(name, "output name")
 
+    uses: dict[Node, list[tuple[Node, int]]] = {}
+    for parent in nodes:
+        for slot, child in enumerate(parent.inputs):
+            uses.setdefault(child, []).append((parent, slot))
+    fused_products: set[Node] = set()
+    if fused_accumulation:
+        for node in nodes:
+            consumers = uses.get(node, [])
+            if (
+                node.op != "multiply"
+                or len(consumers) != 1
+                or node in program.outputs.values()
+            ):
+                continue
+            parent, slot = consumers[0]
+            if parent.op == "add" and Fraction(*parent.attrs["coefficients"][slot]) in (
+                -1,
+                1,
+            ):
+                fused_products.add(node)
+
     index = {node: position for position, node in enumerate(nodes)}
 
     def ref(node: Node) -> str:
@@ -151,6 +176,8 @@ def emit_scalar_cpp(
         lines.append(f"  if ({condition}) return false;")
 
     for node in nodes:
+        if node in fused_products:
+            continue
         name = ref(node)
         attrs = node.attrs
         if node.op == "input":
@@ -172,7 +199,16 @@ def emit_scalar_cpp(
                 ]
             lines.append(f"  double {name} = 0.0;")
             for child, coefficient in terms:
-                lines.append(f"  {name} += {_literal(coefficient)} * {ref(child)};")
+                if child in fused_products:
+                    left, right = child.inputs
+                    sign = "-" if Fraction(*coefficient) == -1 else ""
+                    lines.append(
+                        f"  {name} = std::fma({sign}{ref(left)}, {ref(right)}, {name});"
+                    )
+                    if check_intermediates:
+                        lines.append(f"  if (!std::isfinite({name})) return false;")
+                else:
+                    lines.append(f"  {name} += {_literal(coefficient)} * {ref(child)};")
         elif node.op == "multiply":
             left, right = node.inputs
             if not check_intermediates and (

@@ -10,6 +10,9 @@ from vibeqc_compiler.dft.xc_schedule import (
     assess_grid_xc_schedule,
     schedule_profile_key,
 )
+from vibeqc_compiler.integral.one_electron_derivative_policy_cuda import (
+    one_electron_derivative_schedule_contract,
+)
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -74,27 +77,47 @@ def _dft_contract() -> ScheduleContract:
     return assessment.schedule_contract
 
 
-def test_tensor_and_dft_use_one_schedule_contract_and_diagnostic_vocabulary() -> None:
+def test_tensor_dft_and_integral_use_one_schedule_contract_vocabulary() -> None:
     tensor = _tensor_contract()
     dft = _dft_contract()
-    report = schedule_diagnostics((tensor, dft))
+    integral = one_electron_derivative_schedule_contract(
+        cuda_target_info("sm_120").target_info
+    )
+    report = schedule_diagnostics((tensor, dft, integral))
 
     assert tensor.consumer == "tensor.cuda"
     assert dft.consumer == "dft.grid_xc"
+    assert integral.consumer == "integral.one_electron_derivative"
     assert tensor.topology.workgroup_threads == 128
     assert dft.topology.tiles == (256,)
     assert tensor.workload_hash is not None and dft.workload_hash is not None
     assert tensor.precision_schedule_hash is not None
     assert dft.precision_schedule_hash is not None
-    assert set(report["consumers"]) == {"tensor.cuda", "dft.grid_xc"}
-    assert set(report["static_order"]) == {tensor.identity, dft.identity}
+    assert integral.profile_key is not None
+    assert integral.topology.cooperative
+    assert set(report["consumers"]) == {
+        "tensor.cuda",
+        "dft.grid_xc",
+        "integral.one_electron_derivative",
+    }
+    assert set(report["static_order"]) == {
+        tensor.identity,
+        dft.identity,
+        integral.identity,
+    }
     assert set(report["contracts"][0]["resources"]) == set(
         report["contracts"][1]["resources"]
     )
 
 
 def test_shared_contract_roundtrip_preserves_owner_schedule_identity() -> None:
-    for contract in (_tensor_contract(), _dft_contract()):
+    for contract in (
+        _tensor_contract(),
+        _dft_contract(),
+        one_electron_derivative_schedule_contract(
+            cuda_target_info("sm_120").target_info
+        ),
+    ):
         replay = ScheduleContract.from_payload(contract.to_payload())
         assert replay == contract
         assert replay.identity == contract.identity

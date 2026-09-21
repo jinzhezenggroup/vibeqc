@@ -45,6 +45,65 @@ using Threshold = std::optional<double>;
 using Admission = vibeqc::scf::cuda_policy::AutoMixedPrecisionAdmission;
 /** Binary32 unit roundoff, mirrored from the policy constant. */
 constexpr double kTestFloat32UnitRoundoff = 5.9604644775390625e-08;
+
+void verify_direct_jk_target_policy() {
+  using vibeqc::runtime::CudaTargetInfo;
+  using vibeqc::scf::cuda_policy::direct_jk_generated_task_capacity_limit;
+  using vibeqc::scf::cuda_policy::DirectJkTuningProfile;
+  using vibeqc::scf::cuda_policy::resolve_direct_jk_schedule_policy;
+
+  CudaTargetInfo qualified;
+  qualified.warp_size = 32;
+  qualified.maximum_threads_per_sm = 1536;
+  qualified.maximum_blocks_per_sm = 24;
+  qualified.multiprocessor_count = 170;
+  qualified.total_global_memory = std::size_t{32} << 30;
+  const auto production = resolve_direct_jk_schedule_policy(qualified);
+  require(production.generated_task_arena_maximum_bytes == (std::size_t{1} << 30),
+          "32-GiB targets preserve the qualified 1-GiB arena ceiling");
+  require(production.persistent_quartet_warps_per_sm == 8U,
+          "resource-rich targets preserve the qualified eight-worker schedule");
+  require(direct_jk_generated_task_capacity_limit(production, 32U) == 8U * 1024U * 1024U,
+          "the qualified task-count ceiling remains eight million records");
+
+  CudaTargetInfo synthetic;
+  synthetic.warp_size = 32;
+  synthetic.maximum_threads_per_sm = 64;
+  synthetic.maximum_blocks_per_sm = 4;
+  synthetic.multiprocessor_count = 8;
+  synthetic.total_global_memory = std::size_t{2} << 30;
+  const auto constrained = resolve_direct_jk_schedule_policy(synthetic);
+  require(constrained.generated_task_arena_maximum_bytes == (std::size_t{64} << 20),
+          "a 2-GiB synthetic target selects a smaller explicit arena budget");
+  require(constrained.persistent_quartet_warps_per_sm == 2U,
+          "a 64-thread synthetic SM cannot inherit eight resident warp workers");
+  require(direct_jk_generated_task_capacity_limit(constrained, 32U) == 2U * 1024U * 1024U,
+          "task capacity follows the constrained target memory budget");
+
+  const CudaTargetInfo unknown{};
+  const auto fallback = resolve_direct_jk_schedule_policy(unknown);
+  require(fallback.generated_task_arena_maximum_bytes == (std::size_t{256} << 20),
+          "unknown memory uses the conservative 256-MiB fallback");
+  require(fallback.persistent_quartet_warps_per_sm == 4U,
+          "unknown occupancy uses the conservative four-worker fallback");
+  CudaTargetInfo partial;
+  partial.maximum_blocks_per_sm = 2;
+  require(resolve_direct_jk_schedule_policy(partial).persistent_quartet_warps_per_sm == 2U,
+          "known resource ceilings still tighten a partially unknown target");
+
+  DirectJkTuningProfile profile;
+  profile.maximum_generated_task_capacity = 1024U * 1024U;
+  profile.maximum_generated_task_arena_bytes = std::size_t{128} << 20;
+  profile.maximum_persistent_quartet_warps_per_sm = 3;
+  const auto tuned = resolve_direct_jk_schedule_policy(qualified, profile);
+  require(tuned.generated_task_arena_maximum_bytes == (std::size_t{128} << 20),
+          "profile evidence can tighten the target-legal arena ceiling");
+  require(tuned.persistent_quartet_warps_per_sm == 3U,
+          "profile evidence can choose a different legal worker schedule");
+  require(direct_jk_generated_task_capacity_limit(tuned, 32U) == 1024U * 1024U,
+          "profile evidence can tune generated-task capacity independently");
+}
+
 /**
  * The \p auto cutoff is an accumulated-error budget, not a per-tile constant:
  * `eps32 * cutoff * census` must fit the error reserved for the iterative
@@ -435,6 +494,7 @@ void verify_cpu_provenance() {
 
 int main() {
   try {
+    verify_direct_jk_target_policy();
     verify_auto_budget_admission();
     verify_per_item_budget();
     verify_fp64_strict();

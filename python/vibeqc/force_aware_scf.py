@@ -15,6 +15,7 @@ from __future__ import annotations
 import math
 import typing
 from dataclasses import asdict, dataclass, replace
+from itertools import pairwise
 
 from .accuracy import _identity, _number
 from .force_aware_numerics import ObservableDelta, TargetErrorBudget
@@ -405,6 +406,12 @@ class ForceAwareScfPolicy:
             {item.name for item in levels}
         ) != len(levels):
             raise ValueError("SCF effort level names/ranks must be unique")
+        if any(
+            later.energy_tolerance > earlier.energy_tolerance
+            or later.density_tolerance > earlier.density_tolerance
+            for earlier, later in pairwise(levels)
+        ):
+            raise ValueError("SCF effort tolerances must tighten with level rank")
         if not levels[-1].strict or any(item.strict for item in levels[:-1]):
             raise ValueError("exactly the final SCF effort level must be strict")
         if not isinstance(self.estimator, ScfForceErrorEstimator):

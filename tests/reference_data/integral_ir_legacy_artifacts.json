@@ -2,7 +2,7 @@
   "baseline_revision": "2414c57dbc7a11c7cd33e3f81fad333be44422e4",
   "generator_abi": 1,
   "manifest_schema": 2,
-  "manifest_sha256": "98bc9a72edfe19fbc7991a91862393b65a9e7e89ce0d8c5338cdae0eb9d143cd",
+  "manifest_sha256": "b1bd53203ab9205b2e99de73037d1ff233e4e30c644e402aa2b3d90d2e29bded",
   "architectures": [
     "sm_120",
     "sm_90"
@@ -557,6 +557,13 @@
         "sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
         "sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
         "sm_120/vibeqc_generated_shell_sm120_shard_3.cu"
+      ]
+    },
+    {
+      "issue": 41,
+      "reason": "Compiler-derived scalar Rys2 force and subset/Wick Fock companion schedules replace the redundant per-class manifest payloads. The manifest bytes intentionally change; all ten regenerated sm_120/sm_90 shards and registry artifacts are byte-identical to the existing baseline, and the shell catalog is unchanged. Only the manifest fingerprint is refreshed.",
+      "paths": [
+        "python/vibeqc_compiler/integral/production_shell_classes.json"
       ]
     }
   ]

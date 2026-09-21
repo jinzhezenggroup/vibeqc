@@ -424,11 +424,15 @@ class Calculator:
         successful results report ``unverified`` and numerical defaults remain
         unchanged. It never certifies an error from ``energy_tolerance``.
 
-        ``method`` may be a native selector string or a spin-explicit PBE-family
-        MethodIR containing one production D3(BJ) correction. ``ks_options``
-        snapshots the electronic composition, GridSpec and XC tile schedule.
-        ``dispersion_memory_budget_bytes`` independently bounds the retained D3
-        owner; the global ResourceBudget does not yet aggregate that owner.
+        ``method`` may be a native selector string, a spin-explicit PBE-family
+        MethodIR with one production D3(BJ) correction, or the canonical
+        r2SCAN-3c MethodIR. The latter binds its exact def2-mTZVPP basis and
+        composes r2SCAN + D4 + gCP without a named native scientific driver.
+        ``ks_options`` snapshots the electronic composition, GridSpec and XC
+        tile schedule. ``dispersion_memory_budget_bytes`` independently bounds
+        the retained external-correction owner. Production two-body D3(BJ)
+        also contributes its retained host/device capacity to the global
+        ResourceBudget; composite D4/gCP planning remains fail-closed.
         """
         if target_accuracy is not None and not isinstance(
             target_accuracy, TargetAccuracy
@@ -453,9 +457,13 @@ class Calculator:
 
         from vibeqc_compiler.method import (
             D3Spec,
+            D4Spec,
             DispersionCorrectionPrimitive,
+            GeometricCounterpoisePrimitive,
             MethodIR,
             SemilocalXCPrimitive,
+            resolve_method,
+            validate_basis_snapshot,
         )
 
         supplied_method_ir = method if isinstance(method, MethodIR) else None
@@ -465,37 +473,101 @@ class Calculator:
                 for node in supplied_method_ir.primitives
                 if isinstance(node, DispersionCorrectionPrimitive)
             )
-            if len(corrections) != 1 or not isinstance(
-                corrections[0].specification, D3Spec
-            ):
+            gcp_nodes = tuple(
+                node
+                for node in supplied_method_ir.primitives
+                if isinstance(node, GeometricCounterpoisePrimitive)
+            )
+            electronic_family = None
+            if corrections:
+                if len(corrections) != 1:
+                    raise NotImplementedError(
+                        "Calculator MethodIR execution requires exactly one supported dispersion correction"
+                    )
+                correction = corrections[0].specification
+                if isinstance(correction, D3Spec):
+                    if gcp_nodes:
+                        raise NotImplementedError(
+                            "Calculator D3 execution does not accept a gCP primitive"
+                        )
+                    electronic_family = "pbe"
+                elif isinstance(correction, D4Spec):
+                    expected = resolve_method("R2SCAN-3c", spin=supplied_method_ir.spin)
+                    if (
+                        len(gcp_nodes) != 1
+                        or supplied_method_ir.manifest_identity
+                        != expected.manifest_identity
+                    ):
+                        raise NotImplementedError(
+                            "Calculator D4+gCP execution requires the canonical r2SCAN-3c MethodIR"
+                        )
+                    electronic_family = "r2scan"
+                else:
+                    raise NotImplementedError(
+                        "Calculator MethodIR execution does not support this correction family"
+                    )
+            elif gcp_nodes:
                 raise NotImplementedError(
-                    "Calculator MethodIR execution currently requires exactly one D3 correction"
+                    "Calculator MethodIR execution does not accept gCP without its qualified composite owner"
                 )
+
             electronic_primitives = tuple(
                 node
                 for node in supplied_method_ir.primitives
-                if not isinstance(node, DispersionCorrectionPrimitive)
+                if not isinstance(
+                    node,
+                    (
+                        DispersionCorrectionPrimitive,
+                        GeometricCounterpoisePrimitive,
+                    ),
+                )
             )
-            electronic_ir = replace(
-                supplied_method_ir,
-                identifier=f"{supplied_method_ir.identifier}/electronic",
-                primitives=electronic_primitives,
+            electronic_ir = (
+                supplied_method_ir
+                if not corrections and not gcp_nodes
+                else replace(
+                    supplied_method_ir,
+                    identifier=f"{supplied_method_ir.identifier}/electronic",
+                    primitives=electronic_primitives,
+                    basis=None,
+                )
             )
             semilocal = tuple(
                 node
                 for node in electronic_ir.primitives
                 if isinstance(node, SemilocalXCPrimitive)
             )
-            if len(semilocal) != 1 or not set(
-                dict(semilocal[0].functional.components)
-            ) <= {
-                "GGA_X_PBE",
-                "GGA_C_PBE",
-            }:
-                raise NotImplementedError(
-                    "Calculator MethodIR execution currently supports D3 on the PBE electronic family"
+            components = (
+                set(dict(semilocal[0].functional.components))
+                if len(semilocal) == 1
+                else set()
+            )
+            if electronic_family is None:
+                if not components <= {"GGA_X_PBE", "GGA_C_PBE"}:
+                    raise NotImplementedError(
+                        "Calculator electronic MethodIR execution currently supports the PBE family"
+                    )
+                electronic_family = "pbe"
+
+            if electronic_family == "pbe":
+                if not components <= {"GGA_X_PBE", "GGA_C_PBE"}:
+                    raise NotImplementedError(
+                        "Calculator PBE-family MethodIR has incompatible semilocal components"
+                    )
+                method = (
+                    "pbe-uks" if supplied_method_ir.spin == "polarized" else "pbe-rks"
                 )
-            method = "pbe-uks" if supplied_method_ir.spin == "polarized" else "pbe-rks"
+            else:
+                if components != {"MGGA_X_R2SCAN", "MGGA_C_R2SCAN"}:
+                    raise NotImplementedError(
+                        "canonical r2SCAN-3c requires the audited r2SCAN electronic graph"
+                    )
+                method = (
+                    "r2scan-uks"
+                    if supplied_method_ir.spin == "polarized"
+                    else "r2scan-rks"
+                )
+
             from .ks import KsOptions
 
             if ks_options is None:
@@ -510,7 +582,8 @@ class Calculator:
                 )
             else:
                 ks_options = replace(ks_options, composition=electronic_ir)
-            self._dispersion_method_ir = supplied_method_ir
+            if corrections:
+                self._dispersion_method_ir = supplied_method_ir
 
         if not isinstance(method, str) or method.lower() not in _METHODS:
             raise ValueError(f"unknown method {method!r}")
@@ -536,8 +609,22 @@ class Calculator:
             basis_representation = "cartesian"
         else:
             if basis is None:
-                basis = "sto-3g"
+                if (
+                    supplied_method_ir is not None
+                    and supplied_method_ir.basis is not None
+                ):
+                    if supplied_method_ir.identifier != "R2SCAN-3c":
+                        raise NotImplementedError(
+                            "automatic composite basis loading is qualified only for canonical r2SCAN-3c"
+                        )
+                    from .r2scan3c import load_r2scan3c_basis
+
+                    basis = load_r2scan3c_basis()
+                else:
+                    basis = "sto-3g"
             basis = _snapshot_basis(basis, basis_representation)
+            if supplied_method_ir is not None and supplied_method_ir.basis is not None:
+                validate_basis_snapshot(supplied_method_ir.basis, basis)
             if basis_representation is None:
                 basis_representation = (
                     basis.representation if isinstance(basis, BasisSet) else "cartesian"
@@ -657,10 +744,18 @@ class Calculator:
         elif ks_options is not None:
             raise ValueError("ks_options requires a supported RKS/UKS method")
         if self._dispersion_method_ir is not None and resource_budget is not None:
-            raise NotImplementedError(
-                "global resource_budget does not yet include the separate D3 owner; "
-                "use dispersion_memory_budget_bytes for the bounded correction"
+            correction_nodes = tuple(
+                node
+                for node in self._dispersion_method_ir.primitives
+                if isinstance(node, DispersionCorrectionPrimitive)
             )
+            if len(correction_nodes) != 1 or not isinstance(
+                correction_nodes[0].specification, D3Spec
+            ):
+                raise NotImplementedError(
+                    "global resource_budget currently supports composed D3(BJ) only; "
+                    "composite D4/gCP planning remains unavailable"
+                )
         if self._method == _native.METHOD_GFN2_XTB:
             # Backend-specific admission is owned by native calculation preparation.
             # Native SDK builds may include GFN2 CUDA while CUDA wheels currently do not.
@@ -817,6 +912,10 @@ class Calculator:
                 raise NotImplementedError(
                     "native library does not support KS execution schedules v3"
                 )
+            elif self._ks_options_version < 5 and self._ks_options.requires_nonlocal_v5:
+                raise NotImplementedError(
+                    "native library does not support KS nonlocal correlation v5"
+                )
 
         available = ctypes.c_int32()
         _native.check(
@@ -845,6 +944,10 @@ class Calculator:
         semilocal_force = (
             self._ks_options is not None
             and self._ks_options.coefficients == (1.0, 1.0, 0.0)
+            and not (
+                self._device_name == "cuda"
+                and self._ks_options.execution_plan.nonlocal_correlation is not None
+            )
             and (
                 self._device_name == "cuda"
                 or (self._device_name == "cpu" and qualified_basis(self._basis))
@@ -986,7 +1089,7 @@ class Calculator:
             descriptor.ks_options = ctypes.pointer(
                 native_ks_options(
                     active_ks_options,
-                    version=min(self._ks_options_version, 4),
+                    version=min(self._ks_options_version, 5),
                 )
             )
         if self._method in _COUPLED_CLUSTER_METHODS:
@@ -1301,6 +1404,10 @@ class Calculator:
         """
         if self._method == _native.METHOD_GFN2_XTB:
             return
+        if self._dispersion_method_ir is not None:
+            self._dispersion_method_ir.preflight_atomic_numbers(
+                tuple(atom.atomic_number for atom in atoms)
+            )
         derivative_orders = (0, 1) if compute_forces else (0,)
         auxiliary_backend = self._density_fitting_backend()
         orbital_operators = ["overlap", "kinetic", "nuclear_attraction", "eri"]
@@ -1563,6 +1670,35 @@ class Calculator:
                 )
         return request
 
+    def _dispersion_resource_request(self, systems: typing.Any) -> typing.Any:
+        """Return the bounded D3 owner request for global planning, when present."""
+        if self._dispersion_method_ir is None:
+            return None
+
+        from vibeqc_compiler.method import D3Spec, DispersionCorrectionPrimitive
+
+        corrections = tuple(
+            node
+            for node in self._dispersion_method_ir.primitives
+            if isinstance(node, DispersionCorrectionPrimitive)
+        )
+        if len(corrections) != 1 or not isinstance(
+            corrections[0].specification, D3Spec
+        ):
+            raise NotImplementedError(
+                "global ResourcePlan currently supports composed D3(BJ) only"
+            )
+
+        from .resources_d3 import d3_resource_request
+
+        return d3_resource_request(
+            tuple(tuple(atom.atomic_number for atom in system) for system in systems),
+            method=self._dispersion_method_ir,
+            backend=self._device_name,
+            device_id=self._device_id,
+            maximum_bytes=self._dispersion_memory_budget_bytes,
+        )
+
     def _effective_ks_selection(
         self,
         systems: typing.Any,
@@ -1607,7 +1743,7 @@ class Calculator:
             else:
                 native_ks_options(
                     selection.options,
-                    version=min(self._ks_options_version, 4),
+                    version=min(self._ks_options_version, 5),
                 )
         return selection
 
@@ -1635,10 +1771,6 @@ class Calculator:
         budget: typing.Any = None,
     ) -> typing.Any:
         """Dry-run the active scientific inputs; no solve or warm-state mutation."""
-        if self._dispersion_method_ir is not None:
-            raise NotImplementedError(
-                "composed resource estimation does not yet include the bounded D3 owner"
-            )
         from .resources import ResourceBudget, plan_resources
 
         systems = tuple(
@@ -1659,15 +1791,19 @@ class Calculator:
             multiplicities=multiplicities,
         )
         budget = self._resource_budget if budget is None else budget
+        requests = [
+            self._resource_request(
+                systems,
+                charges=charges,
+                multiplicities=multiplicities,
+                ks_options=effective_ks_options,
+            )
+        ]
+        dispersion_request = self._dispersion_resource_request(systems)
+        if dispersion_request is not None:
+            requests.append(dispersion_request)
         return plan_resources(
-            (
-                self._resource_request(
-                    systems,
-                    charges=charges,
-                    multiplicities=multiplicities,
-                    ks_options=effective_ks_options,
-                ),
-            ),
+            tuple(requests),
             ResourceBudget() if budget is None else budget,
         )
 
@@ -1688,10 +1824,6 @@ class Calculator:
         remain disabled during normal endpoint timing.
         """
 
-        if self._dispersion_method_ir is not None and resource_plan is not None:
-            raise NotImplementedError(
-                "a global ResourcePlan does not yet account for the separate D3 owner"
-            )
         if not self._capabilities.supports_batch:
             raise NotImplementedError(
                 f"method {self._method_name!r} does not support prepared batches"

@@ -408,6 +408,7 @@ class PreparedBatch:
         self.resource_plan = resource_plan
         self.resource_diagnostics = None
         self._resource_ledger = None
+        dispersion_request = None
         if resource_plan is not None or calculator._resource_budget is not None:
             request = calculator._resource_request(
                 self._systems,
@@ -415,18 +416,25 @@ class PreparedBatch:
                 multiplicities=self._multiplicities,
                 ks_options=self._effective_ks_options,
             )
+            dispersion_request = calculator._dispersion_resource_request(self._systems)
+            requests = (
+                (request,)
+                if dispersion_request is None
+                else (request, dispersion_request)
+            )
             if resource_plan is None:
                 from .resources import plan_resources
 
                 self.resource_plan = plan_resources(
-                    (request,), calculator._resource_budget
+                    requests, calculator._resource_budget
                 )
             else:
                 owned = {r.name: r for r in resource_plan.requests}
-                if owned.get(request.name) != request:
-                    raise ValueError(
-                        f"prepared {request.name.upper()} inputs differ from the global resource plan"
-                    )
+                for expected in requests:
+                    if owned.get(expected.name) != expected:
+                        raise ValueError(
+                            f"prepared {expected.name.upper()} inputs differ from the global resource plan"
+                        )
                 if (
                     calculator._resource_budget is not None
                     and resource_plan.budget != calculator._resource_budget
@@ -541,21 +549,85 @@ class PreparedBatch:
                 )
                 check_resource_status(self._library, status, self.resource_diagnostics)
             if calculator._dispersion_method_ir is not None:
-                from .dispersion import D3CorrectionBatch
-
-                self._dispersion_batch = D3CorrectionBatch(
-                    calculator._dispersion_method_ir,
-                    [
-                        (
-                            self._atomic_numbers[index],
-                            [atom.position for atom in atoms],
-                        )
-                        for index, atoms in enumerate(self._systems)
-                    ],
-                    device=calculator._device_name,
-                    device_id=calculator._device_id,
-                    maximum_bytes=calculator._dispersion_memory_budget_bytes,
+                from vibeqc_compiler.method import (
+                    D4Spec,
+                    DispersionCorrectionPrimitive,
+                    GeometricCounterpoisePrimitive,
                 )
+
+                from .dispersion import D3CorrectionBatch, R2SCAN3CCorrectionBatch
+
+                graph = calculator._dispersion_method_ir
+                correction_nodes = tuple(
+                    node
+                    for node in graph.primitives
+                    if isinstance(node, DispersionCorrectionPrimitive)
+                )
+                gcp_nodes = tuple(
+                    node
+                    for node in graph.primitives
+                    if isinstance(node, GeometricCounterpoisePrimitive)
+                )
+                correction = correction_nodes[0].specification
+                if isinstance(correction, D4Spec):
+                    if len(gcp_nodes) != 1:
+                        raise RuntimeError(
+                            "D4 composite execution requires its canonical gCP primitive"
+                        )
+                    self._dispersion_batch = R2SCAN3CCorrectionBatch(
+                        graph,
+                        [
+                            (
+                                self._atomic_numbers[index],
+                                [atom.position for atom in atoms],
+                                self._charges[index],
+                            )
+                            for index, atoms in enumerate(self._systems)
+                        ],
+                        device=calculator._device_name,
+                        device_id=calculator._device_id,
+                        maximum_bytes=calculator._dispersion_memory_budget_bytes,
+                    )
+                else:
+                    self._dispersion_batch = D3CorrectionBatch(
+                        graph,
+                        [
+                            (
+                                self._atomic_numbers[index],
+                                [atom.position for atom in atoms],
+                            )
+                            for index, atoms in enumerate(self._systems)
+                        ],
+                        device=calculator._device_name,
+                        device_id=calculator._device_id,
+                        maximum_bytes=calculator._dispersion_memory_budget_bytes,
+                    )
+                    if (
+                        self.resource_plan is not None
+                        and dispersion_request is not None
+                    ):
+                        selected = dict(self.resource_plan.selections)[
+                            dispersion_request.name
+                        ]
+                        candidate = next(
+                            candidate
+                            for candidate in dispersion_request.candidates
+                            if candidate.name == selected
+                        )
+                        planned = dict(candidate.decisions)
+                        diagnostic = self._dispersion_batch.diagnostic()
+                        actual = {
+                            "plan_host_bytes": diagnostic.plan_host_bytes,
+                            "execution_host_bytes": diagnostic.execution_host_bytes,
+                            "device_bytes": diagnostic.device_bytes,
+                            "table_bytes": diagnostic.table_bytes,
+                            "workspace_bytes": diagnostic.workspace_bytes,
+                        }
+                        expected = {key: int(planned[key]) for key in actual}
+                        if actual != expected:
+                            raise RuntimeError(
+                                "prepared D3 resource inventory differs from the global ResourcePlan"
+                            )
         except Exception:
             # Construction owns native handles before resource-status conversion,
             # which can raise MemoryError as well as ordinary validation errors.
@@ -595,7 +667,7 @@ class PreparedBatch:
 
     @property
     def dispersion_diagnostic(self) -> typing.Any:
-        """Return the retained D3 owner diagnostic, or None for an uncorrected model."""
+        """Return the retained external-correction diagnostic, if present."""
         self._ensure_open()
         return (
             None
@@ -615,6 +687,15 @@ class PreparedBatch:
     def _ensure_open(self) -> None:
         if not self._batch.value:
             raise RuntimeError("prepared batch is closed")
+
+    def _stationary_cuda_target(self) -> typing.Any:
+        """Resolve the native execution target without discovering a compiler."""
+        from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+        from .profiles import probe_device
+
+        device = probe_device(self._library, self._calculator._device_id)["device"]
+        return cuda_target_info(f"sm_{device['major']}{device['minor']}")
 
     def _stationary_cuda_compiler(self) -> typing.Any:
         """Lazily bind the generated-force compiler to this native device."""
@@ -670,13 +751,20 @@ class PreparedBatch:
                     raise NotImplementedError(
                         "public CUDA DFT forces require a qualified CUDA owner"
                     )
+                native_library = Path(str(self._library._name)).resolve()
+                all_electron = state._source.hamiltonian == "all-electron"
                 kwargs = {
-                    "compiler": self._stationary_cuda_compiler(),
+                    "compiler": None
+                    if all_electron
+                    else self._stationary_cuda_compiler(),
+                    "target": self._stationary_cuda_target(),
                     "cache": Path(
                         os.environ.get(
                             "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cuda"
                         )
                     ),
+                    "aot_directory": native_library.parent,
+                    "native_grid_library": native_library,
                 }
                 try:
                     result = complete_rks_cuda_gradient_diagnostic(
@@ -738,6 +826,14 @@ class PreparedBatch:
                 * grid.angular_polar
                 * grid.angular_azimuth,
                 ecp_terms=len(terms),
+                nonlocal_correlation=(
+                    getattr(
+                        getattr(calculator._ks_options, "execution_plan", None),
+                        "nonlocal_correlation",
+                        None,
+                    )
+                    is not None
+                ),
             )
             if sum(inventory.values()) > CPU_FORCE_HOST_CAP:
                 raise ValueError("CPU force additional-host byte budget exceeded")
@@ -975,17 +1071,17 @@ class PreparedBatch:
 
             check_resource_status(self._library, status, self.resource_diagnostics)
 
-        d3_results = None
+        correction_results = None
         if self._dispersion_batch is not None:
-            d3_geometries = None
+            correction_geometries = None
             if coordinates is not None:
-                d3_geometries = []
+                correction_geometries = []
                 for index, output in enumerate(output_array):
                     if (
                         output.status == _native.STATUS_SUCCESS
                         and coordinates[index] is not None
                     ):
-                        d3_geometries.append(
+                        correction_geometries.append(
                             np.asarray(coordinates[index], dtype=np.float64).reshape(
                                 self._atom_counts[index], 3
                             )
@@ -993,9 +1089,9 @@ class PreparedBatch:
                     else:
                         # Preserve the native per-item malformed-input boundary:
                         # D3 does not inspect a coordinate update already rejected by KS.
-                        d3_geometries.append(None)
-            d3_results = self._dispersion_batch.execute(
-                d3_geometries, gradients=compute_forces
+                        correction_geometries.append(None)
+            correction_results = self._dispersion_batch.execute(
+                correction_geometries, gradients=compute_forces
             )
 
         if self.resource_diagnostics is not None:
@@ -1014,14 +1110,14 @@ class PreparedBatch:
             ):
                 _native.check(self._library, count_status)
             succeeded = output.status == _native.STATUS_SUCCESS
-            dispersion = None if d3_results is None else d3_results[index]
+            dispersion = (
+                None if correction_results is None else correction_results[index]
+            )
             dispersion_failure_message = None
             if succeeded and dispersion is not None and not dispersion.ok:
                 output.status = dispersion.status
                 succeeded = False
-                dispersion_failure_message = (
-                    f"D3 correction failed ({dispersion.status}): {dispersion.message}"
-                )
+                dispersion_failure_message = f"external correction failed ({dispersion.status}): {dispersion.message}"
             public_force = None
             if succeeded and public_dft_forces:
                 atoms = self._systems[index]
@@ -1075,10 +1171,12 @@ class PreparedBatch:
             )
             if succeeded and dispersion is not None and compute_forces:
                 if dispersion.gradient is None:
-                    raise RuntimeError("successful D3 force composition omitted dE/dR")
+                    raise RuntimeError(
+                        "successful external correction omitted requested dE/dR"
+                    )
                 if forces is None:
                     raise RuntimeError(
-                        "D3 force composition requires an electronic force"
+                        "external-correction force composition requires an electronic force"
                     )
                 forces = forces - dispersion.gradient
             message = (

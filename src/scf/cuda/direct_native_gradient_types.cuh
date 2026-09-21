@@ -18,11 +18,6 @@ struct PsssWeightedGradient {
   double center[3][3];
 };
 
-/** Density-weighted psps derivatives for the first three canonical centers. */
-struct PspsWeightedGradient {
-  double center[3][3];
-};
-
 /** Cartesian derivatives of one contracted quartet, indexed by input slot. */
 struct CartesianQuartetGradient {
   double center[4][3];

@@ -49,6 +49,16 @@ energy or gradient support. Adding another functional inside an already
 qualified LDA/GGA primitive family must not add Hessian-specific scientific
 source code.
 
+The closed-shell nuclear-perturbation consumer follows the same rule. It
+depends on a response operator's method-specific `induced_fock(delta_density)`
+contract instead of spelling out RHF `J - K/2`. RHF and semilocal CPKS
+therefore share metric-density RHS construction, occupied-orbital response,
+density reconstruction and multi-RHS solving. The operator owns whether the
+density direction produces exchange and/or XC response. Existing
+`solve_rhf_nuclear_perturbation[s]` names remain strict compatibility wrappers;
+the method-neutral entry points are `solve_stationary_nuclear_perturbation[s]`.
+This boundary alone does not supply DFT AO/grid/partition geometric derivatives.
+
 This is compiler/source-completeness progress only. Public Calculator DFT
 Hessian/HVP capability remains off until the native geometric directional
 consumers and complete molecular HVP pass independent finite-difference,

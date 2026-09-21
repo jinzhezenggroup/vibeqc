@@ -23,6 +23,7 @@ from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.native_runtime import compile_runtime
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.dft.nonlocal_integration import FixedDensityNonlocalCorrelation
 from vibeqc_compiler.integral.ecp_policy import (
     COARSE_POLAR_POINTS,
     COARSE_RADIAL_POINTS,
@@ -30,6 +31,8 @@ from vibeqc_compiler.integral.ecp_policy import (
     REFINED_RADIAL_POINTS,
 )
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cpu
+from vibeqc_compiler.method.nonlocal_correlation import NonlocalCorrelationPrimitive
+from vibeqc_compiler.method.spec import RangeSeparatedExchangePrimitive
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
     StationaryGradientPlan,
@@ -47,7 +50,9 @@ from ._dft_gradient import (
     _native_ao_atoms,
     native_ao_geometry_identity,
 )
+from ._stationary_rsh_cpu import RangeExchangeExecutor
 from .ks import native_xc_functional_code
+from .nonlocal_runtime import NativeNonlocalPairProvider
 
 
 @dataclass(frozen=True)
@@ -249,17 +254,24 @@ def _admit_work(
         )
     primitive_sum = sum(int(row[2]) * int(row[3]) for row in aos)
     pairs = natom * (natom - 1) // 2
-    exact_exchange = bool(
-        getattr(
-            getattr(state._source, "method_ir", None),
-            "full_range_exact_exchange",
-            0,
-        )
+    method_ir = getattr(state._source, "method_ir", None)
+    exact_exchange = bool(getattr(method_ir, "full_range_exact_exchange", 0))
+    nonlocal_correlation = any(
+        isinstance(primitive, NonlocalCorrelationPrimitive)
+        for primitive in getattr(method_ir, "primitives", ())
     )
-    # Coulomb always traverses every ordered primitive quartet. A full-range
-    # exact-exchange source is a second, independently weighted ERI derivative
-    # traversal over the same quartet domain and must be charged separately.
-    quartet_passes = 1 + int(exact_exchange)
+    range_exchange = sum(
+        type(primitive) is RangeSeparatedExchangePrimitive
+        for primitive in getattr(method_ir, "primitives", ())
+    )
+    if range_exchange and any(shell.angular_momentum > 1 for shell in basis.shells):
+        raise NotImplementedError(
+            "CPU RSH stationary gradients currently support s/p bases only"
+        )
+    # Coulomb always traverses every ordered primitive quartet. Each full- or
+    # range-separated exact-exchange source is an independently weighted ERI
+    # derivative traversal over that same ordered quartet domain.
+    quartet_passes = 1 + int(exact_exchange) + range_exchange
     records = quartet_passes * primitive_sum**4 + (natom + 2) * primitive_sum**2 + pairs
     points = len(state.grid.points)
     visits = (2 if execution == "native" else 3 * natom) * pairs * points
@@ -268,10 +280,15 @@ def _admit_work(
     # validates on every coordinate traversal. Include both in admission.
     if execution == "reference":
         validations *= 3 * natom
+    nonlocal_pair_visits = points * points if nonlocal_correlation else 0
+    nonlocal_partition_visits = visits + validations if nonlocal_correlation else 0
+    grid_pair_work = (
+        visits + validations + nonlocal_pair_visits + nonlocal_partition_visits
+    )
     for actual, budget, label in (
         (records, max_primitive_records, "primitive"),
         (points, max_grid_points, "grid point"),
-        (visits + validations, max_grid_pair_visits, "grid pair"),
+        (grid_pair_work, max_grid_pair_visits, "grid pair"),
     ):
         if actual > budget:
             raise ValueError(f"{label} work budget exceeded")
@@ -310,7 +327,9 @@ def _admit_work(
         "grid_adjoint_points": points if execution == "native" else 0,
         "grid_pair_visits": visits,
         "grid_center_pair_validations": validations,
-        "grid_pair_work_bound": visits + validations,
+        "nonlocal_pair_evaluations": nonlocal_pair_visits,
+        "nonlocal_partition_pair_work": nonlocal_partition_visits,
+        "grid_pair_work_bound": grid_pair_work,
         "grid_pair_work_budget": max_grid_pair_visits,
         "ecp_quadrature_pair_samples": ecp_samples,
         "ecp_pair_sample_budget": max_ecp_pair_samples,
@@ -336,9 +355,11 @@ def complete_rks_gradient_diagnostic(
 ) -> typing.Any:
     """Consume one live native CPU RKS/UKS state with complete plan-owned sources.
 
-    Admitted domain: direct real FP64 integer RKS/UKS, a validated
-    LDA/PBE/r2SCAN MethodIR (PBE may include full-range exact exchange),
-    s/p/d AOs, native unpruned version-one grid, distinct nuclei and no
+    Admitted public-state domain is direct real FP64 integer RKS/UKS with
+    validated LDA/PBE/r2SCAN/global-hybrid MethodIR. The consumer also executes
+    range-separated exchange sources for validated stationary plans with s/p AOs;
+    public RSH snapshot/capability admission remains a separate boundary. Uses a
+    native unpruned version-one grid, distinct nuclei and no
     point/center collisions. CPU is explicit; CUDA snapshots are rejected.
     Caller chooses an ignored/temporary compilation cache and may supply a
     CppCompilerAdapter; otherwise CXX (or c++) selects the executable. Scientific work is
@@ -401,6 +422,13 @@ def complete_rks_gradient_diagnostic(
     if max_host_bytes is not None:
         from ._cpu_force_resources import cpu_force_inventory
 
+        if any(
+            type(p) is RangeSeparatedExchangePrimitive
+            for p in state._source.method_ir.primitives
+        ):
+            raise NotImplementedError(
+                "CPU RSH stationary gradients do not yet have a combined endpoint host budget"
+            )
         if execution != "native":
             raise ValueError("CPU host budget requires the compiled native consumer")
         if type(max_host_bytes) is not int or not 1 <= max_host_bytes <= 1 << 40:
@@ -409,9 +437,17 @@ def complete_rks_gradient_diagnostic(
             basis,
             grid_points=len(state.grid.points),
             ecp_terms=len(state._source.ecp_terms),
+            nonlocal_correlation=any(
+                isinstance(primitive, NonlocalCorrelationPrimitive)
+                for primitive in state._source.method_ir.primitives
+            ),
             tile_points=tile_points,
             primitive_tile=primitive_tile,
             integral_terms=integral_terms,
+            range_exchange_sources=sum(
+                type(p) is RangeSeparatedExchangePrimitive
+                for p in state._source.method_ir.primitives
+            ),
         )
         host_bound = sum(inventory.values())
         if host_bound > max_host_bytes:
@@ -520,6 +556,43 @@ def complete_rks_gradient_diagnostic(
                             "nuclear_attraction", indices, weight * charges[atom], atom
                         )
                         np.add.at(components[source], owners, values)
+
+    range_native = None
+    if plan.range_exchange_primitives:
+        range_native = RangeExchangeExecutor(basis, cache, primitive_tile, compiler)
+        try:
+            for range_source in plan.range_exchange_sources:
+                primitive = plan.range_exchange_primitive(range_source.name)
+                iterator = product(range(n), repeat=4)
+                while tuples := tuple(islice(iterator, integral_terms)):
+                    ids = np.asarray(tuples)
+                    block = plan.integral_block(range_source.name, terms=len(tuples))
+                    feeds = {
+                        "density_left": state.density[:, ids[:, 0], ids[:, 2]],
+                        "density_right": state.density[:, ids[:, 1], ids[:, 3]],
+                    }
+                    key = (range_source.name, len(tuples))
+                    if key not in tensor_consumers:
+                        tensor_consumers[key] = (
+                            NativeTensorProgram(
+                                block.weights, compiler=compiler, cache=cache
+                            )
+                            if execution == "native"
+                            else block.weights
+                        )
+                    consumer = tensor_consumers[key]
+                    weights = (
+                        consumer.execute(feeds)["weights"]
+                        if execution == "native"
+                        else execute(consumer, feeds).outputs["weights"]
+                    )
+                    for indices, weight in zip(tuples, weights, strict=True):
+                        owners, values = range_native.integral(
+                            primitive, indices, weight
+                        )
+                        np.add.at(components[range_source.name], owners, values)
+        finally:
+            range_native.close()
     for a in range(natom):
         for b in range(a):
             np.add.at(components["nuclear"], [a, b], native.nuclear(a, b, charges))
@@ -630,6 +703,64 @@ def complete_rks_gradient_diagnostic(
                     partials.weights,
                     state._source.atomic_weights[begin:end] * derivative,
                 )
+    nonlocal_primitive = next(
+        (
+            primitive
+            for primitive in method.primitives
+            if isinstance(primitive, NonlocalCorrelationPrimitive)
+        ),
+        None,
+    )
+    if nonlocal_primitive is not None:
+        calculator = state._source._batch._calculator
+        provider = NativeNonlocalPairProvider(
+            device="cpu",
+            device_id=0,
+            memory_budget_bytes=calculator._ks_options.nonlocal_memory_budget_bytes,
+            library=state._source._library,
+        )
+        geometry = FixedDensityNonlocalCorrelation(
+            nonlocal_primitive.spec,
+            coefficient=nonlocal_primitive.coefficient,
+            pair_provider=provider,
+        ).geometry(basis, grid, density, tile_points=tile_points)
+        components["nonlocal_ao"] += np.asarray(geometry.centers)
+        owners = np.asarray(grid.owners, dtype=np.int64)
+        np.add.at(components["nonlocal_grid"], owners, np.asarray(geometry.points))
+        if grid_consumer is not None:
+            with np.errstate(over="raise", invalid="raise"):
+                seeds = np.asarray(geometry.weights) * np.asarray(
+                    state._source.atomic_weights
+                )
+            components["nonlocal_weight"] += grid_consumer.contract(
+                grid.points,
+                native.centers,
+                owners,
+                seeds,
+                coincident_tolerance=spec.coincident_tolerance,
+            )
+        else:
+            for a in range(natom):
+                for axis in range(3):
+                    motion = np.zeros((natom, 3))
+                    motion[a, axis] = 1
+                    for begin in range(0, len(grid.points), tile_points):
+                        end = min(begin + tile_points, len(grid.points))
+                        atoms = owners[begin:end]
+                        response = partition_response(
+                            grid.points[begin:end],
+                            native.centers,
+                            point_motion=motion[atoms],
+                            center_motion=motion,
+                            iterations=spec.partition_iterations,
+                            coincident_tolerance=spec.coincident_tolerance,
+                        )
+                        selected = (np.arange(end - begin), atoms)
+                        components["nonlocal_weight"][a, axis] += np.dot(
+                            geometry.weights[begin:end],
+                            state._source.atomic_weights[begin:end]
+                            * response.directional[selected],
+                        )
     gradient = (
         NativeTensorProgram(
             plan.reduction_program(atoms=natom, sources=components.keys()),
@@ -640,9 +771,14 @@ def complete_rks_gradient_diagnostic(
         else plan.reduce_diagnostic(components, atoms=natom)
     )
     contract.validate(state)  # No partial publication after replay/failure/replacement.
-    if native.records != work["primitive_record_bound"]:
+    primitive_records = native.records + (
+        0 if range_native is None else range_native.records
+    )
+    if primitive_records != work["primitive_record_bound"]:
         raise RuntimeError("CPU derivative primitive work differs from admission")
-    work["primitive_records"] = native.records
+    work["primitive_records"] = primitive_records
+    if range_native is not None:
+        work["range_exchange_primitive_records"] = range_native.records
     return DiagnosticStationaryGradient(
         immutable(gradient),
         MappingProxyType({key: immutable(value) for key, value in components.items()}),

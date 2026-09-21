@@ -376,17 +376,31 @@ class PreparedLevels:
         self._batches = {}
 
     def __enter__(self) -> Self:
-        for level in levels():
-            calc = _calculator(self.case, level, self.device, precision=self.precision)
-            batch = self._stack.enter_context(
-                calc.prepare_batch(
-                    [self.case.atoms],
-                    charges=[self.case.charge],
-                    multiplicities=[self.case.multiplicity],
-                    warm_start=True,
+        try:
+            for level in levels():
+                calc = _calculator(
+                    self.case, level, self.device, precision=self.precision
                 )
-            )
-            self._batches[level.name] = batch
+                batch = self._stack.enter_context(
+                    calc.prepare_batch(
+                        [self.case.atoms],
+                        charges=[self.case.charge],
+                        multiplicities=[self.case.multiplicity],
+                        warm_start=True,
+                    )
+                )
+                self._batches[level.name] = batch
+        except BaseException as preparation_error:
+            cleanup_error: BaseException | None = None
+            try:
+                self._stack.close()
+            except BaseException as error:  # noqa: BLE001 - preserve preparation error
+                cleanup_error = error
+            finally:
+                self._batches.clear()
+            if cleanup_error is not None:
+                raise preparation_error from cleanup_error
+            raise
         return self
 
     def __exit__(self, *args: object) -> None:

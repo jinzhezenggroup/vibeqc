@@ -504,82 +504,19 @@
           "shell_class": "psps",
           "consumers": ["fock", "force"],
           "capabilities": ["streaming_fock", "local_packed_streaming_fock"],
-          "recurrence": "rys2",
-          "schedule": {
-            "kind": "thread_tasks",
-            "block_threads": 32,
-            "component_tile": 9,
-            "tasks_per_warp": 32,
-            "shared_coulomb": false,
-            "pair_orientation": "canonical",
-            "pair_storage": "materialized",
-            "unroll_pair_terms": true,
-            "minimum_blocks_per_sm": 8
-          },
-          "fock_schedule": {
-            "kind": "packed_tasks",
-            "block_threads": 32,
-            "component_tile": 9,
-            "tasks_per_warp": 32,
-            "shared_coulomb": false,
-            "pair_orientation": "canonical",
-            "pair_storage": "materialized",
-            "unroll_pair_terms": true
-          }
+          "recurrence": "rys2"
         },
         {
           "shell_class": "ppss",
           "consumers": ["fock", "force"],
           "capabilities": ["streaming_fock"],
-          "recurrence": "rys2",
-          "schedule": {
-            "kind": "thread_tasks",
-            "block_threads": 32,
-            "component_tile": 9,
-            "tasks_per_warp": 32,
-            "shared_coulomb": false,
-            "pair_orientation": "canonical",
-            "pair_storage": "materialized",
-            "unroll_pair_terms": true,
-            "minimum_blocks_per_sm": 8
-          },
-          "fock_schedule": {
-            "kind": "packed_tasks",
-            "block_threads": 32,
-            "component_tile": 9,
-            "tasks_per_warp": 32,
-            "shared_coulomb": false,
-            "pair_orientation": "canonical",
-            "pair_storage": "materialized",
-            "unroll_pair_terms": true
-          }
+          "recurrence": "rys2"
         },
         {
           "shell_class": "dsss",
           "consumers": ["fock", "force"],
           "capabilities": ["streaming_fock"],
-          "recurrence": "rys2",
-          "schedule": {
-            "kind": "thread_tasks",
-            "block_threads": 32,
-            "component_tile": 6,
-            "tasks_per_warp": 32,
-            "shared_coulomb": false,
-            "pair_orientation": "canonical",
-            "pair_storage": "materialized",
-            "unroll_pair_terms": true,
-            "minimum_blocks_per_sm": 8
-          },
-          "fock_schedule": {
-            "kind": "packed_tasks",
-            "block_threads": 32,
-            "component_tile": 6,
-            "tasks_per_warp": 32,
-            "shared_coulomb": false,
-            "pair_orientation": "canonical",
-            "pair_storage": "materialized",
-            "unroll_pair_terms": true
-          }
+          "recurrence": "rys2"
         }
       ],
       "acceptance": {
