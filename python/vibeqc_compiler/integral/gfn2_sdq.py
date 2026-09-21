@@ -188,19 +188,16 @@ def evaluate_gfn2_sdq_primitive(
 ) -> Gfn2SdqPrimitiveEvaluation:
     """Interpret one generated primitive S/D/Q graph for qualification."""
 
-    exponents = tuple(float(value) for value in exponents)
-    centers = tuple(tuple(float(value) for value in center) for center in centers)
-    if (
-        len(exponents) != 2
-        or len(centers) != 2
-        or any(len(center) != 3 for center in centers)
-    ):
-        raise ValueError("GFN2 S/D/Q primitive dimensions are invalid")
-    if any(value <= 0.0 for value in exponents):
+    exponent_values = (float(exponents[0]), float(exponents[1]))
+    center_values = (
+        (float(centers[0][0]), float(centers[0][1]), float(centers[0][2])),
+        (float(centers[1][0]), float(centers[1][1]), float(centers[1][2])),
+    )
+    if any(value <= 0.0 for value in exponent_values):
         raise ValueError("GFN2 S/D/Q primitive exponents must be positive")
 
-    variables = {"alpha": exponents[0], "beta": exponents[1]}
-    for center_name, position in zip(("a", "b"), centers, strict=True):
+    variables = {"alpha": exponent_values[0], "beta": exponent_values[1]}
+    for center_name, position in zip(("a", "b"), center_values, strict=True):
         variables.update(
             {
                 f"{center_name}_{axis}": value
