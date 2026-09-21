@@ -44,7 +44,6 @@
       "retirement_condition": "For each retained Fock family, demonstrate generated mathematical parity plus matched complete-endpoint non-regression; then delete the duplicate native scientific body unless an independently measured exception remains.",
       "files": [
         "src/scf/cuda/direct_cached_tensor_kernels.cu",
-        "src/scf/cuda/direct_fock_accumulation.cuh",
         "src/scf/cuda/direct_fock_order2.cuh",
         "src/scf/cuda/direct_fock_psss.cuh",
         "src/scf/cuda/direct_fock_quartet.cuh",

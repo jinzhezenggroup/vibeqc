@@ -268,6 +268,19 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
     ARGS --derivatives --output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}")
 
+  set(VIBEQC_DIRECT_FOCK_ACCUMULATION_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_direct_fock_accumulation.cuh")
+  vibeqc_register_generated_sources(
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
+    OUTPUTS "${VIBEQC_DIRECT_FOCK_ACCUMULATION_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/lowering/fock_accumulation.py"
+    ARGS
+      --direct-fock-accumulation-output "${VIBEQC_DIRECT_FOCK_ACCUMULATION_HEADER}"
+    COMMENT "Generating compiler-owned Direct-Fock scatter contraction")
+
   set(VIBEQC_WEIGHTED_ERI_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/weighted_eri.cuh")
   vibeqc_register_generated_sources(

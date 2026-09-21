@@ -19,6 +19,7 @@ from .common import (
     _generic_component_value_setup,
     _generic_task_component_setup,
 )
+from .fock_accumulation import emit_generated_shell_fock_accumulation
 from .fock_component import _emit_rys_component_lane_fock_consumer_cuda
 from .fock_tiled import (
     _emit_packed_fock_consumer_cuda,
@@ -266,6 +267,7 @@ VIBEQC_PAIR_UNROLL
         if max(spec.pair_orders) >= 6
         else ""
     )
+    fock_accumulation = emit_generated_shell_fock_accumulation()
     source = f"""
 
 /** Coefficient-only pair term used by the SCF Fock recurrence. */
@@ -342,61 +344,7 @@ __device__ __forceinline__ double generated_dppp_component_value(
   return geometry.prefactor * value;
 }}
 
-/** Scatter one canonical integral using VIBEQC's existing RHF/UHF convention. */
-template <bool Unrestricted>
-__device__ __forceinline__ void generated_dppp_accumulate_fock(
-    const GeneratedDpppShellTask& task,
-    const double* density,
-    double* fock,
-    std::size_t i, std::size_t j, std::size_t k, std::size_t l,
-    double integral) {{
-  const std::size_t n = static_cast<std::size_t>(task.matrix_order);
-  const std::size_t matrix_size = n * n;
-#pragma unroll
-  for (unsigned permutation = 0; permutation < 8U; ++permutation) {{
-    std::size_t a = 0, b = 0, c = 0, d = 0;
-    generated_dppp_eri_permutation(
-        permutation, i, j, k, l, a, b, c, d);
-    if (!generated_dppp_unique_permutation(
-            permutation, i, j, k, l, a, b, c, d)) continue;
-    const std::size_t ab = generated_dppp_matrix_index(a, b, n);
-    const std::size_t ac = generated_dppp_matrix_index(a, c, n);
-    const std::size_t cd = generated_dppp_matrix_index(c, d, n);
-    const std::size_t bd = generated_dppp_matrix_index(b, d, n);
-    if constexpr (Unrestricted) {{
-      const double alpha_cd = density[task.spin_offset + cd];
-      const double beta_cd = density[task.spin_offset + matrix_size + cd];
-      const double total_cd = alpha_cd + beta_cd;
-      if (total_cd != 0.0) {{
-        atomicAdd(fock + task.spin_offset + ab, total_cd * integral);
-        atomicAdd(
-            fock + task.spin_offset + matrix_size + ab,
-            total_cd * integral);
-      }}
-      const double alpha_bd = density[task.spin_offset + bd];
-      const double beta_bd = density[task.spin_offset + matrix_size + bd];
-      if (alpha_bd != 0.0) {{
-        atomicAdd(fock + task.spin_offset + ac, -alpha_bd * integral);
-      }}
-      if (beta_bd != 0.0) {{
-        atomicAdd(
-            fock + task.spin_offset + matrix_size + ac,
-            -beta_bd * integral);
-      }}
-    }} else {{
-      const double density_cd = density[task.density_offset + cd];
-      const double density_bd = density[task.density_offset + bd];
-      if (density_cd != 0.0) {{
-        atomicAdd(fock + task.density_offset + ab, density_cd * integral);
-      }}
-      if (density_bd != 0.0) {{
-        atomicAdd(
-            fock + task.density_offset + ac,
-            -0.5 * density_bd * integral);
-      }}
-    }}
-  }}
-}}
+{fock_accumulation}
 
 template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_shell_class_fock_task(
