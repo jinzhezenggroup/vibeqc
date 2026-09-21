@@ -291,6 +291,8 @@ def _emit_component_index(maximum_angular_momentum: int = 3) -> typing.Any:
     index = [
         "/** Public Cartesian order, shared by all native basis expansion terms. */",
         "__device__ __forceinline__ unsigned component_index(unsigned x, unsigned y, unsigned z) {",
+        f"  if (x > {maximum}U || y > {maximum}U || z > {maximum}U ||",
+        f"      x + y + z > {maximum}U) return {total_components}U;",
         f"  switch (x * {radix * radix}U + y * {radix}U + z) {{",
     ]
     for i, component in enumerate(

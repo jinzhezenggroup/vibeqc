@@ -196,7 +196,19 @@ def test_g_codegen_is_explicit_and_production_capability_stays_fail_closed() -> 
         backend="cuda_bounded_component",
         component_indices=(0,),
     )
-    assert bounded.supported
+    assert not bounded.supported
+    assert "first-derivative raw IR" in bounded.reasons[0]
+    from vibeqc_compiler.integral.one_electron_derivatives import (
+        build_one_electron_derivative_ir,
+    )
+
+    derivative = build_one_electron_derivative_ir("kinetic", (4, 0))
+    bounded_derivative = query_integral_capability(
+        derivative,
+        backend="cuda_bounded_component",
+        component_indices=(0,),
+    )
+    assert bounded_derivative.supported
 
 
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
