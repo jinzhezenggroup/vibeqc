@@ -34,6 +34,17 @@ constexpr Oracle kPbeOracle{
      7.361363487402514e-05, 7.626987717305705e-05, 1.124628703587642e-05, -8.424167738597969e-05,
      2.800093182458554e-05, 2.278839899221966e-04, -5.321633958659144e-05, -2.847463176608776e-04}};
 
+// Independent dftd3 1.6.0 ZeroDampingParam(method="pbe0", atm=False)
+// oracle at the same geometry. Coordinates are bohr; energy/gradient are
+// Hartree and Hartree/bohr.
+constexpr Oracle kPbe0Oracle{
+    {1.0, 0.928, 1.287, 1.0, 14.0, 0.0, 0.0, 0.0},
+    -3.0546188757657987e-4,
+    {-1.0134734075343157e-04, 7.555506460862482e-05,  2.1322571013266314e-04,
+     -1.5939358235838346e-04, 8.332486543062817e-05,  7.578382712325813e-05,
+     1.3211801614035793e-05,  -1.0067348683521795e-04, 3.357846633457028e-05,
+     2.4752912149777925e-04,  -5.8206443204035034e-05, -3.225880035904916e-04}};
+
 constexpr Oracle kSlaterDiracOracle{
     {1.0, -1.957, 0.999, 0.697, 14.0, 0.0, 0.0, 0.0},
     1.8354418869906384e-2,
@@ -91,6 +102,47 @@ void test_finite_difference(D3ZeroParameters parameters, double tolerance) {
   }
 }
 
+void test_multistep_finite_difference(D3ZeroParameters parameters, double tolerance) {
+  const auto analytic = evaluate(kCoordinates, parameters, true);
+  if (analytic.status != D3Status::success)
+    throw std::runtime_error("analytic multistep D3(0) evaluation failed");
+  for (double step : {2.0e-4, 7.0e-5, 2.0e-5}) {
+    for (std::size_t q = 0; q < kCoordinates.size(); ++q) {
+      auto plus = kCoordinates, minus = kCoordinates;
+      plus[q] += step;
+      minus[q] -= step;
+      const auto ep = evaluate(plus, parameters, false);
+      const auto em = evaluate(minus, parameters, false);
+      if (ep.status != D3Status::success || em.status != D3Status::success)
+        throw std::runtime_error("multistep finite-difference D3(0) evaluation failed");
+      const double numeric = (ep.energy - em.energy) / (2.0 * step);
+      require_close(analytic.gradient[q], numeric, tolerance,
+                    "D3(0) multistep finite-difference mismatch");
+    }
+  }
+}
+
+void test_translation_invariance() {
+  auto shifted = kCoordinates;
+  for (std::size_t atom = 0; atom < kNumbers.size(); ++atom) {
+    shifted[3 * atom] += 2.3;
+    shifted[3 * atom + 1] -= 1.7;
+    shifted[3 * atom + 2] += 0.4;
+  }
+  const auto reference = evaluate(kCoordinates, kPbeOracle.parameters, true);
+  const auto translated = evaluate(shifted, kPbeOracle.parameters, true);
+  require_close(translated.energy, reference.energy, 3.0e-15,
+                "D3(0) translation energy mismatch");
+  std::array<double, 3> total{};
+  for (std::size_t q = 0; q < reference.gradient.size(); ++q) {
+    require_close(translated.gradient[q], reference.gradient[q], 3.0e-13,
+                  "D3(0) translation gradient mismatch");
+    total[q % 3] += reference.gradient[q];
+  }
+  for (double component : total)
+    require_close(component, 0.0, 3.0e-13, "D3(0) total gradient must vanish");
+}
+
 void test_cutoff_product_rule() {
   auto parameters = kPbeOracle.parameters;
   parameters.pair_cutoff = 4.5;
@@ -134,13 +186,17 @@ void test_parameter_validation() {
 int main() {
   try {
     test_external_oracle(kPbeOracle);
+    test_external_oracle(kPbe0Oracle);
     test_external_oracle(kSlaterDiracOracle);
     test_finite_difference(kPbeOracle.parameters, 8.0e-11);
     test_finite_difference(kSlaterDiracOracle.parameters, 2.0e-9);
+    test_multistep_finite_difference(kPbeOracle.parameters, 2.0e-9);
+    test_multistep_finite_difference(kPbe0Oracle.parameters, 2.0e-9);
+    test_translation_invariance();
     test_cutoff_product_rule();
     test_parameter_validation();
     test_overflowing_damping_keeps_representable_weighted_results();
-    std::cout << "D3(0) independent-oracle and analytic-gradient tests passed\n";
+    std::cout << "D3(0) independent-oracle, analytic-gradient, multistep-FD and invariance tests passed\n";
     return 0;
   } catch (const std::exception& error) {
     std::cerr << error.what() << "\n";
