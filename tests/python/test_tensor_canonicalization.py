@@ -1,4 +1,6 @@
-"""IEEE-safe view canonicalization for the shared compiler optimizer."""
+"""IEEE-safe TensorIR canonicalization for the shared compiler optimizer."""
+
+from fractions import Fraction
 
 import numpy as np
 from vibeqc_compiler.tensor import (
@@ -6,10 +8,13 @@ from vibeqc_compiler.tensor import (
     IndexSpace,
     Program,
     TensorSpec,
+    add,
     broadcast,
     cast,
     constant,
+    divide,
     execute,
+    gather,
     input_tensor,
     multiply,
     reshape,
@@ -104,3 +109,88 @@ def test_view_canonicalization_does_not_apply_ieee_sensitive_arithmetic() -> Non
     assert rewritten.outputs["out"] is product
     result = execute(rewritten, {"x": np.array(-0.0)}).outputs["out"]
     assert np.signbit(result)
+
+
+def _vector_input(name: str = "v", size: int = 5) -> Node:
+    space = IndexSpace("vector", "batch", size)
+    index = Index("p", space)
+    return input_tensor(name, TensorSpec((index,), role="input"))
+
+
+def _literal(values: tuple[int, ...], like: Node) -> Node:
+    return constant(values, TensorSpec(like.spec.indices, role="constant"))
+
+
+def test_constant_tensor_arithmetic_folds_only_after_bitwise_check() -> None:
+    x = _literal((1, 2, 3), _vector_input(size=3))
+    y = _literal((4, 5, 6), _vector_input(size=3))
+    program = Program({"out": add(multiply(x, y), x, coefficients=(1, -1))})
+
+    rewritten = rewrite(program, "scalar_constants")
+
+    assert rewritten.outputs["out"].op == "constant"
+    np.testing.assert_array_equal(
+        execute(rewritten, {}).outputs["out"],
+        execute(program, {}).outputs["out"],
+    )
+
+
+def test_algebraic_canonicalization_removes_exact_one_without_reassociation() -> None:
+    x = _vector_input(size=3)
+    one = _literal((1, 1, 1), x)
+    program = Program({"mul": multiply(one, x), "div": divide(x, one)})
+
+    rewritten = rewrite(program, "algebraic_canonicalization")
+
+    assert rewritten.outputs["mul"] is rewritten.outputs["div"]
+    values = np.array([-0.0, 2.0, -3.0])
+    before = execute(program, {"v": values}).outputs
+    after = execute(rewritten, {"v": values}).outputs
+    assert before["mul"].tobytes() == after["mul"].tobytes()
+    assert before["div"].tobytes() == after["div"].tobytes()
+
+
+def test_algebraic_canonicalization_keeps_signed_zero_sensitive_add() -> None:
+    x = _vector_input(size=2)
+    program = Program({"out": add(x, coefficients=(Fraction(1),))})
+
+    rewritten = rewrite(program, "algebraic_canonicalization")
+
+    assert rewritten.outputs["out"].op == "add"
+    values = np.array([-0.0, 1.0])
+    before = execute(program, {"v": values}).outputs["out"]
+    after = execute(rewritten, {"v": values}).outputs["out"]
+    assert before.tobytes() == after.tobytes()
+
+
+def test_view_canonicalization_composes_nested_slice_ranges() -> None:
+    x = _vector_input(size=6)
+    nested = slice_tensor(slice_tensor(x, ((1, 5),)), ((1, 3),))
+
+    rewritten = rewrite(Program({"out": nested}), "view_canonicalization")
+    out = rewritten.outputs["out"]
+
+    assert out.op == "slice"
+    assert out.inputs == (x,)
+    assert out.attrs["ranges"] == ((2, 4),)
+    values = np.arange(6, dtype=np.float64)
+    np.testing.assert_array_equal(
+        execute(rewritten, {"v": values}).outputs["out"], values[2:4]
+    )
+
+
+def test_view_canonicalization_composes_nested_gather_maps() -> None:
+    x = _vector_input(size=5)
+    inner = gather(x, 0, (4, 2, 1, 3))
+    nested = gather(inner, 0, (2, 0))
+
+    rewritten = rewrite(Program({"out": nested}), "view_canonicalization")
+    out = rewritten.outputs["out"]
+
+    assert out.op == "gather"
+    assert out.inputs == (x,)
+    assert out.attrs["positions"] == (1, 4)
+    values = np.arange(5, dtype=np.float64)
+    np.testing.assert_array_equal(
+        execute(rewritten, {"v": values}).outputs["out"], values[[1, 4]]
+    )
