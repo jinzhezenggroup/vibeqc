@@ -26,7 +26,7 @@ from ..shell_spec import (
     ShellClassSpec,
     cartesian_components,
 )
-from ..specialize import specialize_integral_ir
+from ..specialize import specialize_fock_integral, specialize_integral_ir
 from .algebra import (
     _emit_triple_pair_matchings,
     _emit_weighted_component_gradient_cuda,
@@ -65,21 +65,12 @@ def _specialize_fock_plan(
     """Derive a value-only HF plan from a possibly derivative-bearing plan."""
 
     integral = plan.kernel.integral
-    selected_recurrence = recurrence
-    if (
-        selected_recurrence is None
-        and KernelConsumer.FORCE in integral.consumers
-        and integral.recurrence.startswith("rys")
-    ):
-        # Current direct Fock production lowering is subset/Wick. A Rys
-        # recurrence on the enclosing plan is a force implementation choice,
-        # not a reason to retain derivative intent in the value consumer.
-        selected_recurrence = "subset_wick"
-    fock_integral = specialize_integral_ir(
-        integral,
-        consumers=(KernelConsumer.FOCK,),
-        recurrence=selected_recurrence,
-    )
+    fock_integral = specialize_fock_integral(integral)
+    if recurrence is not None:
+        fock_integral = specialize_integral_ir(
+            fock_integral,
+            recurrence=recurrence,
+        )
     return build_fused_shell_plan(
         plan.spec,
         schedule=plan.schedule if schedule is None else schedule,
