@@ -182,9 +182,9 @@ def test_manifests_require_complete_independent_qualification(
         load_value_manifest,
     )
 
-    for source, load, derivative in (
-        (MANIFEST, load_manifest, True),
-        (VALUE_MANIFEST, load_value_manifest, False),
+    for source, load in (
+        (MANIFEST, load_manifest),
+        (VALUE_MANIFEST, load_value_manifest),
     ):
         original = json.loads(source.read_text())
         payload = copy.deepcopy(original)
@@ -206,11 +206,9 @@ def test_value_manifest_is_target_driven_and_unknown_targets_are_generic(
         load_value_manifest,
         resolve_value_profile,
     )
+    from vibeqc_compiler.integral.df_value_candidates import VALUE_CLASSES
 
-    kernels = {"".join(map(str, angular)): "generic" for angular in __import__(
-        "vibeqc_compiler.integral.df_value_candidates",
-        fromlist=["VALUE_CLASSES"],
-    ).VALUE_CLASSES}
+    kernels = {"".join(map(str, angular)): "generic" for angular in VALUE_CLASSES}
     payload = {
         "schema_version": 2,
         "architectures": {
