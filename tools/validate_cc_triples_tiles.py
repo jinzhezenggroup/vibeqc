@@ -221,9 +221,7 @@ def run(args: typing.Any) -> None:
                         )
 
                         tiles = CudaTriplesTiles(config, compiler, cache)
-                        capacity, plan, capacity_attempts = (
-                            tiles.plan_runtime_domain()
-                        )
+                        capacity, plan, capacity_attempts = tiles.plan_runtime_domain()
                         artifact = compile_resident(plan, compiler, cache)
                         print(
                             f"compiled capacity={capacity} "
