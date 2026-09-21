@@ -99,6 +99,7 @@ def test_estimate_resources_materializes_one_shot_charge_spin_inputs(
     from vibeqc.ks import resolve_ks_options
 
     calculator = Calculator.__new__(Calculator)
+    calculator._dispersion_method_ir = None
     calculator._ks_options = resolve_ks_options("pbe-rks")
     calculator._device_name = "cuda"
     calculator._precision_mode = _native.PRECISION_FP64

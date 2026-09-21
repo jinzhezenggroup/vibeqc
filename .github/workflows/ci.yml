@@ -268,7 +268,9 @@ jobs:
     runs-on: ubuntu-24.04
     # Full nightly/manual qualification includes expensive Hessian and Au replay.
     # Keep routine PR/push feedback capped separately; do not truncate that tier.
-    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 20 }}
+    # The core shard can spend over 18 minutes in pytest alone; include native
+    # setup plus coverage/artifact cleanup without truncating scientific tests.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}
     env:
       CCACHE_MAXSIZE: 1G
       # PySCF and NumPy can each fan out through BLAS/OpenMP. Keep those
