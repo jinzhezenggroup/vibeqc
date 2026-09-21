@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/one_electron_kernel_abi.cuh",
+  "reason": "Scalar/pointer CUDA entry parameter declarations and direct field binding for the existing immutable one-electron view; no scientific contraction or integral equation is defined here.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}
