@@ -154,7 +154,7 @@ void test_identities() {
   require(std::strcmp(vibeqc_d3_provider_identity(), "vibeqc-native-d3-v2") == 0,
           "unexpected D3 provider identity");
   require(std::strcmp(vibeqc_d3_scheduler_identity(),
-                      "adaptive-pair-cooperative-ragged-v1") == 0,
+                      "ragged-system-cooperative-pair-v1") == 0,
           "unexpected D3 scheduler identity");
   require(std::strlen(vibeqc_d3_table_sha256()) == 64, "missing D3 table identity");
   require(std::strlen(vibeqc_d3_radii_sha256()) == 64, "missing D3 radii identity");

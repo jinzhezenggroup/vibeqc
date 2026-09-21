@@ -40,7 +40,6 @@ D3ResourceUsage resources_for(vibeqc_backend backend, std::size_t systems, std::
   } else if (backend == VIBEQC_BACKEND_CUDA) {
     r.workspace_bytes = d3_ragged_workspace_elements(atoms) * sizeof(double);
     r.device_bytes = (systems + 1) * sizeof(std::uint32_t) + atoms * sizeof(std::int32_t) +
-                     (systems + 1) * sizeof(std::uint64_t) +
                      3 * atoms * sizeof(double) + 2 * systems * sizeof(std::uint8_t) +
                      systems * sizeof(D3Status) + systems * sizeof(double) +
                      3 * atoms * sizeof(double) + r.workspace_bytes + r.table_bytes;

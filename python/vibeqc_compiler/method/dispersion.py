@@ -66,7 +66,12 @@ class D3Spec:
             if not math.isfinite(value):
                 raise ValueError(f"{field} must be finite")
             object.__setattr__(self, field, float(value) if value else 0.0)
-        if self.s6 < 0 or self.s9 < 0 or self.pair_switch_width < 0 or self.atm_switch_width < 0:
+        if (
+            self.s6 < 0
+            or self.s9 < 0
+            or self.pair_switch_width < 0
+            or self.atm_switch_width < 0
+        ):
             raise ValueError("D3 scaling/switch parameters must be nonnegative")
 
         for field in ("cn_cutoff", "pair_cutoff", "atm_cutoff"):
@@ -251,6 +256,7 @@ def pbe_d3_bj_spec() -> typing.Any:
 def pbe0_d3_bj_spec() -> typing.Any:
     """Audited PBE0-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
     return D3Spec(**_parameters.d3_parameters("PBE0-D3(BJ)"))
+
 
 def pbe_d3_bj_atm_spec() -> D3Spec:
     """Explicit PBE-D3(BJ)-ATM capability using the pinned BJ pair model."""

@@ -192,6 +192,7 @@ def test_canonical_methodir_composition_and_identity() -> None:
     hybrid = resolve_method(replace(METHOD_CATALOG["PBE0"], dispersion=spec))
     assert len(hybrid.primitives) == 3
 
+
 def test_variant_capabilities_are_explicit_and_fail_closed() -> None:
     bj = pbe_d3_bj_spec()
     zero = pbe_d3_zero_spec()

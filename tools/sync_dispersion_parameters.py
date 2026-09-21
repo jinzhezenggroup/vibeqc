@@ -229,7 +229,9 @@ def build_catalog(
         source = d3_zero_upstream[key]
         # Some upstream functionals declare the zero-damping variant without a
         # complete parameter tuple. Such records are not executable capability.
-        if any(source.get(field) is None for field in ("s6", "s8", "rs6", "rs8", "alp")):
+        if any(
+            source.get(field) is None for field in ("s6", "s8", "rs6", "rs8", "alp")
+        ):
             continue
         parameters = {
             "s6": _finite(source.get("s6"), f"d3-zero/{key}.s6"),

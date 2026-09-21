@@ -181,8 +181,12 @@ class D3CorrectionBatch:
             )
         self.table_sha256 = table_sha256
         self.radii_sha256 = radii_sha256
-        self.provider_identity = self._library.vibeqc_d3_provider_identity().decode("ascii")
-        self.scheduler_identity = self._library.vibeqc_d3_scheduler_identity().decode("ascii")
+        self.provider_identity = self._library.vibeqc_d3_provider_identity().decode(
+            "ascii"
+        )
+        self.scheduler_identity = self._library.vibeqc_d3_scheduler_identity().decode(
+            "ascii"
+        )
 
         backend = (
             _native.BACKEND_CUDA if device == "cuda" else _native.BACKEND_CPU_REFERENCE
@@ -254,7 +258,9 @@ class D3CorrectionBatch:
             )
             raw_variant = self._library.vibeqc_d3_batch_variant_identity(self._batch)
             if not raw_variant:
-                raise RuntimeError("production D3 did not publish a prepared variant identity")
+                raise RuntimeError(
+                    "production D3 did not publish a prepared variant identity"
+                )
             self.variant_identity = raw_variant.decode("ascii")
             expected_variant = (
                 "d3.zero-two-body"

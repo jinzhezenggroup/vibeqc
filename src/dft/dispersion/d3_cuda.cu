@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "d3_data.hpp"
 #include "dft/dispersion/d3_runtime.hpp"
@@ -15,10 +14,7 @@ struct D3CudaOwner {
   cudaStream_t stream{};
   std::uint32_t systems{};
   std::uint64_t atoms{};
-  std::uint64_t pair_count{};
-  std::uint32_t maximum_atoms{};
   std::uint32_t* offsets{};
-  std::uint64_t* pair_offsets{};
   std::int32_t* atomic_numbers{};
   double* coordinates{};
   std::uint8_t* active{};
@@ -37,9 +33,6 @@ namespace {
 
 inline constexpr unsigned kD3CooperativeThreads = 128;
 inline constexpr std::size_t kD3CooperativeMinimumAtoms = 8;
-inline constexpr unsigned kD3PairParallelThreads = 256;
-inline constexpr std::uint32_t kD3PairParallelMaximumSystems = 16;
-inline constexpr std::uint32_t kD3PairParallelMinimumAtoms = 64;
 
 class DeviceScope {
  public:
@@ -88,248 +81,6 @@ bool upload(cudaStream_t stream, T* destination, const T* source, std::size_t co
   if (error == cudaSuccess) return true;
   detail = std::string("D3 CUDA setup upload failed: ") + cudaGetErrorString(error);
   return false;
-}
-
-__device__ inline void d3_record_failure(D3Status* statuses, std::uint32_t system,
-                                         D3Status status) {
-  atomicMax(reinterpret_cast<int*>(statuses) + system, static_cast<int>(status));
-}
-
-template <typename Offset>
-__device__ inline std::uint32_t d3_locate_system(const Offset* offsets, std::uint32_t systems,
-                                                  std::uint64_t value) {
-  std::uint32_t lower = 0;
-  std::uint32_t upper = systems;
-  while (lower + 1 < upper) {
-    const auto middle = lower + (upper - lower) / 2;
-    if (static_cast<std::uint64_t>(offsets[middle]) <= value)
-      lower = middle;
-    else
-      upper = middle;
-  }
-  return lower;
-}
-
-__device__ inline void d3_decode_pair(std::uint64_t ordinal, std::size_t& first,
-                                      std::size_t& second) {
-  second = static_cast<std::size_t>(
-      (1.0 + sqrt(1.0 + 8.0 * static_cast<double>(ordinal))) * 0.5);
-  const auto base = static_cast<std::uint64_t>(second) * (second - 1) / 2;
-  first = static_cast<std::size_t>(ordinal - base);
-}
-
-__device__ inline void d3_workspace_view(double* workspace, std::size_t begin, std::size_t atoms,
-                                         double*& weights, double*& derivatives,
-                                         double*& adjoints, double*& cn) {
-  weights = workspace + 16 * begin;
-  derivatives = weights + 7 * atoms;
-  adjoints = derivatives + 7 * atoms;
-  cn = adjoints + atoms;
-}
-
-__global__ void d3_validate_atoms_kernel(
-    std::uint64_t total_atoms, std::uint32_t systems, const std::uint32_t* offsets,
-    const std::int32_t* atomic_numbers, const double* coordinates, const std::uint8_t* active,
-    D3Status* statuses) {
-  const auto atom = static_cast<std::uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (atom >= total_atoms) return;
-  const auto system = d3_locate_system(offsets, systems, atom);
-  if (!active[system]) return;
-  if (atomic_numbers[atom] < 1 || atomic_numbers[atom] > 86) {
-    d3_record_failure(statuses, system, D3Status::unsupported);
-    return;
-  }
-  for (int axis = 0; axis < 3; ++axis) {
-    if (!d3_detail::finite(coordinates[3 * atom + axis])) {
-      d3_record_failure(statuses, system, D3Status::invalid_argument);
-      return;
-    }
-  }
-}
-
-__global__ void d3_cn_pair_kernel(
-    std::uint64_t total_pairs, std::uint32_t systems, const std::uint32_t* offsets,
-    const std::uint64_t* pair_offsets, const std::int32_t* atomic_numbers,
-    const double* coordinates, const std::uint8_t* active, D3ModelParameters parameters,
-    D3Tables tables, double* workspace, D3Status* statuses) {
-  const auto pair = static_cast<std::uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (pair >= total_pairs) return;
-  const auto system = d3_locate_system(pair_offsets, systems, pair);
-  if (!active[system] || statuses[system] != D3Status::success) return;
-  const std::size_t begin = offsets[system];
-  const std::size_t atoms = offsets[system + 1] - offsets[system];
-  std::size_t first{}, second{};
-  d3_decode_pair(pair - pair_offsets[system], first, second);
-  const auto global_first = begin + first;
-  const auto global_second = begin + second;
-  const double dx = coordinates[3 * global_first] - coordinates[3 * global_second];
-  const double dy = coordinates[3 * global_first + 1] - coordinates[3 * global_second + 1];
-  const double dz = coordinates[3 * global_first + 2] - coordinates[3 * global_second + 2];
-  const double r2 = dx * dx + dy * dy + dz * dz;
-  if (!d3_detail::finite(r2) || r2 < 1.0e-12) {
-    d3_record_failure(statuses, system, D3Status::numerical_failure);
-    return;
-  }
-  const double cn_cutoff =
-      parameters.damping == D3Damping::bj ? parameters.bj.cn_cutoff : parameters.zero.cn_cutoff;
-  if (cn_cutoff > 0.0 && r2 > cn_cutoff * cn_cutoff) return;
-  const double radius = tables.elements[atomic_numbers[global_first] - 1].covalent_radius +
-                        tables.elements[atomic_numbers[global_second] - 1].covalent_radius;
-  const double value = d3_detail::logistic(16.0 * (radius / sqrt(r2) - 1.0));
-  double *weights, *derivatives, *adjoints, *cn;
-  d3_workspace_view(workspace, begin, atoms, weights, derivatives, adjoints, cn);
-  (void)weights;
-  (void)derivatives;
-  (void)adjoints;
-  atomicAdd(cn + first, value);
-  atomicAdd(cn + second, value);
-}
-
-__global__ void d3_prepare_weights_kernel(
-    std::uint64_t total_atoms, std::uint32_t systems, const std::uint32_t* offsets,
-    const std::int32_t* atomic_numbers, const std::uint8_t* active, D3Tables tables,
-    double* workspace, D3Status* statuses) {
-  const auto atom = static_cast<std::uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (atom >= total_atoms) return;
-  const auto system = d3_locate_system(offsets, systems, atom);
-  if (!active[system] || statuses[system] != D3Status::success) return;
-  const std::size_t begin = offsets[system];
-  const std::size_t atoms = offsets[system + 1] - offsets[system];
-  const std::size_t local = atom - begin;
-  double *weights, *derivatives, *adjoints, *cn;
-  d3_workspace_view(workspace, begin, atoms, weights, derivatives, adjoints, cn);
-  if (!d3_detail::prepare_atom_weights(local, atomic_numbers + begin, cn, tables, weights,
-                                       derivatives))
-    d3_record_failure(statuses, system, D3Status::numerical_failure);
-}
-
-__global__ void d3_pair_energy_gradient_kernel(
-    std::uint64_t total_pairs, std::uint32_t systems, const std::uint32_t* offsets,
-    const std::uint64_t* pair_offsets, const std::int32_t* atomic_numbers,
-    const double* coordinates, const std::uint8_t* active, const std::uint8_t* want_gradient,
-    D3ModelParameters parameters, D3Tables tables, double* workspace, D3Status* statuses,
-    double* energies, double* gradients) {
-  const auto pair = static_cast<std::uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (pair >= total_pairs) return;
-  const auto system = d3_locate_system(pair_offsets, systems, pair);
-  if (!active[system] || statuses[system] != D3Status::success) return;
-  const std::size_t begin = offsets[system];
-  const std::size_t atoms = offsets[system + 1] - offsets[system];
-  std::size_t first{}, second{};
-  d3_decode_pair(pair - pair_offsets[system], first, second);
-  const auto global_first = begin + first;
-  const auto global_second = begin + second;
-  const double dx = coordinates[3 * global_first] - coordinates[3 * global_second];
-  const double dy = coordinates[3 * global_first + 1] - coordinates[3 * global_second + 1];
-  const double dz = coordinates[3 * global_first + 2] - coordinates[3 * global_second + 2];
-  const double r2 = dx * dx + dy * dy + dz * dz;
-  D3PairTerm term{};
-  if (!d3_pair_term(first, second, atomic_numbers + begin, r2, parameters, tables, term)) {
-    d3_record_failure(statuses, system, D3Status::numerical_failure);
-    return;
-  }
-  if (!term.included) return;
-  double *weights, *derivatives, *adjoints, *cn;
-  d3_workspace_view(workspace, begin, atoms, weights, derivatives, adjoints, cn);
-  (void)cn;
-  const auto c = d3_detail::coefficient(first, second, atomic_numbers + begin, tables, weights,
-                                        derivatives);
-  if (!d3_detail::finite(c.c6) || !d3_detail::finite(c.first_cn) ||
-      !d3_detail::finite(c.second_cn)) {
-    d3_record_failure(statuses, system, D3Status::numerical_failure);
-    return;
-  }
-  atomicAdd(energies + system, -c.c6 * term.damping);
-  if (!want_gradient[system]) return;
-  atomicAdd(adjoints + first, -c.first_cn * term.damping);
-  atomicAdd(adjoints + second, -c.second_cn * term.damping);
-  const double scale = -c.c6 * term.radial_derivative_over_distance;
-  atomicAdd(gradients + 3 * global_first, scale * dx);
-  atomicAdd(gradients + 3 * global_first + 1, scale * dy);
-  atomicAdd(gradients + 3 * global_first + 2, scale * dz);
-  atomicAdd(gradients + 3 * global_second, -scale * dx);
-  atomicAdd(gradients + 3 * global_second + 1, -scale * dy);
-  atomicAdd(gradients + 3 * global_second + 2, -scale * dz);
-}
-
-__global__ void d3_cn_response_pair_kernel(
-    std::uint64_t total_pairs, std::uint32_t systems, const std::uint32_t* offsets,
-    const std::uint64_t* pair_offsets, const std::int32_t* atomic_numbers,
-    const double* coordinates, const std::uint8_t* active, const std::uint8_t* want_gradient,
-    D3ModelParameters parameters, D3Tables tables, double* workspace, D3Status* statuses,
-    double* gradients) {
-  const auto pair = static_cast<std::uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (pair >= total_pairs) return;
-  const auto system = d3_locate_system(pair_offsets, systems, pair);
-  if (!active[system] || !want_gradient[system] || statuses[system] != D3Status::success) return;
-  const std::size_t begin = offsets[system];
-  const std::size_t atoms = offsets[system + 1] - offsets[system];
-  std::size_t first{}, second{};
-  d3_decode_pair(pair - pair_offsets[system], first, second);
-  const auto global_first = begin + first;
-  const auto global_second = begin + second;
-  const double dx = coordinates[3 * global_first] - coordinates[3 * global_second];
-  const double dy = coordinates[3 * global_first + 1] - coordinates[3 * global_second + 1];
-  const double dz = coordinates[3 * global_first + 2] - coordinates[3 * global_second + 2];
-  const double r2 = dx * dx + dy * dy + dz * dz;
-  const double cn_cutoff =
-      parameters.damping == D3Damping::bj ? parameters.bj.cn_cutoff : parameters.zero.cn_cutoff;
-  if (cn_cutoff > 0.0 && r2 > cn_cutoff * cn_cutoff) return;
-  const double r = sqrt(r2);
-  const double radius = tables.elements[atomic_numbers[global_first] - 1].covalent_radius +
-                        tables.elements[atomic_numbers[global_second] - 1].covalent_radius;
-  const double argument = 16.0 * (radius / r - 1.0);
-  const double e = exp(-fabs(argument));
-  const double logistic_derivative = e / ((1.0 + e) * (1.0 + e));
-  const double derivative = -16.0 * radius / r2 * logistic_derivative;
-  double *weights, *derivatives, *adjoints, *cn;
-  d3_workspace_view(workspace, begin, atoms, weights, derivatives, adjoints, cn);
-  (void)weights;
-  (void)derivatives;
-  (void)cn;
-  const double scale = (adjoints[first] + adjoints[second]) * derivative / r;
-  atomicAdd(gradients + 3 * global_first, scale * dx);
-  atomicAdd(gradients + 3 * global_first + 1, scale * dy);
-  atomicAdd(gradients + 3 * global_first + 2, scale * dz);
-  atomicAdd(gradients + 3 * global_second, -scale * dx);
-  atomicAdd(gradients + 3 * global_second + 1, -scale * dy);
-  atomicAdd(gradients + 3 * global_second + 2, -scale * dz);
-}
-
-__global__ void d3_atm_accumulate_kernel(
-    std::uint32_t systems, const std::uint32_t* offsets, const std::int32_t* atomic_numbers,
-    const double* coordinates, const std::uint8_t* active, const std::uint8_t* want_gradient,
-    D3ModelParameters parameters, D3Tables tables, double* workspace, D3Status* statuses,
-    double* energies, double* gradients) {
-  const auto system = static_cast<std::uint32_t>(blockIdx.x);
-  if (system >= systems || threadIdx.x != 0 || !parameters.atm_enabled || !active[system] ||
-      statuses[system] != D3Status::success)
-    return;
-  const std::size_t begin = offsets[system];
-  const std::size_t atoms = offsets[system + 1] - offsets[system];
-  double* gradient = want_gradient[system] ? gradients + 3 * begin : nullptr;
-  const auto status =
-      evaluate_d3_bj_atm(atoms, atomic_numbers + begin, coordinates + 3 * begin, parameters.atm,
-                         tables, workspace + 16 * begin, 16 * atoms, energies + system, gradient,
-                         true);
-  statuses[system] = status;
-}
-
-__global__ void d3_sanitize_kernel(std::uint64_t total_atoms, std::uint32_t systems,
-                                   const std::uint32_t* offsets, const std::uint8_t* active,
-                                   const std::uint8_t* want_gradient, const D3Status* statuses,
-                                   double* energies, double* gradients) {
-  const auto atom = static_cast<std::uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (atom < total_atoms) {
-    const auto system = d3_locate_system(offsets, systems, atom);
-    if (!active[system] || !want_gradient[system] || statuses[system] != D3Status::success) {
-      gradients[3 * atom] = 0.0;
-      gradients[3 * atom + 1] = 0.0;
-      gradients[3 * atom + 2] = 0.0;
-    }
-  }
-  if (atom < systems && (!active[atom] || statuses[atom] != D3Status::success))
-    energies[atom] = 0.0;
 }
 
 __global__ void d3_ragged_kernel(std::uint32_t systems, const std::uint32_t* offsets,
@@ -566,16 +317,6 @@ D3CudaOwner* create_d3_cuda_owner(int device_id, std::span<const std::uint32_t> 
   owner->device_id = device_id;
   owner->systems = static_cast<std::uint32_t>(offsets.size() - 1);
   owner->atoms = atomic_numbers.size();
-  owner->maximum_atoms = resources.maximum_atoms;
-
-  std::vector<std::uint64_t> pair_offsets(owner->systems + 1, 0);
-  for (std::uint32_t system = 0; system < owner->systems; ++system) {
-    const auto atoms_in_system =
-        static_cast<std::uint64_t>(offsets[system + 1] - offsets[system]);
-    pair_offsets[system + 1] =
-        pair_offsets[system] + atoms_in_system * (atoms_in_system - 1) / 2;
-  }
-  owner->pair_count = pair_offsets.back();
 
   auto error = cudaStreamCreateWithFlags(&owner->stream, cudaStreamNonBlocking);
   if (error != cudaSuccess) {
@@ -586,7 +327,6 @@ D3CudaOwner* create_d3_cuda_owner(int device_id, std::span<const std::uint32_t> 
   const auto atoms = static_cast<std::size_t>(owner->atoms);
   const auto systems = static_cast<std::size_t>(owner->systems);
   if (!allocate(owner->offsets, offsets.size(), detail) ||
-      !allocate(owner->pair_offsets, pair_offsets.size(), detail) ||
       !allocate(owner->atomic_numbers, atoms, detail) ||
       !allocate(owner->coordinates, 3 * atoms, detail) ||
       !allocate(owner->active, systems, detail) ||
@@ -604,8 +344,6 @@ D3CudaOwner* create_d3_cuda_owner(int device_id, std::span<const std::uint32_t> 
   }
 
   if (!upload(owner->stream, owner->offsets, offsets.data(), offsets.size(), detail) ||
-      !upload(owner->stream, owner->pair_offsets, pair_offsets.data(), pair_offsets.size(),
-              detail) ||
       !upload(owner->stream, owner->atomic_numbers, atomic_numbers.data(), atoms, detail) ||
       !upload(owner->stream, owner->elements, d3_data::kElements.data(), d3_data::kElements.size(),
               detail) ||
@@ -648,7 +386,6 @@ void destroy_d3_cuda_owner(D3CudaOwner* owner) noexcept {
     cudaFree(owner->active);
     cudaFree(owner->coordinates);
     cudaFree(owner->atomic_numbers);
-    cudaFree(owner->pair_offsets);
     cudaFree(owner->offsets);
     if (owner->stream) cudaStreamDestroy(owner->stream);
   }
@@ -689,60 +426,16 @@ vibeqc_status execute_d3_cuda(D3CudaOwner* owner, const D3ModelParameters& param
 
   // Failed, inactive and energy-only rows are copied with successful peers.
   // Initialize every publication slot rather than returning stale device data.
-  auto clear = cudaMemsetAsync(owner->gradients, 0, gradients.size() * sizeof(double), owner->stream);
+  const auto clear =
+      cudaMemsetAsync(owner->gradients, 0, gradients.size() * sizeof(double), owner->stream);
   if (clear != cudaSuccess) return cuda_failure(clear, "clear D3 gradient publication", detail);
   const D3Tables tables{owner->elements, owner->pairs, owner->reference_cn, owner->reference_c6};
-  const bool pair_parallel =
-      owner->systems <= kD3PairParallelMaximumSystems &&
-      owner->maximum_atoms >= kD3PairParallelMinimumAtoms;
-  if (pair_parallel) {
-    clear = cudaMemsetAsync(owner->statuses, 0, owner->systems * sizeof(D3Status), owner->stream);
-    if (clear != cudaSuccess) return cuda_failure(clear, "clear D3 pair statuses", detail);
-    clear = cudaMemsetAsync(owner->energies, 0, owner->systems * sizeof(double), owner->stream);
-    if (clear != cudaSuccess) return cuda_failure(clear, "clear D3 pair energies", detail);
-    clear = cudaMemsetAsync(owner->workspace, 0,
-                            d3_ragged_workspace_elements(owner->atoms) * sizeof(double),
-                            owner->stream);
-    if (clear != cudaSuccess) return cuda_failure(clear, "clear D3 pair workspace", detail);
-
-    const auto atom_blocks = static_cast<unsigned>(
-        (owner->atoms + kD3PairParallelThreads - 1) / kD3PairParallelThreads);
-    const auto pair_blocks = static_cast<unsigned>(
-        (owner->pair_count + kD3PairParallelThreads - 1) / kD3PairParallelThreads);
-    d3_validate_atoms_kernel<<<atom_blocks, kD3PairParallelThreads, 0, owner->stream>>>(
-        owner->atoms, owner->systems, owner->offsets, owner->atomic_numbers, owner->coordinates,
-        owner->active, owner->statuses);
-    d3_cn_pair_kernel<<<pair_blocks, kD3PairParallelThreads, 0, owner->stream>>>(
-        owner->pair_count, owner->systems, owner->offsets, owner->pair_offsets,
-        owner->atomic_numbers, owner->coordinates, owner->active, parameters, tables,
-        owner->workspace, owner->statuses);
-    d3_prepare_weights_kernel<<<atom_blocks, kD3PairParallelThreads, 0, owner->stream>>>(
-        owner->atoms, owner->systems, owner->offsets, owner->atomic_numbers, owner->active, tables,
-        owner->workspace, owner->statuses);
-    d3_pair_energy_gradient_kernel<<<pair_blocks, kD3PairParallelThreads, 0, owner->stream>>>(
-        owner->pair_count, owner->systems, owner->offsets, owner->pair_offsets,
-        owner->atomic_numbers, owner->coordinates, owner->active, owner->want_gradient, parameters,
-        tables, owner->workspace, owner->statuses, owner->energies, owner->gradients);
-    d3_cn_response_pair_kernel<<<pair_blocks, kD3PairParallelThreads, 0, owner->stream>>>(
-        owner->pair_count, owner->systems, owner->offsets, owner->pair_offsets,
-        owner->atomic_numbers, owner->coordinates, owner->active, owner->want_gradient, parameters,
-        tables, owner->workspace, owner->statuses, owner->gradients);
-    if (parameters.atm_enabled)
-      d3_atm_accumulate_kernel<<<owner->systems, 1, 0, owner->stream>>>(
-          owner->systems, owner->offsets, owner->atomic_numbers, owner->coordinates, owner->active,
-          owner->want_gradient, parameters, tables, owner->workspace, owner->statuses,
-          owner->energies, owner->gradients);
-    d3_sanitize_kernel<<<atom_blocks, kD3PairParallelThreads, 0, owner->stream>>>(
-        owner->atoms, owner->systems, owner->offsets, owner->active, owner->want_gradient,
-        owner->statuses, owner->energies, owner->gradients);
-  } else {
-    d3_ragged_kernel<<<owner->systems, kD3CooperativeThreads, 0, owner->stream>>>(
-        owner->systems, owner->offsets, owner->atomic_numbers, owner->coordinates, owner->active,
-        owner->want_gradient, parameters, tables, owner->workspace, owner->statuses,
-        owner->energies, owner->gradients);
-  }
+  d3_ragged_kernel<<<owner->systems, kD3CooperativeThreads, 0, owner->stream>>>(
+      owner->systems, owner->offsets, owner->atomic_numbers, owner->coordinates, owner->active,
+      owner->want_gradient, parameters, tables, owner->workspace, owner->statuses, owner->energies,
+      owner->gradients);
   auto error = cudaGetLastError();
-  if (error != cudaSuccess) return cuda_failure(error, "launch D3 scheduled CUDA kernels", detail);
+  if (error != cudaSuccess) return cuda_failure(error, "launch D3 ragged CUDA kernel", detail);
 
   auto copy_d2h = [&](void* destination, const void* source, std::size_t bytes,
                       const char* action) -> vibeqc_status {
