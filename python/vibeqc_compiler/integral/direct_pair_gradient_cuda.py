@@ -1,4 +1,18 @@
-#pragma once
+"""Compiler-owned CUDA emission for the Direct-HF high-order pair-gradient helper.
+
+The retained order-4/5/6 Direct consumer still owns its execution schedule while
+this module owns the subset/Wick coefficient and first-center derivative
+mathematics.  Keeping the generated ABI identical lets retirement proceed
+without changing the production selector or resource behavior.
+"""
+
+from __future__ import annotations
+
+
+def emit_direct_high_order_pair_gradient_header() -> str:
+    """Emit the generated CUDA helper consumed by retained high-order Direct force."""
+
+    return r"""#pragma once
 
 #include <cuda_runtime.h>
 
@@ -13,9 +27,10 @@
 #include "scf/cuda/gaussian_geometry.cuh"
 #include "scf/cuda/packed_basis.hpp"
 
-// Retained direct integral arithmetic for pair high order gradient.
-// Shared definitions use ordinary inline linkage; host plans and queue policy
-// remain outside this numerical owner.
+// Generated from the compiler-owned subset/Wick pair-gradient lowering.
+// Do not edit this build artifact: change
+// python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py instead.
+// Native Direct-HF consumers retain scheduling/launch ownership only.
 namespace vibeqc::scf::cuda_execution {
 
 /** One sparse coefficient term and its first-center gradient. */
@@ -173,3 +188,4 @@ __device__ inline HighOrderPairGradientTerm make_high_order_pair_gradient_term(
 }
 
 }  // namespace vibeqc::scf::cuda_execution
+"""

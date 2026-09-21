@@ -12,13 +12,20 @@ import tempfile
 import time
 import typing
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
-from vibeqc_compiler.common.gpu_profitability import GpuProfitability
+from vibeqc_compiler.common.gpu_profitability import (
+    ENDPOINT_NOISE_FRACTION,
+    GpuProfitability,
+)
 
 from ..cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
 from ..cuda_schedule import (
+    AlgebraForm,
+    AlgebraFusion,
+    AlgebraOrdering,
+    AlgebraPlacement,
     ScheduleIR,
     ScheduleKind,
 )
@@ -92,6 +99,29 @@ def _candidate_profitability(
         compile_seconds=compile_row.get("duration_seconds"),
         endpoint_seconds=None if endpoint_ms is None else endpoint_ms / 1000.0,
     )
+
+
+def _algebra_resource_baseline_key(trial: ScheduleTrial) -> str | None:
+    """Return the same execution shape with conservative scalar algebra knobs."""
+
+    if trial.schedule.kind != ScheduleKind.PACKED_TASKS:
+        return None
+    baseline_schedule = replace(
+        trial.schedule,
+        algebra_placement=AlgebraPlacement.MATERIALIZED_CSE,
+        algebra_ordering=AlgebraOrdering.TOPOLOGICAL,
+        algebra_fusion=AlgebraFusion.SEPARATE,
+        algebra_form=AlgebraForm.BINARY,
+    )
+    if baseline_schedule == trial.schedule:
+        return None
+    return ScheduleTrial(
+        spec=trial.spec,
+        schedule=baseline_schedule,
+        target=trial.target,
+        consumer=trial.consumer,
+        integral=trial.integral,
+    ).key
 
 
 def _run_autotune(
@@ -344,6 +374,10 @@ def _run_autotune(
 
         candidates = []
         profitability_by_key: dict[str, GpuProfitability] = {}
+        compiled_trials_by_key = {
+            trial.key: (trial, compile_row)
+            for trial, compile_row in zip(trials, compile_rows, strict=True)
+        }
         passing_by_class: dict[
             str,
             list[tuple[ScheduleTrial, dict[str, object], dict[str, object]]],
@@ -459,12 +493,49 @@ def _run_autotune(
                         )
                 else:
                     speedup_vs_baseline = 1.0 if is_production_baseline else None
-            accepted = not reasons
             occupancy = estimate_occupancy(resources, trial, target)
             profitability = _candidate_profitability(
                 trial, compile_row, resources, occupancy, runtime
             )
             profitability_by_key[trial.key] = profitability
+
+            resource_baseline_key = _algebra_resource_baseline_key(trial)
+            endpoint_regression_reasons: list[str] = []
+            resource_regression_reasons: list[str] = []
+            if resource_baseline_key is not None:
+                baseline_pair = compiled_trials_by_key.get(resource_baseline_key)
+                if baseline_pair is not None:
+                    baseline_trial, baseline_compile_row = baseline_pair
+                    baseline_resources = baseline_compile_row["resources"]
+                    baseline_occupancy = estimate_occupancy(
+                        baseline_resources, baseline_trial, target
+                    )
+                    baseline_profitability = _candidate_profitability(
+                        baseline_trial,
+                        baseline_compile_row,
+                        baseline_resources,
+                        baseline_occupancy,
+                        runtime_rows.get(resource_baseline_key),
+                    )
+                    endpoint_regression_reasons.extend(
+                        profitability.endpoint_regressions_against(
+                            baseline_profitability
+                        )
+                    )
+                    resource_regression_reasons.extend(
+                        profitability.resource_regressions_against(
+                            baseline_profitability
+                        )
+                    )
+                    reasons.extend(
+                        "endpoint regression vs canonical algebra peer: " + reason
+                        for reason in endpoint_regression_reasons
+                    )
+                    reasons.extend(
+                        "resource regression vs canonical algebra peer: " + reason
+                        for reason in resource_regression_reasons
+                    )
+            accepted = not reasons
             row = {
                 "shell_class": trial.spec.name,
                 "consumer": trial.consumer.value,
@@ -480,6 +551,9 @@ def _run_autotune(
                 "resources": [asdict(item) for item in resources],
                 "occupancy": occupancy,
                 "profitability": profitability.to_payload(),
+                "resource_baseline_trial_key": resource_baseline_key,
+                "endpoint_regression_reasons": endpoint_regression_reasons,
+                "resource_regression_reasons": resource_regression_reasons,
                 "runtime": runtime,
                 "production_baseline": is_production_baseline,
                 "speedup_vs_production_baseline": speedup_vs_baseline,
@@ -517,7 +591,7 @@ def _run_autotune(
                 # noise band. Inside it, use the shared GPU resource key so
                 # rematerialization/fusion choices cannot win merely by making
                 # a smaller source artifact while retaining worse live state.
-                near_fastest = elapsed_ms <= fastest * 1.01
+                near_fastest = elapsed_ms <= fastest * (1.0 + ENDPOINT_NOISE_FRACTION)
                 if near_fastest:
                     return (
                         0,
@@ -701,6 +775,9 @@ def _run_autotune(
                 "maximum_shared_bytes": arguments.max_shared_bytes,
                 "compile_timeout_seconds": arguments.compile_timeout,
                 "spills_allowed": False,
+                "resource_regression_endpoint_noise_fraction": (
+                    ENDPOINT_NOISE_FRACTION
+                ),
                 "experimental_subgroup_winners_allowed": (
                     arguments.allow_experimental_subgroup_winner
                 ),

@@ -167,6 +167,7 @@ class DFProvider:
         self.auxiliary_tile = auxiliary_tile
         self._cache = {}
         self._retained = 0
+        self._external_reserved = 0
         self._lock = threading.RLock()
         self._closed = False
         self.statistics = {
@@ -179,6 +180,7 @@ class DFProvider:
             "host_transform_calls": 0,
             "subsequent_h2d_bytes": 0,
             "endpoint_seconds": 0.0,
+            "external_reserved_bytes": 0,
         }
 
     def _check(self) -> None:
@@ -205,6 +207,40 @@ class DFProvider:
             + self.metric.inverse_square_root.nbytes
             + 8 * (6 * stage + 3 * count * len(p) * len(q) + 2 * n * (len(p) + len(q)))
         )
+
+    def reserve_external(self, count: typing.Any) -> None:
+        """Charge caller-owned factorized arrays against this provider budget."""
+
+        with self._lock:
+            self._check()
+            if type(count) is not int or count < 0:
+                raise ValueError(
+                    "DF external reservation must be a nonnegative integer"
+                )
+            resident = (
+                getattr(self.source, "numeric_bytes", 0)
+                + getattr(self.snapshot, "numeric_bytes", 0)
+                + getattr(
+                    getattr(self, "metric", None), "inverse_square_root", np.empty(0)
+                ).nbytes
+            )
+            peak = resident + self._retained + self._external_reserved + count
+            if peak > self.budget_bytes:
+                raise MemoryError(
+                    f"DF external reservation requires {peak} numeric bytes"
+                )
+            self._external_reserved += count
+            self.statistics["external_reserved_bytes"] = self._external_reserved
+            self.statistics["peak_bytes"] = max(self.statistics["peak_bytes"], peak)
+
+    def release_external(self, count: typing.Any) -> None:
+        """Release a previously charged caller-owned factorized allocation."""
+
+        with self._lock:
+            if type(count) is not int or count < 0 or count > self._external_reserved:
+                raise ValueError("invalid DF external reservation release")
+            self._external_reserved -= count
+            self.statistics["external_reserved_bytes"] = self._external_reserved
 
     def three_index(
         self,
@@ -241,7 +277,9 @@ class DFProvider:
                 or count > self.source.naux - auxiliary_begin
             ):
                 raise ValueError("invalid DF auxiliary tile")
-            peak = self._retained + self._capacity(p, q, count)
+            peak = (
+                self._retained + self._external_reserved + self._capacity(p, q, count)
+            )
             if peak > self.budget_bytes:
                 raise MemoryError(f"DF tile requires {peak} numeric bytes")
             self.statistics["peak_bytes"] = max(self.statistics["peak_bytes"], peak)
@@ -308,6 +346,7 @@ class DFProvider:
             )
             peak = (
                 self._retained
+                + self._external_reserved
                 + persistent
                 + max(self._capacity(p, q, count), self._capacity(r, s, count))
             )

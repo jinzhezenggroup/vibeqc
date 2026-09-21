@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.schedule import ScheduleContract
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -283,6 +284,10 @@ def test_static_accounting_reuses_combined_numeric_budget_and_labels_unknowns() 
     assert estimate["generated_static_data_bytes"] == baseline.static_data_bytes
     assert "excludes" in estimate["traffic_scope"]
     assert "calibrated" in estimate["compile_cost_proxy"]
+    contract = ScheduleContract.from_payload(estimate["schedule_contract"])
+    assert contract.consumer == "tensor.cuda"
+    assert contract.resources.device_bytes == baseline.device_bytes
+    assert contract.precision_schedule_hash == baseline.precision_schedule.identity
 
 
 def test_fusion_profitability_exposes_launch_traffic_pressure_tradeoff() -> None:
@@ -659,6 +664,28 @@ def test_negative_evidence_keeps_baseline_without_promoting(
         assert len(fake_cuda.compiled) == 1
     if failure == "resources":
         assert len(fake_cuda.prepared) == 1  # reject before loading/executing candidate
+
+
+def test_slower_fusion_is_rejected_by_shared_profitability_path(
+    tmp_path: typing.Any, fake_cuda: typing.Any
+) -> None:
+    fake_cuda.timings = {(128, -1.0): 12}
+    result = run_fake_tuning(
+        tmp_path,
+        schedules=[TensorSchedule(fuse=True)],
+        screening=None,
+    )
+
+    assert result.plan.schedule == TensorSchedule()
+    row = result.evidence["candidates"][0]
+    assert row["status"] == "rejected"
+    assert row["profitability_rejections"] == [
+        "endpoint speedup 0.833333x is below the required 1.02x"
+    ]
+    (fixture,) = row["endpoint_profitability"]
+    assert fixture["baseline_endpoint_seconds"] == 10
+    assert fixture["candidate"]["endpoint_seconds"] == 12
+    assert fixture["candidate"]["compiled"]["compiled_registers_per_thread"] == 32
 
 
 def test_candidate_overflow_fails_before_any_compilation(

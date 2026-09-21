@@ -6,6 +6,7 @@
 #include <new>
 
 #include "runtime/cuda_component_trace.hpp"
+#include "runtime/df_progress_trace.hpp"
 #include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 #include "scf/cuda/df_scf_factor.hpp"
@@ -181,29 +182,41 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
     detail = "VIBEQC_DF_FINAL_EXCHANGE must be auto, dense or occupied";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  runtime::df_progress::label("final_exchange_policy", policy ? policy : "auto");
+  const auto fallback = [](const char* reason) {
+    runtime::df_progress::label("final_exchange_fallback", reason);
+    return VIBEQC_STATUS_SUCCESS;
+  };
   // Keep the final-state ablation independent of the seed control.
   const bool packed = plan && plan->value_storage.pairs == DfPairStorage::SymmetricLower &&
                       plan->integral_source && plan->packed_raw;
-  if ((policy && std::string(policy) == "dense") || !plan || plan->batch_size != 1 ||
-      plan->streamed || (plan->integral_source && !packed) || plan->row_tile != plan->nbf ||
-      (!packed && plan->auxiliary_tile != plan->naux) || plan->nbf < 2)
-    return VIBEQC_STATUS_SUCCESS;
+  if (policy && std::string(policy) == "dense") return fallback("policy_dense");
+  if (!plan) return fallback("missing_plan");
+  if (plan->batch_size != 1) return fallback("non_singleton");
+  if (plan->streamed) return fallback("streamed");
+  if (plan->integral_source && !packed) return fallback("source_without_packed_values");
+  if (plan->row_tile != plan->nbf) return fallback("partial_ao_rows");
+  if (!packed && plan->auxiliary_tile != plan->naux) return fallback("partial_auxiliary");
+  if (plan->nbf < 2) return fallback("trivial_dimension");
   auto* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
-  if (!state || state->unrestricted || !state->occupied_exchange ||
-      density.size() != plan->matrix_elements || !finite_values(density))
-    return VIBEQC_STATUS_SUCCESS;
+  if (!state) return fallback("missing_persistent_state");
+  if (state->unrestricted) return fallback("unrestricted");
+  if (!state->occupied_exchange) return fallback("occupied_exchange_disabled");
+  if (density.size() != plan->matrix_elements || !finite_values(density))
+    return fallback("invalid_density");
   if (!policy || std::string(policy) == "auto") {
     if (state->final_alpha_occupied.size() != 1 || !state->final_beta_occupied.empty() ||
-        state->final_alpha_occupied[0] <= 0 ||
-        !qualified_resident_rhf_exchange(*plan, state->final_alpha_occupied[0]))
-      return VIBEQC_STATUS_SUCCESS;
+        state->final_alpha_occupied[0] <= 0)
+      return fallback("invalid_final_occupation");
+    if (!qualified_resident_rhf_exchange(*plan, state->final_alpha_occupied[0]))
+      return fallback("work_or_capacity_policy");
   }
   CudaDfFinalStateToken current;
   auto status = cuda_density_fitting_final_state_token(plan, 0, current, detail);
   if (status != VIBEQC_STATUS_SUCCESS && status != VIBEQC_STATUS_INVALID_ARGUMENT) return status;
   if (status != VIBEQC_STATUS_SUCCESS || expected != current) {
     detail.clear();
-    return VIBEQC_STATUS_SUCCESS;
+    return fallback("stale_final_state_token");
   }
   TraceOperation trace("final_state_retained_jk", plan->stream,
                        {1, plan->nbf, plan->naux, false, false});
@@ -236,7 +249,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
   if (errors[0] != 0 || errors[1] != 0 || info ||
       generation != current.identity.factor.density_generation) {
     trace_counter("identity_rejected", 1);
-    return VIBEQC_STATUS_SUCCESS;
+    return fallback("density_or_generation_mismatch");
   }
   // Both D and the full retained C were committed under this generation. The
   // strict selector still checks the resulting physical F[D] and eigenframe;
@@ -270,6 +283,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
           static_cast<std::size_t>(std::numeric_limits<int>::max()))
     plan->final_projection_token = current;
   trace_counter("accepted", 1);
+  runtime::df_progress::label("final_exchange_fallback", "none");
   used = true;
   return VIBEQC_STATUS_SUCCESS;
 }

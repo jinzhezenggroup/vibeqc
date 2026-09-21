@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from .capabilities import normalize_capabilities
 from .cuda_lowering import supports_component_lane_rys
 from .cuda_schedule import ScheduleIR, ScheduleKind
+from .cuda_target import cuda_target_info
+from .fused_schedule import build_fused_shell_plan
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .specialize import specialize_integral_ir
 
@@ -241,4 +243,21 @@ def _selection_integral(
         base,
         consumers=selected_consumers,
         recurrence=recurrence,
+    )
+
+
+def _as_selection(item: ShellClassSpec | KernelSelection) -> KernelSelection:
+    """Normalize compatibility callers to the explicit production IR."""
+
+    if isinstance(item, KernelSelection):
+        return item
+    # Historical bare-spec compatibility is intentionally isolated here.
+    # New production paths resolve an explicit profile/architecture first.
+    legacy_target = cuda_target_info("sm_120")
+    plan = build_fused_shell_plan(item, target=legacy_target)
+    return KernelSelection(
+        architecture=legacy_target.architecture,
+        spec=item,
+        consumers=(KernelConsumer.FORCE,),
+        schedule=plan.schedule,
     )
