@@ -2273,11 +2273,24 @@ def test_fixed_generated_task_arena_has_a_memory_admission_limit() -> None:
     """Route large grid-addressable buckets before a multi-GiB allocation."""
 
     source = _direct_cuda_source()
-    assert "direct_schedule.generated_task_arena_maximum_bytes" in source
+    assert "direct_schedule.fixed_topology.arena_maximum_bytes" in source
+    assert "direct_jk_bounded_streaming_task_capacity_limit" in source
     assert "resolve_direct_jk_schedule_policy" in source
     assert "direct_task_layout.exact_tile_count >" in source
     assert "sizeof(GeneratedShellTask)" in source
     assert "requested_bounded_direct_streaming = true" in source
+
+
+def test_direct_task_resource_domains_remain_separate() -> None:
+    """Do not reuse fixed-topology storage to size bounded streaming pages."""
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text()
+    begin = source.index("direct_jk_bounded_streaming_task_capacity_limit")
+    end = source.index("bool reuse_converged_fock_requested", begin)
+    capacity_source = source[begin:end]
+    assert "policy.fixed_topology" not in capacity_source
+    assert "policy.bounded_streaming.task_capacity_ceiling" in capacity_source
+    assert "policy.bounded_streaming.arena_maximum_bytes" in capacity_source
 
 
 def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
