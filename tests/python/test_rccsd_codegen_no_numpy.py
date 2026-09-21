@@ -27,3 +27,33 @@ def test_complete_rccsd_response_header_without_site_packages(tmp_path: Path) ->
     assert "run_iteration_cpu" in text
     assert "triples" in text
     assert "lambda" in text
+
+
+def test_generated_response_arena_expressions_have_bounded_depth(
+    tmp_path: Path,
+) -> None:
+    root = Path(__file__).resolve().parents[2]
+    output = tmp_path / "generated_rccsd_cpu.hpp"
+    subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            str(root / "tools/generate_rccsd_native.py"),
+            "--cpu-header",
+            str(output),
+        ],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        timeout=120,
+    )
+    # Clang's default parser rejects nesting above 256; do not raise that limit.
+    depth = maximum = 0
+    for character in output.read_text():
+        if character == "(":
+            depth += 1
+            maximum = max(maximum, depth)
+        elif character == ")":
+            depth -= 1
+    assert depth == 0
+    assert maximum < 32, f"generated response expression nesting is {maximum}"

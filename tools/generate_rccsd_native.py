@@ -347,8 +347,10 @@ def _cpu_node(node: typing.Any, number: int, names: dict[int, str]) -> list[str]
         lines += [
             f"  for(std::size_t i=0;i<{size};++i){{",
             "    double value=0.0;",
-            f"    if(!generated_scaled_bilinear({','.join(f'{arg}[i]' for arg in args)},value)) "
-            'throw std::runtime_error("nonfinite RCCSD scaled_bilinear");',
+            (
+                f"    if(!generated_scaled_bilinear({','.join(f'{arg}[i]' for arg in args)},value)) "
+                'throw std::runtime_error("nonfinite RCCSD scaled_bilinear");'
+            ),
             f"    {out}[i]=value;",
             "  }",
         ]
@@ -664,15 +666,17 @@ def _cpu_function(
 def _required_function(program: Program, name: str, *, batch_dim: bool = False) -> str:
     _prepare_program(program)
     pieces = [_size(node.spec) for node in program.live_nodes if node.op != "input"]
-    body = "0"
+    # Emit sequential checked additions rather than an expression whose parser
+    # nesting grows with the AD graph. Clang's default bracket limit is finite.
+    body = "std::size_t required=0;"
     for piece in pieces:
-        body = f"checked_add({body},{piece})"
+        body += f"required=checked_add(required,{piece});"
     dimensions = "std::size_t o,std::size_t v"
     if batch_dim:
         dimensions += ",std::size_t q"
     return (
         f"inline std::size_t {name}({dimensions}){{"
-        f"const std::size_t n=checked_add(o,v);return {body};}}"
+        f"[[maybe_unused]] const std::size_t n=checked_add(o,v);{body}return required;}}"
     )
 
 
