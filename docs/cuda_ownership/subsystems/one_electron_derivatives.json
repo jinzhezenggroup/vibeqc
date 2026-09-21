@@ -1,15 +1,14 @@
 {
-  "current_default": "Generated compiler-owned S/T/V weighted gradient with shell-warp scheduling; native cooperative execution is explicit only via VIBEQC_ONE_ELECTRON_DERIVATIVES=reference",
+  "current_default": "Generated compiler-owned S/T/V weighted gradient with nucleus-cooperative scheduling; cooperative ownership is projected into the shared compiler schedule/profile contract. Native/reference and legacy tensor controls are explicit diagnostics only.",
   "evidence": [
     "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json",
     "docs/one_electron_derivatives.md",
-    "benchmarks/results/one-electron-derivatives-rtx5090/sp8-df-b3-thread.json",
-    "benchmarks/results/one-electron-derivatives-rtx5090/sdf18-thread.json",
-    ".agents/notes/implemented/performance/2026-09-19-one-electron-derivative-promotion.md"
+    ".agents/notes/implemented/performance/2026-09-20-generated-nucleus-cooperative-one-electron-default.md",
+    ".agents/notes/implemented/performance/2026-09-22-one-electron-derivative-schedule-contract.md"
   ],
-  "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights",
-  "missing_capability": "No missing S/T/V first-derivative formula capability. The cooperative native route remains a measured performance exception for archived resident-DF unchanged replay (4.586/5.429 ms reference/generated) and Direct sdf18 changed geometry (36.667/39.352 ms). The slower scalar native force family is retired.",
+  "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights with target-legal nucleus-cooperative scheduling",
+  "missing_capability": "No missing S/T/V first-derivative formula or current production-performance capability. The generated nucleus-cooperative path matches or beats the retained native cooperative control across the #693 qualified 29-768 AO holdouts. Native/reference remains an explicit independent oracle/control pending a separate retirement decision.",
   "owner": "one_electron_derivatives",
-  "retirement_condition": "Completed for normal production; remove the retained cooperative exception only after requalification eliminates its documented endpoint wins while independent CPU/libcint oracle coverage remains.",
-  "status": "performance_exception"
+  "retirement_condition": "Completed for normal production; remove the retained native/reference control only after independent validation no longer requires it and a separate retirement decision preserves oracle coverage.",
+  "status": "production"
 }
