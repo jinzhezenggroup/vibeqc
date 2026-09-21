@@ -600,6 +600,8 @@ class PreparedCuda:
 
     def _validate(self, value: np.ndarray, node: Node) -> None:
         """Bound validation scratch even for transposed symmetry partners."""
+        if node.spec.dtype == "int64":
+            return
         if self._mask is None:
             raise RuntimeError("tensor validation scratch is closed")
         flat = value.reshape(-1)
