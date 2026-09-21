@@ -136,9 +136,7 @@ def d3_resource_request(
         "allocator bookkeeping, arenas and page rounding",
     )
     if backend == "cuda":
-        exclusions += (
-            "CUDA driver/context/modules and pool/page retention",
-        )
+        exclusions += ("CUDA driver/context/modules and pool/page retention",)
 
     unsupported = None
     if any(z < 1 or z > 86 for system in atomic_numbers for z in system):
@@ -182,9 +180,7 @@ def d3_resource_request(
     )
     if backend == "cpu":
         execution_host_bytes = checked_bytes(
-            execution_host_bytes
-            + workspace_bytes
-            + byte_product(3, maximum_atoms, 8),
+            execution_host_bytes + workspace_bytes + byte_product(3, maximum_atoms, 8),
             "D3 CPU execution host bytes",
         )
     else:

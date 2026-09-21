@@ -154,9 +154,7 @@ def test_global_resource_plan_includes_composed_d3_owner() -> None:
     )
     planned = dict(d3_candidate.decisions)
 
-    with calculator.prepare_batch(
-        [H2], warm_start=False, resource_plan=plan
-    ) as batch:
+    with calculator.prepare_batch([H2], warm_start=False, resource_plan=plan) as batch:
         diagnostic = batch.dispersion_diagnostic
 
     assert diagnostic.plan_host_bytes == int(planned["plan_host_bytes"])

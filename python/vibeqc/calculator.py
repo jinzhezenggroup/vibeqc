@@ -1664,10 +1664,7 @@ class Calculator:
         from .resources_d3 import d3_resource_request
 
         return d3_resource_request(
-            tuple(
-                tuple(atom.atomic_number for atom in system)
-                for system in systems
-            ),
+            tuple(tuple(atom.atomic_number for atom in system) for system in systems),
             method=self._dispersion_method_ir,
             backend=self._device_name,
             device_id=self._device_id,

@@ -623,10 +623,7 @@ class PreparedBatch:
                             "table_bytes": diagnostic.table_bytes,
                             "workspace_bytes": diagnostic.workspace_bytes,
                         }
-                        expected = {
-                            key: int(planned[key])
-                            for key in actual
-                        }
+                        expected = {key: int(planned[key]) for key in actual}
                         if actual != expected:
                             raise RuntimeError(
                                 "prepared D3 resource inventory differs from the global ResourcePlan"
