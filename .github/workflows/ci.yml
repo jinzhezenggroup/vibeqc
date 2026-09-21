@@ -186,10 +186,13 @@ jobs:
           -DVIBEQC_CUDA_FAST_COMPILE=ON
           -DVIBEQC_CUDA_COMPILE_JOBS=3
           -DVIBEQC_COMPILER_CACHE=ccache
-      - name: Compile production CUDA and runtime CTest
+      - name: Compile production CUDA, GFN2 CUDA, and runtime CTest
         run: >-
           cmake --build --preset cuda-release-sm120
-          --target vibeqc_cuda_runtime_tests --parallel 3
+          --target vibeqc_cuda_runtime_tests
+          vibeqc_gfn2_cuda
+          vibeqc_gfn2_cuda_public_compile
+          --parallel 3
       # Master pushes are frequently superseded while the remaining CI jobs
       # are still running. Persist the expensive native compile cache here,
       # rather than waiting for the cache action's end-of-job post step.
