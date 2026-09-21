@@ -137,6 +137,7 @@ typedef struct vibeqc_calculation vibeqc_calculation;
 typedef struct vibeqc_batch vibeqc_batch;
 
 typedef struct vibeqc_d3_batch vibeqc_d3_batch;
+typedef struct vibeqc_nonlocal_plan vibeqc_nonlocal_plan;
 
 typedef int32_t vibeqc_d3_damping;
 enum { VIBEQC_D3_DAMPING_BJ = 1 };
@@ -200,6 +201,75 @@ typedef struct vibeqc_d3_runtime_diagnostic {
   uint32_t system_count;
   uint32_t maximum_atoms;
 } vibeqc_d3_runtime_diagnostic;
+
+/** Fixed-grid VV10/rVV10 kernel variant for the native nonlocal plan. */
+typedef int32_t vibeqc_nonlocal_variant;
+enum { VIBEQC_NONLOCAL_VV10 = 1, VIBEQC_NONLOCAL_RVV10 = 2 };
+
+/**
+ * Bounded fixed-grid nonlocal-correlation pair plan.
+ *
+ * Coordinates are Bohr; density and its Cartesian gradient use atomic units.
+ * This low-level primitive does not imply a public KS/method capability.
+ */
+typedef struct vibeqc_nonlocal_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_nonlocal_variant variant;
+  double b;
+  double c;
+  double coefficient;
+  uint32_t point_count;
+  uint32_t tile_points;
+  uint64_t maximum_bytes;
+} vibeqc_nonlocal_descriptor;
+
+/** Caller-owned fixed-grid inputs for one prepared VV10/rVV10 execution. */
+typedef struct vibeqc_nonlocal_input_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  const double* coordinates;
+  uint32_t coordinate_count;
+  const double* weights;
+  uint32_t weight_count;
+  const double* density;
+  uint32_t density_count;
+  const double* density_gradient;
+  uint32_t density_gradient_count;
+} vibeqc_nonlocal_input_descriptor;
+
+/**
+ * Optional fixed-grid derivative outputs. vrho/vsigma are dE/d(rho,sigma)
+ * before quadrature weights. point_derivative is the explicit pair-distance
+ * derivative at fixed density features; weight_derivative differentiates both
+ * quadrature legs. Null pointer plus zero count disables an output family.
+ */
+typedef struct vibeqc_nonlocal_result_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  double energy;
+  double* vrho;
+  uint32_t vrho_count;
+  double* vsigma;
+  uint32_t vsigma_count;
+  double* point_derivative;
+  uint32_t point_derivative_count;
+  double* weight_derivative;
+  uint32_t weight_derivative_count;
+  vibeqc_backend executed_backend;
+} vibeqc_nonlocal_result_descriptor;
+
+/** Exact owned-capacity and pair-work diagnostics for the prepared plan. */
+typedef struct vibeqc_nonlocal_runtime_diagnostic {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_backend backend;
+  uint64_t workspace_bytes;
+  uint64_t maximum_bytes;
+  uint64_t pair_evaluations;
+  uint32_t point_count;
+  uint32_t tile_points;
+} vibeqc_nonlocal_runtime_diagnostic;
 
 typedef uint32_t vibeqc_batch_flags;
 enum {
@@ -1142,6 +1212,24 @@ VIBEQC_API vibeqc_status vibeqc_d3_batch_execute(vibeqc_d3_batch* batch,
                                                  uint32_t input_count,
                                                  vibeqc_d3_batch_item_result_descriptor* results,
                                                  uint32_t result_count);
+
+/**
+ * Prepare a bounded fixed-grid VV10/rVV10 pair evaluator.
+ *
+ * The current production foundation accepts CPU_REFERENCE only. It retains
+ * O(N_grid) scratch and never materializes the full pair matrix.
+ */
+VIBEQC_API vibeqc_status vibeqc_nonlocal_plan_prepare(vibeqc_context* context,
+                                                      const vibeqc_nonlocal_descriptor* model,
+                                                      vibeqc_nonlocal_plan** plan);
+VIBEQC_API void vibeqc_nonlocal_plan_destroy(vibeqc_nonlocal_plan* plan);
+VIBEQC_API vibeqc_status vibeqc_nonlocal_plan_get_diagnostic(
+    const vibeqc_nonlocal_plan* plan, vibeqc_nonlocal_runtime_diagnostic* diagnostic);
+
+/** Evaluate fixed-grid energy and any requested derivative families. */
+VIBEQC_API vibeqc_status vibeqc_nonlocal_plan_execute(vibeqc_nonlocal_plan* plan,
+                                                      const vibeqc_nonlocal_input_descriptor* input,
+                                                      vibeqc_nonlocal_result_descriptor* result);
 
 #ifdef __cplusplus
 }

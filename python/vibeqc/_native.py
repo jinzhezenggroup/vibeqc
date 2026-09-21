@@ -48,6 +48,8 @@ PRECISION_AUTO = 1
 BASIS_CARTESIAN = 0
 BASIS_SPHERICAL = 1
 D3_DAMPING_BJ = 1
+NONLOCAL_VV10 = 1
+NONLOCAL_RVV10 = 2
 BATCH_ENABLE_WARM_STARTS = 1 << 0
 BATCH_ENABLE_SHELL_CLASS_PROFILING = 1 << 1
 BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING = 1 << 2
@@ -463,6 +465,65 @@ class D3RuntimeDiagnostic(ctypes.Structure):
         ("total_atoms", ctypes.c_uint64),
         ("system_count", ctypes.c_uint32),
         ("maximum_atoms", ctypes.c_uint32),
+    ]
+
+
+class NonlocalDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("variant", ctypes.c_int32),
+        ("b", ctypes.c_double),
+        ("c", ctypes.c_double),
+        ("coefficient", ctypes.c_double),
+        ("point_count", ctypes.c_uint32),
+        ("tile_points", ctypes.c_uint32),
+        ("maximum_bytes", ctypes.c_uint64),
+    ]
+
+
+class NonlocalInputDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("coordinates", ctypes.POINTER(ctypes.c_double)),
+        ("coordinate_count", ctypes.c_uint32),
+        ("weights", ctypes.POINTER(ctypes.c_double)),
+        ("weight_count", ctypes.c_uint32),
+        ("density", ctypes.POINTER(ctypes.c_double)),
+        ("density_count", ctypes.c_uint32),
+        ("density_gradient", ctypes.POINTER(ctypes.c_double)),
+        ("density_gradient_count", ctypes.c_uint32),
+    ]
+
+
+class NonlocalResultDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("energy", ctypes.c_double),
+        ("vrho", ctypes.POINTER(ctypes.c_double)),
+        ("vrho_count", ctypes.c_uint32),
+        ("vsigma", ctypes.POINTER(ctypes.c_double)),
+        ("vsigma_count", ctypes.c_uint32),
+        ("point_derivative", ctypes.POINTER(ctypes.c_double)),
+        ("point_derivative_count", ctypes.c_uint32),
+        ("weight_derivative", ctypes.POINTER(ctypes.c_double)),
+        ("weight_derivative_count", ctypes.c_uint32),
+        ("executed_backend", ctypes.c_int32),
+    ]
+
+
+class NonlocalRuntimeDiagnostic(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("backend", ctypes.c_int32),
+        ("workspace_bytes", ctypes.c_uint64),
+        ("maximum_bytes", ctypes.c_uint64),
+        ("pair_evaluations", ctypes.c_uint64),
+        ("point_count", ctypes.c_uint32),
+        ("tile_points", ctypes.c_uint32),
     ]
 
 
@@ -920,6 +981,27 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
             ctypes.c_uint32,
         ]
         library.vibeqc_d3_batch_execute.restype = ctypes.c_int
+    nonlocal_prepare = getattr(library, "vibeqc_nonlocal_plan_prepare", None)
+    if nonlocal_prepare is not None:
+        nonlocal_prepare.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(NonlocalDescriptor),
+            void_pp,
+        ]
+        nonlocal_prepare.restype = ctypes.c_int
+        library.vibeqc_nonlocal_plan_destroy.argtypes = [ctypes.c_void_p]
+        library.vibeqc_nonlocal_plan_destroy.restype = None
+        library.vibeqc_nonlocal_plan_get_diagnostic.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(NonlocalRuntimeDiagnostic),
+        ]
+        library.vibeqc_nonlocal_plan_get_diagnostic.restype = ctypes.c_int
+        library.vibeqc_nonlocal_plan_execute.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(NonlocalInputDescriptor),
+            ctypes.POINTER(NonlocalResultDescriptor),
+        ]
+        library.vibeqc_nonlocal_plan_execute.restype = ctypes.c_int
     if library.vibeqc_get_abi_version() != ABI_VERSION:
         raise RuntimeError("VIBEQC Python/native ABI version mismatch")
     return library
