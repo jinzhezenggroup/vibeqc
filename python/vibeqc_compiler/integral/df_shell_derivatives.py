@@ -138,10 +138,10 @@ def emit_df_shell_derivatives_cuda(*, classes: typing.Any = None) -> typing.Any:
 #define VIBEQC_GENERATED_DF_SHELL_DERIVATIVES_CUH
 #include "generated_df_derivatives.cuh"
 namespace vibeqc::scf::generated_df_shell {
-namespace scalar = generated_df_derivatives;
-inline constexpr unsigned signature_packet_capacity=24;
-inline constexpr const char* signature_packet_execution="ordinary";
-template<unsigned A,unsigned B,unsigned C> struct Shell;
+namespace scalar = generated_df_derivatives;""",
+        f"inline constexpr unsigned signature_packet_capacity={DF_SIGNATURE_PACKET_SCHEDULE.packet_capacity};",
+        f'inline constexpr const char* signature_packet_execution="{DF_SIGNATURE_PACKET_SCHEDULE.execution.value}";',
+        r"""template<unsigned A,unsigned B,unsigned C> struct Shell;
 template<unsigned A,unsigned B,unsigned C,unsigned Variant> struct Schedule;
 struct Contracted { double gradient[3][3]; };
 
@@ -253,7 +253,7 @@ struct Moments {
     }
   }
 };
-"""
+""",
     ]
     lines += [
         "template<unsigned A,unsigned B,unsigned C> struct Shell : Moments<A,B,C> {};"
