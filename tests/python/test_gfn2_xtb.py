@@ -107,20 +107,42 @@ def test_gfn2_oh_analytic_force_matches_energy_finite_difference() -> None:
     assert result.forces[1, 2] == pytest.approx(finite_difference_force, abs=2.0e-8)
 
 
-def _cuda_gfn2_or_skip() -> Calculator:
+def _cuda_gfn2_singlepoint_or_skip(
+    atoms: list[tuple[str, tuple[float, float, float]]],
+    *,
+    charge: int = 0,
+    multiplicity: int = 1,
+):
     try:
-        return Calculator(
+        calculator = Calculator(
             method="gfn2-xtb",
             device="cuda",
             energy_tolerance=1.0e-12,
             density_tolerance=1.0e-10,
         )
     except (RuntimeError, NotImplementedError) as error:
-        pytest.skip(f"native GFN2 CUDA unavailable: {error}")
+        pytest.skip(f"CUDA backend unavailable: {error}")
+
+    try:
+        return calculator.singlepoint(
+            atoms,
+            charge=charge,
+            multiplicity=multiplicity,
+        )
+    except NotImplementedError as error:
+        if any(
+            marker in str(error)
+            for marker in (
+                "native CUDA execution is not included in this build",
+                "library was built without CUDA support",
+            )
+        ):
+            pytest.skip(f"native GFN2 CUDA unavailable in this build: {error}")
+        raise
 
 
 def test_gfn2_cuda_h3_plus_matches_independent_tblite_golden() -> None:
-    result = _cuda_gfn2_or_skip().singlepoint(H3_PLUS, charge=1)
+    result = _cuda_gfn2_singlepoint_or_skip(H3_PLUS, charge=1)
     assert result.converged
     assert result.executed_backend == "cuda"
     assert result.energy == pytest.approx(H3_PLUS_ENERGY, abs=5.0e-7)
@@ -129,7 +151,7 @@ def test_gfn2_cuda_h3_plus_matches_independent_tblite_golden() -> None:
 
 
 def test_gfn2_cuda_oh_radical_matches_independent_xtb_golden() -> None:
-    result = _cuda_gfn2_or_skip().singlepoint(OH_RADICAL, multiplicity=2)
+    result = _cuda_gfn2_singlepoint_or_skip(OH_RADICAL, multiplicity=2)
     assert result.converged
     assert result.executed_backend == "cuda"
     assert result.energy == pytest.approx(OH_ENERGY, abs=5.0e-7)
