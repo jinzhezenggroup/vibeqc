@@ -135,6 +135,26 @@ def test_integral_and_schedule_irs_separate_math_from_cuda_mapping() -> None:
     assert [item.component_tile for item in candidates[1:]] == [64, 128]
 
 
+def test_default_value_schedule_preserves_component_lane_fallback_order() -> None:
+    """Do not retune high-component value paths while removing name gates."""
+
+    integral = build_integral_ir(DPPP_SPEC, consumers=(KernelConsumer.FOCK,))
+    candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
+    first_component = next(
+        candidate
+        for candidate in candidates
+        if candidate.kind == ScheduleKind.COMPONENT_LANES
+    )
+
+    plan = build_fused_shell_plan(
+        DPPP_SPEC,
+        integral=integral,
+        target=TEST_CUDA_TARGET,
+    )
+
+    assert plan.schedule == first_component
+
+
 def test_fock_autotune_reuses_manifest_declared_baseline_schedules() -> None:
     """Keep high-component Fock baselines out of a second shell-name table."""
 
