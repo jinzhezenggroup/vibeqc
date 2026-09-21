@@ -26,22 +26,22 @@ KNOWN_DUPLICATE_INFRASTRUCTURE = {
     "cc_cuda_diis_owner": 1,
 }
 DUPLICATE_PATTERNS = {
-    "cc_cpu_diis_owner": re.compile(r"\\bstruct\\s+Diis\\b"),
+    "cc_cpu_diis_owner": re.compile(r"\bstruct\s+Diis\b"),
     "cc_cpu_local_linear_solver": re.compile(
-        r"\\bbool\\s+solve_linear\\s*\\(\\s*std::vector<double>"
+        r"\bbool\s+solve_linear\s*\(\s*std::vector<double>"
     ),
-    "cc_cuda_diis_owner": re.compile(r"\\bvoid\\s+run_diis\\s*\\("),
+    "cc_cuda_diis_owner": re.compile(r"\bvoid\s+run_diis\s*\("),
 }
 
-COMMENT_RE = re.compile(r"/\\*.*?\\*/|//[^\\n]*", re.DOTALL)
-INCLUDE_RE = re.compile(r'^\\s*#\\s*include\\s*[<"]([^">]+)[">]', re.MULTILINE)
+COMMENT_RE = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
+INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]([^">]+)[">]', re.MULTILINE)
 
 
 def _without_comments(text: str) -> str:
     """Remove comments while preserving line numbering."""
 
     def replacement(match: re.Match[str]) -> str:
-        return "\\n" * match.group(0).count("\\n")
+        return "\n" * match.group(0).count("\n")
 
     return COMMENT_RE.sub(replacement, text)
 
@@ -106,7 +106,7 @@ def _duplicate_infrastructure(root: Path) -> dict[str, dict[str, object]]:
                     continue
                 text = _without_comments(path.read_text(encoding="utf-8"))
                 for match in pattern.finditer(text):
-                    line = text.count("\\n", 0, match.start()) + 1
+                    line = text.count("\n", 0, match.start()) + 1
                     matches.append(f"{path.relative_to(source).as_posix()}:{line}")
         report[name] = {
             "count": len(matches),
@@ -145,7 +145,7 @@ def audit_electronic_structure_boundaries(root: Path = ROOT) -> dict[str, object
                 target = _source_target(source, path, match.group(1))
                 if target is None:
                     continue
-                line = text.count("\\n", 0, match.start()) + 1
+                line = text.count("\n", 0, match.start()) + 1
                 edges.append({"source": relative, "target": target})
                 if target.startswith(METHOD_PREFIXES):
                     errors.append(
