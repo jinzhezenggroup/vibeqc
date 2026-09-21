@@ -12,6 +12,8 @@ from fractions import Fraction as F
 
 from vibeqc_compiler.integral.expr import Expr, Graph
 
+from .p86_pz_maple import p86_correlation, pz_correlation
+
 
 def energy_expression(spec: typing.Any) -> typing.Any:
     """Return the range-separated semilocal energy DAG and feature variables."""
@@ -128,56 +130,6 @@ def energy_expression(spec: typing.Any) -> typing.Any:
             * graph.exponential(h_a1 * rs * phi.pow(4) * t2)
         )
         return n * (epsilon + h0 + h1)
-
-    def pz_epsilon() -> Expr:
-        gamma = (F("-0.1423"), F("-0.0843"))
-        beta1 = (F("1.0529"), F("1.3981"))
-        beta2 = (F("0.3334"), F("0.2611"))
-        a = (F("0.0311"), F("0.01555"))
-        b = (F("-0.048"), F("-0.0269"))
-        c = (F("0.0020"), F("0.0007"))
-        d = (F("-0.0116"), F("-0.0048"))
-
-        def ec(index: int) -> Expr:
-            low = gamma[index] / (1 + beta1[index] * rs.pow(0.5) + beta2[index] * rs)
-            high = (
-                a[index] * graph.stable_unary("log", rs)
-                + b[index]
-                + c[index] * rs * graph.stable_unary("log", rs)
-                + d[index] * rs
-            )
-            return graph.select_le(1, rs, low, high)
-
-        fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
-        e0, e1 = ec(0), ec(1)
-        return e0 + (e1 - e0) * fz
-
-    def pz_correlation() -> Expr:
-        return n * pz_epsilon()
-
-    def p86_correlation() -> Expr:
-        epsilon = pz_epsilon()
-        total_sigma = saa + 2 * sab + sbb
-        xt2 = total_sigma * n.pow(-8 / 3)
-        rs_factor = (3 / (4 * math.pi)) ** (1 / 3)
-        x1_sq = xt2 * rs_factor / rs
-        x1 = x1_sq.pow(0.5)
-        dd = ((up.pow(5 / 3) + down.pow(5 / 3)) / 2).pow(0.5)
-
-        malpha = F("0.023266")
-        mbeta = F("0.000007389")
-        mgamma = F("8.723")
-        mdelta = F("0.472")
-        aa = F("0.001667")
-        bb = F("0.002568")
-        ftilde = F("1.745") * F("0.11")
-        cc = aa + (bb + malpha * rs + mbeta * rs.pow(2)) / (
-            1 + mgamma * rs + mdelta * rs.pow(2) + 10000 * mbeta * rs.pow(3)
-        )
-        cc_inf = aa + bb
-        mphi = ftilde * (cc_inf / cc) * x1
-        h = x1_sq * graph.exponential(-mphi) * cc / dd
-        return n * (epsilon + h)
 
     def b88_enhancement(density: typing.Any, sigma: typing.Any) -> Expr:
         beta_b88 = F("0.0042")
@@ -307,8 +259,8 @@ def energy_expression(spec: typing.Any) -> typing.Any:
         "GGA_X_PW91": pw91_exchange,
         "LDA_C_PW": pw92_correlation,
         "GGA_C_PW91": pw91_correlation,
-        "LDA_C_PZ": pz_correlation,
-        "GGA_C_P86": p86_correlation,
+        "LDA_C_PZ": lambda: pz_correlation(graph, spec, variables),
+        "GGA_C_P86": lambda: p86_correlation(graph, spec, variables),
         "LDA_C_VWN": vwn_correlation,
         "LDA_C_VWN_RPA": vwn_rpa_correlation,
         "GGA_C_LYP": lyp_correlation,

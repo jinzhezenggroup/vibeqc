@@ -20,6 +20,13 @@ from math import prod
 
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
+from vibeqc_compiler.common.storage import (
+    AliasKind,
+    BufferOp,
+    BufferValue,
+    MemoryEffect,
+    analyze_storage,
+)
 
 from .batch_schedule import (
     BatchScheduleIR,
@@ -310,6 +317,98 @@ class TensorPlan:
                 ],
                 "outputs": self.outputs,
             }
+        )
+
+    def storage_analysis(self) -> typing.Any:
+        """Adapt TensorIR storage facts to the shared whole-region analysis."""
+
+        storage_views = frozenset(("transpose", "reshape", "slice"))
+        alias_owner: dict[int, int] = {}
+        for index, step in enumerate(self.steps):
+            if (
+                not step.virtual
+                or step.node.op not in storage_views
+                or len(step.inputs) != 1
+            ):
+                continue
+            owner = step.inputs[0]
+            while self.steps[owner].virtual:
+                parent = self.steps[owner]
+                if parent.node.op not in storage_views or len(parent.inputs) != 1:
+                    owner = -1
+                    break
+                owner = parent.inputs[0]
+            if owner >= 0:
+                alias_owner[index] = owner
+
+        def boundary_reads(index: int) -> tuple[int, ...]:
+            if index in alias_owner or not self.steps[index].virtual:
+                return (index,)
+            result: list[int] = []
+            for child in self.steps[index].inputs:
+                for value in boundary_reads(child):
+                    if value not in result:
+                        result.append(value)
+            return tuple(result)
+
+        values = []
+        inputs = []
+        for index, step in enumerate(self.steps):
+            logical_bytes = checked_size(
+                step.node.spec.size * step.node.spec.itemsize,
+                "tensor storage-analysis bytes",
+            )
+            if not step.virtual:
+                values.append(
+                    BufferValue(
+                        index,
+                        aligned(logical_bytes),
+                        "device",
+                        step.layout,
+                        compiler_owned=True,
+                    )
+                )
+                if step.node.op in ("input", "constant"):
+                    inputs.append(index)
+            elif index in alias_owner:
+                values.append(
+                    BufferValue(
+                        index,
+                        logical_bytes,
+                        "device",
+                        alias=AliasKind.VIEW,
+                        alias_of=alias_owner[index],
+                        compiler_owned=False,
+                    )
+                )
+
+        operations = []
+        for index, step in enumerate(self.steps):
+            if index in alias_owner:
+                reads = boundary_reads(step.inputs[0])
+            elif step.virtual or step.node.op in ("input", "constant"):
+                continue
+            else:
+                ordered_reads: list[int] = []
+                for child in step.inputs:
+                    for value in boundary_reads(child):
+                        if value not in ordered_reads:
+                            ordered_reads.append(value)
+                reads = tuple(ordered_reads)
+            operations.append(
+                BufferOp(
+                    ("tensor_step", index),
+                    reads,
+                    (index,),
+                    MemoryEffect.EXPLICIT,
+                )
+            )
+
+        return analyze_storage(
+            tuple(values),
+            tuple(operations),
+            inputs=tuple(inputs),
+            outputs=tuple(index for _, index in self.outputs),
         )
 
     def to_payload(self) -> dict:
