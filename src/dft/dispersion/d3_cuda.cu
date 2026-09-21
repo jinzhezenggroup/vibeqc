@@ -213,7 +213,15 @@ __global__ void d3_ragged_kernel(std::uint32_t systems, const std::uint32_t* off
         atomicMax(&failure, static_cast<int>(D3Status::numerical_failure));
         continue;
       }
-      if (other < atom) partial_energy += -c.c6 * term.damping;
+      if (other < atom) {
+        const double pair_energy = -c.c6 * term.damping;
+        const double next_energy = partial_energy + pair_energy;
+        if (!d3_detail::finite(pair_energy) || !d3_detail::finite(next_energy)) {
+          atomicMax(&failure, static_cast<int>(D3Status::numerical_failure));
+          continue;
+        }
+        partial_energy = next_energy;
+      }
       if (gradient) {
         adjoint += -c.first_cn * term.damping;
         const double scale = -c.c6 * term.radial_derivative_over_distance;
@@ -241,10 +249,21 @@ __global__ void d3_ragged_kernel(std::uint32_t systems, const std::uint32_t* off
 
   if (threadIdx.x == 0) {
     double energy = 0.0;
-    for (std::size_t atom = 0; atom < atoms; ++atom) energy += cn[atom];
-    energies[system] = energy;
+    for (std::size_t atom = 0; atom < atoms; ++atom) {
+      const double next_energy = energy + cn[atom];
+      if (!d3_detail::finite(cn[atom]) || !d3_detail::finite(next_energy)) {
+        failure = static_cast<int>(D3Status::numerical_failure);
+        break;
+      }
+      energy = next_energy;
+    }
+    energies[system] = failure == 0 ? energy : 0.0;
   }
   __syncthreads();
+  if (failure != 0) {
+    if (threadIdx.x == 0) statuses[system] = static_cast<D3Status>(failure);
+    return;
+  }
 
   if (gradient) {
     for (std::size_t atom = threadIdx.x; atom < atoms; atom += blockDim.x) {

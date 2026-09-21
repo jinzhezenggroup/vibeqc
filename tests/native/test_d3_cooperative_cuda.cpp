@@ -31,9 +31,9 @@ struct Fleet {
   std::vector<vibeqc_d3_system_descriptor> descriptors;
 };
 
-Fleet make_fleet() {
+Fleet make_fleet(std::array<std::size_t, 2> atom_counts = {64, 96}) {
   Fleet fleet;
-  for (std::size_t atoms : {std::size_t{64}, std::size_t{96}}) {
+  for (std::size_t atoms : atom_counts) {
     fleet.numbers.emplace_back(atoms);
     fleet.coordinates.emplace_back(3 * atoms);
     auto& z = fleet.numbers.back();
@@ -159,6 +159,11 @@ Outputs execute(vibeqc_backend backend, const Fleet& fleet, const vibeqc_d3_bj_d
 }
 
 void require_close(double actual, double expected, double atol, double rtol, const char* message) {
+  if (!std::isfinite(actual) || !std::isfinite(expected)) {
+    std::cerr << message << ": nonfinite comparison, expected " << expected << ", got " << actual
+              << '\n';
+    throw std::runtime_error(message);
+  }
   const double tolerance = atol + rtol * std::abs(expected);
   if (std::abs(actual - expected) > tolerance) {
     std::cerr << message << ": expected " << expected << ", got " << actual << ", tolerance "
@@ -206,6 +211,25 @@ void test_energy_only(const Fleet& fleet) {
           execute(VIBEQC_BACKEND_CUDA, fleet, model, nullptr, false), false);
 }
 
+void test_energy_only_overflow_failure_isolated() {
+  const auto fleet = make_fleet({2048, 8});
+  auto model = zero_model();
+  model.s6 = std::numeric_limits<double>::max() / 2.0;
+  model.s8 = 0.0;
+
+  const auto cpu = execute(VIBEQC_BACKEND_CPU_REFERENCE, fleet, model, nullptr, false);
+  const auto gpu = execute(VIBEQC_BACKEND_CUDA, fleet, model, nullptr, false);
+  if (cpu.status[0] != VIBEQC_STATUS_NUMERICAL_FAILURE ||
+      gpu.status[0] != VIBEQC_STATUS_NUMERICAL_FAILURE)
+    throw std::runtime_error("D3 cooperative energy-only overflow did not fail closed");
+  if (!std::isnan(cpu.energy[0]) || !std::isnan(gpu.energy[0]))
+    throw std::runtime_error("failed D3 overflow item published a numeric energy");
+  if (cpu.status[1] != VIBEQC_STATUS_SUCCESS || gpu.status[1] != VIBEQC_STATUS_SUCCESS)
+    throw std::runtime_error("D3 overflow poisoned the finite neighboring item");
+  require_close(gpu.energy[1], cpu.energy[1], 5.0e-12, 5.0e-11,
+                "D3 finite neighbor energy mismatch after overflow");
+}
+
 }  // namespace
 
 int main() {
@@ -216,6 +240,7 @@ int main() {
     test_variant(fleet, bj_model(1.0));
     test_changed_geometry(fleet);
     test_energy_only(fleet);
+    test_energy_only_overflow_failure_isolated();
     std::cout << "D3 cooperative CUDA CPU-parity, variants, changed-geometry and energy-only "
                  "tests passed\n";
     return 0;
