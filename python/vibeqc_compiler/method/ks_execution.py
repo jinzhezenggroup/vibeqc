@@ -57,9 +57,7 @@ class KsExecutionPlan:
     semilocal: SemilocalXCPrimitive
     exchange: tuple[KsExchangeContribution, ...]
     nonlocal_correlation: NonlocalCorrelationPrimitive | None
-    post_scf: tuple[
-        DispersionCorrectionPrimitive | GeometricCounterpoisePrimitive, ...
-    ]
+    post_scf: tuple[DispersionCorrectionPrimitive | GeometricCounterpoisePrimitive, ...]
     version: str = KS_EXECUTION_PLAN_VERSION
 
     @property
@@ -156,24 +154,37 @@ def compile_ks_execution_plan(method: MethodIR) -> KsExecutionPlan:
         p for p in method.primitives if isinstance(p, NonlocalCorrelationPrimitive)
     )
     if len(nonlocal_primitives) > 1:
-        raise UnsupportedMethod("KS execution accepts at most one nonlocal correlation primitive")
+        raise UnsupportedMethod(
+            "KS execution accepts at most one nonlocal correlation primitive"
+        )
     nonlocal_correlation = nonlocal_primitives[0] if nonlocal_primitives else None
 
     post_scf = tuple(
         p
         for p in method.primitives
-        if isinstance(p, (DispersionCorrectionPrimitive, GeometricCounterpoisePrimitive))
+        if isinstance(
+            p, (DispersionCorrectionPrimitive, GeometricCounterpoisePrimitive)
+        )
     )
-    consumed = len(semilocal) + len(exchange_primitives) + len(nonlocal_primitives) + len(post_scf)
+    consumed = (
+        len(semilocal)
+        + len(exchange_primitives)
+        + len(nonlocal_primitives)
+        + len(post_scf)
+    )
     if consumed != len(method.primitives):
-        raise UnsupportedMethod("MethodIR contains a primitive without a KS execution role")
+        raise UnsupportedMethod(
+            "MethodIR contains a primitive without a KS execution role"
+        )
 
     range_terms = tuple(
         term for term in exchange if term.operator in (SHORT_RANGE, LONG_RANGE)
     )
     range_omegas = {term.omega for term in range_terms}
     if len(range_omegas) > 1:
-        raise UnsupportedMethod("range-separated KS exchange terms require one shared omega")
+        raise UnsupportedMethod(
+            "range-separated KS exchange terms require one shared omega"
+        )
     functional_omega = semilocal[0].functional.range_omega
     if range_omegas and functional_omega and functional_omega not in range_omegas:
         raise UnsupportedMethod(
@@ -188,5 +199,7 @@ def compile_ks_execution_plan(method: MethodIR) -> KsExecutionPlan:
         post_scf=post_scf,
     )
     if not plan.self_consistent:
-        raise UnsupportedMethod("MethodIR lacks a complete self-consistent KS potential")
+        raise UnsupportedMethod(
+            "MethodIR lacks a complete self-consistent KS potential"
+        )
     return plan

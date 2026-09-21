@@ -77,7 +77,10 @@ def test_execution_identity_uses_semantics_not_method_name(
     first = compile_ks_execution_plan(resolve_method(canonical))
     second = compile_ks_execution_plan(resolve_method(alias))
     assert first.identity == second.identity
-    assert first.to_payload()["method_identifier"] != second.to_payload()["method_identifier"]
+    assert (
+        first.to_payload()["method_identifier"]
+        != second.to_payload()["method_identifier"]
+    )
 
 
 def test_execution_plan_rejects_cross_primitive_omega_drift() -> None:

@@ -182,9 +182,7 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
         exchange_scale = correlation_scale = Fraction(1)
     else:
         raise NotImplementedError("unsupported native KS semilocal composition")
-    fock_exchange = (
-        plan.exchange[0].fock_coefficient if plan.exchange else Fraction(0)
-    )
+    fock_exchange = plan.exchange[0].fock_coefficient if plan.exchange else Fraction(0)
     values = tuple(
         float(value) for value in (exchange_scale, correlation_scale, fock_exchange)
     )
