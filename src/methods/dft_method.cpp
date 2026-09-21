@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "dft/ao_grid.hpp"
@@ -50,25 +51,24 @@ struct NativeKsExecutionPlan {
   bool compiler_resolved{};
 };
 
-NativeKsExecutionPlan legacy_ks_execution_plan(vibeqc_method method) {
+std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method method) noexcept {
   switch (method) {
     case VIBEQC_METHOD_LDA_RKS:
-      return {1, kKsSemilocalLda, false};
+      return NativeKsExecutionPlan{1, kKsSemilocalLda, false};
     case VIBEQC_METHOD_LDA_UKS:
-      return {2, kKsSemilocalLda, false};
+      return NativeKsExecutionPlan{2, kKsSemilocalLda, false};
     case VIBEQC_METHOD_PBE_RKS:
     case VIBEQC_METHOD_PBE0_RKS:
-      return {1, kKsSemilocalPbe, false};
+      return NativeKsExecutionPlan{1, kKsSemilocalPbe, false};
     case VIBEQC_METHOD_PBE_UKS:
     case VIBEQC_METHOD_PBE0_UKS:
-      return {2, kKsSemilocalPbe, false};
+      return NativeKsExecutionPlan{2, kKsSemilocalPbe, false};
     case VIBEQC_METHOD_R2SCAN_RKS:
-      return {1, kKsSemilocalR2scan, false};
+      return NativeKsExecutionPlan{1, kKsSemilocalR2scan, false};
     case VIBEQC_METHOD_R2SCAN_UKS:
-      return {2, kKsSemilocalR2scan, false};
+      return NativeKsExecutionPlan{2, kKsSemilocalR2scan, false};
     default:
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "requested DFT method has no legacy KS execution selector");
+      return std::nullopt;
   }
 }
 
@@ -106,7 +106,7 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
       descriptor.screening_tolerance > 0.0 ? descriptor.screening_tolerance : 1.0e-12;
 
   const auto legacy_plan = legacy_ks_execution_plan(descriptor.method);
-  execution_plan = legacy_plan;
+  bool execution_plan_seen = false;
   const vibeqc_ks_options* ks_input = nullptr;
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
                     sizeof(descriptor.ks_options)) &&
@@ -129,12 +129,20 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                             "invalid compiler-resolved KS execution plan");
         execution_plan = {ks_input->spin_channels, ks_input->semilocal_family, true};
-        if (execution_plan.spin_channels != legacy_plan.spin_channels ||
-            execution_plan.semilocal_family != legacy_plan.semilocal_family)
+        execution_plan_seen = true;
+        if (legacy_plan &&
+            (execution_plan.spin_channels != legacy_plan->spin_channels ||
+             execution_plan.semilocal_family != legacy_plan->semilocal_family))
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                            "KS execution plan disagrees with the public selector family/spin");
+                            "KS execution plan disagrees with the legacy selector family/spin");
       }
     }
+  }
+  if (!execution_plan_seen) {
+    if (!legacy_plan)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "DFT execution requires a compiler-resolved KS v3 plan");
+    execution_plan = *legacy_plan;
   }
 
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_mode),
@@ -1006,34 +1014,33 @@ vibeqc_status read_dft_derivative_state(PreparedBatch& batch, std::size_t index,
   return VIBEQC_STATUS_INVALID_ARGUMENT;
 }
 
-vibeqc_status validate_dft_system(vibeqc_method method, const core::System& system,
-                                  std::string& detail) {
-  NativeKsExecutionPlan execution_plan;
-  try {
-    execution_plan = legacy_ks_execution_plan(method);
-  } catch (const MethodError& error) {
-    detail = error.what();
-    return error.status();
+void validate_ks_spin_state(const NativeKsExecutionPlan& execution_plan,
+                            const core::System& system) {
+  if (!unrestricted(execution_plan)) {
+    if (system.electron_count <= 0 || system.electron_count % 2 || system.multiplicity != 1)
+      throw std::invalid_argument(
+          "RKS requires a positive even electron count and spin multiplicity 1");
+    return;
   }
+  const int spin_excess = static_cast<int>(system.multiplicity) - 1;
+  if (system.electron_count <= 0 || spin_excess < 0 || spin_excess > system.electron_count ||
+      (system.electron_count - spin_excess) % 2 != 0)
+    throw std::invalid_argument(
+        "UKS requires electron count and multiplicity to define integer nonnegative spin occupations");
+}
+
+vibeqc_status validate_dft_system(vibeqc_method, const core::System& system,
+                                  std::string& detail) {
   if (system.shells.empty()) {
     detail = "DFT requires an explicit Gaussian orbital basis";
-    return VIBEQC_STATUS_INVALID_ARGUMENT;
-  }
-  const char* functional = semilocal_family_name(execution_plan);
-  if (!unrestricted(execution_plan)) {
-    if (system.electron_count > 0 && system.electron_count % 2 == 0 && system.multiplicity == 1)
-      return VIBEQC_STATUS_SUCCESS;
-    detail = std::string(functional) +
-             " RKS requires a positive even electron count and spin multiplicity 1";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   const int spin_excess = static_cast<int>(system.multiplicity) - 1;
   if (system.electron_count > 0 && spin_excess >= 0 && spin_excess <= system.electron_count &&
       (system.electron_count - spin_excess) % 2 == 0)
     return VIBEQC_STATUS_SUCCESS;
-  detail = std::string(functional) +
-           " UKS requires electron count and multiplicity to define integer nonnegative spin "
-           "occupations";
+  detail =
+      "DFT requires electron count and multiplicity to define integer nonnegative spin occupations";
   return VIBEQC_STATUS_INVALID_ARGUMENT;
 }
 
@@ -1066,6 +1073,7 @@ std::unique_ptr<PreparedBatch> prepare_dft_batch(const Capabilities& capabilitie
 #endif
   NativeKsExecutionPlan execution_plan;
   auto options = dft_options(descriptor, context.requested_backend, execution_plan);
+  for (const auto& system : systems) validate_ks_spin_state(execution_plan, system);
   auto grid = ks_grid_options(descriptor, options);
   return std::make_unique<KsPreparedBatch>(
       capabilities, std::move(systems), execution_plan, std::move(options), std::move(grid),
