@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "data/parameters/gfn2.hpp"
+#include "generated_gfn2_electronic_native.hpp"
 
 namespace xtbloom::detail::gfn2 {
 
@@ -253,16 +254,6 @@ xtbloom_status_t validate_workspace(const MullikenWorkspace& workspace, std::int
     return XTBLOOM_STATUS_INVALID_ARGUMENT;
   }
   return XTBLOOM_STATUS_SUCCESS;
-}
-
-bool add_product(double left, double right, double& accumulator) {
-  /* fma avoids a spurious overflow when the product and accumulator cancel. */
-  const double updated = std::fma(left, right, accumulator);
-  if (!std::isfinite(updated)) {
-    return false;
-  }
-  accumulator = updated;
-  return true;
 }
 
 }  // namespace
@@ -1173,7 +1164,8 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
             error = "Mulliken population inputs contain NaN or infinity";
             return XTBLOOM_STATUS_INVALID_ARGUMENT;
           }
-          if (!add_product(-density_value, overlap_value, shell_charge)) {
+          if (!::vibeqc::xtb::generated::gfn2_population_update_tensor(
+                  density_value, overlap_value, shell_charge, shell_charge)) {
             error = "Mulliken qsh contraction exceeded floating-point range";
             return XTBLOOM_STATUS_INTERNAL_ERROR;
           }
@@ -1186,7 +1178,8 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
               error = "Mulliken population inputs contain NaN or infinity";
               return XTBLOOM_STATUS_INVALID_ARGUMENT;
             }
-            if (!add_product(-density_value, integral, value)) {
+            if (!::vibeqc::xtb::generated::gfn2_population_update_tensor(
+                    density_value, integral, value, value)) {
               error = "Mulliken dipole contraction exceeded floating-point range";
               return XTBLOOM_STATUS_INTERNAL_ERROR;
             }
@@ -1200,7 +1193,8 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
               error = "Mulliken population inputs contain NaN or infinity";
               return XTBLOOM_STATUS_INVALID_ARGUMENT;
             }
-            if (!add_product(-density_value, integral, value)) {
+            if (!::vibeqc::xtb::generated::gfn2_population_update_tensor(
+                    density_value, integral, value, value)) {
               error = "Mulliken quadrupole contraction exceeded floating-point range";
               return XTBLOOM_STATUS_INTERNAL_ERROR;
             }
@@ -1533,15 +1527,12 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
           const double overlap = integrals.overlap[static_cast<std::size_t>(forward_matrix)];
           const double reverse_overlap =
               integrals.overlap[static_cast<std::size_t>(reverse_matrix)];
-          const double half_overlap = -0.5 * overlap;
           if (!std::isfinite(overlap) || !std::isfinite(reverse_overlap)) {
             error = "Mulliken overlap input contains NaN or infinity";
             return XTBLOOM_STATUS_INVALID_ARGUMENT;
           }
-          if (!std::isfinite(half_overlap) || !add_product(half_overlap, row_vat, shift) ||
-              !add_product(half_overlap, row_vsh, shift) ||
-              !add_product(half_overlap, column_vat, shift) ||
-              !add_product(half_overlap, column_vsh, shift)) {
+          if (!::vibeqc::xtb::generated::gfn2_scalar_hamiltonian_update_tensor(
+                  overlap, row_vat, row_vsh, column_vat, column_vsh, shift, shift)) {
             error = "Mulliken scalar Hamiltonian assembly exceeded floating-point range";
             return XTBLOOM_STATUS_INTERNAL_ERROR;
           }
@@ -1551,19 +1542,18 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
                 dipole_base + (spin * atoms + local_row_atom) * 3 + component)];
             const double column_potential = dipole_scratch[static_cast<std::size_t>(
                 dipole_base + (spin * atoms + local_column_atom) * 3 + component)];
-            const double forward_integral =
-                -0.5 * integrals.dipole[static_cast<std::size_t>(component * data.matrix_elements +
-                                                                 forward_matrix)];
-            const double reverse_integral =
-                -0.5 * integrals.dipole[static_cast<std::size_t>(component * data.matrix_elements +
-                                                                 reverse_matrix)];
+            const double forward_integral = integrals.dipole[static_cast<std::size_t>(
+                component * data.matrix_elements + forward_matrix)];
+            const double reverse_integral = integrals.dipole[static_cast<std::size_t>(
+                component * data.matrix_elements + reverse_matrix)];
             if (!std::isfinite(forward_integral) || !std::isfinite(reverse_integral)) {
               error = "Mulliken dipole integral input contains NaN or infinity";
               return XTBLOOM_STATUS_INVALID_ARGUMENT;
             }
             if (!std::isfinite(row_potential) || !std::isfinite(column_potential) ||
-                !add_product(forward_integral, column_potential, shift) ||
-                !add_product(reverse_integral, row_potential, shift)) {
+                !::vibeqc::xtb::generated::gfn2_multipole_hamiltonian_update_tensor(
+                    forward_integral, reverse_integral, row_potential, column_potential, shift,
+                    shift)) {
               error = "Mulliken dipole Hamiltonian assembly exceeded floating-point range";
               return XTBLOOM_STATUS_INTERNAL_ERROR;
             }
@@ -1574,19 +1564,18 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
                 quadrupole_base + (spin * atoms + local_row_atom) * 6 + component)];
             const double column_potential = quadrupole_scratch[static_cast<std::size_t>(
                 quadrupole_base + (spin * atoms + local_column_atom) * 6 + component)];
-            const double forward_integral =
-                -0.5 * integrals.quadrupole[static_cast<std::size_t>(
-                           component * data.matrix_elements + forward_matrix)];
-            const double reverse_integral =
-                -0.5 * integrals.quadrupole[static_cast<std::size_t>(
-                           component * data.matrix_elements + reverse_matrix)];
+            const double forward_integral = integrals.quadrupole[static_cast<std::size_t>(
+                component * data.matrix_elements + forward_matrix)];
+            const double reverse_integral = integrals.quadrupole[static_cast<std::size_t>(
+                component * data.matrix_elements + reverse_matrix)];
             if (!std::isfinite(forward_integral) || !std::isfinite(reverse_integral)) {
               error = "Mulliken quadrupole integral input contains NaN or infinity";
               return XTBLOOM_STATUS_INVALID_ARGUMENT;
             }
             if (!std::isfinite(row_potential) || !std::isfinite(column_potential) ||
-                !add_product(forward_integral, column_potential, shift) ||
-                !add_product(reverse_integral, row_potential, shift)) {
+                !::vibeqc::xtb::generated::gfn2_multipole_hamiltonian_update_tensor(
+                    forward_integral, reverse_integral, row_potential, column_potential, shift,
+                    shift)) {
               error = "Mulliken quadrupole Hamiltonian assembly exceeded floating-point range";
               return XTBLOOM_STATUS_INTERNAL_ERROR;
             }

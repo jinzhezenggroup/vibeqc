@@ -128,6 +128,20 @@ macro(vibeqc_register_host_generated_sources target)
     ARGS --output "${VIBEQC_GFN2_PAIR_CPU_HEADER}"
     COMMENT "Generating compiler-owned GFN2 CPU pair kernels")
 
+  set(VIBEQC_GFN2_ELECTRONIC_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_electronic_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_electronic_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_electronic_native.py"
+    OUTPUTS "${VIBEQC_GFN2_ELECTRONIC_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_electronic_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_ELECTRONIC_CPU_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 CPU electronic kernels")
+
   file(GLOB VIBEQC_RCCSD_GENERATOR_INPUTS CONFIGURE_DEPENDS
        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_cc/*.py")
   set(VIBEQC_RCCSD_CPU_HEADER
