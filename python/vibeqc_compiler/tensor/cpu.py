@@ -8,6 +8,7 @@ before any allocation or compilation.
 """
 
 import ctypes as ct
+import re
 import typing
 from collections.abc import Mapping
 from fractions import Fraction
@@ -105,6 +106,7 @@ def emit_cpu(
     max_bytes: typing.Any = 8 * 1024 * 1024,
     max_work: typing.Any = 100_000_000,
     max_nodes: typing.Any = 4096,
+    symbol: str = "tensor_cpu",
 ) -> typing.Any:
     """Return source and exact bounded storage/work requirements without runtime imports.
 
@@ -113,6 +115,11 @@ def emit_cpu(
     """
     if not isinstance(program, Program):
         raise TypeError("CPU lowering requires a TensorIR Program")
+    if (
+        not isinstance(symbol, str)
+        or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", symbol) is None
+    ):
+        raise ValueError("CPU entry symbol must be a C identifier")
     checked_size(max_bytes, "CPU byte budget")
     checked_size(max_work, "CPU work budget")
     checked_size(max_nodes, "CPU node budget")
@@ -158,7 +165,7 @@ def emit_cpu(
             else []
         ),
         f"// TensorIR {program.logical_hash}; provenance {canonical_hash(program.provenance)}",
-        'extern "C" int tensor_cpu(const double* input, size_t ni, double* output, size_t no, size_t budget) noexcept {',
+        f'extern "C" int {symbol}(const double* input, size_t ni, double* output, size_t no, size_t budget) noexcept {{',
         f"return vibeqc_tensor_cpu::run(input, ni, output, no, budget, {ni}ULL, {no}ULL, {arena}ULL, {required}ULL,",
         "[](const double* input, double* p) {",
     ]
@@ -337,6 +344,7 @@ class NativeTensorProgram:
         max_bytes: typing.Any = 8 * 1024 * 1024,
         max_work: typing.Any = 100_000_000,
         max_nodes: typing.Any = 4096,
+        symbol: str = "tensor_cpu",
     ) -> None:
         if not isinstance(compiler, CppCompilerAdapter):
             raise TypeError("native TensorIR requires a CPU compiler adapter")
@@ -345,6 +353,7 @@ class NativeTensorProgram:
             max_bytes=max_bytes,
             max_work=max_work,
             max_nodes=max_nodes,
+            symbol=symbol,
         )
         self.program, self.max_bytes = program, max_bytes
         self.inputs = tuple(n for n in program.live_nodes if n.op == "input")
@@ -364,7 +373,7 @@ class NativeTensorProgram:
             options=("-ffp-contract=off", f"-I{header.parent}"),
         )
         self.library = ct.CDLL(str(self.artifact.library))
-        self.call = self.library.tensor_cpu
+        self.call = getattr(self.library, symbol)
         self.call.argtypes = [
             ct.POINTER(ct.c_double),
             ct.c_size_t,
