@@ -1,6 +1,7 @@
 #include <cmath>
 #include <limits>
 
+#include "generated_one_electron_derivative_policy.cuh"
 #include "generated_one_electron_derivatives.cuh"
 #include "molecule/basis.hpp"
 #include "scf/cuda/one_electron_derivatives.cuh"
@@ -8,10 +9,16 @@
 namespace vibeqc::scf {
 namespace {
 namespace generated = generated_one_electron_derivatives;
+namespace derivative_policy = generated_one_electron_derivative_policy;
+using NucleusCooperativeSchedule = derivative_policy::NucleusCooperativeSchedule;
 constexpr std::size_t kTerms = molecule::kMaximumAoExpansionTerms;
 constexpr unsigned kWarpThreads = 32U;
 constexpr unsigned kDerivativeThreads = 128U;
-constexpr unsigned kDerivativeWarpsPerBlock = kDerivativeThreads / kWarpThreads;
+constexpr unsigned kCooperativeLanes = NucleusCooperativeSchedule::group_lanes;
+constexpr unsigned kCooperativeGroups = NucleusCooperativeSchedule::groups_per_block;
+static_assert(NucleusCooperativeSchedule::subgroup_lanes == kWarpThreads);
+static_assert(kCooperativeLanes == kWarpThreads);
+static_assert(NucleusCooperativeSchedule::block_threads == kCooperativeLanes * kCooperativeGroups);
 
 __device__ double pair_weight(const double* matrix, double scale, std::size_t offset, std::size_t i,
                               std::size_t j, std::size_t n) {
@@ -103,7 +110,7 @@ __device__ void contract_pair_nucleus_cooperative(const OneElectronDeviceView& b
                                                   double* gradient,
                                                   generated::PairGeometry* shared_pair) {
   constexpr unsigned kWarpMask = 0xffffffffU;
-  const unsigned lane = threadIdx.x & 31U;
+  const unsigned lane = threadIdx.x % kCooperativeLanes;
   const std::size_t n = batch.nbf, system = i / n, offset = system * n * n;
   double ws = 0.0, wt = 0.0, wv = 0.0;
   if (lane == 0U) {
@@ -160,7 +167,7 @@ __device__ void contract_pair_nucleus_cooperative(const OneElectronDeviceView& b
   if (wv != 0.0) {
     const auto atom_begin = batch.atom_offsets[system];
     const auto atom_end = batch.atom_offsets[system + 1];
-    for (auto atom_base = atom_begin; atom_base < atom_end; atom_base += warpSize) {
+    for (auto atom_base = atom_begin; atom_base < atom_end; atom_base += kCooperativeLanes) {
       const auto atom = atom_base + lane;
       const bool valid_atom = atom < atom_end;
       const double* C = valid_atom ? batch.positions + 3 * atom : nullptr;
@@ -212,7 +219,7 @@ __device__ void contract_pair_nucleus_cooperative(const OneElectronDeviceView& b
     }
   }
 
-  for (unsigned delta = warpSize / 2; delta != 0; delta /= 2)
+  for (unsigned delta = kCooperativeLanes / 2; delta != 0; delta /= 2)
     for (unsigned axis = 0; axis < 3; ++axis) {
       first[axis] += __shfl_down_sync(kWarpMask, first[axis], delta);
       second[axis] += __shfl_down_sync(kWarpMask, second[axis], delta);
@@ -229,15 +236,15 @@ __global__ void nucleus_cooperative_gradient(OneElectronDeviceView batch, const 
                                              OneElectronWeightView weights,
                                              const std::uint8_t* active, double sign,
                                              double* gradient) {
-  __shared__ generated::PairGeometry shared_pairs[kDerivativeWarpsPerBlock];
-  const std::size_t warp = (std::size_t{blockIdx.x} * blockDim.x + threadIdx.x) / warpSize;
+  __shared__ generated::PairGeometry shared_pairs[kCooperativeGroups];
+  const std::size_t warp = (std::size_t{blockIdx.x} * blockDim.x + threadIdx.x) / kCooperativeLanes;
   const std::size_t tasks = static_cast<std::size_t>(batch.batch_size) * count;
   if (warp >= tasks) return;
   const auto system = warp / count;
   if (active && !active[system]) return;
   const auto base = system * batch.nbf, pair = warp % count;
   contract_pair_nucleus_cooperative(batch, base + first[pair], base + second[pair], weights, sign,
-                                    gradient, shared_pairs + threadIdx.x / warpSize);
+                                    gradient, shared_pairs + threadIdx.x / kCooperativeLanes);
 }
 
 __global__ void thread_gradient(OneElectronDeviceView batch, const std::int32_t* first,
@@ -284,12 +291,16 @@ cudaError_t launch_generated_one_electron_gradient(
     const std::int32_t* pair_second, std::size_t pair_count, const OneElectronWeightView& weights,
     const std::uint8_t* active, unsigned schedule, double output_sign, double* gradient,
     cudaStream_t stream) {
-  if (batch.batch_size <= 0 || batch.nbf <= 0 || !gradient || schedule > 3 ||
-      !std::isfinite(output_sign) || !std::isfinite(weights.overlap_scale) ||
-      !std::isfinite(weights.kinetic_scale) || !std::isfinite(weights.attraction_scale))
+  if (batch.batch_size <= 0 || batch.nbf <= 0 || !gradient ||
+      schedule > NucleusCooperativeSchedule::schedule_code || !std::isfinite(output_sign) ||
+      !std::isfinite(weights.overlap_scale) || !std::isfinite(weights.kinetic_scale) ||
+      !std::isfinite(weights.attraction_scale))
     return cudaErrorInvalidValue;
-  constexpr unsigned threads = kDerivativeThreads;
-  const bool ao_pair_schedule = schedule == 0 || schedule == 3;
+  const unsigned threads = schedule == NucleusCooperativeSchedule::schedule_code
+                               ? NucleusCooperativeSchedule::block_threads
+                               : kDerivativeThreads;
+  const bool ao_pair_schedule =
+      schedule == 0 || schedule == NucleusCooperativeSchedule::schedule_code;
   if (ao_pair_schedule && (!pair_first || !pair_second || pair_count == 0))
     return cudaErrorInvalidValue;
   // Validate products before task/grid calculations or matrix offset indexing.
@@ -305,7 +316,10 @@ cudaError_t launch_generated_one_electron_gradient(
                             : schedule == 1
                                 ? batch.shell_pair_count
                                 : static_cast<std::size_t>(batch.batch_size) * pair_count;
-  const unsigned per_block = (schedule == 1 || schedule == 3) ? threads / kWarpThreads : threads;
+  const unsigned per_block = schedule == NucleusCooperativeSchedule::schedule_code
+                                 ? NucleusCooperativeSchedule::groups_per_block
+                             : schedule == 1 ? threads / kWarpThreads
+                                             : threads;
   if (tasks == 0 || (tasks - 1) / per_block >= std::numeric_limits<int>::max())
     return cudaErrorInvalidValue;
   const unsigned blocks = static_cast<unsigned>((tasks - 1) / per_block + 1);
@@ -314,7 +328,7 @@ cudaError_t launch_generated_one_electron_gradient(
   else if (schedule == 1)
     shell_warp_gradient<<<blocks, threads, 0, stream>>>(batch, weights, active, output_sign,
                                                         gradient);
-  else if (schedule == 3)
+  else if (schedule == NucleusCooperativeSchedule::schedule_code)
     nucleus_cooperative_gradient<<<blocks, threads, 0, stream>>>(
         batch, pair_first, pair_second, pair_count, weights, active, output_sign, gradient);
   else

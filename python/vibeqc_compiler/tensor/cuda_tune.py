@@ -156,6 +156,42 @@ def _compiled_profitability(
     ).to_payload()
 
 
+def _endpoint_profitability(
+    compiled_profitability: dict[str, object],
+    timings: typing.Iterable[typing.Any],
+    *,
+    minimum_speedup: float,
+) -> list[dict[str, object]]:
+    """Attach complete endpoint timing to the shared GPU profitability record."""
+
+    rows = []
+    static = typing.cast("dict[str, object]", compiled_profitability["static"])
+    compiled = typing.cast("dict[str, object]", compiled_profitability["compiled"])
+    for pairs in timings:
+        baseline_samples, candidate_samples = _paired_seconds(pairs)
+        baseline_seconds = float(np.median(baseline_samples))
+        candidate_seconds = float(np.median(candidate_samples))
+        baseline = GpuProfitability(endpoint_seconds=baseline_seconds)
+        candidate = GpuProfitability(
+            **static,
+            **compiled,
+            endpoint_seconds=candidate_seconds,
+        )
+        rows.append(
+            {
+                "baseline_endpoint_seconds": baseline_seconds,
+                "candidate": candidate.to_payload(),
+                "rejection_reasons": list(
+                    candidate.endpoint_regressions_against(
+                        baseline,
+                        minimum_speedup=minimum_speedup,
+                    )
+                ),
+            }
+        )
+    return rows
+
+
 @dataclass(frozen=True)
 class TensorSelection:
     """Concrete compiled winner plus the complete selection audit artifact."""
@@ -352,13 +388,27 @@ def tune_cuda(
                         for pairs in timings
                     ]
                     shared_gates = [assess_comparison(pairs) for pairs in timings]
-                    passed = all(g["passed"] for g in gates) and all(
-                        g["status"] == "pass" for g in shared_gates
+                    endpoint_profitability = _endpoint_profitability(
+                        row["profitability"],
+                        timings,
+                        minimum_speedup=minimum_speedup,
+                    )
+                    profitability_rejections = [
+                        reason
+                        for fixture in endpoint_profitability
+                        for reason in fixture["rejection_reasons"]
+                    ]
+                    passed = (
+                        all(g["passed"] for g in gates)
+                        and all(g["status"] == "pass" for g in shared_gates)
+                        and not profitability_rejections
                     )
                     row.update(
                         status="accepted" if passed else "rejected",
                         gates=gates,
                         shared_gates=shared_gates,
+                        endpoint_profitability=endpoint_profitability,
+                        profitability_rejections=profitability_rejections,
                         max_absolute_error=max(errors),
                     )
                     score = min(g["median_speedup"] for g in gates)

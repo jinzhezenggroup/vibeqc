@@ -6,6 +6,7 @@ import typing
 import pytest
 
 from benchmarks.issue437_practical_jkfit_work_ledger import (
+    WEIGHT_MAGNITUDE_BIN_COUNT,
     compare_cells,
     summarize_cell,
 )
@@ -330,3 +331,61 @@ def test_work_counters_are_not_silently_coerced(value: object) -> None:
     work["classes"][0]["work"]["active_shell_tasks"] = value
     with pytest.raises(ValueError, match="integer"):
         summarize_cell("cell", "equal", work, trace)
+
+
+def test_weight_histogram_conserves_folded_samples_and_public_loads() -> None:
+    work, trace = _minimal_cell("practical")
+    counters = trace["counters"]
+    counters.update(
+        {
+            "screening_weight_histogram_version": 1,
+            "screening_weight_histogram_bin_count": WEIGHT_MAGNITUDE_BIN_COUNT,
+            "screening_feature_weight_d2h_bytes": 8,
+            "screening_feature_stream_drains": 1,
+            "shell_000_weight_effective_samples": 1,
+            "shell_000_weight_underlying_loads": 1,
+        }
+    )
+    for index in range(WEIGHT_MAGNITUDE_BIN_COUNT):
+        counters[f"shell_000_weight_magnitude_bin_{index:02d}"] = int(index == 5)
+
+    cell = summarize_cell("practical", "practical", work, trace)
+    histogram = cell["classes"][0]["response_weight_magnitude_distribution"]
+    assert histogram["effective_samples"] == 1
+    assert histogram["underlying_loads"] == 1
+    assert histogram["zero"] == 0
+    assert sum(histogram["positive_bins"]) == 1
+    assert (
+        "response_weight_magnitude_distribution" not in cell["missing_phase_a_fields"]
+    )
+
+    broken = copy.deepcopy(trace)
+    broken["counters"]["shell_000_weight_underlying_loads"] = 2
+    with pytest.raises(ValueError, match="conserve public loads"):
+        summarize_cell("practical", "practical", work, broken)
+
+
+@pytest.mark.parametrize(
+    "corruption", ["wrong_sum", "negative", "bool", "missing_axis", "wrong_width"]
+)
+def test_distance_histogram_rejects_corrupt_bins(corruption: str) -> None:
+    work, trace = _minimal_cell("practical")
+    row = {
+        "angular": [0, 0, 0],
+        "primitive_products_considered": 4,
+        "distance_bohr": {key: [4] + [0] * 7 for key in ("ab", "ac", "bc")},
+        "exponents": {key: [4] + [0] * 10 for key in ("alpha", "beta", "gamma")},
+    }
+    work["distance_exponent_bins"] = {"classes": [row]}
+    if corruption == "wrong_sum":
+        row["distance_bohr"]["ab"][0] = 3
+    elif corruption == "negative":
+        row["exponents"]["alpha"][:2] = [-1, 5]
+    elif corruption == "bool":
+        row["distance_bohr"]["ab"][:2] = [True, 3]
+    elif corruption == "missing_axis":
+        del row["exponents"]["gamma"]
+    else:
+        row["distance_bohr"]["bc"].append(0)
+    with pytest.raises((ValueError, TypeError), match="histogram|integer|feature"):
+        summarize_cell("practical", "practical", work, trace)

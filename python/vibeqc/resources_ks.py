@@ -34,7 +34,16 @@ from .resources import (
 )
 from .resources_hf import _basis_record, _cuda_library_identity, _ecp_workspace
 
-_METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks", "pbe0-rks", "pbe0-uks")
+_METHODS = (
+    "lda-rks",
+    "pbe-rks",
+    "lda-uks",
+    "pbe-uks",
+    "pbe0-rks",
+    "pbe0-uks",
+    "b3lyp-rks",
+    "b3lyp-uks",
+)
 
 
 def _item_host_inventory(
@@ -89,6 +98,24 @@ def _item_host_inventory(
     xc_schedule_staging = (
         byte_product(8, n2, 2 * spins + (2 if spins == 2 else 0)) if host_unfused else 0
     )
+    nonlocal_provider = 0
+    nonlocal_work = 0
+    if model.requires_nonlocal_v5:
+        # Vv10Plan retains omega/kappa/weighted-density and three local
+        # derivatives: six FP64 arrays. The AO bridge separately owns rho,
+        # grad-rho, vrho/vsigma, one first-derivative AO tile and V_nlc.
+        nonlocal_provider = byte_product(8, points, 6)
+        if nonlocal_provider > model.nonlocal_memory_budget_bytes:
+            raise ValueError(
+                "KS nonlocal provider workspace exceeds nonlocal_memory_budget_bytes"
+            )
+        matrix_factor = 3 if spins == 2 else 1
+        nonlocal_work = (
+            byte_product(8, points, 6)
+            + byte_product(8, min(points, model.tile_points), n, 4)
+            + byte_product(8, n2, matrix_factor)
+        )
+        retained += nonlocal_provider
     if backend == "cpu":
         # Value-only Jet objects retain no derivative arrays. Raw Cartesian
         # Jet integrals coexist with unpacked and spherical transform buffers.
@@ -116,9 +143,10 @@ def _item_host_inventory(
             "history": history,
             "provider": provider,
             "xc_schedule_staging": xc_schedule_staging,
+            "nonlocal_provider": nonlocal_provider,
             "retained": retained,
             "setup_workspace": setup,
-            "scf_workspace": matrix_work + xc_tile,
+            "scf_workspace": matrix_work + xc_tile + nonlocal_work,
         }.items()
     }
 
@@ -213,6 +241,10 @@ def ks_resource_request(
     if precision == "auto" and backend != "cuda":
         raise NotImplementedError("KS automatic precision currently requires CUDA")
     model = resolve_ks_options(method, ks_options)
+    if backend == "cuda" and model.requires_nonlocal_v5:
+        raise NotImplementedError(
+            "self-consistent nonlocal correlation currently requires CPU"
+        )
     if backend == "cuda" and model.requires_composition_v2:
         raise NotImplementedError(
             "CUDA KS planning does not claim scaled/global-hybrid execution"
@@ -355,6 +387,7 @@ def ks_resource_request(
         "history",
         "provider",
         "xc_schedule_staging",
+        "nonlocal_provider",
     ):
         estimates.append(
             ResourceEstimate(
@@ -404,7 +437,9 @@ def ks_resource_request(
                     )
                 version_value = 0 if options_version is None else options_version()
                 required = (
-                    3
+                    5
+                    if model.requires_nonlocal_v5
+                    else 3
                     if model.requires_schedule_v3
                     else 2
                     if model.requires_composition_v2

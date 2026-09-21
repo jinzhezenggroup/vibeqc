@@ -176,6 +176,28 @@
       ]
     },
     {
+      "name": "b3lyp-rks",
+      "symbol": "B3LYP_RKS",
+      "abi_id": 16,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "b3lyp-uks",
+      "symbol": "B3LYP_UKS",
+      "abi_id": 17,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
       "name": "pbe-d4-rks",
       "symbol": "PBE_D4_RKS",
       "abi_id": 18,

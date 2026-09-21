@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 #include "generated_rccsd_cpu.hpp"
+#include "solver/iteration_control.hpp"
 
 namespace vibeqc::cc {
 namespace {
@@ -204,7 +205,11 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
   result.diagnostic.numeric_capacity_bytes = std::max(p.provider_peak_bytes, capacity);
   result.reason = "maximum RCCSD iterations reached";
 
-  for (unsigned iteration = 0; iteration <= options.max_iterations; ++iteration) {
+  const unsigned iteration_budget = options.max_iterations == std::numeric_limits<unsigned>::max()
+                                        ? options.max_iterations
+                                        : options.max_iterations + 1;
+  vibeqc::solver::run_bounded_iterations(iteration_budget, [&](unsigned ordinal) {
+    const unsigned iteration = ordinal - 1;
     try {
       auto in = inputs(p, current.data(), current.data() + n1);
       const auto out = generated::run_iteration_cpu(p.nocc, p.nvir, in, iteration_arena.data(),
@@ -229,16 +234,16 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
             std::abs(replay.energy - out.energy) <= options.energy_tolerance) {
           result.status = SolveStatus::Converged;
           result.reason = "energy change and expanded physical R1/R2 passed";
-          break;
+          return false;
         }
       }
-      if (iteration == options.max_iterations) break;
+      if (iteration == options.max_iterations) return false;
       std::vector<double> trial(elements);
       const double jacobi = 1.0 - options.damping;
-      for (std::size_t i = 0; i < n1; ++i)
-        trial[i] = current[i] + jacobi * (out.next_t1[i] - current[i]);
-      for (std::size_t i = 0; i < n2; ++i)
-        trial[n1 + i] = current[n1 + i] + jacobi * (out.next_t2[i] - current[n1 + i]);
+      for (std::size_t k = 0; k < n1; ++k)
+        trial[k] = current[k] + jacobi * (out.next_t1[k] - current[k]);
+      for (std::size_t k = 0; k < n2; ++k)
+        trial[n1 + k] = current[n1 + k] + jacobi * (out.next_t2[k] - current[n1 + k]);
       auto trial_in = inputs(p, trial.data(), trial.data() + n1);
       const auto trial_out = generated::run_iteration_cpu(
           p.nocc, p.nvir, trial_in, iteration_arena.data(), iteration_arena.size());
@@ -248,12 +253,13 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
       error.insert(error.end(), trial_out.r2, trial_out.r2 + n2);
       current = diis.update(std::move(trial), std::move(error));
       previous = out.energy;
+      return true;
     } catch (const std::runtime_error& error) {
       result.status = SolveStatus::NumericalFailure;
       result.reason = error.what();
-      break;
+      return false;
     }
-  }
+  });
   result.diagnostic.diis_restarts = diis.restarts;
   result.t1.assign(current.begin(), current.begin() + static_cast<std::ptrdiff_t>(n1));
   result.t2.assign(current.begin() + static_cast<std::ptrdiff_t>(n1), current.end());

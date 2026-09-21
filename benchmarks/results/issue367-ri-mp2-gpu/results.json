@@ -1,0 +1,1601 @@
+{
+  "case": "H2O",
+  "coordinates_unit": "bohr",
+  "records": [
+    {
+      "basis": "sto-3g",
+      "cpu": {
+        "cold_s": 0.03328606300055981,
+        "warm_s": [
+          0.031537037808448076,
+          0.031435213051736355,
+          0.03151148930191994
+        ],
+        "warm_median_s": 0.03151148930191994,
+        "energy": -74.89906354198395,
+        "opposite_spin": -0.01985586791376869,
+        "same_spin": -0.0023733877091009956,
+        "numeric_capacity_bytes": 16803488,
+        "owned_device_bytes": 0,
+        "resident_b_bytes": 560,
+        "transfer_bytes": 0,
+        "mo_host_staging": false
+      },
+      "cuda": {
+        "cold_s": 0.18947388976812363,
+        "warm_s": [
+          0.024301631841808558,
+          0.024088143836706877,
+          0.024036254733800888
+        ],
+        "warm_median_s": 0.024088143836706877,
+        "energy": -74.89906354198429,
+        "opposite_spin": -0.019855867913758134,
+        "same_spin": -0.0023733877091015087,
+        "numeric_capacity_bytes": 268435456,
+        "owned_device_bytes": 2134597,
+        "resident_b_bytes": 560,
+        "transfer_bytes": 1364,
+        "mo_host_staging": false
+      },
+      "warm_speedup": 1.3081742418816409,
+      "trace": {
+        "schema": "vibeqc.df_trace",
+        "version": 1,
+        "id": 15,
+        "operation": "ri_mp2_energy",
+        "execution": "stream",
+        "valid": true,
+        "cuda_error": 0,
+        "nvtx": false,
+        "systems": 1,
+        "system_offset": 0,
+        "nbf": 7,
+        "naux": 7,
+        "source_backed": true,
+        "streamed": false,
+        "final_synchronization_ms": 0.003126,
+        "host_completion_ms": 10.45901,
+        "profiler_event_count": 20,
+        "dropped_regions": 0,
+        "dropped_tiles": 0,
+        "regions": [
+          {
+            "name": "ri_mp2_energy",
+            "parent": -1,
+            "host_ms": 10.455884,
+            "gpu_ms": 10.4509125
+          },
+          {
+            "name": "ri_mp2_ao_to_mo",
+            "parent": 0,
+            "host_ms": 0.128646,
+            "gpu_ms": 10.2799044
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.009899,
+            "gpu_ms": 1.493312
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008376,
+            "gpu_ms": 1.49123204
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008506,
+            "gpu_ms": 1.49196804
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008286,
+            "gpu_ms": 1.49094403
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008326,
+            "gpu_ms": 1.48992002
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008556,
+            "gpu_ms": 1.37728
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008527,
+            "gpu_ms": 1.37625599
+          },
+          {
+            "name": "ri_mp2_energy_contraction",
+            "parent": 0,
+            "host_ms": 0.050436,
+            "gpu_ms": 0.0426560007
+          }
+        ],
+        "counters": {
+          "ri_mp2_ao_to_mo_gemms": 8,
+          "ri_mp2_coefficient_h2d_bytes": 448,
+          "ri_mp2_contribution_blocks": 25,
+          "ri_mp2_d2h_bytes": 468,
+          "ri_mp2_energy_gemms": 5,
+          "ri_mp2_final_d2h_bytes": 16,
+          "ri_mp2_h2d_bytes": 896,
+          "ri_mp2_j_batch": 5,
+          "ri_mp2_metric_d2h_bytes": 392,
+          "ri_mp2_metric_diagnostic_d2h_bytes": 60,
+          "ri_mp2_metric_h2d_bytes": 448,
+          "ri_mp2_plan_device_resident_bytes": 2131837,
+          "ri_mp2_planned_peak_bytes": 2135831,
+          "ri_mp2_resident_b_bytes": 560,
+          "ri_mp2_source_passes": 1,
+          "ri_mp2_source_row_generations": 7,
+          "ri_mp2_transfer_bytes": 1364,
+          "ri_mp2_virtual_block": 2,
+          "ri_mp2_virtual_blocks": 1,
+          "ri_mp2_working_device_bytes": 2760,
+          "transformed_tile_productions": 7,
+          "transformed_value_bytes": 2744
+        },
+        "tiles": [
+          {
+            "system": 0,
+            "pair_begin": 0,
+            "pair_count": 7,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 7,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 7,
+            "pair_count": 7,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 7,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 14,
+            "pair_count": 7,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 7,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 21,
+            "pair_count": 7,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 7,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 28,
+            "pair_count": 7,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 7,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 35,
+            "pair_count": 7,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 7,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 42,
+            "pair_count": 7,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 7,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          }
+        ]
+      }
+    },
+    {
+      "basis": "def2-svp",
+      "cpu": {
+        "cold_s": 0.32649308163672686,
+        "warm_s": [
+          0.3267839481122792,
+          0.32556125009432435,
+          0.3264937628991902
+        ],
+        "warm_median_s": 0.3264937628991902,
+        "energy": -76.37140670816872,
+        "opposite_spin": -0.13895243805195218,
+        "same_spin": -0.07092162115590528,
+        "numeric_capacity_bytes": 17507216,
+        "owned_device_bytes": 0,
+        "resident_b_bytes": 20000,
+        "transfer_bytes": 0,
+        "mo_host_staging": false
+      },
+      "cuda": {
+        "cold_s": 0.09683334408327937,
+        "warm_s": [
+          0.08452771231532097,
+          0.08392052073031664,
+          0.08357930788770318
+        ],
+        "warm_median_s": 0.08392052073031664,
+        "energy": -76.37140670816244,
+        "opposite_spin": -0.1389524380522849,
+        "same_spin": -0.07092162115632425,
+        "numeric_capacity_bytes": 268435456,
+        "owned_device_bytes": 2653471,
+        "resident_b_bytes": 20000,
+        "transfer_bytes": 15620,
+        "mo_host_staging": false
+      },
+      "warm_speedup": 3.8905116419426955,
+      "trace": {
+        "schema": "vibeqc.df_trace",
+        "version": 1,
+        "id": 31,
+        "operation": "ri_mp2_energy",
+        "execution": "stream",
+        "valid": true,
+        "cuda_error": 0,
+        "nvtx": false,
+        "systems": 1,
+        "system_offset": 0,
+        "nbf": 25,
+        "naux": 25,
+        "source_backed": true,
+        "streamed": false,
+        "final_synchronization_ms": 0.003066,
+        "host_completion_ms": 51.894708,
+        "profiler_event_count": 56,
+        "dropped_regions": 0,
+        "dropped_tiles": 0,
+        "regions": [
+          {
+            "name": "ri_mp2_energy",
+            "parent": -1,
+            "host_ms": 51.891642,
+            "gpu_ms": 51.8866577
+          },
+          {
+            "name": "ri_mp2_ao_to_mo",
+            "parent": 0,
+            "host_ms": 0.417779,
+            "gpu_ms": 51.6615677
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.010129,
+            "gpu_ms": 9.01008034
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008206,
+            "gpu_ms": 1.80944002
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008466,
+            "gpu_ms": 1.81584001
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008336,
+            "gpu_ms": 5.09747219
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008616,
+            "gpu_ms": 5.10505581
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008035,
+            "gpu_ms": 5.10604811
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008727,
+            "gpu_ms": 1.70633602
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008075,
+            "gpu_ms": 1.70531201
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008156,
+            "gpu_ms": 1.70636797
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008316,
+            "gpu_ms": 0.555392027
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008236,
+            "gpu_ms": 0.542079985
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.007875,
+            "gpu_ms": 0.542079985
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008245,
+            "gpu_ms": 0.556415975
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008266,
+            "gpu_ms": 0.541055977
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008776,
+            "gpu_ms": 0.558431983
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008376,
+            "gpu_ms": 3.05395198
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.007875,
+            "gpu_ms": 1.05574405
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.007925,
+            "gpu_ms": 1.12630403
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008356,
+            "gpu_ms": 1.12486398
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008386,
+            "gpu_ms": 1.12934399
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008125,
+            "gpu_ms": 3.06483197
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008195,
+            "gpu_ms": 1.05267203
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.007955,
+            "gpu_ms": 1.12537599
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008345,
+            "gpu_ms": 1.12537599
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008356,
+            "gpu_ms": 1.12844801
+          },
+          {
+            "name": "ri_mp2_energy_contraction",
+            "parent": 0,
+            "host_ms": 0.053542,
+            "gpu_ms": 0.0938239992
+          }
+        ],
+        "counters": {
+          "ri_mp2_ao_to_mo_gemms": 26,
+          "ri_mp2_coefficient_h2d_bytes": 5200,
+          "ri_mp2_contribution_blocks": 25,
+          "ri_mp2_d2h_bytes": 5220,
+          "ri_mp2_energy_gemms": 5,
+          "ri_mp2_final_d2h_bytes": 16,
+          "ri_mp2_h2d_bytes": 10400,
+          "ri_mp2_j_batch": 5,
+          "ri_mp2_metric_d2h_bytes": 5000,
+          "ri_mp2_metric_diagnostic_d2h_bytes": 204,
+          "ri_mp2_metric_h2d_bytes": 5200,
+          "ri_mp2_plan_device_resident_bytes": 2506855,
+          "ri_mp2_planned_peak_bytes": 2558897,
+          "ri_mp2_resident_b_bytes": 20000,
+          "ri_mp2_source_passes": 1,
+          "ri_mp2_source_row_generations": 25,
+          "ri_mp2_transfer_bytes": 15620,
+          "ri_mp2_virtual_block": 20,
+          "ri_mp2_virtual_blocks": 1,
+          "ri_mp2_working_device_bytes": 146616,
+          "transformed_tile_productions": 25,
+          "transformed_value_bytes": 125000
+        },
+        "tiles": [
+          {
+            "system": 0,
+            "pair_begin": 0,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 25,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 50,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 75,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 100,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 125,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 150,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 175,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 200,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 225,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 250,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 275,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 300,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 325,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 350,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 375,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 400,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 425,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 450,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 475,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 500,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 525,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 550,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 575,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 600,
+            "pair_count": 25,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 25,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          }
+        ]
+      }
+    },
+    {
+      "basis": "def2-tzvp",
+      "cpu": {
+        "cold_s": 3.423845206387341,
+        "warm_s": [
+          3.4289262839592993,
+          3.418948754668236,
+          3.4137227130122483
+        ],
+        "warm_median_s": 3.418948754668236,
+        "energy": -76.28462254315419,
+        "opposite_spin": -0.20232802674278944,
+        "same_spin": -0.07333422887740045,
+        "numeric_capacity_bytes": 21545376,
+        "owned_device_bytes": 0,
+        "resident_b_bytes": 82560,
+        "transfer_bytes": 0,
+        "mo_host_staging": false
+      },
+      "cuda": {
+        "cold_s": 0.218134056776762,
+        "warm_s": [
+          0.21202040603384376,
+          0.21172761730849743,
+          0.20859052706509829
+        ],
+        "warm_median_s": 0.21172761730849743,
+        "energy": -76.28462254318666,
+        "opposite_spin": -0.2023280267423176,
+        "same_spin": -0.07333422887741962,
+        "numeric_capacity_bytes": 268435456,
+        "owned_device_bytes": 4579275,
+        "resident_b_bytes": 82560,
+        "transfer_bytes": 56468,
+        "mo_host_staging": false
+      },
+      "warm_speedup": 16.14786393069668,
+      "trace": {
+        "schema": "vibeqc.df_trace",
+        "version": 1,
+        "id": 47,
+        "operation": "ri_mp2_energy",
+        "execution": "stream",
+        "valid": true,
+        "cuda_error": 0,
+        "nvtx": false,
+        "systems": 1,
+        "system_offset": 0,
+        "nbf": 48,
+        "naux": 48,
+        "source_backed": true,
+        "streamed": false,
+        "final_synchronization_ms": 0.003437,
+        "host_completion_ms": 150.991411,
+        "profiler_event_count": 102,
+        "dropped_regions": 0,
+        "dropped_tiles": 0,
+        "regions": [
+          {
+            "name": "ri_mp2_energy",
+            "parent": -1,
+            "host_ms": 150.987974,
+            "gpu_ms": 150.98201
+          },
+          {
+            "name": "ri_mp2_ao_to_mo",
+            "parent": 0,
+            "host_ms": 0.777667,
+            "gpu_ms": 150.675812
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.010259,
+            "gpu_ms": 19.2675514
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008697,
+            "gpu_ms": 6.29244804
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008406,
+            "gpu_ms": 3.10556793
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008366,
+            "gpu_ms": 3.12515211
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008115,
+            "gpu_ms": 3.09552002
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008226,
+            "gpu_ms": 11.4462719
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008797,
+            "gpu_ms": 11.4589443
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008116,
+            "gpu_ms": 12.7052164
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008446,
+            "gpu_ms": 2.87273598
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.007995,
+            "gpu_ms": 2.87235188
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008166,
+            "gpu_ms": 2.87225604
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008145,
+            "gpu_ms": 2.8870399
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008096,
+            "gpu_ms": 2.8942399
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008407,
+            "gpu_ms": 3.14511991
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008497,
+            "gpu_ms": 1.16060805
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008386,
+            "gpu_ms": 1.15548801
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008296,
+            "gpu_ms": 1.16048002
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008056,
+            "gpu_ms": 1.25993598
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008286,
+            "gpu_ms": 1.14012802
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008045,
+            "gpu_ms": 1.22771204
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008386,
+            "gpu_ms": 1.10835195
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008155,
+            "gpu_ms": 1.16060805
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008226,
+            "gpu_ms": 1.16163194
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008276,
+            "gpu_ms": 1.26099205
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008376,
+            "gpu_ms": 1.14118397
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008095,
+            "gpu_ms": 1.22880006
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008206,
+            "gpu_ms": 1.49542403
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008036,
+            "gpu_ms": 1.69615996
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008126,
+            "gpu_ms": 1.41007996
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008206,
+            "gpu_ms": 1.699808
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008927,
+            "gpu_ms": 1.35411203
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008295,
+            "gpu_ms": 1.70844805
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008186,
+            "gpu_ms": 1.49340796
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008135,
+            "gpu_ms": 1.53542399
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008245,
+            "gpu_ms": 1.40595198
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008025,
+            "gpu_ms": 1.49804795
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008236,
+            "gpu_ms": 5.56992006
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008195,
+            "gpu_ms": 1.96310401
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008226,
+            "gpu_ms": 1.96032
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008115,
+            "gpu_ms": 2.5927999
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008006,
+            "gpu_ms": 2.12265611
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008255,
+            "gpu_ms": 2.13923192
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008186,
+            "gpu_ms": 5.53772783
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008235,
+            "gpu_ms": 1.89747202
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008336,
+            "gpu_ms": 1.89136004
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008296,
+            "gpu_ms": 2.48934388
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008136,
+            "gpu_ms": 2.12479997
+          },
+          {
+            "name": "transformed_three_center_generation",
+            "parent": 1,
+            "host_ms": 0.008286,
+            "gpu_ms": 2.13913608
+          },
+          {
+            "name": "ri_mp2_energy_contraction",
+            "parent": 0,
+            "host_ms": 0.053593,
+            "gpu_ms": 0.173728004
+          }
+        ],
+        "counters": {
+          "ri_mp2_ao_to_mo_gemms": 49,
+          "ri_mp2_coefficient_h2d_bytes": 18816,
+          "ri_mp2_contribution_blocks": 25,
+          "ri_mp2_d2h_bytes": 18836,
+          "ri_mp2_energy_gemms": 5,
+          "ri_mp2_final_d2h_bytes": 16,
+          "ri_mp2_h2d_bytes": 37632,
+          "ri_mp2_j_batch": 5,
+          "ri_mp2_metric_d2h_bytes": 18432,
+          "ri_mp2_metric_diagnostic_d2h_bytes": 388,
+          "ri_mp2_metric_h2d_bytes": 18816,
+          "ri_mp2_plan_device_resident_bytes": 3592515,
+          "ri_mp2_planned_peak_bytes": 4174837,
+          "ri_mp2_resident_b_bytes": 82560,
+          "ri_mp2_source_passes": 1,
+          "ri_mp2_source_row_generations": 48,
+          "ri_mp2_transfer_bytes": 56468,
+          "ri_mp2_virtual_block": 43,
+          "ri_mp2_virtual_blocks": 1,
+          "ri_mp2_working_device_bytes": 986760,
+          "transformed_tile_productions": 48,
+          "transformed_value_bytes": 884736
+        },
+        "tiles": [
+          {
+            "system": 0,
+            "pair_begin": 0,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 48,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 96,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 144,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 192,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 240,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 288,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 336,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 384,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 432,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 480,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 528,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 576,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 624,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 672,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 720,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 768,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 816,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 864,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 912,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 960,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1008,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1056,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1104,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1152,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1200,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1248,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1296,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1344,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1392,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1440,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1488,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1536,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1584,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1632,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1680,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1728,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1776,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1824,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1872,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1920,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 1968,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 2016,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 2064,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 2112,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 2160,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 2208,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          },
+          {
+            "system": 0,
+            "pair_begin": 2256,
+            "pair_count": 48,
+            "auxiliary_begin": 0,
+            "auxiliary_count": 48,
+            "derivative_coordinate": -1,
+            "transformed": true,
+            "productions": 1
+          }
+        ]
+      }
+    }
+  ]
+}

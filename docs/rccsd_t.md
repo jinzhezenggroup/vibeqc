@@ -190,10 +190,13 @@ RHF -> RCCSD -> baseline Lambda -> corrected RCCSD(T) Lambda
 
 The response mathematics is owned by `BoundCCSDTOrbitalResponse`; the final
 `BoundCCSDTGradient` layer does not solve another Z-vector or introduce another
-set of coupled-cluster derivative equations. It reuses the already-qualified
-RCCSD CPU dense derivative oracle and generated bounded CUDA one-electron /
-weighted-ERI consumers for the final h/g/S cotangents. CPU and CUDA final
-contractions therefore consume the same total response weights.
+set of coupled-cluster derivative equations. On CPU, its generated Lambda,
+parameter-response, triples VJP, raw-Hamiltonian, canonicalization and AO
+back-transform programs execute through the common native TensorIR CPU backend
+from #772 rather than the NumPy TensorIR interpreter. It reuses the already-
+qualified RCCSD CPU dense derivative oracle and generated bounded CUDA one-
+electron / weighted-ERI consumers for the final h/g/S cotangents. CPU and CUDA
+final contractions therefore consume the same total response weights.
 
 The current qualification is restricted to real closed-shell canonical RHF,
 conventional unscreened all-electron Hamiltonians, no frozen core, no ECP or
@@ -209,6 +212,7 @@ oracles in `tests/python/test_ccsd_t_complete_gradient.py`; complete-energy
 finite differences and omission controls remain in
 `tests/python/test_ccsd_t_gradient_validation.py`. The native/public CPU energy
 owner and homogeneous prepared batch are covered by
-`tests/python/test_rccsdt_public.py`; native/public force promotion remains
-#155 C. The ownership rationale is recorded in
+`tests/python/test_rccsdt_public.py`; native/public force publication remains
+#155 C even though the qualified CPU response/gradient TensorIR execution is now
+native. The ownership rationale is recorded in
 [the complete-gradient Agent Note](../.agents/notes/implemented/numerics/2026-09-21-ccsdt-complete-gradient-assembly.md).

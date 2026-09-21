@@ -5,11 +5,12 @@ record publication remain outside candidate construction."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cache
 from typing import TYPE_CHECKING
 
 from ..cuda_schedule import (
+    AlgebraPlacement,
     ScheduleIR,
     ScheduleKind,
     tuning_schedule_candidates,
@@ -164,6 +165,37 @@ def _known_production_fock_subgroup_schedules(
     return (schedule,)
 
 
+@cache
+def _production_force_schedule_index(
+    architecture: str,
+) -> tuple[tuple[str, ScheduleIR], ...]:
+    """Read explicit force baselines for opt-in recurrence qualification."""
+
+    selections = load_production_kernel_selections(
+        _PRODUCTION_MANIFEST_PATH,
+        architecture=architecture,
+        profile="auto",
+    )
+    return tuple(
+        (selection.spec.name, selection.schedule)
+        for selection in selections
+        if KernelConsumer.FORCE in selection.consumers
+    )
+
+
+def _known_production_force_schedules(
+    spec: ShellClassSpec, target: CudaTargetInfo
+) -> tuple[ScheduleIR, ...]:
+    """Return the current production force mapping for explicit recurrence IR."""
+
+    schedule_by_name = dict(_production_force_schedule_index(target.architecture))
+    schedule = schedule_by_name.get(spec.name)
+    if schedule is None:
+        return ()
+    schedule.validate_for(target)
+    return (schedule,)
+
+
 def supported_schedule_trials(
     spec: ShellClassSpec,
     consumer: KernelConsumer | str = KernelConsumer.FORCE,
@@ -219,6 +251,25 @@ def supported_schedule_trials(
     ]
     if selected_consumer == KernelConsumer.FOCK:
         schedules.extend(_known_production_fock_subgroup_schedules(spec, target))
+    elif explicit_integral is not None and integral.recurrence in (
+        "rys3",
+        "rys4",
+        "rys5",
+    ):
+        # High-order production mappings can intentionally be absent from the
+        # generic schedule search (for example 1296-component dddd).  An
+        # explicit fixed-root IntegralIR opts into comparing the exact current
+        # production topology with its pressure-rematerialized peer.
+        production_force_schedules = _known_production_force_schedules(spec, target)
+        schedules.extend(production_force_schedules)
+        schedules.extend(
+            replace(
+                schedule,
+                algebra_placement=AlgebraPlacement.PRESSURE_REMATERIALIZED,
+            )
+            for schedule in production_force_schedules
+            if schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        )
     trials: list[ScheduleTrial] = []
     seen_schedule_ids: set[str] = set()
     for schedule in schedules:

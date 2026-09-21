@@ -233,7 +233,7 @@ class BoundCCSDTGradient(BoundCCSDGradient):
                 "logical_reserved_host_bytes": self.logical_reserved_host_bytes,
                 "provider_budget_bytes": self.provider.budget_bytes,
                 "native_hf_backend": self.reference.hf_backend,
-                "tensor_backend": "numpy-cpu-interpreter",
+                "tensor_backend": bound.tensor_backend,
                 "orbital_backend": "native-cpu-shell-tile-jk",
                 "orbital_solver": "shared-response-gmres",
                 "dense_orbital_curvature_check": True,
@@ -314,6 +314,7 @@ def complete_ccsdt_gradient_validation(
             cc,
             options=options.lambda_options,
             current_reference=current_reference,
+            backend="native-cpu",
         )
         baseline_lambda = bound.solve(reference_identity=reference.identity)
         corrected = solve_corrected_lambda(

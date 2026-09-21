@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "model/common/integrals.hpp"
+#include "generated_gfn2_sdq_native.hpp"
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
 #include <algorithm>
@@ -30,33 +31,6 @@ constexpr std::size_t kDipoleComponents = kIntegralDipoleComponents;
 constexpr std::size_t kQuadrupoleComponents = kIntegralQuadrupoleComponents;
 constexpr std::size_t kMultipoleComponents = kIntegralMultipoleComponents;
 constexpr double kSqrtThree = 1.732050807568877293527446341505872367;
-constexpr double kSqrtPiCubed = 5.5683279968317061;
-
-struct CartesianExponent {
-  std::uint8_t x;
-  std::uint8_t y;
-  std::uint8_t z;
-};
-
-/* CCA Cartesian order used by tblite's native integral implementation. */
-constexpr std::array<CartesianExponent, 1> kCartesianS{{{0, 0, 0}}};
-constexpr std::array<CartesianExponent, 3> kCartesianP{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
-constexpr std::array<CartesianExponent, 6> kCartesianD{
-    {{2, 0, 0}, {1, 1, 0}, {1, 0, 1}, {0, 2, 0}, {0, 1, 1}, {0, 0, 2}}};
-
-/* Powers of the ket-centered operator in dipole/quadrupole component order. */
-constexpr std::array<CartesianExponent, kMultipoleComponents> kMultipolePowers{{
-    {1, 0, 0},
-    {0, 1, 0},
-    {0, 0, 1},
-    {2, 0, 0},
-    {1, 1, 0},
-    {0, 2, 0},
-    {1, 0, 1},
-    {0, 1, 1},
-    {0, 0, 2},
-}};
-
 struct SphericalTransform {
   std::size_t spherical_count;
   std::size_t cartesian_count;
@@ -139,19 +113,6 @@ std::size_t spherical_count(std::uint8_t angular_momentum) {
 std::size_t cartesian_count(std::uint8_t angular_momentum) {
   const std::size_t l = angular_momentum;
   return (l + 1u) * (l + 2u) / 2u;
-}
-
-const CartesianExponent* cartesian_exponents(std::uint8_t angular_momentum) {
-  switch (angular_momentum) {
-    case 0:
-      return kCartesianS.data();
-    case 1:
-      return kCartesianP.data();
-    case 2:
-      return kCartesianD.data();
-    default:
-      return nullptr;
-  }
 }
 
 const SphericalTransform* spherical_transform(std::uint8_t angular_momentum) {
@@ -344,41 +305,6 @@ xtbloom_status_t validate_evaluation(const BasisPlan& basis, const IntegralPlan&
   return XTBLOOM_STATUS_SUCCESS;
 }
 
-/*
- * One-dimensional Hermite overlap recurrence normalized by the s-s integral.
- * a is the ket angular exponent about center i and b is the bra exponent about
- * center j. GFN2 needs a<=2 for overlap, a<=3 for first derivatives, and
- * a<=5 for derivatives of second moments relative to the ket center.
- */
-void make_axis_overlap(double product_minus_i, double product_minus_j, double inverse_twice_sum,
-                       std::size_t maximum_a, std::size_t maximum_b, double overlap[6][3]) {
-  for (std::size_t a = 0; a < 6u; ++a) {
-    for (std::size_t b = 0; b < 3u; ++b) {
-      overlap[a][b] = 0.0;
-    }
-  }
-  overlap[0][0] = 1.0;
-  for (std::size_t a = 1; a <= maximum_a; ++a) {
-    overlap[a][0] = product_minus_i * overlap[a - 1][0];
-    if (a > 1u) {
-      overlap[a][0] += static_cast<double>(a - 1u) * inverse_twice_sum * overlap[a - 2][0];
-    }
-  }
-  for (std::size_t b = 1; b <= maximum_b; ++b) {
-    overlap[0][b] = product_minus_j * overlap[0][b - 1];
-    if (b > 1u) {
-      overlap[0][b] += static_cast<double>(b - 1u) * inverse_twice_sum * overlap[0][b - 2];
-    }
-    for (std::size_t a = 1; a <= maximum_a; ++a) {
-      overlap[a][b] = product_minus_i * overlap[a - 1][b] +
-                      static_cast<double>(b) * inverse_twice_sum * overlap[a - 1][b - 1];
-      if (a > 1u) {
-        overlap[a][b] += static_cast<double>(a - 1u) * inverse_twice_sum * overlap[a - 2][b];
-      }
-    }
-  }
-}
-
 void transform_shell_pair(const SphericalTransform& bra, const SphericalTransform& ket,
                           const double* cartesian, double* spherical) {
   for (std::size_t spherical_bra = 0; spherical_bra < bra.spherical_count; ++spherical_bra) {
@@ -405,25 +331,10 @@ void transform_shell_pair(const SphericalTransform& bra, const SphericalTransfor
   }
 }
 
-/* Project raw second moments to tblite's traceless Cartesian quadrupoles. */
-void make_quadrupole_traceless(double* multipoles, std::size_t block_size) {
-  for (std::size_t element = 0; element < block_size; ++element) {
-    const double trace =
-        0.5 * (multipoles[3u * block_size + element] + multipoles[5u * block_size + element] +
-               multipoles[8u * block_size + element]);
-    multipoles[3u * block_size + element] = 1.5 * multipoles[3u * block_size + element] - trace;
-    multipoles[4u * block_size + element] *= 1.5;
-    multipoles[5u * block_size + element] = 1.5 * multipoles[5u * block_size + element] - trace;
-    multipoles[6u * block_size + element] *= 1.5;
-    multipoles[7u * block_size + element] *= 1.5;
-    multipoles[8u * block_size + element] = 1.5 * multipoles[8u * block_size + element] - trace;
-  }
-}
-
 /*
  * Pull back the explicit ket-to-bra origin translation used for the reverse
- * matrix element. Local moment derivatives are handled separately by the
- * Gaussian recurrence; this helper returns only adjoints of local S/D and the
+ * matrix element. Local moment derivatives are supplied by the compiler-generated
+ * primitive DAG; this helper returns only adjoints of local S/D and the
  * explicit displacement dependence.
  */
 void add_multipole_shift_pullback(
@@ -503,8 +414,6 @@ void compute_shell_pair(const BasisPlan& basis, std::size_t bra_shell, std::size
     }
   }
 
-  const CartesianExponent* bra_exponents = cartesian_exponents(bra_l);
-  const CartesianExponent* ket_exponents = cartesian_exponents(ket_l);
   const std::int64_t bra_primitive_begin = basis.shell_primitive_offsets[bra_shell];
   const std::int64_t bra_primitive_end = basis.shell_primitive_offsets[bra_shell + 1u];
   const std::int64_t ket_primitive_begin = basis.shell_primitive_offsets[ket_shell];
@@ -527,80 +436,59 @@ void compute_shell_pair(const BasisPlan& basis, std::size_t bra_shell, std::size
         continue;
       }
 
-      const double sqrt_inverse_sum = std::sqrt(inverse_sum);
-      const double primitive_prefactor = std::exp(-product_exponent) * kSqrtPiCubed *
-                                         sqrt_inverse_sum * sqrt_inverse_sum * sqrt_inverse_sum *
-                                         basis.primitive_coefficients[ket_primitive_index] *
-                                         basis.primitive_coefficients[bra_primitive_index];
-      const double inverse_twice_sum = 0.5 * inverse_sum;
-      double axis[3][6][3];
-      for (std::size_t coordinate = 0; coordinate < 3u; ++coordinate) {
-        const double product_minus_i = -vector[coordinate] * bra_alpha * inverse_sum;
-        const double product_minus_j = +vector[coordinate] * ket_alpha * inverse_sum;
-        const std::size_t moment_order =
-            with_multipoles ? (with_gradient ? 3u : 2u) : (with_gradient ? 1u : 0u);
-        make_axis_overlap(product_minus_i, product_minus_j, inverse_twice_sum,
-                          static_cast<std::size_t>(ket_l) + moment_order, bra_l, axis[coordinate]);
-      }
+      const double primitive_weight =
+          basis.primitive_coefficients[ket_primitive_index] *
+          basis.primitive_coefficients[bra_primitive_index];
 
       for (std::size_t bra_cartesian = 0; bra_cartesian < bra_cartesian_count; ++bra_cartesian) {
-        const CartesianExponent bra = bra_exponents[bra_cartesian];
         for (std::size_t ket_cartesian = 0; ket_cartesian < ket_cartesian_count; ++ket_cartesian) {
-          const CartesianExponent ket = ket_exponents[ket_cartesian];
-          const std::array<std::size_t, 3> ket_power{ket.x, ket.y, ket.z};
-          const std::array<std::size_t, 3> bra_power{bra.x, bra.y, bra.z};
-          const double x = axis[0][ket.x][bra.x];
-          const double y = axis[1][ket.y][bra.y];
-          const double z = axis[2][ket.z][bra.z];
-          const std::size_t cartesian_index = bra_cartesian * ket_cartesian_count + ket_cartesian;
-          workspace.cartesian[cartesian_index] += primitive_prefactor * x * y * z;
-
+          vibeqc::xtb::generated::Gfn2SdqPrimitive primitive{};
+          bool generated = false;
           if (with_multipoles) {
-            for (std::size_t component = 0; component < kMultipoleComponents; ++component) {
-              const CartesianExponent power = kMultipolePowers[component];
-              const std::array<std::size_t, 3> moment_power{power.x, power.y, power.z};
-              const std::array<double, 3> one_dimensional{
-                  axis[0][ket_power[0] + moment_power[0]][bra_power[0]],
-                  axis[1][ket_power[1] + moment_power[1]][bra_power[1]],
-                  axis[2][ket_power[2] + moment_power[2]][bra_power[2]],
-              };
-              workspace.cartesian_multipole[component * cartesian_block_size + cartesian_index] +=
-                  primitive_prefactor * one_dimensional[0] * one_dimensional[1] *
-                  one_dimensional[2];
-
-              if (with_gradient) {
-                for (std::size_t coordinate = 0; coordinate < 3u; ++coordinate) {
-                  const std::size_t exponent = ket_power[coordinate] + moment_power[coordinate];
-                  double derivative_1d =
-                      2.0 * ket_alpha * axis[coordinate][exponent + 1u][bra_power[coordinate]];
-                  if (exponent > 0u) {
-                    derivative_1d -= static_cast<double>(exponent) *
-                                     axis[coordinate][exponent - 1u][bra_power[coordinate]];
-                  }
-                  const std::size_t first_other = (coordinate + 1u) % 3u;
-                  const std::size_t second_other = (coordinate + 2u) % 3u;
-                  const std::size_t gradient_index =
-                      (coordinate * kMultipoleComponents + component) * cartesian_block_size +
-                      cartesian_index;
-                  workspace.cartesian_multipole_gradient[gradient_index] +=
-                      primitive_prefactor * derivative_1d * one_dimensional[first_other] *
-                      one_dimensional[second_other];
-                }
-              }
-            }
+            generated = with_gradient
+                            ? vibeqc::xtb::generated::evaluate_gfn2_sdq_primitive(
+                                  bra_l, ket_l, static_cast<unsigned>(bra_cartesian),
+                                  static_cast<unsigned>(ket_cartesian), bra_alpha, ket_alpha, vector,
+                                  primitive)
+                            : vibeqc::xtb::generated::evaluate_gfn2_sdq_values_primitive(
+                                  bra_l, ket_l, static_cast<unsigned>(bra_cartesian),
+                                  static_cast<unsigned>(ket_cartesian), bra_alpha, ket_alpha, vector,
+                                  primitive);
+          } else {
+            generated = with_gradient
+                            ? vibeqc::xtb::generated::evaluate_gfn2_overlap_gradient_primitive(
+                                  bra_l, ket_l, static_cast<unsigned>(bra_cartesian),
+                                  static_cast<unsigned>(ket_cartesian), bra_alpha, ket_alpha, vector,
+                                  primitive)
+                            : vibeqc::xtb::generated::evaluate_gfn2_overlap_primitive(
+                                  bra_l, ket_l, static_cast<unsigned>(bra_cartesian),
+                                  static_cast<unsigned>(ket_cartesian), bra_alpha, ket_alpha, vector,
+                                  primitive);
+          }
+          if (!generated) {
+            continue;
           }
 
+          const std::size_t cartesian_index = bra_cartesian * ket_cartesian_count + ket_cartesian;
+          workspace.cartesian[cartesian_index] += primitive_weight * primitive.values[0];
+          if (with_multipoles) {
+            for (std::size_t component = 0; component < kMultipoleComponents; ++component) {
+              workspace.cartesian_multipole[component * cartesian_block_size + cartesian_index] +=
+                  primitive_weight * primitive.values[component + 1u];
+            }
+          }
           if (with_gradient) {
-            const std::array<double, 3> other_axis_product{y * z, x * z, x * y};
             for (std::size_t coordinate = 0; coordinate < 3u; ++coordinate) {
-              const std::size_t a = ket_power[coordinate];
-              const std::size_t b = bra_power[coordinate];
-              double derivative_1d = 2.0 * ket_alpha * axis[coordinate][a + 1u][b];
-              if (a > 0u) {
-                derivative_1d -= static_cast<double>(a) * axis[coordinate][a - 1u][b];
-              }
               workspace.cartesian_gradient[coordinate * cartesian_block_size + cartesian_index] +=
-                  primitive_prefactor * derivative_1d * other_axis_product[coordinate];
+                  primitive_weight * primitive.ket_gradient[coordinate][0];
+              if (with_multipoles) {
+                for (std::size_t component = 0; component < kMultipoleComponents; ++component) {
+                  workspace.cartesian_multipole_gradient
+                      [(coordinate * kMultipoleComponents + component) * cartesian_block_size +
+                       cartesian_index] +=
+                      primitive_weight * primitive.ket_gradient[coordinate][component + 1u];
+                }
+              }
             }
           }
         }
@@ -629,8 +517,6 @@ void compute_shell_pair(const BasisPlan& basis, std::size_t bra_shell, std::size
                            workspace.cartesian_multipole.data() + component * cartesian_block_size,
                            workspace.spherical_multipole.data() + component * spherical_block_size);
     }
-    /* tblite stores Q = 3*rr/2 - r^2*I/2 in [xx,xy,yy,xz,yz,zz] order. */
-    make_quadrupole_traceless(workspace.spherical_multipole.data(), spherical_block_size);
     if (with_gradient) {
       for (std::size_t coordinate = 0; coordinate < 3u; ++coordinate) {
         double* spherical_gradient = workspace.spherical_multipole_gradient.data() +
@@ -642,7 +528,6 @@ void compute_shell_pair(const BasisPlan& basis, std::size_t bra_shell, std::size
                   (coordinate * kMultipoleComponents + component) * cartesian_block_size,
               spherical_gradient + component * spherical_block_size);
         }
-        make_quadrupole_traceless(spherical_gradient, spherical_block_size);
       }
     }
   }

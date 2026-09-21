@@ -34,6 +34,38 @@ int main(int argc, char** argv) {
     }
     return 1;
   }
+  if (mode == "gemv_alpha_zero") {
+    double output[2]{2.0, -3.0};
+    cpu_gemv('N', 2, 3, &nan, &nan, output, 0.0, 4.0, plan);
+    return output[0] == 8.0 && output[1] == -12.0 ? 0 : 1;
+  }
+  if (mode == "gemv_empty_input") {
+    double output[3]{nan, nan, nan};
+    cpu_gemv('T', 0, 3, nullptr, nullptr, output, 1.0, 0.0, plan);
+    return output[0] == 0.0 && output[1] == 0.0 && output[2] == 0.0 ? 0 : 1;
+  }
+  if (mode == "gemv_extent") {
+    try {
+      cpu_gemv('N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, &a, &b, &c, 1.0, 0.0, plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
+  if (mode == "symm_alpha_zero") {
+    double output[2]{2.0, -3.0};
+    cpu_symm('L', 'U', 1, 2, &nan, &nan, output, 0.0, 4.0, plan);
+    return output[0] == 8.0 && output[1] == -12.0 ? 0 : 1;
+  }
+  if (mode == "symm_extent") {
+    try {
+      cpu_symm('L', 'U', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, nullptr, &c,
+               0.0, 0.0, plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
   if (mode == "syrk_alpha_zero") {
     double matrix[4]{nan, 9.0, nan, nan};
     cpu_syrk('L', 'N', 2, 1, &nan, matrix, 0.0, 0.0, plan);
@@ -43,6 +75,22 @@ int main(int argc, char** argv) {
     try {
       cpu_syrk('L', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, &c, 1.0, 0.0,
                plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
+  if (mode == "trsm_alpha_zero") {
+    double matrix[4]{nan, nan, nan, nan};
+    cpu_trsm('L', 'L', 'N', 'N', 2, 2, &nan, matrix, 0.0, plan);
+    for (double value : matrix)
+      if (value != 0.0) return 1;
+    return 0;
+  }
+  if (mode == "trsm_extent") {
+    try {
+      cpu_trsm('L', 'L', 'N', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, &c,
+               0.0, plan);
     } catch (const std::length_error&) {
       return 0;
     }

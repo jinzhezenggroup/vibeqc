@@ -12,12 +12,23 @@ from fractions import Fraction as F
 
 from vibeqc_compiler.integral.expr import Expr, Graph
 
+from .b88_vwn_maple import b88_exchange as maple_b88_exchange
+from .b88_vwn_maple import vwn_correlation as maple_vwn_correlation
 from .p86_pz_maple import p86_correlation, pz_correlation
+from .pw91_maple import pw91_correlation as imported_pw91_correlation
+from .pw91_maple import pw91_exchange as imported_pw91_exchange
 from .rsh_maple import lyp_correlation
 
 
-def energy_expression(spec: typing.Any) -> typing.Any:
-    """Return the range-separated semilocal energy DAG and feature variables."""
+def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.Any:
+    """Return the extended-GGA semilocal energy DAG and feature variables.
+
+    ``production`` enables only algebraically exact B3-family endpoint
+    continuations plus the declared numerical vacuum cutoff.  The interior
+    expression remains available as an independent oracle/compatibility path.
+    """
+    if type(production) is not bool:
+        raise TypeError("production must be bool")
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
     if spec.spin == "polarized":
@@ -137,9 +148,18 @@ def energy_expression(spec: typing.Any) -> typing.Any:
         gamma_b88 = F(6)
         x2 = sigma * density.pow(-8 / 3)
         x = x2.pow(0.5)
-        return 1 + beta_b88 / cx * x2 / (
-            1 + gamma_b88 * beta_b88 * x * graph.transcendental_unary("asinh", x)
-        )
+        x_asinh_x = x * graph.transcendental_unary("asinh", x)
+        if production:
+            # x*asinh(x) is analytic in y=x^2 at y=0.  Writing its
+            # low-y branch as a polynomial gives the exact derivative limit
+            # needed by B88 at zero density gradient; the old sqrt derivative
+            # produced NaNs even though the physical v_sigma is finite.
+            y = x2
+            series = y * (
+                1 + y * (-F(1, 6) + y * (F(3, 40) + y * (-F(5, 112) + y * F(35, 1152))))
+            )
+            x_asinh_x = graph.select_le(y, F(1, 100000000), series, x_asinh_x)
+        return 1 + beta_b88 / cx * x2 / (1 + gamma_b88 * beta_b88 * x_asinh_x)
 
     def b88_exchange(short_range: typing.Any = False) -> Expr:
         terms = []
@@ -160,83 +180,97 @@ def energy_expression(spec: typing.Any) -> typing.Any:
                 aux3 = 2 * a.pow(2) * aux2 + F(1, 2)
                 attenuation = 1 - F(8, 3) * a * (aux1 + 2 * a * (aux2 - aux3))
                 enhancement = enhancement * attenuation
-            terms.append(-cx * density.pow(4 / 3) * enhancement)
+            term = -cx * density.pow(4 / 3) * enhancement
+            if production and not short_range:
+                # Physical zero-spin density carries zero same-spin gradient.
+                # Keep the exact zero-density exchange limit lazy so inverse
+                # density powers in the inactive B88 branch are never formed.
+                term = graph.select_le(density, 0, 0, term)
+            terms.append(term)
         return graph.sum(terms)
 
-    def vwn_correlation() -> Expr:
-        # VWN5 parameters in Hartree, matching Libxc 7.0 lda_c_vwn.mpl.
-        av = (F("0.0310907"), F("0.01554535"), -1 / (6 * math.pi**2))
-        bv = (F("3.72744"), F("7.06042"), F("1.13107"))
-        cv = (F("12.9352"), F("18.0578"), F("13.0045"))
-        x0v = (F("-0.10498"), F("-0.32500"), F("-0.0047584"))
-
-        def aux(index: typing.Any) -> Expr:
-            aa, bb, cc, x0 = av[index], bv[index], cv[index], x0v[index]
-            q = math.sqrt(float(4 * cc - bb * bb))
-            root = rs.pow(0.5)
-            fx = rs + bb * root + cc
-            f1 = 2 * bb / q
-            f2 = bb * x0 / (x0 * x0 + bb * x0 + cc)
-            f3 = 2 * (2 * x0 + bb) / q
-            return aa * (
-                graph.stable_unary("log", rs / fx)
-                + (f1 - f2 * f3)
-                * graph.transcendental_unary("atan", q / (2 * root + bb))
-                - f2 * graph.stable_unary("log", (root - x0).pow(2) / fx)
-            )
-
-        fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
-        fpp = 4 / (9 * (2 ** (1 / 3) - 1))
-        g0, g1, gm = aux(0), aux(1), aux(2)
-        epsilon = g0 + gm * fz * (1 - z.pow(4)) / fpp + (g1 - g0) * fz * z.pow(4)
-        return n * epsilon
-
-    def vwn_rpa_correlation() -> Expr:
-        # Libxc 7.0 LDA_C_VWN_RPA (ID 8): the RPA parameterization and
-        # two-endpoint spin interpolation used by its canonical B3LYP.
-        av = (F("0.0310907"), F("0.01554535"))
-        bv = (F("13.0720"), F("20.1231"))
-        cv = (F("42.7198"), F("101.578"))
-        x0v = (F("-0.409286"), F("-0.743294"))
-
-        def aux(index: int) -> Expr:
-            aa, bb, cc, x0 = av[index], bv[index], cv[index], x0v[index]
-            q = math.sqrt(float(4 * cc - bb * bb))
-            root = rs.pow(0.5)
-            fx = rs + bb * root + cc
-            f1 = 2 * bb / q
-            f2 = bb * x0 / (x0 * x0 + bb * x0 + cc)
-            f3 = 2 * (2 * x0 + bb) / q
-            return aa * (
-                graph.stable_unary("log", rs / fx)
-                + (f1 - f2 * f3)
-                * graph.transcendental_unary("atan", q / (2 * root + bb))
-                - f2 * graph.stable_unary("log", (root - x0).pow(2) / fx)
-            )
-
-        fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
-        epsilon = aux(0) * (1 - fz) + aux(1) * fz
-        return n * epsilon
+    def b3lyp_lyp_tail_continuation() -> Expr:
+        a_lyp = F("0.04918")
+        b_lyp = F("0.132")
+        c_lyp = F("0.2533")
+        d_lyp = F("0.349")
+        cf = F(3, 10) * (3 * math.pi**2) ** (2 / 3)
+        rr = n.pow(-1 / 3)
+        omega_lyp = b_lyp * graph.exponential(-c_lyp * rr) / (1 + d_lyp * rr)
+        delta = (c_lyp + d_lyp / (1 + d_lyp * rr)) * rr
+        one_minus_z2 = 1 - z.pow(2)
+        n_m83 = n.pow(-8 / 3)
+        xt2 = (saa + 2 * sab + sbb) * n_m83
+        up8 = up.pow(8 / 3)
+        down8 = down.pow(8 / 3)
+        t1 = -one_minus_z2 / (1 + d_lyp * rr)
+        t2 = -xt2 * (one_minus_z2 * (47 - 7 * delta) / 72 - F(2, 3))
+        t3 = -cf / 2 * one_minus_z2 * (up8 + down8)
+        aux6 = 1 / 2 ** (8 / 3)
+        aux4 = aux6 / 4
+        aux5 = aux4 / 18
+        if production:
+            # Cancel the apparent rho_spin^(-8/3) factors analytically before
+            # differentiation.  These identities are exact for positive spin
+            # density and provide the correct fully polarized limit at zero.
+            two83 = 2 ** (8 / 3)
+            xs0_up8 = saa * two83 * n_m83
+            xs1_down8 = sbb * two83 * n_m83
+            xs0_up11 = saa * 2 ** (11 / 3) * ra * n.pow(-11 / 3)
+            xs1_down11 = sbb * 2 ** (11 / 3) * rb * n.pow(-11 / 3)
+        else:
+            xs02 = saa * ra.pow(-8 / 3)
+            xs12 = sbb * rb.pow(-8 / 3)
+            xs0_up8 = xs02 * up8
+            xs1_down8 = xs12 * down8
+            xs0_up11 = xs02 * up.pow(11 / 3)
+            xs1_down11 = xs12 * down.pow(11 / 3)
+        t4 = aux4 * one_minus_z2 * (F(5, 2) - delta / 18) * (xs0_up8 + xs1_down8)
+        t5 = aux5 * one_minus_z2 * (delta - 11) * (xs0_up11 + xs1_down11)
+        t6 = -aux6 * (
+            F(2, 3) * (xs0_up8 + xs1_down8)
+            - up.pow(2) * xs1_down8 / 4
+            - down.pow(2) * xs0_up8 / 4
+        )
+        return n * a_lyp * (t1 + omega_lyp * (t2 + t3 + t4 + t5 + t6))
 
     builders = {
         "LDA_X": lda_exchange,
-        "GGA_X_B88": lambda: b88_exchange(False),
+        "GGA_X_B88": lambda: (
+            b88_exchange(False)
+            if production
+            else maple_b88_exchange(graph, spec, variables)
+        ),
         "GGA_X_ITYH": lambda: b88_exchange(True),
-        "GGA_X_PW91": pw91_exchange,
+        "GGA_X_PW91": lambda: imported_pw91_exchange(graph, spec, variables),
         "LDA_C_PW": pw92_correlation,
-        "GGA_C_PW91": pw91_correlation,
+        "GGA_C_PW91": lambda: imported_pw91_correlation(graph, spec, variables),
         "LDA_C_PZ": lambda: pz_correlation(graph, spec, variables),
         "GGA_C_P86": lambda: p86_correlation(graph, spec, variables),
-        "LDA_C_VWN": vwn_correlation,
-        "LDA_C_VWN_RPA": vwn_rpa_correlation,
-        "GGA_C_LYP": lambda: lyp_correlation(graph, spec, variables),
-    }
-    return (
-        graph,
-        graph.sum(
-            coefficient * builders[name]()
-            for name, coefficient in spec.components
-            if coefficient
+        "LDA_C_VWN": lambda: maple_vwn_correlation(graph, spec, variables, "LDA_C_VWN"),
+        "LDA_C_VWN_RPA": lambda: maple_vwn_correlation(
+            graph, spec, variables, "LDA_C_VWN_RPA"
         ),
-        variables,
+        "GGA_C_LYP": lambda: (
+            b3lyp_lyp_tail_continuation()
+            if production
+            else lyp_correlation(graph, spec, variables)
+        ),
+    }
+    energy = graph.sum(
+        coefficient * builders[name]()
+        for name, coefficient in spec.components
+        if coefficient
     )
+    if production:
+        supported = {"LDA_X", "GGA_X_B88", "LDA_C_VWN_RPA", "GGA_C_LYP"}
+        active = {name for name, coefficient in spec.components if coefficient}
+        if not active <= supported:
+            raise ValueError(
+                "production tail is qualified only for the canonical B3LYP semilocal family"
+            )
+        # The finite quadrature policy treats <=1e-18 total density as vacuum.
+        # This branch is lazy in generated C, so singular positive-density
+        # algebra is never evaluated in the discarded numerical tail.
+        energy = graph.select_le(n, F(1, 10**18), 0, energy)
+    return graph, energy, variables

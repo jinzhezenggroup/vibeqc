@@ -13,6 +13,7 @@ from benchmarks.df_shell_work_ledger import (
     kernel_activity,
     reconstruct_domain,
     reduce_work,
+    screening_feature_bins,
 )
 
 
@@ -329,3 +330,35 @@ def test_sparse_angular_work_bounds_use_host_primitive_costs(
         assert set(domains) == set(expected)
         for key, costs in domains.items():
             assert _active_primitive_bounds(costs, 1) == (math.prod(key[3:]),) * 2
+
+
+def test_screening_feature_bins_conserve_considered_primitive_domain() -> None:
+    primitive = lambda exponent: type("P", (), {"exponent": exponent})()
+    shell = lambda atom, exponents: type(
+        "S",
+        (),
+        {
+            "atom_index": atom,
+            "primitives": tuple(primitive(value) for value in exponents),
+        },
+    )()
+    atom = lambda x: type("A", (), {"position": (x, 0.0, 0.0)})()
+
+    shells = [(0, 2, 0, 1), (0, 1, 1, 1)]
+    auxiliary = [(0, 1, 0, 1)]
+    result = screening_feature_bins(
+        shells,
+        auxiliary,
+        [shell(0, (0.1, 10.0)), shell(1, (1.0,))],
+        [shell(0, (100.0,))],
+        [atom(0.0), atom(1.0)],
+        [(0, 1, 2)],
+        2,
+    )
+    row = result["classes"][0]
+    assert row["angular"] == [0, 0, 0]
+    assert row["primitive_products_considered"] == 14
+    assert row["distance_bohr"]["ab"][0] == 10
+    assert row["distance_bohr"]["ab"][3] == 4
+    for histogram in (*row["distance_bohr"].values(), *row["exponents"].values()):
+        assert sum(histogram) == 14

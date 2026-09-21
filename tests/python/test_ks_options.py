@@ -26,7 +26,12 @@ from vibeqc_compiler.dft.grid import (
     MolecularGrid,
     grid_policy_provenance,
 )
-from vibeqc_compiler.method import MethodSpec, SemilocalXCPrimitive, resolve_method
+from vibeqc_compiler.method import (
+    MethodSpec,
+    SemilocalXCPrimitive,
+    original_nonlocal_correlation,
+    resolve_method,
+)
 from vibeqc_compiler.xc.spec import functional
 
 H2 = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
@@ -405,7 +410,13 @@ def test_ks_options_v4_preserves_v1_v2_v3_prefixes_and_methodir_plan() -> None:
             getattr(LegacyKsOptionsV3, name).offset
             == getattr(_native.KsOptionsDescriptor, name).offset
         )
-    assert new.struct_size == ctypes.sizeof(_native.KsOptionsDescriptor)
+    assert (
+        new.struct_size
+        == _native.KsOptionsDescriptor.nonlocal_correlation_version.offset
+    )
+    current = native_ks_options(hybrid, version=5)
+    assert current.struct_size == ctypes.sizeof(_native.KsOptionsDescriptor)
+    assert current.nonlocal_correlation_version == 0
     assert new.composition_version == 1
     assert (
         new.semilocal_exchange_scale,
@@ -646,3 +657,33 @@ def test_budgeted_custom_hybrid_preserves_resolved_methodir(spin: str) -> None:
     ).singlepoint(H2, charge=charge, multiplicity=multiplicity)
     assert ordinary.converged and budgeted.converged
     assert budgeted.energy == pytest.approx(ordinary.energy, abs=2e-12)
+
+
+def test_native_v5_serializes_nonlocal_primitive_without_named_method_branch() -> None:
+    graph = resolve_method(
+        MethodSpec(
+            "PBE+VV10-v5",
+            (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+            nonlocal_correlation=original_nonlocal_correlation("vv10"),
+        ),
+        spin="unpolarized",
+    )
+    options = resolve_ks_options(
+        "pbe-rks",
+        KsOptions(
+            composition=graph,
+            grid=GridSpec(radial_points=3, angular_polar=2, angular_azimuth=4),
+            tile_points=16,
+            nonlocal_memory_budget_bytes=1 << 20,
+        ),
+    )
+    assert options.requires_nonlocal_v5
+    with pytest.raises(NotImplementedError, match="nonlocal correlation v5"):
+        native_ks_options(options, version=4)
+    native = native_ks_options(options, version=5)
+    assert native.nonlocal_correlation_version == 1
+    assert native.nonlocal_variant == 1
+    assert native.nonlocal_b == pytest.approx(5.9)
+    assert native.nonlocal_c == pytest.approx(0.0093)
+    assert native.nonlocal_coefficient == pytest.approx(1.0)
+    assert native.nonlocal_maximum_bytes == 1 << 20

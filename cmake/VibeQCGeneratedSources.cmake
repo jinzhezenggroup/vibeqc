@@ -4,6 +4,21 @@ include_guard(GLOBAL)
 # live in VibeQCGenerated.cmake; this file owns generator inputs/outputs and the
 # target(s) that consume each generated family.
 macro(vibeqc_register_host_generated_sources target)
+  # The native host policy is built even when CUDA execution is disabled.
+  # Generate its CUDA-independent constants once for both build variants.
+  set(VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_derivative_policy.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_one_electron_derivative_policy_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
+    OUTPUTS "${VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cooperative_schedule.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_derivative_policy_cuda.py"
+    ARGS --derivatives --derivative-policy-output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER}")
+
   set(VIBEQC_METHOD_PARAMETERS_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_method_parameters.hpp")
   vibeqc_register_generated_sources(
@@ -99,8 +114,50 @@ macro(vibeqc_register_host_generated_sources target)
     ARGS --output "${VIBEQC_SCF_ARRAY_CPU_HEADER}"
     COMMENT "Generating Array frontend SCF CPU tensor helpers")
 
+  set(VIBEQC_GFN2_PAIR_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_pair_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_pair_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_pair_native.py"
+    OUTPUTS "${VIBEQC_GFN2_PAIR_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/geometry/gfn2_pair.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_PAIR_CPU_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 CPU pair kernels")
+
+  set(VIBEQC_GFN2_ELECTRONIC_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_electronic_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_electronic_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_electronic_native.py"
+    OUTPUTS "${VIBEQC_GFN2_ELECTRONIC_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_electronic_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_ELECTRONIC_CPU_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 CPU electronic kernels")
+
   file(GLOB VIBEQC_RCCSD_GENERATOR_INPUTS CONFIGURE_DEPENDS
        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_cc/*.py")
+  set(VIBEQC_GFN2_SDQ_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_sdq_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_sdq_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_sdq_native.py"
+    OUTPUTS "${VIBEQC_GFN2_SDQ_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/gfn2_sdq.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/gfn2_sdq_cpu.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_values.py"
+    ARGS --output "${VIBEQC_GFN2_SDQ_CPU_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 S/D/Q CPU primitive kernels")
+
   set(VIBEQC_RCCSD_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsd_cpu.hpp")
   vibeqc_register_generated_sources(
@@ -266,7 +323,22 @@ macro(vibeqc_register_cuda_generated_sources target)
     OUTPUTS "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cooperative_schedule.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_derivative_policy_cuda.py"
     ARGS --derivatives --output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}")
+
+  set(VIBEQC_DIRECT_FOCK_ACCUMULATION_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_direct_fock_accumulation.cuh")
+  vibeqc_register_generated_sources(
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_shell_kernels.py"
+    OUTPUTS "${VIBEQC_DIRECT_FOCK_ACCUMULATION_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/lowering/fock_accumulation.py"
+    ARGS
+      --direct-fock-accumulation-output "${VIBEQC_DIRECT_FOCK_ACCUMULATION_HEADER}"
+    COMMENT "Generating compiler-owned Direct-Fock scatter contraction")
 
   set(VIBEQC_WEIGHTED_ERI_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/weighted_eri.cuh")
@@ -276,6 +348,19 @@ macro(vibeqc_register_cuda_generated_sources target)
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_weighted_eri_kernels.py"
     OUTPUTS "${VIBEQC_WEIGHTED_ERI_HEADER}"
     ARGS --output "${VIBEQC_WEIGHTED_ERI_HEADER}")
+
+  set(VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_direct_high_order_pair_gradient.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_direct_high_order_pair_gradient_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_direct_pair_gradient.py"
+    OUTPUTS "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py"
+    ARGS --output "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}"
+    COMMENT "Generating compiler-owned Direct-HF high-order pair-gradient helper")
 
   set(VIBEQC_R2SCAN_CUDA_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_r2scan_device.cuh")

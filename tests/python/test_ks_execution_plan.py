@@ -94,13 +94,13 @@ def test_execution_plan_rejects_cross_primitive_omega_drift() -> None:
         compile_ks_execution_plan(wrong)
 
 
-def test_native_v2_projection_fails_by_missing_lowerer_not_named_method() -> None:
+def test_native_projection_fails_only_for_still_missing_primitive_lowerers() -> None:
     cam = resolve_method("CAM-B3LYP")
     with pytest.raises(NotImplementedError, match="short-range-exchange"):
         ks_coefficients(cam)
 
     wb97mv = resolve_method("WB97M-V")
-    with pytest.raises(NotImplementedError, match="nonlocal-correlation"):
+    with pytest.raises(NotImplementedError, match="short-range-exchange"):
         ks_coefficients(wb97mv)
 
 

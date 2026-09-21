@@ -70,6 +70,23 @@ def test_b3lyp_point_bridge_matches_pinned_libxc_oracle() -> None:
     np.testing.assert_array_equal(actual["kinetic"], np.zeros((2, 1)))
 
 
+def test_b3lyp_production_tail_is_finite_at_zero_gradient_and_spin_endpoint() -> None:
+    """#165: the public B3LYP point model must not inherit interior-only NaNs."""
+    library = _native.load_library(device="cpu")
+    rho = np.array([[1.0e-12, 0.3, 0.0], [1.0e-12, 0.0, 0.0]])
+    gradient = np.zeros((2, 3, 3), dtype=np.float64)
+    gradient[0, 1, 0] = np.sqrt(0.015)
+    actual = _scf_xc_points(library, 3, rho, gradient)
+    for key in ("energy", "rho", "gradient", "kinetic"):
+        assert np.isfinite(actual[key]).all()
+    np.testing.assert_array_equal(actual["energy"][-1:], [0.0])
+    np.testing.assert_array_equal(actual["rho"][:, -1:], np.zeros((2, 1)))
+    np.testing.assert_array_equal(actual["gradient"][:, -1:, :], np.zeros((2, 1, 3)))
+    # At a zero Cartesian gradient, a large but finite v_sigma is harmless: the
+    # published Cartesian coefficient itself must be exactly zero.
+    np.testing.assert_array_equal(actual["gradient"][:, 0, :], np.zeros((2, 3)))
+
+
 @pytest.mark.parametrize("functional", (0, 1))
 def test_v1_and_v2_point_layouts_remain_compatible(functional: int) -> None:
     library = _native.load_library(device="cpu")
@@ -116,21 +133,38 @@ def test_scaled_pbe_v3_preserves_component_linearity() -> None:
         )
 
 
-@pytest.mark.parametrize("method", ("pbe0-rks", "pbe0-uks", "r2scan-rks", "r2scan-uks"))
-def test_both_method_families_keep_native_snapshot_identity(method: str) -> None:
+@pytest.mark.parametrize(
+    "method",
+    ("pbe0-rks", "pbe0-uks", "r2scan-rks", "r2scan-uks", "b3lyp-rks", "b3lyp-uks"),
+)
+def test_hybrid_and_meta_gga_families_keep_native_snapshot_identity(
+    method: str,
+) -> None:
     calculator = Calculator(
         method=method, device="cpu", ks_options=KsOptions(grid=GRID), max_iterations=200
     )
     with calculator.prepare_batch([H2]) as batch, NativeAO(H2) as basis:
-        assert batch.execute(strict=True).items[0].converged
+        item = batch.execute(strict=True).items[0]
+        assert item.converged
+        assert item.ks_diagnostic is not None
+        assert item.ks_diagnostic.scf_domain == (
+            "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18"
+            if method.startswith("b3lyp")
+            else "semilocal-scaled-v1/pbe-spin-c2-1e-18"
+        )
         state = StationaryKsState.from_native(batch, basis)
         try:
             assert state.identity.method == method
             assert state._source.metadata[2] == (1 if method.endswith("-rks") else 2)
             assert state._source.coefficients == calculator.ks_options.coefficients
             assert state._source.metadata[6] == (
-                2 if method.startswith("r2scan") else 1
+                3
+                if method.startswith("b3lyp")
+                else 2
+                if method.startswith("r2scan")
+                else 1
             )
+            assert state._source.metadata[7] == (2 if method.startswith("b3lyp") else 1)
         finally:
             state._source.close()
 

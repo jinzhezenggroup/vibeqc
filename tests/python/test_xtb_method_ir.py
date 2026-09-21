@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import pytest
 from vibeqc_compiler.method import (
+    GFN1_PARAMETER_SET,
     GFN2_PARAMETER_SET,
     XTB_METHOD_CATALOG,
     UnsupportedXtbMethod,
@@ -199,14 +200,101 @@ def test_ambiguous_parameter_manifests_are_rejected_at_construction(
         XtbParameterSet(**payload)
 
 
-def test_gfn1_is_an_extension_point_not_claimed_capability() -> None:
-    spec = XtbMethodSpec(
-        "GFN1-extension-only",
-        "gfn1",
-        GFN2_PARAMETER_SET,
+def test_gfn1_manifest_resolves_compiler_graph_without_runtime_claim() -> None:
+    method = resolve_xtb_method(
+        "GFN1-xTB",
+        requested_products=("nuclear-gradient", "energy"),
     )
-    with pytest.raises(UnsupportedXtbMethod, match="schema extension point only"):
-        resolve_xtb_method(spec)
+
+    assert method.model_flavor == "gfn1"
+    assert method.parameter_set is GFN1_PARAMETER_SET
+    assert method.requested_products == ("energy", "nuclear-gradient")
+    assert tuple(primitive.kind for primitive in method.primitives) == (
+        "basis_parameters",
+        "coordination_number",
+        "overlap_integrals",
+        "h0",
+        "scc_electrostatics",
+        "spin_polarization",
+        "hamiltonian",
+        "repulsion",
+        "halogen_correction",
+        "dispersion",
+    )
+
+    requirements = method.compiler_requirements
+    assert requirements["integral_operators"] == ("overlap",)
+    assert requirements["state_requirements"] == (
+        "shell_charge",
+        "charge",
+        "magnetization",
+    )
+    assert requirements["correction_primitives"] == (
+        "coordination_number",
+        "repulsion",
+        "halogen_correction",
+        "dispersion",
+    )
+    assert (
+        "d3-reference-sha256-9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e"
+        in requirements["parameter_tables"]["correction"]
+    )
+
+    scc = next(p for p in method.primitives if p.kind == "scc_electrostatics")
+    assert scc.model == "gfn1-shell-es2-atom-es3"
+    assert scc.state_requirements == ("shell_charge", "charge")
+    assert scc.self_consistent is True
+
+    halogen = next(p for p in method.primitives if p.kind == "halogen_correction")
+    assert halogen.model == "gfn1-halogen-correction"
+    assert halogen.self_consistent is False
+
+    dispersion = next(p for p in method.primitives if p.kind == "dispersion")
+    assert dispersion.model == "gfn1-d3-bj-two-body"
+    assert dispersion.requires == ("coordination_number",)
+    assert dispersion.state_requirements == ()
+    assert dispersion.self_consistent is False
+
+    assert method.capability == {
+        "compiler_representable": True,
+        "lowering_available": False,
+        "runtime_executable": False,
+    }
+
+
+def test_gfn1_parameter_manifest_fails_closed() -> None:
+    wrong_name = replace(GFN1_PARAMETER_SET, identifier="gfn1-like")
+    with pytest.raises(UnsupportedXtbMethod, match="identified gfn1-xtb"):
+        resolve_xtb_method(XtbMethodSpec("bad-name", "gfn1", wrong_name))
+
+    wrong_revision = replace(GFN1_PARAMETER_SET, revision="sha256:" + "0" * 64)
+    with pytest.raises(UnsupportedXtbMethod, match="canonical normalized JSON"):
+        resolve_xtb_method(XtbMethodSpec("bad-revision", "gfn1", wrong_revision))
+
+    wrong_source = replace(GFN1_PARAMETER_SET, source="somewhere/gfn1.json")
+    with pytest.raises(UnsupportedXtbMethod, match="canonical repository snapshot"):
+        resolve_xtb_method(XtbMethodSpec("bad-source", "gfn1", wrong_source))
+
+    missing_halogen = replace(
+        GFN1_PARAMETER_SET,
+        correction_tables=tuple(
+            table
+            for table in GFN1_PARAMETER_SET.correction_tables
+            if table != "halogen-correction"
+        ),
+    )
+    with pytest.raises(UnsupportedXtbMethod, match="not an audited manifest"):
+        resolve_xtb_method(XtbMethodSpec("bad-corrections", "gfn1", missing_halogen))
+
+
+def test_direct_gfn1_graph_cannot_change_audited_primitive_semantics() -> None:
+    method = resolve_xtb_method("GFN1-xTB")
+    primitives = (
+        *method.primitives[:-1],
+        replace(method.primitives[-1], self_consistent=True),
+    )
+    with pytest.raises(UnsupportedXtbMethod, match="audited primitive semantics"):
+        replace(method, primitives=primitives)
 
 
 def test_unknown_products_and_names_fail_closed() -> None:
@@ -244,6 +332,8 @@ def test_incomplete_direct_ir_is_rejected() -> None:
 def test_catalog_is_read_only_and_payload_is_json_serializable() -> None:
     with pytest.raises(TypeError):
         XTB_METHOD_CATALOG["GFN2-xTB"] = XTB_METHOD_CATALOG["GFN2-xTB"]
+
+    assert set(XTB_METHOD_CATALOG) == {"GFN1-xTB", "GFN2-xTB"}
 
     payload = resolve_xtb_method("GFN2-xTB").to_payload()
     round_trip = json.loads(json.dumps(payload, sort_keys=True))

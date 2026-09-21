@@ -154,15 +154,40 @@ CPU DF even when the calculator device is CUDA. `density_fitting="cuda"`
 requires a CUDA context; `"auto"` follows the calculator device. CPU supports
 auxiliary shells through g, while CUDA supports through f. The whitened
 occupied-virtual three-center tensor replaces the four-center AO/MO transform
-and is contracted into bounded energy tiles.
+and is contracted into bounded energy blocks.
+
+For CUDA RI-MP2 correlation, the existing generated DF source and CUDA metric
+plan own the public-basis transform, cuSOLVER eigendecomposition, cutoff and
+whitening. The metric currently crosses device-to-host at source creation and
+host-to-device once for factorization; orbital coefficients are uploaded once.
+The AO-to-MO `B[Q,i,a]` transform, fitted-integral direct/exchange products,
+denominators and OS/SS reductions then remain on the device, with only the two
+final energy scalars downloaded. When the full transformed B fits the numeric
+budget it is retained for the whole correlation phase. Otherwise the same path
+uses explicit virtual blocks and two resident B block buffers; this may repeat
+source rows and reports that work amplification through the CUDA component
+trace.
+
+The performance schedule for these paths is compiler-owned.
+`vibeqc_compiler.method.mp2_schedule` maps the conventional provider request
+capacity to paired direct/exchange jobs that share one AO source traversal and
+selects full-resident versus bounded-B CUDA RI-MP2 execution from dimensions and
+the declared numeric budget. `tools/generate_mp2_native.py` emits those choices
+into `src/posthf/mp2_schedule_generated.hpp`; native post-HF code retains exact
+provider resource accounting, allocations, library calls and scientific
+execution. The ownership rationale is recorded in
+`.agents/notes/implemented/performance/2026-09-21-mp2-compiler-residency-schedule.md`.
 
 Each entire tile equation executes natively on the selected correlation
 backend. The molecular loop and scalar fold are native C++, not Python
-callbacks. CUDA execution includes disclosed host staging and is not an
-entirely device-resident claim. There is no external quantum-chemistry
-production backend or silent energy fallback. Generated plan symbols are
-uniquely prefixed to coexist in one native library; all mathematical
-coefficients come from the same TensorIR.
+callbacks. Conventional CUDA MP2 still discloses its bounded MO host staging;
+CUDA RI-MP2 reports `mo_host_staging=False` because transformed B does not
+round-trip through the host. This is a correlation-phase residency statement,
+not a claim that RHF preparation or the complete public endpoint is entirely
+device-resident. There is no external quantum-chemistry production backend or
+silent energy fallback. Generated plan symbols are uniquely prefixed to coexist
+in one native library; all mathematical coefficients come from the same
+TensorIR.
 
 ## Budgets, lifetimes and failures
 
@@ -175,10 +200,13 @@ arena, validation arithmetic, scalar outputs, library workspaces and retained
 provider allowances are charged. Existing CG10 Python and native block plans
 share `plan_spec.py` arithmetic; native code does not maintain a divergent
 budget formula. Each CUDA transform is destroyed before the next is created.
-RI admission also composes retained RHF/DIIS state with raw metric and
-three-center owners, Cartesian-to-public transforms, metric factorization,
-whitening and the occupied-virtual transformed tensor. Requests fail before a
-phase whose declared numeric capacity exceeds the correlation budget.
+RI admission also composes retained RHF/DIIS state with the DF source,
+metric factorization/whitening and occupied-virtual transformed state. The CPU
+oracle counts its raw/public three-center tensors and host B explicitly. The
+CUDA correlation plan instead counts the generated source, metric-plan
+reservation, coefficient/energy uploads, transformed-row scratch, resident B
+block buffer(s), fitted-integral batches and reduction storage. Requests fail
+before a phase whose declared numeric capacity exceeds the correlation budget.
 
 CUDA HF uses the existing arena planner; provider handles receive explicit
 retained allowances and actual queried solver host/device workspaces are

@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/dispersion/d3_zero.hpp",
+  "role": "oracle",
+  "subsystem": "d3_dispersion",
+  "reason": "Standalone CPU/device original D3(0) two-body qualification oracle, including CN response and cutoff gradients. Production D3(BJ) admission remains unchanged and does not enable zero damping.",
+  "regions": []
+}

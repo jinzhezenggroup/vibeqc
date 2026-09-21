@@ -69,6 +69,7 @@ struct CudaRhfBucketPlan {
   std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
       fp32_shell_quartet_tile_offsets{};
   unsigned persistent_quartet_worker_blocks{};
+  unsigned persistent_quartet_warps_per_multiprocessor{};
   std::size_t resident_psss_bra_primitive_pairs{};
   std::size_t resident_psss_task_count{};
   unsigned one_electron_value_mapping{};

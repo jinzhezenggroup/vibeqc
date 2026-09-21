@@ -197,10 +197,21 @@ DF/frozen-core/open-shell:   no
 ```
 
 CUDA requests fail rather than running the CPU evaluator under a CUDA label.
-Force requests also fail rather than returning RCCSD/HF derivatives. The next
-#155 C slice should attach the already-qualified #746 response/gradient graph
-through the common native TensorIR execution added by #772; it must not add a
-handwritten CCSD(T)-specific Lambda/Z implementation.
+Force requests also fail rather than returning RCCSD/HF derivatives.
+
+The internal #746 CPU force chain now executes its generated Lambda, parameter-
+response, `(T)` VJP, raw-Hamiltonian, canonicalization and AO back-transform
+TensorIR through the common #772 `NativeTensorProgram` backend. One bound CC
+lifecycle owns a `NativeCCTensorExecutor` and caches compiled artifacts by exact
+program identity; no response equation is copied into handwritten C++. The
+generic backend keeps its 4096-node default. The qualified CC response owner
+explicitly requests an 8192-node ceiling so the NH3 final triples-response tile
+(5258 nodes) is admitted without widening unrelated TensorIR consumers.
+
+This does not yet advertise public `forces`: the remaining #155 C work is to
+bind the public C++ method-owner lifecycle/result publication to this already-
+native response/gradient chain. It must not add a handwritten CCSD(T)-specific
+Lambda/Z implementation.
 
 ## Validation
 
