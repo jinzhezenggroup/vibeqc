@@ -158,7 +158,6 @@ def energy_expression(spec: typing.Any) -> typing.Any:
             terms.append(-cx * density.pow(4 / 3) * enhancement * attenuation)
         return graph.sum(terms)
 
-
     builders = {
         "LDA_X": lda_exchange,
         "GGA_X_B88": lambda: b88_exchange(graph, spec, variables),
