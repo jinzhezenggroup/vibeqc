@@ -268,7 +268,9 @@ jobs:
     runs-on: ubuntu-24.04
     # Full nightly/manual qualification includes expensive Hessian and Au replay.
     # Keep routine PR/push feedback capped separately; do not truncate that tier.
-    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 20 }}
+    # The core shard can spend over 18 minutes in pytest alone; include native
+    # setup plus coverage/artifact cleanup without truncating scientific tests.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}
     env:
       CCACHE_MAXSIZE: 1G
       # PySCF and NumPy can each fan out through BLAS/OpenMP. Keep those
@@ -333,7 +335,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build --parallel
-      # The four Python shards build the same native library. One shard saves
+      # The five Python shards build the same native library. One shard saves
       # the cache immediately so a later master cancellation cannot discard it.
       - name: Save Python-build ccache immediately
         if: matrix.shard == 'core' && steps.python_ccache.outputs.cache-hit != 'true'
@@ -704,6 +706,10 @@ jobs:
             file: coverage/coverage-python-core.xml
             flag: python
             name: code-coverage/python-core
+          - artifact: coverage-report-python-runtime-heavy
+            file: coverage/coverage-python-runtime-heavy.xml
+            flag: python
+            name: code-coverage/python-runtime-heavy
           - artifact: coverage-report-python-posthf
             file: coverage/coverage-python-posthf.xml
             flag: python
