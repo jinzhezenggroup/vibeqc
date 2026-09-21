@@ -247,10 +247,9 @@ int main() {
     // match a full target-density build, including exact Vxc differences.
     const std::vector<double> incremental_delta{3.0e-3, -4.0e-3, -4.0e-3, -2.0e-3};
     std::vector<double> incremental_target = density;
-    for (std::size_t i = 0; i < density.size(); ++i)
-      incremental_target[i] += incremental_delta[i];
-    const auto incremental = vibeqc::dft::integrate_pbe_rks_incremental_exact(
-        basis, grid, density, incremental_delta, 5);
+    for (std::size_t i = 0; i < density.size(); ++i) incremental_target[i] += incremental_delta[i];
+    const auto incremental = vibeqc::dft::integrate_pbe_rks_incremental_exact(basis, grid, density,
+                                                                              incremental_delta, 5);
     const auto incremental_full =
         vibeqc::dft::integrate_pbe_rks_with_tail(basis, grid, incremental_target, 5);
     const auto incremental_anchor =
@@ -265,8 +264,7 @@ int main() {
       require(std::abs(incremental.total.potential[i] - incremental_full.potential[i]) < 2.0e-14,
               "exact incremental PBE potential differs from a full target build");
       require(std::abs(incremental.potential_difference[i] -
-                       (incremental_full.potential[i] - incremental_anchor.potential[i])) <
-                  2.0e-14,
+                       (incremental_full.potential[i] - incremental_anchor.potential[i])) < 2.0e-14,
               "exact incremental PBE potential difference is not anchor-relative");
     }
     const std::vector<double> zero_delta(density.size(), 0.0);

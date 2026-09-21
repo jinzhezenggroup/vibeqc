@@ -787,8 +787,8 @@ ExactIncrementalXcIntegral integrate_pbe_rks_incremental_exact(
   // and finiteness are required here. Physical-domain validation is applied to
   // the reconstructed total features before nonlinear XC evaluation.
   validate_density_matrix(basis, grid, delta_density, tile_points);
-  if (!std::isfinite(exchange_scale) || !std::isfinite(correlation_scale) ||
-      exchange_scale < 0.0 || correlation_scale < 0.0)
+  if (!std::isfinite(exchange_scale) || !std::isfinite(correlation_scale) || exchange_scale < 0.0 ||
+      correlation_scale < 0.0)
     throw std::invalid_argument("incremental PBE scales must be finite and nonnegative");
 
   ExactIncrementalXcIntegral result;
@@ -797,9 +797,8 @@ ExactIncrementalXcIntegral integrate_pbe_rks_incremental_exact(
   result.total.density_diagnostic.npoint = result.total.points;
   result.total.density_diagnostic.ingredient_mask = 3U;
   result.total.density_diagnostic.active_ao = n;
-  result.total.density_diagnostic.borrowed_density_bytes =
-      runtime::add_capacity(runtime::vector_bytes(anchor_density),
-                            runtime::vector_bytes(delta_density));
+  result.total.density_diagnostic.borrowed_density_bytes = runtime::add_capacity(
+      runtime::vector_bytes(anchor_density), runtime::vector_bytes(delta_density));
   result.potential_difference.assign(n * n, 0.0);
 
   std::vector<double> ao;
@@ -830,10 +829,10 @@ ExactIncrementalXcIntegral integrate_pbe_rks_incremental_exact(
         anchor_gradient[0][axis] = anchor_gradient[1][axis] = 0.5 * anchor[axis + 1];
         total_gradient[0][axis] = total_gradient[1][axis] = 0.5 * total[axis + 1];
       }
-      const auto anchor_xc =
-          evaluate_generated_pbe_point(anchor_rho, anchor_gradient, exchange_scale, correlation_scale);
-      const auto total_xc =
-          evaluate_generated_pbe_point(total_rho, total_gradient, exchange_scale, correlation_scale);
+      const auto anchor_xc = evaluate_generated_pbe_point(anchor_rho, anchor_gradient,
+                                                          exchange_scale, correlation_scale);
+      const auto total_xc = evaluate_generated_pbe_point(total_rho, total_gradient, exchange_scale,
+                                                         correlation_scale);
       if (!anchor_xc.valid || !total_xc.valid)
         throw std::domain_error("invalid or unrepresentable incremental PBE features");
 
@@ -850,8 +849,7 @@ ExactIncrementalXcIntegral integrate_pbe_rks_incremental_exact(
           double anchor_value = anchor_rho_coefficient * phi_pair;
           double total_value = total_rho_coefficient * phi_pair;
           for (unsigned axis = 0; axis < 3; ++axis) {
-            const double derivative_pair =
-                jets[axis][mu] * phi[nu] + phi[mu] * jets[axis][nu];
+            const double derivative_pair = jets[axis][mu] * phi[nu] + phi[mu] * jets[axis][nu];
             anchor_value += anchor_xc.gradient[0][axis] * derivative_pair;
             total_value += total_xc.gradient[0][axis] * derivative_pair;
           }
