@@ -29,7 +29,7 @@ from .triples_tiles import (
     TriplesTileEnumerator,
     build_runtime_tile_triples_program,
     runtime_tile_capacity,
-    runtime_tile_controls,
+    runtime_tile_control_batches,
     runtime_tile_static_feeds,
 )
 
@@ -116,6 +116,53 @@ class CudaTriplesTiles:
         self._compile_resident = compile_resident
         self._PreparedResident = PreparedResident
 
+    def plan_runtime_domain(self) -> typing.Any:
+        """Select the largest simple bounded lane capacity that fits the budget.
+
+        The scientific graph remains identical apart from the q-domain extent.
+        Capacity is reduced only after the planner proves the larger candidate
+        infeasible; unrelated planning errors propagate unchanged.
+        """
+
+        nocc = self.config.nocc
+        nvir = self.config.nvir
+        chunk = self.config.vir_chunk_size
+        capacity = runtime_tile_capacity(nocc, nvir, chunk)
+        attempts = []
+        while True:
+            program = build_runtime_tile_triples_program(
+                nocc, nvir, capacity=capacity
+            )
+            try:
+                plan = self._plan_cuda(
+                    program,
+                    self.compiler.target,
+                    max_bytes=self.config.max_bytes,
+                )
+            except ValueError as error:
+                if (
+                    "infeasible tensor byte budget" not in str(error)
+                    or capacity == 1
+                ):
+                    raise
+                attempts.append(
+                    {
+                        "capacity": capacity,
+                        "status": "infeasible",
+                        "reason": str(error),
+                    }
+                )
+                capacity = max(1, capacity // 2)
+                continue
+            attempts.append(
+                {
+                    "capacity": capacity,
+                    "status": "selected",
+                    "peak_bytes": plan.peak_bytes,
+                }
+            )
+            return capacity, program, plan, tuple(attempts)
+
     def run_tiles(
         self,
         arrays: typing.Any,
@@ -165,13 +212,11 @@ class CudaTriplesTiles:
         _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
         _check_denominators(eps_o, eps_v, 1e-10)
 
-        # #783: the scientific graph is built once for the maximum number of
-        # triangular triples in one a-chunk.  Runtime int64 maps bind each
-        # logical tile to that fixed-capacity domain, so changing a_start/a_end
-        # no longer changes the TensorIR graph, plan, artifact, or resident owner.
+        # #783: one runtime-indexed graph is selected under the caller's
+        # byte budget. Logical a-tiles may be split into smaller runtime batches
+        # without changing that graph, artifact, or resident owner.
         enumerator = TriplesTileEnumerator(nocc, nvir, vir_chunk_size=chunk)
         tiles = list(enumerator)
-        capacity = runtime_tile_capacity(nocc, nvir, chunk)
 
         timing = {
             "extract_s": 0.0,
@@ -188,14 +233,13 @@ class CudaTriplesTiles:
         t0_total = time.perf_counter()
 
         t0 = time.perf_counter()
-        program = build_runtime_tile_triples_program(nocc, nvir, capacity=capacity)
-        plan = self._plan_cuda(
-            program,
-            self.compiler.target,
-            max_bytes=self.config.max_bytes,
-        )
+        capacity, program, plan, capacity_attempts = self.plan_runtime_domain()
         artifact = self._compile_resident(plan, self.compiler, self.cache)
         timing["compile_s"] += time.perf_counter() - t0
+        runtime_batch_count = sum(
+            (tile.ntriples + capacity - 1) // capacity for tile in tiles
+        )
+        timing["runtime_batch_count"] = runtime_batch_count
         peak_bytes_per_tile = [plan.peak_bytes] * len(tiles)
         artifact_keys = [artifact.metadata.get("key", "")]
 
@@ -212,21 +256,25 @@ class CudaTriplesTiles:
             timing["upload_s"] += time.perf_counter() - t0
 
             for tile in tiles:
-                t0 = time.perf_counter()
-                controls = runtime_tile_controls(tile, capacity)
-                timing["extract_s"] += time.perf_counter() - t0
+                et_tile = 0.0
+                for controls in runtime_tile_control_batches(tile, capacity):
+                    t0 = time.perf_counter()
+                    timing["extract_s"] += time.perf_counter() - t0
 
-                t0 = time.perf_counter()
-                resident.upload(controls)
-                timing["upload_s"] += time.perf_counter() - t0
+                    t0 = time.perf_counter()
+                    resident.upload(controls)
+                    timing["upload_s"] += time.perf_counter() - t0
 
-                t0 = time.perf_counter()
-                leases, _metrics = resident.run(profile=profile)
-                timing["run_s"] += time.perf_counter() - t0
+                    t0 = time.perf_counter()
+                    leases, _metrics = resident.run(profile=profile)
+                    timing["run_s"] += time.perf_counter() - t0
 
-                t0 = time.perf_counter()
-                et_tile = float(resident.download(leases["triples_energy"])[()])
-                timing["download_s"] += time.perf_counter() - t0
+                    t0 = time.perf_counter()
+                    et_batch = float(
+                        resident.download(leases["triples_energy"])[()]
+                    )
+                    timing["download_s"] += time.perf_counter() - t0
+                    et_tile += et_batch
                 per_tile.append(et_tile)
                 et += et_tile
 
@@ -270,7 +318,9 @@ class CudaTriplesTiles:
             provenance={
                 "schema": "vibeqc.ccsd-t.cuda-runtime-domain/2",
                 "runtime_domain_capacity": capacity,
-                "artifact_reuse": "one compiled plan and resident owner across all logical tiles",
+                "runtime_batch_count": runtime_batch_count,
+                "capacity_selection": list(capacity_attempts),
+                "artifact_reuse": "one compiled plan and resident owner across all logical tiles/runtime batches",
                 "tile_shapes": [
                     {
                         "a_start": tile.a_start,
@@ -284,7 +334,7 @@ class CudaTriplesTiles:
         )
 
     def close(self) -> typing.Any:
-        pass  # no persistent resources; each tile creates and closes its own
+        pass  # run_tiles owns one bounded resident for the duration of each run
 
     def __enter__(self) -> typing.Any:
         return self
