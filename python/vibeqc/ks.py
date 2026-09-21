@@ -154,6 +154,12 @@ class ProfiledKsSelection:
 def _native_execution_plan(method_ir: typing.Any) -> typing.Any:
     """Project the common KS plan onto primitive lowerers available in native v2."""
     plan = compile_ks_execution_plan(method_ir)
+    if plan.post_scf:
+        raise NotImplementedError(
+            "native KS electronic projection requires one semilocal XC primitive "
+            "and supported exchange only; geometry-only post-SCF corrections "
+            "require a separate qualified composition owner"
+        )
     missing = []
     if plan.nonlocal_correlation is not None:
         missing.append("nonlocal-correlation")
@@ -206,6 +212,11 @@ def _native_semilocal(method_ir: typing.Any) -> typing.Any:
 
 def _native_semilocal_family(method_ir: typing.Any) -> int:
     """Return the primitive-family selector consumed by native KS execution."""
+    # The named PBE-D4 ABI retains its separately qualified native correction
+    # owner. Do not route that explicit composition through electronic-only
+    # admission, or generalize its exception to arbitrary post-SCF corrections.
+    if _is_pbe_d4_composition(method_ir):
+        return 1
     plan = _native_execution_plan(method_ir)
     components = dict(plan.semilocal.functional.components)
     if components == {"LDA_X": Fraction(1), "LDA_C_PW": Fraction(1)}:
