@@ -130,15 +130,12 @@ if(VIBEQC_ENABLE_CUDA)
   include(CheckLanguage)
   check_language(CUDA)
   if(CMAKE_CUDA_COMPILER)
-    # Set the project default before enabling CUDA.  Once CUDA is enabled,
-    # CMake may populate CMAKE_CUDA_ARCHITECTURES from NVCC's legacy default
-    # (commonly sm_52), which cannot compile the FP64 atomic force consumers.
-    # An explicit VIBEQC_CUDA_ARCHITECTURES or CMAKE_CUDA_ARCHITECTURES value
-    # remains authoritative for callers targeting another supported device.
+    # CUDA target selection is caller/toolchain policy. Never make the
+    # measured sm_120 development profile the implicit meaning of "CUDA".
+    # VIBEQC_CUDA_ARCHITECTURES remains a convenience alias for callers that
+    # prefer a project-scoped cache variable over CMAKE_CUDA_ARCHITECTURES.
     if(VIBEQC_CUDA_ARCHITECTURES)
       set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_ARCHITECTURES})
-    elseif(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES 120)
     endif()
     enable_language(CUDA)
     set(CMAKE_CUDA_STANDARD 20)
@@ -149,7 +146,9 @@ if(VIBEQC_ENABLE_CUDA)
       set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_ARCHITECTURES})
     endif()
     if(NOT CMAKE_CUDA_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES 120)
+      message(FATAL_ERROR
+        "CUDA target architecture is required; set VIBEQC_CUDA_ARCHITECTURES, "
+        "CMAKE_CUDA_ARCHITECTURES, VIBEQC_CUDA_COMPILE_ARCHITECTURES, or CUDAARCHS")
     endif()
     # Preserve NVCC's real/virtual suffixes for compilation. A separate
     # numeric profile identity is derived below for manifest and cache paths.
