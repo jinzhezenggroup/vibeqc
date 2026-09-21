@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_native_order456_gradient.cuh",
   "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+  "reason": "Retained order-4/5/6 Direct canonicalization and primitive-contraction schedule. The subset/Wick pair algebra and complete primitive ERI-gradient composition are compiler-generated; this file remains scientific only for source canonicalization, contraction/reduction order, and production dispatch semantics.",
   "regions": []
 }
