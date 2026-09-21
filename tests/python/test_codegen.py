@@ -5821,6 +5821,7 @@ def test_autotune_keeps_benchmark_executor_distinct_from_compile_pool(
     monkeypatch.setattr(driver.CudaBenchmarkExecutor, "run", run_benchmark)
     arguments = argument_parser().parse_args(
         [
+            "--architecture=sm_90",
             "--shell-class=psps",
             "--gres=gpu:explicit:1",
             "--compile-jobs=2",
