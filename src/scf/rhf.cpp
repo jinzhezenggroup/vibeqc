@@ -740,7 +740,10 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
       auto status =
           try_cuda_density_fitting_final_rhf_jk(cuda_plan, CudaDfFinalStateToken{1, current},
                                                 densities[0], coulomb, exchange, retained, detail);
+      if (status == VIBEQC_STATUS_SUCCESS && retained)
+        runtime::df_progress::label("final_exchange_provider", "occupied");
       if (status == VIBEQC_STATUS_SUCCESS && !retained) {
+        runtime::df_progress::label("final_exchange_provider", "dense");
         host_trace::Region dense_final("final_state_dense_jk", n);
         status = execute_item_rhf_jk(densities[0], coulomb, exchange, detail);
       }

@@ -9,7 +9,10 @@ from pathlib import Path
 import pytest
 from vibeqc_compiler.common.compiler_process import run_compiler
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
-from vibeqc_compiler.common.native_runtime import compile_runtime
+from vibeqc_compiler.common.native_runtime import (
+    compile_runtime,
+    compile_runtime_bundle,
+)
 
 
 def test_cpu_cache_executes_exact_headers_and_flags_and_rejects_corruption(
@@ -53,6 +56,43 @@ def test_cpu_cache_executes_exact_headers_and_flags_and_rejects_corruption(
             headers=(header,),
             options=("-ffp-contract=off", "-DSCALE=3"),
         )
+
+
+def test_cpu_bundle_compiles_multiple_translation_units_once(
+    tmp_path: typing.Any,
+) -> None:
+    if shutil.which("c++") is None:
+        pytest.skip("native C++ compiler unavailable")
+    compiler = CppCompilerAdapter(Path("c++"))
+    first_source = tmp_path / "first.cpp"
+    second_source = tmp_path / "second.cpp"
+    first_source.write_text('extern "C" int first() { return 19; }\n')
+    second_source.write_text('extern "C" int second() { return 23; }\n')
+    cache = tmp_path / "cache"
+
+    first = compile_runtime_bundle(compiler, cache, (first_source, second_source))
+    library = ctypes.CDLL(str(first.library))
+    library.first.restype = ctypes.c_int
+    library.second.restype = ctypes.c_int
+    assert library.first() + library.second() == 42
+    assert first.metadata["source_count"] == 2
+
+    replay = compile_runtime_bundle(compiler, cache, (first_source, second_source))
+    assert replay.library == first.library
+
+    second_source.write_text('extern "C" int second() { return 24; }\n')
+    changed = compile_runtime_bundle(compiler, cache, (first_source, second_source))
+    assert changed.metadata["key"] != first.metadata["key"]
+    metadata = changed.library.parent / "artifact.json"
+    text = metadata.read_text().replace(changed.metadata["binary_sha256"], "0" * 64)
+    metadata.write_text(text)
+    with pytest.raises(ValueError, match="integrity"):
+        compile_runtime_bundle(compiler, cache, (first_source, second_source))
+
+    with pytest.raises(ValueError, match="at least one source"):
+        compile_runtime_bundle(compiler, cache, ())
+    with pytest.raises(TypeError, match="CPU compiler"):
+        compile_runtime_bundle(object(), cache, (first_source,))
 
 
 def test_finite_compiler_process_reports_timeout_and_failure() -> None:

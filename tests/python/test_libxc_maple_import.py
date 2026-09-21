@@ -23,10 +23,11 @@ from vibeqc_compiler.xc.spec import FunctionalSpec
 from tools.vibeqc_validation.schema import block_error
 
 ROOT = Path(__file__).resolve().parents[2]
-LIBXC_ROOT = ROOT / "external/libxc-7.0.0"
+LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
+LIBXC_MANIFEST_ROOT = ROOT / "external/libxc-7.0.0"
 PBE_X = LIBXC_ROOT / "gga_x_pbe.mpl"
 PBE_C = LIBXC_ROOT / "gga_c_pbe.mpl"
-MANIFEST = LIBXC_ROOT / "manifest.json"
+MANIFEST = LIBXC_MANIFEST_ROOT / "manifest.json"
 FEATURES = (
     "rho_a",
     "rho_b",
@@ -58,20 +59,6 @@ def _imported_pbe_x() -> tuple[typing.Any, typing.Any, typing.Any, typing.Any]:
         *(graph.differentiate(energy, variable) for variable in variables[:5]),
     )
     return module, graph, roots, variables
-
-
-def _manual_pbe_x() -> tuple[typing.Any, typing.Any]:
-    spec = FunctionalSpec(
-        "PBE_X_MPL_REFERENCE",
-        (("GGA_X_PBE", Fraction(1)),),
-        spin="polarized",
-    )
-    graph, energy, variables = energy_expression(spec)
-    roots = (
-        energy,
-        *(graph.differentiate(energy, variable) for variable in variables[:5]),
-    )
-    return graph, roots
 
 
 def _feature_roots(
@@ -122,16 +109,6 @@ def _qualified_pbe_x(
     return graph, _feature_roots(graph, energy, variables), names
 
 
-def _manual_pbe_x_qualified(spin: str) -> tuple[Graph, tuple[typing.Any, ...]]:
-    spec = FunctionalSpec(
-        "PBE_X_MPL_QUALIFIED_REFERENCE",
-        (("GGA_X_PBE", Fraction(1)),),
-        spin=spin,
-    )
-    graph, energy, variables = energy_expression(spec)
-    return graph, _feature_roots(graph, energy, variables)
-
-
 def _imported_pbe_c() -> tuple[typing.Any, typing.Any, typing.Any, typing.Any]:
     graph = Graph()
     variables = tuple(graph.variable(name) for name in FEATURES)
@@ -153,16 +130,6 @@ def _imported_pbe_c() -> tuple[typing.Any, typing.Any, typing.Any, typing.Any]:
     epsilon = module.call(graph, "f", rs, zeta, xt, 0, 0)
     energy = density * epsilon
     return module, graph, _feature_roots(graph, energy, variables), variables
-
-
-def _manual_pbe_c() -> tuple[typing.Any, typing.Any]:
-    spec = FunctionalSpec(
-        "PBE_C_MPL_REFERENCE",
-        (("GGA_C_PBE", Fraction(1)),),
-        spin="polarized",
-    )
-    graph, energy, variables = energy_expression(spec)
-    return graph, _feature_roots(graph, energy, variables)
 
 
 def _imported_pbe_c_unpolarized() -> tuple[typing.Any, typing.Any, typing.Any]:
@@ -202,52 +169,6 @@ def test_pbe_x_maple_source_is_pinned_and_standard_branch_is_selected() -> None:
     assert module.source_sha256 == manifest["files"]["gga_x_pbe.mpl"]["sha256"]
     assert module.assignment_names == ("params_a_kappa", "params_a_mu")
     assert module.function_names == ("pbe_f0", "pbe_f", "f")
-
-
-@pytest.mark.parametrize(
-    "features",
-    [
-        (0.8, 0.6, 0.12, 0.02, 0.07, 0.0, 0.0),
-        (1.4, 0.3, 0.4, -0.05, 0.08, 0.0, 0.0),
-        (0.05, 0.11, 0.003, 0.001, 0.009, 0.0, 0.0),
-    ],
-)
-def test_imported_pbe_x_matches_audited_dag_energy_and_first_partials(
-    features: tuple[float, ...],
-) -> None:
-    _, imported_graph, imported_roots, _ = _imported_pbe_x()
-    manual_graph, manual_roots = _manual_pbe_x()
-    inputs = dict(zip(FEATURES, features, strict=True))
-
-    imported = np.asarray(
-        evaluate_array_graph(imported_graph, imported_roots, inputs), dtype=float
-    )
-    manual = np.asarray(
-        evaluate_array_graph(manual_graph, manual_roots, inputs), dtype=float
-    )
-
-    np.testing.assert_allclose(imported, manual, rtol=2e-14, atol=2e-15)
-
-
-@pytest.mark.parametrize(
-    "features",
-    [
-        (0.8, 0.6, 0.12, 0.02, 0.07, 0.0, 0.0),
-        (1.4, 0.3, 0.4, -0.05, 0.08, 0.0, 0.0),
-    ],
-)
-def test_imported_pbe_x_matches_audited_dag_through_feature_hessian(
-    features: tuple[float, ...],
-) -> None:
-    graph, roots, names = _qualified_pbe_x("polarized")
-    manual_graph, manual_roots = _manual_pbe_x_qualified("polarized")
-    inputs = dict(zip(names, features, strict=True))
-
-    imported = np.asarray(evaluate_array_graph(graph, roots, inputs), dtype=float)
-    manual = np.asarray(
-        evaluate_array_graph(manual_graph, manual_roots, inputs), dtype=float
-    )
-    np.testing.assert_allclose(imported, manual, rtol=2e-12, atol=2e-13)
 
 
 @pytest.mark.parametrize("domain", ["typical", "boundary"])
@@ -338,31 +259,6 @@ def test_pbe_c_include_graph_is_pinned_and_deterministic() -> None:
     } <= set(first.defines)
 
 
-@pytest.mark.parametrize(
-    "features",
-    [
-        (0.8, 0.6, 0.12, 0.02, 0.07, 0.0, 0.0),
-        (1.4, 0.3, 0.4, -0.05, 0.08, 0.0, 0.0),
-        (0.05, 0.11, 0.003, 0.001, 0.009, 0.0, 0.0),
-    ],
-)
-def test_imported_pbe_c_matches_audited_dag_through_feature_hessian(
-    features: tuple[float, ...],
-) -> None:
-    _, imported_graph, imported_roots, _ = _imported_pbe_c()
-    manual_graph, manual_roots = _manual_pbe_c()
-    inputs = dict(zip(FEATURES, features, strict=True))
-
-    imported = np.asarray(
-        evaluate_array_graph(imported_graph, imported_roots, inputs), dtype=float
-    )
-    manual = np.asarray(
-        evaluate_array_graph(manual_graph, manual_roots, inputs), dtype=float
-    )
-
-    np.testing.assert_allclose(imported, manual, rtol=5e-11, atol=5e-12)
-
-
 @pytest.mark.parametrize("domain", ["typical", "boundary"])
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
 def test_imported_pbe_c_matches_pinned_independent_libxc_oracle(
@@ -448,3 +344,66 @@ def test_file_importer_rejects_duplicate_includes(tmp_path: Path) -> None:
 
     with pytest.raises(MapleImportError, match="duplicate Maple include"):
         import_maple_file(tmp_path, "entry.mpl")
+
+
+def test_non_pbe_identity_does_not_claim_maple_source() -> None:
+    spec = FunctionalSpec(
+        "LDA_X_REFERENCE",
+        (("LDA_X", Fraction(1)),),
+        spin="polarized",
+    )
+
+    assert "expression_provenance" not in spec.to_payload()
+
+
+@pytest.mark.parametrize("component", ["GGA_X_PBE", "GGA_C_PBE"])
+def test_pbe_production_identity_records_maple_source(component: str) -> None:
+    spec = FunctionalSpec(
+        f"{component}_PRODUCTION",
+        ((component, Fraction(1)),),
+        spin="polarized",
+    )
+    provenance = spec.to_payload()["expression_provenance"]
+
+    assert provenance["kind"] == "libxc-maple"
+    assert provenance["importer_semantics"].startswith("libxc-maple-graph/")
+    assert set(provenance["components"]) == {component}
+    record = provenance["components"][component]
+    assert len(record["source_sha256"]) == 64
+    assert len(record["transitive_sha256"]) == 64
+
+
+def test_pbe_production_builder_matches_qualified_imported_graph() -> None:
+    features = (0.8, 0.6, 0.12, 0.02, 0.07, 0.0, 0.0)
+    inputs = dict(zip(FEATURES, features, strict=True))
+
+    for component, imported in (
+        ("GGA_X_PBE", _qualified_pbe_x),
+        ("GGA_C_PBE", None),
+    ):
+        spec = FunctionalSpec(
+            f"{component}_PRODUCTION",
+            ((component, Fraction(1)),),
+            spin="polarized",
+        )
+        graph, energy, variables = energy_expression(spec)
+        roots = _feature_roots(graph, energy, variables)
+        if imported is not None:
+            imported_graph, imported_roots, names = imported("polarized")
+        else:
+            _, imported_graph, imported_roots, _ = _imported_pbe_c()
+            names = FEATURES
+
+        actual = np.asarray(
+            evaluate_array_graph(graph, roots, inputs),
+            dtype=float,
+        )
+        expected = np.asarray(
+            evaluate_array_graph(
+                imported_graph,
+                imported_roots,
+                dict(zip(names, features, strict=True)),
+            ),
+            dtype=float,
+        )
+        np.testing.assert_allclose(actual, expected, rtol=2e-13, atol=2e-14)

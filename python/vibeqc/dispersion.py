@@ -17,8 +17,10 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.method import (
     D4Spec,
     DispersionCorrectionPrimitive,
+    GeometricCounterpoisePrimitive,
     MethodIR,
     MethodSpec,
+    r2scan3c_gcp,
     resolve_method,
 )
 from vibeqc_compiler.method.d4_derivative import PRODUCTION_D4_EEQ_DERIVATIVE
@@ -809,6 +811,296 @@ class D4CorrectionBatch:
                 )
             )
         return tuple(results)
+
+
+@dataclass(frozen=True)
+class GCPCorrectionResult:
+    """One canonical r2SCAN-3c gCP correction result."""
+
+    status: int
+    energy: float
+    gradient: np.ndarray | None
+    backend: str
+    message: str
+    provider_identity: str
+    correction_identity: str
+
+    @property
+    def ok(self) -> bool:
+        return self.status == _native.STATUS_SUCCESS
+
+
+@dataclass(frozen=True)
+class R2SCAN3CCorrectionResult:
+    """Explicit D4 + gCP component sum for one canonical r2SCAN-3c item."""
+
+    status: int
+    energy: float
+    gradient: np.ndarray | None
+    backend: str
+    message: str
+    d4: D4CorrectionResult
+    gcp: GCPCorrectionResult
+
+    @property
+    def ok(self) -> bool:
+        return self.status == _native.STATUS_SUCCESS
+
+
+@dataclass(frozen=True)
+class R2SCAN3CRuntimeDiagnostic:
+    """Mixed-backend correction evidence for the canonical composite owner."""
+
+    method_ir_identity: str
+    d4: D4RuntimeDiagnostic
+    gcp_backend: str
+    gcp_provider_identity: str
+    gcp_correction_identity: str
+
+
+def _gcp_correction(graph: MethodIR) -> GeometricCounterpoisePrimitive:
+    nodes = [
+        primitive
+        for primitive in graph.primitives
+        if isinstance(primitive, GeometricCounterpoisePrimitive)
+    ]
+    if len(nodes) != 1:
+        raise ValueError(
+            "r2SCAN-3c execution requires exactly one GeometricCounterpoisePrimitive"
+        )
+    if nodes[0].specification != r2scan3c_gcp():
+        raise NotImplementedError(
+            "native gCP execution is qualified only for the canonical r2SCAN-3c profile"
+        )
+    return nodes[0]
+
+
+def _evaluate_gcp_result(
+    graph: MethodIR,
+    atomic_numbers: typing.Any,
+    coordinates: typing.Any,
+    *,
+    gradients: bool,
+) -> GCPCorrectionResult:
+    primitive = _gcp_correction(graph)
+    z, xyz = _normalize_system((atomic_numbers, coordinates))
+    library = _native.load_library()
+    evaluator = getattr(library, "vibeqc_r2scan3c_gcp_evaluate", None)
+    if evaluator is None:
+        raise RuntimeError(
+            "loaded VIBEQC library does not expose production r2SCAN-3c gCP"
+        )
+    provider = library.vibeqc_r2scan3c_gcp_provider_identity().decode("ascii")
+    energy = ctypes.c_double()
+    gradient = np.empty((z.size, 3), dtype=np.float64) if gradients else None
+    status = int(
+        evaluator(
+            z.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
+            z.size,
+            xyz.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            xyz.size,
+            ctypes.byref(energy),
+            None
+            if gradient is None
+            else gradient.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            0 if gradient is None else gradient.size,
+        )
+    )
+    raw = library.vibeqc_status_message(status)
+    return GCPCorrectionResult(
+        status=status,
+        energy=float(energy.value)
+        if status == _native.STATUS_SUCCESS
+        else float("nan"),
+        gradient=gradient.copy()
+        if gradient is not None and status == _native.STATUS_SUCCESS
+        else None,
+        backend="cpu",
+        message=raw.decode("utf-8") if raw else f"status {status}",
+        provider_identity=provider,
+        correction_identity=canonical_hash(primitive.semantic_payload()),
+    )
+
+
+def evaluate_r2scan3c_gcp(
+    method: str | MethodSpec | MethodIR,
+    atomic_numbers: typing.Any,
+    coordinates: typing.Any,
+    *,
+    gradients: bool = True,
+) -> GCPCorrectionResult:
+    """Evaluate canonical r2SCAN-3c gCP using the native CPU production kernel."""
+
+    graph = _method_ir(method)
+    result = _evaluate_gcp_result(
+        graph, atomic_numbers, coordinates, gradients=gradients
+    )
+    if not result.ok:
+        raise RuntimeError(
+            f"VIBEQC r2SCAN-3c gCP item failed ({result.status}): {result.message}"
+        )
+    return result
+
+
+class R2SCAN3CCorrectionBatch:
+    """Compose the canonical D4(BJ)-EEQ-ATM and gCP correction primitives once."""
+
+    def __init__(
+        self,
+        method: str | MethodSpec | MethodIR,
+        systems: Sequence,
+        *,
+        device: str = "cpu",
+        device_id: int = 0,
+        maximum_bytes: int = 256 * 1024 * 1024,
+    ) -> None:
+        graph = _method_ir(method)
+        expected = resolve_method("R2SCAN-3c", spin=graph.spin)
+        if graph.manifest_identity != expected.manifest_identity:
+            raise NotImplementedError(
+                "composite correction execution requires the canonical r2SCAN-3c MethodIR"
+            )
+        _gcp_correction(graph)
+        normalized = tuple(_normalize_d4_system(system) for system in systems)
+        if not normalized:
+            raise ValueError("r2SCAN-3c correction batch requires at least one system")
+        for z, _, _ in normalized:
+            graph.preflight_atomic_numbers(tuple(int(value) for value in z))
+        self.method_ir = graph
+        self.method_ir_identity = graph.identity
+        self._prepared = tuple(
+            (z.copy(), xyz.copy(), charge) for z, xyz, charge in normalized
+        )
+        library = _native.load_library()
+        if (
+            getattr(library, "vibeqc_r2scan3c_gcp_evaluate", None) is None
+            or getattr(library, "vibeqc_r2scan3c_gcp_provider_identity", None) is None
+        ):
+            raise RuntimeError(
+                "loaded VIBEQC library does not expose production r2SCAN-3c gCP"
+            )
+        self._gcp_provider_identity = (
+            library.vibeqc_r2scan3c_gcp_provider_identity().decode("ascii")
+        )
+        self._gcp_correction_identity = canonical_hash(
+            _gcp_correction(graph).semantic_payload()
+        )
+        self._d4 = D4CorrectionBatch(
+            graph,
+            normalized,
+            device=device,
+            device_id=device_id,
+            maximum_bytes=maximum_bytes,
+        )
+
+    def close(self) -> None:
+        self._d4.close()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+        self.close()
+
+    def diagnostic(self) -> R2SCAN3CRuntimeDiagnostic:
+        return R2SCAN3CRuntimeDiagnostic(
+            method_ir_identity=self.method_ir_identity,
+            d4=self._d4.diagnostic(),
+            gcp_backend="cpu",
+            gcp_provider_identity=self._gcp_provider_identity,
+            gcp_correction_identity=self._gcp_correction_identity,
+        )
+
+    def execute(
+        self,
+        geometries: Sequence[np.ndarray | None] | None = None,
+        *,
+        gradients: bool = True,
+    ) -> tuple[R2SCAN3CCorrectionResult, ...]:
+        if geometries is not None and len(geometries) != len(self._prepared):
+            raise ValueError(
+                "changed geometry list must match the prepared system count"
+            )
+        effective: list[np.ndarray] = []
+        if geometries is None:
+            effective = [xyz for _, xyz, _ in self._prepared]
+        else:
+            for (z, prepared, _), geometry in zip(
+                self._prepared, geometries, strict=True
+            ):
+                if geometry is None:
+                    effective.append(prepared)
+                    continue
+                _, xyz = _normalize_system((z, geometry))
+                effective.append(xyz)
+
+        d4_results = self._d4.execute(
+            None if geometries is None else effective,
+            gradients=gradients,
+            charges=True,
+        )
+        results: list[R2SCAN3CCorrectionResult] = []
+        for (z, _, _), xyz, d4 in zip(
+            self._prepared, effective, d4_results, strict=True
+        ):
+            gcp = _evaluate_gcp_result(self.method_ir, z, xyz, gradients=gradients)
+            status = d4.status if not d4.ok else gcp.status
+            success = d4.ok and gcp.ok
+            gradient = None
+            if success and gradients:
+                if d4.gradient is None or gcp.gradient is None:
+                    raise RuntimeError(
+                        "successful r2SCAN-3c correction omitted a requested gradient"
+                    )
+                gradient = d4.gradient + gcp.gradient
+            backend = d4.backend if d4.backend == "cpu" else f"{d4.backend}+cpu"
+            message = (
+                "success"
+                if success
+                else f"D4 correction failed: {d4.message}"
+                if not d4.ok
+                else f"gCP correction failed: {gcp.message}"
+            )
+            results.append(
+                R2SCAN3CCorrectionResult(
+                    status=status,
+                    energy=d4.energy + gcp.energy if success else float("nan"),
+                    gradient=gradient,
+                    backend=backend,
+                    message=message,
+                    d4=d4,
+                    gcp=gcp,
+                )
+            )
+        return tuple(results)
+
+
+def evaluate_r2scan3c_correction(
+    method: str | MethodSpec | MethodIR,
+    atomic_numbers: typing.Any,
+    coordinates: typing.Any,
+    *,
+    total_charge: float = 0.0,
+    device: str = "cpu",
+    device_id: int = 0,
+    maximum_bytes: int = 256 * 1024 * 1024,
+    gradients: bool = True,
+) -> R2SCAN3CCorrectionResult:
+    """Evaluate the complete canonical r2SCAN-3c D4 + gCP correction."""
+
+    with R2SCAN3CCorrectionBatch(
+        method,
+        [(atomic_numbers, coordinates, total_charge)],
+        device=device,
+        device_id=device_id,
+        maximum_bytes=maximum_bytes,
+    ) as batch:
+        result = batch.execute(gradients=gradients)[0]
+    if not result.ok:
+        raise RuntimeError(
+            f"VIBEQC r2SCAN-3c correction failed ({result.status}): {result.message}"
+        )
+    return result
 
 
 def evaluate_d4_correction(

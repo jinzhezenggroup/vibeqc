@@ -40,10 +40,11 @@
       "symbol": "RCCSD_T",
       "abi_id": 4,
       "family": "coupled_cluster",
-      "provider": "reserved",
-      "properties": [],
-      "supports_batch": false,
-      "unavailable_reason": "method has no executable provider registration",
+      "provider": "rccsdt",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
       "aliases": [
         "ccsd(t)"
       ]
@@ -173,6 +174,28 @@
       "aliases": [
         "gfn2"
       ]
+    },
+    {
+      "name": "b3lyp-rks",
+      "symbol": "B3LYP_RKS",
+      "abi_id": 16,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "b3lyp-uks",
+      "symbol": "B3LYP_UKS",
+      "abi_id": 17,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
     },
     {
       "name": "pbe-d4-rks",

@@ -58,11 +58,7 @@ def build_roots(
         if coefficient
     )
     if special:
-        if production:
-            raise ValueError(
-                "special XC expressions do not define the semilocal production transform"
-            )
-        graph, energy, variables = rsh_energy_expression(spec)
+        graph, energy, variables = rsh_energy_expression(spec, production=production)
     else:
         graph, energy, variables = energy_expression(spec, production=production)
     derivatives = {(): energy}
@@ -274,7 +270,7 @@ def emit_b3lyp_polarized() -> str:
         )
 
     outputs = ((), *((i,) for i in range(5)))
-    graph, roots, expression_hash = build_roots(semilocal, outputs)
+    graph, roots, expression_hash = build_roots(semilocal, outputs, production=True)
     emitter = ScalarCEmitter(graph, {name: name for name in semilocal.features})
     emitter.emit(roots)
     references = [emitter.reference(root) for root in roots]

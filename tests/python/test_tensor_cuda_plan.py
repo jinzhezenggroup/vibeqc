@@ -13,9 +13,11 @@ from vibeqc_compiler.tensor import (
     add,
     broadcast,
     einsum,
+    gather,
     input_tensor,
     multiply,
     reduce_sum,
+    runtime_indexed_select,
     transpose,
 )
 from vibeqc_compiler.tensor.cuda_plan import (
@@ -59,6 +61,9 @@ def test_reuse_keeps_inputs_and_outputs_and_releases_dead_work() -> None:
     assert_disjoint_live_allocations(plan)
     assert plan.arena_bytes < sum(aligned(s.node.spec.size * 8) for s in plan.steps)
     assert len({s.offset for s in plan.steps}) < len(plan.steps)
+    storage = plan.storage_analysis()
+    assert storage.peak_by_space["device"] <= plan.arena_bytes
+    assert any(len(slot.owners) > 1 for slot in storage.slots)
     for _, i in plan.outputs:
         assert plan.steps[i].last_use == len(plan.steps)
     assert plan.peak_bytes == plan.device_bytes + plan.host_bytes
@@ -78,6 +83,26 @@ def test_alias_lifetime_follows_materialized_ancestors() -> None:
     assert_disjoint_live_allocations(plan)
     assert plan.steps[0].last_use == len(plan.steps)
 
+    i = Index("row", IndexSpace("row", "batch", 7))
+    j = Index("col", IndexSpace("col", "batch", 7))
+    owner = input_tensor("matrix", TensorSpec((i, j), role="input"))
+    alias = transpose(owner, (1, 0))
+    alias_plan = plan_cuda(
+        Program({"result": add(alias, alias)}),
+        TARGET,
+        schedule=TensorSchedule(views=True),
+    )
+    owner_index = next(
+        k for k, step in enumerate(alias_plan.steps) if step.node is owner
+    )
+    alias_index = next(
+        k for k, step in enumerate(alias_plan.steps) if step.node is alias
+    )
+    storage = alias_plan.storage_analysis()
+    owner_range = next(item for item in storage.ranges if item.owner == owner_index)
+    assert alias_index in owner_range.members
+    assert alias_index not in dict(storage.assignments)
+
 
 def test_fusion_preserves_checks_before_subsets() -> None:
     x = vector()
@@ -90,6 +115,75 @@ def test_fusion_preserves_checks_before_subsets() -> None:
         schedule=TensorSchedule(views=True, fuse=True),
     )
     assert not next(s for s in plan.steps if s.node is square).virtual
+
+
+def test_streaming_reduction_virtualizes_complete_runtime_domain() -> None:
+    source_axis = Index("source", IndexSpace("stream_source", "batch", 137))
+    inner = Index("inner", IndexSpace("stream_inner", "batch", 127))
+    domain = Index("q", IndexSpace("stream_domain", "batch", 129))
+    source = input_tensor(
+        "stream_source",
+        TensorSpec((source_axis, inner), role="input"),
+    )
+    coordinates = input_tensor(
+        "stream_coordinates",
+        TensorSpec((domain,), dtype="int64", role="input"),
+    )
+    selected = runtime_indexed_select(source, ((0, coordinates),), domain)
+    squared = multiply(selected, selected)
+    lane = reduce_sum(squared, (1,))
+    total = reduce_sum(lane, (0,))
+    program = Program({"total": total})
+
+    baseline = plan_cuda(program, TARGET)
+    streamed = plan_cuda(
+        program,
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+
+    assert streamed.identity != baseline.identity
+    assert streamed.arena_bytes < baseline.arena_bytes
+    for node in (selected, squared):
+        assert next(step for step in streamed.steps if step.node is node).virtual
+    # Keep the q-only reduction frontier materialized so CUDA launches one
+    # parallel lane kernel before the final scalar reduction.
+    assert not next(step for step in streamed.steps if step.node is lane).virtual
+
+
+def test_streaming_reduction_stops_before_partial_source_consumption() -> None:
+    x = vector(16)
+    squared = multiply(x, x)
+    subset = gather(squared, 0, (0, 3, 7))
+    total = reduce_sum(subset, (0,))
+    plan = plan_cuda(
+        Program({"total": total}),
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+
+    # The q-only frontier remains materialized, and the partial gather blocks
+    # streaming of its source so arithmetic/bounds diagnostics are still
+    # evaluated over the complete original domain.
+    assert not next(step for step in plan.steps if step.node is subset).virtual
+    assert not next(step for step in plan.steps if step.node is squared).virtual
+
+
+def test_streaming_reduction_stops_when_einsum_sibling_domain_is_empty() -> None:
+    q = Index("q_zero", IndexSpace("stream_q_zero", "batch", 8))
+    k = Index("k_zero", IndexSpace("stream_k_zero", "batch", 0))
+    x = input_tensor("stream_x_zero", TensorSpec((q,), role="input"))
+    empty = input_tensor("stream_empty", TensorSpec((k,), role="input"))
+    squared = multiply(x, x)
+    contraction = einsum("q,k->q", squared, empty)
+    total = reduce_sum(contraction, (0,))
+    plan = plan_cuda(
+        Program({"total": total}),
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+
+    assert not next(step for step in plan.steps if step.node is squared).virtual
 
 
 def test_constrained_plan_shrinks_panels_and_rejects_below_indivisible_minimum() -> (

@@ -76,6 +76,34 @@ class GeneratedKernelSignature:
             )
         )
 
+    def pruning_diagnostics(
+        self,
+        original: GeneratedKernelSignature,
+    ) -> dict[str, object]:
+        """Describe compiler-owned ABI pruning without changing either signature."""
+
+        if not isinstance(original, GeneratedKernelSignature):
+            raise TypeError("signature diagnostics require a GeneratedKernelSignature")
+        original_names = original.names
+        retained = set(self.names)
+        if not retained <= set(original_names):
+            raise ValueError(
+                "pruned signature contains arguments absent from the source"
+            )
+        ordered_retained = tuple(name for name in original_names if name in retained)
+        if ordered_retained != self.names:
+            raise ValueError("pruned signature must preserve source argument order")
+        removed = tuple(name for name in original_names if name not in retained)
+        return {
+            "schema": "vibeqc.compiler.signature-pruning.v1",
+            "parameters_before": list(original_names),
+            "parameters_after": list(self.names),
+            "removed_parameters": list(removed),
+            "parameter_count_before": len(original_names),
+            "parameter_count_after": len(self.names),
+            "reason": "compile-time liveness",
+        }
+
     def parameter_list(self, *, indent: str = "    ") -> str:
         """Render the internal function/kernel declaration from the manifest."""
 

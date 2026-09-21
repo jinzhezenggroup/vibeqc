@@ -24,6 +24,7 @@ PROVIDERS = {
     "hf": ("Hf", True, True),
     "mp2": ("Mp2", True, True),
     "rccsd": ("Rccsd", True, True),
+    "rccsdt": ("Rccsdt", True, True),
     "dft": ("Dft", True, True),
     "xtb": ("Xtb", True, False),
 }
@@ -121,8 +122,11 @@ def load_manifest() -> list[dict]:
             raise ValueError(f"{name}: HF provider requires Hartree-Fock family")
         if method["provider"] == "mp2" and method["family"] != "perturbation":
             raise ValueError(f"{name}: MP2 provider requires perturbation family")
-        if method["provider"] == "rccsd" and method["family"] != "coupled_cluster":
-            raise ValueError(f"{name}: RCCSD provider requires coupled-cluster family")
+        if (
+            method["provider"] in {"rccsd", "rccsdt"}
+            and method["family"] != "coupled_cluster"
+        ):
+            raise ValueError(f"{name}: CC provider requires coupled-cluster family")
         if method["provider"] == "dft" and method["family"] != "density_functional":
             raise ValueError(f"{name}: DFT provider requires density-functional family")
         if method["provider"] == "xtb" and method["family"] != "semiempirical":
@@ -230,7 +234,7 @@ def emit_cpp(methods: list[dict]) -> str:
         "// clang-format off",
         "namespace vibeqc::methods::generated {",
         "",
-        "enum class PublicProvider : std::uint8_t { Reserved, Hf, Mp2, Rccsd, Dft, Xtb };",
+        "enum class PublicProvider : std::uint8_t { Reserved, Hf, Mp2, Rccsd, Rccsdt, Dft, Xtb };",
         "",
         "struct MethodManifestEntry {",
         "  std::string_view name;",

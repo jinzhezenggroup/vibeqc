@@ -13,6 +13,18 @@ resolve CUDA runtime, cuBLAS, and cuSOLVER provider SONAMEs at execution time.
 The NVIDIA provider shared libraries themselves are not redistributed in the
 VibeQC wheel.
 
+## Scientific regeneration source snapshots
+
+The source registry in `upstream/manifest.json` pins the exact upstream files used
+for scientific provenance and deterministic regeneration. Only source bytes
+needed directly by normal compiler/catalog development are checked in under
+`upstream/<provider>/<revision>/`: the admitted Libxc closure and the
+DFT-D4/simple-DFTD3 parameter catalogs. Larger or qualification-only upstream
+implementation sources (DFT-D4 reference files, EEQ support sources,
+simple-DFTD3 gCP sources, and the GPU4PySCF Rys table) remain hash-pinned
+remote file sets and are materialized explicitly for maintainer regeneration.
+Their SPDX identities remain recorded in the registry and retained license files.
+
 ## xTBloom D3 qualification baseline
 
 The repository-only D3 tools under `tools/vibeqc_d3/native/` adapt GPL-3.0-or-later
@@ -48,9 +60,9 @@ runtime; independent upstream tools are used to generate its test fixtures.
 
 ## Pinned dispersion parameter catalogs
 
-The repository-only snapshots under `tools/parameters/upstream/` retain the
-upstream damping-parameter tables used to generate VibeQC's static method
-catalog. The simple-dftd3 snapshot is pinned to commit
+The repository-only snapshots under `upstream/simple-dftd3/` and
+`upstream/dftd4/` retain the upstream damping-parameter tables used to
+generate VibeQC's static method catalog. The simple-dftd3 snapshot is pinned to commit
 `41d5a07b98ce15e97bec7a1815869725f6c7b0c2`; the DFT-D4 snapshot is pinned
 to commit `82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4`. Both are
 LGPL-3.0-or-later data/code distributions; the corresponding license texts
@@ -92,11 +104,21 @@ VibeQC issue #560 embeds a reviewed source snapshot of xTBloom commit
 `src/xtb/gfn2_runtime/` to provide the first production GFN2-xTB runtime:
 intrinsic-basis integrals, H0, ES2/ES3/AES2, generalized eigensolution,
 occupations, Mulliken/multipole state, SCC mixing, repulsion, self-consistent
-D4, spin terms, total energy, and analytic nuclear forces. VibeQC compiles only the required common/GFN2/CPU-runtime sources into
-`libvibeqc`; the former broad xTBloom subproject is not restored, and an
-installed xTBloom library or executable is not a runtime dependency. Its GPL-3.0-or-later terms, additional CUDA/MKL
-permission, full third-party notices, and retained license texts ship with the
-source/wheel legal material.
+D4, spin terms, total energy, and analytic nuclear forces. VibeQC compiles the required common/GFN2/CPU-runtime sources from that
+snapshot into `libvibeqc`. Native non-wheel CUDA builds additionally use the
+GFN2-only CUDA cohort from xTBloom commit
+`3c21f50195389b093941eb5ed6f1143b8802f96e`, selected from the repository
+state immediately before production GFN1 CUDA execution was integrated. The
+cohort reuses VibeQC's canonical packed D4 tables and carries the narrow
+correctness backport from xTBloom #487 that passes CUDA kernel descriptors by
+value rather than launcher-stack reference.
+`src/xtb/gfn2_runtime/CUDA_SOURCE_PROVENANCE.json` records the exact source
+set and per-file upstream/vendored hashes. No GFN1 runtime is compiled or
+admitted, and CUDA wheel admission remains a separate gate. The former broad
+xTBloom subproject is not restored, and an installed xTBloom library or
+executable is not a runtime dependency. Its GPL-3.0-or-later terms, additional
+CUDA/MKL permission, full third-party notices, and retained license texts ship
+with the source/wheel legal material.
 
 Linux wheels use xTBloom's reviewed private `scipy-openblas32==0.3.34.0.0`
 LP64 LAPACKE/CBLAS provider boundary. A tiny sibling shim gives auditwheel one

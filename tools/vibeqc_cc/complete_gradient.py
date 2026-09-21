@@ -17,7 +17,6 @@ from dataclasses import asdict, dataclass, field
 from types import MappingProxyType
 
 import numpy as np
-from vibeqc_compiler.tensor import execute
 
 from tools.vibeqc_posthf import MOBlock
 from tools.vibeqc_posthf.export import export_rhf
@@ -237,6 +236,19 @@ def _validate_source(source: typing.Any) -> None:
         raise ValueError(
             "complete CCSD gradient requires closed-shell occupied and virtual spaces"
         )
+
+
+def _tensor_owner(response: typing.Any) -> BoundCCSDLambda:
+    """Resolve the one bound CC state that owns generated tensor execution."""
+    bound = getattr(response, "bound", None)
+    if bound is None:
+        fixed = getattr(response, "response", None)
+        bound = getattr(fixed, "bound", None)
+    if not isinstance(bound, BoundCCSDLambda):
+        raise ResponseCompatibilityError(
+            "CC response chain has no bound tensor-execution owner"
+        )
+    return bound
 
 
 def _derivative_bytes(source: typing.Any) -> typing.Any:
@@ -484,18 +496,14 @@ class BoundCCSDOrbitalResponse:
 
     def _run(self, program: typing.Any, feeds: typing.Any) -> typing.Any:
         self._assert_current()
-        result = execute(program, feeds, max_bytes=self.options.max_bytes)
-        if result.backend != "numpy-cpu-interpreter":
-            raise ResponseCompatibilityError(
-                "CC orbital-response tensor backend changed; no silent fallback"
-            )
-        if set(result.outputs) != set(program.outputs):
+        outputs = _tensor_owner(self.response)._tensor_execute(program, feeds)
+        if set(outputs) != set(program.outputs):
             raise ResponseCompatibilityError(
                 "CC orbital-response program returned an incomplete output set"
             )
         out = MappingProxyType(
             {
-                name: _immutable(_array(result.outputs[name], node.spec.shape, name))
+                name: _immutable(_array(outputs[name], node.spec.shape, name))
                 for name, node in program.outputs.items()
             }
         )
@@ -809,18 +817,14 @@ class BoundCCSDGradient:
 
     def _run(self, program: typing.Any, feeds: typing.Any) -> typing.Any:
         self._assert_current()
-        result = execute(program, feeds, max_bytes=self.options.max_bytes)
-        if result.backend != "numpy-cpu-interpreter":
-            raise ResponseCompatibilityError(
-                "CC gradient tensor backend changed; no silent fallback"
-            )
-        if set(result.outputs) != set(program.outputs):
+        outputs = _tensor_owner(self.response)._tensor_execute(program, feeds)
+        if set(outputs) != set(program.outputs):
             raise ResponseCompatibilityError(
                 "CC gradient program returned an incomplete output set"
             )
         out = MappingProxyType(
             {
-                name: _immutable(_array(result.outputs[name], node.spec.shape, name))
+                name: _immutable(_array(outputs[name], node.spec.shape, name))
                 for name, node in program.outputs.items()
             }
         )
@@ -954,7 +958,7 @@ class BoundCCSDGradient:
                 "logical_reserved_host_bytes": self.logical_reserved_host_bytes,
                 "provider_budget_bytes": self.provider.budget_bytes,
                 "native_hf_backend": self.reference.hf_backend,
-                "tensor_backend": "numpy-cpu-interpreter",
+                "tensor_backend": _tensor_owner(self.response).tensor_backend,
                 "orbital_backend": "native-cpu-shell-tile-jk",
                 "orbital_solver": "shared-response-gmres",
                 "dense_orbital_curvature_check": True,

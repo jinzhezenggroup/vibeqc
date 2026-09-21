@@ -7,6 +7,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
+from vibeqc_compiler.common.native_runtime import compile_runtime_bundle
+from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -84,6 +86,73 @@ def test_reductions_einsums_and_detached_outputs(
         Program(dict(program.outputs), provenance={"different_plan": True}), tmp_path
     )
     assert executor.identity != other.identity
+
+
+def test_two_tensor_programs_share_one_native_runtime_bundle(
+    tmp_path: typing.Any,
+) -> None:
+    a = tensor("a", (3,))
+    programs = (
+        Program({"out": add(a, a)}),
+        Program({"out": multiply(a, a)}),
+    )
+    paths = []
+    resources = []
+    for index, program in enumerate(programs):
+        source, resource = emit_cpu(program, symbol=f"tensor_cpu_bundle_{index}")
+        path = tmp_path / f"program_{index}.cpp"
+        path.write_text(source)
+        paths.append(path)
+        resources.append(resource)
+
+    header = asset_path("src/tensor/cpu_runtime.hpp")
+    artifact = compile_runtime_bundle(
+        CppCompilerAdapter(Path("c++")),
+        tmp_path / "bundle-cache",
+        paths,
+        headers=(header,),
+        options=("-ffp-contract=off", f"-I{header.parent}"),
+    )
+    library = ct.CDLL(str(artifact.library))
+    values = np.arange(3, dtype=np.float64)
+    ptr = lambda value: value.ctypes.data_as(ct.POINTER(ct.c_double))
+    for index, expected in enumerate((2 * values, values * values)):
+        call = getattr(library, f"tensor_cpu_bundle_{index}")
+        call.argtypes = [
+            ct.POINTER(ct.c_double),
+            ct.c_size_t,
+            ct.POINTER(ct.c_double),
+            ct.c_size_t,
+            ct.c_size_t,
+        ]
+        call.restype = ct.c_int
+        output = np.empty(resources[index]["output_count"], dtype=np.float64)
+        assert (
+            call(ptr(values), values.size, ptr(output), output.size, 8 * 1024 * 1024)
+            == 0
+        )
+        np.testing.assert_array_equal(output, expected)
+
+
+def test_custom_native_entry_symbol_is_explicit_and_checked(
+    tmp_path: typing.Any,
+) -> None:
+    a = tensor("a", (3,))
+    program = Program({"a": add(a, a)})
+    executor = NativeTensorProgram(
+        program,
+        compiler=CppCompilerAdapter(Path("c++")),
+        cache=tmp_path,
+        symbol="tensor_cpu_response_7",
+    )
+    np.testing.assert_array_equal(
+        executor.execute({"a": np.arange(3, dtype=float)})["a"], [0.0, 2.0, 4.0]
+    )
+    source, _ = emit_cpu(program, symbol="tensor_cpu_response_8")
+    assert 'extern "C" int tensor_cpu_response_8(' in source
+    for symbol in ("", "7tensor", "tensor-cpu"):
+        with pytest.raises(ValueError, match="C identifier"):
+            emit_cpu(program, symbol=symbol)
 
 
 def test_ordinary_pointwise_arithmetic(tmp_path: typing.Any) -> None:

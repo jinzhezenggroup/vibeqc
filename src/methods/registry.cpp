@@ -9,6 +9,7 @@
 #include "methods/method.hpp"
 #include "methods/mp2_method.hpp"
 #include "methods/rccsd_method.hpp"
+#include "methods/rccsdt_method.hpp"
 #include "methods/xtb_method.hpp"
 #include "runtime/provider_registry.hpp"
 
@@ -51,6 +52,11 @@ constexpr MethodDefinition register_method(const generated::MethodManifestEntry&
       validate = detail::validate_rccsd_system;
       prepare = detail::prepare_rccsd_calculation;
       batch = detail::prepare_rccsd_batch;
+      break;
+    case generated::PublicProvider::Rccsdt:
+      validate = detail::validate_rccsdt_system;
+      prepare = detail::prepare_rccsdt_calculation;
+      batch = detail::prepare_rccsdt_batch;
       break;
     case generated::PublicProvider::Dft:
       validate = detail::validate_dft_system;

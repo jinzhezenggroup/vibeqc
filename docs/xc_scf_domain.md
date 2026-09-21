@@ -4,7 +4,7 @@ The native SCF point evaluator uses the identity
 `semilocal-scaled-v1/pbe-spin-c2-1e-18`. Its compositions are exactly
 `LDA_X + LDA_C_PW` and `GGA_X_PBE + GGA_C_PBE`; PBE correlation uses modified
 PW constants. The source parameters and conventions follow the audited
-Libxc 7.0.0 sources in `external/libxc-7.0.0` and
+Libxc 7.0.0 sources in `upstream/libxc/7.0.0` and
 `python/vibeqc_compiler/xc/expressions.py`. There is no exact exchange or
 density fitting in these method compositions.
 

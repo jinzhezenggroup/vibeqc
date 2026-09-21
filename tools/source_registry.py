@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-REGISTRY = ROOT / "sources/manifest.json"
+REGISTRY = ROOT / "upstream/manifest.json"
 DEFAULT_CACHE = ROOT / ".cache/vibeqc-sources"
 _SCHEMA = "vibeqc.scientific-source-registry"
 

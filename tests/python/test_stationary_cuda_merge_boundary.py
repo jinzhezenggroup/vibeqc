@@ -300,3 +300,20 @@ def test_weight_fusion_orchestration_runs_without_a_device(
     assert result.work["stationary_weight_roundtrip_bytes"] == 0
     assert result.work["stationary_state_dw_upload_bytes"] == 16
     assert result.execution.endswith("/generated-device-stationary-weights-v1")
+
+
+def test_stationary_cuda_production_task_page_default() -> None:
+    """Keep the qualified large-page schedule explicit and bounded."""
+    import inspect
+
+    from vibeqc._stationary_cuda import (
+        _complete_rks_cuda_gradient_diagnostic,
+        complete_rks_cuda_gradient_diagnostic,
+    )
+
+    for function in (
+        _complete_rks_cuda_gradient_diagnostic,
+        complete_rks_cuda_gradient_diagnostic,
+    ):
+        parameter = inspect.signature(function).parameters["primitive_tile"]
+        assert parameter.default == 4096

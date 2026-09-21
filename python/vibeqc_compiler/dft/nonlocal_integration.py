@@ -17,7 +17,6 @@ from .ao import NativeAO, jet_indices
 from .features import spin_densities
 from .grid import ExplicitGrid, MolecularGrid, checked_int
 from .nonlocal_reference import (
-    assemble_nonlocal_potential_reference,
     nonlocal_energy_reference,
     nonlocal_explicit_geometry_derivatives_reference,
     nonlocal_feature_derivatives_reference,
@@ -39,6 +38,10 @@ class NonlocalGeometry:
     density_identity: str
     coefficient: Fraction
     backend: str = "cpu-reference"
+    host_workspace_bytes: int = 0
+    device_workspace_bytes: int = 0
+    pair_evaluations: int = 0
+    provider_identity: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.coefficient, Fraction) or self.coefficient <= 0:
@@ -130,6 +133,10 @@ class NonlocalIntegral:
     tiles: int
     quadrature_identity: str = ""
     backend: str = "cpu-reference"
+    host_workspace_bytes: int = 0
+    device_workspace_bytes: int = 0
+    pair_evaluations: int = 0
+    provider_identity: str | None = None
 
 
 def _density_identity(spin_density: np.ndarray, separate: bool, nao: int) -> str:
@@ -158,9 +165,9 @@ def _ao_atoms(basis: NativeAO) -> np.ndarray:
 class FixedDensityNonlocalCorrelation:
     """Execute a small-grid VV10-family energy/potential with bounded memory.
 
-    Pair evaluation is tiled in memory, but remains quadratic in work. max_points
-    is a hard admission gate rather than a performance promise. Production
-    large-grid execution belongs to issue 491 slice D.
+    Pair evaluation is quadratic in work.  With no pair_provider this remains the
+    small independent CPU oracle with a hard max_points gate; a runtime-owned
+    pair_provider supplies the bounded native production lowerer.
     """
 
     def __init__(
@@ -169,6 +176,7 @@ class FixedDensityNonlocalCorrelation:
         *,
         coefficient: typing.Any = Fraction(1),
         max_points: typing.Any = 4096,
+        pair_provider: typing.Any = None,
     ) -> None:
         if not isinstance(spec, NonlocalCorrelationSpec):
             raise TypeError("expected NonlocalCorrelationSpec")
@@ -178,6 +186,7 @@ class FixedDensityNonlocalCorrelation:
         self.spec = spec
         self.coefficient = coefficient
         self.max_points = max_points
+        self.pair_provider = pair_provider
 
     def _validate_grid(
         self, basis: typing.Any, grid: typing.Any
@@ -195,8 +204,9 @@ class FixedDensityNonlocalCorrelation:
                 raise ValueError(
                     "stale molecular grid: atoms/charge/spin do not match basis"
                 )
-            return grid.explicit(max_points=self.max_points), grid.identity
-        if len(grid.points) > self.max_points:
+            limit = self.max_points if self.pair_provider is None else grid.npoint
+            return grid.explicit(max_points=limit), grid.identity
+        if self.pair_provider is None and len(grid.points) > self.max_points:
             raise ValueError(
                 "nonlocal CPU reference exceeds its explicit max_points admission gate"
             )
@@ -212,6 +222,24 @@ class FixedDensityNonlocalCorrelation:
             axis=1,
         )
         return rho, gradient
+
+    @staticmethod
+    def _assemble_potential(
+        jets: np.ndarray,
+        weights: np.ndarray,
+        density_gradient: np.ndarray,
+        vrho: np.ndarray,
+        vsigma: np.ndarray,
+    ) -> np.ndarray:
+        """Assemble the total-density AO potential from provider feature derivatives."""
+        phi = jets[0]
+        derivatives = jets[1:4]
+        matrix = phi.T @ ((weights * vrho)[:, None] * phi)
+        spatial = 2.0 * vsigma[:, None] * density_gradient
+        panel = sum(spatial[:, k, None] * derivatives[k] for k in range(3))
+        cross = phi.T @ (weights[:, None] * panel)
+        matrix += cross + cross.T
+        return 0.5 * (matrix + matrix.T)
 
     def integrate(
         self,
@@ -241,31 +269,36 @@ class FixedDensityNonlocalCorrelation:
                 jets, total_density
             )
             tiles += 1
-        coefficient = float(self.coefficient)
-        energy = coefficient * nonlocal_energy_reference(
-            points,
-            weights,
-            rho,
-            gradient,
-            self.spec,
-            tile_size=tile_points,
-        )
-        vrho, vsigma = nonlocal_feature_derivatives_reference(
-            points,
-            weights,
-            rho,
-            gradient,
-            self.spec,
-            tile_size=tile_points,
-        )
-        vrho *= coefficient
-        vsigma *= coefficient
+        native = None
+        if self.pair_provider is None:
+            coefficient = float(self.coefficient)
+            energy = coefficient * nonlocal_energy_reference(
+                points, weights, rho, gradient, self.spec, tile_size=tile_points
+            )
+            vrho, vsigma = nonlocal_feature_derivatives_reference(
+                points, weights, rho, gradient, self.spec, tile_size=tile_points
+            )
+            vrho *= coefficient
+            vsigma *= coefficient
+        else:
+            native = self.pair_provider.evaluate(
+                points,
+                weights,
+                rho,
+                gradient,
+                self.spec,
+                self.coefficient,
+                tile_points=tile_points,
+            )
+            energy = native.energy
+            vrho = np.asarray(native.vrho)
+            vsigma = np.asarray(native.vsigma)
 
         potential = np.zeros((basis.nao, basis.nao), dtype=np.float64)
         for begin in range(0, ngrid, tile_points):
             end = min(begin + tile_points, ngrid)
             jets = basis.evaluate(points[begin:end], 1)
-            potential += assemble_nonlocal_potential_reference(
+            potential += self._assemble_potential(
                 jets,
                 weights[begin:end],
                 gradient[begin:end],
@@ -285,6 +318,19 @@ class FixedDensityNonlocalCorrelation:
             "density_identity": density_identity,
             "max_points": self.max_points,
         }
+        backend = "cpu-reference"
+        if native is not None:
+            backend = f"native-{native.backend}"
+            payload = {
+                **payload,
+                "schema": "vibeqc.fixed-density-nonlocal-native/v1",
+                "provider": native.provider_identity,
+                "pair_evaluation": native.identity,
+                "backend": backend,
+                "host_workspace_bytes": native.host_workspace_bytes,
+                "device_workspace_bytes": native.device_workspace_bytes,
+                "pair_evaluations": native.pair_evaluations,
+            }
         return NonlocalIntegral(
             energy=float(energy),
             potential=immutable(published),
@@ -296,6 +342,13 @@ class FixedDensityNonlocalCorrelation:
             density_identity=density_identity,
             points=ngrid,
             tiles=tiles,
+            backend=backend,
+            host_workspace_bytes=0 if native is None else native.host_workspace_bytes,
+            device_workspace_bytes=0
+            if native is None
+            else native.device_workspace_bytes,
+            pair_evaluations=0 if native is None else native.pair_evaluations,
+            provider_identity=None if native is None else native.provider_identity,
         )
 
     def geometry(
@@ -330,19 +383,36 @@ class FixedDensityNonlocalCorrelation:
                 jets, total_density
             )
 
-        vrho, vsigma = nonlocal_feature_derivatives_reference(
-            points, weights, rho, gradient, self.spec, tile_size=tile_points
-        )
-        explicit_points, weight_partials = (
-            nonlocal_explicit_geometry_derivatives_reference(
+        native = None
+        if self.pair_provider is None:
+            vrho, vsigma = nonlocal_feature_derivatives_reference(
                 points, weights, rho, gradient, self.spec, tile_size=tile_points
             )
-        )
-        coefficient = float(self.coefficient)
-        vrho *= coefficient
-        vsigma *= coefficient
-        point_partials = coefficient * explicit_points
-        weight_partials = coefficient * weight_partials
+            explicit_points, weight_partials = (
+                nonlocal_explicit_geometry_derivatives_reference(
+                    points, weights, rho, gradient, self.spec, tile_size=tile_points
+                )
+            )
+            coefficient = float(self.coefficient)
+            vrho *= coefficient
+            vsigma *= coefficient
+            point_partials = coefficient * explicit_points
+            weight_partials = coefficient * weight_partials
+        else:
+            native = self.pair_provider.evaluate(
+                points,
+                weights,
+                rho,
+                gradient,
+                self.spec,
+                self.coefficient,
+                tile_points=tile_points,
+                geometry=True,
+            )
+            vrho = np.asarray(native.vrho)
+            vsigma = np.asarray(native.vsigma)
+            point_partials = np.array(native.point_derivative, copy=True)
+            weight_partials = np.array(native.weight_derivative, copy=True)
         center_partials = np.zeros((basis.natom, 3), dtype=np.float64)
         ao_atoms = _ao_atoms(basis)
         lookup = {axis: i for i, axis in enumerate(jet_indices(2))}
@@ -421,6 +491,19 @@ class FixedDensityNonlocalCorrelation:
             "density_identity": density_identity,
             "sources": ("nonlocal_ao", "nonlocal_grid", "nonlocal_weight"),
         }
+        backend = "cpu-reference"
+        if native is not None:
+            backend = f"native-{native.backend}"
+            payload = {
+                **payload,
+                "schema": "vibeqc.fixed-density-nonlocal-geometry-native/v1",
+                "provider": native.provider_identity,
+                "pair_evaluation": native.identity,
+                "backend": backend,
+                "host_workspace_bytes": native.host_workspace_bytes,
+                "device_workspace_bytes": native.device_workspace_bytes,
+                "pair_evaluations": native.pair_evaluations,
+            }
         return NonlocalGeometry(
             centers=immutable(center_partials),
             points=immutable(point_partials),
@@ -432,4 +515,11 @@ class FixedDensityNonlocalCorrelation:
             spec_identity=self.spec.identity,
             density_identity=density_identity,
             coefficient=self.coefficient,
+            backend=backend,
+            host_workspace_bytes=0 if native is None else native.host_workspace_bytes,
+            device_workspace_bytes=0
+            if native is None
+            else native.device_workspace_bytes,
+            pair_evaluations=0 if native is None else native.pair_evaluations,
+            provider_identity=None if native is None else native.provider_identity,
         )

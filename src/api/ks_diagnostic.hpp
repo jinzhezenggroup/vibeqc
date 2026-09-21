@@ -29,7 +29,7 @@ inline vibeqc_status copy_ks_diagnostic(const std::optional<dft::ScfDiagnostic>&
   if (out) {
     *out = {sizeof(*out),
             VIBEQC_ABI_VERSION,
-            1,
+            value.scf_domain_version,
             static_cast<std::uint32_t>(value.ao_order),
             static_cast<std::uint32_t>(value.history.size()),
             value.initial_density_used ? 1 : 0,

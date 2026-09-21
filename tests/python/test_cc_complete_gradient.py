@@ -15,6 +15,7 @@ from vibeqc_compiler.tensor import Index, IndexSpace, Program, TensorSpec, execu
 from tools.cc_gradient_fixtures import CASES, inputs, load, source_arguments
 from tools.vibeqc_cc import BoundCCSDLambda, BoundCCSDResponse, solve
 from tools.vibeqc_cc import complete_gradient as module
+from tools.vibeqc_cc import lambda_solver as lambda_solver_module
 from tools.vibeqc_cc.complete_gradient import (
     BoundCCSDGradient,
     CCSDGradientOptions,
@@ -854,10 +855,10 @@ def test_native_derivative_outputs_are_validated(
 def test_changed_tensor_backend_and_live_provider_rejected(
     tiny_state: typing.Any, monkeypatch: typing.Any
 ) -> None:
-    original = module.execute
+    original = lambda_solver_module.execute
     with monkeypatch.context() as m:
         m.setattr(
-            module,
+            lambda_solver_module,
             "execute",
             lambda *a, **k: replace(original(*a, **k), backend="unexpected"),
         )

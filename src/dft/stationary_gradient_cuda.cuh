@@ -311,6 +311,8 @@ int stationary_finish_reduced(void* pointer, double* output, size_t count, char*
   return guarded(p, error, size, [&] {
     if (!p || !output || count != 3 * p->atoms)
       throw std::invalid_argument("invalid reduced output");
+    if (!stationary_native_reduction_supported)
+      throw std::invalid_argument("stationary source inventory requires external reduction");
     check(*p);
     auto stream = p->context.stream;
     source_reduce<<<blocks(3 * p->atoms, 64), 64, 0, stream>>>(p->sources, p->atoms, p->partial,

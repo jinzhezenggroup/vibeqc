@@ -396,7 +396,7 @@ void verify_final_state_reuse(bool unrestricted, bool with_peer = false) {
   std::vector<const std::vector<double>*> resident_density(systems.size(), nullptr);
   for (std::size_t index = 0; index < systems.size(); ++index)
     resident_density[index] = &seeded[index].scf.density;
-  const std::vector<vibeqc::scf::RhfBucketItem> retained = run_cached(resident_density);
+  std::vector<vibeqc::scf::RhfBucketItem> retained = run_cached(resident_density);
   require(retained.size() == systems.size(), "force-ready replay changed bucket size");
   const auto retained_audit = final_state_audit();
   require(
@@ -420,6 +420,55 @@ void verify_final_state_reuse(bool unrestricted, bool with_peer = false) {
                                         options.density_tolerance),
             "force-ready replay did not qualify for retained-Fock reuse");
   }
+  // Provenance is value-based, not pointer-based: mutating the same host
+  // vector in place must revoke force-ready reuse even though the caller
+  // presents the identical std::vector object and shape.
+  std::vector<const std::vector<double>*> aliased_resident_density(systems.size(), nullptr);
+  for (std::size_t index = 0; index < systems.size(); ++index)
+    aliased_resident_density[index] = &retained[index].scf.density;
+  const auto aliased_baseline = run_cached(aliased_resident_density);
+  const auto aliased_baseline_audit = final_state_audit();
+  require(
+      aliased_baseline.size() == systems.size() &&
+          aliased_baseline_audit.route == vibeqc::scf::CudaDirectFinalStateRoute::scf_force_ready &&
+          aliased_baseline_audit.seed_provenance,
+      "same-pointer mutation fixture did not start from a force-ready resident state");
+  for (std::size_t index = 0; index < systems.size(); ++index) {
+    require(aliased_baseline[index].scf.density.size() == retained[index].scf.density.size(),
+            "same-pointer mutation fixture changed density shape");
+    std::copy(aliased_baseline[index].scf.density.begin(),
+              aliased_baseline[index].scf.density.end(), retained[index].scf.density.begin());
+  }
+  std::vector<double>& aliased_density = retained[0].scf.density;
+  require(aliased_resident_density[0] == &aliased_density,
+          "same-pointer mutation fixture lost its host object identity");
+  const std::size_t spin_matrix_size = aliased_density.size() / (unrestricted ? 2U : 1U);
+  const std::size_t nbf =
+      static_cast<std::size_t>(std::llround(std::sqrt(static_cast<double>(spin_matrix_size))));
+  require(nbf > 1 && nbf * nbf == spin_matrix_size,
+          "same-pointer mutation fixture has an invalid density shape");
+  const std::size_t offdiag_01 = 1;
+  const std::size_t offdiag_10 = nbf;
+  const double original_01 = aliased_density[offdiag_01];
+  const double original_10 = aliased_density[offdiag_10];
+  aliased_density[offdiag_01] =
+      std::nextafter(original_01, original_01 >= 0.0 ? original_01 + 1.0 : original_01 - 1.0);
+  aliased_density[offdiag_10] =
+      std::nextafter(original_10, original_10 >= 0.0 ? original_10 + 1.0 : original_10 - 1.0);
+  const auto same_pointer_mutation = run_cached(aliased_resident_density);
+  aliased_density[offdiag_01] = original_01;
+  aliased_density[offdiag_10] = original_10;
+  const auto same_pointer_mutation_audit = final_state_audit();
+  require(same_pointer_mutation.size() == systems.size() &&
+              same_pointer_mutation[0].status == VIBEQC_STATUS_SUCCESS &&
+              same_pointer_mutation[0].scf.converged &&
+              same_pointer_mutation_audit.route ==
+                  vibeqc::scf::CudaDirectFinalStateRoute::canonical_fallback &&
+              same_pointer_mutation_audit.fallback_reason ==
+                  vibeqc::scf::CudaDirectFinalStateFallbackReason::unproven_density_generation &&
+              !same_pointer_mutation_audit.seed_provenance,
+          "same-pointer density mutation incorrectly retained force-ready provenance");
+
   // A density from the previous geometry is not a reusable final-state token.
   // The same plan/topology is deliberately retained so this catches a stale
   // generation admitted only by shape/pointer/small-delta checks.

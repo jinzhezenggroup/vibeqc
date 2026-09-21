@@ -14,12 +14,19 @@ the plan's numeric-buffer peak.
 from __future__ import annotations
 
 import typing
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from functools import cached_property
 from math import prod
 
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
+from vibeqc_compiler.common.storage import (
+    AliasKind,
+    BufferOp,
+    BufferValue,
+    MemoryEffect,
+    analyze_storage,
+)
 
 from .batch_schedule import (
     BatchScheduleIR,
@@ -79,6 +86,9 @@ class TensorSchedule:
     Recompute duplicates shared intermediates between output roots. It does
     not duplicate work within a root or promise arbitrary out-of-core output
     support. Fusion retains the order and finite checks of each scalar node.
+    Streaming reductions keep a small materialized reduction frontier while
+    evaluating fully-consumed higher-rank producers on demand. It is an
+    opt-in memory schedule until real-device qualification proves a speed win.
     """
 
     tile_m: int = 128
@@ -88,6 +98,7 @@ class TensorSchedule:
     views: bool = False
     fuse: bool = False
     recompute: bool = False
+    stream_reductions: bool = field(default=False, kw_only=True)
     direct_gemm: bool = True
     layouts: bool = False
     elements_per_thread: int = 1
@@ -104,7 +115,14 @@ class TensorSchedule:
             value = getattr(self, name)
             if type(value) is not int or value not in (1, 2, 4, 8):
                 raise ValueError(f"{name} must be one of 1, 2, 4, 8")
-        for name in ("views", "fuse", "recompute", "direct_gemm", "layouts"):
+        for name in (
+            "views",
+            "fuse",
+            "recompute",
+            "stream_reductions",
+            "direct_gemm",
+            "layouts",
+        ):
             if type(getattr(self, name)) is not bool:
                 raise TypeError(f"{name} must be boolean")
 
@@ -312,6 +330,98 @@ class TensorPlan:
             }
         )
 
+    def storage_analysis(self) -> typing.Any:
+        """Adapt TensorIR storage facts to the shared whole-region analysis."""
+
+        storage_views = frozenset(("transpose", "reshape", "slice"))
+        alias_owner: dict[int, int] = {}
+        for index, step in enumerate(self.steps):
+            if (
+                not step.virtual
+                or step.node.op not in storage_views
+                or len(step.inputs) != 1
+            ):
+                continue
+            owner = step.inputs[0]
+            while self.steps[owner].virtual:
+                parent = self.steps[owner]
+                if parent.node.op not in storage_views or len(parent.inputs) != 1:
+                    owner = -1
+                    break
+                owner = parent.inputs[0]
+            if owner >= 0:
+                alias_owner[index] = owner
+
+        def boundary_reads(index: int) -> tuple[int, ...]:
+            if index in alias_owner or not self.steps[index].virtual:
+                return (index,)
+            result: list[int] = []
+            for child in self.steps[index].inputs:
+                for value in boundary_reads(child):
+                    if value not in result:
+                        result.append(value)
+            return tuple(result)
+
+        values = []
+        inputs = []
+        for index, step in enumerate(self.steps):
+            logical_bytes = checked_size(
+                step.node.spec.size * step.node.spec.itemsize,
+                "tensor storage-analysis bytes",
+            )
+            if not step.virtual:
+                values.append(
+                    BufferValue(
+                        index,
+                        aligned(logical_bytes),
+                        "device",
+                        step.layout,
+                        compiler_owned=True,
+                    )
+                )
+                if step.node.op in ("input", "constant"):
+                    inputs.append(index)
+            elif index in alias_owner:
+                values.append(
+                    BufferValue(
+                        index,
+                        logical_bytes,
+                        "device",
+                        alias=AliasKind.VIEW,
+                        alias_of=alias_owner[index],
+                        compiler_owned=False,
+                    )
+                )
+
+        operations = []
+        for index, step in enumerate(self.steps):
+            if index in alias_owner:
+                reads = boundary_reads(step.inputs[0])
+            elif step.virtual or step.node.op in ("input", "constant"):
+                continue
+            else:
+                ordered_reads: list[int] = []
+                for child in step.inputs:
+                    for value in boundary_reads(child):
+                        if value not in ordered_reads:
+                            ordered_reads.append(value)
+                reads = tuple(ordered_reads)
+            operations.append(
+                BufferOp(
+                    ("tensor_step", index),
+                    reads,
+                    (index,),
+                    MemoryEffect.EXPLICIT,
+                )
+            )
+
+        return analyze_storage(
+            tuple(values),
+            tuple(operations),
+            inputs=tuple(inputs),
+            outputs=tuple(index for _, index in self.outputs),
+        )
+
     def to_payload(self) -> dict:
         """Include layouts, aliases, lifetimes, shapes, schedule and reservations."""
         names = self.program.debug_names
@@ -363,6 +473,40 @@ class TensorPlan:
                 for s in self.steps
             ],
         }
+
+
+def estimated_cuda_launches(plan: TensorPlan) -> int:
+    """Count the emitted endpoint launch sequence without executing CUDA."""
+
+    launches = 1  # per-run arithmetic-error reset
+    for step in plan.steps:
+        if (
+            step.virtual
+            or step.node.op in ("input", "constant")
+            or not step.node.spec.size
+        ):
+            continue
+        if step.gemm == "none":
+            launches += 1
+            continue
+        contraction = gemm_contract(step.node)
+        if contraction is None:
+            raise ValueError("GEMM launch estimate requires a contraction node")
+        if not contraction.k:
+            launches += 1
+        elif step.gemm.startswith("direct-"):
+            launches += 2
+        else:
+            tiles = [
+                (size + tile - 1) // tile
+                for size, tile in zip(
+                    (contraction.m, contraction.n, contraction.k),
+                    (plan.schedule.tile_m, plan.schedule.tile_n, plan.schedule.tile_k),
+                    strict=True,
+                )
+            ]
+            launches += contraction.batch * prod(tiles[:2]) * (2 * tiles[2] + 1)
+    return launches
 
 
 def static_data_slices(
@@ -420,6 +564,106 @@ def _occurrences(program: typing.Any, recompute: typing.Any) -> typing.Any:
                     nodes.append((node, tuple(mapping[n] for n in node.inputs)))
             outputs.append((name, mapping[root]))
     return nodes, tuple(inputs), tuple(outputs)
+
+
+def _fully_consumes_operand(parent: Node, child: Node) -> bool:
+    """Prove that evaluating parent visits every element of child.
+
+    Streaming a producer through a reduction is legal only when materializing
+    the producer first cannot expose an arithmetic/bounds failure on an element
+    that the consumer would otherwise skip. TensorIR nodes are pure, but their
+    fail-closed diagnostics are observable semantics.
+    """
+
+    if parent.spec.size == 0 or child.spec.size == 0:
+        return parent.spec.size == child.spec.size == 0
+    if parent.op in ELEMENTWISE or parent.op in {
+        "cast",
+        "transpose",
+        "reshape",
+        "broadcast",
+        "reduce",
+        "scatter_add",
+    }:
+        return True
+    if parent.op == "einsum":
+        domains = {}
+        for operand, labels in zip(parent.inputs, parent.attrs["labels"], strict=True):
+            domains.update(zip(labels, operand.spec.shape, strict=True))
+            if operand is child:
+                child_labels = labels
+        if child not in parent.inputs:
+            return False
+        # Repeated labels select a diagonal rather than the full tensor. An
+        # empty sibling-only label also makes the contraction skip this child.
+        return len(child_labels) == len(set(child_labels)) and all(
+            extent for label, extent in domains.items() if label not in child_labels
+        )
+    # These operators can select only a subset of their source domain. Keep
+    # upstream diagnostics materialized until a stronger full-consumption proof
+    # exists for their concrete maps/ranges.
+    return False
+
+
+def _streaming_reduction_virtuals(
+    nodes: list[tuple[Node, tuple[int, ...]]],
+    users: list[set[int]],
+) -> frozenset[int]:
+    """Find full-consumption producer chains that can stream into reductions."""
+
+    candidates: set[int] = set()
+    region: set[int] = set()
+    roots: set[int] = set()
+    for root_index, (root, operands) in enumerate(nodes):
+        if root.op != "reduce" or len(operands) != 1:
+            continue
+        source = root.inputs[0]
+        reduced_domains = {
+            source.spec.indices[axis].domain for axis in root.attrs["axes"]
+        }
+        if not reduced_domains:
+            continue
+        roots.add(root_index)
+        pending = [(root_index, operands[0])]
+        seen_edges: set[tuple[int, int]] = set()
+        while pending:
+            parent_index, child_index = pending.pop()
+            edge = (parent_index, child_index)
+            if edge in seen_edges:
+                continue
+            seen_edges.add(edge)
+            parent = nodes[parent_index][0]
+            child, child_operands = nodes[child_index]
+            if child.op in ("input", "constant"):
+                continue
+            if not any(index.domain in reduced_domains for index in child.spec.indices):
+                continue
+            if not _fully_consumes_operand(parent, child):
+                continue
+            region.add(child_index)
+            # Keep the reduction frontier materialized. Values whose axes are
+            # entirely inside the reduced domain are small boundary tensors
+            # (for example one scalar per runtime lane). Their kernels retain
+            # parallelism while higher-rank producers stream through them.
+            if any(index.domain not in reduced_domains for index in child.spec.indices):
+                candidates.add(child_index)
+            pending.extend((child_index, grandchild) for grandchild in child_operands)
+
+    # A shared producer may stream only when every consumer stays inside a
+    # proven streaming region (or is one of its reduction roots).
+    changed = True
+    while changed:
+        changed = False
+        for child_index in tuple(candidates):
+            child = nodes[child_index][0]
+            if any(
+                (user not in region and user not in roots)
+                or not _fully_consumes_operand(nodes[user][0], child)
+                for user in users[child_index]
+            ):
+                candidates.remove(child_index)
+                changed = True
+    return frozenset(candidates)
 
 
 BASELINE_SCHEDULE = TensorSchedule()
@@ -516,6 +760,11 @@ def plan_cuda(
     for i, (_, operands) in enumerate(nodes):
         for child in operands:
             users[child].add(i)
+    streaming_virtuals = (
+        _streaming_reduction_virtuals(nodes, users)
+        if schedule.stream_reductions
+        else frozenset()
+    )
     virtual, depths = [], []
     for i, (node, operands) in enumerate(nodes):
         # Only complete same-domain elementwise consumers can fuse arithmetic:
@@ -527,10 +776,9 @@ def plan_cuda(
             and nodes[next(iter(users[i]))][0].op in ELEMENTWISE
         )
         depth = 1 + max((depths[c] for c in operands), default=0)
-        is_virtual = (
-            i not in pinned
-            and depth <= 8
-            and ((schedule.views and node.op in VIEWS) or fuse)
+        is_virtual = i not in pinned and (
+            i in streaming_virtuals
+            or (depth <= 8 and ((schedule.views and node.op in VIEWS) or fuse))
         )
         virtual.append(is_virtual)
         depths.append(depth if is_virtual else 0)

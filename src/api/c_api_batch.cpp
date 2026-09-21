@@ -7,6 +7,7 @@
 #include "api/error.hpp"
 #include "api/handles.hpp"
 #include "api/ks_diagnostic.hpp"
+#include "api/method_descriptor.hpp"
 #include "api/precision.hpp"
 #include "methods/method.hpp"
 #include "runtime/host_component_trace.hpp"
@@ -30,6 +31,7 @@ vibeqc_status vibeqc_batch_prepare(vibeqc_context* context, const vibeqc_system*
 
   std::lock_guard<std::recursive_mutex> context_lock(context->mutex);
   try {
+    const auto method = vibeqc::api::snapshot_method_descriptor(descriptor);
     std::vector<vibeqc::core::System> native_systems;
     native_systems.reserve(system_count);
     std::vector<std::uint32_t> atom_counts;
@@ -47,8 +49,8 @@ vibeqc_status vibeqc_batch_prepare(vibeqc_context* context, const vibeqc_system*
     candidate->precision.resize(system_count);
     candidate->scf_diagnostics.resize(system_count);
     candidate->ks_diagnostics.resize(system_count);
-    candidate->plan = vibeqc::methods::prepare_batch(context->state, std::move(native_systems),
-                                                     *descriptor, flags);
+    candidate->plan =
+        vibeqc::methods::prepare_batch(context->state, std::move(native_systems), method, flags);
     *batch = candidate.release();
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {

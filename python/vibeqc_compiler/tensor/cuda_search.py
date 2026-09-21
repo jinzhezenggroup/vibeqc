@@ -9,15 +9,26 @@ resource measurements or grounds for performance promotion.
 from __future__ import annotations
 
 import typing
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from itertools import combinations, islice, product
 from math import prod
 
+from vibeqc_compiler.common.gpu_profitability import GpuProfitability
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.schedule import (
+    ScheduleContract,
+    ScheduleResources,
+    ScheduleTopology,
+)
 
-from .cuda_emit import emit_cuda
+from .cuda_emit import cooperative_reduction_shared_bytes, emit_cuda
 from .cuda_gemm import gemm_contract
-from .cuda_plan import TensorPlan, TensorSchedule, plan_cuda
+from .cuda_plan import (
+    TensorPlan,
+    TensorSchedule,
+    estimated_cuda_launches,
+    plan_cuda,
+)
 from .precision import describe_precision
 from .program import Program
 
@@ -34,6 +45,9 @@ class TensorScheduleSpace:
     views: tuple[bool, ...] = (True, False)
     fuse: tuple[bool, ...] = (True, False)
     recompute: tuple[bool, ...] = (False, True)
+    # Qualification-only by default: #783 evidence shows a memory win but a
+    # runtime/compile regression before cooperative reduction lowering lands.
+    stream_reductions: tuple[bool, ...] = field(default=(False,), kw_only=True)
     direct_gemm: tuple[bool, ...] = (True, False)
     layouts: tuple[bool, ...] = (False, True)
     threads: tuple[int, ...] = (128, 64, 256)
@@ -45,19 +59,19 @@ class TensorScheduleSpace:
     staging_width: tuple[int, ...] = (1, 2, 4)
 
     def __post_init__(self) -> None:
-        for field in fields(self):
-            values = tuple(getattr(self, field.name))
+        for axis_field in fields(self):
+            values = tuple(getattr(self, axis_field.name))
             if not 1 <= len(values) <= 16:
                 raise ValueError("schedule axes require 1..16 values")
             for value in values:
-                TensorSchedule(**{field.name: value})
+                TensorSchedule(**{axis_field.name: value})
             if len(set(values)) != len(values):
                 raise ValueError("schedule axes must not contain duplicates")
-            object.__setattr__(self, field.name, values)
+            object.__setattr__(self, axis_field.name, values)
 
     @property
     def cardinality(self) -> int:
-        return prod(len(getattr(self, field.name)) for field in fields(self))
+        return prod(len(getattr(self, axis_field.name)) for axis_field in fields(self))
 
     def generate(self, maximum: int = 128) -> tuple[TensorSchedule, ...]:
         """Return a deterministic prefix without enumerating the full space."""
@@ -232,12 +246,14 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     """Reuse exact capacity accounting and expose bounded, calibratable cost proxies."""
     live_values, registers = [], 0
     materialized = 0
-    for step in plan.steps:
+    shared_bytes = 0
+    for i, step in enumerate(plan.steps):
         live = 1 + sum(
             live_values[child] if plan.steps[child].virtual else 1
             for child in step.inputs
         )
         live_values.append(live)
+        shared_bytes = max(shared_bytes, cooperative_reduction_shared_bytes(plan, i))
         if not step.virtual and step.node.op not in ("input", "constant"):
             materialized += step.node.spec.size * step.node.spec.itemsize
             estimate = 16 + 2 * live + 2 * len(step.node.spec.shape)
@@ -253,10 +269,60 @@ def estimate_schedule(plan: TensorPlan) -> dict:
                 estimate += 2 * (plan.schedule.staging_width - 1)
             registers = max(registers, estimate)
     source_bytes = len(emit_cuda(plan, embed_static_data=False).encode("utf-8"))
-    resident = _resident_blocks(plan, registers, 0)
+    resident = _resident_blocks(plan, registers, shared_bytes)
     traffic = plan.semantic_traffic
+    occupancy = resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
+    launches = estimated_cuda_launches(plan)
+    profitability = GpuProfitability(
+        semantic_traffic_bytes=traffic["total_bytes"],
+        estimated_registers_per_thread=registers,
+        estimated_occupancy_upper_bound=occupancy,
+        launch_count=launches,
+        source_bytes=source_bytes,
+    )
+    batch = plan.batch_schedule
+    contract = ScheduleContract(
+        consumer="tensor.cuda",
+        schedule_hash=canonical_hash(
+            {
+                "schedule": asdict(plan.schedule),
+                "precision_schedule": plan.precision_schedule.identity,
+            }
+        ),
+        workload_hash=plan.program.logical_hash,
+        target_hash=canonical_hash(plan.target.to_payload()),
+        precision_schedule_hash=plan.precision_schedule.identity,
+        fallback=plan.schedule == TensorSchedule() and plan.precision == "fp64",
+        topology=ScheduleTopology(
+            tiles=(plan.schedule.tile_m, plan.schedule.tile_n, plan.schedule.tile_k),
+            workgroup_threads=plan.schedule.threads,
+            subgroup_size=plan.target.warp_size,
+            fusion="fused" if plan.schedule.fuse else "unfused",
+            materialization=("recompute" if plan.schedule.recompute else "materialize"),
+            residency="planned-device",
+            staging_width=plan.schedule.staging_width,
+            reduction=f"unroll-{plan.schedule.reduction_unroll}",
+            bucket="ragged" if batch.ragged_steps else "homogeneous",
+        ),
+        resources=ScheduleResources(
+            device_bytes=plan.device_bytes,
+            host_bytes=plan.host_bytes,
+            workspace_bytes=plan.allocation_bytes,
+            peak_live_values=max(live_values, default=0),
+            registers_per_thread=registers,
+            shared_bytes=0,
+            resident_workgroups=resident,
+            source_bytes=source_bytes,
+        ),
+        profitability=profitability,
+        provenance=(
+            ("batch_schedule_identity", canonical_hash(batch.to_payload())),
+            ("layout_identity", plan.layout_identity),
+            ("plan_identity", plan.identity),
+        ),
+    )
     return {
-        "schema": "vibeqc.tensor.cuda.static-cost.v3",
+        "schema": "vibeqc.tensor.cuda.static-cost.v4",
         "peak_numeric_bytes": plan.peak_bytes,
         "device_bytes": plan.device_bytes,
         "host_bytes": plan.host_bytes,
@@ -277,15 +343,16 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "estimated_flops": plan.estimated_flops,
         "estimated_fp64_accumulation_terms": _fp64_accumulation_terms(plan),
         "estimated_registers_per_thread": registers,
-        "estimated_shared_bytes": 0,
+        "estimated_shared_bytes": shared_bytes,
         "estimated_local_bytes": None,
         "register_scope": "scalar-liveness/work-per-thread heuristic for generated kernels; excludes cuBLAS",
         "resident_blocks_upper_bound": resident,
-        "occupancy_upper_bound": resident
-        * plan.schedule.threads
-        / plan.target.maximum_threads_per_sm,
+        "occupancy_upper_bound": occupancy,
+        "estimated_kernel_launches": launches,
         "generated_source_bytes": source_bytes,
         "generated_static_data_bytes": plan.static_data_bytes,
+        "profitability": profitability.to_payload(),
+        "schedule_contract": contract.to_payload(),
         "compile_cost_proxy": "generated_source_bytes calibrated against compiler-reported seconds; immutable static payload is external and is not parsed by NVCC",
     }
 
@@ -510,6 +577,9 @@ def compiled_resource_calibration(
         "compiled_max_shared_bytes": max(row["shared_bytes"] for row in resources),
         "compiled_max_local_bytes": max(local) if local else None,
         "compiled_resident_blocks_upper_bound": resident,
+        "compiled_occupancy_upper_bound": (
+            resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
+        ),
         "local_memory_scope": "PTXAS lmem when reported; stack/spill bytes are retained separately and never inferred as lmem",
     }
 

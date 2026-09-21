@@ -9,7 +9,7 @@ import pytest
 
 @pytest.mark.parametrize(
     "filename, job, routine_minutes",
-    [("ci.yml", "python", 20), ("cumetal-cuda.yml", "cuda-tests", 30)],
+    [("ci.yml", "python", 30), ("cumetal-cuda.yml", "cuda-tests", 30)],
 )
 def test_full_qualification_has_a_separate_finite_budget(
     filename: typing.Any, job: typing.Any, routine_minutes: typing.Any
@@ -36,7 +36,9 @@ def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache() -> N
         .split("\n  python:\n", 1)[1]
         .split("\n  upload-coverage:\n", 1)[0]
     )
-    assert "shard: [core, posthf, compiler-heavy, ecp-forces]" in section
+    assert "shard: [core, runtime-heavy, posthf, compiler-heavy, ecp-forces]" in section
+    assert "runtime-heavy)" in section
+    assert "dist_mode=loadfile" in section
     assert "name: python (${{ matrix.shard }})" in section
     assert "coverage-report-python-${{ matrix.shard }}" in section
     assert "benchmark-debug-${{ github.run_id }}-${{ matrix.shard }}" in section
@@ -53,5 +55,23 @@ def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache() -> N
         "test_ecp_public_cpu.py",
         "test_ecp_spd_cartesian_cpu.py",
         "test_ecp_spd_spherical_cpu.py",
+        "test_response_native_rks.py",
+        "test_response_native_uks.py",
+        "test_mp2_public.py",
+        "test_ccsd_t_orbital_response.py",
+        "test_hessian_block.py",
+        "test_grid_policy_convergence.py",
+        "test_cc_triples_response_cuda.py",
+        "test_codegen_schedules.py",
+        "test_dft_batch.py",
+        "test_ecp_multicenter.py",
+        "test_cc_triples_lambda_response.py",
+        "test_cc_lambda_response.py",
+        "test_implicit_response.py",
+        "test_df_rys.py",
+        "test_hessian_numerical.py",
+        "test_one_electron_cpu_codegen.py",
+        "test_cc_solver.py",
+        "test_cc_lambda_solver.py",
     ):
         assert path_name in section

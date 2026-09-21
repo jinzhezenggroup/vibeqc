@@ -15,7 +15,6 @@ import threading
 import typing
 from contextlib import ExitStack, contextmanager
 from hashlib import sha256
-from itertools import islice, product
 from pathlib import Path
 from time import perf_counter
 from types import MappingProxyType
@@ -26,6 +25,7 @@ from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_runtime import CudaArtifact
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
+from vibeqc_compiler.common.runtime_domain import RuntimeTaskDomain
 from vibeqc_compiler.dft.cuda import (
     CudaGrid,
     GridTaskView,
@@ -730,7 +730,7 @@ def _complete_rks_cuda_gradient_diagnostic(
     target: CudaTargetInfo | None = None,
     tile_points: typing.Any = 256,
     integral_terms: typing.Any = 32,
-    primitive_tile: typing.Any = 128,
+    primitive_tile: typing.Any = 4096,
     max_device_bytes: typing.Any = 512 << 20,
     max_host_bytes: typing.Any = 256 << 20,
     max_grid_points: typing.Any = 1_000_000,
@@ -1080,9 +1080,9 @@ def _complete_rks_cuda_gradient_diagnostic(
             ("overlap_pulay", 2, "overlap"),
             ("coulomb", 4, "four_center_eri"),
         ):
-            iterator = product(range(n), repeat=rank)
-            while tuples := tuple(islice(iterator, integral_terms)):
-                for indices in tuples:
+            domain = RuntimeTaskDomain.rectangular((n,) * rank)
+            for page in domain.pages(integral_terms):
+                for indices in page.coordinates:
                     sources.integral(_SOURCE_NAMES.index(source), operator, indices)
                     if source == "one_electron":
                         for a in range(na):
@@ -1267,7 +1267,7 @@ def complete_rks_cuda_gradient_diagnostic(
     target: CudaTargetInfo | None = None,
     tile_points: typing.Any = 256,
     integral_terms: typing.Any = 32,
-    primitive_tile: typing.Any = 128,
+    primitive_tile: typing.Any = 4096,
     max_device_bytes: typing.Any = 512 << 20,
     max_host_bytes: typing.Any = 256 << 20,
     max_grid_points: typing.Any = 1_000_000,

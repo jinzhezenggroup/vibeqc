@@ -7,17 +7,25 @@ allocation and the existing accuracy/performance acceptance boundaries."""
 from __future__ import annotations
 
 import json
-import math
 import sys
 import tempfile
 import time
 import typing
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
+
+from vibeqc_compiler.common.gpu_profitability import (
+    ENDPOINT_NOISE_FRACTION,
+    GpuProfitability,
+)
 
 from ..cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
 from ..cuda_schedule import (
+    AlgebraForm,
+    AlgebraFusion,
+    AlgebraOrdering,
+    AlgebraPlacement,
     ScheduleIR,
     ScheduleKind,
 )
@@ -52,6 +60,68 @@ from .resources import _resource_rejections, estimate_occupancy
 
 if typing.TYPE_CHECKING:
     import argparse
+
+
+def _candidate_profitability(
+    trial: ScheduleTrial,
+    compile_row: dict[str, typing.Any],
+    resources: typing.Any,
+    occupancy: dict[str, object],
+    runtime: dict[str, object] | None,
+) -> GpuProfitability:
+    """Normalize symbolic, PTXAS, artifact, and endpoint facts for one trial."""
+
+    model = trial.static_model
+
+    def maximum(name: str) -> int | None:
+        values = [
+            getattr(resource, name)
+            for resource in resources
+            if getattr(resource, name, None) is not None
+        ]
+        return max(values) if values else None
+
+    endpoint_ms = None if runtime is None else float(runtime["fused_ms"])
+    return GpuProfitability(
+        arithmetic_operation_count=getattr(model, "arithmetic_operation_count", None),
+        peak_live_values=getattr(model, "peak_live_values", None),
+        rematerialized_value_count=getattr(model, "rematerialized_value_count", None),
+        compiled_registers_per_thread=maximum("registers"),
+        spill_store_bytes=maximum("spill_store_bytes"),
+        spill_load_bytes=maximum("spill_load_bytes"),
+        local_bytes=maximum("local_bytes"),
+        shared_bytes=maximum("shared_bytes"),
+        compiled_occupancy_upper_bound=typing.cast(
+            "float | None", occupancy.get("minimum_estimated_occupancy")
+        ),
+        source_bytes=compile_row.get("source_bytes"),
+        object_bytes=compile_row.get("object_bytes"),
+        compile_seconds=compile_row.get("duration_seconds"),
+        endpoint_seconds=None if endpoint_ms is None else endpoint_ms / 1000.0,
+    )
+
+
+def _algebra_resource_baseline_key(trial: ScheduleTrial) -> str | None:
+    """Return the same execution shape with conservative scalar algebra knobs."""
+
+    if trial.schedule.kind != ScheduleKind.PACKED_TASKS:
+        return None
+    baseline_schedule = replace(
+        trial.schedule,
+        algebra_placement=AlgebraPlacement.MATERIALIZED_CSE,
+        algebra_ordering=AlgebraOrdering.TOPOLOGICAL,
+        algebra_fusion=AlgebraFusion.SEPARATE,
+        algebra_form=AlgebraForm.BINARY,
+    )
+    if baseline_schedule == trial.schedule:
+        return None
+    return ScheduleTrial(
+        spec=trial.spec,
+        schedule=baseline_schedule,
+        target=trial.target,
+        consumer=trial.consumer,
+        integral=trial.integral,
+    ).key
 
 
 def _run_autotune(
@@ -303,6 +373,11 @@ def _run_autotune(
             runtime_probe = None
 
         candidates = []
+        profitability_by_key: dict[str, GpuProfitability] = {}
+        compiled_trials_by_key = {
+            trial.key: (trial, compile_row)
+            for trial, compile_row in zip(trials, compile_rows, strict=True)
+        }
         passing_by_class: dict[
             str,
             list[tuple[ScheduleTrial, dict[str, object], dict[str, object]]],
@@ -418,6 +493,48 @@ def _run_autotune(
                         )
                 else:
                     speedup_vs_baseline = 1.0 if is_production_baseline else None
+            occupancy = estimate_occupancy(resources, trial, target)
+            profitability = _candidate_profitability(
+                trial, compile_row, resources, occupancy, runtime
+            )
+            profitability_by_key[trial.key] = profitability
+
+            resource_baseline_key = _algebra_resource_baseline_key(trial)
+            endpoint_regression_reasons: list[str] = []
+            resource_regression_reasons: list[str] = []
+            if resource_baseline_key is not None:
+                baseline_pair = compiled_trials_by_key.get(resource_baseline_key)
+                if baseline_pair is not None:
+                    baseline_trial, baseline_compile_row = baseline_pair
+                    baseline_resources = baseline_compile_row["resources"]
+                    baseline_occupancy = estimate_occupancy(
+                        baseline_resources, baseline_trial, target
+                    )
+                    baseline_profitability = _candidate_profitability(
+                        baseline_trial,
+                        baseline_compile_row,
+                        baseline_resources,
+                        baseline_occupancy,
+                        runtime_rows.get(resource_baseline_key),
+                    )
+                    endpoint_regression_reasons.extend(
+                        profitability.endpoint_regressions_against(
+                            baseline_profitability
+                        )
+                    )
+                    resource_regression_reasons.extend(
+                        profitability.resource_regressions_against(
+                            baseline_profitability
+                        )
+                    )
+                    reasons.extend(
+                        "endpoint regression vs canonical algebra peer: " + reason
+                        for reason in endpoint_regression_reasons
+                    )
+                    reasons.extend(
+                        "resource regression vs canonical algebra peer: " + reason
+                        for reason in resource_regression_reasons
+                    )
             accepted = not reasons
             row = {
                 "shell_class": trial.spec.name,
@@ -432,7 +549,11 @@ def _run_autotune(
                 "source_bytes": compile_row.get("source_bytes"),
                 "object_bytes": compile_row.get("object_bytes"),
                 "resources": [asdict(item) for item in resources],
-                "occupancy": estimate_occupancy(resources, trial, target),
+                "occupancy": occupancy,
+                "profitability": profitability.to_payload(),
+                "resource_baseline_trial_key": resource_baseline_key,
+                "endpoint_regression_reasons": endpoint_regression_reasons,
+                "resource_regression_reasons": resource_regression_reasons,
                 "runtime": runtime,
                 "production_baseline": is_production_baseline,
                 "speedup_vs_production_baseline": speedup_vs_baseline,
@@ -462,41 +583,25 @@ def _run_autotune(
                 *,
                 fastest: float = fastest_ms,
             ) -> typing.Any:
-                trial, runtime, candidate = item
+                trial, runtime, _candidate = item
                 elapsed_ms = float(runtime["fused_ms"])
+                profitability = profitability_by_key[trial.key]
 
-                def metric_or_inf(name: str) -> float:
-                    value = candidate.get(name)
-                    if (
-                        isinstance(value, (int, float))
-                        and not isinstance(value, bool)
-                        and math.isfinite(float(value))
-                        and value >= 0
-                    ):
-                        return float(value)
-                    return math.inf
-
-                # Within one percent of the fastest endpoint, compile time and
-                # binary footprint decide the winner. Once a candidate falls
-                # outside that noise band, endpoint runtime is the primary
-                # key again; otherwise a much slower but tiny artifact could
-                # displace a scientifically faster schedule.
-                near_fastest = elapsed_ms <= fastest * 1.01
+                # Full endpoint time remains primary outside the one-percent
+                # noise band. Inside it, use the shared GPU resource key so
+                # rematerialization/fusion choices cannot win merely by making
+                # a smaller source artifact while retaining worse live state.
+                near_fastest = elapsed_ms <= fastest * (1.0 + ENDPOINT_NOISE_FRACTION)
                 if near_fastest:
                     return (
                         0,
-                        metric_or_inf("compile_seconds"),
-                        metric_or_inf("source_bytes"),
-                        metric_or_inf("object_bytes"),
-                        elapsed_ms,
+                        profitability.compiled_resource_priority(),
                         trial.schedule_id,
                     )
                 return (
                     1,
                     elapsed_ms,
-                    metric_or_inf("compile_seconds"),
-                    metric_or_inf("source_bytes"),
-                    metric_or_inf("object_bytes"),
+                    profitability.compiled_resource_priority(),
                     trial.schedule_id,
                 )
 
@@ -670,6 +775,9 @@ def _run_autotune(
                 "maximum_shared_bytes": arguments.max_shared_bytes,
                 "compile_timeout_seconds": arguments.compile_timeout,
                 "spills_allowed": False,
+                "resource_regression_endpoint_noise_fraction": (
+                    ENDPOINT_NOISE_FRACTION
+                ),
                 "experimental_subgroup_winners_allowed": (
                     arguments.allow_experimental_subgroup_winner
                 ),
