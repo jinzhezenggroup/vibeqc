@@ -4,16 +4,17 @@ import shutil
 from pathlib import Path
 
 import pytest
-from vibeqc_compiler.xc import b88_vwn_maple as adapter
+from vibeqc_compiler.xc import scan_maple as adapter
 
 
 def test_canonical_upstream_directory_preserves_imported_identity(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     factories = [
-        (adapter._b88_module, ()),
-        (adapter._vwn_module, ("LDA_C_VWN",)),
-        (adapter._vwn_module, ("LDA_C_VWN_RPA",)),
+        (adapter._exchange_module, ("MGGA_X_SCAN",)),
+        (adapter._exchange_module, ("MGGA_X_R2SCAN",)),
+        (adapter._correlation_module, ("MGGA_C_SCAN",)),
+        (adapter._correlation_module, ("MGGA_C_R2SCAN",)),
     ]
     for factory, _ in factories:
         factory.cache_clear()

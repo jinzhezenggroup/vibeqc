@@ -17,7 +17,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 
 from . import _native
 from .batch import PreparedBatch
-from .ks import SCF_DOMAIN
+from .ks import native_xc_functional_code, scf_domain_for_method
 
 
 def _scf_xc_points(
@@ -185,7 +185,12 @@ class NativeKsSnapshot:
             )
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
-            if metadata[0] not in (1, 2, 3, 4, 5, 6, 7) or metadata[7] != 1:
+            method_name = self._batch._calculator._method_name
+            expected_domain_version = 2 if method_name.startswith("b3lyp-") else 1
+            if (
+                metadata[0] not in (1, 2, 3, 4, 5, 6, 7)
+                or metadata[7] != expected_domain_version
+            ):
                 raise NotImplementedError(
                     "unsupported native KS snapshot/domain version"
                 )
@@ -353,7 +358,7 @@ class NativeKsSnapshot:
             options is None
             or options.coefficients != self.coefficients
             or functional
-            != (2 if "tau" in options.functional.ingredients else options.ao_order)
+            != native_xc_functional_code(self._batch._calculator._method_name)
             or (options.method_ir.spin == "polarized") != (spins == 2)
         ):
             raise ValueError("native stationary composition mismatch")
@@ -408,7 +413,7 @@ class NativeKsSnapshot:
                 {
                     "native_owner": owner,
                     "functional": spec.identity,
-                    "scf_domain": SCF_DOMAIN,
+                    "scf_domain": scf_domain_for_method(method),
                     "grid": grid.identity,
                     **(
                         {"grid_provenance": dict(self.grid_provenance)}
@@ -441,7 +446,7 @@ class NativeKsSnapshot:
             functional_identity=spec.identity,
             # The derivative bridge consumes this exact SCF point model;
             # interior-v1 remains a separate diagnostic contract.
-            regularization_identity=scf_regularization_identity(),
+            regularization_identity=scf_regularization_identity(method),
             provider_identity=canonical_hash(
                 {
                     "provider": f"native-{self.backend}-exact-{'jk' if self.coefficients[2] else 'j'}-fp64",
@@ -480,11 +485,7 @@ class NativeKsSnapshot:
     ) -> typing.Any:
         """Return SCF-domain point energy and Cartesian first derivatives."""
         self.check_current()
-        expected = (
-            2
-            if "tau" in self.functional.ingredients
-            else int("sigma" in self.functional.ingredients)
-        )
+        expected = native_xc_functional_code(self._batch._calculator._method_name)
         if functional != expected:
             raise ValueError("XC point family disagrees with native composition")
         values = _scf_xc_points(

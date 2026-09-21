@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "generated_one_electron_derivative_policy.cuh"
+
 namespace vibeqc::scf::cuda_policy {
 namespace {
 
@@ -26,6 +28,8 @@ constexpr double kAutoMixedPrecisionErrorBudgetFraction = 6.25e-02;
 constexpr double kTightConvergedFockReuseDensityRms = 1.0e-12;
 constexpr double kExpandedConvergedFockReuseDensityTolerance = 1.0e-9;
 constexpr double kExpandedConvergedFockReuseDensityRms = 2.0e-9;
+using NucleusCooperativeSchedule =
+    generated_one_electron_derivative_policy::NucleusCooperativeSchedule;
 
 bool enabled(const char* variable) noexcept {
   const char* selection = std::getenv(variable);
@@ -215,6 +219,14 @@ bool bounded_fock_class_timing_requested() noexcept {
   return selected("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE", "profile");
 }
 
+bool aot_shell_class_selection_override_requested() noexcept {
+  const char* selection = std::getenv("VIBEQC_AOT_SHELL_CLASSES");
+  // Match the generated registry: absent, empty, and "all" all mean the full
+  // compiled profile. Any other spelling intentionally narrows the force
+  // registry and may therefore exercise the generic fallback for diagnostics.
+  return selection != nullptr && *selection != '\0' && std::strcmp(selection, "all") != 0;
+}
+
 bool direct_tile_validation_requested() noexcept {
   return selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
 }
@@ -283,11 +295,11 @@ bool generated_one_electron_derivatives_requested() noexcept {
 
 unsigned one_electron_derivative_mapping_requested() noexcept {
   const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING");
-  if (selection == nullptr) return 3U;
+  if (selection == nullptr) return NucleusCooperativeSchedule::schedule_code;
   if (std::strcmp(selection, "serial") == 0 || std::strcmp(selection, "2") == 0) return 2U;
   if (std::strcmp(selection, "nucleus_cooperative") == 0 ||
       std::strcmp(selection, "cooperative") == 0 || std::strcmp(selection, "3") == 0)
-    return 3U;
+    return NucleusCooperativeSchedule::schedule_code;
   if (std::strcmp(selection, "shell_warp") == 0 || std::strcmp(selection, "1") == 0) return 1U;
   return 0U;
 }

@@ -142,6 +142,7 @@ typedef struct vibeqc_batch vibeqc_batch;
 
 typedef struct vibeqc_d3_batch vibeqc_d3_batch;
 typedef struct vibeqc_d4_batch vibeqc_d4_batch;
+typedef struct vibeqc_nonlocal_plan vibeqc_nonlocal_plan;
 
 typedef int32_t vibeqc_d3_damping;
 enum { VIBEQC_D3_DAMPING_BJ = 1 };
@@ -286,6 +287,78 @@ typedef struct vibeqc_d4_runtime_diagnostic {
   uint64_t kernel_launches;
   int32_t atm_enabled;
 } vibeqc_d4_runtime_diagnostic;
+
+/** Fixed-grid VV10/rVV10 kernel variant for the native nonlocal plan. */
+typedef int32_t vibeqc_nonlocal_variant;
+enum { VIBEQC_NONLOCAL_VV10 = 1, VIBEQC_NONLOCAL_RVV10 = 2 };
+
+/**
+ * Bounded fixed-grid nonlocal-correlation pair plan.
+ *
+ * Coordinates are Bohr; density and its Cartesian gradient use atomic units.
+ * This low-level primitive does not imply a public KS/method capability.
+ */
+typedef struct vibeqc_nonlocal_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_nonlocal_variant variant;
+  double b;
+  double c;
+  double coefficient;
+  uint32_t point_count;
+  uint32_t tile_points;
+  uint64_t maximum_bytes;
+} vibeqc_nonlocal_descriptor;
+
+/** Caller-owned fixed-grid inputs for one prepared VV10/rVV10 execution. */
+typedef struct vibeqc_nonlocal_input_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  const double* coordinates;
+  uint32_t coordinate_count;
+  const double* weights;
+  uint32_t weight_count;
+  const double* density;
+  uint32_t density_count;
+  const double* density_gradient;
+  uint32_t density_gradient_count;
+} vibeqc_nonlocal_input_descriptor;
+
+/**
+ * Optional fixed-grid derivative outputs. vrho/vsigma are dE/d(rho,sigma)
+ * before quadrature weights. point_derivative is the explicit pair-distance
+ * derivative at fixed density features; weight_derivative differentiates both
+ * quadrature legs. Null pointer plus zero count disables an output family.
+ */
+typedef struct vibeqc_nonlocal_result_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  double energy;
+  double* vrho;
+  uint32_t vrho_count;
+  double* vsigma;
+  uint32_t vsigma_count;
+  double* point_derivative;
+  uint32_t point_derivative_count;
+  double* weight_derivative;
+  uint32_t weight_derivative_count;
+  vibeqc_backend executed_backend;
+} vibeqc_nonlocal_result_descriptor;
+
+/** Exact owned-capacity and pair-work diagnostics for the prepared plan. */
+typedef struct vibeqc_nonlocal_runtime_diagnostic {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_backend backend;
+  uint64_t workspace_bytes;
+  uint64_t host_workspace_bytes;
+  uint64_t device_workspace_bytes;
+  uint64_t maximum_bytes;
+  uint64_t pair_evaluations;
+  uint64_t tiles;
+  uint32_t point_count;
+  uint32_t tile_points;
+} vibeqc_nonlocal_runtime_diagnostic;
 
 typedef uint32_t vibeqc_batch_flags;
 enum {
@@ -553,7 +626,7 @@ typedef struct vibeqc_ks_options {
   /** Optional v4 suffix: compiler-resolved execution identity. Version 1
    * means the fields below are authoritative for scientific dispatch.
    * spin_channels is 1 for RKS and 2 for UKS. semilocal_family is the
-   * primitive-family selector: 0=LDA, 1=PBE, 2=r2SCAN. */
+   * primitive-family selector: 0=LDA, 1=PBE, 2=r2SCAN, 3=B3LYP (CPU only). */
   uint32_t execution_plan_version;
   uint32_t spin_channels;
   uint32_t semilocal_family;
@@ -1250,6 +1323,20 @@ VIBEQC_API vibeqc_status vibeqc_d3_batch_execute(vibeqc_d3_batch* batch,
                                                  vibeqc_d3_batch_item_result_descriptor* results,
                                                  uint32_t result_count);
 
+/**
+ * Evaluate the canonical r2SCAN-3c gCP correction on CPU.
+ *
+ * Coordinates are Bohr and gradient, when supplied, is dE/dR. Passing
+ * gradient=NULL,gradient_count=0 requests energy only. The supported element
+ * domain is the canonical H-Ar r2SCAN-3c profile.
+ */
+VIBEQC_API const char* vibeqc_r2scan3c_gcp_provider_identity(void);
+VIBEQC_API vibeqc_status vibeqc_r2scan3c_gcp_evaluate(const int32_t* atomic_numbers,
+                                                      uint32_t atom_count,
+                                                      const double* coordinates,
+                                                      uint32_t coordinate_count, double* energy,
+                                                      double* gradient, uint32_t gradient_count);
+
 /** Audited identities compiled into the production D4(BJ)-EEQ provider. */
 VIBEQC_API const char* vibeqc_d4_table_sha256(void);
 VIBEQC_API const char* vibeqc_d4_charge_parameter_sha256(void);
@@ -1283,6 +1370,25 @@ VIBEQC_API vibeqc_status vibeqc_d4_batch_execute(vibeqc_d4_batch* batch,
                                                  uint32_t input_count,
                                                  vibeqc_d4_batch_item_result_descriptor* results,
                                                  uint32_t result_count);
+
+/**
+ * Prepare a bounded fixed-grid VV10/rVV10 pair evaluator.
+ *
+ * CPU_REFERENCE and qualified CUDA backends retain O(N_grid) storage and never
+ * materialize the full pair matrix. maximum_bytes bounds provider-owned peak
+ * host/device workspace, including transactional output staging.
+ */
+VIBEQC_API vibeqc_status vibeqc_nonlocal_plan_prepare(vibeqc_context* context,
+                                                      const vibeqc_nonlocal_descriptor* model,
+                                                      vibeqc_nonlocal_plan** plan);
+VIBEQC_API void vibeqc_nonlocal_plan_destroy(vibeqc_nonlocal_plan* plan);
+VIBEQC_API vibeqc_status vibeqc_nonlocal_plan_get_diagnostic(
+    const vibeqc_nonlocal_plan* plan, vibeqc_nonlocal_runtime_diagnostic* diagnostic);
+
+/** Evaluate fixed-grid energy and any requested derivative families. */
+VIBEQC_API vibeqc_status vibeqc_nonlocal_plan_execute(vibeqc_nonlocal_plan* plan,
+                                                      const vibeqc_nonlocal_input_descriptor* input,
+                                                      vibeqc_nonlocal_result_descriptor* result);
 
 #ifdef __cplusplus
 }

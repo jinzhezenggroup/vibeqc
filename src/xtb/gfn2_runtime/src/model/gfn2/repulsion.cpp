@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "data/parameters/gfn2.hpp"
+#include "generated_gfn2_pair_native.hpp"
 #include "model/gfn2/periodic_topology.hpp"
 
 namespace xtbloom::detail::gfn2 {
@@ -150,18 +151,19 @@ xtbloom_status_t add_repulsion_cpu(const RepulsionPlan& plan, const double* posi
         const double distance = std::sqrt(distance_squared);
         const bool light_pair =
             plan.light_element[first_index] != 0u && plan.light_element[second_index] != 0u;
-        const double exponent = light_pair ? parameters::gfn2::kGlobal.repulsion_klight
-                                           : parameters::gfn2::kGlobal.repulsion_kexp;
-        const double distance_power = light_pair ? distance : distance * std::sqrt(distance);
         const double pair_alpha = plan.sqrt_alpha[first_index] * plan.sqrt_alpha[second_index];
         const double pair_charge =
             plan.effective_charge[first_index] * plan.effective_charge[second_index];
-        const double pair_energy = pair_charge * std::exp(-pair_alpha * distance_power) / distance;
-        energies[batch] += pair_energy;
+        vibeqc::xtb::generated::Gfn2RepulsionPairResult pair{};
+        if (!vibeqc::xtb::generated::evaluate_gfn2_repulsion_pair(
+                distance, pair_alpha, pair_charge, light_pair, pair)) {
+          error = "compiler-generated GFN2 repulsion pair evaluation failed";
+          return XTBLOOM_STATUS_INTERNAL_ERROR;
+        }
+        energies[batch] += pair.energy;
 
         if (forces != nullptr) {
-          const double force_scale =
-              (pair_alpha * exponent * distance_power + 1.0) * pair_energy / distance_squared;
+          const double force_scale = -pair.distance_derivative / distance;
           const double fx = force_scale * dx;
           const double fy = force_scale * dy;
           const double fz = force_scale * dz;
@@ -292,24 +294,24 @@ xtbloom_status_t evaluate_periodic_repulsion_cpu(
           const double distance = std::sqrt(distance_squared);
           const bool light_pair =
               plan.light_element[first_index] != 0u && plan.light_element[second_index] != 0u;
-          const double exponent = light_pair ? parameters::gfn2::kGlobal.repulsion_klight
-                                             : parameters::gfn2::kGlobal.repulsion_kexp;
-          const double distance_power = std::pow(distance, exponent);
           const double pair_alpha = plan.sqrt_alpha[first_index] * plan.sqrt_alpha[second_index];
           const double pair_charge =
               plan.effective_charge[first_index] * plan.effective_charge[second_index];
-          const double pair_energy =
-              pair_charge * std::exp(-pair_alpha * distance_power) / distance;
-          workspace.atom_scratch[first_index] += 0.5 * pair_energy;
-          if (first != second) workspace.atom_scratch[second_index] += 0.5 * pair_energy;
+          vibeqc::xtb::generated::Gfn2RepulsionPairResult pair{};
+          if (!vibeqc::xtb::generated::evaluate_gfn2_repulsion_pair(
+                  distance, pair_alpha, pair_charge, light_pair, pair)) {
+            error = "compiler-generated periodic GFN2 repulsion pair evaluation failed";
+            return XTBLOOM_STATUS_INTERNAL_ERROR;
+          }
+          workspace.atom_scratch[first_index] += 0.5 * pair.energy;
+          if (first != second) workspace.atom_scratch[second_index] += 0.5 * pair.energy;
 
           std::array<double, 3> rij{
               -displacement[0],
               -displacement[1],
               -displacement[2],
           };
-          const double gradient_scale =
-              -(pair_alpha * distance_power * exponent + 1.0) * pair_energy / distance_squared;
+          const double gradient_scale = pair.distance_derivative / distance;
           std::array<double, 3> first_gradient{};
           for (std::size_t axis = 0; axis < 3u; ++axis) {
             first_gradient[axis] = gradient_scale * rij[axis];

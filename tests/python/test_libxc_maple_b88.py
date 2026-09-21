@@ -14,7 +14,7 @@ from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.xc.libxc_maple import import_maple_source
-from vibeqc_compiler.xc.program import build_program
+from vibeqc_compiler.xc.rsh_expressions import energy_expression
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -140,6 +140,17 @@ def _imported_b88(
     return module, graph, _feature_roots(graph, energy, variables), names
 
 
+def _manual_b88(spin: str) -> tuple[Graph, tuple[typing.Any, ...], tuple[str, ...]]:
+    spec = FunctionalSpec(
+        "B88_MPL_REFERENCE",
+        (("GGA_X_B88", Fraction(1)),),
+        spin=spin,
+    )
+    graph, energy, variables = energy_expression(spec)
+    names = POLARIZED_FEATURES if spin == "polarized" else ("rho", "sigma", "tau")
+    return graph, _feature_roots(graph, energy, variables), names
+
+
 def test_b88_maple_source_is_pinned_and_standard_branch_is_selected() -> None:
     module, _, _, _ = _imported_b88("polarized")
     manifest = json.loads(RSH_MANIFEST.read_text())
@@ -150,36 +161,17 @@ def test_b88_maple_source_is_pinned_and_standard_branch_is_selected() -> None:
 
 
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
-def test_production_b88_matches_imported_graph_through_feature_hessian(
-    spin: str,
-) -> None:
+def test_imported_b88_matches_audited_dag_through_feature_hessian(spin: str) -> None:
     _, graph, roots, names = _imported_b88(spin)
-    features = np.asarray(_INDEPENDENT[spin]["features"], dtype=float)
-    imported = np.asarray(
-        evaluate_array_graph(graph, roots, dict(zip(names, features, strict=True))),
-        dtype=float,
-    )
-    spec = FunctionalSpec(
-        "B88_PRODUCTION",
-        (("GGA_X_B88", Fraction(1)),),
-        spin=spin,
-    )
-    production = build_program(spec, order=2).evaluate(features[:, None])[:, 0]
-    np.testing.assert_allclose(production, imported, rtol=5e-12, atol=5e-13)
+    manual_graph, manual_roots, _ = _manual_b88(spin)
+    features = _INDEPENDENT[spin]["features"]
+    inputs = dict(zip(names, features, strict=True))
 
-
-@pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
-def test_production_b88_matches_independent_closed_form_oracle(spin: str) -> None:
-    fixture = _INDEPENDENT[spin]
-    features = np.asarray(fixture["features"], dtype=float)[:, None]
-    spec = FunctionalSpec(
-        "B88_PRODUCTION",
-        (("GGA_X_B88", Fraction(1)),),
-        spin=spin,
+    imported = np.asarray(evaluate_array_graph(graph, roots, inputs), dtype=float)
+    manual = np.asarray(
+        evaluate_array_graph(manual_graph, manual_roots, inputs), dtype=float
     )
-    actual = build_program(spec, order=2).evaluate(features)[:, 0]
-    expected = np.asarray(fixture["expected"], dtype=float)
-    np.testing.assert_allclose(actual, expected, rtol=2e-12, atol=2e-13)
+    np.testing.assert_allclose(imported, manual, rtol=5e-12, atol=5e-13)
 
 
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])

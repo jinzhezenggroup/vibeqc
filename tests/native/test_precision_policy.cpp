@@ -292,6 +292,36 @@ void verify_nullopt_legacy_parity() {
   require(legacy_only_threshold.has_value() && std::abs(*legacy_only_threshold - 1.0e-7) <= 1.0e-19,
           "the legacy diagnostic switch does not consult the budget census");
 }
+/** AOT class filters are diagnostics; the full registry is production. */
+void verify_aot_shell_class_selection_override() {
+  using vibeqc::scf::cuda_policy::aot_shell_class_selection_override_requested;
+  {
+    ScopedEnv selection("VIBEQC_AOT_SHELL_CLASSES", nullptr);
+    require(!aot_shell_class_selection_override_requested(),
+            "an absent AOT class filter keeps the full production registry");
+  }
+  {
+    ScopedEnv selection("VIBEQC_AOT_SHELL_CLASSES", "");
+    require(!aot_shell_class_selection_override_requested(),
+            "an empty AOT class filter keeps the full production registry");
+  }
+  {
+    ScopedEnv selection("VIBEQC_AOT_SHELL_CLASSES", "all");
+    require(!aot_shell_class_selection_override_requested(),
+            "the all spelling keeps the full production registry");
+  }
+  {
+    ScopedEnv selection("VIBEQC_AOT_SHELL_CLASSES", "dppp,ppps");
+    require(aot_shell_class_selection_override_requested(),
+            "an explicit class subset is a diagnostic override");
+  }
+  {
+    ScopedEnv selection("VIBEQC_AOT_SHELL_CLASSES", "none");
+    require(aot_shell_class_selection_override_requested(),
+            "disabling AOT classes is an explicit diagnostic override");
+  }
+}
+
 /** A converged-fock reuse RMS scales with the density tolerance. */
 void verify_converged_fock_reuse_rms() {
   require_close(vibeqc::scf::cuda_policy::converged_fock_reuse_density_rms(1.0e-12), 1.0e-12,
@@ -410,6 +440,7 @@ int main() {
     verify_fp64_strict();
     verify_auto_with_legacy_override();
     verify_nullopt_legacy_parity();
+    verify_aot_shell_class_selection_override();
     verify_converged_fock_reuse_rms();
     verify_one_electron_provider_policy();
     verify_cpu_provenance();

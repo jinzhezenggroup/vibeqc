@@ -45,6 +45,7 @@ enum : std::uint32_t {
   kKsSemilocalLda = 0,
   kKsSemilocalPbe = 1,
   kKsSemilocalR2scan = 2,
+  kKsSemilocalB3lyp = 3,
 };
 
 struct NativeKsExecutionPlan {
@@ -68,6 +69,10 @@ std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method meth
     case VIBEQC_METHOD_PBE_UKS:
     case VIBEQC_METHOD_PBE0_UKS:
       return NativeKsExecutionPlan{2, kKsSemilocalPbe, false};
+    case VIBEQC_METHOD_B3LYP_RKS:
+      return NativeKsExecutionPlan{1, kKsSemilocalB3lyp, false};
+    case VIBEQC_METHOD_B3LYP_UKS:
+      return NativeKsExecutionPlan{2, kKsSemilocalB3lyp, false};
     case VIBEQC_METHOD_R2SCAN_RKS:
       return NativeKsExecutionPlan{1, kKsSemilocalR2scan, false};
     case VIBEQC_METHOD_R2SCAN_UKS:
@@ -79,12 +84,18 @@ std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method meth
 
 bool unrestricted(const NativeKsExecutionPlan& plan) noexcept { return plan.spin_channels == 2; }
 
+std::uint32_t scf_domain_version(const NativeKsExecutionPlan& plan) noexcept {
+  return plan.semilocal_family == kKsSemilocalB3lyp ? 2U : 1U;
+}
+
 const char* semilocal_family_name(const NativeKsExecutionPlan& plan) noexcept {
   switch (plan.semilocal_family) {
     case kKsSemilocalPbe:
       return "PBE";
     case kKsSemilocalR2scan:
       return "R2SCAN";
+    case kKsSemilocalB3lyp:
+      return "B3LYP";
     default:
       return "LDA";
   }
@@ -131,7 +142,7 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
         throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS execution-plan version");
       if (ks_input->execution_plan_version == 1) {
         if ((ks_input->spin_channels != 1 && ks_input->spin_channels != 2) ||
-            ks_input->semilocal_family > kKsSemilocalR2scan)
+            ks_input->semilocal_family > kKsSemilocalB3lyp)
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                             "invalid compiler-resolved KS execution plan");
         execution_plan = {ks_input->spin_channels, ks_input->semilocal_family, true,
@@ -181,6 +192,9 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     options.precision_mode = descriptor.precision_mode;
   }
 
+  if (backend == VIBEQC_BACKEND_CUDA && execution_plan.semilocal_family == kKsSemilocalB3lyp)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "B3LYP CPU execution only");
+
   scf::FockBuildSpec fock;
   fock.spin =
       unrestricted(execution_plan) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
@@ -201,10 +215,11 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
             correlation < 0 || exchange > 0)
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid KS composition coefficients");
         const bool changed = x != 1 || correlation != 1 || exchange != 0;
-        if (changed &&
-            (execution_plan.semilocal_family != kKsSemilocalPbe || backend == VIBEQC_BACKEND_CUDA))
+        if (changed && ((execution_plan.semilocal_family != kKsSemilocalPbe &&
+                         execution_plan.semilocal_family != kKsSemilocalB3lyp) ||
+                        backend == VIBEQC_BACKEND_CUDA))
           throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                            "scaled/global-hybrid KS requires CPU PBE components");
+                            "scaled/global-hybrid KS requires a qualified CPU composition");
         options.semilocal_exchange_scale = x;
         options.semilocal_correlation_scale = correlation;
         fock.exchange.present = exchange != 0;
@@ -222,6 +237,16 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                         "PBE0 resolved composition does not match its audited manifest");
   }
+  if (execution_plan.semilocal_family == kKsSemilocalB3lyp) {
+    if (!composition_seen)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "B3LYP requires explicit resolved KS composition v2");
+    const double expected_k = unrestricted(execution_plan) ? -0.2 : -0.1;
+    if (options.semilocal_exchange_scale != 1.0 || options.semilocal_correlation_scale != 1.0 ||
+        !fock.exchange.present || fock.exchange.coefficient != expected_k)
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "B3LYP resolved composition does not match its audited manifest");
+  }
   options.resolved_fock_build = scf::resolve_fock_build(
       fock, backend == VIBEQC_BACKEND_CUDA ? scf::FockBackend::Cuda : scf::FockBackend::Cpu,
       options.screening_tolerance);
@@ -234,8 +259,8 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
  * and 256-point tiles strictly as an ABI/reference compatibility boundary.
  * Modern production callers pass the compiler-resolved GridSpec v2 here; C++
  * does not own a second production profile/default policy. */
-dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor,
-                              scf::ScfOptions& options) {
+dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor, scf::ScfOptions& options,
+                              const NativeKsExecutionPlan& execution_plan) {
   dft::GridSpec grid;
   if (!field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
                      sizeof(descriptor.ks_options)) ||
@@ -245,7 +270,7 @@ dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor,
   if (input.struct_size < offsetof(vibeqc_ks_options, composition_version) ||
       input.abi_version != VIBEQC_ABI_VERSION)
     throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
-  if (input.scf_domain_version != 1)
+  if (input.scf_domain_version != scf_domain_version(execution_plan))
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS tail/spin domain policy");
   if (!input.tile_points || input.tile_points > static_cast<std::uint64_t>(INT_MAX))
     throw std::invalid_argument("invalid KS XC tile points");
@@ -576,7 +601,11 @@ class KsPreparedCalculation final : public PreparedCalculation {
     // last-good density, which coexists with its current/proposed densities.
     runtime::CpuRetainedCapacity retained_warm(runtime::vector_bytes(warm_));
     scf::ScfResult native;
-    if (execution_plan_.semilocal_family == kKsSemilocalR2scan)
+    if (execution_plan_.semilocal_family == kKsSemilocalB3lyp)
+      native = unrestricted(execution_plan_)
+                   ? scf::run_b3lyp_uks(fock_, basis_, grid_, options_, seed)
+                   : scf::run_b3lyp_rks(fock_, basis_, grid_, options_, seed);
+    else if (execution_plan_.semilocal_family == kKsSemilocalR2scan)
       native = unrestricted(execution_plan_)
                    ? scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed)
                    : scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
@@ -616,7 +645,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
       identity.determinant = {
           {cpu_owner_, 1, 1, 1}, cpu_epoch_, fock_.strategy(), std::move(occupied)};
       identity.model = {1,
-                        1,
+                        scf_domain_version(execution_plan_),
                         grid_.spec(),
                         options_.xc_tile_points,
                         execution_plan_.semilocal_family,
@@ -1145,7 +1174,7 @@ std::unique_ptr<PreparedCalculation> prepare_dft_calculation(
   NativeKsExecutionPlan execution_plan;
   auto options = dft_options(descriptor, context.requested_backend, execution_plan);
   validate_ks_spin_state(execution_plan, system);
-  auto grid = ks_grid_options(descriptor, options);
+  auto grid = ks_grid_options(descriptor, options, execution_plan);
   return std::make_unique<KsPreparedCalculation>(capabilities, system, execution_plan,
                                                  std::move(options), std::move(grid),
                                                  context.requested_backend, context.device_id);
@@ -1166,7 +1195,7 @@ std::unique_ptr<PreparedBatch> prepare_dft_batch(const Capabilities& capabilitie
   NativeKsExecutionPlan execution_plan;
   auto options = dft_options(descriptor, context.requested_backend, execution_plan);
   for (const auto& system : systems) validate_ks_spin_state(execution_plan, system);
-  auto grid = ks_grid_options(descriptor, options);
+  auto grid = ks_grid_options(descriptor, options, execution_plan);
   return std::make_unique<KsPreparedBatch>(
       capabilities, std::move(systems), execution_plan, std::move(options), std::move(grid),
       context.requested_backend, context.device_id, (flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0);

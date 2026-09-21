@@ -198,6 +198,7 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
   diagnostic.grid_points = grid.point_count();
   diagnostic.tile_points = std::min(options.xc_tile_points, grid.point_count());
   diagnostic.ao_order = std::string_view(method_name) == "LDA" ? 0 : 1;
+  diagnostic.scf_domain_version = std::string_view(method_name) == "B3LYP" ? 2U : 1U;
   const double residual_gate = std::min(1.0e-9, options.density_tolerance);
   bool stabilize_occupations = false;
 

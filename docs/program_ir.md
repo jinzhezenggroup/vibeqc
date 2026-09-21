@@ -189,11 +189,20 @@ expanded-equation acceptance rule, nonfinite failure semantics and host-visible
 publication points. User-supplied initial amplitudes remain the ordinary solver
 initial state. The solver result records the region identity and bound.
 
-This first slice is descriptive: execution still uses the established Python
-RCCSD loop, so it makes **no host-overhead or speedup claim**. A future captured
-or device-controlled lowering must retain the ordinary fallback and provide
-matched endpoint evidence before promotion. See
-[the structured-region architecture note](../.agents/notes/implemented/architecture/2026-09-21-structured-solver-regions.md).
+The RCCSD consumer remains descriptive: execution still uses the established
+Python loop, so it makes **no host-overhead or speedup claim**. CUDA now also has
+a method-neutral `runtime::SolverRegionCudaExecutor` that bounds native body
+submission and delegates optional capture/replay to the existing shared
+`CudaGraphRegion` lifecycle. The opt-in direct-RKS two-iteration path from #370
+is its first execution consumer; KS still owns convergence, DIIS, occupations,
+failure handling, and publication.
+
+CUDA KS currently binds that executor with replay disabled, preserving the
+qualified ordinary-stream chunk behavior from #623. Captured/replayed KS
+execution still requires matched endpoint and ragged-failure qualification
+before promotion. See
+[the structured-region architecture note](../.agents/notes/implemented/architecture/2026-09-21-structured-solver-regions.md)
+and [the CUDA execution follow-up](../.agents/notes/implemented/architecture/2026-09-21-cuda-solver-region-executor.md).
 
 ## Shared storage analysis
 

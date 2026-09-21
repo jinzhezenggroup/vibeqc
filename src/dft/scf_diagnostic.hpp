@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <vector>
 
@@ -31,6 +32,7 @@ struct ScfDiagnostic {
   std::array<std::size_t, 2> occupations{};
   std::array<double, 2> electrons{};
   std::size_t grid_points{}, tile_points{}, ao_order{}, fock_builds{};
+  std::uint32_t scf_domain_version{1};
   bool initial_density_used{};
   double density_change{};
   double physical_residual{std::numeric_limits<double>::infinity()};

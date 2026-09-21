@@ -111,6 +111,7 @@ using namespace cuda_execution;
 //   kExpandedConvergedFockReuseDensityRms = 2.0e-9
 //   kAutoMixedPrecisionErrorBudgetFraction = 6.25e-02
 //   kFloat32UnitRoundoff = 5.9604644775390625e-08
+using cuda_policy::aot_shell_class_selection_override_requested;
 using cuda_policy::bounded_direct_aot_only_diagnostic_requested;
 using cuda_policy::bounded_direct_count_diagnostic_requested;
 using cuda_policy::bounded_direct_fock_only_diagnostic_requested;
@@ -3702,6 +3703,21 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                                                        bounded_native_paged_force_shell_class_mask;
   const std::uint64_t uncovered_force_shell_class_mask =
       host_present_shell_class_mask & ~covered_force_shell_class_mask;
+  // A tuned compatible profile is a production qualification claim. Once all
+  // canonical s/p/d classes are covered, never let a missing registry entry
+  // silently resurrect the handwritten generic bounded mathematics: fail
+  // closed so the coverage regression is visible. Explicit AOT class filters
+  // remain diagnostic/oracle controls, while portable/unmeasured profiles and
+  // higher-l classes retain the bounded correctness fallback.
+  const generated::ProfileInfo& selected_aot_profile = generated::selected_profile();
+  const std::uint64_t unexpected_tuned_spd_fallback_mask =
+      uncovered_force_shell_class_mask & kCanonicalSpdShellClassMask;
+  if (options.compute_forces && bounded_direct_streaming && selected_aot_profile.tuned &&
+      selected_aot_profile.compatible && !aot_shell_class_selection_override_requested() &&
+      unexpected_tuned_spd_fallback_mask != 0U) {
+    fill_global_failure(outputs, cuda_status(cudaErrorNotSupported));
+    return outputs;
+  }
   std::size_t bounded_force_kernel_count = 0;
   const generated::ShellKernelMetadata* bounded_force_kernels =
       generated::selected_shell_kernels(bounded_force_kernel_count);

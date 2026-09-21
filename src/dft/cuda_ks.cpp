@@ -16,6 +16,7 @@
 #include "dft/cuda_xc.hpp"
 #include "dft/xc.hpp"
 #include "runtime/resource_cuda.cuh"
+#include "runtime/solver_region_cuda.cuh"
 #include "scf/cuda/eigensolver.hpp"
 #include "scf/cuda/scf_constants.hpp"
 #include "scf/cuda/scf_density_kernels.hpp"
@@ -170,6 +171,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
   double previous_energy{std::numeric_limits<double>::infinity()};
   unsigned pending_iterations{};
   std::array<std::uint64_t, kCudaKsChunkCapacity> pending_generations{};
+  runtime::SolverRegionCudaExecutor solver_region_executor;
 
   void current_device() const {
     // Prepared owners select their bound device on every entry, as the common
@@ -421,6 +423,13 @@ struct CudaKsPlan::Impl : KsStateStorage {
     return 1;
   }
 
+  runtime::SolverRegionCudaBinding solver_region_binding() const {
+    return {{"cuda-ks-rks-solver-region-v1", device, stream, arena, direct},
+            kCudaKsChunkCapacity,
+            runtime::SolverRegionCompletionMode::Scalar,
+            false};
+  }
+
   unsigned submission_width() const noexcept {
     unsigned width = configured_chunk_width();
     if (width == 1 || output.iterations >= options.max_iterations) return 1;
@@ -500,10 +509,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
     pending_iterations = 0;
     try {
       const unsigned width = submission_width();
-      for (unsigned slot = 0; slot < width; ++slot) {
-        enqueue_one(slot);
-        ++pending_iterations;
-      }
+      const unsigned remaining = options.max_iterations - output.iterations;
+      pending_iterations =
+          solver_region_executor.submit(solver_region_binding(), width, remaining, false,
+                                        [&](unsigned slot) { enqueue_one(slot); });
     } catch (...) {
       cudaStreamSynchronize(stream);
       ++movement.synchronizations;
@@ -538,6 +547,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     ++movement.synchronizations;
     ++movement.iteration_synchronizations;
     ++movement.iteration_chunks;
+    solver_region_executor.checkpoint();
     if (device_control.iterations <= output.iterations ||
         device_control.iterations > output.iterations + submitted) {
       is_pending = is_active = false;

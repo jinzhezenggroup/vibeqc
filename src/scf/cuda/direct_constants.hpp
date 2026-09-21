@@ -118,7 +118,8 @@ constexpr std::uint64_t kDdddShellClassMask = std::uint64_t{1} << kDdddShellClas
 // separately qualified generated force consumer may still own dddd gradients.
 // Both routes enumerate pair-class segments directly and therefore avoid a
 // whole-topology generic fallback scan.
-constexpr std::uint64_t kStreamingFockShellClassMask = (std::uint64_t{1} << 21U) - 1U;
+constexpr std::uint64_t kCanonicalSpdShellClassMask = (std::uint64_t{1} << 21U) - 1U;
+constexpr std::uint64_t kStreamingFockShellClassMask = kCanonicalSpdShellClassMask;
 constexpr std::uint64_t kGeneratedStreamingFockShellClassMask =
     kStreamingFockShellClassMask & ~kDdddShellClassMask;
 constexpr std::uint64_t kNativeStreamingFockShellClassMask = kDdddShellClassMask;

@@ -1745,6 +1745,41 @@ def test_production_manifest_drives_generated_registry_and_shards(
         selection.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
         for selection in selections
     )
+    canonical_spd = {
+        "ssss",
+        "psss",
+        "psps",
+        "ppss",
+        "ppps",
+        "pppp",
+        "dsss",
+        "dsps",
+        "dspp",
+        "dsds",
+        "dpss",
+        "dpps",
+        "dppp",
+        "dpds",
+        "dpdp",
+        "ddss",
+        "ddps",
+        "ddpp",
+        "ddds",
+        "dddp",
+        "dddd",
+    }
+    generated_force = {
+        selection.spec.name
+        for selection in selections
+        if KernelConsumer.FORCE in selection.consumers
+    }
+    # psss force reuses the exact bounded scheduler; every other canonical
+    # s/p/d class has a production-selected generated force consumer.
+    assert (generated_force | {"psss"}) & canonical_spd == canonical_spd
+    direct_source = _direct_cuda_source()
+    assert "unexpected_tuned_spd_fallback_mask" in direct_source
+    assert "kCanonicalSpdShellClassMask" in direct_source
+    assert "aot_shell_class_selection_override_requested()" in direct_source
     shards = _partition_production_selections(selections, shard_count=8)
     shard_by_name = {
         selection.spec.name: shard_index
@@ -2050,9 +2085,12 @@ def test_generated_one_electron_derivatives_are_the_production_default() -> None
     assert "selection == nullptr" in selection
     assert 'std::strcmp(selection, "generated") == 0' in selection
     assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING")' in selection
-    assert "if (selection == nullptr) return 3U;" in selection
+    assert (
+        "if (selection == nullptr) return NucleusCooperativeSchedule::schedule_code;"
+        in selection
+    )
     assert 'std::strcmp(selection, "nucleus_cooperative") == 0' in selection
-    assert "return 3U;" in selection
+    assert "return NucleusCooperativeSchedule::schedule_code;" in selection
 
 
 def test_batched_finalization_reuses_each_converged_raw_fock() -> None:

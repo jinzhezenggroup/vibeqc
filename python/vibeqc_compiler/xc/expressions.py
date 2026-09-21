@@ -18,6 +18,7 @@ from fractions import Fraction as F
 from vibeqc_compiler.integral.expr import Graph
 
 from .pbe_maple import pbe_correlation, pbe_exchange
+from .scan_maple import scan_component
 
 _PW_PARAMETERS = {
     False: {
@@ -321,7 +322,7 @@ def pbe_exchange_reciprocal_expression() -> typing.Any:
 def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.Any:
     """Return the energy DAG and ordered feature variables.
 
-    PBE mathematics is lowered from the pinned Libxc Maple source. Production
+    PBE and SCAN/r2SCAN mathematics are lowered from pinned Libxc Maple sources. Production
     mode independently selects versioned SCF endpoint continuations for
     families that still require them.
     """
@@ -669,10 +670,14 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
         "LDA_C_PW": lambda: lda_correlation(False),
         "LDA_C_PW_MOD": lambda: lda_correlation(True),
         "GGA_C_PBE": lambda: pbe_correlation(graph, spec, variables),
-        "MGGA_X_SCAN": scan_exchange,
-        "MGGA_C_SCAN": scan_correlation,
-        "MGGA_X_R2SCAN": r2scan_exchange,
-        "MGGA_C_R2SCAN": r2scan_correlation,
+        "MGGA_X_SCAN": lambda: scan_component(graph, spec, variables, "MGGA_X_SCAN"),
+        "MGGA_C_SCAN": lambda: scan_component(graph, spec, variables, "MGGA_C_SCAN"),
+        "MGGA_X_R2SCAN": lambda: scan_component(
+            graph, spec, variables, "MGGA_X_R2SCAN"
+        ),
+        "MGGA_C_R2SCAN": lambda: scan_component(
+            graph, spec, variables, "MGGA_C_R2SCAN"
+        ),
     }
     return (
         graph,

@@ -312,8 +312,9 @@ SpinXcIntegral integrate_pbe_uks(const AoBasis& basis, const MolecularGrid& grid
 
 namespace {
 
-std::array<double, 3> validate_b3_gga_point(const double rho[2], const double (&gradient)[2][3],
-                                            const char* method) {
+std::array<double, 3> validate_b3_interior_point(const double rho[2],
+                                                 const double (&gradient)[2][3],
+                                                 const char* method) {
   std::array<double, 3> sigma{};
   generated::sigma(gradient, sigma.data());
   const double total = rho[0] + rho[1];
@@ -335,6 +336,31 @@ std::array<double, 3> validate_b3_gga_point(const double rho[2], const double (&
   if (!std::isfinite(sigma[1]) ||
       std::abs(sigma[1]) > bound * (1.0 + 16.0 * std::numeric_limits<double>::epsilon()))
     throw std::domain_error(std::string(method) + " spin-gradient Gram matrix is invalid");
+  return sigma;
+}
+
+std::array<double, 3> validate_b3lyp_production_point(const double rho[2],
+                                                      const double (&gradient)[2][3]) {
+  std::array<double, 3> sigma{};
+  generated::sigma(gradient, sigma.data());
+  const double total = rho[0] + rho[1];
+  if (!std::isfinite(total) || total < 0.0 || total > 1.0e12)
+    throw std::domain_error("B3LYP requires finite nonnegative total density");
+  for (unsigned spin = 0; spin < 2; ++spin) {
+    const double same_sigma = sigma[spin == 0 ? 0 : 2];
+    if (!std::isfinite(rho[spin]) || rho[spin] < 0.0 || !std::isfinite(same_sigma) ||
+        same_sigma < 0.0)
+      throw std::domain_error("B3LYP requires finite nonnegative spin density/gradient");
+    for (double component : gradient[spin])
+      if (!std::isfinite(component))
+        throw std::domain_error("B3LYP requires finite density gradients");
+    if (rho[spin] == 0.0 && same_sigma != 0.0)
+      throw std::domain_error("B3LYP zero spin density requires zero same-spin gradient");
+  }
+  const double bound = std::sqrt(sigma[0]) * std::sqrt(sigma[2]);
+  if (!std::isfinite(sigma[1]) ||
+      std::abs(sigma[1]) > bound * (1.0 + 16.0 * std::numeric_limits<double>::epsilon()))
+    throw std::domain_error("B3LYP spin-gradient Gram matrix is invalid");
   return sigma;
 }
 
@@ -461,13 +487,13 @@ SpinXcIntegral integrate_b3_gga_uks(const AoBasis& basis, const MolecularGrid& g
 }  // namespace
 
 B3lypPointValue evaluate_b3lyp_point(const double rho[2], const double (&gradient)[2][3]) {
-  const auto sigma = validate_b3_gga_point(rho, gradient, "B3LYP");
+  const auto sigma = validate_b3lyp_production_point(rho, gradient);
   return map_b3_gga_point(generated::b3lyp_polarized(rho[0], rho[1], sigma[0], sigma[1], sigma[2]),
                           gradient, "B3LYP");
 }
 
 CamB3lypPointValue evaluate_cam_b3lyp_point(const double rho[2], const double (&gradient)[2][3]) {
-  const auto sigma = validate_b3_gga_point(rho, gradient, "CAM-B3LYP");
+  const auto sigma = validate_b3_interior_point(rho, gradient, "CAM-B3LYP");
   constexpr double pi = 3.141592653589793238462643383279502884;
   constexpr double beta_b88 = 0.0042;
   constexpr double gamma_b88 = 6.0;

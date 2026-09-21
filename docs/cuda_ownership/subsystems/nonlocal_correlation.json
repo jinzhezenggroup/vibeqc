@@ -1,0 +1,17 @@
+{
+  "owner": "nonlocal_correlation",
+  "current_default": "Versioned VV10/rVV10 MethodIR semantics with an independent fixed-grid CPU oracle and a bounded native CPU/CUDA ordered-pair provider for energy, KS feature derivatives and explicit geometric pair/weight derivatives.",
+  "generated_capability": "MethodIR owns immutable VV10/rVV10 mathematical identity, parameters, derivative capability and fixed-density composition. The current pair evaluator is maintained native FP64 code rather than generated CUDA.",
+  "missing_capability": "Generic public self-consistent KS plan consumption remains coordinated with #396/#781, and complete public omegaB97M-V qualification additionally depends on #164. No method enum or manifest alone advertises this primitive as a complete public method.",
+  "retirement_condition": "Retain the direct CPU oracle and bounded native provider until a compiler-generated nonlocal device consumer reproduces the same energy, potential and complete geometric derivatives with independent numerical, resource and end-to-end performance gates.",
+  "evidence": [
+    "tests/python/test_vv10_reference.py",
+    "tests/python/test_vv10_method_execution.py",
+    "tests/python/test_vv10_native_runtime.py",
+    "tests/python/test_vv10_native_integration.py",
+    ".agents/notes/implemented/numerics/2026-09-19-vv10-rvv10-methodir-reference.md",
+    ".agents/notes/implemented/numerics/2026-09-20-vv10-analytic-nuclear-gradient.md",
+    ".agents/notes/implemented/numerics/2026-09-21-vv10-native-cuda-provider.md"
+  ],
+  "status": "bounded_native_cpu_cuda_primitive"
+}

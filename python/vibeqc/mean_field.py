@@ -334,10 +334,18 @@ class FixedDensityMeanField:
         self._nonlocal = nonlocal_correlation
 
     @classmethod
-    def from_method(cls, fock: typing.Any, method: typing.Any) -> typing.Any:
+    def from_method(
+        cls,
+        fock: typing.Any,
+        method: typing.Any,
+        *,
+        nonlocal_memory_budget_bytes: int = 512 << 20,
+    ) -> typing.Any:
         """Bind a MethodIR graph to an already prepared common J/K provider."""
         from vibeqc_compiler.dft import FixedDensityNonlocalCorrelation
         from vibeqc_compiler.xc.integration import FixedDensityXC
+
+        from .nonlocal_runtime import NativeNonlocalPairProvider
 
         if not isinstance(fock, FockPlan):
             raise TypeError("expected FockPlan")
@@ -358,9 +366,13 @@ class FixedDensityMeanField:
         )
         nonlocal_correlation = None
         if nonlocal_primitive is not None:
+            pair_provider = NativeNonlocalPairProvider.from_fock(
+                fock, memory_budget_bytes=nonlocal_memory_budget_bytes
+            )
             nonlocal_correlation = FixedDensityNonlocalCorrelation(
                 nonlocal_primitive.spec,
                 coefficient=nonlocal_primitive.coefficient,
+                pair_provider=pair_provider,
             )
         return cls(
             fock,
