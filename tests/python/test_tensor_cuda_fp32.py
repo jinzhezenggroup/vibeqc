@@ -27,6 +27,7 @@ from vibeqc_compiler.tensor import (
     input_tensor,
     lower_precision,
     multiply,
+    optimize,
     reduce_sum,
     reshape,
     slice_tensor,
@@ -317,6 +318,33 @@ def test_qualified_fp32_compute_fp64_reduction_accumulation_on_cuda(
     with prepare(reduction_program, gpu) as prepared:
         actual = prepared.execute({"x": values})
         assert actual.outputs["out"] == 2.0
+        assert actual.metrics["precision"] == "typed-fp32-fp64"
+
+    mixed = reduce_sum(x, (0,))
+    fp32 = reduce_sum(x, (0,))
+    mixed_program = Program({"mixed": mixed, "fp32": fp32})
+    mixed_program = lower_precision(
+        mixed_program,
+        {
+            mixed_program.debug_names[mixed]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="cuda-sm120/optimizer-mixed",
+            ),
+            mixed_program.debug_names[fp32]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float32",
+                qualification="cuda-sm120/optimizer-fp32",
+            ),
+        },
+    )
+    optimized_mixed = optimize(mixed_program)
+    with prepare(optimized_mixed, gpu) as prepared:
+        actual = prepared.execute({"x": values})
+        assert actual.outputs["mixed"] == 2.0
+        assert actual.outputs["fp32"] == 1.0
         assert actual.metrics["precision"] == "typed-fp32-fp64"
 
     left = tensor("left", (4,), "float64")

@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/dispersion/d4_runtime_cuda.cu",
+  "role": "runtime",
+  "subsystem": "d4_dispersion",
+  "reason": "Production D4(BJ)-EEQ CUDA owner: bounded ragged EEQ charge/response workers, changed-geometry replay state, generated VJP composition, and orchestration of the separate cooperative fixed-charge scheduler.",
+  "regions": []
+}
