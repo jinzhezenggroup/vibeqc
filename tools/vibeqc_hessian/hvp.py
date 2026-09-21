@@ -47,7 +47,7 @@ class RHFHVPResult:
         return deepcopy(self._diagnostics)
 
     @property
-    def components(self) -> dict[str, np.ndarray]:
+    def components(self) -> dict[str, np.ndarray | None]:
         return {
             "nuclear": self.nuclear,
             "core": self.core,
