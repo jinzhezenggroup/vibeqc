@@ -104,6 +104,104 @@ def test_every_public_cartesian_component_against_pyscf(
                 )
 
 
+
+@pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
+@pytest.mark.parametrize("angular", [(4, 0), (0, 4), (4, 4)])
+def test_selected_g_cartesian_components_against_pyscf(
+    family: typing.Any, angular: typing.Any
+) -> None:
+    """Qualify representative g-shell values without expanding the broad CI matrix."""
+
+    gto = pytest.importorskip("pyscf.gto")
+    a, b, c = (0.2, -0.3, 0.1), (-0.4, 0.15, 0.5), (0.17, -0.11, -0.4)
+    alpha, beta = 0.8, 0.35
+    charge = 2.3
+    components = tuple(cartesian_components(l) for l in angular)
+    mol = gto.M(
+        atom=[("ghost-H", a), ("ghost-He", b)],
+        basis={
+            "H": [[angular[0], [alpha, 1.0]]],
+            "He": [[angular[1], [beta, 1.0]]],
+        },
+        unit="Bohr",
+        cart=True,
+        verbose=0,
+    )
+    overlap = mol.intor("int1e_ovlp_cart")
+    if family == "overlap":
+        reference = overlap
+    elif family == "kinetic":
+        reference = mol.intor("int1e_kin_cart")
+    else:
+        with mol.with_rinv_origin(c):
+            reference = -charge * mol.intor("int1e_rinv_cart")
+    exponents = [alpha] * len(components[0]) + [beta] * len(components[1])
+    raw_norms = [
+        gaussian_self_norm(exponent, component)
+        for exponent, component in zip(
+            exponents, components[0] + components[1], strict=True
+        )
+    ]
+    scales = np.sqrt(overlap.diagonal() / raw_norms)
+    raw_reference = reference / np.outer(scales, scales)
+    first_indices = sorted({0, len(components[0]) // 2, len(components[0]) - 1})
+    second_indices = sorted({0, len(components[1]) // 2, len(components[1]) - 1})
+    positions = (a, b, c) if family == "nuclear_attraction" else (a, b)
+    for i in first_indices:
+        for j in second_indices:
+            actual = evaluate_one_electron_primitive(
+                kernel(family, angular, (components[0][i], components[1][j])),
+                (alpha, beta),
+                positions,
+            )
+            assert actual == pytest.approx(
+                raw_reference[i, len(components[0]) + j],
+                abs=2e-9,
+                rel=2e-11,
+            )
+
+
+def test_g_codegen_is_explicit_and_production_capability_stays_fail_closed() -> None:
+    from vibeqc_compiler.integral.capabilities import query_integral_capability
+    from vibeqc_compiler.integral.one_electron_cuda import (
+        _component_layout,
+        _emit_component_index,
+        _emit_operator_helpers,
+        _emit_support_cuda,
+        one_electron_program_inventory,
+    )
+
+    counts, offsets, limits, total = _component_layout(4)
+    assert counts == (1, 3, 6, 10, 15)
+    assert offsets == (0, 1, 4, 10, 20)
+    assert limits == (1, 4, 10, 20, 35)
+    assert total == 35
+    assert len(one_electron_program_inventory()) == 48
+    assert len(one_electron_program_inventory(4)["programs"]) == 75
+
+    index_source = _emit_component_index(4)
+    assert "switch (x * 25U + y * 5U + z)" in index_source
+    assert "return 35U;" in index_source
+    operator_source = _emit_operator_helpers(False, 4)
+    assert "overlap_kinetic_44" in operator_source
+    assert "first >= 35 || second >= 35" in operator_source
+    assert "switch (a * 5U + b)" in operator_source
+    assert "static_assert(Order <= 8);" in _emit_support_cuda(8)
+
+    request = build_one_electron_value_ir("kinetic", (4, 0))
+    production = query_integral_capability(
+        request, backend="cuda_one_electron_values"
+    )
+    assert not production.supported
+    assert "production one-electron CUDA tables support l<=3" in production.reasons[0]
+    bounded = query_integral_capability(
+        request,
+        backend="cuda_bounded_component",
+        component_indices=(0,),
+    )
+    assert bounded.supported
+
+
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
 def test_sign_translation_and_shell_exchange(family: typing.Any) -> None:
     positions = np.array([[0.2, -0.3, 0.4], [-0.2, 0.5, 0.1], [0.1, -0.2, -0.4]])
