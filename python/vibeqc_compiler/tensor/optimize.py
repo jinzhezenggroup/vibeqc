@@ -6,7 +6,11 @@ or AD occurs here. The original Program remains the mathematical reference.
 
 from __future__ import annotations
 
+import hashlib
+import typing
 from fractions import Fraction
+
+from vibeqc_compiler.common.pass_manager import PassManager, PassStage
 
 from .interpreter import execute
 from .ir import Node, _infer, constant
@@ -92,19 +96,57 @@ def rewrite(program: Program, pass_name: str) -> Program:
     )
 
 
+def _program_fingerprint(program: Program) -> str:
+    """Track complete deterministic structure, including retained definitions."""
+    return hashlib.sha256(program.dumps().encode()).hexdigest()
+
+
+def _pass(pass_name: str) -> typing.Callable[[Program], Program]:
+    def apply(program: Program) -> Program:
+        return rewrite(program, pass_name)
+
+    return apply
+
+
+_OPTIMIZER = PassManager(
+    name="tensor.optimize",
+    version=1,
+    stages=(
+        PassStage("dead_nodes", 1, _pass("dead_nodes"), invalidates=("liveness",)),
+        PassStage("identity_transposes", 1, _pass("identity_transposes")),
+        PassStage("exact_cse", 1, _pass("exact_cse"), invalidates=("liveness",)),
+        PassStage("scalar_constants", 1, _pass("scalar_constants")),
+        # Folding may expose duplicates; final CSE/DCE remains conservative.
+        PassStage(
+            "post_fold_exact_cse", 1, _pass("exact_cse"), invalidates=("liveness",)
+        ),
+        PassStage(
+            "post_fold_dead_nodes", 1, _pass("dead_nodes"), invalidates=("liveness",)
+        ),
+    ),
+    fingerprint=_program_fingerprint,
+)
+
+
 def optimize(program: Program) -> Program:
-    """Run the four initial passes; keep provenance back to the source DAG."""
-    result = program
-    for pass_name in PASSES:
-        result = rewrite(result, pass_name)
-    # Folding may expose duplicates; a final exact CSE/dead pass is still
-    # conservative and does not reorder any arithmetic.
-    result = rewrite(rewrite(result, "exact_cse"), "dead_nodes")
+    """Run the initial TensorIR pipeline through the shared pass manager."""
+    run = _OPTIMIZER.run(program)
+    result = run.value
     return Program(
         result.outputs,
         provenance={
             **program.provenance,
             "original_logical_hash": program.logical_hash,
+            # Keep the established rewrite inventory for compatibility.
             "rewrites": list(PASSES) + ["exact_cse", "dead_nodes"],
+            "optimizer_identity": run.pipeline_identity,
+            "optimizer_passes": [
+                {
+                    "name": record.name,
+                    "version": record.version,
+                    "changed": record.changed,
+                }
+                for record in run.records
+            ],
         },
     )
