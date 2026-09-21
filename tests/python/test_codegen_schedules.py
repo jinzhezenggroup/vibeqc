@@ -1180,3 +1180,19 @@ def test_algebra_placement_schedule_payload_is_backward_compatible() -> None:
             build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
             algebra_form=AlgebraForm.CANONICAL_NARY,
         )
+
+
+@pytest.mark.parametrize("block_limit", [32, 64])
+@pytest.mark.parametrize(
+    "name,recurrence", [("ppps", "rys3"), ("dppp", "rys4"), ("dddd", "rys5")]
+)
+def test_high_root_search_omits_unimplemented_small_subgroups(
+    block_limit: int, name: str, recurrence: str
+) -> None:
+    """Resource legality cannot substitute for a supported lowering geometry."""
+    target = replace(TEST_CUDA_TARGET, maximum_threads_per_block=block_limit)
+    integral = build_integral_ir(FUSED_SHELL_SPEC_BY_NAME[name], recurrence=recurrence)
+    assert all(
+        candidate.kind != ScheduleKind.SUBGROUP_TASKS
+        for candidate in schedule_candidates(integral, target)
+    )

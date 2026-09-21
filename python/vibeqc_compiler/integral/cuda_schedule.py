@@ -285,6 +285,10 @@ def _subgroup_task_counts(
         return generic
     if integral.required_rys_roots not in (3, 4, 5):
         return ()
+    # This is the current uniform-warp backend capability, not a tuning winner.
+    # Smaller resource-legal blocks are not implemented by that lowering.
+    if warp_size != 32 or block_threads not in (128, 256):
+        return ()
     warp_count = block_threads // warp_size
     if warp_count < 1 or warp_size % warp_count != 0:
         return ()
