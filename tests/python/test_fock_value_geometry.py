@@ -31,9 +31,9 @@ def test_psss_fock_geometry_prunes_force_only_state() -> None:
     source = emit_shell_class_fused_cuda(
         PSSS_SPEC, plan, fock_schedule=selection.fock_schedule
     )
-    helper = source.split(
-        "generated_psss_make_fock_primitive_geometry", maxsplit=1
-    )[1].split("/**", maxsplit=1)[0]
+    helper = source.split("generated_psss_make_fock_primitive_geometry", maxsplit=1)[
+        1
+    ].split("/**", maxsplit=1)[0]
 
     assert "boys_values<1>" in helper
     assert "product_scales" not in helper
