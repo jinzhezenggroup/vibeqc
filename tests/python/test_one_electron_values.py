@@ -176,7 +176,7 @@ def test_g_codegen_is_explicit_and_production_capability_stays_fail_closed() -> 
     assert offsets == (0, 1, 4, 10, 20)
     assert limits == (1, 4, 10, 20, 35)
     assert total == 35
-    assert len(one_electron_program_inventory()) == 48
+    assert len(one_electron_program_inventory()["programs"]) == 48
     assert len(one_electron_program_inventory(4)["programs"]) == 75
 
     index_source = _emit_component_index(4)
