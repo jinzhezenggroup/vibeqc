@@ -20,7 +20,6 @@ from .one_electron_values import (
 )
 from .shell_spec import cartesian_components
 
-
 _MAXIMUM_GENERATED_ANGULAR_MOMENTUM = 4
 
 
