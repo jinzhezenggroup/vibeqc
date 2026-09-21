@@ -53,9 +53,7 @@ def _emit_axis_permutations(maximum_angular_momentum: int = 3) -> typing.Any:
     """
     maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
     _, _, _, total_components = _component_layout(maximum)
-    components = tuple(
-        c for l in range(maximum + 1) for c in cartesian_components(l)
-    )
+    components = tuple(c for l in range(maximum + 1) for c in cartesian_components(l))
     lines = [
         "__device__ __forceinline__ unsigned permute_component(unsigned index, unsigned axis) {",
         "  if (axis == 0) return index;",
