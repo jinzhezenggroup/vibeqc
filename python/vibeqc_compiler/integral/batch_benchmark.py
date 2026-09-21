@@ -856,7 +856,7 @@ def main() -> None:
         type=Path,
         default=Path("/group/software/cuda-12.9.1/bin/nvcc"),
     )
-    parser.add_argument("--architecture", default="sm_120")
+    parser.add_argument("--architecture", required=True)
     parser.add_argument("--local", action="store_true", default=None)
     parser.add_argument("--srun")
     parser.add_argument("--partition")
