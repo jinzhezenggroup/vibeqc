@@ -118,14 +118,11 @@ function(vibeqc_add_gfn2_runtime target)
       ${_gfn2_root}/src/backends/cuda/gfn2_geometry.cu
       PROPERTIES COMPILE_OPTIONS "-fmad=false")
     target_compile_definitions(${target} PRIVATE VIBEQC_HAS_GFN2_CUDA=1)
-    # The CUDA archive resolves its own device symbols. Link the finished archive
-    # as a host linker item so its separable-compilation requirement does not
-    # propagate to every unrelated VibeQC CUDA translation unit.
-    add_dependencies(${target} vibeqc_gfn2_cuda)
+    # The CUDA archive resolves its own device symbols. Consume the complete
+    # archive so CUDA registration/device-link objects cannot be discarded,
+    # without propagating separable compilation to unrelated VibeQC CUDA TUs.
     target_link_libraries(${target} PRIVATE
-      "-Wl,--whole-archive"
-      "$<TARGET_FILE:vibeqc_gfn2_cuda>"
-      "-Wl,--no-whole-archive"
+      "$<LINK_LIBRARY:WHOLE_ARCHIVE,vibeqc_gfn2_cuda>"
       CUDA::cuda_driver)
   endif()
 
