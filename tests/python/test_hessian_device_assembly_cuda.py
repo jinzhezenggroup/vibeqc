@@ -107,8 +107,7 @@ def test_block_hvp_final_assembly_keeps_components_on_device(
         for item in diagnostic["final_assembly"]
     )
     assert all(
-        item["result_tile_downloads"] == 0
-        and item["device_result_consumptions"] > 0
+        item["result_tile_downloads"] == 0 and item["device_result_consumptions"] > 0
         for item in diagnostic["second_integral_provider"]
     )
     assert all(

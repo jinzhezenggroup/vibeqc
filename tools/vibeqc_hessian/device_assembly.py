@@ -293,6 +293,7 @@ class CudaHVPAccumulator:
         if hasattr(self, "_lock"):
             self.close()
 
+
 class CudaHessianAccumulator:
     """Collect validated device HVP columns and publish one full Hessian."""
 

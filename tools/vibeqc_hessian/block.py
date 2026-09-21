@@ -202,16 +202,16 @@ def rhf_hvp_many(
     if type(_publish_host) is not bool:
         raise TypeError("_publish_host must be boolean")
     consumers = (
-        None
-        if _device_output_consumers is None
-        else tuple(_device_output_consumers)
+        None if _device_output_consumers is None else tuple(_device_output_consumers)
     )
     if consumers is not None and (
         len(consumers) != len(vectors) or any(not callable(item) for item in consumers)
     ):
         raise ValueError("_device_output_consumers must match the direction count")
     if not _publish_host and consumers is None:
-        raise ValueError("suppressed block publication requires device output consumers")
+        raise ValueError(
+            "suppressed block publication requires device output consumers"
+        )
     if jk_backend not in ("cpu", "cuda"):
         raise ValueError("jk_backend must be cpu or cuda")
     if response_execution not in ("host", "cuda-resident"):
@@ -638,10 +638,7 @@ def rhf_hvp_many(
         (item["peak_device_bytes"] for item in second_diagnostics), default=0
     )
     second_phase_bound = (
-        storage["total"]
-        + second_host_peak
-        + second_device_peak
-        + assembly_device_bytes
+        storage["total"] + second_host_peak + second_device_peak + assembly_device_bytes
     )
     if second_phase_bound > total_budget_bytes:
         raise ValueError(
@@ -747,7 +744,9 @@ def rhf_hvp_many(
         "assembly_device_bytes": assembly_device_bytes,
         "final_assembly": deepcopy(assembly_diagnostics),
         "component_publication": "suppressed" if cuda_assembly else "host",
-        "published_component_bytes": 0 if cuda_assembly else int(
+        "published_component_bytes": 0
+        if cuda_assembly
+        else int(
             sum(
                 item.nbytes
                 for item in (nuclear, core, pulay, two_electron, relaxation)
@@ -800,10 +799,7 @@ def rhf_hvp_many(
         relaxation,
     )
     return RHFHVPBlockResult(
-        *(
-            None if value is None else immutable(value)
-            for value in arrays
-        ),
+        *(None if value is None else immutable(value) for value in arrays),
         batch,
         identity,
         diagnostics,
@@ -881,10 +877,7 @@ def rhf_hessian(
         matrix_device_bytes = matrix_owner.diagnostics["owned_device_bytes"]
 
     block_budget = (
-        total_budget_bytes
-        - output_bytes
-        - caller_direction_bytes
-        - matrix_device_bytes
+        total_budget_bytes - output_bytes - caller_direction_bytes - matrix_device_bytes
     )
     if (
         block_budget <= 0
@@ -933,9 +926,7 @@ def rhf_hessian(
             )
             if assembly_backend == "host":
                 assert matrix is not None and result.values is not None
-                matrix[:, begin:end] = result.values.reshape(
-                    end - begin, coordinates
-                ).T
+                matrix[:, begin:end] = result.values.reshape(end - begin, coordinates).T
             elif result.values is not None:
                 raise RuntimeError(
                     "CUDA full-Hessian block unexpectedly published host HVPs"
