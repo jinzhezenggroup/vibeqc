@@ -551,30 +551,38 @@ is permitted.
 The #178 frozen-skeleton second-integral HVP consumer is independently
 selectable with `second_backend="cuda"` and an explicit `second_compiler`.
 It reuses the generated bounded second-derivative runtime: shell primitive and
-fixed-weight records are streamed to device storage, S/T/V/four-center second
-derivatives are contracted there, and only coordinate HVP tiles return to the
-host. No raw molecular integral Hessian or intermediate AO matrix is downloaded.
-CPU remains the default, there is no silent fallback, and scalar, multi-RHS and
-bounded full-Hessian callers preserve the selected provider/program identities
-and its host/device phase peak.
+fixed-weight records are streamed to device storage and S/T/V/four-center second
+derivatives are contracted there. The ordinary path publishes only compact
+coordinate HVP tiles. With `assembly_backend="cuda"`, those compact tiles are
+instead consumed synchronously from device storage and scattered directly into a
+bounded molecular HVP accumulator. Generated CUDA relaxation contributes its
+final Cartesian vector device-to-device and the nucleus-nucleus HVP is evaluated
+in the same accumulator. Scalar and multi-RHS callers therefore publish only the
+final HVP, not its five scientific component vectors.
 
-This still does **not** make the complete HVP all-device. Scalar and bounded
-multi-RHS/full-Hessian response paths can consume each converged resident
-rotation before host publication, reconstruct D1/W1 in the shared CUDA response
-owner, and import those two matrices device-to-device into the generated
-relaxation contraction. H1/S1 publication and nuclear-RHS preparation remain
-host-owned, compatibility D1/W1 publications are still returned, the
-second-integral providers publish compact coordinate HVP tiles to host, and the
-final molecular HVP/full-Hessian assembly remains host-owned. Diagnostics report
-the simultaneously resident response-plus-relaxation device storage, but this is
-not a global SCF/compiler/CUDA-context memory bound. Production-size
-qualification, a public Calculator Hessian endpoint and DFT Hessians remain
-separate. See the
+For bounded full Hessians, `assembly_backend="cuda"` copies each validated final
+HVP column device-to-device into a column-major matrix owner. Intermediate block
+HVPs are not downloaded; after every block succeeds the raw full Hessian is
+downloaded once. The raw symmetry check still occurs on the published matrix and
+no post-hoc symmetrization is applied. CPU/host assembly remains the default and
+all CUDA providers/compilers are explicit; unsupported combinations fail closed.
+
+This is a **device-final-assembly** path, not a claim that every Hessian stage is
+device-resident. Directional H1/S1 are still published to host, nuclear-RHS and
+metric preparation remain host-owned, projected GMRES least-squares/scalars are
+host-controlled, and compatibility response publication is retained. What is now
+resident through final assembly is D1/W1 consumption for CUDA relaxation, #178
+compact second-integral HVP outputs, the nuclear HVP, the molecular HVP sum and,
+when requested, full-Hessian column assembly. Diagnostics separately report
+provider and accumulator storage; they are not a combined SCF/compiler/CUDA
+context global peak. Production-size qualification, a public Calculator Hessian
+endpoint and DFT Hessians remain separate. See the
 [directional response decision](../.agents/notes/implemented/numerics/2026-09-19-directional-rhf-nuclear-response.md),
 [matrix-free HVP decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md),
 [bounded block-Hessian decision](../.agents/notes/implemented/numerics/2026-09-19-rhf-block-hessian.md),
-[CUDA relaxation decision](../.agents/notes/implemented/numerics/2026-09-20-rhf-cuda-relaxation.md)
-and [CUDA second-integral HVP decision](../.agents/notes/implemented/numerics/2026-09-20-rhf-cuda-second-hvp.md).
+[CUDA relaxation decision](../.agents/notes/implemented/numerics/2026-09-20-rhf-cuda-relaxation.md),
+[CUDA second-integral HVP decision](../.agents/notes/implemented/numerics/2026-09-20-rhf-cuda-second-hvp.md)
+and [CUDA final-assembly decision](../.agents/notes/implemented/numerics/2026-09-21-rhf-device-final-assembly.md).
 
 
 For explicit CUDA first-source qualification, add these arguments to the

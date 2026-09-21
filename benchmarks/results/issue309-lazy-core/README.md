@@ -1,5 +1,23 @@
 # #309 lazy-core ablation, first #308 optimization increment
 
+> **Checkout retention (2026-09-21):** `raw-evidence.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue309-lazy-core/raw-evidence.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue309-lazy-core/raw-evidence.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
+For commands below that previously unpacked the checkout directly, pass the
+restored archive explicitly:
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/issue309-lazy-core \
+  --archive .artifacts/issue309-lazy-core/raw-evidence.zip \
+  --output .artifacts/issue309-lazy-core-unpacked
+```
+
 Valid supplied density now skips core-Hamiltonian diagonalization. Initial
 orbital outputs are optional and cleared before validation. Cold RHF/UHF,
 UHF frontier mixing, density symmetry/electron traces and empty-spin handling
@@ -90,6 +108,7 @@ standard verifier (the README and compact summary stay directly reviewable):
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue309-lazy-core \
+  --archive .artifacts/issue309-lazy-core/raw-evidence.zip \
   --output /tmp/issue309-lazy-core-evidence
 ```
 

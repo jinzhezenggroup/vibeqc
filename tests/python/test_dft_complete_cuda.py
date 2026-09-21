@@ -588,7 +588,9 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
             # A late invalid task charge also poisons the transaction. No result
             # is copied, and reset clears previous successful accumulation.
             tasks = np.full((2, 9), -1, dtype=np.int64)
-            kind = sources.kinds["kinetic", ("s", "s")]
+            kind = sources.kinds[
+                "kinetic", (sources.components[0], sources.components[0])
+            ]
             tasks[:, :4] = kind, 0, 2, -1
             tasks[:, 4:6] = 0
             tasks[:, 8] = int(sources.aos[0, 2]) ** 2

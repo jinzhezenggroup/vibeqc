@@ -1,8 +1,9 @@
-# Composed RCCSD(T) energy API (#150 C)
+# Composed RCCSD(T) energy + analytic-force API (#150 C / #155 C binding slice)
 
 `tools.vibeqc_cc.ccsd_t_api` composes the independently validated RCCSD and
-standard perturbative-triples implementations into one energy-only endpoint.
-It does not introduce another set of coupled-cluster equations.
+standard perturbative-triples implementations for energy and now exposes a thin
+analytic-force binding over the complete #746 RCCSD(T) gradient owner. It does
+not introduce another CC, Lambda, Z-vector, or nuclear-derivative equation stack.
 
 The supported scientific model is the same one fixed by #150: real canonical
 closed-shell RHF, all electrons active, conventional four-center integrals and
@@ -11,9 +12,15 @@ triples approximations are not silently substituted.
 
 ## Execution contract
 
-`rccsd_t_method_capabilities("rccsd(t)")` returns the canonical energy-only
-capability; `"ccsd(t)"` is an alias. These capabilities describe the internal
-Python facade. Forces raise `NotImplementedError` before execution.
+`rccsd_t_method_capabilities("rccsd(t)")` reports internal `energy` and
+`forces`; `"ccsd(t)"` is an alias. `native_public=False` is explicit: this is
+not public C-ABI promotion.
+
+`rccsd_t_energy(...)` remains energy-only and rejects `compute_forces=True`.
+`rccsd_t_force(source, ...)` delegates directly to the qualified #746 endpoint,
+which constructs one coherent fresh RHF -> RCCSD -> corrected-Lambda -> total-Z
+-> derivative-consumer chain. It never reuses an unrelated energy state merely
+because its dimensions match.
 
 `rccsd_t_energy(snapshot, provider, backend=...)` runs
 
@@ -149,17 +156,23 @@ This `supports_batch=True` capability describes this internal homogeneous
 prepared/session API only. It is not a claim that the public native C
 `PreparedBatch` boundary executes CCSD(T).
 
+`PreparedRCCSDTForceBatch` and `rccsd_t_batch_forces` provide the matching
+#155 binding for analytic forces. Force batches are homogeneous in `(nocc, nvir)`,
+execute each source with a fresh complete-gradient owner, preserve input order,
+detach successful force arrays, and isolate item failures. No amplitude, Lambda,
+Krylov, or device state is shared between items.
+
 ## Public native boundary
 
 The reserved ABI identifier `VIBEQC_METHOD_RCCSD_T` remains inactive in
-`src/methods/registry.cpp`. This is intentional: current RCCSD/RCCSD(T)
-execution is still owned by the generated Python/JIT post-HF facade, and there
-is no native `PreparedCalculation`/`PreparedBatch` CC owner in `src/cc/` to
-register honestly. `Calculator("ccsd(t)")` therefore continues to report the
-reserved method as unavailable rather than dispatching through a Python special
-case.
+`src/methods/registry.cpp`. This is intentional: the complete CCSD(T) response
+graph is still generated/executed through the Python TensorIR/JIT owner, while
+the generic native CPU TensorIR emitter does not yet cover the einsum/VJP
+programs required by Lambda/orbital response. `Calculator("ccsd(t)")` therefore
+continues to report the reserved method as unavailable rather than dispatching
+through a Python special case or a duplicated handwritten derivative stack.
 
-Native method registration, if promoted later under #149 C, must reuse the same
+Native method registration, when promoted under the remaining #155 C native slice, must reuse the same
 reference/equation/state identities and may activate the existing enum without
 renumbering it. Until that owner exists, this facade is the executable #150 C
 composition boundary and the native capability remains fail-closed.
