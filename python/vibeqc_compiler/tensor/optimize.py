@@ -17,7 +17,13 @@ from .ir import Node, _infer, constant
 from .program import Program, hash_node
 from .types import TensorSpec
 
-PASSES = ("dead_nodes", "identity_transposes", "exact_cse", "scalar_constants")
+PASSES = (
+    "dead_nodes",
+    "identity_transposes",
+    "view_canonicalization",
+    "exact_cse",
+    "scalar_constants",
+)
 
 
 def _fold(node: Node) -> Node:
@@ -58,6 +64,41 @@ def _fold(node: Node) -> Node:
     return candidate if before.tobytes() == after.tobytes() else node
 
 
+def _canonicalize_view(node: Node) -> Node:
+    """Collapse representation-only chains without changing arithmetic order."""
+    if len(node.inputs) != 1:
+        return node
+    value = node.inputs[0]
+    if node.op == "cast" and node.attrs["dtype"] == value.spec.dtype:
+        return value
+    if node.op == "reshape":
+        source = value.inputs[0] if value.op == "reshape" else value
+        if node.spec.indices == source.spec.indices:
+            return source
+        if source is not value:
+            return Node("reshape", (source,), node.spec)
+    if node.op == "transpose" and value.op == "transpose":
+        inner = value.attrs["axes"]
+        outer = node.attrs["axes"]
+        axes = tuple(inner[index] for index in outer)
+        source = value.inputs[0]
+        if axes == tuple(range(len(axes))):
+            return source
+        return Node("transpose", (source,), node.spec, (("axes", axes),))
+    if node.op == "slice":
+        full = tuple((0, index.extent) for index in value.spec.indices)
+        if node.attrs["ranges"] == full:
+            return value
+    if node.op == "broadcast":
+        axes = node.attrs["axes"]
+        if (
+            axes == tuple(range(len(value.spec.indices)))
+            and node.spec.indices == value.spec.indices
+        ):
+            return value
+    return node
+
+
 def rewrite(program: Program, pass_name: str) -> Program:
     """Apply one named pass, preserving the pre-rewrite program for comparison."""
     if pass_name not in PASSES:
@@ -80,6 +121,8 @@ def rewrite(program: Program, pass_name: str) -> Program:
         if pass_name == "identity_transposes" and updated.op == "transpose":
             if updated.attrs["axes"] == tuple(range(len(updated.spec.indices))):
                 updated = inputs[0]
+        elif pass_name == "view_canonicalization":
+            updated = _canonicalize_view(updated)
         elif pass_name == "scalar_constants":
             updated = _fold(updated)
         elif pass_name == "exact_cse":
@@ -114,6 +157,12 @@ _OPTIMIZER = PassManager(
     stages=(
         PassStage("dead_nodes", 1, _pass("dead_nodes"), invalidates=("liveness",)),
         PassStage("identity_transposes", 1, _pass("identity_transposes")),
+        PassStage(
+            "view_canonicalization",
+            1,
+            _pass("view_canonicalization"),
+            invalidates=("liveness",),
+        ),
         PassStage("exact_cse", 1, _pass("exact_cse"), invalidates=("liveness",)),
         PassStage("scalar_constants", 1, _pass("scalar_constants")),
         # Folding may expose duplicates; final CSE/DCE remains conservative.
