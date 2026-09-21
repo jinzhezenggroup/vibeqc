@@ -10,6 +10,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from _support import raw_output_path, write_result
 from vibeqc import Calculator
 
 ATOMS = [
@@ -76,7 +77,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--basis", action="append", dest="bases")
     parser.add_argument("--repeats", type=int, default=5)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     args = parser.parse_args()
     if args.repeats < 1:
         raise ValueError("--repeats must be positive")
@@ -99,8 +100,7 @@ def main() -> None:
     payload = {"case": "H2O", "coordinates_unit": "bohr", "records": records}
     rendered = json.dumps(payload, indent=2)
     if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered + "\n")
+        write_result(args.output, payload)
     else:
         print(rendered)
 
