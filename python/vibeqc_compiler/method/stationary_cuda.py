@@ -456,7 +456,10 @@ def load_stationary_aot_artifact(
 ) -> CudaArtifact:
     """Load one packaged artifact after checking its plan and binary identity."""
     expected_plan = _qualified_aot_plan(functional, spin)
-    if not isinstance(plan, StationaryGradientPlan) or plan.identity != expected_plan.identity:
+    if (
+        not isinstance(plan, StationaryGradientPlan)
+        or plan.identity != expected_plan.identity
+    ):
         raise ValueError("stationary CUDA AOT plan identity mismatch")
     if type(architecture) is not str or not architecture.startswith("sm_"):
         raise ValueError("stationary AOT architecture must be an sm_XX identity")

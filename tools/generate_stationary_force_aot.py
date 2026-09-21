@@ -18,9 +18,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--functional", type=int, choices=(0, 1, 2), required=True)
-    parser.add_argument(
-        "--spin", choices=("unpolarized", "polarized"), required=True
-    )
+    parser.add_argument("--spin", choices=("unpolarized", "polarized"), required=True)
     parser.add_argument("--iterations", type=int, default=3)
     args = parser.parse_args()
     write_if_changed(

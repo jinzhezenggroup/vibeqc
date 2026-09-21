@@ -43,9 +43,7 @@ def main() -> None:
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--functional", type=int, choices=(0, 1, 2), required=True)
-    parser.add_argument(
-        "--spin", choices=("unpolarized", "polarized"), required=True
-    )
+    parser.add_argument("--spin", choices=("unpolarized", "polarized"), required=True)
     parser.add_argument("--iterations", type=int, default=3)
     parser.add_argument("--architecture", action="append", default=[])
     parser.add_argument("--compile-architecture", action="append", default=[])
@@ -58,9 +56,7 @@ def main() -> None:
         "schema": "vibeqc.stationary-cuda-aot.v2",
         "functional": args.functional,
         "spin": args.spin,
-        "plan_identity": stationary_aot_plan_identity(
-            args.functional, spin=args.spin
-        ),
+        "plan_identity": stationary_aot_plan_identity(args.functional, spin=args.spin),
         "partition_iterations": args.iterations,
         "architectures": architectures,
         "compile_architectures": sorted(set(args.compile_architecture)),
