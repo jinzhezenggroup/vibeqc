@@ -36,7 +36,9 @@ def _validate_profile(profile: typing.Any) -> None:
             "fixtures",
         ]
     evidence = profile.get("provenance", {})
-    if any(not isinstance(evidence.get(key), str) or not evidence[key] for key in required):
+    if any(
+        not isinstance(evidence.get(key), str) or not evidence[key] for key in required
+    ):
         raise ValueError("complete value qualification evidence required")
 
 
