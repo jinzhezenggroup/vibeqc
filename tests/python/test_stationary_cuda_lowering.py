@@ -171,3 +171,32 @@ def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit()
     assert "vibeqc_xc_gradient_grid_policy::axis_jet" in gradient
     assert "namespace vibeqc_grid_adjoint {" in gradient
     assert "grid_response_adjoint.hpp" not in gradient
+
+
+@pytest.mark.parametrize(
+    ("environment", "expected"),
+    [
+        ({}, ()),
+        ({"VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS": "1"}, ()),
+        (
+            {"VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS": "8"},
+            ("--split-compile=8",),
+        ),
+    ],
+)
+def test_stationary_split_compile_options_are_explicit(
+    environment: dict[str, str], expected: tuple[str, ...]
+) -> None:
+    from vibeqc_compiler.method.stationary_cuda import _split_compile_options
+
+    assert _split_compile_options(environment) == expected
+
+
+@pytest.mark.parametrize("value", ["0", "33", "many"])
+def test_stationary_split_compile_options_fail_closed(value: str) -> None:
+    from vibeqc_compiler.method.stationary_cuda import _split_compile_options
+
+    with pytest.raises(ValueError, match="VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS"):
+        _split_compile_options(
+            {"VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS": value}
+        )
