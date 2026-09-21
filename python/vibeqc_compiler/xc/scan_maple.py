@@ -28,7 +28,13 @@ _R2SCAN_BINDINGS = {
     "params_a_dp2": "0.361",
 }
 _EXCHANGE_SPECS = {
-    "MGGA_X_SCAN": ("mgga_x_scan.mpl", "mgga_x_scan.c", _SCAN_BINDINGS, False, "scan_f"),
+    "MGGA_X_SCAN": (
+        "mgga_x_scan.mpl",
+        "mgga_x_scan.c",
+        _SCAN_BINDINGS,
+        False,
+        "scan_f",
+    ),
     "MGGA_X_R2SCAN": (
         "mgga_x_r2scan.mpl",
         "mgga_x_r2scan.c",
@@ -106,9 +112,7 @@ def scan_exchange(
 
     if component not in _EXCHANGE_SPECS:
         raise ValueError(f"unsupported SCAN-family exchange component {component!r}")
-    rho_a, rho_b, sigma_aa, _, sigma_bb, tau_a, tau_b = _spin_layout(
-        spec, variables
-    )
+    rho_a, rho_b, sigma_aa, _, sigma_bb, tau_a, tau_b = _spin_layout(spec, variables)
     module = _exchange_module(component)
     function_name = _EXCHANGE_SPECS[component][4]
     cx = graph.approximate_constant(
@@ -123,9 +127,7 @@ def scan_exchange(
         xs = sigma.pow(0.5) * density.pow(-4.0 / 3.0)
         ts = tau * density.pow(-5.0 / 3.0)
         terms.append(
-            -cx
-            * density.pow(4.0 / 3.0)
-            * module.call(graph, function_name, xs, 0, ts)
+            -cx * density.pow(4.0 / 3.0) * module.call(graph, function_name, xs, 0, ts)
         )
     return graph.sum(terms)
 
@@ -144,11 +146,7 @@ def scan_correlation(
         spec, variables
     )
     density = rho_a + rho_b
-    zeta = (
-        (rho_a - rho_b) / density
-        if spec.spin == "polarized"
-        else graph.constant(0)
-    )
+    zeta = (rho_a - rho_b) / density if spec.spin == "polarized" else graph.constant(0)
     rs = graph.approximate_constant(
         (3.0 / (4.0 * math.pi)) ** (1.0 / 3.0)
     ) * density.pow(-1.0 / 3.0)

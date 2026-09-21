@@ -117,7 +117,9 @@ def test_scan_adapter_composes_the_same_family_graph(
     feature_names = POLARIZED_FEATURES if spin == "polarized" else UNPOLARIZED_FEATURES
     variables = tuple(graph.variable(item) for item in feature_names)
     spec = functional(family, spin=spin)
-    energy = graph.sum(scan_component(graph, spec, variables, name) for name in components)
+    energy = graph.sum(
+        scan_component(graph, spec, variables, name) for name in components
+    )
     roots = _feature_roots(graph, energy, variables)
 
     manual_graph, manual_energy, manual_variables = energy_expression(spec)
