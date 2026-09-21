@@ -82,15 +82,33 @@ def _dynamic_module(node: ast.Call) -> str | None:
         and isinstance(function.value, ast.Name)
         and function.value.id == "importlib"
     )
-    if (
-        not (named or qualified)
-        or not node.args
-        or not isinstance(node.args[0], ast.Constant)
-    ):
+    builtin = isinstance(function, ast.Name) and function.id == "__import__"
+    if not (named or qualified or builtin):
         return None
-    value = node.args[0].value
-    if not isinstance(value, str):
+    name_node = (
+        node.args[0]
+        if node.args
+        else next((item.value for item in node.keywords if item.arg == "name"), None)
+    )
+    if not isinstance(name_node, ast.Constant) or not isinstance(name_node.value, str):
         return None
+    value = name_node.value
+    if builtin:
+        # Only literal absolute built-in imports are resolved here. Relative
+        # __import__ needs a globals/package environment, not import_module's
+        # second-argument package convention.
+        level = (
+            node.args[4]
+            if len(node.args) > 4
+            else next(
+                (item.value for item in node.keywords if item.arg == "level"), None
+            )
+        )
+        if level is not None and (
+            not isinstance(level, ast.Constant) or level.value != 0
+        ):
+            return None
+        return value if not value.startswith(".") else None
     if value.startswith("."):
         package_node = (
             node.args[1]

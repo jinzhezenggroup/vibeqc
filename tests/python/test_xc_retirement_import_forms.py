@@ -11,6 +11,10 @@ from tools.vibeqc_validation.xc_retirement import errors
     "source",
     [
         "from vibeqc_compiler.xc import expressions\n",
+        "import importlib\nimportlib.import_module(name='vibeqc_compiler.xc.expressions')\n",
+        "from importlib import import_module\nimport_module(name='.expressions', package='vibeqc_compiler.xc')\n",
+        "__import__('vibeqc_compiler.xc.expressions')\n",
+        "__import__(name='vibeqc_compiler.xc.rsh_expressions', level=0)\n",
         "from vibeqc_compiler.xc import rsh_expressions as legacy\n",
         "from . import wb97mv_expressions\n",
         "from importlib import import_module\nimport_module('.expressions', 'vibeqc_compiler.xc')\n",
