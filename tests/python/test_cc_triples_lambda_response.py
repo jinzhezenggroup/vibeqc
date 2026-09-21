@@ -294,8 +294,9 @@ def test_bound_corrected_response_cannot_be_replaced_after_validation(
 ) -> None:
     from dataclasses import FrozenInstanceError
 
-    _, _, _, bound, baseline, corrected, _ = _corrected_state()
-    response = BoundCCSDTResponse(bound, baseline, corrected, vir_chunk_size=1)
+    # The shared object is already independently validated. Testing frozen
+    # attribute assignment must not reconstruct its expensive numerical state.
+    *_, response = _corrected_state()
     value = 2 if field == "vir_chunk_size" else None
     with pytest.raises(FrozenInstanceError):
         setattr(response, field, value)

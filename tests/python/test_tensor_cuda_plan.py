@@ -59,6 +59,9 @@ def test_reuse_keeps_inputs_and_outputs_and_releases_dead_work() -> None:
     assert_disjoint_live_allocations(plan)
     assert plan.arena_bytes < sum(aligned(s.node.spec.size * 8) for s in plan.steps)
     assert len({s.offset for s in plan.steps}) < len(plan.steps)
+    storage = plan.storage_analysis()
+    assert storage.peak_by_space["device"] <= plan.arena_bytes
+    assert any(len(slot.owners) > 1 for slot in storage.slots)
     for _, i in plan.outputs:
         assert plan.steps[i].last_use == len(plan.steps)
     assert plan.peak_bytes == plan.device_bytes + plan.host_bytes
@@ -77,6 +80,26 @@ def test_alias_lifetime_follows_materialized_ancestors() -> None:
     assert sum(s.virtual for s in plan.steps) == 2
     assert_disjoint_live_allocations(plan)
     assert plan.steps[0].last_use == len(plan.steps)
+
+    i = Index("row", IndexSpace("row", "batch", 7))
+    j = Index("col", IndexSpace("col", "batch", 7))
+    owner = input_tensor("matrix", TensorSpec((i, j), role="input"))
+    alias = transpose(owner, (1, 0))
+    alias_plan = plan_cuda(
+        Program({"result": add(alias, alias)}),
+        TARGET,
+        schedule=TensorSchedule(views=True),
+    )
+    owner_index = next(
+        k for k, step in enumerate(alias_plan.steps) if step.node is owner
+    )
+    alias_index = next(
+        k for k, step in enumerate(alias_plan.steps) if step.node is alias
+    )
+    storage = alias_plan.storage_analysis()
+    owner_range = next(item for item in storage.ranges if item.owner == owner_index)
+    assert alias_index in owner_range.members
+    assert alias_index not in dict(storage.assignments)
 
 
 def test_fusion_preserves_checks_before_subsets() -> None:
