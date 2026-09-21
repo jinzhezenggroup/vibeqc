@@ -712,7 +712,6 @@ def load_stationary_aot_artifact(
     )
 
 
-
 _FIRST_DERIVATIVE_DECLARATION = """#include <cuda_runtime.h>
 extern __device__ bool first_derivative(
     unsigned kind, const double* e, const double* c, double* out);
