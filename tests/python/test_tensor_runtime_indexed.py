@@ -1,5 +1,8 @@
 """Runtime-indexed TensorIR domain primitives for #783."""
 
+import os
+from pathlib import Path
+
 import numpy as np
 import pytest
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
@@ -133,3 +136,67 @@ def test_runtime_indexed_generated_ad_fails_closed_until_transpose_rule_lands() 
         ValueError, match="no demand-driven JVP rule.*runtime_indexed_select"
     ):
         linearize(program, ["source"])
+
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_TENSOR_CUDA_TEST") != "1",
+    reason="requires explicit allocated-GPU opt-in",
+)
+def test_runtime_indexed_cuda_replays_changed_maps_and_recovers_bounds(
+    tmp_path: Path,
+) -> None:
+    from vibeqc.profiles import find_nvcc
+    from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
+    from vibeqc_compiler.tensor.cuda_resident import PreparedResident, compile_resident
+
+    nvcc = find_nvcc()
+    if nvcc is None:
+        pytest.fail("VIBEQC_TENSOR_CUDA_TEST requires a CUDA compiler")
+    compiler = CudaCompilerAdapter(
+        nvcc, cuda_target_info(os.environ.get("VIBEQC_TENSOR_ARCH", "sm_120"))
+    )
+    program = _program()
+    plan = plan_cuda(program, compiler.target)
+    initial = _feeds()
+    changed = _feeds(a=(0, 0, 3), b=(3, 2, 0))
+    bad = _feeds(a=(0, 4, 1))
+
+    expected_initial = execute(program, initial).outputs["selected"]
+    expected_changed = execute(program, changed).outputs["selected"]
+
+    artifact = compile_cuda(plan, compiler, tmp_path)
+    with PreparedCuda(plan, artifact) as prepared:
+        np.testing.assert_array_equal(
+            prepared.execute(initial).outputs["selected"], expected_initial
+        )
+        np.testing.assert_array_equal(
+            prepared.execute(changed).outputs["selected"], expected_changed
+        )
+        with pytest.raises(RuntimeError, match="runtime index out of bounds"):
+            prepared.execute(bad)
+        np.testing.assert_array_equal(
+            prepared.execute(initial).outputs["selected"], expected_initial
+        )
+
+    resident_artifact = compile_resident(plan, compiler, tmp_path)
+    with PreparedResident(plan, resident_artifact) as resident:
+        resident.upload(initial)
+        leases, _ = resident.run()
+        np.testing.assert_array_equal(
+            resident.download(leases["selected"]), expected_initial
+        )
+        resident.upload(changed)
+        leases, _ = resident.run()
+        np.testing.assert_array_equal(
+            resident.download(leases["selected"]), expected_changed
+        )
+        resident.upload(bad)
+        with pytest.raises(RuntimeError, match="runtime index out of bounds"):
+            resident.run()
+        resident.upload(initial)
+        leases, _ = resident.run()
+        np.testing.assert_array_equal(
+            resident.download(leases["selected"]), expected_initial
+        )
