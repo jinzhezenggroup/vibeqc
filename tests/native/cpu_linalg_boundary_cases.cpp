@@ -34,6 +34,24 @@ int main(int argc, char** argv) {
     }
     return 1;
   }
+  if (mode == "gemv_alpha_zero") {
+    double output[2]{2.0, -3.0};
+    cpu_gemv('N', 2, 3, &nan, &nan, output, 0.0, 4.0, plan);
+    return output[0] == 8.0 && output[1] == -12.0 ? 0 : 1;
+  }
+  if (mode == "gemv_empty_input") {
+    double output[3]{nan, nan, nan};
+    cpu_gemv('T', 0, 3, nullptr, nullptr, output, 1.0, 0.0, plan);
+    return output[0] == 0.0 && output[1] == 0.0 && output[2] == 0.0 ? 0 : 1;
+  }
+  if (mode == "gemv_extent") {
+    try {
+      cpu_gemv('N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, &a, &b, &c, 1.0, 0.0, plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
   if (mode == "syrk_alpha_zero") {
     double matrix[4]{nan, 9.0, nan, nan};
     cpu_syrk('L', 'N', 2, 1, &nan, matrix, 0.0, 0.0, plan);

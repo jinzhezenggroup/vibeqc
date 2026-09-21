@@ -48,6 +48,13 @@ void cpu_gemm(char a_trans, char b_trans, std::size_t m, std::size_t n, std::siz
               const double* a, const double* b, double* c, double alpha = 1.0, double beta = 0.0,
               const CpuLinalgPlan& plan = {});
 
+/** Matrix-vector product with row-major A.
+ * `trans == 'N'` consumes an m-by-n A and n-vector x, producing an m-vector y.
+ * `trans == 'T'` consumes the same storage and an m-vector x, producing an n-vector y.
+ */
+void cpu_gemv(char trans, std::size_t m, std::size_t n, const double* a, const double* x, double* y,
+              double alpha = 1.0, double beta = 0.0, const CpuLinalgPlan& plan = {});
+
 /** Symmetric rank-k update of the selected triangle.
  * `trans == 'N'` consumes an n-by-k row-major A; `trans == 'T'` consumes k-by-n.
  * Only the triangle selected by `uplo` is read from or written to in C.

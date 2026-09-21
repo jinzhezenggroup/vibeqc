@@ -39,6 +39,12 @@ bool transpose(char value) {
   throw std::invalid_argument("CPU GEMM transpose must be N or T");
 }
 
+bool gemv_transpose(char value) {
+  if (value == 'N' || value == 'n') return false;
+  if (value == 'T' || value == 't') return true;
+  throw std::invalid_argument("CPU GEMV transpose must be N or T");
+}
+
 bool syrk_transpose(char value) {
   if (value == 'N' || value == 'n') return false;
   if (value == 'T' || value == 't') return true;
@@ -101,6 +107,20 @@ void scalar_gemm(bool ta, bool tb, std::size_t m, std::size_t n, std::size_t k, 
       }
       c[i * n + j] = beta == 0.0 ? alpha * sum : alpha * sum + beta * c[i * n + j];
     }
+  }
+}
+
+void scalar_gemv(bool trans, std::size_t m, std::size_t n, const double* a, const double* x,
+                 double* y, double alpha, double beta) {
+  const std::size_t output_size = trans ? n : m;
+  const std::size_t input_size = trans ? m : n;
+  for (std::size_t i = 0; i < output_size; ++i) {
+    double sum = 0.0;
+    for (std::size_t j = 0; j < input_size; ++j) {
+      const double av = trans ? a[j * n + i] : a[i * n + j];
+      sum += av * x[j];
+    }
+    y[i] = beta == 0.0 ? alpha * sum : alpha * sum + beta * y[i];
   }
 }
 
@@ -365,6 +385,21 @@ void openblas_gemm(bool ta, bool tb, std::size_t m, std::size_t n, std::size_t k
 #endif
 }
 
+void openblas_gemv(bool trans, std::size_t m, std::size_t n, const double* a, const double* x,
+                   double* y, double alpha, double beta, const CpuLinalgPlan& plan) {
+  const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  if (m > limit || n > limit) throw std::length_error("OpenBLAS GEMV dimensions exceed int range");
+  OpenBlasThreadGuard guard(plan);
+  const auto transpose_a = trans ? CblasTrans : CblasNoTrans;
+#if VIBEQC_OPENBLAS_SCIPY_PREFIX
+  scipy_cblas_dgemv(CblasRowMajor, transpose_a, static_cast<int>(m), static_cast<int>(n), alpha, a,
+                    static_cast<int>(n), x, 1, beta, y, 1);
+#else
+  cblas_dgemv(CblasRowMajor, transpose_a, static_cast<int>(m), static_cast<int>(n), alpha, a,
+              static_cast<int>(n), x, 1, beta, y, 1);
+#endif
+}
+
 void openblas_syrk(bool upper, bool trans, std::size_t n, std::size_t k, const double* a, double* c,
                    double alpha, double beta, const CpuLinalgPlan& plan) {
   const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
@@ -563,6 +598,41 @@ void cpu_gemm(char a_trans, char b_trans, std::size_t m, std::size_t n, std::siz
   }
 #endif
   scalar_gemm(ta, tb, m, n, k, a, b, c, alpha, beta);
+}
+
+void cpu_gemv(char trans, std::size_t m, std::size_t n, const double* a, const double* x, double* y,
+              double alpha, double beta, const CpuLinalgPlan& plan) {
+  const bool transposed = gemv_transpose(trans);
+  validate_plan(plan);
+  const std::size_t output_size = transposed ? n : m;
+  const std::size_t input_size = transposed ? m : n;
+  if (!output_size) return;
+  checked_matrix_elements(output_size, 1);
+  if (!y) throw std::invalid_argument("CPU GEMV received null output storage");
+  if (!input_size || alpha == 0.0) {
+    if (beta == 0.0)
+      std::fill(y, y + output_size, 0.0);
+    else if (beta != 1.0)
+      for (std::size_t i = 0; i < output_size; ++i) y[i] *= beta;
+    return;
+  }
+  checked_matrix_elements(m, n);
+  if (!a || !x) throw std::invalid_argument("CPU GEMV received null input storage");
+
+  CpuLinalgProvider provider = plan.provider;
+  if (provider == CpuLinalgProvider::automatic) {
+    provider =
+        fits_openblas(m, n, 1) ? resolve_cpu_linalg_provider(plan) : CpuLinalgProvider::scalar;
+  } else {
+    provider = resolve_cpu_linalg_provider(plan);
+  }
+#if VIBEQC_HAS_OPENBLAS
+  if (provider == CpuLinalgProvider::openblas) {
+    openblas_gemv(transposed, m, n, a, x, y, alpha, beta, plan);
+    return;
+  }
+#endif
+  scalar_gemv(transposed, m, n, a, x, y, alpha, beta);
 }
 
 void cpu_syrk(char uplo, char trans, std::size_t n, std::size_t k, const double* a, double* c,
