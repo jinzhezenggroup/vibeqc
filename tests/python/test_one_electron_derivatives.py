@@ -90,7 +90,6 @@ def test_all_cartesian_derivatives_match_independent_libcint(
             )
 
 
-
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
 @pytest.mark.parametrize("angular", [(4, 0), (0, 4), (4, 4)])
 def test_selected_g_cartesian_derivatives_match_independent_libcint(
@@ -126,9 +125,7 @@ def test_selected_g_cartesian_derivatives_match_independent_libcint(
         "nuclear_attraction": ("rinv", -2.3),
     }[family]
     with mol.with_rinv_origin(positions[2]):
-        first = -factor * mol.intor_by_shell(
-            f"int1e_ip{operator}_cart", (0, 1), comp=3
-        )
+        first = -factor * mol.intor_by_shell(f"int1e_ip{operator}_cart", (0, 1), comp=3)
         second = -factor * mol.intor_by_shell(
             f"int1e_ip{operator}_cart", (1, 0), comp=3
         ).transpose(0, 2, 1)
@@ -138,9 +135,7 @@ def test_selected_g_cartesian_derivatives_match_independent_libcint(
     reference /= scales[:n][None, None, :, None] * scales[n:][None, None, None, :]
     first_indices = sorted({0, len(components[0]) // 2, len(components[0]) - 1})
     second_indices = sorted({0, len(components[1]) // 2, len(components[1]) - 1})
-    actual_positions = (
-        positions if family == "nuclear_attraction" else positions[:2]
-    )
+    actual_positions = positions if family == "nuclear_attraction" else positions[:2]
     for i in first_indices:
         for j in second_indices:
             actual = evaluate_one_electron_derivative_primitive(
