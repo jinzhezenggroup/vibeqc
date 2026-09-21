@@ -6,6 +6,7 @@ tests are run manually on qz and record their results as JSON evidence.
 
 import typing
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -435,6 +436,97 @@ def test_build_tile_program_refuses_invalid_inputs() -> None:
         build_tile_triples_program(2, 3, vir_chunk=(-1, 2))
     with pytest.raises(ValueError):
         build_tile_triples_program(2, 3, vir_chunk=(3, 1))
+
+
+def test_cuda_runtime_domain_reuses_one_plan_artifact_and_owner(
+    tmp_path: typing.Any,
+) -> None:
+    """Multiple logical tiles must not rebuild the scientific CUDA program."""
+    from tools.vibeqc_cc.triples_cuda import CudaTriplesTiles, TriplesTileConfig
+
+    arrays = dict(zip(INPUT_NAMES, _random_case(2, 3, 402), strict=True))
+    config = TriplesTileConfig(2, 3, vir_chunk_size=1, max_bytes=256 << 20)
+    compiler = SimpleNamespace(target=object())
+    executor = CudaTriplesTiles(config, compiler, tmp_path)
+    calls: dict[str, typing.Any] = {
+        "plan": 0,
+        "compile": 0,
+        "owners": 0,
+        "uploads": [],
+        "runs": 0,
+    }
+    plan = SimpleNamespace(peak_bytes=1234, identity="runtime-plan")
+    artifact = SimpleNamespace(metadata={"key": "runtime-artifact"})
+
+    def fake_plan(
+        program: typing.Any, target: typing.Any, *, max_bytes: typing.Any
+    ) -> typing.Any:
+        calls["plan"] += 1
+        assert target is compiler.target
+        assert max_bytes == config.max_bytes
+        assert any(
+            node.op == "runtime_indexed_select" for node in program.live_nodes
+        )
+        return plan
+
+    def fake_compile(
+        current_plan: typing.Any, current_compiler: typing.Any, cache: typing.Any
+    ) -> typing.Any:
+        calls["compile"] += 1
+        assert current_plan is plan
+        assert current_compiler is compiler
+        assert cache == tmp_path
+        return artifact
+
+    class FakeResident:
+        def __init__(
+            self,
+            current_plan: typing.Any,
+            current_artifact: typing.Any,
+            *,
+            device: typing.Any,
+        ) -> None:
+            calls["owners"] += 1
+            assert current_plan is plan
+            assert current_artifact is artifact
+            assert device == 0
+            self.device = {"test_only": True}
+            self._last_value = 0.0
+
+        def __enter__(self) -> typing.Any:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def upload(self, feeds: typing.Any) -> None:
+            calls["uploads"].append(tuple(sorted(feeds)))
+            if "active" in feeds:
+                self._last_value = float(np.sum(feeds["active"]))
+
+        def run(self, *, profile: typing.Any = False) -> typing.Any:
+            assert profile is False
+            calls["runs"] += 1
+            return {"triples_energy": object()}, {}
+
+        def download(self, _lease: typing.Any) -> np.ndarray:
+            return np.asarray(self._last_value)
+
+    executor._plan_cuda = fake_plan
+    executor._compile_resident = fake_compile
+    executor._PreparedResident = FakeResident
+    result = executor.run_tiles(arrays)
+
+    assert calls["plan"] == calls["compile"] == calls["owners"] == 1
+    assert calls["runs"] == result.tile_count == 3
+    assert calls["uploads"][0] == tuple(sorted(INPUT_NAMES))
+    assert all(
+        upload == ("a_map", "active", "b_map", "c_map", "degeneracy")
+        for upload in calls["uploads"][1:]
+    )
+    assert result.plan_identity == "runtime-plan"
+    assert result.artifact_keys == ["runtime-artifact"]
+    assert result.peak_bytes_per_tile == [1234] * result.tile_count
 
 
 def test_tile_enumerator_refuses_invalid_inputs() -> None:
