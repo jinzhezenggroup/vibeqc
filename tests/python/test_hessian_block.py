@@ -19,14 +19,39 @@ from tools.vibeqc_validation.hessian_fixtures import fixture_inputs
 
 
 @pytest.fixture(scope="module")
-def h2_case() -> typing.Any:
+def h2_state() -> typing.Any:
     with NativeSource(**fixture_inputs("h2")) as source:
         state = NativeRHFState.from_source(source)
-        dense = analytic_hessian(state)["total"]
         rng = np.random.default_rng(1804)
         directions = rng.normal(size=(3, state.nat, 3))
         directions /= np.linalg.norm(directions.reshape(3, -1), axis=1)[:, None, None]
-        yield state, dense, directions
+        yield state, directions
+
+
+@pytest.fixture(scope="module")
+def h2_case(h2_state: typing.Any) -> typing.Any:
+    # Only numerical oracle consumers need to materialize a dense Hessian.
+    # Rejection/preflight tests must not pay for an oracle they never inspect.
+    state, directions = h2_state
+    return state, analytic_hessian(state)["total"], directions
+
+
+def test_preflight_fixture_never_evaluates_a_dense_hessian(
+    monkeypatch: typing.Any,
+) -> None:
+    """Keep the rejection-only fixture independent of the expensive dense oracle."""
+
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+        pytest.fail("preflight fixture materialized an unused dense Hessian")
+
+    monkeypatch.setitem(globals(), "analytic_hessian", forbidden)
+    setup = h2_state.__wrapped__()
+    try:
+        state, directions = next(setup)
+        assert state.nat == 2
+        assert directions.shape == (3, 2, 3)
+    finally:
+        setup.close()
 
 
 def test_hvp_many_recycled_matches_dense_columns_and_reports_shared_solve(
@@ -86,11 +111,11 @@ def test_full_hessian_blocked_matches_native_dense_assembly(
 
 
 def test_block_budget_rejects_before_first_integral_work(
-    h2_case: typing.Any, monkeypatch: typing.Any
+    h2_state: typing.Any, monkeypatch: typing.Any
 ) -> None:
     from tools.vibeqc_hessian import block
 
-    state, _, directions = h2_case
+    state, directions = h2_state
 
     def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("insufficient block budget reached provider work")
@@ -101,11 +126,11 @@ def test_block_budget_rejects_before_first_integral_work(
 
 
 def test_full_output_budget_rejects_without_partial_hessian(
-    h2_case: typing.Any, monkeypatch: typing.Any
+    h2_state: typing.Any, monkeypatch: typing.Any
 ) -> None:
     from tools.vibeqc_hessian import block
 
-    state, _, _ = h2_case
+    state, _ = h2_state
 
     def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         raise AssertionError("oversized full Hessian request started a block")
@@ -216,14 +241,14 @@ def test_full_hessian_default_block_size_adapts_to_coordinate_count(
 
 
 def test_cuda_relaxation_budget_rejects_before_response_work(
-    h2_case: typing.Any, monkeypatch: typing.Any
+    h2_state: typing.Any, monkeypatch: typing.Any
 ) -> None:
     from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
     from vibeqc_compiler.common.cuda_target import cuda_target_info
 
     from tools.vibeqc_hessian import block
 
-    state, _, directions = h2_case
+    state, directions = h2_state
     compiler = CudaCompilerAdapter(Path("/bin/false"), cuda_target_info("sm_80"))
 
     def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:

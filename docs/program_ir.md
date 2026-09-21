@@ -114,6 +114,47 @@ owners. Tests require the complete prepared endpoint to run with the legacy
 `scalar_values` repacking entry point disabled and verify that the native scalar
 input shares storage with the DFT-owned feature buffer.
 
+## Structured bounded solver regions
+
+`vibeqc_compiler.common.solver_region.SolverRegion` adds a structured loop
+contract **above** serial ProgramIR without changing ProgramIR schema v2. The
+body remains ordinary SSA: immutable inputs are declared as invariants and every
+loop-carried value is an explicit `current -> next` pair. `max_steps` is a
+strict finite bound; the compiler does not invent an unbounded while loop.
+
+Convergence and failure predicates carry stable provider-owned identities rather
+than embedding SCF/CC policy in generic compiler code. Checkpoints state exactly
+which buffers may be observed at entry, per-iteration, success, failure or exit,
+and `host_visible` is explicit. Scalar completion is the default; a ragged
+consumer must provide an explicit per-item active-mask output.
+
+Derivative behavior is also explicit. `derivative_policy` is either
+`unsupported` or `custom`; a custom region must register identified first-order
+implicit/stationary JVP/VJP rules. An unregistered derivative request raises
+instead of tracing or retaining iteration history. Registering first order does
+not imply higher-order support.
+
+The region resource request reuses the body's boundary allocation once across
+all bounded steps; `max_steps` does not multiply reusable capacities. As with
+ProgramIR, provider-internal solver history, library scratch and caller-retained
+checkpoint payloads remain outside that boundary unless a future consumer exposes
+them as named owners.
+
+The first existing endpoint represented by this contract is conventional RCCSD
+in `tools.vibeqc_cc.solver.PreparedCCSD.solver_region`. Its numerical loop is
+unchanged: the region records the existing optimized TensorIR equation identity,
+DIIS/control state as explicit carried dependencies, the exact
+`max_iterations + 1` evaluation bound, the existing energy/residual plus fresh
+expanded-equation acceptance rule, nonfinite failure semantics and host-visible
+publication points. User-supplied initial amplitudes remain the ordinary solver
+initial state. The solver result records the region identity and bound.
+
+This first slice is descriptive: execution still uses the established Python
+RCCSD loop, so it makes **no host-overhead or speedup claim**. A future captured
+or device-controlled lowering must retain the ordinary fallback and provide
+matched endpoint evidence before promotion. See
+[the structured-region architecture note](../.agents/notes/implemented/architecture/2026-09-21-structured-solver-regions.md).
+
 ## Shared storage analysis
 
 The first #831 compiler slice adds `ProgramIR.storage_analysis()` on top of the
@@ -132,7 +173,8 @@ cross-subsystem materialization removal.
 
 ```bash
 PYTHONPATH=python:. python -m pytest -q \
-  tests/python/test_program_ir.py tests/python/test_program_ir_xc.py \
+  tests/python/test_program_ir.py tests/python/test_solver_region.py \
+  tests/python/test_cc_solver.py tests/python/test_program_ir_xc.py \
   tests/python/test_xc_contractions_native.py
 PYTHONPATH=python:. python tools/check_compiler_structure.py
 ```

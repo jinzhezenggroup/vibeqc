@@ -11,12 +11,18 @@ import typing
 from dataclasses import replace
 from fractions import Fraction
 
+from vibeqc_compiler.common.liveness import EffectKind
 from vibeqc_compiler.common.pass_manager import PassManager, PassStage
+from vibeqc_compiler.common.value_numbering import (
+    ValueNumberingDiagnostics,
+    ValueNumberTable,
+)
 
 from .interpreter import execute
-from .ir import Node, _infer, constant
+from .ir import PRIMITIVES, Node, _infer, constant
 from .precision import precision_execution_contracts, remap_precision_execution
 from .program import Program, hash_node
+from .types import spec_to_payload
 
 PASSES = (
     "dead_nodes",
@@ -172,6 +178,81 @@ def _canonicalize_view(node: Node) -> Node:
     return node
 
 
+def _tensor_effect(node: Node) -> EffectKind:
+    """Map validated TensorIR primitives onto the shared effect contract."""
+    return (
+        EffectKind.PURE
+        if node.op in PRIMITIVES or node.op in {"input", "constant"}
+        else EffectKind.OPAQUE
+    )
+
+
+def _same_semantic_value(left: Node, right: Node) -> bool:
+    """Guard a value-number bucket hit with complete TensorIR semantics."""
+    return (
+        left.op == right.op
+        and spec_to_payload(left.spec, logical=True)
+        == spec_to_payload(right.spec, logical=True)
+        and left.attributes == right.attributes
+        and len(left.inputs) == len(right.inputs)
+        and all(a is b for a, b in zip(left.inputs, right.inputs, strict=True))
+    )
+
+
+def _propagate_identity(node: Node) -> Node:
+    """Return a proven value-preserving source, without IEEE reassociation."""
+    if node.op == "transpose" and node.attrs["axes"] == tuple(
+        range(len(node.spec.indices))
+    ):
+        return node.inputs[0]
+    return _canonicalize_algebra(_canonicalize_view(node))
+
+
+def _value_number(program: Program) -> tuple[Program, ValueNumberingDiagnostics]:
+    """Run copy propagation plus effect-aware GVN over one TensorIR program."""
+    table = ValueNumberTable[Node](equivalent=_same_semantic_value)
+    replacements: dict[Node, Node] = {}
+    hashes: dict[Node, str] = {}
+    numbers: dict[Node, int] = {}
+    execution_contracts = precision_execution_contracts(program)
+
+    for node in program.nodes:
+        inputs = tuple(replacements[child] for child in node.inputs)
+        updated = node
+        if inputs != node.inputs:
+            spec = _infer(node.op, inputs, node.attrs, node.spec)
+            updated = Node(node.op, inputs, spec, node.attributes)
+
+        updated = _propagate_identity(updated)
+        source_number = numbers.get(updated)
+        if source_number is not None:
+            decision = table.copy(source_number, updated)
+        else:
+            digest = hash_node(updated, hashes)
+            decision = table.number(
+                (digest, execution_contracts.get(node)),
+                updated,
+                effect=_tensor_effect(updated),
+            )
+            if not decision.reused:
+                hashes[decision.representative] = digest
+                numbers[decision.representative] = decision.number
+
+        replacements[node] = decision.representative
+        numbers.setdefault(decision.representative, decision.number)
+
+    outputs = {name: replacements[node] for name, node in program.outputs.items()}
+    definitions = tuple(replacements[node] for node in program.definitions)
+    return (
+        Program(
+            outputs,
+            definitions,
+            remap_precision_execution(program, replacements, outputs, definitions),
+        ),
+        table.diagnostics,
+    )
+
+
 def rewrite(program: Program, pass_name: str) -> Program:
     """Apply one named pass, preserving the pre-rewrite program for comparison."""
     if pass_name not in PASSES:
@@ -179,14 +260,15 @@ def rewrite(program: Program, pass_name: str) -> Program:
     if pass_name == "dead_nodes":
         live = set(program.live_nodes)
         definitions = tuple(node for node in program.definitions if node in live)
-        replacements = {node: node for node in program.live_nodes}
+        replacements = {node: node for node in program.nodes}
         outputs = dict(program.outputs)
         provenance = remap_precision_execution(
             program, replacements, outputs, definitions
         )
-        return Program(outputs, definitions=definitions, provenance=provenance)
-    execution_contracts = precision_execution_contracts(program)
-    replacements, interned, hashes, execution_classes = {}, {}, {}, {}
+        return Program(outputs, definitions, provenance)
+    if pass_name == "exact_cse":
+        return _value_number(program)[0]
+    replacements = {}
     for node in program.nodes:
         inputs = tuple(replacements[n] for n in node.inputs)
         updated = node
@@ -202,25 +284,14 @@ def rewrite(program: Program, pass_name: str) -> Program:
             updated = _canonicalize_algebra(updated)
         elif pass_name == "scalar_constants":
             updated = _fold(updated)
-        elif pass_name == "exact_cse":
-            # This content address contains the dtype, spaces/ranges/spins,
-            # symmetry declarations, parameter role, and differentiability.
-            # Equal shapes alone cannot intern two different amplitude types.
-            hashes[updated] = hash_node(updated, hashes)
-            key = (
-                hashes[updated],
-                execution_contracts.get(node),
-                tuple(execution_classes[child] for child in updated.inputs),
-            )
-            updated = interned.setdefault(key, updated)
-            # Compact bottom-up classes preserve transitive execution semantics
-            # without recursively hashing a shared DAG as an exponential tree.
-            execution_classes.setdefault(updated, len(execution_classes))
         replacements[node] = updated
     outputs = {name: replacements[n] for name, n in program.outputs.items()}
     definitions = tuple(replacements[n] for n in program.definitions)
-    provenance = remap_precision_execution(program, replacements, outputs, definitions)
-    return Program(outputs, definitions, provenance)
+    return Program(
+        outputs,
+        definitions,
+        remap_precision_execution(program, replacements, outputs, definitions),
+    )
 
 
 def _program_fingerprint(program: Program) -> str:
@@ -228,8 +299,16 @@ def _program_fingerprint(program: Program) -> str:
     return hashlib.sha256(program.dumps().encode()).hexdigest()
 
 
-def _pass(pass_name: str) -> typing.Callable[[Program], Program]:
+def _pass(
+    pass_name: str,
+    diagnostics: list[ValueNumberingDiagnostics] | None = None,
+) -> typing.Callable[[Program], Program]:
     def apply(program: Program) -> Program:
+        if pass_name == "exact_cse":
+            result, stats = _value_number(program)
+            if diagnostics is not None:
+                diagnostics.append(stats)
+            return result
         return rewrite(program, pass_name)
 
     return apply
@@ -322,51 +401,62 @@ def _pruning_diagnostics(
     }
 
 
-_OPTIMIZER = PassManager(
-    name="tensor.optimize",
-    version=2,
-    stages=(
-        PassStage("dead_nodes", 1, _pass("dead_nodes"), invalidates=("liveness",)),
-        PassStage("identity_transposes", 1, _pass("identity_transposes")),
-        PassStage(
-            "view_canonicalization",
-            2,
-            _pass("view_canonicalization"),
-            invalidates=("liveness",),
+def _optimizer(
+    diagnostics: list[ValueNumberingDiagnostics] | None = None,
+) -> PassManager[Program]:
+    return PassManager(
+        name="tensor.optimize",
+        version=4,
+        stages=(
+            PassStage("dead_nodes", 1, _pass("dead_nodes"), invalidates=("liveness",)),
+            PassStage("identity_transposes", 1, _pass("identity_transposes")),
+            PassStage(
+                "view_canonicalization",
+                2,
+                _pass("view_canonicalization"),
+                invalidates=("liveness",),
+            ),
+            PassStage(
+                "algebraic_canonicalization",
+                1,
+                _pass("algebraic_canonicalization"),
+                invalidates=("liveness",),
+            ),
+            PassStage(
+                "exact_cse",
+                2,
+                _pass("exact_cse", diagnostics),
+                invalidates=("liveness",),
+            ),
+            PassStage(
+                "scalar_constants",
+                2,
+                _pass("scalar_constants"),
+                invalidates=("liveness",),
+            ),
+            # Folding may expose new value-number and liveness opportunities.
+            PassStage(
+                "post_fold_exact_cse",
+                2,
+                _pass("exact_cse", diagnostics),
+                invalidates=("liveness",),
+            ),
+            PassStage(
+                "post_fold_dead_nodes",
+                1,
+                _pass("dead_nodes"),
+                invalidates=("liveness",),
+            ),
         ),
-        PassStage(
-            "algebraic_canonicalization",
-            1,
-            _pass("algebraic_canonicalization"),
-            invalidates=("liveness",),
-        ),
-        PassStage("exact_cse", 1, _pass("exact_cse"), invalidates=("liveness",)),
-        PassStage(
-            "scalar_constants",
-            2,
-            _pass("scalar_constants"),
-            invalidates=("liveness",),
-        ),
-        # Folding may expose duplicates; final CSE/DCE remains conservative.
-        PassStage(
-            "post_fold_exact_cse", 1, _pass("exact_cse"), invalidates=("liveness",)
-        ),
-        PassStage(
-            "post_fold_dead_nodes", 1, _pass("dead_nodes"), invalidates=("liveness",)
-        ),
-    ),
-    fingerprint=_program_fingerprint,
-)
+        fingerprint=_program_fingerprint,
+    )
 
 
-def optimize(
-    program: Program,
-    *,
-    requested_outputs: typing.Any = None,
-) -> Program:
-    """Specialize output demand, run cleanup, and verify a minimal backend input."""
+def optimize(program: Program, *, requested_outputs: typing.Any = None) -> Program:
+    """Run the initial TensorIR pipeline through the shared pass manager."""
     specialized = _project_requested_outputs(program, requested_outputs)
-    run = _OPTIMIZER.run(specialized)
+    value_numbering_diagnostics: list[ValueNumberingDiagnostics] = []
+    run = _optimizer(value_numbering_diagnostics).run(specialized)
     result = run.value
     pruning = _pruning_diagnostics(program, specialized, result)
     return Program(
@@ -375,9 +465,17 @@ def optimize(
             **result.provenance,
             "original_logical_hash": program.logical_hash,
             "specialized_logical_hash": specialized.logical_hash,
+            "pruning_diagnostics": pruning,
             # Keep the established rewrite inventory for compatibility.
             "rewrites": list(PASSES) + ["exact_cse", "dead_nodes"],
             "optimizer_identity": run.pipeline_identity,
+            "optimizer_diagnostics": {
+                "nodes_before": len(program.nodes),
+                "nodes_after": len(result.nodes),
+                "value_numbering": [
+                    stats.to_payload() for stats in value_numbering_diagnostics
+                ],
+            },
             "optimizer_passes": [
                 {
                     "name": record.name,
@@ -386,6 +484,5 @@ def optimize(
                 }
                 for record in run.records
             ],
-            "pruning_diagnostics": pruning,
         },
     )

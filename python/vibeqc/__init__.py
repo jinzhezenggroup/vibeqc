@@ -47,6 +47,21 @@ from .dispersion import (
 )
 from .elements import ElectronState, electron_state
 from .fock import FockBuildSpec, FockEvaluation, FockPlan, FockScfResult, FockTerm
+from .force_aware_numerics import (
+    AdaptiveNumericsPolicy,
+    AdaptiveNumericsState,
+    ContributionLedger,
+    DiscreteTransition,
+    NumericalContribution,
+    NumericalDecision,
+    NumericalEstimate,
+    NumericalLevel,
+    NumericalTargetModel,
+    ObservableDelta,
+    PairedCalibrationSample,
+    PairedDifferenceEstimator,
+    TargetErrorBudget,
+)
 from .ks import FunctionalSpec, KsOptions
 from .ks_diagnostics import (
     KsDiagnostic,
@@ -91,6 +106,8 @@ del _install_native_loader
 
 __all__ = [
     "AccuracyAssessment",
+    "AdaptiveNumericsPolicy",
+    "AdaptiveNumericsState",
     "Atom",
     "BasisProvenance",
     "BasisSet",
@@ -98,6 +115,7 @@ __all__ = [
     "BatchItemResult",
     "BatchResult",
     "Calculator",
+    "ContributionLedger",
     "CorrelationResult",
     "D3CorrectionBatch",
     "D3CorrectionResult",
@@ -106,6 +124,7 @@ __all__ = [
     "D4CorrectionResult",
     "D4RuntimeDiagnostic",
     "DensityFittingMetricDiagnostic",
+    "DiscreteTransition",
     "EigensolverDiagnostic",
     "ElectronState",
     "ElementBasis",
@@ -130,8 +149,16 @@ __all__ = [
     "KsTransportDiagnostic",
     "MeanFieldEvaluation",
     "MethodCapabilities",
+    "NumericalContribution",
+    "NumericalDecision",
+    "NumericalEstimate",
+    "NumericalLevel",
+    "NumericalTargetModel",
+    "ObservableDelta",
     "ObservableTarget",
     "OccupiedProjection",
+    "PairedCalibrationSample",
+    "PairedDifferenceEstimator",
     "PppsQueueProfile",
     "PreparedBatch",
     "Primitive",
@@ -152,6 +179,7 @@ __all__ = [
     "Shell",
     "ShellClassProfileEntry",
     "TargetAccuracy",
+    "TargetErrorBudget",
     "assemble_fixed_density_exchange",
     "basis_capability",
     "compare_observables",

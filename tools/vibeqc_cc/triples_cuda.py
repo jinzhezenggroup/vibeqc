@@ -232,7 +232,7 @@ class CudaTriplesTiles:
         artifact = self._compile_resident(plan, self.compiler, self.cache)
         timing["compile_s"] += time.perf_counter() - t0
         runtime_batch_count = sum(
-            (tile.ntriples + capacity - 1) // capacity for tile in tiles
+            tile.runtime_domain.page_count(capacity) for tile in tiles
         )
         timing["runtime_batch_count"] = runtime_batch_count
         peak_bytes_per_tile = [plan.peak_bytes] * len(tiles)
