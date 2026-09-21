@@ -175,15 +175,19 @@ def d3_resource_request(
     )
 
     device_bytes = 0
+    workspace_bytes = byte_product(
+        16,
+        maximum_atoms if backend == "cpu" else total_atoms,
+        8,
+    )
     if backend == "cpu":
         execution_host_bytes = checked_bytes(
             execution_host_bytes
-            + byte_product(16, maximum_atoms, 8)
+            + workspace_bytes
             + byte_product(3, maximum_atoms, 8),
             "D3 CPU execution host bytes",
         )
     else:
-        workspace_bytes = byte_product(16, total_atoms, 8)
         device_bytes = checked_bytes(
             byte_product(len(counts) + 1, 4)
             + byte_product(total_atoms, 4)
@@ -253,7 +257,8 @@ def d3_resource_request(
             ("plan_host_bytes", str(plan_host_bytes)),
             ("execution_host_bytes", str(execution_host_bytes)),
             ("device_bytes", str(device_bytes)),
-            ("table_bytes", str(_D3_TABLE_BYTES if backend == "cuda" else 0)),
+            ("table_bytes", str(_D3_TABLE_BYTES)),
+            ("workspace_bytes", str(workspace_bytes)),
         ),
     )
     return ResourceRequest(name, identity, (candidate,), exclusions)
