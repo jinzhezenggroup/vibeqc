@@ -266,7 +266,9 @@ def test_weight_fusion_orchestration_runs_without_a_device(
     ]
     owner.reduced.assert_called_once_with()
     assert result.work["tensor_executions"] == 0
-    assert result.work["stationary_final_reduction"] == "native-seven-source-device-sum-v1"
+    assert (
+        result.work["stationary_final_reduction"] == "native-seven-source-device-sum-v1"
+    )
     assert result.work["stationary_weight_tensor_executions"] == 0
     assert result.work["stationary_weight_roundtrip_bytes"] == 0
     assert result.work["stationary_state_dw_upload_bytes"] == 16

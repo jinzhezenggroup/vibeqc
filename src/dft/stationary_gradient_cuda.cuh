@@ -232,8 +232,8 @@ int stationary_finish_reduced(void* pointer, double* output, size_t count, char*
       throw std::invalid_argument("invalid reduced output");
     check(*p);
     auto stream = p->context.stream;
-    source_reduce<<<blocks(3 * p->atoms, 64), 64, 0, stream>>>(
-        p->sources, p->atoms, p->partial, p->context.error);
+    source_reduce<<<blocks(3 * p->atoms, 64), 64, 0, stream>>>(p->sources, p->atoms, p->partial,
+                                                               p->context.error);
     ++p->launches;
     finished(*p, stream);
     std::vector<double> candidate(count);
