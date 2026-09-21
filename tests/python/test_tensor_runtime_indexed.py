@@ -8,6 +8,7 @@ from vibeqc_compiler.tensor import (
     IndexSpace,
     Program,
     TensorSpec,
+    dot_test,
     execute,
     input_tensor,
     linearize,
@@ -111,6 +112,15 @@ def test_runtime_indexed_cuda_plan_uses_runtime_maps_not_static_tables() -> None
     # The mathematical graph is independent of map values: changing runtime
     # coordinates requires no re-lowering or new artifact identity.
     assert program.logical_hash == _program().logical_hash
+
+
+def test_runtime_indexed_reference_adjoint_matches_runtime_maps() -> None:
+    program = _program()
+    feeds = _feeds(a=(3, 1, 3), b=(0, 2, 0))
+    tangent = {"source": np.linspace(-1.0, 1.0, feeds["source"].size).reshape(feeds["source"].shape)}
+    cotangent = {"selected": np.arange(6, dtype=np.float64).reshape(3, 2)}
+    result = dot_test(program, feeds, tangent, cotangent)
+    assert result.passed, result
 
 
 def test_runtime_indexed_generated_ad_fails_closed_until_transpose_rule_lands() -> None:
