@@ -63,3 +63,17 @@ inventory and a non-import path-call control are also exercised.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Integration with already merged qualification families
+
+The review integration at master `6b965bd7` includes B88, P86/PZ and VWN
+qualification tests that intentionally retain the audited expression as a
+second oracle. Record these three existing test-only edges in the initial
+ceiling rather than rewriting their independent oracle or permitting a new
+production import. The production/runtime ceiling is unchanged. All existing
+new-consumer, dynamic-import and final-no-consumer rejection tests remain.
+The shared source registry is inherited from that same verified master tree;
+no numerical data or acceptance tolerance is refreshed.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

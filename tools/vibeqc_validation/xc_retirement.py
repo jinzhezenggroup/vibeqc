@@ -43,6 +43,11 @@ LEGACY_CONSUMER_CEILING = {
     ("tests/python/test_libxc_maple_meta_gga.py", "vibeqc_compiler.xc.expressions"),
     ("tests/python/test_libxc_maple_pw91.py", "vibeqc_compiler.xc.rsh_expressions"),
     ("tests/python/test_libxc_maple_lyp.py", "vibeqc_compiler.xc.rsh_expressions"),
+    # Qualification oracles already present in the integration base (6b965bd7).
+    # These do not admit any additional production/runtime consumer.
+    ("tests/python/test_libxc_maple_b88.py", "vibeqc_compiler.xc.rsh_expressions"),
+    ("tests/python/test_libxc_maple_p86_pz.py", "vibeqc_compiler.xc.rsh_expressions"),
+    ("tests/python/test_libxc_maple_vwn.py", "vibeqc_compiler.xc.rsh_expressions"),
 }
 
 SCAN_ROOTS = ("python", "tools", "tests")
