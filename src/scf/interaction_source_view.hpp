@@ -32,9 +32,7 @@ class PreparedFockInteractionSourceView final : public integrals::ElectronIntera
     const auto* fitted = plan_.cpu_fitted_data();
     return fitted ? fitted->raw.naux : 0;
   }
-  std::size_t retained_numeric_bytes() const override {
-    return plan_.cpu_observation_capacity();
-  }
+  std::size_t retained_numeric_bytes() const override { return plan_.cpu_observation_capacity(); }
 
   bool supports(Operator op) const noexcept override {
     const auto n = nbf();
@@ -52,9 +50,8 @@ class PreparedFockInteractionSourceView final : public integrals::ElectronIntera
       }
       case Operator::three_center: {
         const auto* fitted = plan_.cpu_fitted_data();
-        return fitted &&
-               matches_size(fitted->raw.three_center, fitted->raw.nbf, fitted->raw.nbf,
-                            fitted->raw.naux);
+        return fitted && matches_size(fitted->raw.three_center, fitted->raw.nbf, fitted->raw.nbf,
+                                      fitted->raw.naux);
       }
     }
     return false;

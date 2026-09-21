@@ -102,9 +102,8 @@ void provider_and_reference() {
   require(generic_provider.get(slots) == values,
           "native MO provider still depends on the concrete RawSource type");
 
-  auto exact_spec =
-      vibeqc::scf::make_hf_fock_spec(vibeqc::scf::FockSpin::Restricted,
-                                     vibeqc::scf::FockApproximation::Exact);
+  auto exact_spec = vibeqc::scf::make_hf_fock_spec(vibeqc::scf::FockSpin::Restricted,
+                                                   vibeqc::scf::FockApproximation::Exact);
   exact_spec.derivative_order = 0;
   vibeqc::scf::PreparedFockPlan exact_plan(
       system, nullptr,
@@ -122,13 +121,11 @@ void provider_and_reference() {
     require(std::abs(exact_values[q] - values[q]) < 1e-11,
             "prepared exact owner changed the MO block");
 
-  auto df_spec =
-      vibeqc::scf::make_hf_fock_spec(vibeqc::scf::FockSpin::Restricted,
-                                     vibeqc::scf::FockApproximation::DensityFitted);
+  auto df_spec = vibeqc::scf::make_hf_fock_spec(vibeqc::scf::FockSpin::Restricted,
+                                                vibeqc::scf::FockApproximation::DensityFitted);
   df_spec.derivative_order = 0;
   vibeqc::scf::PreparedFockPlan df_plan(
-      system, &system,
-      vibeqc::scf::resolve_fock_build(df_spec, vibeqc::scf::FockBackend::Cpu));
+      system, &system, vibeqc::scf::resolve_fock_build(df_spec, vibeqc::scf::FockBackend::Cpu));
   vibeqc::scf::PreparedFockInteractionSourceView df_source(df_plan);
   require(!df_source.supports(vibeqc::integrals::ElectronInteractionOperator::eri) &&
               df_source.supports(vibeqc::integrals::ElectronInteractionOperator::metric) &&
@@ -142,15 +139,15 @@ void provider_and_reference() {
   require(metric == fitted->raw.metric, "prepared DF metric view changed resident values");
   std::vector<double> three_center(fitted->raw.three_center.size());
   df_source.read(vibeqc::integrals::ElectronInteractionOperator::three_center, {0, 0, 0, 0},
-                 {fitted->raw.nbf, fitted->raw.nbf, fitted->raw.naux, 1},
-                 three_center.data(), three_center.size());
+                 {fitted->raw.nbf, fitted->raw.nbf, fitted->raw.naux, 1}, three_center.data(),
+                 three_center.size());
   require(three_center == fitted->raw.three_center,
           "prepared DF three-center view changed resident values");
   std::array<double, 1> sentinel{123.0};
   bool unsupported_rejected = false;
   try {
-    df_source.read(vibeqc::integrals::ElectronInteractionOperator::eri, {0, 0, 0, 0},
-                   {1, 1, 1, 1}, sentinel.data(), 1);
+    df_source.read(vibeqc::integrals::ElectronInteractionOperator::eri, {0, 0, 0, 0}, {1, 1, 1, 1},
+                   sentinel.data(), 1);
   } catch (const std::invalid_argument&) {
     unsupported_rejected = true;
   }
