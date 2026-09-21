@@ -11,7 +11,9 @@
 #include <utility>
 
 #include "dft/ao_grid.hpp"
+#include "dft/dispersion/d4_runtime.hpp"
 #include "dft/grid.hpp"
+#include "generated_method_parameters.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_usage.hpp"
 #include "scf/fock_prepared.hpp"
@@ -49,6 +51,7 @@ struct NativeKsExecutionPlan {
   std::uint32_t spin_channels{1};
   std::uint32_t semilocal_family{kKsSemilocalLda};
   bool compiler_resolved{};
+  bool d4_correction{};
 };
 
 std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method method) noexcept {
@@ -57,6 +60,8 @@ std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method meth
       return NativeKsExecutionPlan{1, kKsSemilocalLda, false};
     case VIBEQC_METHOD_LDA_UKS:
       return NativeKsExecutionPlan{2, kKsSemilocalLda, false};
+    case VIBEQC_METHOD_PBE_D4_RKS:
+      return NativeKsExecutionPlan{1, kKsSemilocalPbe, false, true};
     case VIBEQC_METHOD_PBE_RKS:
     case VIBEQC_METHOD_PBE0_RKS:
       return NativeKsExecutionPlan{1, kKsSemilocalPbe, false};
@@ -113,14 +118,15 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
       descriptor.ks_options) {
     ks_input = descriptor.ks_options;
     constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
-    constexpr auto v2_size = offsetof(vibeqc_ks_options, execution_plan_version);
-    constexpr auto v3_size = sizeof(vibeqc_ks_options);
+    constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
+    constexpr auto v3_size = offsetof(vibeqc_ks_options, execution_plan_version);
+    constexpr auto v4_size = sizeof(vibeqc_ks_options);
     if (ks_input->struct_size < v1_size || ks_input->abi_version != VIBEQC_ABI_VERSION)
       throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
     if (ks_input->struct_size != v1_size && ks_input->struct_size != v2_size &&
-        ks_input->struct_size != v3_size)
+        ks_input->struct_size != v3_size && ks_input->struct_size < v4_size)
       throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS option suffix");
-    if (ks_input->struct_size == v3_size) {
+    if (ks_input->struct_size >= v4_size) {
       if (ks_input->execution_plan_version > 1)
         throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS execution-plan version");
       if (ks_input->execution_plan_version == 1) {
@@ -128,7 +134,8 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
             ks_input->semilocal_family > kKsSemilocalR2scan)
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                             "invalid compiler-resolved KS execution plan");
-        execution_plan = {ks_input->spin_channels, ks_input->semilocal_family, true};
+        execution_plan = {ks_input->spin_channels, ks_input->semilocal_family, true,
+                          legacy_plan && legacy_plan->d4_correction};
         execution_plan_seen = true;
         if (legacy_plan && (execution_plan.spin_channels != legacy_plan->spin_channels ||
                             execution_plan.semilocal_family != legacy_plan->semilocal_family))
@@ -140,7 +147,7 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   if (!execution_plan_seen) {
     if (!legacy_plan)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "DFT execution requires a compiler-resolved KS v3 plan");
+                        "DFT execution requires a compiler-resolved KS v4 plan");
     execution_plan = *legacy_plan;
   }
 
@@ -166,6 +173,8 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && backend != VIBEQC_BACKEND_CUDA)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "DFT automatic precision currently requires CUDA");
+    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && execution_plan.d4_correction)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "PBE-D4 currently requires strict FP64");
     if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO &&
         execution_plan.semilocal_family == kKsSemilocalR2scan)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "r2SCAN currently requires strict FP64");
@@ -179,7 +188,7 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   fock.exchange.present = false;
   bool composition_seen = false;
   if (ks_input) {
-    constexpr auto v2_size = offsetof(vibeqc_ks_options, execution_plan_version);
+    constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
     if (ks_input->struct_size >= v2_size) {
       if (ks_input->composition_version > 1)
         throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS composition version");
@@ -241,6 +250,23 @@ dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor,
   if (!input.tile_points || input.tile_points > static_cast<std::uint64_t>(INT_MAX))
     throw std::invalid_argument("invalid KS XC tile points");
   options.xc_tile_points = input.tile_points;
+  constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
+  constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
+  constexpr auto v3_size = offsetof(vibeqc_ks_options, execution_plan_version);
+  if (input.struct_size >= v3_size) {
+    switch (input.xc_execution_schedule) {
+      case VIBEQC_XC_EXECUTION_DEVICE_FUSED:
+        options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::DeviceFused;
+        break;
+      case VIBEQC_XC_EXECUTION_HOST_UNFUSED:
+        options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::HostUnfused;
+        break;
+      default:
+        throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown KS XC execution schedule");
+    }
+  } else if (input.struct_size != v1_size && input.struct_size != v2_size) {
+    throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS execution suffix");
+  }
   grid.version = input.grid_version;
   grid.radial_points = input.radial_points;
   grid.angular_polar = input.angular_polar;
@@ -347,6 +373,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
                                                 execution_plan_.semilocal_family,
                                                 options_.xc_tile_points);
 #endif
+    if (execution_plan_.d4_correction) prepare_d4(device);
     runtime::sample_cpu_capacity(host_numeric_capacity());
   }
 
@@ -368,6 +395,12 @@ class KsPreparedCalculation final : public PreparedCalculation {
 #if VIBEQC_HAS_CUDA
     if (cuda_) bytes = runtime::add_capacity(bytes, cuda_->resources().retained_host_numeric_bytes);
 #endif
+    if (d4_) {
+      const auto& resources = d4_->resources();
+      bytes = runtime::add_capacity(bytes, static_cast<std::size_t>(resources.plan_host_bytes));
+      bytes =
+          runtime::add_capacity(bytes, static_cast<std::size_t>(resources.execution_host_bytes));
+    }
     return bytes;
   }
 
@@ -493,7 +526,30 @@ class KsPreparedCalculation final : public PreparedCalculation {
                         std::string(method_name) +
                             " KS nuclear gradients are tracked separately in issue " + issue);
     }
-    return adapt_result(run(nullptr, true, true), backend_);
+    auto result = adapt_result(run(nullptr, true, true), backend_);
+    apply_d4(result);
+    return result;
+  }
+
+  void apply_d4(Result& result) {
+    if (!d4_) return;
+    std::vector<double> coordinates;
+    coordinates.reserve(3 * system_.atoms.size());
+    for (const auto& atom : system_.atoms)
+      coordinates.insert(coordinates.end(), atom.position.begin(), atom.position.end());
+    const std::uint8_t active = 1;
+    const std::uint8_t want_gradient = 0;
+    std::vector<dft::dispersion::D4Status> statuses;
+    std::vector<double> components, gradients, charges;
+    std::string detail;
+    const auto status =
+        d4_->execute(coordinates, std::span(&active, 1), std::span(&want_gradient, 1), statuses,
+                     components, gradients, charges, detail);
+    if (status != VIBEQC_STATUS_SUCCESS || statuses.size() != 1 ||
+        statuses[0] != dft::dispersion::D4Status::success || components.size() != 2)
+      throw MethodError(status == VIBEQC_STATUS_SUCCESS ? VIBEQC_STATUS_NUMERICAL_FAILURE : status,
+                        detail.empty() ? "PBE-D4 correction failed" : detail);
+    result.energy += components[0] + components[1];
   }
 
   /** Single-system and native batch paths share the same scientific owner. */
@@ -584,6 +640,40 @@ class KsPreparedCalculation final : public PreparedCalculation {
   }
 
  private:
+  void prepare_d4(int device) {
+    const auto source = ::vibeqc::generated::method_parameters::pbeD4();
+    dft::dispersion::D4Parameters parameters{dft::dispersion::D4ReferenceModel::eeq,
+                                             source.s6,
+                                             source.s8,
+                                             source.s9,
+                                             source.a1,
+                                             source.a2,
+                                             source.cn_cutoff,
+                                             source.pair_cutoff,
+                                             source.atm_cutoff,
+                                             source.ga,
+                                             source.gc};
+    std::vector<std::uint32_t> offsets{0, static_cast<std::uint32_t>(system_.atoms.size())};
+    std::vector<std::int32_t> atomic_numbers;
+    std::vector<double> coordinates;
+    atomic_numbers.reserve(system_.atoms.size());
+    coordinates.reserve(3 * system_.atoms.size());
+    for (const auto& atom : system_.atoms) {
+      atomic_numbers.push_back(atom.atomic_number);
+      coordinates.insert(coordinates.end(), atom.position.begin(), atom.position.end());
+    }
+    vibeqc_status status = VIBEQC_STATUS_INTERNAL_ERROR;
+    std::string detail;
+    d4_ = dft::dispersion::D4Plan::prepare(
+        backend_, device, std::move(offsets), std::move(atomic_numbers),
+        std::vector<double>{static_cast<double>(system_.charge)}, std::move(coordinates),
+        parameters, dft::dispersion::D4EEQProfile::standard, 256ull * 1024ull * 1024ull, detail,
+        status);
+    if (!d4_)
+      throw MethodError(status,
+                        detail.empty() ? "PBE-D4 production plan preparation failed" : detail);
+  }
+
   Capabilities capabilities_;
   core::System system_;
   NativeKsExecutionPlan execution_plan_;
@@ -596,6 +686,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
   const std::uint64_t cpu_owner_{next_cpu_ks_owner()};
   std::uint64_t cpu_epoch_{};
   std::optional<dft::KsPhysicalState> cpu_physical_;
+  std::unique_ptr<dft::dispersion::D4Plan> d4_;
 #if VIBEQC_HAS_CUDA
   std::unique_ptr<dft::CudaKsPlan> cuda_;
 #endif
@@ -717,6 +808,7 @@ class KsPreparedBatch final : public PreparedBatch {
     const auto finish = [&](std::size_t i, scf::ScfResult native) {
       auto& result = results[i];
       result.calculation = adapt_result(std::move(native), backend_);
+      items_[i].plan->apply_d4(result.calculation);
       const auto& calculation = result.calculation;
       result.status =
           calculation.convergence.converged ? VIBEQC_STATUS_SUCCESS : VIBEQC_STATUS_NOT_CONVERGED;

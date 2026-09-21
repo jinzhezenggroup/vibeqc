@@ -53,6 +53,45 @@ def owned_atoms(atoms: typing.Any) -> typing.Any:
     return tuple(result)
 
 
+def molecular_grid_identity(
+    atoms: typing.Any,
+    spec: GridSpec,
+    *,
+    charge: int = 0,
+    multiplicity: int = 1,
+) -> str:
+    """Hash the exact molecular-grid scientific inputs without materializing quadrature."""
+
+    atoms = owned_atoms(atoms)
+    if not isinstance(spec, GridSpec):
+        raise TypeError("expected GridSpec")
+    checked_int(charge, "charge", low=-(2**31), high=2**31 - 1)
+    checked_int(multiplicity, "multiplicity")
+    radii = dict(spec.element_radii)
+    if spec.version == 1:
+        resolved = tuple(radii.get(a.atomic_number, 1.0) for a in atoms)
+    else:
+        missing = sorted(
+            {a.atomic_number for a in atoms if a.atomic_number not in radii}
+        )
+        if missing:
+            raise ValueError(
+                "production GridSpec v2 has no sourced radius for atomic number(s) "
+                + ", ".join(map(str, missing))
+            )
+        resolved = tuple(radii[a.atomic_number] for a in atoms)
+    return canonical_hash(
+        {
+            "atoms": [asdict(a) for a in atoms],
+            "grid": asdict(spec),
+            "resolved_radii_bohr": resolved,
+            "charge": charge,
+            "multiplicity": multiplicity,
+            "charge_spin_policy": "independent-v1",
+        }
+    )
+
+
 @dataclass(frozen=True)
 class GridSpec:
     """Versioned, fully specified quadrature; all lengths are in Bohr.
@@ -436,15 +475,11 @@ class MolecularGrid:
         object.__setattr__(
             self,
             "identity",
-            canonical_hash(
-                {
-                    "atoms": [asdict(a) for a in atoms],
-                    "grid": asdict(self.spec),
-                    "resolved_radii_bohr": resolved,
-                    "charge": self.charge,
-                    "multiplicity": self.multiplicity,
-                    "charge_spin_policy": "independent-v1",
-                }
+            molecular_grid_identity(
+                atoms,
+                self.spec,
+                charge=self.charge,
+                multiplicity=self.multiplicity,
             ),
         )
         object.__setattr__(

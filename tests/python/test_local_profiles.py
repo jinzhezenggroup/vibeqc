@@ -12,7 +12,12 @@ import numpy as np
 import pytest
 from vibeqc import profiles
 from vibeqc.autotune import endpoint_gate, rank_hotspots, read_xyz
-from vibeqc_compiler.dft.xc_schedule import HOST_UNFUSED, GridXcScientificIdentity
+from vibeqc.ks import profiled_ks_options, resolve_ks_options
+from vibeqc_compiler.dft.xc_schedule import (
+    HOST_UNFUSED,
+    GridXcScientificIdentity,
+    molecular_grid_xc_workload,
+)
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
 
 TEST_CUDA_TARGET = cuda_target_info("sm_120")
@@ -398,6 +403,62 @@ def test_optional_dft_schedule_reuses_profile_bundle_with_strict_workload_identi
     profiles.atomic_json(profile_path, profile)
     with pytest.raises(ValueError, match="DFT winner lacks matching"):
         profiles.validate_bundle(bundle, probe)
+
+
+def test_native_batch_profile_applies_only_exact_common_grid_xc_winner(
+    probe: typing.Any,
+) -> None:
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    moved = [("H", (0.0, 0.0, -0.7)), ("H", (0.002, 0.0, 0.7))]
+    options = resolve_ks_options("pbe-rks")
+    workload = molecular_grid_xc_workload(
+        architecture="sm_120",
+        functional=options.functional,
+        atoms=atoms,
+        grid_spec=options.grid,
+        charge=0,
+        multiplicity=1,
+        source_identity=probe["source_identity"],
+    ).to_payload()
+    schedule = HOST_UNFUSED.resolved(31).to_payload()
+    diagnostics = {
+        "source": "local",
+        "target": profiles.compatibility_identity(probe),
+        "dft_schedules": [
+            {
+                "workload_hash": profiles.canonical_hash(workload),
+                "schedule": schedule,
+            }
+        ],
+    }
+
+    selected = profiled_ks_options(
+        options,
+        diagnostics,
+        [atoms],
+        charges=[0],
+        multiplicities=[1],
+    )
+    assert selected.xc_schedule == "host_unfused"
+    assert selected.tile_points == 31
+    assert selected.method_ir.identity == options.method_ir.identity
+
+    changed = profiled_ks_options(
+        options,
+        diagnostics,
+        [moved],
+        charges=[0],
+        multiplicities=[1],
+    )
+    assert changed is options
+    mixed_batch = profiled_ks_options(
+        options,
+        diagnostics,
+        [atoms, moved],
+        charges=[0, 0],
+        multiplicities=[1, 1],
+    )
+    assert mixed_batch is options
 
 
 def test_hotspots_are_measured_bounded_and_ignore_absent_f_work() -> None:

@@ -4,7 +4,7 @@
 
 extern "C" {
 
-uint32_t vibeqc_ks_options_version(void) { return 3; }
+uint32_t vibeqc_ks_options_version(void) { return 4; }
 
 uint32_t vibeqc_get_abi_version(void) { return VIBEQC_ABI_VERSION; }
 

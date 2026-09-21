@@ -833,7 +833,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       }
     }
     plan.resident_psss_bra_primitive_pairs = 0;
-    plan.generated_psss_weighted = cuda_policy::generated_psss_weighted_requested();
     plan.one_electron_value_mapping = cuda_policy::one_electron_value_mapping_requested();
     const bool resident_psss_enabled = resident_psss_bra_requested();
     // The bounded direct force path has its own exact page consumer for psss.
@@ -1668,8 +1667,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                            primitive_exponents,
                            primitive_coefficients,
                            occupied};
-  device_batch.generated_psss_weighted = plan.generated_psss_weighted;
-
   if (quartet_direct && geometry_changed) {
     launch_build_shell_primitive_pair_cache_kernel(
         static_cast<unsigned>(total_shell_pairs), detail::kDirectQuartetThreads, 0,

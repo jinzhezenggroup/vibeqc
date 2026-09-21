@@ -49,3 +49,13 @@ Refs #396, #781, #167, #491.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Superseding ABI integration
+
+The execution-plan suffix now uses v4, because mainline v3 already owns the XC
+execution schedule. The original rationale above is retained as history; see
+[the append-only compatibility decision](../compatibility/2026-09-21-ks-v4-append-only.md)
+for the current numbering, complete v3 prefix preservation, and D4 integration.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

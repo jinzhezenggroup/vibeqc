@@ -18,6 +18,8 @@ from vibeqc_compiler.dft.grid import (
     grid_policy_provenance,
 )
 from vibeqc_compiler.method import (
+    D4Spec,
+    DispersionCorrectionPrimitive,
     MethodIR,
     SemilocalXCPrimitive,
     compile_ks_execution_plan,
@@ -36,6 +38,7 @@ _NATIVE_KS_METHODS = {
     "pbe0-uks": ("PBE0", "polarized"),
     "r2scan-rks": ("R2SCAN", "unpolarized"),
     "r2scan-uks": ("R2SCAN", "polarized"),
+    "pbe-d4-rks": ("PBE-D4(BJ-EEQ-ATM)", "unpolarized"),
 }
 
 
@@ -55,6 +58,7 @@ class KsOptions:
     grid: GridSpec | None = None
     grid_accuracy: str = "standard"
     tile_points: int = 256
+    xc_schedule: str = "device_fused"
     scf_domain: str = SCF_DOMAIN
     _method_ir: MethodIR | None = field(default=None, init=False, repr=False)
 
@@ -72,6 +76,8 @@ class KsOptions:
         if self.grid_accuracy not in ("standard", "tight"):
             raise ValueError("KS grid_accuracy must be 'standard' or 'tight'")
         checked_int(self.tile_points, "KS XC tile points")
+        if self.xc_schedule not in ("device_fused", "host_unfused"):
+            raise ValueError("KS XC schedule must be 'device_fused' or 'host_unfused'")
         if self.scf_domain != SCF_DOMAIN:
             raise NotImplementedError("unsupported native KS tail/spin domain policy")
 
@@ -89,12 +95,18 @@ class KsOptions:
 
     @property
     def coefficients(self) -> typing.Any:
-        """Resolved legacy native (semilocal X, semilocal C, full-range K) projection."""
+        """Resolved (semilocal X, semilocal C, raw Fock K) coefficients."""
+        if _is_pbe_d4_composition(self.method_ir):
+            return (1.0, 1.0, 0.0)
         return ks_coefficients(self.method_ir)
 
     @property
     def requires_composition_v2(self) -> bool:
         return self.coefficients != (1.0, 1.0, 0.0)
+
+    @property
+    def requires_schedule_v3(self) -> bool:
+        return self.xc_schedule != "device_fused"
 
     @property
     def ao_order(self) -> typing.Any:
@@ -115,6 +127,7 @@ class KsOptions:
             "grid": asdict(self.grid),
             "grid_provenance": grid_policy_provenance(self.grid),
             "tile_points": self.tile_points,
+            "xc_schedule": self.xc_schedule,
             "required_ao_order": self.ao_order,
             "required_ingredients": self.functional.ingredients,
             "scalar_derivative_order": 1,
@@ -128,6 +141,14 @@ class KsOptions:
     @property
     def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
+
+
+@dataclass(frozen=True)
+class ProfiledKsSelection:
+    """Batch-local KS options plus exact-profile qualification provenance."""
+
+    options: KsOptions | None
+    exact_profile_match: bool = False
 
 
 def _native_execution_plan(method_ir: typing.Any) -> typing.Any:
@@ -151,6 +172,32 @@ def _native_execution_plan(method_ir: typing.Any) -> typing.Any:
             "native KS v2 accepts at most one full-range exchange contribution"
         )
     return plan
+
+
+def _is_pbe_d4_composition(method_ir: typing.Any) -> bool:
+    if not isinstance(method_ir, MethodIR) or len(method_ir.primitives) != 2:
+        return False
+    semilocal, correction = method_ir.primitives
+    pbe = functional("PBE", spin="unpolarized")
+    return (
+        type(semilocal) is SemilocalXCPrimitive
+        and type(correction) is DispersionCorrectionPrimitive
+        and isinstance(correction.specification, D4Spec)
+        and correction.specification.charge_model == "eeq2019"
+        and correction.specification.reference_model == "eeq"
+        and semilocal.functional.spin == "unpolarized"
+        and semilocal.functional.ingredients == pbe.ingredients
+        and SemilocalXCPrimitive(semilocal.functional).semantic_payload()
+        == SemilocalXCPrimitive(pbe).semantic_payload()
+    )
+
+
+def _native_pbe_d4_semilocal(method_ir: typing.Any) -> typing.Any:
+    if not _is_pbe_d4_composition(method_ir):
+        raise NotImplementedError(
+            "public PBE-D4 requires one PBE semilocal primitive plus one D4(BJ)-EEQ correction"
+        )
+    return typing.cast("SemilocalXCPrimitive", method_ir.primitives[0]).functional
 
 
 def _native_semilocal(method_ir: typing.Any) -> typing.Any:
@@ -213,6 +260,18 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
         raise ValueError("KS options require a supported native RKS/UKS method")
     identifier, spin = _NATIVE_KS_METHODS[method]
     method_ir = resolve_method(identifier, spin=spin)
+
+    if identifier == "PBE-D4(BJ-EEQ-ATM)":
+        semilocal = _native_pbe_d4_semilocal(method_ir)
+        runtime_functional = functional("PBE", spin=spin)
+        if SemilocalXCPrimitive(semilocal).semantic_payload() != (
+            SemilocalXCPrimitive(runtime_functional).semantic_payload()
+        ):
+            raise RuntimeError(
+                "PBE-D4 MethodIR disagrees with its native PBE composition"
+            )
+        return method_ir, runtime_functional
+
     semilocal = _native_semilocal(method_ir)
 
     # Pure LDA/PBE selectors retain the independent catalog projection gate.
@@ -252,7 +311,14 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
     composition = options.composition or options._method_ir
     if composition is not None:
         method_ir = composition
-        selected = _native_semilocal(method_ir)
+        if method == "pbe-d4-rks":
+            if method_ir.identity != named_ir.identity:
+                raise NotImplementedError(
+                    "public PBE-D4 requires the pinned named MethodIR without parameter overrides"
+                )
+            selected = _native_pbe_d4_semilocal(method_ir)
+        else:
+            selected = _native_semilocal(method_ir)
         # The native selector chooses only the ingredient/spin family; all
         # scientific coefficients remain explicit in the supplied MethodIR.
         if (
@@ -263,7 +329,8 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
             raise NotImplementedError(
                 "KS composition/spin disagrees with native family selector"
             )
-        ks_coefficients(method_ir)
+        if method != "pbe-d4-rks":
+            ks_coefficients(method_ir)
         # Preserve the independent catalog projection's declaration order and
         # identity when options have already been resolved.
         resolved = selected if options.functional is None else options.functional
@@ -295,6 +362,10 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
                     "r2SCAN grid accuracy profiles require an explicit GridSpec"
                 )
             grid = GridSpec()
+        elif method == "pbe-d4-rks":
+            grid = GridPolicy(options.grid_accuracy).resolve(
+                "pbe-rks", derivative_order=0
+            )
         elif ks_coefficients(method_ir)[2] != 0.0:
             raise NotImplementedError(
                 "global-hybrid grid policy requires an explicit GridSpec"
@@ -306,7 +377,100 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
     return result
 
 
-def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
+def profiled_ks_selection(
+    options: KsOptions | None,
+    diagnostics: dict[str, typing.Any],
+    systems: typing.Any,
+    *,
+    charges: typing.Any,
+    multiplicities: typing.Any,
+) -> ProfiledKsSelection:
+    """Resolve one exact local DFT09 winner and retain qualification provenance."""
+
+    if (
+        options is None
+        or options.xc_schedule != "device_fused"
+        or diagnostics.get("source") != "local"
+    ):
+        return ProfiledKsSelection(options)
+    target = diagnostics.get("target")
+    if not isinstance(target, dict):
+        return ProfiledKsSelection(options)
+    device = target.get("device")
+    source_identity = target.get("source_identity")
+    if (
+        not isinstance(device, dict)
+        or type(device.get("major")) is not int
+        or type(device.get("minor")) is not int
+        or not isinstance(source_identity, str)
+        or not source_identity
+    ):
+        return ProfiledKsSelection(options)
+
+    from vibeqc_compiler.dft.xc_schedule import (
+        grid_xc_schedule,
+        molecular_grid_xc_workload,
+    )
+
+    from .profiles import select_dft_schedule
+
+    selected = []
+    architecture = f"sm_{device['major']}{device['minor']}"
+    for atoms, charge, multiplicity in zip(
+        systems, charges, multiplicities, strict=True
+    ):
+        workload = molecular_grid_xc_workload(
+            architecture=architecture,
+            functional=options.functional,
+            atoms=atoms,
+            grid_spec=options.grid,
+            charge=charge,
+            multiplicity=multiplicity,
+            source_identity=source_identity,
+            screening_identity=None,
+            observable="potential",
+            density_route="density_matrix",
+        )
+        payload = select_dft_schedule(diagnostics, workload.to_payload())
+        if payload is None:
+            return ProfiledKsSelection(options)
+        schedule = grid_xc_schedule(payload)
+        if schedule.point_tile is None:
+            raise ValueError("local DFT schedule winner must resolve its point tile")
+        selected.append(schedule)
+    if not selected or any(item != selected[0] for item in selected[1:]):
+        return ProfiledKsSelection(options)
+
+    winner = selected[0]
+    result = replace(
+        options,
+        xc_schedule=winner.name,
+        tile_points=winner.point_tile,
+    )
+    object.__setattr__(result, "_method_ir", options._method_ir)
+    return ProfiledKsSelection(result, exact_profile_match=True)
+
+
+def profiled_ks_options(
+    options: KsOptions | None,
+    diagnostics: dict[str, typing.Any],
+    systems: typing.Any,
+    *,
+    charges: typing.Any,
+    multiplicities: typing.Any,
+) -> KsOptions | None:
+    """Apply one exact local DFT09 winner to a batch, otherwise preserve the portable plan."""
+
+    return profiled_ks_selection(
+        options,
+        diagnostics,
+        systems,
+        charges=charges,
+        multiplicities=multiplicities,
+    ).options
+
+
+def native_ks_options(options: typing.Any, *, version: int = 4) -> typing.Any:
     """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
     import ctypes
 
@@ -321,14 +485,25 @@ def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
         radii = (ctypes.c_double * 119)(*[fill] * 119)
         for z, radius in grid.element_radii:
             radii[z] = radius
-    if version not in (1, 2, 3):
-        raise ValueError("native KS options version must be 1, 2, or 3")
-    if version == 1:
-        size = _native.KsOptionsDescriptor.composition_version.offset
-    elif version == 2:
-        size = _native.KsOptionsDescriptor.execution_plan_version.offset
-    else:
-        size = ctypes.sizeof(_native.KsOptionsDescriptor)
+    if version not in (1, 2, 3, 4):
+        raise ValueError("native KS options version must be 1, 2, 3, or 4")
+    if version == 1 and options.requires_composition_v2:
+        raise NotImplementedError(
+            "native KS options v1 cannot serialize composition options v2"
+        )
+    if version < 3 and options.requires_schedule_v3:
+        raise NotImplementedError(
+            f"native KS options v{version} cannot serialize execution schedules v3"
+        )
+    size = (
+        _native.KsOptionsDescriptor.composition_version.offset
+        if version == 1
+        else _native.KsOptionsDescriptor.xc_execution_schedule.offset
+        if version == 2
+        else _native.KsOptionsDescriptor.execution_plan_version.offset
+        if version == 3
+        else ctypes.sizeof(_native.KsOptionsDescriptor)
+    )
     spin_channels = 1 if options.method_ir.spin == "unpolarized" else 2
     semilocal_family = _native_semilocal_family(options.method_ir)
     return _native.KsOptionsDescriptor(
@@ -347,8 +522,12 @@ def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
         0,
         1,
         *options.coefficients,
-        1 if version >= 3 else 0,
-        spin_channels if version >= 3 else 0,
-        semilocal_family if version >= 3 else 0,
+        _native.XC_EXECUTION_DEVICE_FUSED
+        if options.xc_schedule == "device_fused"
+        else _native.XC_EXECUTION_HOST_UNFUSED,
+        0,
+        1 if version >= 4 else 0,
+        spin_channels if version >= 4 else 0,
+        semilocal_family if version >= 4 else 0,
         0,
     )
