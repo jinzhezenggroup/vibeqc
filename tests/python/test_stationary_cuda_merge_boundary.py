@@ -213,7 +213,11 @@ def test_weight_fusion_orchestration_runs_without_a_device(
         spin_blocks: int = 1,
         target: object = None,
         work_budget: int = 2_000_000,
+        timeline: object = None,
+        profile_device: bool = False,
     ) -> MagicMock:
+        assert timeline is not None
+        assert profile_device is False
         admitted["budget"] = budget
         admitted["spin_blocks"] = spin_blocks
         admitted["work_budget"] = work_budget
