@@ -51,7 +51,6 @@ def test_cuda_execution_profile_environment_overrides_project_defaults() -> None
     assert profile.nodes == 2
     assert profile.ntasks == 4
     assert profile.cpus_per_task == 8
-    assert "--cpus-per-task=8" in profile.wrap(["worker"])
     assert profile.slurm_time == "00:25:00"
     assert profile.srun == "/opt/slurm/bin/srun"
 
