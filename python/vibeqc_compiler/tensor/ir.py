@@ -136,12 +136,18 @@ PRIMITIVES = {
         "cast",
     )
 }
+PRIMITIVES["runtime_indexed_select"] = PrimitiveContract(
+    "one real source plus one or more non-differentiable int64 runtime index maps",
+    "pure indexed read; repeated runtime coordinates do not imply accumulation",
+)
 
 
 def _common(inputs: tuple[Node, ...]) -> TensorSpec:
     if not inputs:
         raise ValueError("operation requires operands")
     spec = inputs[0].spec
+    if spec.dtype == "int64" or any(n.spec.dtype == "int64" for n in inputs):
+        raise ValueError("int64 TensorIR controls cannot enter floating arithmetic")
     if any(
         (n.spec.dtype, n.spec.representation) != (spec.dtype, spec.representation)
         for n in inputs
@@ -210,7 +216,49 @@ def _infer(
         dtype = a["dtype"]
         if dtype not in ("float32", "float64"):
             raise ValueError("cast target must be float32 or float64")
+        if inputs[0].spec.dtype == "int64":
+            raise ValueError("int64 TensorIR controls cannot be cast into scientific arithmetic")
         return replace(inputs[0].spec, dtype=dtype, role="intermediate")
+    if op == "runtime_indexed_select":
+        if len(inputs) < 2:
+            raise ValueError("runtime_indexed_select requires a source and index maps")
+        source, maps = inputs[0], inputs[1:]
+        if source.spec.dtype not in ("float32", "float64"):
+            raise ValueError("runtime_indexed_select source must be floating point")
+        axes = tuple(a["axes"])
+        if (
+            len(axes) != len(maps)
+            or tuple(sorted(axes)) != axes
+            or len(set(axes)) != len(axes)
+            or any(type(axis) is not int or not 0 <= axis < len(source.spec.indices) for axis in axes)
+        ):
+            raise ValueError("runtime_indexed_select axes must be unique, sorted source axes")
+        if len(declared.indices) != 1 + len(source.spec.indices) - len(axes):
+            raise ValueError("runtime_indexed_select output rank is inconsistent with selected axes")
+        domain = declared.indices[0]
+        if any(
+            mapping.spec.dtype != "int64"
+            or len(mapping.spec.indices) != 1
+            or mapping.spec.indices[0].domain != domain.domain
+            for mapping in maps
+        ):
+            raise ValueError(
+                "runtime_indexed_select maps must be rank-one int64 controls on the output domain"
+            )
+        remaining = tuple(
+            index for axis, index in enumerate(source.spec.indices) if axis not in axes
+        )
+        if tuple(index.domain for index in declared.indices[1:]) != tuple(
+            index.domain for index in remaining
+        ):
+            raise ValueError("runtime_indexed_select must preserve unselected source axes")
+        return TensorSpec(
+            declared.indices,
+            dtype=source.spec.dtype,
+            representation=source.spec.representation,
+            role="intermediate",
+            differentiable=source.spec.differentiable,
+        )
     base = _common(inputs)
     if op in TRANSCENDENTALS:
         if len(inputs) != 1:
@@ -381,6 +429,7 @@ _ATTRS = {
     "indexed_gather": {"axis", "positions"},
     "scatter_add": {"axis", "positions"},
     "segment_sum": {"axis", "offsets"},
+    "runtime_indexed_select": {"axes"},
     "reduce": {"axes"},
     "broadcast": {"axes"},
     "cast": {"dtype"},
