@@ -891,6 +891,10 @@ vibeqc_status execute_cuda_df_hf_gradient(
     const bool screening_features = screening_feature_policy == "1";
     if (screening_features && (!shell_execution || !full_shell_domain))
       throw std::invalid_argument("DF screening feature diagnostic requires full shell execution");
+    // Factorized panels carry Coulomb only; the histogram requires full weights.
+    if (screening_features && factorized_exchange)
+      throw std::invalid_argument(
+          "DF screening feature diagnostic does not support factorized response fusion");
     const auto response_pair_stride = packed_pairs ? n * (n + 1) / 2 : n * n;
     const char* block_control = std::getenv("VIBEQC_DF_PACKED_AO_BLOCK_ROWS");
     // The 64-row experiment halved weight storage but paid for many small
