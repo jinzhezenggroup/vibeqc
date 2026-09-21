@@ -268,9 +268,9 @@ jobs:
     runs-on: ubuntu-24.04
     # Full nightly/manual qualification includes expensive Hessian and Au replay.
     # Keep routine PR/push feedback capped separately; do not truncate that tier.
-    # The core shard currently spends ~19 minutes inside pytest on hosted runners,
-    # so 25 minutes leaves setup/coverage headroom without reducing coverage.
-    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 25 }}
+    # The core shard can spend over 18 minutes in pytest alone; include native
+    # setup plus coverage/artifact cleanup without truncating scientific tests.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}
     env:
       CCACHE_MAXSIZE: 1G
       # PySCF and NumPy can each fan out through BLAS/OpenMP. Keep those
@@ -530,9 +530,9 @@ jobs:
               )
               ;;
             ecp-forces)
-              # Full d-force qualification exceeded the former 20-minute job cap when
+              # Full d-force qualification exceeded the 20-minute job cap when
               # serialized in one file. Keep every case, split representations
-              # across loadfile workers, and retain a bounded routine job cap.
+              # across loadfile workers, and retain the existing job time cap.
               test_targets=(
                 tests/python/test_ecp_public_cpu.py
                 tests/python/test_ecp_spd_cartesian_cpu.py

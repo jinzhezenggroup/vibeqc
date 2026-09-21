@@ -87,9 +87,10 @@
     },
     "libxc-xc-admission": {
       "canonical_inputs": {
-        "python/vibeqc_compiler/xc/expressions.py": "0c6325d8ad23389b3c86324ac41bb1b647b1840776d84659404e3c78fbc6da89",
+        "python/vibeqc_compiler/xc/expressions.py": "4d10ca12b5db6b46269c6e6ddac1e51f1713a86aa71b0613d58b65b6821ccca2",
+        "python/vibeqc_compiler/xc/pbe_maple.py": "90f401a766d7c0799ddc14087209ffd6e5cdb7413ed7b3c7c0613f25dd4034f2",
         "python/vibeqc_compiler/xc/rsh_expressions.py": "71c88bf653e07d202b3f57b41e79256b3c95f03a29b0aee56ceefb2eae1dd014",
-        "python/vibeqc_compiler/xc/spec.py": "c0a738fe147dddc39564f5c747696efdec0afecb6cffd21c69139710cb28e910",
+        "python/vibeqc_compiler/xc/spec.py": "23aaebfd18ad7853fb55475ac93160ef20f5a009e6eca8f20f5726f686c654de",
         "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
