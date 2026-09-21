@@ -124,8 +124,12 @@ function(vibeqc_add_gfn2_runtime target)
     # archive so CUDA registration/device-link objects cannot be discarded,
     # without propagating separable compilation to unrelated VibeQC CUDA TUs.
     target_link_libraries(${target} PRIVATE
-      "$<LINK_LIBRARY:WHOLE_ARCHIVE,vibeqc_gfn2_cuda>"
-      CUDA::cuda_driver)
+      "$<LINK_LIBRARY:WHOLE_ARCHIVE,vibeqc_gfn2_cuda>")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+      vibeqc_attach_cuda_driver_implib(${target})
+    else()
+      target_link_libraries(${target} PRIVATE CUDA::cuda_driver)
+    endif()
   endif()
 
   target_include_directories(${target} PRIVATE
