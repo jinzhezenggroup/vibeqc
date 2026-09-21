@@ -787,7 +787,6 @@ class PreparedBatch:
         count = len(self._systems)
         coordinate_storage: list[np.ndarray] = []
         replay_systems = list(self._systems)
-        replay_profile_valid = True
         inputs_pointer = None
         input_count = 0
         if coordinates is not None:
@@ -831,9 +830,10 @@ class PreparedBatch:
                     )
                 else:
                     # Preserve native per-item failure semantics for malformed or
-                    # nonfinite coordinate payloads. They cannot yield promoted
-                    # scientific evidence, so profile qualification is irrelevant.
-                    replay_profile_valid = False
+                    # nonfinite payloads. Keep the prepared geometry only as the
+                    # profile-selection placeholder for this invalid row; every
+                    # other executable row must still be requalified.
+                    replay_systems[index] = self._systems[index]
                 input_descriptors.append(
                     _native.BatchInputDescriptor(
                         ctypes.sizeof(_native.BatchInputDescriptor),
@@ -845,23 +845,22 @@ class PreparedBatch:
             input_array = (_native.BatchInputDescriptor * count)(*input_descriptors)
             inputs_pointer = input_array
             input_count = count
-            if replay_profile_valid:
-                replay_selection = self._calculator._effective_ks_selection(
-                    tuple(replay_systems),
-                    charges=self._charges,
-                    multiplicities=self._multiplicities,
+            replay_selection = self._calculator._effective_ks_selection(
+                tuple(replay_systems),
+                charges=self._charges,
+                multiplicities=self._multiplicities,
+            )
+            if replay_selection.options != self._effective_ks_options:
+                raise RuntimeError(
+                    "profile-selected KS execution schedule changed for replay coordinates; prepare a new batch"
                 )
-                if replay_selection.options != self._effective_ks_options:
-                    raise RuntimeError(
-                        "profile-selected KS execution schedule changed for replay coordinates; prepare a new batch"
-                    )
-                if (
-                    self._ks_profile_selection.exact_profile_match
-                    and not replay_selection.exact_profile_match
-                ):
-                    raise RuntimeError(
-                        "profile-selected KS execution schedule is not qualified for replay coordinates; prepare a new batch"
-                    )
+            if (
+                self._ks_profile_selection.exact_profile_match
+                and not replay_selection.exact_profile_match
+            ):
+                raise RuntimeError(
+                    "profile-selected KS execution schedule is not qualified for replay coordinates; prepare a new batch"
+                )
 
         force_storage = [
             (ctypes.c_double * (3 * atom_count))() if native_compute_forces else None

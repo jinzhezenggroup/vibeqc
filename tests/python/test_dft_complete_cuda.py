@@ -874,6 +874,67 @@ def test_profiled_xc_schedule_reaches_direct_and_resource_aware_batch_paths(
             )
 
 
+@pytest.mark.parametrize(
+    ("invalid_index", "invalid_kind"),
+    ((0, "wrong-size"), (1, "wrong-size"), (0, "nan"), (1, "nan")),
+)
+def test_profiled_xc_schedule_revalidates_valid_neighbor_when_peer_is_invalid(
+    monkeypatch: typing.Any,
+    invalid_index: int,
+    invalid_kind: str,
+) -> None:
+    """DFT09: one invalid row cannot suppress profile requalification of a valid peer."""
+    from vibeqc import Calculator, KsOptions, ResourceBudget
+    from vibeqc.ks import ProfiledKsSelection, resolve_ks_options
+
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    resolved = resolve_ks_options(
+        "pbe-rks", KsOptions(xc_schedule="host_unfused", tile_points=31)
+    )
+    calculator = Calculator(
+        method="pbe-rks",
+        basis="sto-3g",
+        device="cuda",
+        resource_budget=ResourceBudget(),
+        max_iterations=200,
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+    )
+
+    def selected(
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        assert len(systems) == 2
+        assert tuple(charges) == (0, 0)
+        assert tuple(multiplicities) == (1, 1)
+        exact = all(system[1].position[0] == pytest.approx(0.0) for system in systems)
+        return ProfiledKsSelection(resolved, exact_profile_match=exact)
+
+    monkeypatch.setattr(calculator, "_effective_ks_selection", selected)
+
+    moved = np.asarray([atom[1] for atom in atoms], dtype=np.float64)
+    moved[1, 0] += 2.0e-3
+    if invalid_kind == "wrong-size":
+        invalid = np.asarray([0.0, 1.0], dtype=np.float64)
+    else:
+        invalid = np.asarray([atom[1] for atom in atoms], dtype=np.float64)
+        invalid[0, 0] = np.nan
+    coordinates: list[np.ndarray] = [moved.copy(), moved.copy()]
+    coordinates[invalid_index] = invalid
+
+    with (
+        calculator.prepare_batch([atoms, atoms], warm_start=True) as batch,
+        pytest.raises(RuntimeError, match="not qualified for replay coordinates"),
+    ):
+        batch.execute(
+            coordinates=coordinates,
+            properties=("energy",),
+        )
+
+
 def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
     """C2: rebuilt owners get fresh forces and a bad neighbor cannot poison them."""
     from test_dft_complete_cpu import ATOMS
