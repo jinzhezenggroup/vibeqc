@@ -5,7 +5,8 @@
     "src/backends/cuda/gfn2_preprocessing.cu": "Backport xTBloom #487: pass committed pair-list CUDA kernel descriptors by value for GPUs without pageable host-memory access.",
     "src/backends/cuda/gfn2_repulsion.cu": "Consume compiler-generated TensorIR/AD repulsion pair science; retain CUDA reduction and error ownership.",
     "src/backends/cuda/gfn2_repulsion.cuh": "Add explicit generated-pair nonfinite arithmetic status.",
-    "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored."
+    "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored.",
+    "src/backends/cuda/gfn2_h0_force.cu": "Consume compiler-generated TensorIR H0 pair factors, CN/radial reverse response, and AO contraction arithmetic while retaining CUDA traversal, validation, reductions, atomics, and failure semantics."
   },
   "backports": {
     "9881f3ef1c63364cecfc3c1226101b96fc38fd96": "fix(cuda): pass kernel descriptors by value (#487)"
@@ -218,9 +219,9 @@
       "vendored_sha256": "2790a8a1f2c40fcda3f5b0359e5a458cb5970945420c6b29099a2b93599d6f87"
     },
     "src/backends/cuda/gfn2_h0_force.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "ffccf6543aefc02feba9c23913bff8c544f6389a67956535d9e2372f1b50176a",
-      "vendored_sha256": "ffccf6543aefc02feba9c23913bff8c544f6389a67956535d9e2372f1b50176a"
+      "vendored_sha256": "2fa32e2f4f4ff751c8d84a849c35de4e311b6c9985f3aff7f1dc8dcd66394198"
     },
     "src/backends/cuda/gfn2_h0_force.cuh": {
       "adapted": false,

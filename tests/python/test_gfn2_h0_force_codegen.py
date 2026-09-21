@@ -1,0 +1,197 @@
+"""Production cutover checks for compiler-owned GFN2 CUDA H0-force math."""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
+from vibeqc_compiler.method.gfn2_h0_force_runtime import (
+    build_gfn2_h0_ao_update_program,
+    build_gfn2_h0_offsite_factor_program,
+    build_gfn2_h0_offsite_vjp_program,
+    build_gfn2_h0_onsite_factor_program,
+    build_gfn2_h0_onsite_vjp_program,
+)
+from vibeqc_compiler.tensor import execute
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def _run(program, feeds: dict[str, float]) -> dict[str, float]:
+    live = {
+        node.attrs["name"]
+        for node in program.live_nodes
+        if node.op == "input"
+    }
+    outputs = execute(
+        program,
+        {
+            name: np.asarray(feeds[name], dtype=np.float64)
+            for name in live
+        },
+    ).outputs
+    return {name: float(np.asarray(value)) for name, value in outputs.items()}
+
+
+def _pair_inputs() -> dict[str, float]:
+    return {
+        "first_shell_level": -0.43,
+        "second_shell_level": -0.31,
+        "first_cn_scale": 0.017,
+        "second_cn_scale": -0.023,
+        "first_cn": 2.4,
+        "second_cn": 1.7,
+        "first_radius": 1.42,
+        "second_radius": 1.16,
+        "first_polynomial": 0.21,
+        "second_polynomial": -0.08,
+        "pair_scale": 0.93,
+        "distance": 2.31,
+    }
+
+
+def test_h0_onsite_factor_and_cn_vjp() -> None:
+    feeds = _pair_inputs()
+    expected = 0.5 * (
+        feeds["first_shell_level"] - feeds["first_cn_scale"] * feeds["first_cn"]
+        + feeds["second_shell_level"]
+        - feeds["second_cn_scale"] * feeds["second_cn"]
+    )
+    factor = _run(build_gfn2_h0_onsite_factor_program(), feeds)["factor"]
+    np.testing.assert_allclose(factor, expected, rtol=0, atol=2e-16)
+
+    bar = -0.61
+    actual = _run(
+        build_gfn2_h0_onsite_vjp_program(),
+        {**feeds, "bar_factor": bar},
+    )
+    np.testing.assert_allclose(
+        actual["bar_first_cn"],
+        -0.5 * feeds["first_cn_scale"] * bar,
+        rtol=0,
+        atol=2e-16,
+    )
+    np.testing.assert_allclose(
+        actual["bar_second_cn"],
+        -0.5 * feeds["second_cn_scale"] * bar,
+        rtol=0,
+        atol=2e-16,
+    )
+
+
+def test_h0_offsite_factor_and_generated_radial_vjp() -> None:
+    feeds = _pair_inputs()
+    average = 0.5 * (
+        feeds["first_shell_level"] - feeds["first_cn_scale"] * feeds["first_cn"]
+        + feeds["second_shell_level"]
+        - feeds["second_cn_scale"] * feeds["second_cn"]
+    )
+    reduced = np.sqrt(
+        feeds["distance"] / (feeds["first_radius"] + feeds["second_radius"])
+    )
+    first_shape = 1.0 + feeds["first_polynomial"] * reduced
+    second_shape = 1.0 + feeds["second_polynomial"] * reduced
+    spatial = feeds["pair_scale"] * first_shape * second_shape
+    expected = average * spatial
+    factor = _run(build_gfn2_h0_offsite_factor_program(), feeds)["factor"]
+    np.testing.assert_allclose(factor, expected, rtol=0, atol=3e-16)
+
+    bar = 0.73
+    actual = _run(
+        build_gfn2_h0_offsite_vjp_program(),
+        {**feeds, "bar_factor": bar},
+    )
+    np.testing.assert_allclose(
+        actual["bar_first_cn"],
+        -0.5 * feeds["first_cn_scale"] * spatial * bar,
+        rtol=0,
+        atol=4e-16,
+    )
+    np.testing.assert_allclose(
+        actual["bar_second_cn"],
+        -0.5 * feeds["second_cn_scale"] * spatial * bar,
+        rtol=0,
+        atol=4e-16,
+    )
+    spatial_derivative = (
+        feeds["pair_scale"]
+        * (
+            feeds["first_polynomial"] * second_shape
+            + feeds["second_polynomial"] * first_shape
+        )
+        * reduced
+        / (2.0 * feeds["distance"])
+    )
+    np.testing.assert_allclose(
+        actual["bar_distance"],
+        average * spatial_derivative * bar,
+        rtol=2e-15,
+        atol=4e-16,
+    )
+
+
+def test_h0_ao_contraction_is_compiler_owned() -> None:
+    feeds = {
+        "density": -0.37,
+        "overlap": 0.29,
+        "factor": -0.18,
+        "overlap_adjoint": 0.07,
+        "block_weight": -0.04,
+    }
+    actual = _run(build_gfn2_h0_ao_update_program(), feeds)
+    np.testing.assert_allclose(
+        actual["overlap_adjoint_updated"],
+        feeds["overlap_adjoint"] + feeds["density"] * feeds["factor"],
+        rtol=0,
+        atol=2e-17,
+    )
+    np.testing.assert_allclose(
+        actual["block_weight_updated"],
+        feeds["block_weight"] + feeds["density"] * feeds["overlap"],
+        rtol=0,
+        atol=2e-17,
+    )
+
+
+def test_generated_header_and_runtime_retire_handwritten_h0_force_math(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "generated_gfn2_h0_force.cuh"
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "tools/generate_gfn2_h0_force_cuda.py"),
+            "--output",
+            str(output),
+        ],
+        check=True,
+        timeout=60,
+    )
+    generated = output.read_text()
+    assert "__device__ inline bool gfn2_h0_offsite_factor_tensor" in generated
+    assert "__device__ inline bool gfn2_h0_offsite_vjp_tensor" in generated
+    assert "__device__ inline bool gfn2_h0_ao_update_tensor" in generated
+    assert "bar_distance" in generated
+
+    consumer = (
+        ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_h0_force.cu"
+    ).read_text()
+    assert '#include "generated_gfn2_h0_force.cuh"' in consumer
+    assert "evaluate_gfn2_h0_offsite_factor" in consumer
+    assert "evaluate_gfn2_h0_offsite_vjp" in consumer
+    assert "accumulate_gfn2_h0_ao" in consumer
+    for retired in (
+        "spatial_scale_derivative",
+        "polynomial_derivative",
+        "level_weight",
+        "radial_derivative",
+        "overlap_contribution",
+        "weight_contribution",
+    ):
+        assert retired not in consumer
+
+    cmake = (ROOT / "cmake/VibeQCGeneratedSources.cmake").read_text()
+    assert "generate_gfn2_h0_force_cuda.py" in cmake
+    assert "vibeqc_gfn2_h0_force_cuda_codegen" in cmake
