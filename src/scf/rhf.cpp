@@ -239,13 +239,15 @@ void trace_df_resolved_budget(const DfResolvedBudget& budget) {
  * the same resolved allowance proves that owner's full live set fits. */
 std::optional<DensityFittingTilePlan> automatic_dense_resident_df_owner(
     const DfResolvedBudget& budget, std::size_t batch, std::size_t nbf, std::size_t naux,
-    std::size_t occupied, bool unrestricted) {
+    std::size_t occupied, bool unrestricted, unsigned diis_history) {
   if (unrestricted || batch != 1U || occupied == 0U || budget.requested_bytes != 0U ||
       budget.value_bytes == 0U || requested_df_pair_storage() != DfPairStorage::Dense)
     return std::nullopt;
+  const auto diis_bytes = density_fitting_scf_diis_device_bytes(batch, nbf, diis_history);
+  if (diis_bytes == std::numeric_limits<std::size_t>::max()) return std::nullopt;
   try {
-    const auto plan = plan_density_fitting_tiles(batch, nbf, naux, occupied, budget.value_bytes, 0U,
-                                                 false, occupied);
+    const auto plan = plan_density_fitting_tiles(batch, nbf, naux, occupied, budget.value_bytes,
+                                                 diis_bytes, false, occupied);
     if (plan.stores_full_three_center) return plan;
     return std::nullopt;
   } catch (const DensityFittingBudgetError&) {
@@ -373,7 +375,7 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
                                        : 0U;
     const auto resident_values = automatic_dense_resident_df_owner(
         data.resolved_budget, 1U, molecule::ao_count(system), molecule::ao_count(auxiliary_system),
-        resident_occupied, unrestricted);
+        resident_occupied, unrestricted, diis_history);
     // Bounded or explicit owners regenerate DF values from compact device
     // metadata. Automatic single-item RHF keeps complete host values only when
     // the same resolved allowance proves the resident owner fits.
@@ -1319,8 +1321,9 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
     std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics = nullptr,
     const core::System* orbital_system = nullptr, const core::System* auxiliary_system = nullptr) {
   std::size_t automatic_rhf_rank = unrestricted ? 0 : occupied;
-  const auto resident_values = automatic_dense_resident_df_owner(
-      data.resolved_budget, 1U, data.raw.nbf, data.raw.naux, occupied, unrestricted);
+  const auto resident_values =
+      automatic_dense_resident_df_owner(data.resolved_budget, 1U, data.raw.nbf, data.raw.naux,
+                                        occupied, unrestricted, options.diis_history);
   if (resident_values) automatic_rhf_rank = resident_values->automatic_rhf_rank;
   const auto planning_budget = resident_values ? 0U : data.resolved_budget.value_bytes;
 
@@ -1440,8 +1443,8 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
     throw std::invalid_argument("CUDA density-fitting batch has mixed resource-policy identity");
   const std::size_t nbf = data.front().raw.nbf;
   const std::size_t naux = data.front().raw.naux;
-  const auto resident_values =
-      automatic_dense_resident_df_owner(resolved, data.size(), nbf, naux, occupied, unrestricted);
+  const auto resident_values = automatic_dense_resident_df_owner(
+      resolved, data.size(), nbf, naux, occupied, unrestricted, options.diis_history);
   if (resident_values) automatic_rhf_rank = resident_values->automatic_rhf_rank;
   const auto planning_budget = resident_values ? 0U : resolved.value_bytes;
   std::vector<double> metrics;
@@ -1608,7 +1611,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
     }
   }
   const auto resident_values = automatic_dense_resident_df_owner(
-      resolved, count, workload.nbf, workload.naux, resident_occupied, unrestricted);
+      resolved, count, workload.nbf, workload.naux, resident_occupied, unrestricted, diis_history);
   const bool source_values = !resident_values && (resolved.value_bytes != 0U ||
                                                   pair_storage == DfPairStorage::SymmetricLower);
   std::vector<DfPreparationStorage> storage(count);

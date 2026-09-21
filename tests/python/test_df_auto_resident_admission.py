@@ -38,10 +38,10 @@ def test_actual_single_and_batch_routing_preserve_admitted_factor_rank(
         "#include <cstdlib>\n#include <iostream>\n#include <utility>\n"
         '#include "scf/density_fitting.hpp"\nnamespace vibeqc::scf {\n'
         + helper
-        + "\nstd::pair<size_t,size_t> single(const DensityFittingScfData& data, size_t occupied, bool unrestricted) {"
+        + "\nstd::pair<size_t,size_t> single(const DensityFittingScfData& data, size_t occupied, bool unrestricted, unsigned history=0) { struct { unsigned diis_history; } options{history};"
         + single
         + "\nreturn {planning_budget,automatic_rhf_rank};}\n"
-        + "std::pair<size_t,size_t> batch(const std::vector<DensityFittingScfData>& data, size_t occupied, bool unrestricted) {"
+        + "std::pair<size_t,size_t> batch(const std::vector<DensityFittingScfData>& data, size_t occupied, bool unrestricted, unsigned history=0) { struct { unsigned diis_history; } options{history};"
         + batch
         + "\nreturn {planning_budget,automatic_rhf_rank};}\n}\n"
         + r"""
@@ -74,6 +74,22 @@ int main() {
     data.resolved_budget.requested_bytes=0;
     if (single(data,r,true).first != data.resolved_budget.value_bytes) return 6;
     if (batch({data,data},r,false).first != data.resolved_budget.value_bytes) return 7;
+  }
+  {
+    const size_t n=96, a=96, rank=24;
+    const auto bare=plan_density_fitting_tiles(1,n,a,rank,1ULL<<40,0,false,0);
+    const auto diis=density_fitting_scf_diis_device_bytes(1,n,8);
+    if(diis==0) return 8;
+    DensityFittingScfData data{};data.raw.nbf=n;data.raw.naux=a;
+    data.resolved_budget.value_bytes=bare.peak_workspace_bytes;
+    const auto bounded=plan_density_fitting_tiles(1,n,a,rank,data.resolved_budget.value_bytes,diis,false,rank);
+    if(bounded.stores_full_three_center) return 9;
+    for(auto result:{single(data,rank,false,8),batch({data},rank,false,8)})
+      if(result.first==0) {std::cerr<<"resident admission omitted fixed DIIS storage\n";return 10;}
+    const auto full=plan_density_fitting_tiles(1,n,a,rank,1ULL<<40,diis,false,rank);
+    data.resolved_budget.value_bytes=full.peak_workspace_bytes;
+    for(auto result:{single(data,rank,false,8),batch({data},rank,false,8)})
+      if(result.first!=0 || result.second!=rank) return 11;
   }
   std::cout << "all bounded rank and routing checks passed\n";
 }
@@ -114,3 +130,9 @@ def test_batch_owner_keeps_positive_resolved_budget_identity() -> None:
         "set_cuda_density_fitting_scf_value_budget(owned_plan.get(), planning_budget)"
         not in body
     )
+
+
+def test_preparation_routes_use_their_bound_diis_history() -> None:
+    source = (ROOT / "src/scf/rhf.cpp").read_text()
+    assert source.count("resident_occupied, unrestricted, diis_history") == 2
+    assert "resident_occupied, unrestricted, options.diis_history" not in source
