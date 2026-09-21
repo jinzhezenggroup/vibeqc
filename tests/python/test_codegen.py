@@ -3541,8 +3541,11 @@ def test_cuda_target_request_is_resolved_before_language_enablement() -> None:
         "# Scoped VibeQC-owned GFN2 CPU runtime", 1
     )[0]
     target_error = cuda_block.index("CUDA target architecture is required")
+    target_assignment = cuda_block.index(
+        "set(CMAKE_CUDA_ARCHITECTURES ${_vibeqc_cuda_requested_architectures})"
+    )
     language_enable = cuda_block.index("enable_language(CUDA)")
-    assert target_error < language_enable
+    assert target_error < target_assignment < language_enable
     assert "VIBEQC_CUDA_COMPILE_ARCHITECTURES" in cuda_block[:language_enable]
     assert "VIBEQC_CUDA_ARCHITECTURES" in cuda_block[:language_enable]
     assert "DEFINED CMAKE_CUDA_ARCHITECTURES" in cuda_block[:language_enable]
