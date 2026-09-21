@@ -122,9 +122,7 @@ def _case_cpp(o: int, v: int) -> str:
             f"constexpr std::size_t o={o},v={v};",
             "using namespace vibeqc::cc::generated;",
             "const auto arena_count=std::max({lambda_rhs_arena_elements(o,v),"
-            "lambda_transpose_arena_elements(o,v),"
-            + parameter_arenas
-            + "});",
+            "lambda_transpose_arena_elements(o,v)," + parameter_arenas + "});",
             "std::vector<double> arena(arena_count);",
             "const double energy_seed=-1.0;",
             "auto rhs=run_lambda_rhs_cpu(o,v,inputs,&energy_seed,arena.data(),arena.size());",
@@ -180,7 +178,9 @@ def test_runtime_shape_lambda_codegen_matches_tensorir(tmp_path: Path) -> None:
         CPP_PREFIX
         + "\n".join(_case_cpp(o, v) for o, v in cases)
         + "\nint main(){"
-        + "".join(f"if(case_{o}_{v}()) return {10 + i};" for i, (o, v) in enumerate(cases))
+        + "".join(
+            f"if(case_{o}_{v}()) return {10 + i};" for i, (o, v) in enumerate(cases)
+        )
         + 'std::cout<<"runtime-shape Lambda TensorIR parity passed\\n";return 0;}\n'
     )
     executable = tmp_path / "lambda"

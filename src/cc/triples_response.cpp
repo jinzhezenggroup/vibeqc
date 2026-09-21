@@ -12,9 +12,7 @@
 namespace vibeqc::cc {
 namespace {
 
-std::size_t checked_add(std::size_t a, std::size_t b) {
-  return generated::checked_add(a, b);
-}
+std::size_t checked_add(std::size_t a, std::size_t b) { return generated::checked_add(a, b); }
 
 std::size_t checked_mul(std::size_t a, std::size_t b) {
   if (a && b > std::numeric_limits<std::size_t>::max() / a)
@@ -22,9 +20,7 @@ std::size_t checked_mul(std::size_t a, std::size_t b) {
   return a * b;
 }
 
-std::size_t bytes(std::size_t elements) {
-  return checked_mul(elements, sizeof(double));
-}
+std::size_t bytes(std::size_t elements) { return checked_mul(elements, sizeof(double)); }
 
 double degeneracy(std::size_t a, std::size_t b, std::size_t c) {
   if (a == c) return 6.0;
@@ -38,30 +34,26 @@ void add_block(std::vector<double>& target, const double* source) {
 
 }  // namespace
 
-TriplesResponseResult triples_response_cpu(
-    const Problem& p, const SolverResult& cc,
-    const std::vector<double>& eps_o, const std::vector<double>& eps_v,
-    const TriplesResponseOptions& options) {
+TriplesResponseResult triples_response_cpu(const Problem& p, const SolverResult& cc,
+                                           const std::vector<double>& eps_o,
+                                           const std::vector<double>& eps_v,
+                                           const TriplesResponseOptions& options) {
   validate_problem(p);
   if (!cc.converged())
     throw std::invalid_argument("RCCSD(T) response requires converged RCCSD amplitudes");
   if (eps_o.size() != p.nocc || eps_v.size() != p.nvir)
     throw std::invalid_argument("RCCSD(T) response orbital-energy shape mismatch");
-  if (!std::isfinite(options.denominator_threshold) ||
-      options.denominator_threshold <= 0.0 || !options.max_bytes ||
-      !options.batch_capacity)
+  if (!std::isfinite(options.denominator_threshold) || options.denominator_threshold <= 0.0 ||
+      !options.max_bytes || !options.batch_capacity)
     throw std::invalid_argument("invalid RCCSD(T) response options");
   if (cc.t1.size() != checked_mul(p.nocc, p.nvir) ||
-      cc.t2.size() != checked_mul(checked_mul(p.nocc, p.nocc),
-                                  checked_mul(p.nvir, p.nvir)))
+      cc.t2.size() != checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir)))
     throw std::invalid_argument("RCCSD(T) response amplitude shape mismatch");
 
   for (double value : eps_o)
-    if (!std::isfinite(value))
-      throw std::invalid_argument("nonfinite occupied orbital energy");
+    if (!std::isfinite(value)) throw std::invalid_argument("nonfinite occupied orbital energy");
   for (double value : eps_v)
-    if (!std::isfinite(value))
-      throw std::invalid_argument("nonfinite virtual orbital energy");
+    if (!std::isfinite(value)) throw std::invalid_argument("nonfinite virtual orbital energy");
   const double max_occ = *std::max_element(eps_o.begin(), eps_o.end());
   const double min_vir = *std::min_element(eps_v.begin(), eps_v.end());
   if (!(max_occ < min_vir))
@@ -70,53 +62,40 @@ TriplesResponseResult triples_response_cpu(
   if (minimum_denominator <= options.denominator_threshold)
     throw std::invalid_argument("near-zero RCCSD(T) denominator");
 
-
   TriplesResponseResult result;
   result.minimum_absolute_denominator = minimum_denominator;
   result.program_hash = generated::triples_response_program_hash;
-  result.ovvv.assign(checked_mul(checked_mul(p.nocc, p.nvir),
-                                 checked_mul(p.nvir, p.nvir)), 0.0);
-  result.ovoo.assign(checked_mul(checked_mul(p.nocc, p.nvir),
-                                 checked_mul(p.nocc, p.nocc)), 0.0);
-  result.ovov.assign(checked_mul(checked_mul(p.nocc, p.nvir),
-                                 checked_mul(p.nocc, p.nvir)), 0.0);
+  result.ovvv.assign(checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nvir, p.nvir)), 0.0);
+  result.ovoo.assign(checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nocc, p.nocc)), 0.0);
+  result.ovov.assign(checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nocc, p.nvir)), 0.0);
   result.fov.assign(checked_mul(p.nocc, p.nvir), 0.0);
   result.t1.assign(result.fov.size(), 0.0);
-  result.t2.assign(checked_mul(checked_mul(p.nocc, p.nocc),
-                               checked_mul(p.nvir, p.nvir)), 0.0);
+  result.t2.assign(checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir)), 0.0);
   result.eps_o.assign(p.nocc, 0.0);
   result.eps_v.assign(p.nvir, 0.0);
 
-  const std::size_t output_elements =
-      result.ovvv.size() + result.ovoo.size() + result.ovov.size() +
-      result.fov.size() + result.t1.size() + result.t2.size() +
-      result.eps_o.size() + result.eps_v.size();
-  const std::size_t total_triples =
-      checked_mul(p.nvir, checked_mul(p.nvir + 1, p.nvir + 2)) / 6;
+  const std::size_t output_elements = result.ovvv.size() + result.ovoo.size() + result.ovov.size() +
+                                      result.fov.size() + result.t1.size() + result.t2.size() +
+                                      result.eps_o.size() + result.eps_v.size();
+  const std::size_t total_triples = checked_mul(p.nvir, checked_mul(p.nvir + 1, p.nvir + 2)) / 6;
   std::size_t q = std::min(options.batch_capacity, total_triples);
   for (; q; --q) {
-    const auto arena_elements =
-        generated::triples_response_arena_elements(p.nocc, p.nvir, q);
+    const auto arena_elements = generated::triples_response_arena_elements(p.nocc, p.nvir, q);
     const auto control_bytes = checked_mul(q, 5 * sizeof(double));
     const auto required =
-        checked_add(bytes(output_elements),
-                    checked_add(bytes(arena_elements), control_bytes));
+        checked_add(bytes(output_elements), checked_add(bytes(arena_elements), control_bytes));
     if (required <= options.max_bytes) break;
   }
-  if (!q)
-    throw std::length_error("RCCSD(T) response exceeds the host memory budget");
+  if (!q) throw std::length_error("RCCSD(T) response exceeds the host memory budget");
 
-  const auto arena_elements =
-      generated::triples_response_arena_elements(p.nocc, p.nvir, q);
+  const auto arena_elements = generated::triples_response_arena_elements(p.nocc, p.nvir, q);
   result.arena_bytes = bytes(arena_elements);
-  result.numeric_capacity_bytes =
-      checked_add(bytes(output_elements),
-                  checked_add(result.arena_bytes, checked_mul(q, 5 * sizeof(double))));
+  result.numeric_capacity_bytes = checked_add(
+      bytes(output_elements), checked_add(result.arena_bytes, checked_mul(q, 5 * sizeof(double))));
   std::vector<double> arena(arena_elements);
   std::vector<std::int64_t> a_map(q), b_map(q), c_map(q);
   std::vector<double> active(q), weights(q, 1.0);
   const double energy_seed = 1.0;
-
 
   generated::TriplesResponseInputs inputs{};
   inputs.ovvv = p.ovvv.data();
@@ -140,8 +119,8 @@ TriplesResponseResult triples_response_cpu(
       active[page_lane] = page_lane < count ? 1.0 : 0.0;
       if (page_lane >= count) weights[page_lane] = 1.0;
     }
-    const auto response = generated::run_triples_response_cpu(
-        p.nocc, p.nvir, q, inputs, arena.data(), arena.size());
+    const auto response =
+        generated::run_triples_response_cpu(p.nocc, p.nvir, q, inputs, arena.data(), arena.size());
     add_block(result.ovvv, response.ovvv);
     add_block(result.ovoo, response.ovoo);
     add_block(result.ovov, response.ovov);

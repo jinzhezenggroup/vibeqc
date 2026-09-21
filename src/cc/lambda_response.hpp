@@ -40,9 +40,7 @@ struct LambdaResult {
   LambdaDiagnostic diagnostic;
   std::string reason;
 
-  [[nodiscard]] bool converged() const noexcept {
-    return !lambda1.empty() && !lambda2.empty();
-  }
+  [[nodiscard]] bool converged() const noexcept { return !lambda1.empty() && !lambda2.empty(); }
 };
 
 void validate_lambda_options(const LambdaOptions& options);

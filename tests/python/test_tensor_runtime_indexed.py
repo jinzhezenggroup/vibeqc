@@ -145,10 +145,7 @@ def test_runtime_indexed_generated_ad_matches_runtime_maps() -> None:
         {**feeds, "d_source": tangent},
     ).outputs["d_selected"]
     expected_forward = np.stack(
-        [
-            tangent[a, b]
-            for a, b in zip(feeds["a_map"], feeds["b_map"], strict=True)
-        ]
+        [tangent[a, b] for a, b in zip(feeds["a_map"], feeds["b_map"], strict=True)]
     )
     np.testing.assert_array_equal(forward_result, expected_forward)
 
@@ -158,9 +155,7 @@ def test_runtime_indexed_generated_ad_matches_runtime_maps() -> None:
         {**feeds, "bar_selected": cotangent},
     ).outputs["bar_source"]
     expected_reverse = np.zeros_like(feeds["source"])
-    for lane, (a, b) in enumerate(
-        zip(feeds["a_map"], feeds["b_map"], strict=True)
-    ):
+    for lane, (a, b) in enumerate(zip(feeds["a_map"], feeds["b_map"], strict=True)):
         expected_reverse[a, b] += cotangent[lane]
     np.testing.assert_array_equal(reverse_result, expected_reverse)
 

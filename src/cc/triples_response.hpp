@@ -31,9 +31,9 @@ struct TriplesResponseResult {
   std::string reason;
 };
 
-TriplesResponseResult triples_response_cpu(
-    const Problem& problem, const SolverResult& cc,
-    const std::vector<double>& eps_o, const std::vector<double>& eps_v,
-    const TriplesResponseOptions& options = {});
+TriplesResponseResult triples_response_cpu(const Problem& problem, const SolverResult& cc,
+                                           const std::vector<double>& eps_o,
+                                           const std::vector<double>& eps_v,
+                                           const TriplesResponseOptions& options = {});
 
 }  // namespace vibeqc::cc

@@ -475,9 +475,7 @@ def _jvp_runtime_indexed_scatter_add(
     source = tangents[0]
     for domain_coordinate in range(source.shape[0]):
         target = tuple(
-            int(selected[axis][domain_coordinate])
-            if axis in selected
-            else slice(None)
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
             for axis in range(result.ndim)
         )
         result[target] += source[domain_coordinate]
@@ -728,9 +726,7 @@ def _vjp_runtime_indexed_scatter_add(
     source = np.empty(node.inputs[0].spec.shape, dtype=node.inputs[0].spec.dtype)
     for domain_coordinate in range(source.shape[0]):
         target = tuple(
-            int(selected[axis][domain_coordinate])
-            if axis in selected
-            else slice(None)
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
             for axis in range(bar.ndim)
         )
         source[domain_coordinate] = bar[target]

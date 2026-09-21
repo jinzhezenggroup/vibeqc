@@ -11,9 +11,7 @@
 namespace vibeqc::cc {
 namespace {
 
-std::size_t checked_add(std::size_t a, std::size_t b) {
-  return generated::checked_add(a, b);
-}
+std::size_t checked_add(std::size_t a, std::size_t b) { return generated::checked_add(a, b); }
 
 std::size_t checked_mul(std::size_t a, std::size_t b) {
   if (a && b > std::numeric_limits<std::size_t>::max() / a)
@@ -21,38 +19,22 @@ std::size_t checked_mul(std::size_t a, std::size_t b) {
   return a * b;
 }
 
-std::size_t bytes(std::size_t elements) {
-  return checked_mul(elements, sizeof(double));
-}
-
+std::size_t bytes(std::size_t elements) { return checked_mul(elements, sizeof(double)); }
 
 generated::Inputs inputs(const Problem& p, const SolverResult& cc) {
-  return {p.foo.data(),
-          p.fov.data(),
-          p.fvv.data(),
-          p.ovov.data(),
-          p.ovvo.data(),
-          p.oovv.data(),
-          p.ovvv.data(),
-          p.ovoo.data(),
-          p.oooo.data(),
-          p.vvvv.data(),
-          p.d1.data(),
-          p.d2.data(),
-          cc.t1.data(),
-          cc.t2.data()};
+  return {p.foo.data(),  p.fov.data(),  p.fvv.data(),  p.ovov.data(), p.ovvo.data(),
+          p.oovv.data(), p.ovvv.data(), p.ovoo.data(), p.oooo.data(), p.vvvv.data(),
+          p.d1.data(),   p.d2.data(),   cc.t1.data(),  cc.t2.data()};
 }
 
 double max_abs(std::span<const double> values) {
   double result = 0.0;
   for (double value : values) {
-    if (!std::isfinite(value))
-      throw std::runtime_error("nonfinite RCCSD Lambda residual");
+    if (!std::isfinite(value)) throw std::runtime_error("nonfinite RCCSD Lambda residual");
     result = std::max(result, std::abs(value));
   }
   return result;
 }
-
 
 struct AmplitudeLayout {
   std::size_t o{}, v{}, n1{}, n2{};
@@ -81,17 +63,13 @@ struct AmplitudeLayout {
           }
   }
 
-
-  [[nodiscard]] std::size_t dimension() const {
-    return n1 + representatives.size();
-  }
+  [[nodiscard]] std::size_t dimension() const { return n1 + representatives.size(); }
 
   void validate_dense(std::span<const double> one, std::span<const double> two) const {
     if (one.size() != n1 || two.size() != n2)
       throw std::invalid_argument("RCCSD Lambda amplitude shape mismatch");
     for (double value : one)
-      if (!std::isfinite(value))
-        throw std::invalid_argument("nonfinite RCCSD Lambda singles");
+      if (!std::isfinite(value)) throw std::invalid_argument("nonfinite RCCSD Lambda singles");
     for (std::size_t k = 0; k < representatives.size(); ++k) {
       const double first = two[representatives[k]], second = two[partners[k]];
       if (!std::isfinite(first) || !std::isfinite(second) ||
@@ -109,7 +87,6 @@ struct AmplitudeLayout {
     for (std::size_t k = 0; k < representatives.size(); ++k)
       output[n1 + k] = sqrt_weights[n1 + k] * two[representatives[k]];
   }
-
 
   void unpack_weighted(std::span<const double> packed, std::span<double> one,
                        std::span<double> two) const {
@@ -138,12 +115,10 @@ std::size_t vector_capacity_bytes(const std::vector<double>& values) {
 
 }  // namespace
 
-
 void validate_lambda_options(const LambdaOptions& options) {
   if (!std::isfinite(options.cc_tolerance) || options.cc_tolerance <= 0.0 ||
       options.cc_tolerance > 1e-9 || !std::isfinite(options.lambda_tolerance) ||
-      options.lambda_tolerance <= 0.0 || options.lambda_tolerance > 1e-9 ||
-      !options.max_bytes)
+      options.lambda_tolerance <= 0.0 || options.lambda_tolerance > 1e-9 || !options.max_bytes)
     throw std::invalid_argument("invalid RCCSD Lambda tolerance/budget");
   (void)response::prepare_gmres(1, options.gmres);
 }
@@ -152,8 +127,7 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
                               const LambdaOptions& options) {
   validate_problem(p);
   validate_lambda_options(options);
-  if (!cc.converged())
-    throw std::invalid_argument("RCCSD Lambda requires a converged CC result");
+  if (!cc.converged()) throw std::invalid_argument("RCCSD Lambda requires a converged CC result");
   AmplitudeLayout layout(p.nocc, p.nvir);
   if (cc.t1.size() != layout.n1 || cc.t2.size() != layout.n2)
     throw std::invalid_argument("RCCSD Lambda CC result shape mismatch");
@@ -162,15 +136,13 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
   const auto in = inputs(p, cc);
   const auto replay_elements = generated::replay_arena_elements(p.nocc, p.nvir);
   const auto shared_rhs_elements = generated::lambda_rhs_arena_elements(p.nocc, p.nvir);
-  const auto shared_jt_elements =
-      generated::lambda_transpose_arena_elements(p.nocc, p.nvir);
+  const auto shared_jt_elements = generated::lambda_transpose_arena_elements(p.nocc, p.nvir);
   const auto independent_rhs_elements =
       generated::lambda_independent_rhs_arena_elements(p.nocc, p.nvir);
   const auto independent_jt_elements =
       generated::lambda_independent_transpose_arena_elements(p.nocc, p.nvir);
-  const auto arena_elements =
-      std::max({replay_elements, shared_rhs_elements, shared_jt_elements,
-                independent_rhs_elements, independent_jt_elements});
+  const auto arena_elements = std::max({replay_elements, shared_rhs_elements, shared_jt_elements,
+                                        independent_rhs_elements, independent_jt_elements});
   const auto gmres_plan = response::prepare_gmres(layout.dimension(), options.gmres);
 
   std::size_t capacity = checked_add(p.reference_retained_bytes, problem_host_bytes(p));
@@ -185,8 +157,7 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
     throw std::length_error("RCCSD Lambda exceeds simultaneous host budget");
 
   std::vector<double> arena(arena_elements);
-  const auto replay =
-      generated::run_replay_cpu(p.nocc, p.nvir, in, arena.data(), arena.size());
+  const auto replay = generated::run_replay_cpu(p.nocc, p.nvir, in, arena.data(), arena.size());
   const double replay_r1 = max_abs({replay.r1, layout.n1});
   const double replay_r2 = max_abs({replay.r2, layout.n2});
   if (std::max(replay_r1, replay_r2) > options.cc_tolerance ||
@@ -194,8 +165,8 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
     throw std::runtime_error("RCCSD Lambda fresh primal replay gate failed");
 
   const double energy_seed = -1.0;
-  auto rhs_outputs = generated::run_lambda_rhs_cpu(
-      p.nocc, p.nvir, in, &energy_seed, arena.data(), arena.size());
+  auto rhs_outputs =
+      generated::run_lambda_rhs_cpu(p.nocc, p.nvir, in, &energy_seed, arena.data(), arena.size());
   std::vector<double> rhs(layout.dimension());
   layout.pack_weighted({rhs_outputs.t1, layout.n1}, {rhs_outputs.t2, layout.n2}, rhs);
 
@@ -208,16 +179,14 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
   };
 
   auto solved = response::solve_gmres(gmres_plan, apply, rhs);
-  if (!solved.converged())
-    throw std::runtime_error("RCCSD Lambda GMRES did not converge");
-
+  if (!solved.converged()) throw std::runtime_error("RCCSD Lambda GMRES did not converge");
 
   layout.unpack_weighted(solved.solution, dense_one, dense_two);
   const auto independent_action = generated::run_lambda_independent_transpose_cpu(
       p.nocc, p.nvir, in, dense_one.data(), dense_two.data(), arena.data(), arena.size());
   std::vector<double> independent(layout.dimension());
-  layout.pack_weighted({independent_action.t1, layout.n1},
-                       {independent_action.t2, layout.n2}, independent);
+  layout.pack_weighted({independent_action.t1, layout.n1}, {independent_action.t2, layout.n2},
+                       independent);
 
   const auto independent_rhs_output = generated::run_lambda_independent_rhs_cpu(
       p.nocc, p.nvir, in, &energy_seed, arena.data(), arena.size());
@@ -236,7 +205,6 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
       options.lambda_tolerance)
     throw std::runtime_error("RCCSD Lambda independent physical residual gate failed");
 
-
   LambdaResult result;
   layout.publish(solved.solution, result.lambda1, result.lambda2);
   result.reason = "shared GMRES and expanded physical Lambda residual passed";
@@ -249,8 +217,7 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
   result.diagnostic.operator_actions = solved.operator_actions;
   result.diagnostic.numeric_capacity_bytes = capacity;
   result.diagnostic.shared_program_hash = generated::lambda_transpose_program_hash;
-  result.diagnostic.independent_program_hash =
-      generated::lambda_independent_transpose_program_hash;
+  result.diagnostic.independent_program_hash = generated::lambda_independent_transpose_program_hash;
   return result;
 }
 

@@ -144,8 +144,7 @@ def test_runtime_shape_triples_response_matches_tensorir(tmp_path: Path) -> None
         + "\n".join(_case_cpp(*case) for case in cases)
         + "\nint main(){"
         + "".join(
-            f"if(const int rc=case_{o}_{v}_{q}()) return rc;"
-            for o, v, q, _ in cases
+            f"if(const int rc=case_{o}_{v}_{q}()) return rc;" for o, v, q, _ in cases
         )
         + 'std::cout<<"runtime-shape triples response parity passed\\n";return 0;}\n'
     )

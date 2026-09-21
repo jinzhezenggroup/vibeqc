@@ -25,7 +25,9 @@ def _array(name: str, value: np.ndarray) -> str:
     flat = np.asarray(value, dtype=np.float64).reshape(-1)
     return (
         f"static const double {name}[{flat.size}]="
-        + "{" + ",".join(_literal(x) for x in flat) + "};"
+        + "{"
+        + ",".join(_literal(x) for x in flat)
+        + "};"
     )
 
 
@@ -164,10 +166,7 @@ def test_runtime_shape_hamiltonian_response_matches_tensorir(tmp_path: Path) -> 
         CPP_PREFIX
         + "\n".join(_case_cpp(o, v) for o, v in cases)
         + "\nint main(){"
-        + "".join(
-            f"if(const int rc=case_{o}_{v}()) return rc;"
-            for o, v in cases
-        )
+        + "".join(f"if(const int rc=case_{o}_{v}()) return rc;" for o, v in cases)
         + 'std::cout<<"runtime-shape Hamiltonian TensorIR parity passed\\n";return 0;}\n'
     )
     executable = tmp_path / "hamiltonian"

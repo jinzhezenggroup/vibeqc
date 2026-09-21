@@ -63,7 +63,7 @@ def _cpp_case(o: int, v: int, seed: int) -> str:
         "eps_v": v,
     }
     checks = [
-        f"if(!close(result.{name},expected_{name},{sizes[name]})) return {20+i};"
+        f"if(!close(result.{name},expected_{name},{sizes[name]})) return {20 + i};"
         for i, name in enumerate(NAMES)
     ]
     return "\n".join(
@@ -74,20 +74,20 @@ def _cpp_case(o: int, v: int, seed: int) -> str:
             "Problem p;",
             f"p.nocc={o}; p.nvir={v};",
             "p.reference_energy=0.0;",
-            f"p.foo.assign({o*o},0.0);",
-            f"p.fov.assign(fov,fov+{o*v});",
-            f"p.fvv.assign({v*v},0.0);",
+            f"p.foo.assign({o * o},0.0);",
+            f"p.fov.assign(fov,fov+{o * v});",
+            f"p.fvv.assign({v * v},0.0);",
             f"p.ovov.assign(ovov,ovov+{sizes['ovov']});",
-            f"p.ovvo.assign({o*v*v*o},0.0);",
-            f"p.oovv.assign({o*o*v*v},0.0);",
+            f"p.ovvo.assign({o * v * v * o},0.0);",
+            f"p.oovv.assign({o * o * v * v},0.0);",
             f"p.ovvv.assign(ovvv,ovvv+{sizes['ovvv']});",
             f"p.ovoo.assign(ovoo,ovoo+{sizes['ovoo']});",
             f"p.oooo.assign({o**4},0.0);",
             f"p.vvvv.assign({v**4},0.0);",
-            f"p.d1.assign({o*v},-1.0);",
-            f"p.d2.assign({o*o*v*v},-2.0);",
-            f"p.initial_t1.assign({o*v},0.0);",
-            f"p.initial_t2.assign({o*o*v*v},0.0);",
+            f"p.d1.assign({o * v},-1.0);",
+            f"p.d2.assign({o * o * v * v},-2.0);",
+            f"p.initial_t1.assign({o * v},0.0);",
+            f"p.initial_t2.assign({o * o * v * v},0.0);",
             "SolverResult cc;",
             "cc.status=SolveStatus::Converged;",
             f"cc.t1.assign(t1,t1+{sizes['t1']});",
@@ -129,7 +129,12 @@ def test_native_triples_response_owner_matches_full_vjp(tmp_path: Path) -> None:
     root = Path(__file__).resolve().parents[2]
     header = tmp_path / "generated_rccsd_cpu.hpp"
     subprocess.run(
-        [sys.executable, str(root / "tools/generate_rccsd_native.py"), "--cpu-header", str(header)],
+        [
+            sys.executable,
+            str(root / "tools/generate_rccsd_native.py"),
+            "--cpu-header",
+            str(header),
+        ],
         cwd=root,
         check=True,
         capture_output=True,
