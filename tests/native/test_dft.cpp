@@ -76,8 +76,7 @@ int main() {
       for (double& component : expected) row >> component;
       require(static_cast<bool>(row), "malformed XC SCF-domain fixture");
       if (pbe == 0) {
-        const auto value =
-            vibeqc::dft::generated::lda_xc_pw_polarized_production(rho[0], rho[1]);
+        const auto value = vibeqc::dft::generated::lda_xc_pw_polarized_production(rho[0], rho[1]);
         const double actual[]{value.energy_density, value.feature_derivative[0],
                               value.feature_derivative[1]};
         for (unsigned i = 0; i < 3; ++i) {
@@ -92,9 +91,9 @@ int main() {
         const auto value =
             vibeqc::dft::generated::pbe_polarized_production(rho[0], rho[1], gradient);
         const double actual[]{
-            value.energy_density, value.rho[0], value.rho[1], value.gradient[0][0],
-            value.gradient[0][1], value.gradient[0][2], value.gradient[1][0],
-            value.gradient[1][1], value.gradient[1][2],
+            value.energy_density, value.rho[0],         value.rho[1],
+            value.gradient[0][0], value.gradient[0][1], value.gradient[0][2],
+            value.gradient[1][0], value.gradient[1][1], value.gradient[1][2],
         };
         for (unsigned i = 0; i < 9; ++i) {
           const double tolerance = 5.0e-10 * std::abs(expected[i]) + 1.0e-322;
@@ -106,16 +105,14 @@ int main() {
     }
     require(lda_rows == 36, "incomplete independent polarized LDA reference coverage");
     require(pbe_rows == 61, "incomplete independent polarized PBE reference coverage");
-    const auto lda_vacuum =
-        vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
+    const auto lda_vacuum = vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
     require(lda_vacuum.energy_density == 0.0 && lda_vacuum.feature_derivative[0] == 0.0 &&
                 lda_vacuum.feature_derivative[1] == 0.0,
             "compiler-owned polarized LDA vacuum limit is wrong");
     const double zero_gradient[2][3]{};
     const auto generated_pbe_vacuum =
         vibeqc::dft::generated::pbe_polarized_production(0.0, 0.0, zero_gradient);
-    require(generated_pbe_vacuum.energy_density == 0.0 &&
-                generated_pbe_vacuum.rho[0] == 0.0 &&
+    require(generated_pbe_vacuum.energy_density == 0.0 && generated_pbe_vacuum.rho[0] == 0.0 &&
                 generated_pbe_vacuum.rho[1] == 0.0,
             "compiler-owned polarized PBE vacuum limit is wrong");
 
@@ -129,14 +126,14 @@ int main() {
         const auto actual = vibeqc::dft::generated::pbe_polarized_production(
             rho[0], rho[1], gradient, scales[0], scales[1]);
         const double generated[]{
-            actual.energy_density, actual.rho[0], actual.rho[1], actual.gradient[0][0],
-            actual.gradient[0][1], actual.gradient[0][2], actual.gradient[1][0],
-            actual.gradient[1][1], actual.gradient[1][2],
+            actual.energy_density, actual.rho[0],         actual.rho[1],
+            actual.gradient[0][0], actual.gradient[0][1], actual.gradient[0][2],
+            actual.gradient[1][0], actual.gradient[1][1], actual.gradient[1][2],
         };
         const double reference[]{
-            expected.energy, expected.rho[0], expected.rho[1], expected.gradient[0][0],
-            expected.gradient[0][1], expected.gradient[0][2], expected.gradient[1][0],
-            expected.gradient[1][1], expected.gradient[1][2],
+            expected.energy,         expected.rho[0],         expected.rho[1],
+            expected.gradient[0][0], expected.gradient[0][1], expected.gradient[0][2],
+            expected.gradient[1][0], expected.gradient[1][1], expected.gradient[1][2],
         };
         require(expected.valid, "independent scaled PBE oracle rejected an interior point");
         for (unsigned i = 0; i < 9; ++i)

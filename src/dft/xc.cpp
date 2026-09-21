@@ -173,8 +173,8 @@ point::Value evaluate_generated_pbe_point(const double rho[2], const double grad
     return out;
   }
   if (total == 0.0) return out;
-  const auto raw =
-      generated::pbe_polarized_production(rho[0], rho[1], gradient, exchange_scale, correlation_scale);
+  const auto raw = generated::pbe_polarized_production(rho[0], rho[1], gradient, exchange_scale,
+                                                       correlation_scale);
   out.energy = raw.energy_density;
   out.rho[0] = raw.rho[0];
   out.rho[1] = raw.rho[1];
@@ -263,9 +263,9 @@ SpinXcIntegral integrate_spin_xc(const AoBasis& basis, const MolecularGrid& grid
         rho[spin] = features[0];
         for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
       }
-      const auto xc = pbe ? evaluate_generated_pbe_point(rho, gradient, exchange_scale,
-                                                          correlation_scale)
-                          : evaluate_generated_lda_point(rho);
+      const auto xc =
+          pbe ? evaluate_generated_pbe_point(rho, gradient, exchange_scale, correlation_scale)
+              : evaluate_generated_lda_point(rho);
       if (!xc.valid) throw std::domain_error("invalid or unrepresentable semilocal spin features");
       const double weight = grid.weights()[begin + p];
       result.energy += weight * xc.energy;
