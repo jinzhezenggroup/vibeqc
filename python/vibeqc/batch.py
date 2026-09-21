@@ -792,6 +792,10 @@ class PreparedBatch:
                 * grid.angular_polar
                 * grid.angular_azimuth,
                 ecp_terms=len(terms),
+                nonlocal_correlation=(
+                    calculator._ks_options.execution_plan.nonlocal_correlation
+                    is not None
+                ),
             )
             if sum(inventory.values()) > CPU_FORCE_HOST_CAP:
                 raise ValueError("CPU force additional-host byte budget exceeded")

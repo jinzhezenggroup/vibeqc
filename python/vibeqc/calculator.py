@@ -935,6 +935,10 @@ class Calculator:
         semilocal_force = (
             self._ks_options is not None
             and self._ks_options.coefficients == (1.0, 1.0, 0.0)
+            and not (
+                self._device_name == "cuda"
+                and self._ks_options.execution_plan.nonlocal_correlation is not None
+            )
             and (
                 self._device_name == "cuda"
                 or (self._device_name == "cpu" and qualified_basis(self._basis))

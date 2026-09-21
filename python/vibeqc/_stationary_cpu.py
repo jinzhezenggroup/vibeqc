@@ -23,6 +23,7 @@ from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.native_runtime import compile_runtime
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.dft.nonlocal_integration import FixedDensityNonlocalCorrelation
 from vibeqc_compiler.integral.ecp_policy import (
     COARSE_POLAR_POINTS,
     COARSE_RADIAL_POINTS,
@@ -30,6 +31,7 @@ from vibeqc_compiler.integral.ecp_policy import (
     REFINED_RADIAL_POINTS,
 )
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cpu
+from vibeqc_compiler.method.nonlocal_correlation import NonlocalCorrelationPrimitive
 from vibeqc_compiler.method.spec import RangeSeparatedExchangePrimitive
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
@@ -50,6 +52,7 @@ from ._dft_gradient import (
 )
 from ._stationary_rsh_cpu import RangeExchangeExecutor
 from .ks import native_xc_functional_code
+from .nonlocal_runtime import NativeNonlocalPairProvider
 
 
 @dataclass(frozen=True)
@@ -253,6 +256,10 @@ def _admit_work(
     pairs = natom * (natom - 1) // 2
     method_ir = getattr(state._source, "method_ir", None)
     exact_exchange = bool(getattr(method_ir, "full_range_exact_exchange", 0))
+    nonlocal_correlation = any(
+        isinstance(primitive, NonlocalCorrelationPrimitive)
+        for primitive in getattr(method_ir, "primitives", ())
+    )
     range_exchange = sum(
         type(primitive) is RangeSeparatedExchangePrimitive
         for primitive in getattr(method_ir, "primitives", ())
@@ -273,10 +280,15 @@ def _admit_work(
     # validates on every coordinate traversal. Include both in admission.
     if execution == "reference":
         validations *= 3 * natom
+    nonlocal_pair_visits = points * points if nonlocal_correlation else 0
+    nonlocal_partition_visits = visits + validations if nonlocal_correlation else 0
+    grid_pair_work = (
+        visits + validations + nonlocal_pair_visits + nonlocal_partition_visits
+    )
     for actual, budget, label in (
         (records, max_primitive_records, "primitive"),
         (points, max_grid_points, "grid point"),
-        (visits + validations, max_grid_pair_visits, "grid pair"),
+        (grid_pair_work, max_grid_pair_visits, "grid pair"),
     ):
         if actual > budget:
             raise ValueError(f"{label} work budget exceeded")
@@ -315,7 +327,9 @@ def _admit_work(
         "grid_adjoint_points": points if execution == "native" else 0,
         "grid_pair_visits": visits,
         "grid_center_pair_validations": validations,
-        "grid_pair_work_bound": visits + validations,
+        "nonlocal_pair_evaluations": nonlocal_pair_visits,
+        "nonlocal_partition_pair_work": nonlocal_partition_visits,
+        "grid_pair_work_bound": grid_pair_work,
         "grid_pair_work_budget": max_grid_pair_visits,
         "ecp_quadrature_pair_samples": ecp_samples,
         "ecp_pair_sample_budget": max_ecp_pair_samples,
@@ -423,6 +437,10 @@ def complete_rks_gradient_diagnostic(
             basis,
             grid_points=len(state.grid.points),
             ecp_terms=len(state._source.ecp_terms),
+            nonlocal_correlation=any(
+                isinstance(primitive, NonlocalCorrelationPrimitive)
+                for primitive in state._source.method_ir.primitives
+            ),
             tile_points=tile_points,
             primitive_tile=primitive_tile,
             integral_terms=integral_terms,
@@ -685,6 +703,64 @@ def complete_rks_gradient_diagnostic(
                     partials.weights,
                     state._source.atomic_weights[begin:end] * derivative,
                 )
+    nonlocal_primitive = next(
+        (
+            primitive
+            for primitive in method.primitives
+            if isinstance(primitive, NonlocalCorrelationPrimitive)
+        ),
+        None,
+    )
+    if nonlocal_primitive is not None:
+        calculator = state._source._batch._calculator
+        provider = NativeNonlocalPairProvider(
+            device="cpu",
+            device_id=0,
+            memory_budget_bytes=calculator._ks_options.nonlocal_memory_budget_bytes,
+            library=state._source._library,
+        )
+        geometry = FixedDensityNonlocalCorrelation(
+            nonlocal_primitive.spec,
+            coefficient=nonlocal_primitive.coefficient,
+            pair_provider=provider,
+        ).geometry(basis, grid, density, tile_points=tile_points)
+        components["nonlocal_ao"] += np.asarray(geometry.centers)
+        owners = np.asarray(grid.owners, dtype=np.int64)
+        np.add.at(components["nonlocal_grid"], owners, np.asarray(geometry.points))
+        if grid_consumer is not None:
+            with np.errstate(over="raise", invalid="raise"):
+                seeds = np.asarray(geometry.weights) * np.asarray(
+                    state._source.atomic_weights
+                )
+            components["nonlocal_weight"] += grid_consumer.contract(
+                grid.points,
+                native.centers,
+                owners,
+                seeds,
+                coincident_tolerance=spec.coincident_tolerance,
+            )
+        else:
+            for a in range(natom):
+                for axis in range(3):
+                    motion = np.zeros((natom, 3))
+                    motion[a, axis] = 1
+                    for begin in range(0, len(grid.points), tile_points):
+                        end = min(begin + tile_points, len(grid.points))
+                        atoms = owners[begin:end]
+                        response = partition_response(
+                            grid.points[begin:end],
+                            native.centers,
+                            point_motion=motion[atoms],
+                            center_motion=motion,
+                            iterations=spec.partition_iterations,
+                            coincident_tolerance=spec.coincident_tolerance,
+                        )
+                        selected = (np.arange(end - begin), atoms)
+                        components["nonlocal_weight"][a, axis] += np.dot(
+                            geometry.weights[begin:end],
+                            state._source.atomic_weights[begin:end]
+                            * response.directional[selected],
+                        )
     gradient = (
         NativeTensorProgram(
             plan.reduction_program(atoms=natom, sources=components.keys()),

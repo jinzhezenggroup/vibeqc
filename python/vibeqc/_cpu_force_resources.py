@@ -42,6 +42,7 @@ def cpu_force_inventory(
     *,
     grid_points: int,
     ecp_terms: int,
+    nonlocal_correlation: bool = False,
     tile_points: int = 256,
     primitive_tile: int = 128,
     integral_terms: int = 32,
@@ -83,6 +84,9 @@ def cpu_force_inventory(
         if ecp_terms
         else 0
     )
+    nonlocal_force = (
+        8 * (32 * grid_points + n * n + 3 * a) if nonlocal_correlation else 0
+    )
 
     # The generated range-ERI owner caches one PreparedWeightedEri per
     # (operator, angular-signature, Cartesian component). For s/p AOs the
@@ -112,6 +116,7 @@ def cpu_force_inventory(
         "tensor_and_grid_arenas": 32 << 20,
         "ecp_provider": ecp,
         "ecp_export_and_contraction": 8 * (24 * a * n * n + 24 * a * integral_terms),
+        "nonlocal_force": nonlocal_force,
     }
     return {
         key: checked_bytes(value, "CPU force " + key) for key, value in blocks.items()
