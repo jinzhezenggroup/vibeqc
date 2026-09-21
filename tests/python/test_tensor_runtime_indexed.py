@@ -16,6 +16,7 @@ from vibeqc_compiler.tensor import (
     input_tensor,
     linearize,
     runtime_indexed_select,
+    transpose_program,
 )
 from vibeqc_compiler.tensor.cuda_emit import emit_cuda
 from vibeqc_compiler.tensor.cuda_plan import plan_cuda
@@ -136,6 +137,10 @@ def test_runtime_indexed_generated_ad_fails_closed_until_transpose_rule_lands() 
         ValueError, match="no demand-driven JVP rule.*runtime_indexed_select"
     ):
         linearize(program, ["source"])
+    with pytest.raises(
+        ValueError, match="no demand-driven VJP rule.*runtime_indexed_select"
+    ):
+        transpose_program(program, ["selected"], inputs=["source"])
 
 
 @pytest.mark.skipif(
