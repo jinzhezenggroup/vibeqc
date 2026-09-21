@@ -1245,7 +1245,7 @@ def _complete_rks_cuda_gradient_diagnostic(
         }
         for item in artifacts
     )
-    timeline_record = timeline.finish()
+    timeline.switch("publication_metadata")
     work.update(
         ecp_provider="generated-cuda/two-grid/dense-host-export" if ecp else None,
         ecp_provider_workspace_bound=ecp_workspace,
@@ -1298,8 +1298,6 @@ def _complete_rks_cuda_gradient_diagnostic(
         snapshot_export_work=dict(state._source.export_work),
         snapshot_export="explicit native CUDA final-state export; W/frame validation is host work",
         host_scope="snapshot validation; AO task descriptor packing/sorting; one D/W owner upload; final TensorIR reduction; immutable result copies",
-        endpoint_seconds=timeline_record["endpoint_seconds"],
-        timeline=timeline_record,
         measurement_profile_enabled=bool(work.get("device_profile_enabled", False)),
         transfer_work={
             "source_h2d_bytes": work["h2d_bytes"],
@@ -1311,6 +1309,11 @@ def _complete_rks_cuda_gradient_diagnostic(
             "tensor_d2h_bytes": tensor_work["d2h_bytes"],
         },
         artifacts=artifacts_record,
+    )
+    timeline_record = timeline.finish()
+    work.update(
+        endpoint_seconds=timeline_record["endpoint_seconds"],
+        timeline=timeline_record,
     )
     return DiagnosticStationaryGradient(
         published_gradient,
