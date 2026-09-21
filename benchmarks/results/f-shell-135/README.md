@@ -1,5 +1,11 @@
 # Issue #135: f-shell acceptance on RTX 5090
 
+> **Retention note (2026-09-21):** selected bulky historical records from this
+> campaign were moved out of the current checkout. Pinned historical links below
+> still open the original bytes at `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5`; exact byte restoration is available
+> through `benchmarks/results/retention-2026-09-21/migration.json`. Scientific
+> acceptance thresholds and retained summaries are unchanged.
+
 All 34 classes pass release compilation, complete resource reporting, and independent GPU numerical validation for all eight RHF/UHF Fock/force direct/persistent entry points. The matrix contains 692 fixtures and 5,536 kernel executions. Maximum absolute analytic error is **1.12e-15**; the raw maximum relative error on nonzero references is 1.19e-9. Acceptance uses the recorded combined `atol=rtol=2e-10` floor, with separate translation and finite-difference guards.
 
 The [index](index.json) hashes every complete per-class report. Source hashes and cached object hashes were checked against implementation `d20ffbe`. Numerical runs were collected during development and retain their original revision/dirty state; they were not relabeled as clean runs. All 57 generated files in the endpoint library exactly match final generator output.
@@ -17,10 +23,10 @@ The required corpus is water/def2-TZVP and a hydrogen-bonded two-water fragment 
 | Endpoint | Batch | AOs / f shells | Baseline s | FPPS s | Speedup | Max energy error | Max force error |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | [water-def2-tzvp](f-water-b1.json) | 1 | 48 / 1 | 0.540281 | 0.537660 | 1.0049x | 3.41e-13 | 6.36e-11 |
-| [water-def2-tzvp](f-water-b4.json) | 4 | 48 / 1 | 0.635768 | 0.631325 | 1.0070x | 4.12e-13 | 6.39e-11 |
+| [water-def2-tzvp](https://github.com/jinzhezenggroup/vibeqc/blob/d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5/benchmarks/results/f-shell-135/f-water-b4.json) | 4 | 48 / 1 | 0.635768 | 0.631325 | 1.0070x | 4.12e-13 | 6.39e-11 |
 | [water-dimer-def2-tzvp-spherical](f-dimer-b1.json) | 1 | 86 / 2 | 1.060846 | 1.054019 | 1.0065x | 8.81e-13 | 5.52e-10 |
-| [water-dimer-def2-tzvp-spherical](f-dimer-b4.json) | 4 | 86 / 2 | 2.734946 | 2.698916 | 1.0133x | 7.39e-13 | 5.74e-10 |
-| [water-tetramer-def2-tzvp-spherical](f-tetramer-b1.json) | 1 | 172 / 4 | 5.880455 | 5.798192 | 1.0142x | 4.55e-13 | 1.35e-10 |
+| [water-dimer-def2-tzvp-spherical](https://github.com/jinzhezenggroup/vibeqc/blob/d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5/benchmarks/results/f-shell-135/f-dimer-b4.json) | 4 | 86 / 2 | 2.734946 | 2.698916 | 1.0133x | 7.39e-13 | 5.74e-10 |
+| [water-tetramer-def2-tzvp-spherical](https://github.com/jinzhezenggroup/vibeqc/blob/d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5/benchmarks/results/f-shell-135/f-tetramer-b1.json) | 1 | 172 / 4 | 5.880455 | 5.798192 | 1.0142x | 4.55e-13 | 1.35e-10 |
 
 The 2% non-regression budget passes at every required point. Active f-containing primitive work is 46.6% for water, 45.4% for the dimer, and 41.6% for the tetramer. The dimer has 86 spherical AOs and two loaded f shells; the tetramer has 172 AOs and four f shells.
 
@@ -47,15 +53,15 @@ Current objects total 154.31 MiB and extracted cubins 141.14 MiB. Recorded per-c
 
 | Class | Compile s | Object MiB | Max registers | Max spill load/store B | Max absolute error | Production / endpoint |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| [fsss](fsss.json) | 4.97 | 0.97 | 148 | 0 / 0 | 2.10e-16 | Unselected; endpoint A/B not run |
-| [fsps](fsps.json) | 5.86 | 1.18 | 158 | 0 / 0 | 1.33e-16 | Unselected; endpoint A/B not run |
+| [fsss](https://github.com/jinzhezenggroup/vibeqc/blob/d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5/benchmarks/results/f-shell-135/fsss.json) | 4.97 | 0.97 | 148 | 0 / 0 | 2.10e-16 | Unselected; endpoint A/B not run |
+| [fsps](https://github.com/jinzhezenggroup/vibeqc/blob/d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5/benchmarks/results/f-shell-135/fsps.json) | 5.86 | 1.18 | 158 | 0 / 0 | 1.33e-16 | Unselected; endpoint A/B not run |
 | [fspp](fspp.json) | 8.26 | 1.56 | 162 | 0 / 0 | 1.80e-16 | Unselected; endpoint A/B not run |
 | [fsds](fsds.json) | 7.92 | 1.56 | 156 | 0 / 0 | 2.18e-16 | Unselected; endpoint A/B not run |
 | [fsdp](fsdp.json) | 13.98 | 2.26 | 168 | 160 / 144 | 8.20e-17 | Unselected; endpoint A/B not run |
 | [fsdd](fsdd.json) | 40.93 | 4.30 | 168 | 2348 / 944 | 2.78e-16 | Unselected; endpoint A/B not run |
 | [fsfs](fsfs.json) | 13.51 | 2.26 | 168 | 148 / 136 | 1.92e-16 | Unselected; endpoint A/B not run |
 | [fpss](fpss.json) | 10.79 | 1.26 | 158 | 0 / 0 | 2.57e-16 | Unselected; endpoint A/B not run |
-| [fpps](fpps.json) | 12.31 | 1.67 | 156 | 0 / 0 | 2.44e-16 | Force retained; endpoint passed |
+| [fpps](https://github.com/jinzhezenggroup/vibeqc/blob/d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5/benchmarks/results/f-shell-135/fpps.json) | 12.31 | 1.67 | 156 | 0 / 0 | 2.44e-16 | Force retained; endpoint passed |
 | [fppp](fppp.json) | 16.64 | 2.47 | 96 | 1096 / 620 | 6.97e-16 | Unselected; endpoint A/B not run |
 | [fpds](fpds.json) | 15.33 | 2.36 | 165 | 0 / 0 | 4.41e-16 | Unselected; endpoint A/B not run |
 | [fpdp](fpdp.json) | 30.55 | 4.42 | 96 | 4028 / 1508 | 2.71e-16 | Unselected; endpoint A/B not run |

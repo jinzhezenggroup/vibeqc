@@ -1,10 +1,16 @@
 # Bounded GPU density sources (#235 B / #297)
 
+> **Retention note (2026-09-21):** selected bulky historical records from this
+> campaign were moved out of the current checkout. Pinned historical links below
+> still open the original bytes at `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5`; exact byte restoration is available
+> through `benchmarks/results/retention-2026-09-21/migration.json`. Scientific
+> acceptance thresholds and retained summaries are unchanged.
+
 Numerical acceptance on clean revision
 `db6f65bd96df7dc6f2eae6e7fc8eb766829d1027`, RTX 5090, CUDA 12.9.1,
 driver 580.95.05. The source hash, native/JIT binary identities, actual Slurm
 allocation, compiler versions and complete reproduction command are in
-[evidence.json](evidence.json); [publication.json](publication.json) pins its
+[evidence.json](https://github.com/jinzhezenggroup/vibeqc/blob/d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5/benchmarks/results/density-sources-gpu/evidence.json); [publication.json](publication.json) pins its
 bytes through the existing validation/publication schemas.
 
 Six independent saved grid fixtures cover H2, water, Cartesian/spherical f,
