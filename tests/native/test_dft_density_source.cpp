@@ -177,6 +177,8 @@ void fixed_density() {
 }
 
 void native_scf() {
+  bool saw_periodic_rebuild = false;
+  bool saw_drift_rebuild = false;
   for (const auto system : {hydrogens(2), hydrogens(2, 0.17), water()}) {
     const dft::AoBasis basis(system);
     const dft::MolecularGrid grid(system, {1, 16, 8, 16, 3, 1e-12});
@@ -196,6 +198,32 @@ void native_scf() {
                   d.xc_density_diagnostic.orbital_calls == 0 &&
                   d.xc_density_diagnostic.packed_coefficient_elements == 0,
               "default native D candidate changed or failed");
+      if (run == scf::run_pbe_rks) {
+        options.experimental_incremental_xc = true;
+        options.incremental_xc_max_updates = 1;
+        options.incremental_xc_max_density_rms = 1.0e6;
+        const auto incremental = run(plan, basis, grid, options, nullptr);
+        const auto& inc = incremental.dft_diagnostic.incremental_xc;
+        require(incremental.converged && inc.enabled && inc.full_builds >= 3 &&
+                    inc.incremental_updates >= 1 && inc.strict_final_builds == 2 &&
+                    std::abs(incremental.energy - d.energy) < 2e-10 &&
+                    scf::reference::density_rms(incremental.density, d.density) < 2e-8 &&
+                    incremental.physical_residual_rms < options.density_tolerance,
+                "incremental PBE SCF/rebuild/final-verification parity failed");
+        saw_periodic_rebuild = saw_periodic_rebuild || inc.periodic_rebuilds != 0;
+
+        options.incremental_xc_max_updates = 1000;
+        options.incremental_xc_max_density_rms = 1.0e-20;
+        const auto drift_rebuild = run(plan, basis, grid, options, nullptr);
+        require(drift_rebuild.converged &&
+                    drift_rebuild.dft_diagnostic.incremental_xc.drift_rebuilds >= 1 &&
+                    drift_rebuild.dft_diagnostic.incremental_xc.strict_final_builds == 2 &&
+                    std::abs(drift_rebuild.energy - d.energy) < 2e-10,
+                "incremental PBE drift rebuild changed the strict endpoint");
+        saw_drift_rebuild =
+            saw_drift_rebuild || drift_rebuild.dft_diagnostic.incremental_xc.drift_rebuilds != 0;
+        options.experimental_incremental_xc = false;
+      }
       options.xc_density_route = XcDensityRoute::OccupiedOrbitals;
       runtime::cpu_resource_observation = {.active = true};
       const auto c = run(plan, basis, grid, options, nullptr);
@@ -246,6 +274,8 @@ void native_scf() {
                 << " C residual=" << c.xc_density_diagnostic.physical_residual << '\n';
     }
   }
+  require(saw_periodic_rebuild, "incremental PBE fixtures never exercised periodic rebuild");
+  require(saw_drift_rebuild, "incremental PBE fixtures never exercised drift rebuild");
 }
 }  // namespace
 
