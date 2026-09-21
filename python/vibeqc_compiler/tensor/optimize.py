@@ -15,6 +15,7 @@ from vibeqc_compiler.common.pass_manager import PassManager, PassStage
 
 from .interpreter import execute
 from .ir import Node, _infer, constant
+from .precision import describe_precision
 from .program import Program, hash_node
 
 PASSES = (
@@ -171,6 +172,78 @@ def _canonicalize_view(node: Node) -> Node:
     return node
 
 
+def _execution_contracts(program: Program) -> dict[Node, tuple[str, str, str, str]]:
+    """Return execution-relevant precision semantics keyed by current SSA values."""
+    if program.provenance.get("precision_execution") is None:
+        return {}
+    names = program.debug_names
+    values = {value.name: value for value in describe_precision(program).values}
+    return {
+        node: (
+            values[names[node]].storage_dtype,
+            values[names[node]].compute_dtype,
+            values[names[node]].accumulation_dtype,
+            values[names[node]].math_mode,
+        )
+        for node in program.live_nodes
+        if node.spec.dtype != "int64"
+    }
+
+
+def _remap_precision_execution(
+    program: Program,
+    replacements: dict[Node, Node],
+    outputs: dict[str, Node],
+    definitions: tuple[Node, ...],
+) -> Program:
+    """Transport mixed-accumulation bindings across content-address changes."""
+    provenance = program.provenance
+    execution = provenance.get("precision_execution")
+    if execution is None:
+        return Program(outputs, definitions, provenance)
+
+    # Validate the source binding before moving it. This also rejects stale or
+    # tampered execution provenance before an optimizer can bless a new name.
+    describe_precision(program)
+    old_names = program.debug_names
+    nodes_by_name = {name: node for node, name in old_names.items()}
+    values = execution.get("values")
+    if not isinstance(values, dict):
+        raise TypeError("precision execution requires a value mapping")
+
+    unbound_provenance = dict(provenance)
+    unbound_provenance.pop("precision_execution", None)
+    candidate = Program(outputs, definitions, unbound_provenance)
+    new_names = candidate.debug_names
+    live = set(candidate.live_nodes)
+    remapped: dict[str, dict] = {}
+    for old_name, binding in sorted(values.items()):
+        old_node = nodes_by_name.get(old_name)
+        if old_node is None or old_node not in replacements:
+            raise ValueError(
+                "precision execution references an unknown rewritten value"
+            )
+        new_node = replacements[old_node]
+        if new_node not in live:
+            raise ValueError("precision execution rewrite removed a live bound value")
+        new_name = new_names[new_node]
+        previous = remapped.get(new_name)
+        if previous is None:
+            remapped[new_name] = binding
+        elif (
+            previous.get("compute_dtype"),
+            previous.get("accumulation_dtype"),
+        ) != (binding.get("compute_dtype"), binding.get("accumulation_dtype")):
+            raise ValueError("rewrite merged incompatible precision execution bindings")
+
+    provenance["precision_execution"] = {**execution, "values": remapped}
+    result = Program(outputs, definitions, provenance)
+    # The transported names must remain a valid execution contract in the new
+    # graph, including operation/dtype/source-request checks.
+    describe_precision(result)
+    return result
+
+
 def rewrite(program: Program, pass_name: str) -> Program:
     """Apply one named pass, preserving the pre-rewrite program for comparison."""
     if pass_name not in PASSES:
@@ -178,12 +251,12 @@ def rewrite(program: Program, pass_name: str) -> Program:
     if pass_name == "dead_nodes":
         live = set(program.live_nodes)
         definitions = tuple(node for node in program.definitions if node in live)
-        return Program(
-            program.outputs,
-            definitions=definitions,
-            provenance=program.provenance,
+        replacements = {node: node for node in program.nodes}
+        return _remap_precision_execution(
+            program, replacements, dict(program.outputs), definitions
         )
     replacements, interned, hashes = {}, {}, {}
+    execution_contracts = _execution_contracts(program)
     for node in program.nodes:
         inputs = tuple(replacements[n] for n in node.inputs)
         updated = node
@@ -200,17 +273,18 @@ def rewrite(program: Program, pass_name: str) -> Program:
         elif pass_name == "scalar_constants":
             updated = _fold(updated)
         elif pass_name == "exact_cse":
-            # This content address contains the dtype, spaces/ranges/spins,
-            # symmetry declarations, parameter role, and differentiability.
-            # Equal shapes alone cannot intern two different amplitude types.
-            hashes[updated] = hash_node(updated, hashes)
-            updated = interned.setdefault(hashes[updated], updated)
+            # Mathematical content alone is insufficient when execution
+            # provenance changes accumulation semantics. Keep the logical hash
+            # precision-independent, but intern only execution-equivalent SSA.
+            structural = hash_node(updated, hashes)
+            contract = execution_contracts.get(node)
+            digest = hashlib.sha256(f"{structural}|{contract!r}".encode()).hexdigest()
+            hashes[updated] = digest
+            updated = interned.setdefault(digest, updated)
         replacements[node] = updated
-    return Program(
-        {name: replacements[n] for name, n in program.outputs.items()},
-        tuple(replacements[n] for n in program.definitions),
-        program.provenance,
-    )
+    outputs = {name: replacements[n] for name, n in program.outputs.items()}
+    definitions = tuple(replacements[n] for n in program.definitions)
+    return _remap_precision_execution(program, replacements, outputs, definitions)
 
 
 def _program_fingerprint(program: Program) -> str:
@@ -269,7 +343,7 @@ def optimize(program: Program) -> Program:
     return Program(
         result.outputs,
         provenance={
-            **program.provenance,
+            **result.provenance,
             "original_logical_hash": program.logical_hash,
             # Keep the established rewrite inventory for compatibility.
             "rewrites": list(PASSES) + ["exact_cse", "dead_nodes"],
