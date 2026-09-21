@@ -260,12 +260,13 @@ __global__ void preflight_and_seed_kernel(Gfn2IntegralDeviceBatch batch, Gfn2H0D
                           Gfn2H0ForceDeviceError::kNonfiniteInput);
       atomicExch(&valid, 0);
     }
-    const double pulay_seed = seed - weighted;
+    double pulay_seed = 0.0;
     if (!isfinite(seed)) {
       record_system_error(system_errors, system, device_error,
                           Gfn2H0ForceDeviceError::kNonfiniteOutputSeed);
       atomicExch(&valid, 0);
-    } else if (!isfinite(pulay_seed)) {
+    } else if (!vibeqc::xtb::generated::evaluate_gfn2_h0_pulay_seed(
+                   seed, weighted, pulay_seed)) {
       record_system_error(system_errors, system, device_error,
                           Gfn2H0ForceDeviceError::kNonfiniteArithmetic);
       atomicExch(&valid, 0);
@@ -337,8 +338,9 @@ __global__ void contract_h0_pulay_kernel(Gfn2IntegralDeviceBatch batch, Gfn2H0De
                             Gfn2H0ForceDeviceError::kCoordinateDifferenceOverflow);
         finite = false;
       }
-      const double distance_squared = dx * dx + dy * dy + dz * dz;
-      if (finite && !isfinite(distance_squared)) {
+      double distance_squared = 0.0;
+      if (finite && !vibeqc::xtb::generated::evaluate_gfn2_h0_distance(
+                        dx, dy, dz, distance_squared, distance)) {
         record_system_error(system_errors, system, device_error,
                             Gfn2H0ForceDeviceError::kCoordinateDifferenceOverflow);
         finite = false;
@@ -348,7 +350,6 @@ __global__ void contract_h0_pulay_kernel(Gfn2IntegralDeviceBatch batch, Gfn2H0De
         finite = false;
       }
       if (finite) {
-        distance = sqrt(distance_squared);
         pair_input.first_radius = h0_plan.atomic_radii[first_atom];
         pair_input.second_radius = h0_plan.atomic_radii[second_atom];
         pair_input.first_polynomial = h0_plan.shell_polynomial[first_shell];
@@ -412,9 +413,15 @@ __global__ void contract_h0_pulay_kernel(Gfn2IntegralDeviceBatch batch, Gfn2H0De
     }
 
     if (!same_atom) {
-      const double coordinate_scale = pair_adjoint.distance / distance;
-      const double contribution[3] = {coordinate_scale * dx, coordinate_scale * dy,
-                                      coordinate_scale * dz};
+      vibeqc::xtb::generated::Gfn2H0CartesianAdjoint cartesian_adjoint{};
+      if (!vibeqc::xtb::generated::evaluate_gfn2_h0_distance_vjp(
+              pair_adjoint.distance, dx, dy, dz, cartesian_adjoint)) {
+        record_system_error(system_errors, system, device_error,
+                            Gfn2H0ForceDeviceError::kNonfiniteArithmetic);
+        continue;
+      }
+      const double contribution[3] = {
+          cartesian_adjoint.dx, cartesian_adjoint.dy, cartesian_adjoint.dz};
       for (int axis = 0; axis < 3; ++axis) {
         if (!add_finite_atomic(workspace.gradient_scratch + first_atom * 3 + axis,
                                contribution[axis]) ||
