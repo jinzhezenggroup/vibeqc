@@ -95,9 +95,12 @@ def emit_df_value_candidates_cuda(manifest: typing.Any = None) -> typing.Any:
     for index, (architecture, profile) in enumerate(sorted(profiles.items())):
         directive = "#if" if index == 0 else "#elif"
         numeric = int(architecture.removeprefix("sm_"))
+        condition = (
+            f"{directive} defined(VIBEQC_CUDA_PROFILE_ARCHITECTURE)"
+            f" && VIBEQC_CUDA_PROFILE_ARCHITECTURE == {numeric}"
+        )
         lines += [
-            f"{directive} defined(VIBEQC_CUDA_PROFILE_ARCHITECTURE) && "
-            f"VIBEQC_CUDA_PROFILE_ARCHITECTURE == {numeric}",
+            condition,
             f"inline constexpr unsigned candidate_raw_lanes={profile['raw_lanes']};",
         ]
     if profiles:
