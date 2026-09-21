@@ -233,7 +233,9 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
         if SemilocalXCPrimitive(semilocal).semantic_payload() != (
             SemilocalXCPrimitive(runtime_functional).semantic_payload()
         ):
-            raise RuntimeError("PBE-D4 MethodIR disagrees with its native PBE composition")
+            raise RuntimeError(
+                "PBE-D4 MethodIR disagrees with its native PBE composition"
+            )
         return method_ir, runtime_functional
 
     semilocal = _native_semilocal(method_ir)
@@ -327,7 +329,9 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
                 )
             grid = GridSpec()
         elif method == "pbe-d4-rks":
-            grid = GridPolicy(options.grid_accuracy).resolve("pbe-rks", derivative_order=0)
+            grid = GridPolicy(options.grid_accuracy).resolve(
+                "pbe-rks", derivative_order=0
+            )
         elif ks_coefficients(method_ir)[2] != 0.0:
             raise NotImplementedError(
                 "global-hybrid grid policy requires an explicit GridSpec"
