@@ -32,7 +32,11 @@ struct ElectronicReferenceView {
 
   [[nodiscard]] bool restricted() const noexcept { return spin_channels == 1; }
   [[nodiscard]] std::size_t virtual_orbitals(std::size_t spin) const {
-    if (spin >= spin_channels) throw std::out_of_range("electronic reference spin index");
+    if (spin >= spin_channels || spin >= channels.size())
+      throw std::out_of_range("electronic reference spin index");
+    if (spin_channels > channels.size() || !basis_functions ||
+        channels[spin].occupied > basis_functions)
+      throw std::invalid_argument("invalid electronic reference orbital dimensions");
     return basis_functions - channels[spin].occupied;
   }
 };
