@@ -6,9 +6,39 @@
 #include <optional>
 
 #include "runtime/cuda_provider.hpp"
+#include "runtime/cuda_target_info.hpp"
 #include "vibeqc/vibeqc.h"
 
 namespace vibeqc::scf::cuda_policy {
+
+/**
+ * Explicit Direct-J/K tuning evidence.
+ *
+ * These defaults preserve the previously qualified production choices, but
+ * they are profile inputs rather than CUDA semantics. Autotuning/profile
+ * selection can provide another compatible record without changing kernels.
+ */
+struct DirectJkTuningProfile {
+  std::size_t maximum_generated_task_capacity{8U * 1024U * 1024U};
+  std::size_t maximum_generated_task_arena_bytes{std::size_t{1} << 30};
+  std::size_t cuda_stack_limit_bytes{std::size_t{64} << 10};
+  unsigned maximum_persistent_quartet_warps_per_sm{8};
+};
+
+/** Resource-legal Direct-J/K schedule resolved for one runtime target. */
+struct DirectJkSchedulePolicy {
+  std::size_t maximum_generated_task_capacity{};
+  std::size_t generated_task_arena_maximum_bytes{};
+  std::size_t cuda_stack_limit_bytes{};
+  unsigned persistent_quartet_warps_per_sm{};
+};
+
+DirectJkSchedulePolicy resolve_direct_jk_schedule_policy(
+    const runtime::CudaTargetInfo& target,
+    DirectJkTuningProfile profile = DirectJkTuningProfile{}) noexcept;
+
+std::size_t direct_jk_generated_task_capacity_limit(const DirectJkSchedulePolicy& policy,
+                                                    std::size_t generated_task_bytes) noexcept;
 
 /**
  * IEEE-754 binary32 unit roundoff (2^-24). Published from the shared header so
