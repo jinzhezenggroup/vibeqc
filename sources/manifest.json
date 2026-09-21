@@ -73,7 +73,7 @@
     },
     "gfn1-parameter-header": {
       "generator": "tools/parameters/generate_gfn1.py",
-      "generator_sha256": "050f61c6a6c6c8cb0858704d5fa4565db307b7aa05c3d42475e3891c3a41c11e",
+      "generator_sha256": "9bdad15d45703b9917ccaf7833e9abcaab612982052338cc489b861f920619f5",
       "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
       "inputs": [
         "xtbloom-gfn1-parameters"
