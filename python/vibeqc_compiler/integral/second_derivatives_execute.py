@@ -444,6 +444,8 @@ class PreparedSecondDerivative:
                 ct.c_char_p,
                 ct.c_size_t,
             ]
+            lib.vibeqc_second_result_device_v1.argtypes = [ct.c_void_p]
+            lib.vibeqc_second_result_device_v1.restype = ct.c_void_p
         self._records = np.empty((record_capacity, stride), dtype=np.uint8)
         self._chunk = np.empty((tile_capacity, columns))
         target = artifact.native.metadata["identity"]["target"]
@@ -621,6 +623,121 @@ class PreparedSecondDerivative:
                 "compiler_resources": self.artifact.native.metadata["resources"],
             }
             return SecondDerivativeExecution(result, diagnostics)
+
+    def contract_device(
+        self,
+        primitives: typing.Any,
+        consumer: typing.Callable[[int, tuple[int, ...]], None],
+        *,
+        tile_count: typing.Any = 1,
+        profile: typing.Any = False,
+    ) -> dict[str, typing.Any]:
+        """Consume each compact CUDA result tile before its native arena is reused.
+
+        The callback is synchronous: it must finish every device-to-device use of
+        the borrowed pointer before returning. No coordinate result is published
+        to host by this method.
+        """
+        from .second_derivatives_inputs import SecondShellStream
+
+        with self._lock:
+            if self.artifact.backend != "cuda":
+                raise ValueError("device result consumption requires a CUDA artifact")
+            if not self._handle.value:
+                raise RuntimeError("second derivative plan is closed")
+            if not callable(consumer):
+                raise TypeError("device result consumer must be callable")
+            checked_bytes(tile_count, "output tile count")
+            if not 0 < tile_count <= self.tile_capacity:
+                raise ValueError(
+                    "second derivative output exceeds prepared tile capacity"
+                )
+            if type(profile) is not bool:
+                raise TypeError("profile must be boolean")
+            resource_plan = self.resource_plan
+            if isinstance(primitives, SecondShellStream):
+                if primitives.program_identity != self.artifact.program_identity:
+                    raise ValueError(
+                        "second public stream belongs to another compiled program"
+                    )
+                resource_plan = plan_resources(
+                    (*resource_plan.requests, primitives.resource_request),
+                    resource_plan.budget,
+                )
+                if resource_plan.status != "feasible":
+                    raise ValueError(
+                        resource_plan.diagnostic
+                        or "combined second derivative resource budget exceeded"
+                    )
+
+            count = records = chunks = 0
+            digest, started = hashlib.sha256(), time.perf_counter()
+            timing = {
+                name: 0.0
+                for name in ("device_ms", "input_ms", "output_ms", "kernel_ms")
+            }
+
+            def flush(count: typing.Any) -> None:
+                nonlocal chunks
+                self._call(
+                    "vibeqc_second_run_v1",
+                    self._handle,
+                    self._records.ctypes.data,
+                    count,
+                    self.artifact.record_format.size,
+                    tile_count,
+                    None,
+                    int(profile),
+                )
+                pointer = self._library.vibeqc_second_result_device_v1(self._handle)
+                if not pointer:
+                    raise RuntimeError("second derivative device result is unavailable")
+                consumer(int(pointer), self.artifact.output_indices)
+                chunks += 1
+                if profile:
+                    metrics = _Metrics()
+                    self._call(
+                        "vibeqc_second_metrics_v1", self._handle, ct.byref(metrics)
+                    )
+                    for name in timing:
+                        timing[name] += getattr(metrics, name)
+
+            for primitive in primitives:
+                blob = pack_second_primitive(self.artifact, primitive)
+                if primitive.output_tile >= tile_count:
+                    raise ValueError(
+                        "second derivative primitive output tile exceeds requested rows"
+                    )
+                digest.update(blob)
+                self._records[count] = np.frombuffer(blob, dtype=np.uint8)
+                count, records = count + 1, records + 1
+                if count == self.record_capacity:
+                    flush(count)
+                    count = 0
+            if count:
+                flush(count)
+            return {
+                "program_identity": self.artifact.program_identity,
+                "native_artifact": self.artifact.native.metadata["key"],
+                "backend": self.artifact.backend,
+                "integral": integral_to_payload(self.artifact.integral),
+                "component_indices": list(self.artifact.component_indices),
+                "output_indices": list(self.artifact.output_indices),
+                "schedule": "bounded_coordinate_tile_device_consumer_v1",
+                "experimental": True,
+                "screening": "disabled",
+                "electronic_response": "excluded",
+                "records": records,
+                "chunks": chunks,
+                "input_sha256": digest.hexdigest(),
+                "wall_seconds": time.perf_counter() - started,
+                "profile": profile,
+                "device_timing": timing if profile else None,
+                "resources": resource_plan.to_dict(),
+                "compiler_resources": self.artifact.native.metadata["resources"],
+                "result_tile_downloads": 0,
+                "device_result_consumptions": chunks,
+            }
 
     def close(self) -> None:
         """Release the shared native arena once, respecting its preparation lock."""
