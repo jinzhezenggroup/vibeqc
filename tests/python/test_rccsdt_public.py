@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -45,6 +46,13 @@ def _calculator(**kwargs: object) -> Calculator:
     return Calculator(**options)
 
 
+@pytest.fixture(params=("cpu", "cuda"))
+def device(request: pytest.FixtureRequest) -> str:
+    if request.param == "cuda" and os.environ.get("VIBEQC_RCCSDT_CUDA_TEST") != "1":
+        pytest.skip("requires explicitly allocated RTX/CUDA native library")
+    return request.param
+
+
 def test_native_rccsdt_capability_is_energy_only_batch() -> None:
     caps = method_capabilities("rccsd(t)")
     alias = method_capabilities("ccsd(t)")
@@ -55,12 +63,14 @@ def test_native_rccsdt_capability_is_energy_only_batch() -> None:
 
 
 @pytest.mark.parametrize("case", ("h2", "h2o"))
-def test_public_native_rccsdt_matches_pinned_standard_triples(case: str) -> None:
+def test_public_native_rccsdt_matches_pinned_standard_triples(
+    device: str, case: str
+) -> None:
     atoms, reference, triples = _reference_case(case)
-    result = _calculator().singlepoint(atoms, properties=("energy",))
+    result = _calculator(device=device).singlepoint(atoms, properties=("energy",))
     diag = result.correlation
     assert result.converged and result.forces is None
-    assert result.executed_backend == "cpu_reference"
+    assert result.executed_backend == ("cuda" if device == "cuda" else "cpu_reference")
     assert diag is not None
     assert diag.ccsd_t_triples_energy == pytest.approx(triples, abs=2e-9)
     assert result.energy == pytest.approx(reference["total_energy"] + triples, abs=3e-9)
@@ -72,16 +82,19 @@ def test_public_native_rccsdt_matches_pinned_standard_triples(case: str) -> None
     assert diag.ccsd_t_workspace_bytes > 0
     assert diag.ccsd_replay_singles_residual_max <= 1e-11
     assert diag.ccsd_replay_doubles_residual_max <= 1e-11
+    if device == "cuda":
+        assert diag.correlation_owned_device_bytes >= diag.ccsd_t_workspace_bytes
+        assert diag.ccsd_setup_h2d_bytes > 0
+        assert diag.ccsd_amplitude_d2h_bytes > 0
+        assert diag.mo_host_staging
+    else:
+        assert diag.correlation_owned_device_bytes == 0
 
 
-def test_public_native_rccsdt_rejects_unpromoted_force_cuda_df_and_frozen_core() -> (
-    None
-):
+def test_public_native_rccsdt_rejects_unpromoted_force_df_and_frozen_core() -> None:
     atoms, _, _ = _reference_case("h2")
     with pytest.raises(ValueError, match=r"does not support.*forces"):
         _calculator().singlepoint(atoms, properties=("energy", "forces"))
-    with pytest.raises(NotImplementedError, match=r"CUDA owner"):
-        _calculator(device="cuda")
     with pytest.raises(NotImplementedError, match=r"density fitting"):
         _calculator(density_fitting="cpu")
     with pytest.raises(NotImplementedError, match=r"frozen-core"):
