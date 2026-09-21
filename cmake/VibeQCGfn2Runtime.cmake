@@ -118,6 +118,25 @@ function(vibeqc_add_gfn2_runtime target)
       ${_gfn2_root}/src/backends/cuda/gfn2_geometry.cu
       PROPERTIES COMPILE_OPTIONS "-fmad=false")
     target_compile_definitions(${target} PRIVATE VIBEQC_HAS_GFN2_CUDA=1)
+
+    # CI can qualify the public method adapter without rebuilding the entire
+    # CUDA library. This compiles the same source with the CUDA admission macro
+    # enabled and depends on the fully device-linked GFN2 archive.
+    if(VIBEQC_BUILD_TESTS)
+      add_library(vibeqc_gfn2_cuda_public_compile OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/methods/xtb_method.cpp)
+      target_include_directories(vibeqc_gfn2_cuda_public_compile PRIVATE
+        ${_gfn2_root}
+        ${_gfn2_root}/include
+        ${_gfn2_root}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src)
+      target_compile_definitions(vibeqc_gfn2_cuda_public_compile PRIVATE
+        VIBEQC_HAS_CUDA=1
+        VIBEQC_HAS_GFN2_CUDA=1)
+      add_dependencies(vibeqc_gfn2_cuda_public_compile vibeqc_gfn2_cuda)
+    endif()
+
     # The CUDA archive resolves its own device symbols. Consume the complete
     # archive so CUDA registration/device-link objects cannot be discarded,
     # without propagating separable compilation to unrelated VibeQC CUDA TUs.
