@@ -184,6 +184,11 @@ if(VIBEQC_ENABLE_CUDA)
         endif()
       endforeach()
     else()
+      if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+        # Native GFN2 resolves its driver metadata calls lazily as well. Enable
+        # import-source languages here, not inside a function-local scope.
+        enable_language(C ASM)
+      endif()
       find_package(CUDAToolkit 12.9 REQUIRED)
       set(VIBEQC_CUDA_TOOLKIT_INCLUDE_DIRS ${CUDAToolkit_INCLUDE_DIRS})
     endif()
