@@ -3,10 +3,11 @@
 The facade accepts validated closed-shell RHF snapshots and conventional CPU
 integral providers. RCCSD supports CPU, ordinary-stream CUDA and resident CUDA;
 RCCSD(T) composes CPU or resident CUDA RCCSD with audited bounded triples tiles
-and offers an isolated homogeneous Python batch helper. These internal APIs do
-not register Calculator methods, native CC prepared owners or force support.
-Complete-gradient validation, Lambda/response consumers and fixed-amplitude
-generated actions remain separate explicit boundaries.
+and offers isolated homogeneous Python batch helpers. #155 additionally binds
+the validated complete RCCSD(T) analytic-gradient owner as an internal force API.
+These APIs still do not register Calculator methods or a native CCSD(T) prepared
+owner; the C ABI remains fail-closed until the generated response graph has that
+owner.
 """
 
 from .api import (
@@ -19,13 +20,18 @@ from .api import (
     method_capabilities,
 )
 from .ccsd_t_api import (
+    BatchRCCSDTForceResult,
     BatchRCCSDTResult,
     PreparedRCCSDTBatch,
+    PreparedRCCSDTForceBatch,
     RCCSDTBatchItemResult,
     RCCSDTCapabilities,
+    RCCSDTForceBatchItemResult,
     RCCSDTResult,
     rccsd_t_batch_energy,
+    rccsd_t_batch_forces,
     rccsd_t_energy,
+    rccsd_t_force,
     rccsd_t_method_capabilities,
 )
 from .complete_gradient import (
@@ -98,6 +104,7 @@ __all__ = [
     "TRIPLES_RESPONSE_INPUTS",
     "BatchItemResult",
     "BatchRCCSDResult",
+    "BatchRCCSDTForceResult",
     "BatchRCCSDTResult",
     "BoundCCSDGradient",
     "BoundCCSDLambda",
@@ -123,10 +130,12 @@ __all__ = [
     "PreparedCCSD",
     "PreparedCUDALambda",
     "PreparedRCCSDTBatch",
+    "PreparedRCCSDTForceBatch",
     "PreparedResidentCCSD",
     "RCCSDResult",
     "RCCSDTBatchItemResult",
     "RCCSDTCapabilities",
+    "RCCSDTForceBatchItemResult",
     "RCCSDTResult",
     "SolverOptions",
     "TileSpec",
@@ -152,7 +161,9 @@ __all__ = [
     "gradient_capabilities",
     "method_capabilities",
     "rccsd_t_batch_energy",
+    "rccsd_t_batch_forces",
     "rccsd_t_energy",
+    "rccsd_t_force",
     "rccsd_t_method_capabilities",
     "solve",
     "solve_corrected_lambda",

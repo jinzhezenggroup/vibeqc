@@ -2,8 +2,10 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
@@ -57,6 +59,39 @@ int main() {
               "B3LYP semilocal derivative differs from pinned Libxc oracle");
     require(std::abs(vibeqc::dft::generated::kB3lypExactExchange - 0.2) < 1e-16,
             "B3LYP generated exact-exchange fraction disagrees with MethodIR");
+
+    std::ifstream lda_fixture(VIBEQC_SOURCE_DIR "/tests/data/xc/scf_domain.tsv");
+    require(static_cast<bool>(lda_fixture), "missing independent XC SCF-domain fixture");
+    std::string lda_line;
+    std::size_t lda_rows = 0;
+    while (std::getline(lda_fixture, lda_line)) {
+      if (lda_line.empty() || lda_line[0] == '#') continue;
+      std::istringstream row(lda_line);
+      int pbe = 0, oracle = 0;
+      double rho[2]{}, gradient[2][3]{}, expected[9]{};
+      row >> pbe >> oracle >> rho[0] >> rho[1];
+      for (auto& spin : gradient)
+        for (double& component : spin) row >> component;
+      for (double& component : expected) row >> component;
+      require(static_cast<bool>(row), "malformed XC SCF-domain fixture");
+      if (pbe != 0) continue;
+      const auto value = vibeqc::dft::generated::lda_xc_pw_polarized_production(rho[0], rho[1]);
+      const double actual[]{value.energy_density, value.feature_derivative[0],
+                            value.feature_derivative[1]};
+      for (unsigned i = 0; i < 3; ++i) {
+        const double tolerance = 5.0e-10 * std::abs(expected[i]) + 1.0e-322;
+        require(std::isfinite(actual[i]) && std::abs(actual[i] - expected[i]) <= tolerance,
+                "compiler-owned polarized LDA differs from independent SCF-domain reference");
+      }
+      for (unsigned i = 3; i < 9; ++i)
+        require(expected[i] == 0.0, "independent LDA fixture has a gradient coefficient");
+      ++lda_rows;
+    }
+    require(lda_rows == 36, "incomplete independent polarized LDA reference coverage");
+    const auto lda_vacuum = vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
+    require(lda_vacuum.energy_density == 0.0 && lda_vacuum.feature_derivative[0] == 0.0 &&
+                lda_vacuum.feature_derivative[1] == 0.0,
+            "compiler-owned polarized LDA vacuum limit is wrong");
 
     const auto cam_point =
         vibeqc::dft::generated::cam_b3lyp_polarized(0.3, 0.2, 0.015, 0.003, 0.01);

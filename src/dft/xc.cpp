@@ -126,6 +126,27 @@ void sample_xc_capacity(XcIntegral& result, const std::vector<double>& ao, std::
       std::max(record.owned_numeric_bytes, runtime::vector_capacities(ao, result.potential));
 }
 
+point::Value evaluate_generated_lda_point(const double rho[2]) {
+  point::Value out;
+  for (unsigned spin = 0; spin < 2; ++spin)
+    if (!std::isfinite(rho[spin]) || rho[spin] < 0.0) {
+      out.valid = false;
+      return out;
+    }
+  const double total = rho[0] + rho[1];
+  if (!std::isfinite(total)) {
+    out.valid = false;
+    return out;
+  }
+  if (total == 0.0) return out;
+  const auto raw = generated::lda_xc_pw_polarized_production(rho[0], rho[1]);
+  out.energy = raw.energy_density;
+  out.rho[0] = raw.feature_derivative[0];
+  out.rho[1] = raw.feature_derivative[1];
+  out.valid = std::isfinite(out.energy) && std::isfinite(out.rho[0]) && std::isfinite(out.rho[1]);
+  return out;
+}
+
 }  // namespace
 
 XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& grid,
@@ -202,7 +223,8 @@ SpinXcIntegral integrate_spin_xc(const AoBasis& basis, const MolecularGrid& grid
         rho[spin] = features[0];
         for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
       }
-      const auto xc = point::evaluate(pbe, rho, gradient, exchange_scale, correlation_scale);
+      const auto xc = pbe ? point::evaluate(true, rho, gradient, exchange_scale, correlation_scale)
+                          : evaluate_generated_lda_point(rho);
       if (!xc.valid) throw std::domain_error("invalid or unrepresentable semilocal spin features");
       const double weight = grid.weights()[begin + p];
       result.energy += weight * xc.energy;

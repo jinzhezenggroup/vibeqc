@@ -10,13 +10,13 @@ from test_cc_complete_gradient import _source
 
 from tools.cc_gradient_fixtures import inputs
 from tools.validate_ccsd_t_gradient import analytic_oracle
-from tools.vibeqc_cc import CCSDGradientResult, complete_ccsdt_gradient_validation
+from tools.vibeqc_cc import CCSDGradientResult, rccsd_t_force
 
 
 @lru_cache(maxsize=2)
 def _runtime(name: str) -> CCSDGradientResult:
     with _source(inputs(name)) as source:
-        return complete_ccsdt_gradient_validation(source, vir_chunk_size=1)
+        return rccsd_t_force(source, vir_chunk_size=1)
 
 
 @pytest.mark.parametrize("name", ("h2o", "nh3"))

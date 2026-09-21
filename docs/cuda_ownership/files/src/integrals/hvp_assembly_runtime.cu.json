@@ -1,0 +1,7 @@
+{
+  "path": "src/integrals/hvp_assembly_runtime.cu",
+  "reason": "Bounded CUDA ownership for final RHF HVP accumulation and full-Hessian column storage. It owns only device buffers, stream/lifetime, nuclear-vector evaluation, device-to-device accumulation/scatter, finite validation and final publication; generated first/second integral mathematics and response equations remain with their existing compiler/response owners.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}
