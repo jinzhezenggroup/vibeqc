@@ -98,6 +98,22 @@ void test_cutoff_product_rule() {
   test_finite_difference(parameters, 4.0e-10);
 }
 
+void test_overflowing_damping_keeps_representable_weighted_results() {
+  // Exact binary inputs: x=6*2^(4*alpha) overflows, while x^-1*r^-power
+  // and its radial derivative are normal representable FP64 values.
+  for (int power : {6, 8}) {
+    const double exponent = power + 254.0;
+    const auto term = vibeqc::dft::dispersion::d3_zero_detail::damped_inverse_power(
+        std::ldexp(1.0, -16), std::ldexp(1.0, -32), std::ldexp(1.0, -12), exponent, power);
+    const double expected = std::ldexp(1.0 / 6.0, 12 * power - 1016);
+    const double expected_derivative = std::ldexp(254.0 / 6.0, 12 * power - 984);
+    if (!std::isfinite(term.value) || !std::isfinite(term.derivative_over_distance) ||
+        std::abs(term.value / expected - 1.0) > 1.0e-12 ||
+        std::abs(term.derivative_over_distance / expected_derivative - 1.0) > 1.0e-12)
+      throw std::runtime_error("D3(0) overflowed damping lost a representable result");
+  }
+}
+
 void test_parameter_validation() {
   auto parameters = kPbeOracle.parameters;
   parameters.rs6 = 0.0;
@@ -123,6 +139,7 @@ int main() {
     test_finite_difference(kSlaterDiracOracle.parameters, 2.0e-9);
     test_cutoff_product_rule();
     test_parameter_validation();
+    test_overflowing_damping_keeps_representable_weighted_results();
     std::cout << "D3(0) independent-oracle and analytic-gradient tests passed\n";
     return 0;
   } catch (const std::exception& error) {

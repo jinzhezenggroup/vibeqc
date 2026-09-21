@@ -48,7 +48,18 @@ VIBEQC_D3_ZERO_HD inline DampedInversePower damped_inverse_power(double r, doubl
   if (!(r > 0.0) || !(scaled_r0 > 0.0) || !(exponent > 0.0)) return {};
   const double ratio = scaled_r0 / r;
   const double x = 6.0 * pow(ratio, exponent);
-  const double damping = finite(x) ? 1.0 / (1.0 + x) : 0.0;
+  if (!finite(x)) {
+    // Here 1+x rounds to x. Scale the complete weighted result instead of
+    // rounding its tiny damping factor to zero before multiplying by r^-power.
+    // The derivative is scaled independently since it can outlive value underflow.
+    const double log_value =
+        -static_cast<double>(power) * log2(r) - log2(6.0) - exponent * (log2(scaled_r0) - log2(r));
+    const double factor = exponent - static_cast<double>(power);
+    const double radial =
+        factor == 0.0 ? 0.0 : copysign(exp2(log_value - log2(r2) + log2(fabs(factor))), factor);
+    return {exp2(log_value), radial};
+  }
+  const double damping = 1.0 / (1.0 + x);
   double inverse = 1.0;
   for (int i = 0; i < power; ++i) inverse /= r;
   const double value = damping * inverse;
