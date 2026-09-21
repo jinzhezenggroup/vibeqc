@@ -107,7 +107,9 @@ class ObservableDelta:
 
     @property
     def per_atom_l2(self) -> tuple[float, ...]:
-        return tuple(float(v) for v in np.linalg.norm(self.force_array, axis=1))
+        # hypot.reduce scales internally, avoiding the square/accumulate
+        # underflow/overflow of an ordinary Euclidean norm for finite extremes.
+        return tuple(float(v) for v in np.hypot.reduce(self.force_array, axis=1))
 
     @property
     def force_array(self) -> np.ndarray:
@@ -844,15 +846,29 @@ class AdaptiveNumericsPolicy:
                 return NumericalDecision(
                     "relax", moved, "sustained conservative margin", worst
                 )
+            held = self._move(
+                state,
+                state.level_index,
+                reason="hysteresis hold",
+                geometry_id=geometry_id,
+                mask_identity=mask_identity,
+            )
             return NumericalDecision(
                 "hold",
-                replace(state, safe_streak=streak),
+                replace(held, safe_streak=streak),
                 "waiting for hysteresis streak",
                 worst,
             )
+        held = self._move(
+            state,
+            state.level_index,
+            reason="observable estimate within target",
+            geometry_id=geometry_id,
+            mask_identity=mask_identity,
+        )
         return NumericalDecision(
             "hold",
-            replace(state, safe_streak=0, mask_identity=mask_identity),
+            held,
             "observable estimate within target",
             worst,
         )

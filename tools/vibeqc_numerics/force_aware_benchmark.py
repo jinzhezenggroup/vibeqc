@@ -23,6 +23,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, replace
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +50,7 @@ from vibeqc import (
     Primitive,
     Shell,
     TargetErrorBudget,
+    method_capabilities,
 )
 from vibeqc._dft_gradient import StationaryKsState
 from vibeqc_compiler.common.provenance import canonical_hash
@@ -87,6 +89,9 @@ class Endpoint:
     target_model_id: str
     grid_id: str
     screening_tolerance: float
+    force_route: str = "internal-stationary-gradient-diagnostic"
+    public_force_available: bool = False
+    force_work: dict[str, Any] | None = None
 
 
 def _jsonable(value: Any) -> Any:
@@ -136,6 +141,94 @@ def _gpu_resident_mib() -> float | None:
             total += float(fields[1])
             found = True
     return total if found else None
+
+
+@lru_cache(maxsize=1)
+def _cuda_force_compiler() -> Any:
+    """Resolve the explicit CUDA compiler used by the stationary force diagnostic."""
+    from vibeqc.profiles import find_nvcc
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+    configured = os.environ.get("CUDACXX")
+    nvcc = Path(configured) if configured else find_nvcc()
+    if nvcc is None:
+        candidate = Path("/usr/local/cuda-12.9/bin/nvcc")
+        nvcc = candidate if candidate.is_file() else None
+    if nvcc is None:
+        raise RuntimeError("NUM03 CUDA force diagnostic requires an explicit NVCC")
+    target = os.environ.get("VIBEQC_NUM03_CUDA_TARGET", "sm_89")
+    return CudaCompilerAdapter(nvcc, cuda_target_info(target), compile_timeout=900)
+
+
+def _stationary_energy_and_forces(
+    case: Case, calc: Calculator, device: str
+) -> tuple[Any, np.ndarray, dict[str, Any], str, Any]:
+    """Evaluate energy publicly and forces through the existing internal diagnostic."""
+    with (
+        calc.prepare_batch(
+            [case.atoms],
+            charges=[case.charge],
+            multiplicities=[case.multiplicity],
+            warm_start=False,
+        ) as batch,
+        NativeAO(
+            case.atoms,
+            basis=case.basis,
+            representation=case.representation,
+            charge=case.charge,
+            multiplicity=case.multiplicity,
+        ) as basis,
+    ):
+        item = batch.execute(strict=True, properties=("energy",)).items[0]
+        state = StationaryKsState.from_native(batch, basis)
+        if device == "cuda":
+            from vibeqc._stationary_cuda import complete_rks_cuda_gradient_diagnostic
+
+            diagnostic = complete_rks_cuda_gradient_diagnostic(
+                state,
+                basis,
+                compiler=_cuda_force_compiler(),
+                cache=Path(
+                    os.environ.get(
+                        "VIBEQC_NUM03_STATIONARY_CACHE",
+                        ".cache/num03-stationary-cuda",
+                    )
+                ),
+                tile_points=137,
+                primitive_tile=29,
+                integral_terms=17,
+            )
+            route = diagnostic.execution
+        elif device == "cpu":
+            from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
+
+            diagnostic = complete_rks_gradient_diagnostic(
+                state,
+                basis,
+                cache=Path(
+                    os.environ.get(
+                        "VIBEQC_NUM03_STATIONARY_CACHE",
+                        ".cache/num03-stationary-cpu",
+                    )
+                ),
+                execution="native",
+                tile_points=137,
+                primitive_tile=29,
+                integral_terms=17,
+            )
+            route = diagnostic.execution
+        else:
+            raise ValueError("NUM03 force diagnostic supports cpu or cuda")
+        # Diagnostic publishes dE/dR; physical forces negate exactly once.
+        forces = -np.asarray(diagnostic.gradient, dtype=float)
+        return (
+            item,
+            forces,
+            _jsonable(dict(diagnostic.work)),
+            route,
+            _jsonable(batch.resource_diagnostics),
+        )
 
 
 def _diffuse_oh_basis() -> tuple[Shell, ...]:
@@ -312,31 +405,30 @@ def run_endpoint(
     # changing the execution grid must not silently change the target identity.
     target = _target_model(case, calc, target_grid_spec)
     started = time.perf_counter()
-    result = calc.singlepoint(
-        case.atoms,
-        charge=case.charge,
-        multiplicity=case.multiplicity,
-        properties=("energy", "forces"),
+    result, forces, force_work, force_route, resources = _stationary_energy_and_forces(
+        case, calc, device
     )
     elapsed = time.perf_counter() - started
-    if result.forces is None:
-        raise RuntimeError("DFT benchmark endpoint returned no analytic forces")
     if not result.converged:
         raise RuntimeError("DFT benchmark endpoint did not converge")
+    public_force = "forces" in method_capabilities(case.method).supported_properties
     return Endpoint(
         level.name,
         float(result.energy),
-        tuple(tuple(float(v) for v in row) for row in result.forces),
+        tuple(tuple(float(v) for v in row) for row in forces),
         elapsed,
         bool(result.converged),
         int(result.iterations),
         str(result.executed_backend),
         _process_peak_rss_kib(),
         _gpu_resident_mib(),
-        _jsonable(result.resource_diagnostics),
+        resources,
         target.identity,
         level.grid_identity,
         level.screening_tolerance,
+        force_route,
+        public_force,
+        force_work,
     )
 
 
@@ -759,7 +851,7 @@ def strict_smooth_branch_fd(case: Case, device: str) -> dict[str, Any]:
 def evaluate_case(
     case: Case,
     endpoints: list[Endpoint],
-    estimators: tuple[PairedDifferenceEstimator, PairedDifferenceEstimator],
+    estimator: PairedDifferenceEstimator,
     budget: TargetErrorBudget,
 ) -> dict[str, Any]:
     strict = endpoints[-1]
@@ -792,13 +884,29 @@ def evaluate_case(
 
     for index in range(2):
         charge_level(index)
-        estimator_started = time.perf_counter()
-        estimate = estimators[index].predict(
-            case.method,
-            paired[index],
-            numerical_family_id=TRANSITION_FAMILIES[index],
-        )
-        estimator_model_seconds = time.perf_counter() - estimator_started
+        if index == 0:
+            estimator_started = time.perf_counter()
+            estimate = estimator.predict(
+                case.method,
+                paired[index],
+                numerical_family_id=TRANSITION_FAMILIES[index],
+            )
+            estimator_model_seconds = time.perf_counter() - estimator_started
+            evidence_kind = "empirical_paired_estimator"
+        else:
+            # standard -> strict compares the candidate directly with the
+            # declared strict target.  This is observed error, not another
+            # empirical calibration/holdout datum.
+            estimate = NumericalEstimate(
+                paired[index],
+                "observed-standard-to-strict-v1",
+                (
+                    "standard candidate is paired directly with the strict target",
+                    "observed pair is excluded from empirical validation aggregates",
+                ),
+            )
+            estimator_model_seconds = 0.0
+            evidence_kind = "observed_strict_pair"
         policy_seconds += estimator_model_seconds
         # The next level is the paired observation required by the estimator;
         # reuse it if a previous decision already paid for the same endpoint.
@@ -813,6 +921,7 @@ def evaluate_case(
             {
                 "at_level": levels[index].name,
                 "numerical_family_id": TRANSITION_FAMILIES[index],
+                "evidence_kind": evidence_kind,
                 "action": decision.action,
                 "worst_ratio": decision.worst_ratio,
                 "estimate": _jsonable(estimate.delta),
@@ -865,7 +974,7 @@ def main() -> None:
     parser.add_argument("--force-target", type=float, default=1e-5)
     parser.add_argument(
         "--fixed-density-cases",
-        default="h2_train_rks,water_train_rks,ch3_train_uks",
+        default="h2_train_rks,water_train_rks,ch3_train_uks,oh_diffuse_holdout_uks",
     )
     parser.add_argument("--fd-case", default="water_train_rks")
     parser.add_argument(
@@ -876,13 +985,42 @@ def main() -> None:
         "--gap-cases", default="lih_stretched_holdout_rks,oh_diffuse_holdout_uks"
     )
     parser.add_argument(
-        "--spatial-screening-cases", default="h2_train_rks,ch3_train_uks"
+        "--spatial-screening-cases",
+        default="h2_train_rks,ch3_train_uks,oh_diffuse_holdout_uks",
     )
     parser.add_argument("--spatial-screening-cutoff", type=float, default=1e-8)
     args = parser.parse_args()
 
     budget = TargetErrorBudget(args.energy_target, args.force_target)
     selected_cases = cases()
+    warmups: dict[str, Any] = {}
+    warmed_methods: set[str] = set()
+    for case in selected_cases:
+        if case.role != "train" or case.method in warmed_methods:
+            continue
+        warmed_methods.add(case.method)
+        try:
+            level, grid_spec = level_contracts(case.method)[1]
+            strict_grid = level_contracts(case.method)[-1][1]
+            warmups[case.method] = {
+                "endpoint": _jsonable(
+                    run_endpoint(
+                        case,
+                        level,
+                        grid_spec,
+                        args.device,
+                        target_grid_spec=strict_grid,
+                    )
+                ),
+                "excluded_from_policy_timing": True,
+                "purpose": "warm stationary force runtime/compiler cache",
+            }
+        except Exception as error:  # noqa: BLE001 - retain warmup failures
+            warmups[case.method] = {
+                "status": "error",
+                "error": f"{type(error).__name__}: {error}",
+                "excluded_from_policy_timing": True,
+            }
     raw: dict[str, list[Endpoint]] = {}
     errors: dict[str, str] = {}
     for case in selected_cases:
@@ -905,15 +1043,12 @@ def main() -> None:
             continue
         raw[case.name] = rows
 
-    training: tuple[list[PairedCalibrationSample], list[PairedCalibrationSample]] = (
-        [],
-        [],
-    )
+    training: list[PairedCalibrationSample] = []
     for case in selected_cases:
         if case.role != "train" or case.name not in raw:
             continue
         rows = raw[case.name]
-        training[0].append(
+        training.append(
             PairedCalibrationSample(
                 case.family,
                 case.name + ":coarse",
@@ -927,35 +1062,17 @@ def main() -> None:
                 ),
             )
         )
-        training[1].append(
-            PairedCalibrationSample(
-                case.family,
-                case.name + ":standard",
-                case.method,
-                TRANSITION_FAMILIES[1],
-                ObservableDelta.between(
-                    rows[1].energy, rows[1].forces, rows[2].energy, rows[2].forces
-                ),
-                ObservableDelta.between(
-                    rows[1].energy, rows[1].forces, rows[2].energy, rows[2].forces
-                ),
-            )
-        )
-    if any(len({sample.family for sample in group}) < 2 for group in training):
+    if len({sample.family for sample in training}) < 2:
         raise RuntimeError("insufficient successful molecular families for calibration")
-    estimators = tuple(PairedDifferenceEstimator.fit(group) for group in training)
+    estimator = PairedDifferenceEstimator.fit(training)
 
-    holdout_samples: tuple[
-        list[PairedCalibrationSample], list[PairedCalibrationSample]
-    ] = (
-        [],
-        [],
-    )
+    holdout_samples: list[PairedCalibrationSample] = []
+    observed_standard_to_strict = []
     for case in selected_cases:
         if case.role != "holdout" or case.name not in raw:
             continue
         rows = raw[case.name]
-        holdout_samples[0].append(
+        holdout_samples.append(
             PairedCalibrationSample(
                 case.family,
                 case.name + ":coarse",
@@ -969,31 +1086,31 @@ def main() -> None:
                 ),
             )
         )
-        holdout_samples[1].append(
-            PairedCalibrationSample(
-                case.family,
-                case.name + ":standard",
-                case.method,
-                TRANSITION_FAMILIES[1],
-                ObservableDelta.between(
-                    rows[1].energy, rows[1].forces, rows[2].energy, rows[2].forces
-                ),
-                ObservableDelta.between(
-                    rows[1].energy, rows[1].forces, rows[2].energy, rows[2].forces
-                ),
-            )
+        observed = ObservableDelta.between(
+            rows[1].energy, rows[1].forces, rows[2].energy, rows[2].forces
+        )
+        observed_standard_to_strict.append(
+            {
+                "case": case.name,
+                "family": case.family,
+                "actual": _jsonable(observed),
+                "actual_pass": budget.accepts(observed),
+            }
         )
     holdout = {
-        family: estimator.evaluate_holdout(samples, budget)
-        for family, estimator, samples in zip(
-            TRANSITION_FAMILIES, estimators, holdout_samples, strict=True
-        )
+        TRANSITION_FAMILIES[0]: estimator.evaluate_holdout(holdout_samples, budget),
+        TRANSITION_FAMILIES[1]: {
+            "validation_mode": "observed_strict_pair",
+            "excluded_from_empirical_validation_aggregates": True,
+            "rows": observed_standard_to_strict,
+            "certified": False,
+        },
     }
 
     evaluations = []
     for case in selected_cases:
         if case.name in raw:
-            evaluations.append(evaluate_case(case, raw[case.name], estimators, budget))
+            evaluations.append(evaluate_case(case, raw[case.name], estimator, budget))
 
     axis_results: dict[str, Any] = {}
     requested_axes = set(filter(None, args.axis_cases.split(",")))
@@ -1011,7 +1128,7 @@ def main() -> None:
     frontier_gaps: dict[str, Any] = {}
     requested_gaps = set(filter(None, args.gap_cases.split(",")))
     for case in selected_cases:
-        if case.name not in requested_gaps or case.name not in raw:
+        if case.name not in requested_gaps:
             continue
         try:
             frontier_gaps[case.name] = strict_frontier_gap(case, args.device)
@@ -1069,7 +1186,7 @@ def main() -> None:
     spatial_screening: dict[str, Any] = {}
     requested_spatial = set(filter(None, args.spatial_screening_cases.split(",")))
     for case in selected_cases:
-        if case.name not in requested_spatial or case.name not in raw:
+        if case.name not in requested_spatial:
             continue
         try:
             spatial_screening[case.name] = spatial_screening_audit(
@@ -1086,7 +1203,7 @@ def main() -> None:
     fixed_density = {}
     requested_fixed = set(filter(None, args.fixed_density_cases.split(",")))
     for case in selected_cases:
-        if case.name in requested_fixed and case.name in raw:
+        if case.name in requested_fixed:
             try:
                 fixed_density[case.name] = fixed_density_xc_audit(case, args.device)
             except Exception as error:  # noqa: BLE001 - retain diagnostic failures
@@ -1126,6 +1243,29 @@ def main() -> None:
         ),
         "reported_separately_from_smooth_branch_fd": True,
     }
+    section_failures = {
+        "axis_separation": sorted(
+            key for key, value in axis_results.items() if value.get("status") == "error"
+        ),
+        "strict_frontier_gaps": sorted(
+            key
+            for key, value in frontier_gaps.items()
+            if value.get("status") == "error"
+        ),
+        "derivative_aware_spatial_screening": sorted(
+            key
+            for key, value in spatial_screening.items()
+            if value.get("status") == "error"
+        ),
+        "fixed_density_xc_quadrature": sorted(
+            key
+            for key, value in fixed_density.items()
+            if value.get("status") == "error"
+        ),
+        "smooth_branch_finite_difference": (
+            ["requested"] if smooth_fd.get("status") == "error" else []
+        ),
+    }
     output = {
         "schema": "vibeqc.num03-force-aware-benchmark/v1",
         "git_head": subprocess.run(
@@ -1137,16 +1277,30 @@ def main() -> None:
         ).stdout.strip(),
         "device": args.device,
         "budget": _jsonable(budget),
+        "force_evidence_contract": {
+            "route": "public energy solve plus internal stationary-gradient diagnostic",
+            "public_method_properties": {
+                method: sorted(method_capabilities(method).supported_properties)
+                for method in sorted({case.method for case in selected_cases})
+            },
+            "public_force_publication_is_not_assumed": True,
+            "force_sign": "forces = -dE/dR exactly once",
+        },
+        "force_runtime_warmups": warmups,
         "empirical_estimators": {
-            family: {
+            TRANSITION_FAMILIES[0]: {
                 "identity": estimator.identity,
                 "training_families": estimator.training_families,
                 "training_data_hash": estimator.training_data_hash,
                 "energy_scale": estimator.energy_scale,
                 "force_scale": estimator.force_scale,
                 "certified": False,
-            }
-            for family, estimator in zip(TRANSITION_FAMILIES, estimators, strict=True)
+            },
+            TRANSITION_FAMILIES[1]: {
+                "validation_mode": "observed_strict_pair",
+                "empirical_estimator": None,
+                "certified": False,
+            },
         },
         "holdout": holdout,
         "evaluations": evaluations,
@@ -1162,9 +1316,11 @@ def main() -> None:
             name: [_jsonable(row) for row in rows] for name, rows in raw.items()
         },
         "errors": errors,
+        "section_failures": section_failures,
         "performance_interpretation": {
             "claim_success_only_if_speedup_gt_one_at_matched_actual_force_accuracy": True,
             "oracle_runtime_excluded_only_when_used_for_offline_validation": True,
+            "force_runtime_compilation_warmups_excluded_and_reported": True,
             "isolated_kernel_saving_is_not_endpoint_success": True,
         },
     }
@@ -1173,6 +1329,8 @@ def main() -> None:
         json.dumps(_jsonable(output), indent=2, sort_keys=True) + "\n"
     )
     print(json.dumps({"output": str(args.output), "errors": errors}, sort_keys=True))
+    if errors or any(section_failures.values()):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

@@ -105,6 +105,12 @@ def test_force_error_norms_retain_atom_and_component_semantics() -> None:
     huge = ObservableDelta(0.0, ((1e300, 0.0, 0.0),))
     assert np.isfinite(huge.force_rms)
     assert huge.force_rms / (1e300 / np.sqrt(3.0)) == pytest.approx(1.0)
+    vector_tiny = ObservableDelta(0.0, ((1e-200, 1e-200, 1e-200),))
+    assert vector_tiny.per_atom_l2[0] > 0.0
+    assert vector_tiny.per_atom_l2[0] / (np.sqrt(3.0) * 1e-200) == pytest.approx(1.0)
+    vector_huge = ObservableDelta(0.0, ((1e200, 1e200, 1e200),))
+    assert np.isfinite(vector_huge.per_atom_l2[0])
+    assert vector_huge.per_atom_l2[0] / (np.sqrt(3.0) * 1e200) == pytest.approx(1.0)
 
 
 def test_contribution_ledger_separates_estimator_from_actual_and_motion_semantics() -> (
@@ -256,6 +262,32 @@ def test_uncertainty_hysteresis_switching_and_strict_reproducibility_fail_closed
     assert first.action == "hold"
     second = policy.decide(first.state, tiny, geometry_id="g1")
     assert second.action == "relax"
+    changed_mask = policy.decide(
+        policy.initial_state(start_index=1, mask_identity="mask-old"),
+        tiny,
+        geometry_id="g-mask",
+        mask_identity="mask-new",
+    )
+    assert changed_mask.action == "hold"
+    assert changed_mask.state.safe_streak == 1
+    assert changed_mask.state.mask_identity == "mask-new"
+    assert changed_mask.state.transitions[-1].from_mask == "mask-old"
+    assert changed_mask.state.transitions[-1].to_mask == "mask-new"
+    ordinary = estimator().predict(
+        "pbe-rks",
+        delta(1e-6, 1e-4),
+        numerical_family_id="coarse-to-standard-v1",
+    )
+    within = policy.decide(
+        policy.initial_state(start_index=0, mask_identity="mask-a"),
+        ordinary,
+        geometry_id="g-within",
+        mask_identity="mask-b",
+    )
+    assert within.action == "hold"
+    assert within.state.mask_identity == "mask-b"
+    assert within.state.transitions[-1].from_mask == "mask-a"
+    assert within.state.transitions[-1].to_mask == "mask-b"
     switched = policy.decide(
         policy.initial_state(start_index=1),
         tiny,
