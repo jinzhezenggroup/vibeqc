@@ -352,6 +352,144 @@ class ContractionProgram:
             result[index] = rows[(index,)]
         return result
 
+    def mixed_geometry_directional(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        *,
+        ao_atoms: typing.Any,
+        left_centers: typing.Any,
+        left_points: typing.Any,
+        left_weights: typing.Any,
+        right_centers: typing.Any,
+        right_points: typing.Any,
+        right_weights: typing.Any,
+        mixed_weights: typing.Any,
+        delta_density: typing.Any = None,
+    ) -> typing.Any:
+        """Contract one LDA/GGA XC Hessian bilinear without a Hessian tensor.
+
+        The left direction is geometric. The right direction may additionally
+        carry the CPKS density response. The chain rule differentiates the left
+        directional XC energy with respect to the right direction using
+        generated XC feature gradients/Hessians, analytic AO-jet JVPs and
+        externally supplied first/mixed quadrature motions. It owns no CPKS
+        solve and no molecular-grid motion policy.
+        """
+        if self.contract.request.observable != "geometry":
+            raise ValueError("mixed geometry requires a geometry contraction")
+        family = self.contract.ingredients.family
+        if family not in ("lda", "gga"):
+            raise UnsupportedXC("mixed XC geometry supports semilocal LDA/GGA only")
+        raw_jets = immutable(jets)
+        ingredient_order = self.contract.ingredients.ao_order
+        required = len(jet_indices(ingredient_order + 2))
+        if (
+            raw_jets.ndim != 3
+            or raw_jets.shape[0] not in (10, 20)
+            or raw_jets.shape[0] < required
+        ):
+            raise ValueError("mixed XC geometry requires AO jets through order+2")
+        npoint, nao = raw_jets.shape[1:]
+        weights = immutable(weights, shape=(npoint,))
+        left_points = immutable(left_points, shape=(npoint, 3))
+        right_points = immutable(right_points, shape=(npoint, 3))
+        left_weights = immutable(left_weights, shape=(npoint,))
+        right_weights = immutable(right_weights, shape=(npoint,))
+        mixed_weights = immutable(mixed_weights, shape=(npoint,))
+        left_centers = immutable(left_centers)
+        right_centers = immutable(right_centers, shape=left_centers.shape)
+        if left_centers.ndim != 2 or left_centers.shape[1:] != (3,):
+            raise ValueError("mixed XC geometry requires [atom,3] center directions")
+        atoms = np.asarray(ao_atoms)
+        if (
+            atoms.shape != (nao,)
+            or atoms.dtype.kind not in "iu"
+            or np.any(atoms < 0)
+            or (atoms.size and np.max(atoms) >= len(left_centers))
+        ):
+            raise ValueError("mixed XC geometry requires one valid atom per AO")
+
+        d = spin_densities(density, nao)
+        if self.spec.spin == "unpolarized" and not np.array_equal(d[0], d[1]):
+            raise UnsupportedXC("unpolarized contractions require equal spin matrices")
+        if delta_density is None:
+            delta_density = np.zeros_like(np.asarray(density, dtype=float))
+        dd = spin_densities(delta_density, nao)
+        if self.spec.spin == "unpolarized" and not np.array_equal(dd[0], dd[1]):
+            raise UnsupportedXC(
+                "unpolarized mixed geometry requires equal spin density directions"
+            )
+
+        base_count = len(jet_indices(ingredient_order))
+        extended_count = len(jet_indices(ingredient_order + 1))
+        left_extended = directional_ao_jets(
+            raw_jets,
+            ingredient_order + 1,
+            ao_atoms=atoms,
+            point_motion=left_points,
+            center_motion=left_centers,
+        )
+        left_jets = left_extended[:base_count]
+        right_jets = directional_ao_jets(
+            raw_jets,
+            ingredient_order,
+            ao_atoms=atoms,
+            point_motion=right_points,
+            center_motion=right_centers,
+        )
+        mixed_jets = directional_ao_jets(
+            left_extended[:extended_count],
+            ingredient_order,
+            ao_atoms=atoms,
+            point_motion=right_points,
+            center_motion=right_centers,
+        )
+        base_jets = raw_jets[:base_count]
+        features = self.features(base_jets, d)
+        left, right, mixed = _geometry_feature_directions(
+            features,
+            base_jets,
+            left_jets,
+            right_jets,
+            mixed_jets,
+            d,
+            dd,
+            family,
+        )
+
+        second = ContractionProgram(self.spec, "response")
+        rows = second.scalar_values(features)
+        gradient = second._gradient(rows, npoint)
+        left_packed = _pack(self.spec, left)
+        right_packed = _pack(self.spec, right)
+        mixed_packed = _pack(self.spec, mixed)
+        indices = second.contract.ingredients.feature_indices
+        active = list(indices)
+        left_energy = np.sum(gradient[active] * left_packed[active], axis=0)
+        right_energy = np.sum(gradient[active] * right_packed[active], axis=0)
+        mixed_feature_energy = np.sum(
+            gradient[active] * mixed_packed[active], axis=0
+        )
+        for i in indices:
+            for j in indices:
+                mixed_feature_energy += (
+                    left_packed[i]
+                    * rows[(min(i, j), max(i, j))]
+                    * right_packed[j]
+                )
+
+        result = XCMixedDirectional(
+            mixed_measure=float(mixed_weights @ rows[()]),
+            left_measure_right_feature=float(left_weights @ right_energy),
+            right_measure_left_feature=float(right_weights @ left_energy),
+            feature_mixed=float(weights @ mixed_feature_energy),
+        )
+        if not np.isfinite(result.total):
+            raise ArithmeticError("nonfinite mixed XC geometry contraction")
+        return result
+
     def potential_tile(
         self, jets: typing.Any, features: typing.Any, weights: typing.Any
     ) -> typing.Any:
