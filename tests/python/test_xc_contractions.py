@@ -407,8 +407,10 @@ def test_mixed_xc_geometry_matches_directional_derivative_of_analytic_gradient(
         errors.append(
             abs((directional[0] - directional[1]) / (2 * step) - actual.total)
         )
-    assert np.all(np.asarray(errors) < [3e-6, 5e-7, 1e-7]), errors
-    assert errors[-1] < errors[0] / 20
+    # These differences reach the floating-point floor already at the
+    # coarsest displacement, so monotonic O(h^2) convergence is not a useful
+    # gate here. Pin the absolute analytic agreement instead.
+    assert max(errors) < 1e-10, errors
     assert abs(actual.feature_mixed) > 1e-8
 
     frozen = geometry.mixed_geometry_directional(
