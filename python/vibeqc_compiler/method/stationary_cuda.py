@@ -32,6 +32,23 @@ STATIONARY_RUNTIME_SOURCE_NAMES = (
     "nuclear",
 )
 _FUSED_WEIGHT_SOURCES = ("one_electron", "coulomb", "overlap_pulay")
+_SPLIT_COMPILE_THREADS_ENV = "VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS"
+
+
+def _split_compile_options(
+    environment: typing.Mapping[str, str] | None = None,
+) -> tuple[str, ...]:
+    """Return explicit NVCC split-compilation flags for this oversized runtime."""
+
+    env = os.environ if environment is None else environment
+    raw = env.get(_SPLIT_COMPILE_THREADS_ENV, "1")
+    try:
+        threads = int(raw)
+    except ValueError as error:
+        raise ValueError(f"{_SPLIT_COMPILE_THREADS_ENV} must be an integer") from error
+    if not 1 <= threads <= 32:
+        raise ValueError(f"{_SPLIT_COMPILE_THREADS_ENV} must be in [1,32]")
+    return () if threads == 1 else (f"--split-compile={threads}",)
 
 
 def _fraction(value: typing.Any) -> Fraction:
@@ -476,5 +493,10 @@ def compile_stationary_cuda(
             )
         ),
         libraries=("cublas",),
-        options=("--fmad=false", "--expt-relaxed-constexpr", f"-I{header.parents[1]}"),
+        options=(
+            "--fmad=false",
+            "--expt-relaxed-constexpr",
+            f"-I{header.parents[1]}",
+            *_split_compile_options(),
+        ),
     )

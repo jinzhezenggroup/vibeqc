@@ -135,10 +135,17 @@ class CudaExecutionProfile:
     nodes: int = 1
     ntasks: int = 1
     slurm_time: str | None = "00:10:00"
+    cpus_per_task: int | None = None
 
     def __post_init__(self) -> None:
         if self.nodes < 1 or self.ntasks < 1:
             raise ValueError("CUDA execution nodes/tasks must be positive")
+        if self.cpus_per_task is not None and (
+            type(self.cpus_per_task) is not int or self.cpus_per_task < 1
+        ):
+            raise ValueError(
+                "CUDA execution cpus_per_task must be a positive integer or None"
+            )
         if not self.srun.strip():
             raise ValueError("CUDA execution srun command must be non-empty")
         for name in ("partition", "gres", "slurm_time"):
@@ -164,6 +171,8 @@ class CudaExecutionProfile:
         if self.gres is not None:
             prefix.append(f"--gres={self.gres}")
         prefix.extend((f"--nodes={self.nodes}", f"--ntasks={self.ntasks}"))
+        if self.cpus_per_task is not None:
+            prefix.append(f"--cpus-per-task={self.cpus_per_task}")
         if self.slurm_time is not None:
             prefix.append(f"--time={self.slurm_time}")
         return [*prefix, *command]
@@ -178,6 +187,7 @@ class CudaExecutionProfile:
             "gres": self.gres,
             "nodes": self.nodes,
             "ntasks": self.ntasks,
+            "cpus_per_task": self.cpus_per_task,
             "slurm_time": self.slurm_time,
         }
 
@@ -200,6 +210,7 @@ def resolve_cuda_execution_profile(
     gres: str | None = None,
     nodes: int | None = None,
     ntasks: int | None = None,
+    cpus_per_task: int | None = None,
     slurm_time: str | None = None,
     default_slurm_time: str | None = "00:10:00",
 ) -> CudaExecutionProfile:
@@ -229,6 +240,16 @@ def resolve_cuda_execution_profile(
                 raise ValueError(f"{key} must be an integer") from error
         return default
 
+    def optional_int_value(key: str, explicit: int | None) -> int | None:
+        if explicit is not None:
+            return explicit
+        if key in env:
+            try:
+                return int(env[key])
+            except ValueError as error:
+                raise ValueError(f"{key} must be an integer") from error
+        return None
+
     if local is None:
         resolved_local = (
             _environment_bool(env["VIBEQC_BENCHMARK_LOCAL"], "VIBEQC_BENCHMARK_LOCAL")
@@ -244,6 +265,9 @@ def resolve_cuda_execution_profile(
         gres=text_value("VIBEQC_BENCHMARK_GRES", gres, "gpu:5090:1"),
         nodes=int_value("VIBEQC_BENCHMARK_NODES", nodes, 1),
         ntasks=int_value("VIBEQC_BENCHMARK_NTASKS", ntasks, 1),
+        cpus_per_task=optional_int_value(
+            "VIBEQC_BENCHMARK_CPUS_PER_TASK", cpus_per_task
+        ),
         slurm_time=text_value("VIBEQC_BENCHMARK_TIME", slurm_time, default_slurm_time),
     )
 
@@ -260,6 +284,7 @@ class CudaBenchmarkExecutor:
     nodes: int = 1
     ntasks: int = 1
     slurm_time: str | None = "00:10:00"
+    cpus_per_task: int | None = None
 
     @classmethod
     def from_environment(
@@ -272,6 +297,7 @@ class CudaBenchmarkExecutor:
         gres: str | None = None,
         nodes: int | None = None,
         ntasks: int | None = None,
+        cpus_per_task: int | None = None,
         slurm_time: str | None = None,
         default_slurm_time: str | None = "00:10:00",
         environment: Mapping[str, str] | None = None,
@@ -286,6 +312,7 @@ class CudaBenchmarkExecutor:
             gres=gres,
             nodes=nodes,
             ntasks=ntasks,
+            cpus_per_task=cpus_per_task,
             slurm_time=slurm_time,
             default_slurm_time=default_slurm_time,
         )
@@ -297,6 +324,7 @@ class CudaBenchmarkExecutor:
             gres=profile.gres,
             nodes=profile.nodes,
             ntasks=profile.ntasks,
+            cpus_per_task=profile.cpus_per_task,
             slurm_time=profile.slurm_time,
         )
 
@@ -311,6 +339,7 @@ class CudaBenchmarkExecutor:
             gres=self.gres,
             nodes=self.nodes,
             ntasks=self.ntasks,
+            cpus_per_task=self.cpus_per_task,
             slurm_time=self.slurm_time,
         )
 
