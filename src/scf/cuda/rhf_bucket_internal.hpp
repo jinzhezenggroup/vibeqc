@@ -71,7 +71,6 @@ struct CudaRhfBucketPlan {
   unsigned persistent_quartet_worker_blocks{};
   std::size_t resident_psss_bra_primitive_pairs{};
   std::size_t resident_psss_task_count{};
-  bool generated_psss_weighted{};
   unsigned one_electron_value_mapping{};
   std::size_t primitive_count{};
   std::size_t diis_history{};
