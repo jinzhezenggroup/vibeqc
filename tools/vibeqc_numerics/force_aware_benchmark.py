@@ -508,7 +508,12 @@ def _fixed_density_xc_energy(
         charge=case.charge,
         multiplicity=case.multiplicity,
     ) as basis:
-        grid = MolecularGrid(basis.atoms, grid_spec)
+        grid = MolecularGrid(
+            basis.atoms,
+            grid_spec,
+            charge=case.charge,
+            multiplicity=case.multiplicity,
+        )
         return float(FixedDensityXC(functional).integrate(basis, grid, density).energy)
 
 
