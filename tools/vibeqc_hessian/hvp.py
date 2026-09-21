@@ -282,9 +282,11 @@ def rhf_hvp(
     CPU remains the default second-integral HVP backend. CUDA may be selected
     independently for directional H1/S1, direct J/K/response residency, the
     #178 second-integral weighted HVP provider and first-integral relaxation.
-    The CUDA second-integral path streams packed shell primitive/weight records
-    and downloads only contracted coordinate HVP tiles; final molecular
-    assembly remains host-side.
+    The ordinary CUDA second-integral path streams packed shell primitive/weight
+    records and downloads only contracted coordinate HVP tiles. With
+    ``assembly_backend="cuda"``, those compact tiles and CUDA relaxation are
+    consumed device-to-device by a bounded final HVP accumulator; only the final
+    molecular HVP is published to host.
     """
     if not isinstance(state, NativeRHFState):
         raise TypeError("RHF HVP requires NativeRHFState")
