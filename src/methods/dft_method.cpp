@@ -325,11 +325,12 @@ void add_transfers(dft::CudaKsTransfers& target, const dft::CudaKsTransfers& val
 class KsPreparedCalculation final : public PreparedCalculation {
  public:
   KsPreparedCalculation(Capabilities capabilities, core::System system, vibeqc_method method,
-                        scf::ScfOptions options, dft::GridSpec grid, vibeqc_backend backend,
-                        int device)
+                        NativeKsExecutionPlan execution_plan, scf::ScfOptions options,
+                        dft::GridSpec grid, vibeqc_backend backend, int device)
       : capabilities_(capabilities),
         system_(std::move(system)),
         method_(method),
+        execution_plan_(execution_plan),
         options_(std::move(options)),
         backend_(backend),
         fock_(system_, nullptr, *options_.resolved_fock_build, device,
@@ -339,8 +340,9 @@ class KsPreparedCalculation final : public PreparedCalculation {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
 #if VIBEQC_HAS_CUDA
     if (backend_ == VIBEQC_BACKEND_CUDA)
-      cuda_ = std::make_unique<dft::CudaKsPlan>(fock_, basis_, grid_, options_,
-                                                functional_code(method_), options_.xc_tile_points);
+      cuda_ = std::make_unique<dft::CudaKsPlan>(
+          fock_, basis_, grid_, options_, execution_plan_.semilocal_family,
+          options_.xc_tile_points);
 #endif
     runtime::sample_cpu_capacity(host_numeric_capacity());
   }
@@ -481,9 +483,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
 
   Result execute(bool compute_forces) override {
     invalidate_final_state();
-    const char* method_name = display_method_name(method_);
+    const char* method_name = semilocal_family_name(execution_plan_);
     if (compute_forces) {
-      const char* issue = is_r2scan(method_) ? "#164" : "#163";
+      const char* issue =
+          execution_plan_.semilocal_family == kKsSemilocalR2scan ? "#164" : "#163";
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         std::string(method_name) +
                             " KS nuclear gradients are tracked separately in issue " + issue);
@@ -515,20 +518,21 @@ class KsPreparedCalculation final : public PreparedCalculation {
     // last-good density, which coexists with its current/proposed densities.
     runtime::CpuRetainedCapacity retained_warm(runtime::vector_bytes(warm_));
     scf::ScfResult native;
-    if (method_ == VIBEQC_METHOD_R2SCAN_UKS)
-      native = scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed);
-    else if (method_ == VIBEQC_METHOD_R2SCAN_RKS)
-      native = scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
-    else if (is_uks(method_))
-      native = scf::run_uks(fock_, basis_, grid_, options_, is_pbe_family(method_), seed);
-    else if (is_pbe_family(method_))
+    if (execution_plan_.semilocal_family == kKsSemilocalR2scan)
+      native = unrestricted(execution_plan_)
+                   ? scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed)
+                   : scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
+    else if (unrestricted(execution_plan_))
+      native = scf::run_uks(fock_, basis_, grid_, options_,
+                            execution_plan_.semilocal_family == kKsSemilocalPbe, seed);
+    else if (execution_plan_.semilocal_family == kKsSemilocalPbe)
       native = scf::run_pbe_rks(fock_, basis_, grid_, options_, seed);
     else
       native = scf::run_lda_rks(fock_, basis_, grid_, options_, seed);
     // This owner has immutable model/geometry/spin identity. Only successful
     // executions may replace its compatible last-good density; DIIS is fresh.
     if (native.converged && options_.retain_ks_state) {
-      const auto spins = is_uks(method_) ? 2U : 1U;
+      const auto spins = execution_plan_.spin_channels;
       const auto matrix = fock_.one_electron().nbf * fock_.one_electron().nbf;
       if (native.density.size() != spins * matrix ||
           native.ks_physical_fock.size() != spins * matrix ||
@@ -557,7 +561,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
                         1,
                         grid_.spec(),
                         options_.xc_tile_points,
-                        functional_code(method_),
+                        execution_plan_.semilocal_family,
                         spins,
                         -1,
                         cpu_owner_,
@@ -581,6 +585,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
   Capabilities capabilities_;
   core::System system_;
   vibeqc_method method_{};
+  NativeKsExecutionPlan execution_plan_;
   scf::ScfOptions options_;
   vibeqc_backend backend_;
   scf::PreparedFockPlan fock_;
@@ -638,11 +643,13 @@ vibeqc_status item_exception_status() {
 class KsPreparedBatch final : public PreparedBatch {
  public:
   KsPreparedBatch(Capabilities capabilities, std::vector<core::System> systems,
-                  vibeqc_method method, scf::ScfOptions options, dft::GridSpec grid,
-                  vibeqc_backend backend, int device, bool warm_enabled)
+                  vibeqc_method method, NativeKsExecutionPlan execution_plan,
+                  scf::ScfOptions options, dft::GridSpec grid, vibeqc_backend backend,
+                  int device, bool warm_enabled)
       : capabilities_(capabilities),
         systems_(std::move(systems)),
         method_(method),
+        execution_plan_(execution_plan),
         options_(std::move(options)),
         grid_spec_(std::move(grid)),
         backend_(backend),
@@ -806,7 +813,7 @@ class KsPreparedBatch final : public PreparedBatch {
 
   std::size_t warm_density_size(std::size_t index) const override {
     const auto n = molecule::ao_count(systems_.at(index));
-    const std::size_t spins = is_uks(method_) ? 2 : 1;
+    const std::size_t spins = execution_plan_.spin_channels;
     if (!n || n > std::numeric_limits<std::size_t>::max() / n / spins / sizeof(double))
       throw std::invalid_argument("KS warm density dimensions overflow");
     return spins * n * n;
@@ -832,8 +839,9 @@ class KsPreparedBatch final : public PreparedBatch {
       set_positions(source, state.coordinates);
       // This common validation reads only source S and checks the shared
       // spin-density convention. It performs no HF Fock/energy evaluation.
-      scf::validate_hf_warm_density(source, is_uks(method_) ? VIBEQC_METHOD_UHF : VIBEQC_METHOD_RHF,
-                                    state.density);
+      scf::validate_hf_warm_density(
+          source, unrestricted(execution_plan_) ? VIBEQC_METHOD_UHF : VIBEQC_METHOD_RHF,
+          state.density);
     }
     // All source-metric validation precedes the no-throw commit. Missing
     // entries preserve neighbors, including their resident density ownership.
@@ -934,8 +942,8 @@ class KsPreparedBatch final : public PreparedBatch {
 #endif
   };
   std::unique_ptr<KsPreparedCalculation> make_plan(const core::System& system) const {
-    return std::make_unique<KsPreparedCalculation>(capabilities_, system, method_, options_,
-                                                   grid_spec_, backend_, device_);
+    return std::make_unique<KsPreparedCalculation>(
+        capabilities_, system, method_, execution_plan_, options_, grid_spec_, backend_, device_);
   }
   void materialize_warm(std::size_t i) const {
     const auto& item = items_.at(i);
@@ -946,6 +954,7 @@ class KsPreparedBatch final : public PreparedBatch {
   Capabilities capabilities_;
   std::vector<core::System> systems_;
   vibeqc_method method_;
+  NativeKsExecutionPlan execution_plan_;
   scf::ScfOptions options_;
   dft::GridSpec grid_spec_;
   vibeqc_backend backend_;
@@ -1008,16 +1017,19 @@ vibeqc_status read_dft_derivative_state(PreparedBatch& batch, std::size_t index,
 
 vibeqc_status validate_dft_system(vibeqc_method method, const core::System& system,
                                   std::string& detail) {
-  if (!is_supported_dft(method)) {
-    detail = "requested DFT method is reserved but not implemented";
-    return VIBEQC_STATUS_NOT_IMPLEMENTED;
+  NativeKsExecutionPlan execution_plan;
+  try {
+    execution_plan = legacy_ks_execution_plan(method);
+  } catch (const MethodError& error) {
+    detail = error.what();
+    return error.status();
   }
   if (system.shells.empty()) {
     detail = "DFT requires an explicit Gaussian orbital basis";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  const char* functional = display_method_name(method);
-  if (!is_uks(method)) {
+  const char* functional = semilocal_family_name(execution_plan);
+  if (!unrestricted(execution_plan)) {
     if (system.electron_count > 0 && system.electron_count % 2 == 0 && system.multiplicity == 1)
       return VIBEQC_STATUS_SUCCESS;
     detail = std::string(functional) +
@@ -1041,14 +1053,12 @@ std::unique_ptr<PreparedCalculation> prepare_dft_calculation(
   if (context.requested_backend == VIBEQC_BACKEND_CUDA)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT CUDA backend is not built");
 #endif
-  if (!is_supported_dft(descriptor.method))
-    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "requested DFT method is reserved but not implemented");
-  auto options = dft_options(descriptor, context.requested_backend);
+  NativeKsExecutionPlan execution_plan;
+  auto options = dft_options(descriptor, context.requested_backend, execution_plan);
   auto grid = ks_grid_options(descriptor, options);
-  return std::make_unique<KsPreparedCalculation>(capabilities, system, descriptor.method,
-                                                 std::move(options), std::move(grid),
-                                                 context.requested_backend, context.device_id);
+  return std::make_unique<KsPreparedCalculation>(
+      capabilities, system, descriptor.method, execution_plan, std::move(options), std::move(grid),
+      context.requested_backend, context.device_id);
 }
 
 std::unique_ptr<PreparedBatch> prepare_dft_batch(const Capabilities& capabilities,
@@ -1063,11 +1073,13 @@ std::unique_ptr<PreparedBatch> prepare_dft_batch(const Capabilities& capabilitie
   if (context.requested_backend == VIBEQC_BACKEND_CUDA)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT CUDA backend is not built");
 #endif
-  auto options = dft_options(descriptor, context.requested_backend);
+  NativeKsExecutionPlan execution_plan;
+  auto options = dft_options(descriptor, context.requested_backend, execution_plan);
   auto grid = ks_grid_options(descriptor, options);
   return std::make_unique<KsPreparedBatch>(
-      capabilities, std::move(systems), descriptor.method, std::move(options), std::move(grid),
-      context.requested_backend, context.device_id, (flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0);
+      capabilities, std::move(systems), descriptor.method, execution_plan, std::move(options),
+      std::move(grid), context.requested_backend, context.device_id,
+      (flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0);
 }
 
 }  // namespace vibeqc::methods::detail
