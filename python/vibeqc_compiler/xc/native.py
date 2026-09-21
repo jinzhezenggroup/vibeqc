@@ -81,7 +81,7 @@ def emit_native(program: typing.Any) -> typing.Any:
             program.jet_pullback.roots,
         )
     lines = [
-        "// Generated XC roots; scalar functional provenance: sources/upstream/libxc/7.0.0.",
+        "// Generated XC roots; scalar functional provenance: external/libxc-7.0.0.",
         "#include <cmath>",
         "#include <cstddef>",
         "#include <cstdint>",
