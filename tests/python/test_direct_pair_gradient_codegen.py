@@ -33,9 +33,9 @@ def test_order456_consumer_is_fully_compiler_owned() -> None:
     native = REPOSITORY_ROOT / "src/scf/cuda/direct_native_order456_gradient.cuh"
     assert not native.exists()
 
-    force = (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh"
-    ).read_text(encoding="utf-8")
+    force = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh").read_text(
+        encoding="utf-8"
+    )
     assert '#include "generated_direct_high_order_pair_gradient.cuh"' in force
     assert "direct_native_order456_gradient.cuh" not in force
 
