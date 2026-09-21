@@ -14,8 +14,9 @@ an unchecked external binary or lose the target/precision/source contract.
 
 Compile relocatable primitive and wrapper CUDA objects under independently
 hashed source/header/toolchain/option identities. Verify object bytes on reuse
-and again before device linking. Publish completed objects atomically under the
-existing cache lock. Primitive split-compile options belong to its compile step,
+and again before device linking. Publish completed objects atomically using directory rename. Concurrent cache
+misses may compile independently; a losing publisher verifies the winning
+artifact rather than overwriting it. No cross-process compiler lock is promised. Primitive split-compile options belong to its compile step,
 not to an accidentally retained whole-source compile call at device link.
 The native artifact still owns the final linked library and its identity.
 
@@ -39,6 +40,15 @@ These are not complete molecular force or endpoint speedup measurements.
 Promote only after the exact integrated molecular force/replay and cold/warm
 compile/endpoint/resource gates are complete. Do not make cache hits bypass byte
 verification or use a different precision/target policy merely to reduce time.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro
+
+## Review clarification
+
+The compiled-object and link caches use atomic publication and integrity checks,
+not a cross-process lock spanning compilation. Source-file cache locking is a
+separate boundary. This correction does not alter execution or cache policy.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
