@@ -130,7 +130,7 @@
       "required_compiler_capabilities": [
         "#830 GVN/redundancy cleanup",
         "#832 live-range/rematerialization/fusion profitability",
-        "#833 reusable schedule vocabulary"
+        "#833 reusable schedules"
       ],
       "retirement_condition": "At least one retained order-4/5/6 family must reach generated multi-root/resource parity before deleting its native body; repeat the same measured gate per remaining family.",
       "files": [
@@ -217,4 +217,4 @@
       ]
     }
   ]
-}\n
+}
