@@ -182,7 +182,11 @@ class TensorPlan:
         """Resolve execution precision once for every live logical node."""
         names = self.program.debug_names
         values = {value.name: value for value in self.precision_schedule.values}
-        return {node: values[names[node]] for node in self.program.live_nodes}
+        return {
+            node: values[names[node]]
+            for node in self.program.live_nodes
+            if names[node] in values
+        }
 
     @property
     def batch_schedule(self) -> BatchScheduleIR:
