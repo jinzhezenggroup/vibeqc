@@ -43,7 +43,10 @@ def _program() -> Program:
     return Program({"selected": selected})
 
 
-def _feeds(a=(3, 2, 1), b=(1, 0, 1)) -> dict[str, np.ndarray]:
+def _feeds(
+    a: tuple[int, int, int] = (3, 2, 1),
+    b: tuple[int, int, int] = (1, 0, 1),
+) -> dict[str, np.ndarray]:
     source = np.arange(4 * 4 * 2, dtype=np.float64).reshape(4, 4, 2)
     return {
         "source": source,
