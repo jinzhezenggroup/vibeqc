@@ -11,7 +11,7 @@ from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
-from vibeqc_compiler.xc.expressions import energy_expression
+from vibeqc_compiler.xc.rsh_expressions import energy_expression
 from vibeqc_compiler.xc.libxc_maple import (
     IMPORTER_SEMANTICS,
     MapleModule,
@@ -22,6 +22,7 @@ from vibeqc_compiler.xc.spec import FunctionalSpec
 ROOT = Path(__file__).resolve().parents[2]
 LIBXC_ROOT = ROOT / "external/libxc-7.0.0"
 MANIFEST = json.loads((LIBXC_ROOT / "manifest.json").read_text())
+PW91_MANIFEST = json.loads((LIBXC_ROOT / "rsh-manifest.json").read_text())
 FIXTURE = json.loads((ROOT / "tests/data/xc/pw91-hessian.json").read_text())
 POLARIZED_FEATURES = (
     "rho_a",
@@ -165,13 +166,14 @@ def test_pw91_importer_semantics_and_source_provenance() -> None:
 
     assert (
         dict(exchange.source_hashes)["gga_x_pw91.mpl"]
-        == MANIFEST["files"]["gga_x_pw91.mpl"]["sha256"]
+        == PW91_MANIFEST["files"]["gga_x_pw91.mpl"]["sha256"]
     )
     assert {"gga_x_pw91_params"} <= set(exchange.defines)
     for source in ("gga_c_pw91.mpl", "lda_c_pw.mpl", "util.mpl"):
+        manifest = PW91_MANIFEST if source == "gga_c_pw91.mpl" else MANIFEST
         assert (
             dict(correlation.source_hashes)[source]
-            == MANIFEST["files"][source]["sha256"]
+            == manifest["files"][source]["sha256"]
         )
 
 
