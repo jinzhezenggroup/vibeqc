@@ -78,15 +78,16 @@ VIBEQC_D3_MODEL_HD inline bool d3_pair_term(std::size_t first, std::size_t secon
     if (pair_cutoff > 0.0 && r2 > pair_cutoff * pair_cutoff) return true;
     const double r0 = tables.pairs[pair_index(z[first], z[second])].vdw_radius;
     if (!(r0 > 0.0) || !finite(r0)) return false;
-    const double r4 = r2 * r2, r6 = r4 * r2, r8 = r4 * r4;
-    const double t6 = pow(p.rs6 * r0 / r, p.alpha6);
-    const double t8 = pow(p.rs8 * r0 / r, p.alpha6 + 2.0);
-    const double f6 = 1.0 / (1.0 + 6.0 * t6);
-    const double f8 = 1.0 / (1.0 + 6.0 * t8);
-    const double d6 = -6.0 * f6 / r2 + 6.0 * p.alpha6 * t6 * f6 * f6 / r2;
-    const double d8 = -8.0 * f8 / r2 + 6.0 * (p.alpha6 + 2.0) * t8 * f8 * f8 / r2;
-    phi = p.s6 * f6 / r6 + p.s8 * rr * f8 / r8;
-    derivative_over_distance = p.s6 * d6 / r6 + p.s8 * rr * d8 / r8;
+    const auto term6 =
+        d3_zero_detail::damped_inverse_power(r, r2, p.rs6 * r0, p.alpha6, 6);
+    const auto term8 =
+        d3_zero_detail::damped_inverse_power(r, r2, p.rs8 * r0, p.alpha6 + 2.0, 8);
+    if (!finite(term6.value) || !finite(term8.value) ||
+        !finite(term6.derivative_over_distance) || !finite(term8.derivative_over_distance))
+      return false;
+    phi = p.s6 * term6.value + p.s8 * rr * term8.value;
+    derivative_over_distance = p.s6 * term6.derivative_over_distance +
+                               p.s8 * rr * term8.derivative_over_distance;
   } else {
     return false;
   }

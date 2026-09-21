@@ -6,11 +6,15 @@
 #include <stdexcept>
 #include <vector>
 
-#include "dft/dispersion/d3_zero.hpp"
+#include "dft/dispersion/d3_model.hpp"
 
 namespace {
 using vibeqc::dft::dispersion::d3_host_tables;
+using vibeqc::dft::dispersion::d3_pair_term;
 using vibeqc::dft::dispersion::d3_zero_workspace_elements;
+using vibeqc::dft::dispersion::D3Damping;
+using vibeqc::dft::dispersion::D3ModelParameters;
+using vibeqc::dft::dispersion::D3PairTerm;
 using vibeqc::dft::dispersion::D3Status;
 using vibeqc::dft::dispersion::D3ZeroParameters;
 using vibeqc::dft::dispersion::evaluate_d3_zero;
@@ -165,6 +169,46 @@ void test_overflowing_damping_keeps_representable_weighted_results() {
   }
 }
 
+void test_pair_helper_overflowing_damping_keeps_representable_results() {
+  constexpr std::array<std::int32_t, 2> numbers{6, 6};
+  const auto tables = d3_host_tables();
+  const double r = std::ldexp(1.0, -16);
+  const double r2 = std::ldexp(1.0, -32);
+  const double r0 =
+      tables.pairs[vibeqc::dft::dispersion::d3_detail::pair_index(numbers[0], numbers[1])].vdw_radius;
+  const double rr = 3.0 * tables.elements[numbers[0] - 1].r4r2 * tables.elements[numbers[1] - 1].r4r2;
+
+  D3ModelParameters model{};
+  model.damping = D3Damping::zero;
+  model.zero = kPbeOracle.parameters;
+  model.zero.alpha6 = 260.0;
+  model.zero.rs6 = std::ldexp(1.0, -12) / r0;
+  model.zero.rs8 = std::ldexp(1.0, -12) / r0;
+
+  D3PairTerm term{};
+  model.zero.s6 = 1.0;
+  model.zero.s8 = 0.0;
+  if (!d3_pair_term(0, 1, numbers.data(), r2, model, tables, term) || !term.included)
+    throw std::runtime_error("D3(0) pair helper rejected representable inverse-sixth result");
+  const double expected6 = std::ldexp(1.0 / 6.0, 12 * 6 - 1016);
+  const double expected6_derivative = std::ldexp(254.0 / 6.0, 12 * 6 - 984);
+  if (!std::isfinite(term.damping) || !std::isfinite(term.radial_derivative_over_distance) ||
+      std::abs(term.damping / expected6 - 1.0) > 1.0e-12 ||
+      std::abs(term.radial_derivative_over_distance / expected6_derivative - 1.0) > 1.0e-12)
+    throw std::runtime_error("D3(0) pair helper lost representable inverse-sixth result");
+
+  model.zero.s6 = 0.0;
+  model.zero.s8 = 1.0;
+  if (!d3_pair_term(0, 1, numbers.data(), r2, model, tables, term) || !term.included)
+    throw std::runtime_error("D3(0) pair helper rejected representable inverse-eighth result");
+  const double expected8 = rr * std::ldexp(1.0 / 6.0, 12 * 8 - 1016);
+  const double expected8_derivative = rr * std::ldexp(254.0 / 6.0, 12 * 8 - 984);
+  if (!std::isfinite(term.damping) || !std::isfinite(term.radial_derivative_over_distance) ||
+      std::abs(term.damping / expected8 - 1.0) > 1.0e-12 ||
+      std::abs(term.radial_derivative_over_distance / expected8_derivative - 1.0) > 1.0e-12)
+    throw std::runtime_error("D3(0) pair helper lost representable inverse-eighth result");
+}
+
 void test_parameter_validation() {
   auto parameters = kPbeOracle.parameters;
   parameters.rs6 = 0.0;
@@ -195,6 +239,7 @@ int main() {
     test_cutoff_product_rule();
     test_parameter_validation();
     test_overflowing_damping_keeps_representable_weighted_results();
+    test_pair_helper_overflowing_damping_keeps_representable_results();
     std::cout << "D3(0) independent-oracle, analytic-gradient, multistep-FD and invariance tests "
                  "passed\n";
     return 0;
