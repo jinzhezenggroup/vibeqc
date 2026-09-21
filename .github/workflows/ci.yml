@@ -18,11 +18,13 @@ permissions:
 env:
   CCACHE_VERSION: "4.14"
 
-# Coalesce superseded PR and master-push runs separately. Scheduled/manual
-# qualification keeps its own run ID and is not cancelled by ordinary pushes.
+# Coalesce superseded PR and master-push runs separately. PR updates cancel
+# stale running work; master keeps the active run and replaces only the older
+# pending run with the newest push. Scheduled/manual qualification keeps its
+# own run ID.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   cpu:
@@ -187,12 +189,15 @@ jobs:
           -DVIBEQC_CUDA_COMPILE_JOBS=3
           -DVIBEQC_COMPILER_CACHE=ccache
       - name: Compile production CUDA and runtime CTest
+        # This target links the full vibeqc shared library. Native GFN2 CUDA is
+        # therefore compiled, device-linked, and consumed through the public
+        # method adapter as part of this existing integration gate.
         run: >-
           cmake --build --preset cuda-release-sm120
           --target vibeqc_cuda_runtime_tests --parallel 3
-      # Master pushes are frequently superseded while the remaining CI jobs
-      # are still running. Persist the expensive native compile cache here,
-      # rather than waiting for the cache action's end-of-job post step.
+      # Persist the expensive native compile cache here so the next queued
+      # master run can reuse it without waiting for the cache action's
+      # end-of-job post step.
       - name: Save CUDA ccache immediately after build
         if: steps.cuda_ccache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -333,7 +338,7 @@ jobs:
             -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build --parallel
       # The four Python shards build the same native library. One shard saves
-      # the cache immediately so a later master cancellation cannot discard it.
+      # the cache immediately so the next queued master run can reuse it.
       - name: Save Python-build ccache immediately
         if: matrix.shard == 'core' && steps.python_ccache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -555,6 +560,7 @@ jobs:
           esac
           .venv/bin/python -m pytest "${test_targets[@]}" -q \
             -n 4 --dist="$dist_mode" --durations=25 \
+            --junitxml=".artifacts/pytest-${{ matrix.shard }}.xml" \
             --cov --cov-report="xml:coverage-python-${{ matrix.shard }}.xml" \
             "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
