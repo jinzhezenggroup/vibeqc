@@ -31,17 +31,21 @@ class RangeExchangePrimitiveExecutor:
         compiler: CppCompilerAdapter,
     ) -> None:
         if not isinstance(compiler, CppCompilerAdapter):
-            raise TypeError("range exchange requires an explicit CPU C++ compiler adapter")
+            raise TypeError(
+                "range exchange requires an explicit CPU C++ compiler adapter"
+            )
         if type(primitive_tile) is not int or primitive_tile < 1:
             raise ValueError("range exchange primitive tile must be positive")
         if any(shell.angular_momentum > 2 for shell in basis.shells):
-            raise NotImplementedError("range exchange CPU bridge supports s/p/d bases only")
+            raise NotImplementedError(
+                "range exchange CPU bridge supports s/p/d bases only"
+            )
 
         start = 3 * basis.natom
         self.centers = basis.packed[:start].reshape(-1, 3)
-        self.primitives = basis.packed[
-            start : start + 2 * basis.nprimitive
-        ].reshape(-1, 2)
+        self.primitives = basis.packed[start : start + 2 * basis.nprimitive].reshape(
+            -1, 2
+        )
         self.aos = basis.packed[start + 2 * basis.nprimitive :].reshape(-1, 16)
         if any(int(row[3]) not in (1, 2, 3) for row in self.aos):
             raise NotImplementedError(
@@ -118,7 +122,9 @@ class RangeExchangePrimitiveExecutor:
         weight: float,
     ) -> tuple[list[int], np.ndarray]:
         if type(primitive) is not RangeSeparatedExchangePrimitive:
-            raise TypeError("range exchange executor requires a MethodIR range primitive")
+            raise TypeError(
+                "range exchange executor requires a MethodIR range primitive"
+            )
         if len(indices) != 4:
             raise ValueError("range exchange requires one ordered AO quartet")
         rows = self.aos[list(indices)]
@@ -128,10 +134,7 @@ class RangeExchangePrimitiveExecutor:
             for index in indices
         )
         spec = ShellClassSpec("".join("spdf"[value] for value in angular), angular)
-        ranges = [
-            range(int(row[1]), int(row[1] + row[2]))
-            for row in rows
-        ]
+        ranges = [range(int(row[1]), int(row[1] + row[2])) for row in rows]
         shell_primitives = tuple(
             tuple(tuple(map(float, self.primitives[p])) for p in primitive_range)
             for primitive_range in ranges
@@ -152,9 +155,7 @@ class RangeExchangePrimitiveExecutor:
                 (component_index,),
             )
             self.records += int(execution.diagnostics["records"])
-            scale = float(weight) * math.prod(
-                coefficient for _, coefficient in terms
-            )
+            scale = float(weight) * math.prod(coefficient for _, coefficient in terms)
             with np.errstate(over="raise", invalid="raise"):
                 result += scale * execution.values[0, 1:].reshape(4, 3)
         return owners, result

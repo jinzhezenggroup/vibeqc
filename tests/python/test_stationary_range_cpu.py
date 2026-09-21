@@ -1,8 +1,8 @@
 """Stationary CPU bridge from MethodIR range exchange to the #249 provider."""
 
+import shutil
 from fractions import Fraction
 from pathlib import Path
-import shutil
 from types import SimpleNamespace
 
 import numpy as np
@@ -14,7 +14,9 @@ from vibeqc_compiler.integral.weight_pullback import normalized_radial_primitive
 from vibeqc_compiler.method.spec import RangeSeparatedExchangePrimitive
 
 
-@pytest.mark.skipif(shutil.which("c++") is None, reason="native C++ compiler unavailable")
+@pytest.mark.skipif(
+    shutil.which("c++") is None, reason="native C++ compiler unavailable"
+)
 def test_sr_lr_bridge_closes_to_full_range_for_ordered_quartet(tmp_path) -> None:
     centers = np.array([[0.0, 0.0, 0.0], [0.4, -0.2, 1.1]])
     primitives = np.array(
@@ -44,12 +46,8 @@ def test_sr_lr_bridge_closes_to_full_range_for_ordered_quartet(tmp_path) -> None
     ranged = RangeExchangePrimitiveExecutor(basis, tmp_path, 8, compiler)
     indices, weight = (0, 1, 0, 1), 0.31
     owners, g_full = full.integral("four_center_eri", indices, weight)
-    sr = RangeSeparatedExchangePrimitive(
-        Fraction(1), Fraction(1, 2), "short-range"
-    )
-    lr = RangeSeparatedExchangePrimitive(
-        Fraction(1), Fraction(1, 2), "long-range"
-    )
+    sr = RangeSeparatedExchangePrimitive(Fraction(1), Fraction(1, 2), "short-range")
+    lr = RangeSeparatedExchangePrimitive(Fraction(1), Fraction(1, 2), "long-range")
     sr_owners, g_sr = ranged.integral(sr, indices, weight)
     lr_owners, g_lr = ranged.integral(lr, indices, weight)
     work = ranged.compilation_work

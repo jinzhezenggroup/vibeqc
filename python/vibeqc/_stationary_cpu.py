@@ -260,9 +260,7 @@ def _admit_work(
     # keep its admission separate from the legacy primitive executor.
     base_quartet_passes = 1 + int(exact_exchange)
     base_records = (
-        base_quartet_passes * primitive_sum**4
-        + (natom + 2) * primitive_sum**2
-        + pairs
+        base_quartet_passes * primitive_sum**4 + (natom + 2) * primitive_sum**2 + pairs
     )
     range_records = range_exchange * primitive_sum**4
     records = base_records + range_records
@@ -526,9 +524,7 @@ def complete_rks_gradient_diagnostic(
                 else:
                     feeds = {"density_left": state.density[:, ids[:, 0], ids[:, 1]]}
                     if rank == 4:
-                        feeds["density_right"] = state.density[
-                            :, ids[:, 2], ids[:, 3]
-                        ]
+                        feeds["density_right"] = state.density[:, ids[:, 2], ids[:, 3]]
                 consumer = tensor_consumers[key]
                 weights = (
                     consumer.execute(feeds)["weights"]
