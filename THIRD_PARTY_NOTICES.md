@@ -13,6 +13,17 @@ resolve CUDA runtime, cuBLAS, and cuSOLVER provider SONAMEs at execution time.
 The NVIDIA provider shared libraries themselves are not redistributed in the
 VibeQC wheel.
 
+## Scientific regeneration source snapshots
+
+The source registry in `sources/manifest.json` pins the exact upstream files used
+for deterministic scientific regeneration. Checked-in upstream bytes live only
+under `sources/upstream/<provider>/<revision>/`; this includes the admitted
+Libxc closure, DFT-D4 reference inputs, simple-DFTD3 gCP/parameter inputs,
+mctc-lib and multicharge EEQ inputs, and the GPU4PySCF Rys source table.
+Their original SPDX identities remain recorded per source in the registry and in
+the retained license files under `LICENSES/`. These snapshots are development-
+time source inputs, not runtime dependencies.
+
 ## xTBloom D3 qualification baseline
 
 The repository-only D3 tools under `tools/vibeqc_d3/native/` adapt GPL-3.0-or-later
@@ -48,9 +59,9 @@ runtime; independent upstream tools are used to generate its test fixtures.
 
 ## Pinned dispersion parameter catalogs
 
-The repository-only snapshots under `tools/parameters/upstream/` retain the
-upstream damping-parameter tables used to generate VibeQC's static method
-catalog. The simple-dftd3 snapshot is pinned to commit
+The repository-only snapshots under `sources/upstream/simple-dftd3/` and
+`sources/upstream/dftd4/` retain the upstream damping-parameter tables used to
+generate VibeQC's static method catalog. The simple-dftd3 snapshot is pinned to commit
 `41d5a07b98ce15e97bec7a1815869725f6c7b0c2`; the DFT-D4 snapshot is pinned
 to commit `82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4`. Both are
 LGPL-3.0-or-later data/code distributions; the corresponding license texts

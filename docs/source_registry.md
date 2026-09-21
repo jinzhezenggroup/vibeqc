@@ -6,9 +6,9 @@ Normal configure, build, runtime, and test paths do not fetch the network. Netwo
 
 ## Source classes
 
-- **Checked-in file sets** keep a small audited source closure in the repository. Libxc is the main example: only the files admitted by the XC compiler are stored under `external/libxc-7.0.0`.
+- **Checked-in file sets** keep the audited upstream bytes needed for deterministic regeneration under `sources/upstream/<provider>/<revision>/`. The registry's `local_root` is the only canonical repository location for those bytes.
 - **Checked-in snapshots** keep compact upstream catalogs needed by deterministic generators, such as the simple-DFTD3 and DFT-D4 parameter TOML files.
-- **Remote file sets** pin large upstream inputs by exact revision/path/hash without copying them into the repository. `sync` materializes these under `.cache/vibeqc-sources/` for maintainer regeneration work.
+- **Remote file sets** remain supported for future sources that are intentionally not vendored; `sync` materializes those under `.cache/vibeqc-sources/`. The initial Libxc, DFT-D4/EEQ, simple-DFTD3, mctc-lib, multicharge, and GPU4PySCF source closures are checked in so a clean checkout contains the regeneration inputs.
 - **Products** record deterministic generators, their hashes, canonical inputs where applicable, and checked-in output hashes. Generated tables are products, not source-of-truth definitions.
 
 The current registry covers Libxc, DFT-D4 reference inputs, EEQ/mctc-lib inputs, dispersion parameter snapshots, GPU4PySCF Rys tables, r2SCAN-3c gCP data, and VibeQC-generated high-accuracy Rys coefficients.
@@ -42,13 +42,13 @@ python tools/source_registry.py update libxc-7.0.0 --revision 7.1.0
 python tools/source_registry.py update gpu4pyscf-rys --revision <commit-sha>
 ```
 
-Checked-in sources are restored or updated in place. Remote-only source sets are written below `.cache/vibeqc-sources/<source-id>/`. `sync` refuses bytes whose digest differs from the registry. `update` reconstructs URLs from the registered repository and upstream paths, rejects obvious floating refs such as `main`, `master`, and `HEAD`, and records new raw and normalized digests. Neither command is used by a normal build.
+Checked-in sources are restored or updated at their registered `sources/upstream/...` `local_root`. Future remote-only source sets are written below `.cache/vibeqc-sources/<source-id>/`. `sync` refuses bytes whose digest differs from the registry. `update` reconstructs URLs from the registered repository and upstream paths, rejects obvious floating refs such as `main`, `master`, and `HEAD`, and records new raw and normalized digests. Neither command is used by a normal build.
 
 Each generated product also records an input-source identity. Changing an upstream revision or file digest therefore makes `verify` fail until the affected product is deliberately regenerated and its reviewed identity/output hashes are refreshed.
 
 ## Libxc ownership
 
-`libxc-7.0.0` owns one union inventory plus named `core`, `rsh`, and `wb97mv` collections. The historical `manifest.json`, `rsh-manifest.json`, and `wb97mv-manifest.json` files are derived compatibility views. Their bytes are regenerated from the common registry so existing compiler artifact identities do not change merely because provenance ownership moved.
+`libxc-7.0.0` owns one union inventory under `sources/upstream/libxc/7.0.0/` plus named `core`, `rsh`, and `wb97mv` collections. The historical `manifest.json`, `rsh-manifest.json`, and `wb97mv-manifest.json` files are derived compatibility views. Their bytes are regenerated from the common registry so existing compiler artifact identities do not change merely because provenance ownership moved.
 
 Issue #739 continues to own Maple syntax admission, Graph lowering, functional qualification, and retirement of handwritten XC mathematics. The source registry only owns acquisition and provenance identity.
 
