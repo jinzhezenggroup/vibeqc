@@ -93,12 +93,17 @@ vibeqc_status vibeqc_d4_batch_prepare(vibeqc_context* context,
   std::lock_guard<std::recursive_mutex> lock(context->mutex);
   try {
     if (model->maximum_bytes == 0) {
-      context->last_detail = "D4 production maximum_bytes must be nonzero";
+      context->last_detail = "D4 maximum_bytes must be positive";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    const auto minimum_metadata = (std::uint64_t{system_count} + 1) * sizeof(std::uint32_t) +
+                                  std::uint64_t{system_count} * sizeof(double);
+    if (minimum_metadata > model->maximum_bytes) {
+      context->last_detail = "D4 descriptor metadata exceeds maximum_bytes";
+      return VIBEQC_STATUS_OUT_OF_MEMORY;
     }
 
     std::uint64_t total_atoms = 0;
-    std::size_t maximum_atoms = 0;
     for (std::uint32_t system = 0; system < system_count; ++system) {
       const auto& input = systems[system];
       if (!vibeqc::api::valid_descriptor(&input)) return VIBEQC_STATUS_ABI_MISMATCH;
@@ -118,16 +123,7 @@ vibeqc_status vibeqc_d4_batch_prepare(vibeqc_context* context,
         context->last_detail = "D4 ragged fleet exceeds the public offset domain";
         return VIBEQC_STATUS_OUT_OF_MEMORY;
       }
-      maximum_atoms = std::max(maximum_atoms, static_cast<std::size_t>(input.atom_count));
     }
-    if (!vibeqc::dft::dispersion::d4_minimum_resource_budget_fits(
-            context->state.executed_backend, system_count, static_cast<std::size_t>(total_atoms),
-            maximum_atoms, model->maximum_bytes)) {
-      context->last_detail =
-          "D4 production plan exceeds maximum_bytes even at the minimum workspace schedule";
-      return VIBEQC_STATUS_OUT_OF_MEMORY;
-    }
-
     std::vector<std::uint32_t> offsets;
     std::vector<std::int32_t> atomic_numbers;
     std::vector<double> total_charges;
