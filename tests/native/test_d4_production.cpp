@@ -10,6 +10,7 @@
 
 #if VIBEQC_HAS_CUDA
 #include <cuda_runtime.h>
+extern "C" void d4_cuda_fail_after_coordinate_upload_for_test_v1();
 #endif
 
 using namespace d4_eeq_tests;
@@ -96,6 +97,46 @@ void finite_difference(vibeqc_backend backend) {
   }
 }
 
+#if VIBEQC_HAS_CUDA
+void changed_geometry_failure_recovery() {
+  const auto& f = kEEQOracleFixtures[0];
+  auto plan = plan_for(f, VIBEQC_BACKEND_CUDA);
+  std::vector<double> original(f.xyz.begin(), f.xyz.begin() + 3 * f.atoms);
+  std::vector<D4Status> statuses;
+  std::vector<double> baseline, gradients, charges;
+  execute_one(*plan, original, false, statuses, baseline, gradients, charges);
+
+  auto changed = original;
+  changed[0] += 0.037;
+  const std::uint8_t active = 1;
+  const std::uint8_t requested = 0;
+  std::string detail;
+  std::vector<double> failed_components, failed_gradient, failed_charges;
+  d4_cuda_fail_after_coordinate_upload_for_test_v1();
+  const auto failed =
+      plan->execute(changed, std::span(&active, 1), std::span(&requested, 1), statuses,
+                    failed_components, failed_gradient, failed_charges, detail);
+  if (failed != VIBEQC_STATUS_CUDA_ERROR ||
+      detail.find("after coordinate upload") == std::string::npos)
+    throw std::runtime_error("D4 post-upload CUDA failure injection did not trigger");
+
+  std::vector<double> recovered_components, recovered_gradient, recovered_charges;
+  execute_one(*plan, original, false, statuses, recovered_components, recovered_gradient,
+              recovered_charges);
+  if (recovered_components.size() != baseline.size())
+    throw std::runtime_error("D4 recovery changed the result shape");
+  for (std::size_t i = 0; i < baseline.size(); ++i)
+    if (!near(recovered_components[i], baseline[i], 2e-13))
+      throw std::runtime_error("D4 failed-upload recovery reused poisoned device coordinates");
+
+  const auto bytes = original.size() * sizeof(double);
+  const auto& counters = plan->counters();
+  if (counters.execution_count != 3 || counters.unchanged_geometry_replays != 1 ||
+      counters.changed_geometry_replays != 2 || counters.coordinate_h2d_bytes != 2 * bytes)
+    throw std::runtime_error("D4 failed-upload recovery did not force coordinate re-upload");
+}
+#endif
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -105,6 +146,9 @@ int main(int argc, char** argv) {
     const auto backend = device ? VIBEQC_BACKEND_CUDA : VIBEQC_BACKEND_CPU_REFERENCE;
     independent_oracles(backend);
     finite_difference(backend);
+#if VIBEQC_HAS_CUDA
+    if (device) changed_geometry_failure_recovery();
+#endif
     std::puts(device ? "production D4 CUDA oracle/FD gates passed"
                      : "production D4 CPU oracle/FD gates passed");
     return 0;

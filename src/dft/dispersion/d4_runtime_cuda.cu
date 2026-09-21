@@ -14,6 +14,15 @@
 #include "dft/dispersion/d4_runtime.hpp"
 #include "generated_d4_derivative.hpp"
 
+#if defined(VIBEQC_TEST_HOOKS)
+namespace {
+thread_local bool fail_next_d4_after_coordinate_upload = false;
+}
+extern "C" void d4_cuda_fail_after_coordinate_upload_for_test_v1() {
+  fail_next_d4_after_coordinate_upload = true;
+}
+#endif
+
 namespace vibeqc::dft::dispersion {
 
 struct D4CudaOwner {
@@ -346,6 +355,16 @@ vibeqc_status execute_d4_cuda(D4CudaOwner* owner, const D4Parameters& parameters
                       "upload D4 changed coordinates");
     if (status != VIBEQC_STATUS_SUCCESS) return status;
     counters.coordinate_h2d_bytes += coordinates.size_bytes();
+#if defined(VIBEQC_TEST_HOOKS)
+    if (fail_next_d4_after_coordinate_upload) {
+      fail_next_d4_after_coordinate_upload = false;
+      const auto sync_error = cudaStreamSynchronize(owner->stream);
+      if (sync_error != cudaSuccess)
+        return cuda_failure(sync_error, "synchronize injected D4 coordinate upload", detail);
+      detail = "injected D4 CUDA failure after coordinate upload";
+      return VIBEQC_STATUS_CUDA_ERROR;
+    }
+#endif
   }
   status = copy_h2d(owner->active, active.data(), active.size_bytes(), "upload D4 active mask");
   if (status != VIBEQC_STATUS_SUCCESS) return status;

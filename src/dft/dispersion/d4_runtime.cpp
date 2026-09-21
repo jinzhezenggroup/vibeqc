@@ -196,8 +196,11 @@ vibeqc_status D4Plan::execute(std::span<const double> packed_coordinates,
     detail = "D4 execute received a shape-incompatible ragged replay";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  const bool changed = !std::equal(packed_coordinates.begin(), packed_coordinates.end(),
-                                   last_coordinates_.begin(), last_coordinates_.end());
+  const bool same_coordinates = std::equal(packed_coordinates.begin(), packed_coordinates.end(),
+                                           last_coordinates_.begin(), last_coordinates_.end());
+  const bool changed = backend_ == VIBEQC_BACKEND_CUDA
+                           ? !cuda_coordinates_valid_ || !same_coordinates
+                           : !same_coordinates;
   ++counters_.execution_count;
   if (changed)
     ++counters_.changed_geometry_replays;
@@ -213,8 +216,15 @@ vibeqc_status D4Plan::execute(std::span<const double> packed_coordinates,
       const auto status = execute_d4_cuda(cuda_, parameters_, profile_, packed_coordinates, changed,
                                           active, want_gradient, statuses, energy_components,
                                           packed_gradients, packed_charges, counters_, detail);
-      if (status == VIBEQC_STATUS_SUCCESS && changed)
-        last_coordinates_.assign(packed_coordinates.begin(), packed_coordinates.end());
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        if (changed) last_coordinates_.assign(packed_coordinates.begin(), packed_coordinates.end());
+        cuda_coordinates_valid_ = true;
+      } else if (changed) {
+        // A changed replay may already have replaced the resident coordinates
+        // before a later CUDA operation failed.  Never let a subsequent replay
+        // trust the host-side last-successful geometry until it is re-uploaded.
+        cuda_coordinates_valid_ = false;
+      }
       return status;
     }
 

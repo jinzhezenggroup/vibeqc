@@ -106,6 +106,7 @@ class D4Plan {
   std::vector<double> total_charges_;
   std::vector<double> default_coordinates_;
   std::vector<double> last_coordinates_;
+  bool cuda_coordinates_valid_{true};
   D4Parameters parameters_{};
   D4EEQProfile profile_{};
   D4ResourceUsage resources_{};
