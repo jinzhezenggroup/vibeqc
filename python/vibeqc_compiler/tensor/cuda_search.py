@@ -9,14 +9,14 @@ resource measurements or grounds for performance promotion.
 from __future__ import annotations
 
 import typing
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from itertools import combinations, islice, product
 from math import prod
 
 from vibeqc_compiler.common.gpu_profitability import GpuProfitability
 from vibeqc_compiler.common.provenance import canonical_hash
 
-from .cuda_emit import emit_cuda
+from .cuda_emit import cooperative_reduction_shared_bytes, emit_cuda
 from .cuda_gemm import gemm_contract
 from .cuda_plan import (
     TensorPlan,
@@ -40,6 +40,9 @@ class TensorScheduleSpace:
     views: tuple[bool, ...] = (True, False)
     fuse: tuple[bool, ...] = (True, False)
     recompute: tuple[bool, ...] = (False, True)
+    # Qualification-only by default: #783 evidence shows a memory win but a
+    # runtime/compile regression before cooperative reduction lowering lands.
+    stream_reductions: tuple[bool, ...] = field(default=(False,), kw_only=True)
     direct_gemm: tuple[bool, ...] = (True, False)
     layouts: tuple[bool, ...] = (False, True)
     threads: tuple[int, ...] = (128, 64, 256)
@@ -51,19 +54,19 @@ class TensorScheduleSpace:
     staging_width: tuple[int, ...] = (1, 2, 4)
 
     def __post_init__(self) -> None:
-        for field in fields(self):
-            values = tuple(getattr(self, field.name))
+        for axis_field in fields(self):
+            values = tuple(getattr(self, axis_field.name))
             if not 1 <= len(values) <= 16:
                 raise ValueError("schedule axes require 1..16 values")
             for value in values:
-                TensorSchedule(**{field.name: value})
+                TensorSchedule(**{axis_field.name: value})
             if len(set(values)) != len(values):
                 raise ValueError("schedule axes must not contain duplicates")
-            object.__setattr__(self, field.name, values)
+            object.__setattr__(self, axis_field.name, values)
 
     @property
     def cardinality(self) -> int:
-        return prod(len(getattr(self, field.name)) for field in fields(self))
+        return prod(len(getattr(self, axis_field.name)) for axis_field in fields(self))
 
     def generate(self, maximum: int = 128) -> tuple[TensorSchedule, ...]:
         """Return a deterministic prefix without enumerating the full space."""
@@ -238,12 +241,14 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     """Reuse exact capacity accounting and expose bounded, calibratable cost proxies."""
     live_values, registers = [], 0
     materialized = 0
-    for step in plan.steps:
+    shared_bytes = 0
+    for i, step in enumerate(plan.steps):
         live = 1 + sum(
             live_values[child] if plan.steps[child].virtual else 1
             for child in step.inputs
         )
         live_values.append(live)
+        shared_bytes = max(shared_bytes, cooperative_reduction_shared_bytes(plan, i))
         if not step.virtual and step.node.op not in ("input", "constant"):
             materialized += step.node.spec.size * step.node.spec.itemsize
             estimate = 16 + 2 * live + 2 * len(step.node.spec.shape)
@@ -259,7 +264,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
                 estimate += 2 * (plan.schedule.staging_width - 1)
             registers = max(registers, estimate)
     source_bytes = len(emit_cuda(plan, embed_static_data=False).encode("utf-8"))
-    resident = _resident_blocks(plan, registers, 0)
+    resident = _resident_blocks(plan, registers, shared_bytes)
     traffic = plan.semantic_traffic
     occupancy = resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
     launches = estimated_cuda_launches(plan)
@@ -292,7 +297,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "estimated_flops": plan.estimated_flops,
         "estimated_fp64_accumulation_terms": _fp64_accumulation_terms(plan),
         "estimated_registers_per_thread": registers,
-        "estimated_shared_bytes": 0,
+        "estimated_shared_bytes": shared_bytes,
         "estimated_local_bytes": None,
         "register_scope": "scalar-liveness/work-per-thread heuristic for generated kernels; excludes cuBLAS",
         "resident_blocks_upper_bound": resident,

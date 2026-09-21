@@ -13,9 +13,11 @@ from vibeqc_compiler.tensor import (
     add,
     broadcast,
     einsum,
+    gather,
     input_tensor,
     multiply,
     reduce_sum,
+    runtime_indexed_select,
     transpose,
 )
 from vibeqc_compiler.tensor.cuda_plan import (
@@ -113,6 +115,75 @@ def test_fusion_preserves_checks_before_subsets() -> None:
         schedule=TensorSchedule(views=True, fuse=True),
     )
     assert not next(s for s in plan.steps if s.node is square).virtual
+
+
+def test_streaming_reduction_virtualizes_complete_runtime_domain() -> None:
+    source_axis = Index("source", IndexSpace("stream_source", "batch", 137))
+    inner = Index("inner", IndexSpace("stream_inner", "batch", 127))
+    domain = Index("q", IndexSpace("stream_domain", "batch", 129))
+    source = input_tensor(
+        "stream_source",
+        TensorSpec((source_axis, inner), role="input"),
+    )
+    coordinates = input_tensor(
+        "stream_coordinates",
+        TensorSpec((domain,), dtype="int64", role="input"),
+    )
+    selected = runtime_indexed_select(source, ((0, coordinates),), domain)
+    squared = multiply(selected, selected)
+    lane = reduce_sum(squared, (1,))
+    total = reduce_sum(lane, (0,))
+    program = Program({"total": total})
+
+    baseline = plan_cuda(program, TARGET)
+    streamed = plan_cuda(
+        program,
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+
+    assert streamed.identity != baseline.identity
+    assert streamed.arena_bytes < baseline.arena_bytes
+    for node in (selected, squared):
+        assert next(step for step in streamed.steps if step.node is node).virtual
+    # Keep the q-only reduction frontier materialized so CUDA launches one
+    # parallel lane kernel before the final scalar reduction.
+    assert not next(step for step in streamed.steps if step.node is lane).virtual
+
+
+def test_streaming_reduction_stops_before_partial_source_consumption() -> None:
+    x = vector(16)
+    squared = multiply(x, x)
+    subset = gather(squared, 0, (0, 3, 7))
+    total = reduce_sum(subset, (0,))
+    plan = plan_cuda(
+        Program({"total": total}),
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+
+    # The q-only frontier remains materialized, and the partial gather blocks
+    # streaming of its source so arithmetic/bounds diagnostics are still
+    # evaluated over the complete original domain.
+    assert not next(step for step in plan.steps if step.node is subset).virtual
+    assert not next(step for step in plan.steps if step.node is squared).virtual
+
+
+def test_streaming_reduction_stops_when_einsum_sibling_domain_is_empty() -> None:
+    q = Index("q_zero", IndexSpace("stream_q_zero", "batch", 8))
+    k = Index("k_zero", IndexSpace("stream_k_zero", "batch", 0))
+    x = input_tensor("stream_x_zero", TensorSpec((q,), role="input"))
+    empty = input_tensor("stream_empty", TensorSpec((k,), role="input"))
+    squared = multiply(x, x)
+    contraction = einsum("q,k->q", squared, empty)
+    total = reduce_sum(contraction, (0,))
+    plan = plan_cuda(
+        Program({"total": total}),
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+
+    assert not next(step for step in plan.steps if step.node is squared).virtual
 
 
 def test_constrained_plan_shrinks_panels_and_rejects_below_indivisible_minimum() -> (
