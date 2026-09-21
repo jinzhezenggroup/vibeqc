@@ -175,6 +175,24 @@ def _manual_component(name: str, spin: str) -> tuple[Graph, tuple[Expr, ...]]:
     return graph, _feature_roots(graph, energy, variables)
 
 
+def test_scan_gx_zero_gradient_continuation_is_name_scoped() -> None:
+    graph = Graph()
+    x = graph.variable("x")
+    module = import_maple_source(
+        """
+        scan_gx := x -> 1 - exp(-scan_a1/sqrt(X2S*x)):
+        lookalike := x -> 1 - exp(-scan_a1/sqrt(X2S*x)):
+        """,
+        bindings={"scan_a1": "4.9479"},
+    )
+
+    scan = module.call(graph, "scan_gx", x)
+    lookalike = module.call(graph, "lookalike", x)
+
+    assert graph.node(scan).operation == "select_le"
+    assert graph.node(lookalike).operation != "select_le"
+
+
 def test_piecewise_comparisons_preserve_strictness_and_lazy_derivatives() -> None:
     graph = Graph()
     x = graph.variable("x")

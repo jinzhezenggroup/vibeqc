@@ -686,7 +686,8 @@ class _Evaluator:
         value = self._eval(_parse_expression(function.expression).body, environment)
         result = self._as_expr(value)
         if (
-            function.parameters == ("x",)
+            name == "scan_gx"
+            and function.parameters == ("x",)
             and function.expression == "1 - exp(-scan_a1/sqrt(X2S*x))"
         ):
             # The pinned SCAN expression has the analytic x -> 0+ limit 1.

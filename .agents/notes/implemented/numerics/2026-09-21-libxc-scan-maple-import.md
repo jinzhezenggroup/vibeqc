@@ -75,7 +75,7 @@ Scalar C/CUDA emitter lowering.
 
 The combined regression command covering the Maple importer, parser/comment
 gates, SCAN-family tests, and general XC expression fixtures completed with
-`214 passed, 1 skipped`. Ruff passed on the changed Python files,
+`215 passed, 1 skipped`. Ruff passed on the changed Python files,
 `git diff --check` passed, and `tools/check_compiler_structure.py` reported
 `258 compiler modules; 0 dependency errors`.
 
