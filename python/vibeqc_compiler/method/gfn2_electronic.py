@@ -39,14 +39,15 @@ from vibeqc_compiler.tensor import (
     transpose_program,
 )
 
+from .gfn2_electronic_contract import (
+    GFN2_DIPOLE_COMPONENTS,
+    GFN2_ELECTRONIC_REFERENCE_REVISION,
+    GFN2_ELECTRONIC_VERSION,
+    GFN2_MIXED_ELECTRONIC_VERSION,
+    GFN2_POPULATION_VERSION,
+    GFN2_QUADRUPOLE_COMPONENTS,
+)
 from .xtb import GFN2_PARAMETER_SET, XtbMethodIR, resolve_xtb_method
-
-GFN2_ELECTRONIC_VERSION = "gfn2-fixed-state-electronic-ir-v1"
-GFN2_MIXED_ELECTRONIC_VERSION = "gfn2-fixed-state-mixed-spin-electronic-ir-v1"
-GFN2_POPULATION_VERSION = "gfn2-fixed-state-population-ir-v1"
-GFN2_ELECTRONIC_REFERENCE_REVISION = "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
-GFN2_DIPOLE_COMPONENTS = ("x", "y", "z")
-GFN2_QUADRUPOLE_COMPONENTS = ("xx", "xy", "yy", "xz", "yz", "zz")
 
 
 def _offsets(values: Iterable[int], label: str) -> tuple[int, ...]:
