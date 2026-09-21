@@ -54,7 +54,11 @@ _SECOND_MOMENT_RAISES = (
 def _component_powers(component: str) -> tuple[int, int, int]:
     if not isinstance(component, str) or any(axis not in AXES for axis in component):
         raise ValueError(f"invalid Cartesian component {component!r}")
-    return tuple(component.count(axis) for axis in AXES)
+    return (
+        component.count("x"),
+        component.count("y"),
+        component.count("z"),
+    )
 
 
 def _component_from_powers(powers: tuple[int, int, int]) -> str:
@@ -64,7 +68,11 @@ def _component_from_powers(powers: tuple[int, int, int]) -> str:
 def _raised_component(component: str, raises: tuple[int, int, int]) -> str:
     powers = _component_powers(component)
     return _component_from_powers(
-        tuple(power + raise_ for power, raise_ in zip(powers, raises, strict=True))
+        (
+            powers[0] + raises[0],
+            powers[1] + raises[1],
+            powers[2] + raises[2],
+        )
     )
 
 
