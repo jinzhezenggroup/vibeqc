@@ -285,6 +285,30 @@ macro(vibeqc_configure_cuda_backend target)
     target_sources(${target} PRIVATE src/scf/aot_shell_registry_stub.cpp)
   endif()
   if(VIBEQC_ENABLE_STATIONARY_FORCE_AOT)
+    # Preserve hashed source/asset identity separately from generator imports.
+    set(_vibeqc_stationary_contract_assets
+      "src/dft/stationary_gradient_cuda.cuh"
+      "src/dft/grid_task_view.cuh"
+      "src/dft/xc_point.hpp"
+      "src/integrals/eri_geometry.hpp"
+      "src/integrals/range_moments.hpp"
+      "src/tensor/cuda_runtime.cuh"
+      "src/runtime/bounded_workspace.hpp"
+      "src/runtime/cuda_resources.cuh"
+      "src/runtime/resource_cuda.cuh"
+      "src/runtime/resource_ledger.hpp"
+      "src/tensor/cuda_error.hpp"
+      "src/tensor/metrics.hpp"
+      "src/runtime/allocation_measurement.hpp"
+    )
+    set(_vibeqc_stationary_contract_inputs)
+    foreach(_input IN LISTS _vibeqc_identity_inputs)
+      if(_input MATCHES "^python/vibeqc_compiler/(integral|xc|dft)/.*\\.(py|json)$" OR
+         _input STREQUAL "python/vibeqc_compiler/__init__.py" OR
+         _input IN_LIST _vibeqc_stationary_contract_assets)
+        list(APPEND _vibeqc_stationary_contract_inputs "${CMAKE_CURRENT_SOURCE_DIR}/${_input}")
+      endif()
+    endforeach()
     set(VIBEQC_STATIONARY_AOT_DIRECTORY
         "${CMAKE_CURRENT_BINARY_DIR}/generated/stationary_force")
     set(_vibeqc_stationary_architectures)
@@ -326,7 +350,6 @@ macro(vibeqc_configure_cuda_backend target)
         OUTPUTS "${_vibeqc_stationary_source}"
         DEPENDS
           "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/stationary_gradient_cuda.cuh"
-          ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
         ARGS
           --output "${_vibeqc_stationary_source}"
           --functional "${_vibeqc_stationary_functional}"
@@ -360,10 +383,10 @@ macro(vibeqc_configure_cuda_backend target)
         target_link_libraries(${_vibeqc_stationary_target} PRIVATE
                               CUDA::cudart CUDA::cublas)
       endif()
-      add_custom_command(
-        OUTPUT "${_vibeqc_stationary_manifest}"
-        COMMAND "${Python3_EXECUTABLE}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/write_stationary_aot_manifest.py"
+      vibeqc_register_generated_sources(
+        OUTPUTS "${_vibeqc_stationary_manifest}"
+        GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/write_stationary_aot_manifest.py"
+        ARGS
                 --library "$<TARGET_FILE:${_vibeqc_stationary_target}>"
                 --source "${_vibeqc_stationary_source}"
                 --output "${_vibeqc_stationary_manifest}"
@@ -375,11 +398,9 @@ macro(vibeqc_configure_cuda_backend target)
         DEPENDS
           ${_vibeqc_stationary_target}
           "${_vibeqc_stationary_source}"
-          "${CMAKE_CURRENT_SOURCE_DIR}/tools/write_stationary_aot_manifest.py"
-          ${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}
+          ${_vibeqc_stationary_contract_inputs}
         COMMENT
-          "Recording ${_vibeqc_stationary_name} stationary CUDA AOT identity"
-        VERBATIM)
+          "Recording ${_vibeqc_stationary_name} stationary CUDA AOT identity")
       add_custom_target(
         "${_vibeqc_stationary_target}_manifest" ALL
         DEPENDS "${_vibeqc_stationary_manifest}")
