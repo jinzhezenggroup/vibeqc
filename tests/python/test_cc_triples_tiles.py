@@ -20,6 +20,7 @@ from tools.vibeqc_cc.triples_tiles import (
     build_runtime_tile_triples_program,
     build_tile_triples_program,
     runtime_tile_capacity,
+    runtime_tile_control_batches,
     runtime_tile_controls,
     runtime_tile_static_feeds,
     runtime_tile_triples_energy_tensorir,
@@ -306,6 +307,24 @@ def test_runtime_indexed_complete_tiled_reference(
     np.testing.assert_allclose(got, expected, atol=1e-11, rtol=1e-10)
 
 
+def test_runtime_control_subbatches_preserve_triangular_order() -> None:
+    tile = TileSpec(0, 3, 3)
+    batches = list(runtime_tile_control_batches(tile, 4))
+    assert [int(np.sum(batch["active"])) for batch in batches] == [4, 4, 2]
+    recovered = []
+    for batch in batches:
+        active = np.flatnonzero(batch["active"])
+        recovered.extend(
+            zip(
+                batch["a_map"][active],
+                batch["b_map"][active],
+                batch["c_map"][active],
+                strict=True,
+            )
+        )
+    assert recovered == list(tile)
+
+
 def test_runtime_indexed_graph_size_does_not_scale_with_virtual_triple_count() -> None:
     small = build_runtime_tile_triples_program(2, 3, capacity=4)
     large = build_runtime_tile_triples_program(3, 8, capacity=64)
@@ -436,6 +455,39 @@ def test_build_tile_program_refuses_invalid_inputs() -> None:
         build_tile_triples_program(2, 3, vir_chunk=(-1, 2))
     with pytest.raises(ValueError):
         build_tile_triples_program(2, 3, vir_chunk=(3, 1))
+
+
+def test_runtime_domain_planner_shrinks_only_after_budget_rejection(
+    tmp_path: typing.Any,
+) -> None:
+    from tools.vibeqc_cc.triples_cuda import CudaTriplesTiles, TriplesTileConfig
+
+    config = TriplesTileConfig(2, 3, vir_chunk_size=1, max_bytes=256 << 20)
+    compiler = SimpleNamespace(target=object())
+    executor = CudaTriplesTiles(config, compiler, tmp_path)
+    seen = []
+
+    def fake_plan(
+        program: typing.Any, target: typing.Any, *, max_bytes: typing.Any
+    ) -> typing.Any:
+        assert target is compiler.target
+        assert max_bytes == config.max_bytes
+        capacity = program.provenance["runtime_domain_capacity"]
+        seen.append(capacity)
+        if capacity > 2:
+            raise ValueError("infeasible tensor byte budget: synthetic rejection")
+        return SimpleNamespace(peak_bytes=1234, identity=f"runtime-{capacity}")
+
+    executor._plan_cuda = fake_plan
+    capacity, plan, attempts = executor.plan_runtime_domain()
+    assert seen == [6, 3, 1]
+    assert capacity == 1
+    assert plan.identity == "runtime-1"
+    assert [entry["status"] for entry in attempts] == [
+        "infeasible",
+        "infeasible",
+        "selected",
+    ]
 
 
 def test_cuda_runtime_domain_reuses_one_plan_artifact_and_owner(
