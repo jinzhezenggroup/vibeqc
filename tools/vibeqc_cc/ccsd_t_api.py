@@ -24,6 +24,7 @@ from hashlib import sha256
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 
@@ -704,24 +705,23 @@ class PreparedRCCSDTForceBatch:
                     options=self.options,
                     vir_chunk_size=self.vir_chunk_size,
                 )
-                forces = np.asarray(result.forces, dtype=np.float64)
+                forces = immutable(result.forces)
                 if (
                     forces.ndim != 2
+                    or forces.shape[0] == 0
                     or forces.shape[1:] != (3,)
                     or not np.isfinite(forces).all()
                 ):
                     raise RuntimeError(
                         "RCCSD(T) force endpoint returned invalid forces"
                     )
-                detached = np.array(forces, copy=True)
-                detached.setflags(write=False)
                 items.append(
                     RCCSDTForceBatchItemResult(
                         index=index,
                         status="converged",
                         reason="complete RCCSD(T) analytic gradient converged",
                         converged=True,
-                        forces=detached,
+                        forces=forces,
                         result=result,
                     )
                 )
