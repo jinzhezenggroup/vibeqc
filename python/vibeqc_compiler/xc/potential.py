@@ -92,9 +92,7 @@ def assemble_coefficients_directional(
         raise ValueError("directional gradient coefficients must match the base domain")
     if spatial is not None:
         spatial = immutable(spatial, shape=(*rho.shape, 3))
-        directional_spatial = immutable(
-            directional_spatial, shape=(*rho.shape, 3)
-        )
+        directional_spatial = immutable(directional_spatial, shape=(*rho.shape, 3))
         if jets.shape[0] < 4:
             raise ValueError("GGA directional assembly requires first AO derivatives")
 
@@ -110,9 +108,7 @@ def assemble_coefficients_directional(
             + phi.T @ (moving_measure[:, None] * phi)
         )
         if spatial is not None:
-            panel = sum(
-                spatial[spin, :, k, None] * derivatives[k] for k in range(3)
-            )
+            panel = sum(spatial[spin, :, k, None] * derivatives[k] for k in range(3))
             directional_panel = sum(
                 directional_spatial[spin, :, k, None] * derivatives[k]
                 + spatial[spin, :, k, None] * directional_derivatives[k]
