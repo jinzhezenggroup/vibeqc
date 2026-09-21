@@ -98,7 +98,9 @@ def density_feature_response(
     return _response_features(reference, linear)
 
 
-def _ao_bilinear(left: typing.Any, density: typing.Any, right: typing.Any) -> typing.Any:
+def _ao_bilinear(
+    left: typing.Any, density: typing.Any, right: typing.Any
+) -> typing.Any:
     """Contract one pointwise AO bilinear without materializing AO-pair data."""
     return np.einsum("pi,ij,pj->p", left, density, right, optimize=True)
 
@@ -138,9 +140,7 @@ def _geometry_feature_directions(
         ds, dds = d[spin], dd[spin]
         left_rho[spin] = _ao_bilinear(lp, ds, p) + _ao_bilinear(p, ds, lp)
         right_rho[spin] = (
-            _ao_bilinear(rp, ds, p)
-            + _ao_bilinear(p, ds, rp)
-            + _ao_bilinear(p, dds, p)
+            _ao_bilinear(rp, ds, p) + _ao_bilinear(p, ds, rp) + _ao_bilinear(p, dds, p)
         )
         mixed_rho[spin] = (
             _ao_bilinear(mp, ds, p)
@@ -469,15 +469,11 @@ class ContractionProgram:
         active = list(indices)
         left_energy = np.sum(gradient[active] * left_packed[active], axis=0)
         right_energy = np.sum(gradient[active] * right_packed[active], axis=0)
-        mixed_feature_energy = np.sum(
-            gradient[active] * mixed_packed[active], axis=0
-        )
+        mixed_feature_energy = np.sum(gradient[active] * mixed_packed[active], axis=0)
         for i in indices:
             for j in indices:
                 mixed_feature_energy += (
-                    left_packed[i]
-                    * rows[(min(i, j), max(i, j))]
-                    * right_packed[j]
+                    left_packed[i] * rows[(min(i, j), max(i, j))] * right_packed[j]
                 )
 
         result = XCMixedDirectional(
