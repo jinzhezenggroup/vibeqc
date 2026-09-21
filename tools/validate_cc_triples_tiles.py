@@ -222,17 +222,15 @@ def run(args: typing.Any) -> None:
                         )
 
                         from tools.vibeqc_cc.triples_tiles import (
-                            build_tile_triples_program,
+                            build_runtime_tile_triples_program,
+                            runtime_tile_capacity,
                         )
 
-                        enum = TriplesTileEnumerator(
-                            nocc, nvir, vir_chunk_size=vir_chunk_size
+                        capacity = runtime_tile_capacity(
+                            nocc, nvir, vir_chunk_size
                         )
-                        first_tile = next(iter(enum))
-                        tile_prog = build_tile_triples_program(
-                            nocc,
-                            nvir,
-                            vir_chunk=(first_tile.a_start, first_tile.a_end),
+                        tile_prog = build_runtime_tile_triples_program(
+                            nocc, nvir, capacity=capacity
                         )
                         plan = plan_cuda(
                             tile_prog, compiler.target, max_bytes=max_bytes
