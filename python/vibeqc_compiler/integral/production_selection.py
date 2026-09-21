@@ -33,9 +33,8 @@ def _supports_scalar_rys(
 
     return (
         schedule.kind == ScheduleKind.THREAD_TASKS
-        and schedule.warp_size == 32
-        and schedule.block_threads == 32
-        and schedule.tasks_per_warp == 32
+        and schedule.block_threads == schedule.warp_size
+        and schedule.tasks_per_warp == schedule.warp_size
         and not schedule.shared_coulomb
         and schedule.component_tile >= spec.component_count
     )
@@ -150,10 +149,14 @@ class KernelSelection:
             ):
                 raise ValueError(f"{field_name} must be a non-negative number")
         scalar_thread_tasks = _supports_scalar_rys(self.spec, self.schedule)
-        if self.recurrence == "rys2" and not scalar_thread_tasks:
+        if (
+            selected_integral.recurrence.startswith("rys")
+            and selected_integral.required_rys_roots == 2
+            and not scalar_thread_tasks
+        ):
             raise ValueError(
-                "production rys2 requires one complete scalar task per lane "
-                "in a single warp"
+                "production two-root Rys lowering requires one complete scalar "
+                "task per lane in a single target warp"
             )
         if self.recurrence == "rys3":
             if (
