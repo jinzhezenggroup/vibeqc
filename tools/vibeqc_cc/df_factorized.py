@@ -276,7 +276,8 @@ class PreparedDFCCSD:
         if not isinstance(contract, DFCCSDTMethodContract):
             raise TypeError("DF RCCSD requires the #157 method contract")
         if (
-            snapshot.hamiltonian_id != contract.correlation_hamiltonian_id
+            snapshot.identity != contract.correlation_snapshot_identity
+            or snapshot.hamiltonian_id != contract.correlation_hamiltonian_id
             or snapshot.geometry_hash != contract.geometry_hash
             or snapshot.basis_hash != contract.orbital_basis_hash
             or contract.fock_policy != "preserve-conventional-rhf"
