@@ -71,17 +71,6 @@
         "python/vibeqc_compiler/method/method_parameters.json": "3403bdc5fecce8889aceef071d46f9e6fff1ff8ff74e3f212cf6013b9dbcea19"
       }
     },
-    "gfn1-parameter-header": {
-      "generator": "tools/parameters/generate_gfn1.py",
-      "generator_sha256": "9bdad15d45703b9917ccaf7833e9abcaab612982052338cc489b861f920619f5",
-      "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
-      "inputs": [
-        "xtbloom-gfn1-parameters"
-      ],
-      "outputs": {
-        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp": "ff1391b44f390f4d8d73ffd87013476aebed9075437e17d1b55185c36c1ce2ef"
-      }
-    },
     "gpu4pyscf-rys-fixed": {
       "generator": "python/vibeqc_compiler/integral/extract_rys_table.py",
       "generator_sha256": "13c22fd7e485df832b12a138c0e665eaa85e28cd0f574a28db6997ac90ceb03f",
@@ -98,12 +87,13 @@
     },
     "libxc-xc-admission": {
       "canonical_inputs": {
+        "python/vibeqc_compiler/xc/b88_vwn_maple.py": "b51c019c6f51f17b58121f20cc631099b6228f1b43f0134a9666ecb174ca076b",
         "python/vibeqc_compiler/xc/expressions.py": "4d10ca12b5db6b46269c6e6ddac1e51f1713a86aa71b0613d58b65b6821ccca2",
         "python/vibeqc_compiler/xc/p86_pz_maple.py": "a1bbdfe8bba635389861c87a99da072dce6b74dd820b0259593e6eb3a0a04f15",
         "python/vibeqc_compiler/xc/pbe_maple.py": "90f401a766d7c0799ddc14087209ffd6e5cdb7413ed7b3c7c0613f25dd4034f2",
-        "python/vibeqc_compiler/xc/rsh_expressions.py": "ca75fd8562e6ef03fdeba9576ec8ac874cb12eacb3565351167d1e50dbad6d15",
+        "python/vibeqc_compiler/xc/rsh_expressions.py": "ad947d9bd41250fb56d6661dfb92c14fcc7220d50169cb563e43b901534a5e3f",
         "python/vibeqc_compiler/xc/rsh_maple.py": "fe2a2748861b63920be5ac10ad74d137fe30506afd5d9efce013bc98fede8bb3",
-        "python/vibeqc_compiler/xc/spec.py": "7f2e55121d10f8bcdd2e4760aa9f5ff899d4af1a346268274cdb8fadf75fc0d0",
+        "python/vibeqc_compiler/xc/spec.py": "01eaa62827dd9d402c361559c0f95c5287b43e2c53b59fedff2e610fec6f2e87",
         "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
@@ -634,34 +624,6 @@
       "local_root": "tools/parameters/upstream",
       "repository": "https://github.com/dftd3/simple-dftd3",
       "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
-    },
-    "xtbloom-gfn1-parameters": {
-      "consumers": [
-        "tools/parameters/generate_gfn1.py",
-        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp"
-      ],
-      "files": {
-        "gfn1.json": {
-          "sha256": "0ecdc3f5f12990c5a7e0f0bd7e6fe931ecf72d7630e6a6a3cc396c51766a40a0",
-          "upstream_path": "data/parameters/gfn1.json",
-          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1.json"
-        },
-        "gfn1.toml": {
-          "sha256": "38572810c111e118d03a27137dfbc3363ce5247a400bb25ee83e15e712dcb389",
-          "upstream_path": "data/parameters/gfn1.toml",
-          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1.toml"
-        },
-        "gfn1_manifest.json": {
-          "sha256": "e93710d277aa2216d24215b6c458805ae7d96e27937294cd685c710e2dd4007b",
-          "upstream_path": "data/parameters/gfn1_manifest.json",
-          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_manifest.json"
-        }
-      },
-      "kind": "snapshot",
-      "license": "LGPL-3.0-or-later AND Apache-2.0",
-      "local_root": "sources/xtb/gfn1",
-      "repository": "https://github.com/jinzhezenggroup/xtbloom",
-      "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
     }
   }
 }
