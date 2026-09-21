@@ -59,6 +59,8 @@ def test_xc_retirement_final_gate_detects_remaining_consumer(tmp_path: Path) -> 
     source.write_text("from .expressions import energy_expression\n")
     failures = errors(tmp_path, require_no_consumers=True)
     assert failures == [
-        "python/vibeqc_compiler/xc/program.py:1: legacy XC consumer remains "
-        "vibeqc_compiler.xc.expressions"
+        (
+            "python/vibeqc_compiler/xc/program.py:1: legacy XC consumer remains "
+            "vibeqc_compiler.xc.expressions"
+        )
     ]

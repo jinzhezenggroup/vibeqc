@@ -46,3 +46,20 @@ automatically.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Import-form review correction
+
+The inventory includes from-package submodule imports and literal relative
+`import_module` calls with a literal package. Nested expression modules are
+checked by full path, so placing a duplicate in a subpackage does not evade the
+gate. Arbitrarily computed import names are not a promise of this syntax-only
+audit. Unrelated calls containing relative filesystem paths are not imports.
+
+The existing LYP qualification test was absent from the initial consumer ceiling.
+Its already-present direct-import edge is included in the migration ceiling; new consumer paths
+still fail and removals still require no ceiling edit. Six independent negative
+cases failed before repair and now detect their edges/modules; the repository
+inventory and a non-import path-call control are also exercised.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

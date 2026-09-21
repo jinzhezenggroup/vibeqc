@@ -42,6 +42,7 @@ LEGACY_CONSUMER_CEILING = {
     ("tests/python/test_xc_expressions.py", "vibeqc_compiler.xc.expressions"),
     ("tests/python/test_libxc_maple_meta_gga.py", "vibeqc_compiler.xc.expressions"),
     ("tests/python/test_libxc_maple_pw91.py", "vibeqc_compiler.xc.rsh_expressions"),
+    ("tests/python/test_libxc_maple_lyp.py", "vibeqc_compiler.xc.rsh_expressions"),
 }
 
 SCAN_ROOTS = ("python", "tools", "tests")
@@ -73,22 +74,46 @@ def _relative_module(path: Path, node: ast.ImportFrom) -> str:
 
 
 def _dynamic_module(node: ast.Call) -> str | None:
-    if not node.args or not isinstance(node.args[0], ast.Constant):
-        return None
-    value = node.args[0].value
-    if not isinstance(value, str):
-        return None
     function = node.func
-    if isinstance(function, ast.Name) and function.id == "import_module":
-        return value
-    if (
+    named = isinstance(function, ast.Name) and function.id == "import_module"
+    qualified = (
         isinstance(function, ast.Attribute)
         and function.attr == "import_module"
         and isinstance(function.value, ast.Name)
         and function.value.id == "importlib"
+    )
+    if (
+        not (named or qualified)
+        or not node.args
+        or not isinstance(node.args[0], ast.Constant)
     ):
-        return value
-    return None
+        return None
+    value = node.args[0].value
+    if not isinstance(value, str):
+        return None
+    if value.startswith("."):
+        package_node = (
+            node.args[1]
+            if len(node.args) > 1
+            else next(
+                (
+                    keyword.value
+                    for keyword in node.keywords
+                    if keyword.arg == "package"
+                ),
+                None,
+            )
+        )
+        if not isinstance(package_node, ast.Constant) or not isinstance(
+            package_node.value, str
+        ):
+            return None
+        try:
+            return importlib.util.resolve_name(value, package_node.value)
+        except ImportError:
+            # This invalid literal import cannot resolve a live legacy module.
+            return None
+    return value
 
 
 def scan_legacy_consumers(root: Path) -> list[LegacyConsumer]:
@@ -105,7 +130,13 @@ def scan_legacy_consumers(root: Path) -> list[LegacyConsumer]:
             for node in ast.walk(tree):
                 modules: list[tuple[str, str]] = []
                 if isinstance(node, ast.ImportFrom):
-                    modules.append((_relative_module(relative, node), "import-from"))
+                    module = _relative_module(relative, node)
+                    modules.append((module, "import-from"))
+                    modules.extend(
+                        (f"{module}.{alias.name}", "import-from")
+                        for alias in node.names
+                        if module and alias.name != "*"
+                    )
                 elif isinstance(node, ast.Import):
                     modules.extend((alias.name, "import") for alias in node.names)
                 elif isinstance(node, ast.Call):
@@ -161,11 +192,11 @@ def unexpected_expression_modules(root: Path) -> list[str]:
     xc = root / "python/vibeqc_compiler/xc"
     if not xc.exists():
         return []
-    allowed = {Path(path).name for path in LEGACY_MODULE_FILES.values()}
+    allowed = set(LEGACY_MODULE_FILES.values())
     return sorted(
         path.relative_to(root).as_posix()
-        for path in xc.glob("*expressions.py")
-        if path.name not in allowed
+        for path in xc.rglob("*expressions.py")
+        if path.relative_to(root).as_posix() not in allowed
     )
 
 
