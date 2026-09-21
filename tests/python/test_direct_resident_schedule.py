@@ -33,11 +33,14 @@ def test_resident_psss_header_is_compiler_owned() -> None:
 
 
 def test_native_resident_psss_consumers_have_no_duplicate_schedule_constants() -> None:
-    constants = (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_constants.hpp"
-    ).read_text(encoding="utf-8")
+    constants = (REPOSITORY_ROOT / "src/scf/cuda/direct_constants.hpp").read_text(
+        encoding="utf-8"
+    )
     assert "constexpr unsigned kResidentPsssThreads = 128;" not in constants
-    assert "constexpr std::size_t kResidentPsssMaximumBraPrimitivePairs = 64;" not in constants
+    assert (
+        "constexpr std::size_t kResidentPsssMaximumBraPrimitivePairs = 64;"
+        not in constants
+    )
 
     for path in (
         "src/scf/cuda/topology.cpp",
