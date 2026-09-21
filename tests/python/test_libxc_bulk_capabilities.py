@@ -23,13 +23,14 @@ def _fixtures() -> list[dict]:
 def test_bulk_capability_inventory_is_exact_imported_inventory() -> None:
     capabilities = libxc_bulk_capabilities.available_capabilities()
     imported = libxc_bulk.available_functionals()
+    catalog = libxc_bulk.read_catalog()
 
     assert tuple(item.name for item in capabilities) == imported
     assert libxc_bulk_capabilities.claimable_functionals("graph-imported") == imported
     assert (
         libxc_bulk_capabilities.claimable_functionals("pointwise-validated") == imported
     )
-    assert len(capabilities) == 221
+    assert len(capabilities) == catalog["counts"]["graph_imported_registrations"]
 
     for capability in capabilities:
         payload = capability.to_payload()
