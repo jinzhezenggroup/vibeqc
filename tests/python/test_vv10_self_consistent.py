@@ -171,11 +171,15 @@ def test_nonlocal_resource_plan_counts_pair_owner_and_rejects_tiny_budget() -> N
 
 @pytest.mark.parametrize("variant", ("vv10", "rvv10"))
 @pytest.mark.parametrize(
-    ("spin", "selector"),
-    (("unpolarized", "pbe-rks"), ("polarized", "pbe-uks")),
+    ("spin", "selector", "charge", "multiplicity"),
+    (
+        ("unpolarized", "pbe-rks", 0, 1),
+        ("polarized", "pbe-uks", 0, 1),
+        ("polarized", "pbe-uks", 1, 2),
+    ),
 )
 def test_public_cpu_nonlocal_force_matches_recomputed_energy_differences(
-    variant: str, spin: str, selector: str
+    variant: str, spin: str, selector: str, charge: int, multiplicity: int
 ) -> None:
     graph = _graph(variant, spin)
     calculator = Calculator(
@@ -194,12 +198,34 @@ def test_public_cpu_nonlocal_force_matches_recomputed_energy_differences(
     assert calculator._method_name == selector
     assert "forces" in calculator._capabilities.supported_properties
     result = calculator.singlepoint(
-        FORCE_ATOMS, multiplicity=1, properties=("energy", "forces")
+        FORCE_ATOMS,
+        charge=charge,
+        multiplicity=multiplicity,
+        properties=("energy", "forces"),
     )
     assert result.converged and result.forces is not None
     assert result.physical_residual_rms is not None
     assert result.physical_residual_rms < 1e-12
     np.testing.assert_allclose(result.forces.sum(axis=0), 0.0, atol=5e-13, rtol=0.0)
+
+    if multiplicity == 2:
+        with (
+            calculator.prepare_batch(
+                [FORCE_ATOMS], charges=[charge], multiplicities=[multiplicity]
+            ) as batch,
+            NativeAO(
+                FORCE_ATOMS,
+                basis=_force_basis(),
+                charge=charge,
+                multiplicity=multiplicity,
+            ) as basis,
+        ):
+            batch.execute(strict=True, properties=("energy",))
+            state = StationaryKsState.from_native(batch, basis)
+            try:
+                assert np.linalg.norm(state.density[0] - state.density[1]) > 0.1
+            finally:
+                state._source.close()
 
     projection = -float(np.sum(result.forces * FORCE_DIRECTION))
     base = np.asarray([position for _, position in FORCE_ATOMS], dtype=np.float64)
@@ -214,7 +240,10 @@ def test_public_cpu_nonlocal_force_matches_recomputed_energy_differences(
             )
             energies.append(
                 calculator.singlepoint(
-                    atoms, multiplicity=1, properties=("energy",)
+                    atoms,
+                    charge=charge,
+                    multiplicity=multiplicity,
+                    properties=("energy",),
                 ).energy
             )
         estimates.append((energies[0] - energies[1]) / (2 * step))
@@ -224,6 +253,7 @@ def test_public_cpu_nonlocal_force_matches_recomputed_energy_differences(
 
 def test_stationary_reduction_consumes_all_nonlocal_geometry_sources(
     tmp_path: object,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     basis_record = _force_basis()
     graph = _graph("vv10", "unpolarized")
@@ -256,6 +286,28 @@ def test_stationary_reduction_consumes_all_nonlocal_geometry_sources(
                 tile_points=5,
             )
             point_count = len(state.grid.points)
+            from vibeqc import _stationary_cpu
+
+            def forbidden_provider(*args: object, **kwargs: object) -> object:
+                pytest.fail(
+                    "work admission reached derivative compilation/provider execution"
+                )
+
+            monkeypatch.setattr(_stationary_cpu, "compile_runtime", forbidden_provider)
+            monkeypatch.setattr(
+                _stationary_cpu, "NativeNonlocalPairProvider", forbidden_provider
+            )
+            with pytest.raises(ValueError, match="grid pair work budget exceeded"):
+                complete_rks_gradient_diagnostic(
+                    state,
+                    basis,
+                    cache=tmp_path,
+                    execution="native",
+                    tile_points=5,
+                    max_host_bytes=256 << 20,
+                    max_grid_pair_visits=result.work["grid_pair_work_bound"] - 1,
+                )
+
         finally:
             state._source.close()
 
