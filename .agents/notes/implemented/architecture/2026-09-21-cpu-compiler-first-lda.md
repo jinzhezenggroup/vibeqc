@@ -36,16 +36,18 @@ compiler before retiring the handwritten PBE owner.
 
 ## Evidence
 
-Three independent 450-digit tail references at total density 1e-300, including
-both empty-spin endpoints, pass the generated function with the existing
-relative gate. The previous canonical generated function was nonfinite there.
+All 36 polarized LDA rows in the independent 450-digit SCF-domain fixture pass
+the generated function with the existing relative gate, including total density
+1e-300, both empty-spin endpoints, and mixed-spin cases. The previous canonical
+generated function was nonfinite at the extreme endpoint.
 
 Fresh CPU validation on node3:
 - vibeqc_dft_tests: passed;
 - vibeqc_uks_tests: passed;
 - XC expression + compiler-structure Python suite: 131 passed;
 - compiler structure: 259 modules, 0 dependency errors;
-- Ruff and git diff checks: passed.
+- ty 0.0.82: no new errors (repository baseline warnings remain);
+- Ruff, clang-format and git diff checks: passed.
 
 No numerical tolerance, public capability, BLAS/provider policy, CUDA path, or
 SCF convergence rule was changed.
