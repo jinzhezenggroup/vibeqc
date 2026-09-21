@@ -107,7 +107,7 @@ def emit_cpu(
 ) -> typing.Any:
     """Return source and exact bounded storage/work requirements without runtime imports.
 
-    No packed/symmetric semantics or implicit dtype conversion are admitted.
+    No packed-storage semantics or implicit dtype conversion are admitted.
     Index expressions are shared with CUDA; CUDA emission bytes are unchanged.
     """
     if not isinstance(program, Program):
