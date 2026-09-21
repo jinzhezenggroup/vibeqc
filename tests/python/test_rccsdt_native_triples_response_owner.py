@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -15,7 +16,7 @@ from tools.vibeqc_cc.triples_response import full_triples_vjp
 NAMES = ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v")
 
 
-def _case(o: int, v: int, seed: int):
+def _case(o: int, v: int, seed: int) -> typing.Any:
     rng = np.random.default_rng(seed)
     t2 = rng.normal(size=(o, o, v, v))
     t2 = (t2 + t2.transpose(1, 0, 3, 2)) / 2
@@ -113,7 +114,7 @@ CPP_PREFIX = r"""
 static bool close(const std::vector<double>& actual,const double* expected,std::size_t n){
   if(actual.size()!=n) return false;
   for(std::size_t i=0;i<n;++i)
-    if(std::abs(actual[i]-expected[i])>8e-11*(1.0+std::abs(expected[i]))) {
+    if(!std::isfinite(actual[i]) || !std::isfinite(expected[i]) || std::abs(actual[i]-expected[i])>8e-11*(1.0+std::abs(expected[i]))) {
       std::cerr<<"mismatch "<<i<<" "<<actual[i]<<" "<<expected[i]<<"\n";
       return false;
     }

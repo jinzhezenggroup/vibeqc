@@ -1,6 +1,7 @@
 #include "cc/triples_response.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -29,7 +30,12 @@ double degeneracy(std::size_t a, std::size_t b, std::size_t c) {
 }
 
 void add_block(std::vector<double>& target, const double* source) {
-  for (std::size_t i = 0; i < target.size(); ++i) target[i] += source[i];
+  for (std::size_t i = 0; i < target.size(); ++i) {
+    const double updated = target[i] + source[i];
+    if (!std::isfinite(updated))
+      throw std::runtime_error("nonfinite RCCSD(T) response accumulation");
+    target[i] = updated;
+  }
 }
 
 }  // namespace
@@ -50,6 +56,10 @@ TriplesResponseResult triples_response_cpu(const Problem& p, const SolverResult&
       cc.t2.size() != checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir)))
     throw std::invalid_argument("RCCSD(T) response amplitude shape mismatch");
 
+  for (const auto* amplitudes : {&cc.t1, &cc.t2})
+    for (double value : *amplitudes)
+      if (!std::isfinite(value)) throw std::invalid_argument("nonfinite RCCSD(T) amplitude");
+
   for (double value : eps_o)
     if (!std::isfinite(value)) throw std::invalid_argument("nonfinite occupied orbital energy");
   for (double value : eps_v)
@@ -59,24 +69,25 @@ TriplesResponseResult triples_response_cpu(const Problem& p, const SolverResult&
   if (!(max_occ < min_vir))
     throw std::invalid_argument("noncanonical RCCSD(T) orbital-energy ordering");
   const double minimum_denominator = 3.0 * (min_vir - max_occ);
+  if (!std::isfinite(minimum_denominator))
+    throw std::invalid_argument("nonfinite RCCSD(T) denominator range");
   if (minimum_denominator <= options.denominator_threshold)
     throw std::invalid_argument("near-zero RCCSD(T) denominator");
 
   TriplesResponseResult result;
   result.minimum_absolute_denominator = minimum_denominator;
   result.program_hash = generated::triples_response_program_hash;
-  result.ovvv.assign(checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nvir, p.nvir)), 0.0);
-  result.ovoo.assign(checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nocc, p.nocc)), 0.0);
-  result.ovov.assign(checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nocc, p.nvir)), 0.0);
-  result.fov.assign(checked_mul(p.nocc, p.nvir), 0.0);
-  result.t1.assign(result.fov.size(), 0.0);
-  result.t2.assign(checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir)), 0.0);
-  result.eps_o.assign(p.nocc, 0.0);
-  result.eps_v.assign(p.nvir, 0.0);
-
-  const std::size_t output_elements = result.ovvv.size() + result.ovoo.size() + result.ovov.size() +
-                                      result.fov.size() + result.t1.size() + result.t2.size() +
-                                      result.eps_o.size() + result.eps_v.size();
+  const std::array<std::size_t, 8> output_sizes{
+      checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nvir, p.nvir)),
+      checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nocc, p.nocc)),
+      checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nocc, p.nvir)),
+      checked_mul(p.nocc, p.nvir),
+      checked_mul(p.nocc, p.nvir),
+      checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir)),
+      p.nocc,
+      p.nvir};
+  std::size_t output_elements = 0;
+  for (const auto size : output_sizes) output_elements = checked_add(output_elements, size);
   const std::size_t total_triples = checked_mul(p.nvir, checked_mul(p.nvir + 1, p.nvir + 2)) / 6;
   std::size_t q = std::min(options.batch_capacity, total_triples);
   for (; q; --q) {
@@ -92,6 +103,12 @@ TriplesResponseResult triples_response_cpu(const Problem& p, const SolverResult&
   result.arena_bytes = bytes(arena_elements);
   result.numeric_capacity_bytes = checked_add(
       bytes(output_elements), checked_add(result.arena_bytes, checked_mul(q, 5 * sizeof(double))));
+  // Allocate response outputs only after the complete scratch/output admission.
+  const std::array<std::vector<double>*, 8> output_vectors{
+      &result.ovvv, &result.ovoo, &result.ovov,  &result.fov,
+      &result.t1,   &result.t2,   &result.eps_o, &result.eps_v};
+  for (std::size_t index = 0; index < output_vectors.size(); ++index)
+    output_vectors[index]->assign(output_sizes[index], 0.0);
   std::vector<double> arena(arena_elements);
   std::vector<std::int64_t> a_map(q), b_map(q), c_map(q);
   std::vector<double> active(q), weights(q, 1.0);

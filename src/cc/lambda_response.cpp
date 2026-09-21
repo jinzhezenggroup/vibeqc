@@ -46,10 +46,20 @@ struct AmplitudeLayout {
       : o(occupied),
         v(virtuals),
         n1(checked_mul(o, v)),
-        n2(checked_mul(checked_mul(o, o), checked_mul(v, v))) {
-    sqrt_weights.assign(n1, 1.0);
-    representatives.reserve((n2 + n1) / 2);
-    partners.reserve((n2 + n1) / 2);
+        n2(checked_mul(checked_mul(o, o), checked_mul(v, v))) {}
+
+  [[nodiscard]] std::size_t pair_count() const { return checked_add(n2, n1) / 2; }
+  [[nodiscard]] std::size_t dimension() const { return checked_add(n1, pair_count()); }
+  [[nodiscard]] std::size_t storage_bytes() const {
+    return checked_add(checked_mul(checked_mul(2, pair_count()), sizeof(std::size_t)),
+                       bytes(dimension()));
+  }
+
+  void initialize() {
+    sqrt_weights.assign(dimension(), 1.0);
+    representatives.resize(pair_count());
+    partners.resize(pair_count());
+    std::size_t position = 0;
     for (std::size_t i = 0; i < o; ++i)
       for (std::size_t j = 0; j < o; ++j)
         for (std::size_t a = 0; a < v; ++a)
@@ -57,13 +67,12 @@ struct AmplitudeLayout {
             const auto flat = ((i * o + j) * v + a) * v + b;
             const auto mate = ((j * o + i) * v + b) * v + a;
             if (flat > mate) continue;
-            representatives.push_back(flat);
-            partners.push_back(mate);
-            sqrt_weights.push_back(flat == mate ? 1.0 : std::sqrt(2.0));
+            representatives[position] = flat;
+            partners[position] = mate;
+            sqrt_weights[n1 + position] = flat == mate ? 1.0 : std::sqrt(2.0);
+            ++position;
           }
   }
-
-  [[nodiscard]] std::size_t dimension() const { return n1 + representatives.size(); }
 
   void validate_dense(std::span<const double> one, std::span<const double> two) const {
     if (one.size() != n1 || two.size() != n2)
@@ -131,7 +140,8 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
   AmplitudeLayout layout(p.nocc, p.nvir);
   if (cc.t1.size() != layout.n1 || cc.t2.size() != layout.n2)
     throw std::invalid_argument("RCCSD Lambda CC result shape mismatch");
-  layout.validate_dense(cc.t1, cc.t2);
+  if (!std::isfinite(cc.correlation_energy))
+    throw std::invalid_argument("nonfinite RCCSD Lambda primal energy");
 
   const auto in = inputs(p, cc);
   const auto replay_elements = generated::replay_arena_elements(p.nocc, p.nvir);
@@ -151,10 +161,14 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
   capacity = checked_add(capacity, bytes(arena_elements));
   // Dense seeds, packed RHS/audit and published dense Lambda can coexist.
   capacity = checked_add(capacity, bytes(checked_mul(3, layout.n1 + layout.n2)));
-  capacity = checked_add(capacity, bytes(checked_mul(2, layout.dimension())));
+  capacity = checked_add(capacity, bytes(checked_mul(3, layout.dimension())));
+  capacity = checked_add(capacity, layout.storage_bytes());
   capacity = checked_add(capacity, gmres_plan.workspace_bytes);
   if (capacity > options.max_bytes)
     throw std::length_error("RCCSD Lambda exceeds simultaneous host budget");
+
+  layout.initialize();
+  layout.validate_dense(cc.t1, cc.t2);
 
   std::vector<double> arena(arena_elements);
   const auto replay = generated::run_replay_cpu(p.nocc, p.nvir, in, arena.data(), arena.size());

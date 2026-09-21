@@ -127,8 +127,10 @@ def _case_cpp(o: int, v: int) -> str:
             "const double energy_seed=-1.0;",
             "auto rhs=run_lambda_rhs_cpu(o,v,inputs,&energy_seed,arena.data(),arena.size());",
             "if(!close(rhs.t1,rhs_t1,o*v)||!close(rhs.t2,rhs_t2,o*o*v*v)) return 1;",
-            "auto jt=run_lambda_transpose_cpu(o,v,inputs,bar_r1,bar_r2,"
-            "arena.data(),arena.size());",
+            (
+                "auto jt=run_lambda_transpose_cpu(o,v,inputs,bar_r1,bar_r2,"
+                "arena.data(),arena.size());"
+            ),
             "if(!close(jt.t1,jt_t1,o*v)||!close(jt.t2,jt_t2,o*o*v*v)) return 2;",
             "const double response_seed=1.0;",
             *parameter_checks,
@@ -147,7 +149,7 @@ CPP_PREFIX = r"""
 #include <vector>
 static bool close(const double* actual,const double* expected,std::size_t n){
   for(std::size_t i=0;i<n;++i)
-    if(std::abs(actual[i]-expected[i])>2e-11*(1.0+std::abs(expected[i]))) return false;
+    if(!std::isfinite(actual[i]) || !std::isfinite(expected[i]) || std::abs(actual[i]-expected[i])>2e-11*(1.0+std::abs(expected[i]))) return false;
   return true;
 }
 """

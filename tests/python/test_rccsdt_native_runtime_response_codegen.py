@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -32,7 +33,7 @@ def _scientific(o: int, v: int, seed: int) -> dict[str, np.ndarray]:
     }
 
 
-def _case(o: int, v: int, q: int, seed: int):
+def _case(o: int, v: int, q: int, seed: int) -> typing.Any:
     feeds = _scientific(o, v, seed)
     a = np.arange(q, dtype=np.int64) % v
     b = np.arange(q, dtype=np.int64)[::-1] % v
@@ -109,7 +110,7 @@ CPP_PREFIX = r"""
 #include <vector>
 static bool close(const double* actual,const double* expected,std::size_t n){
   for(std::size_t i=0;i<n;++i)
-    if(std::abs(actual[i]-expected[i])>5e-11*(1.0+std::abs(expected[i]))) {
+    if(!std::isfinite(actual[i]) || !std::isfinite(expected[i]) || std::abs(actual[i]-expected[i])>5e-11*(1.0+std::abs(expected[i]))) {
       std::cerr<<"mismatch "<<i<<" "<<actual[i]<<" "<<expected[i]<<"\n";
       return false;
     }

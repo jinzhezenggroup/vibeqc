@@ -5,11 +5,12 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
 import pytest
-from vibeqc_compiler.tensor import PackedLayout, execute
+from vibeqc_compiler.tensor import PackedLayout, Program, execute
 
 from tools.vibeqc_cc.gradient_equations import (
     build_fock_weight_program,
@@ -31,7 +32,9 @@ def _array(name: str, value: np.ndarray) -> str:
     )
 
 
-def _feeds(program, o: int, v: int, rng: np.random.Generator) -> dict[str, np.ndarray]:
+def _feeds(
+    program: Program, o: int, v: int, rng: np.random.Generator
+) -> dict[str, np.ndarray]:
     result = {}
     n = o + v
     for node in program.live_nodes:
@@ -56,7 +59,7 @@ def _feeds(program, o: int, v: int, rng: np.random.Generator) -> dict[str, np.nd
     return result
 
 
-def _reference(o: int, v: int):
+def _reference(o: int, v: int) -> typing.Any:
     rng = np.random.default_rng(9100 + 10 * o + v)
     programs = build_hamiltonian_programs(o, v, explicit_density_input=True)
     weights_feeds = _feeds(programs.weights, o, v, rng)
@@ -132,7 +135,7 @@ CPP_PREFIX = r"""
 #include <vector>
 static bool close(const double* actual,const double* expected,std::size_t n){
   for(std::size_t i=0;i<n;++i)
-    if(std::abs(actual[i]-expected[i])>3e-11*(1.0+std::abs(expected[i]))) {
+    if(!std::isfinite(actual[i]) || !std::isfinite(expected[i]) || std::abs(actual[i]-expected[i])>3e-11*(1.0+std::abs(expected[i]))) {
       std::cerr<<"mismatch "<<i<<" "<<actual[i]<<" "<<expected[i]<<"\n";
       return false;
     }
