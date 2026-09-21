@@ -94,8 +94,10 @@ def test_shared_layers_may_depend_on_other_shared_layers(tmp_path: typing.Any) -
     [
         ("struct Diis {};\n", "cc_cpu_diis_owner"),
         (
-            "bool solve_linear(std::vector<double> matrix) "
-            "{ return !matrix.empty(); }\n",
+            (
+                "bool solve_linear(std::vector<double> matrix) "
+                "{ return !matrix.empty(); }\n"
+            ),
             "cc_cpu_local_linear_solver",
         ),
         ("void run_diis() {}\n", "cc_cuda_diis_owner"),
