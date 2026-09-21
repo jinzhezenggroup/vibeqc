@@ -259,7 +259,7 @@ def _target_resident_block_floor(
 def _default_schedule_priority(
     integral: IntegralIR,
     schedule: CudaScheduleIR,
-) -> tuple[int, int, int]:
+) -> int:
     """Rank correctness fallbacks without shell, recurrence-name, or device tables."""
 
     if _uses_scalar_fixed_root_force(integral):
@@ -272,7 +272,7 @@ def _default_schedule_priority(
         family_rank = 2
     else:
         family_rank = 3
-    return (family_rank, schedule.block_threads, schedule.component_tile)
+    return family_rank
 
 
 def schedule_candidates(
