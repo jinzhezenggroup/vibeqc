@@ -29,6 +29,7 @@ _EXPORTS = {
     "DispersionCorrectionPrimitive": ".dispersion",
     "ExactExchangePrimitive": ".spec",
     "FeatureType": ".typecheck",
+    "GFN1_PARAMETER_SET": ".xtb",
     "GFN2_PARAMETER_SET": ".xtb",
     "build_gfn2_electronic_program": ".gfn2_electronic",
     "build_gfn2_mixed_electronic_program": ".gfn2_electronic",

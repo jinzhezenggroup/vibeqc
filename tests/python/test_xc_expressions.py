@@ -141,8 +141,9 @@ def test_each_feature_derivative_against_pinned_independent_oracles(
 
 def test_licenses_sources_and_reference_generator_hashes() -> None:
     root = Path(__file__).resolve().parents[2]
-    source = root / "external/libxc-7.0.0"
-    manifest = json.loads((source / "manifest.json").read_text())
+    source = root / "upstream/libxc/7.0.0"
+    manifest_root = root / "external/libxc-7.0.0"
+    manifest = json.loads((manifest_root / "manifest.json").read_text())
     for name, item in manifest["files"].items():
         assert file_hash(source / name) == item["sha256"]
     metadata = json.loads((root / "tests/data/xc/libxc.json").read_text())

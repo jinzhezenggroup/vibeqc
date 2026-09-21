@@ -42,6 +42,20 @@ from .complete_gradient import (
     complete_gradient_validation,
     gradient_capabilities,
 )
+from .df_factorized import (
+    DFCCSDResult,
+    FactorizedDFIntegralState,
+    PreparedDFCCSD,
+    solve_df_ccsd,
+    virtual_correction_workspace_bytes,
+    virtual_corrections,
+)
+from .df_triples import (
+    DFCCSDTResult,
+    factorized_triples_energy,
+    factorized_triples_workspace_bytes,
+    solve_df_ccsdt,
+)
 from .doubles import build_ccsd_program
 from .equations import amplitude_layouts, build_program
 from .evaluate import evaluate
@@ -126,9 +140,13 @@ __all__ = [
     "CudaTriplesResponseTiles",
     "CudaTriplesResult",
     "CudaTriplesTiles",
+    "DFCCSDResult",
+    "DFCCSDTResult",
+    "FactorizedDFIntegralState",
     "LambdaOptions",
     "PreparedCCSD",
     "PreparedCUDALambda",
+    "PreparedDFCCSD",
     "PreparedRCCSDTBatch",
     "PreparedRCCSDTForceBatch",
     "PreparedResidentCCSD",
@@ -157,6 +175,8 @@ __all__ = [
     "cpu_triples_tiles",
     "energy",
     "evaluate",
+    "factorized_triples_energy",
+    "factorized_triples_workspace_bytes",
     "full_triples_vjp",
     "gradient_capabilities",
     "method_capabilities",
@@ -168,6 +188,8 @@ __all__ = [
     "solve",
     "solve_corrected_lambda",
     "solve_corrected_lambda_cuda",
+    "solve_df_ccsd",
+    "solve_df_ccsdt",
     "solve_gpu_resident",
     "tile_triples_energy",
     "tile_triples_energy_masked",
@@ -176,4 +198,6 @@ __all__ = [
     "triples_energy",
     "triples_energy_tensorir",
     "triples_fullsum",
+    "virtual_correction_workspace_bytes",
+    "virtual_corrections",
 ]

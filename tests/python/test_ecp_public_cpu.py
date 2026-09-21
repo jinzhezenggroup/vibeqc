@@ -487,9 +487,13 @@ def test_ecp_force_promotion_rejects_named_and_custom_hybrids_before_preparation
         assert pure.ks_options.coefficients == (1.0, 1.0, 0.0)
         assert "forces" in pure._capabilities.supported_properties
 
-    named = calculator(record, f"pbe0-{suffix}")
-    assert named.ks_options.coefficients != (1.0, 1.0, 0.0)
-    assert "forces" not in named._capabilities.supported_properties
+    named_hybrids = [
+        calculator(record, f"pbe0-{suffix}"),
+        calculator(record, f"b3lyp-{suffix}"),
+    ]
+    for named in named_hybrids:
+        assert named.ks_options.coefficients != (1.0, 1.0, 0.0)
+        assert "forces" not in named._capabilities.supported_properties
 
     graph = resolve_method(
         MethodSpec(
@@ -515,7 +519,7 @@ def test_ecp_force_promotion_rejects_named_and_custom_hybrids_before_preparation
         pytest.fail("unqualified hybrid forces reached batch preparation")
 
     monkeypatch.setattr(Calculator, "prepare_batch", forbidden)
-    for candidate in (named, custom):
+    for candidate in (*named_hybrids, custom):
         with pytest.raises(ValueError, match="does not support properties: forces"):
             candidate.singlepoint(
                 atoms,

@@ -106,13 +106,17 @@ class CudaScheduleIR:
             raise ValueError(
                 "maximum-register lowering currently supports packed tasks"
             )
-        if (
-            self.algebra_placement != AlgebraPlacement.MATERIALIZED_CSE
-            and self.kind != ScheduleKind.PACKED_TASKS
-        ):
-            raise ValueError(
-                "non-baseline algebra placement currently supports packed tasks"
+        if self.algebra_placement != AlgebraPlacement.MATERIALIZED_CSE:
+            packed_algebra = self.kind == ScheduleKind.PACKED_TASKS
+            subgroup_rematerialization = (
+                self.kind == ScheduleKind.SUBGROUP_TASKS
+                and self.algebra_placement == AlgebraPlacement.PRESSURE_REMATERIALIZED
             )
+            if not (packed_algebra or subgroup_rematerialization):
+                raise ValueError(
+                    "non-baseline algebra placement currently supports packed "
+                    "tasks or pressure-rematerialized subgroup tasks"
+                )
         if (
             self.algebra_ordering != AlgebraOrdering.TOPOLOGICAL
             and self.kind != ScheduleKind.PACKED_TASKS
@@ -416,15 +420,20 @@ def tuning_schedule_candidates(
                                         )
                                     )
         elif schedule.kind == ScheduleKind.SUBGROUP_TASKS:
+            algebra_placements = (AlgebraPlacement.MATERIALIZED_CSE,)
+            if integral.recurrence in ("rys3", "rys4", "rys5"):
+                algebra_placements += (AlgebraPlacement.PRESSURE_REMATERIALIZED,)
             for pair_orientation in PairOrientation:
                 for unroll_pair_terms in (True, False):
-                    candidates.append(
-                        replace(
-                            schedule,
-                            pair_orientation=pair_orientation,
-                            unroll_pair_terms=unroll_pair_terms,
+                    for algebra_placement in algebra_placements:
+                        candidates.append(
+                            replace(
+                                schedule,
+                                pair_orientation=pair_orientation,
+                                unroll_pair_terms=unroll_pair_terms,
+                                algebra_placement=algebra_placement,
+                            )
                         )
-                    )
         else:
             candidates.append(schedule)
     for candidate in candidates:

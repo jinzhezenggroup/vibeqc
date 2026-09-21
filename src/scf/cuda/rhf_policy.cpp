@@ -5,8 +5,14 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "generated_one_electron_derivative_policy.cuh"
+
 namespace vibeqc::scf::cuda_policy {
 namespace {
+
+constexpr std::size_t kUnknownTargetGeneratedArenaBytes = std::size_t{256} << 20;
+constexpr std::size_t kGeneratedArenaDeviceMemoryDivisor = 32;
+constexpr unsigned kUnknownTargetPersistentQuartetWarpsPerSm = 4;
 
 constexpr double kDefaultMixedPrecisionFockThreshold = 1.0e-6;
 /**
@@ -26,6 +32,8 @@ constexpr double kAutoMixedPrecisionErrorBudgetFraction = 6.25e-02;
 constexpr double kTightConvergedFockReuseDensityRms = 1.0e-12;
 constexpr double kExpandedConvergedFockReuseDensityTolerance = 1.0e-9;
 constexpr double kExpandedConvergedFockReuseDensityRms = 2.0e-9;
+using NucleusCooperativeSchedule =
+    generated_one_electron_derivative_policy::NucleusCooperativeSchedule;
 
 bool enabled(const char* variable) noexcept {
   const char* selection = std::getenv(variable);
@@ -55,6 +63,50 @@ std::optional<double> parsed_mixed_precision_override(double screening_tolerance
   return value;
 }
 }  // namespace
+
+DirectJkSchedulePolicy resolve_direct_jk_schedule_policy(const runtime::CudaTargetInfo& target,
+                                                         DirectJkTuningProfile profile) noexcept {
+  DirectJkSchedulePolicy policy;
+  policy.maximum_generated_task_capacity = profile.maximum_generated_task_capacity;
+  policy.cuda_stack_limit_bytes = profile.cuda_stack_limit_bytes;
+
+  // Bound the descriptor arena by an explicit fraction of available device
+  // memory. A 32-GiB target therefore preserves the qualified 1-GiB ceiling,
+  // while smaller targets stop borrowing that endpoint's memory assumption.
+  if (target.total_global_memory == 0) {
+    policy.generated_task_arena_maximum_bytes =
+        std::min(profile.maximum_generated_task_arena_bytes, kUnknownTargetGeneratedArenaBytes);
+  } else {
+    const std::size_t resource_budget =
+        target.total_global_memory / kGeneratedArenaDeviceMemoryDivisor;
+    policy.generated_task_arena_maximum_bytes =
+        std::min(profile.maximum_generated_task_arena_bytes, resource_budget);
+  }
+
+  // Persistent workers are one warp per block. Respect both the resident block
+  // ceiling and the SM thread ceiling; unknown facts choose a smaller
+  // conservative fallback instead of assuming the measured 5090 occupancy.
+  const bool complete_occupancy = target.warp_size != 0 && target.maximum_threads_per_sm != 0 &&
+                                  target.maximum_blocks_per_sm != 0;
+  unsigned legal_warps = kUnknownTargetPersistentQuartetWarpsPerSm;
+  if (target.warp_size != 0 && target.maximum_threads_per_sm != 0) {
+    const unsigned thread_ceiling = std::max(1U, target.maximum_threads_per_sm / target.warp_size);
+    legal_warps = complete_occupancy ? thread_ceiling : std::min(legal_warps, thread_ceiling);
+  }
+  if (target.maximum_blocks_per_sm != 0) {
+    legal_warps = std::min(legal_warps, target.maximum_blocks_per_sm);
+  }
+  policy.persistent_quartet_warps_per_sm =
+      std::max(1U, std::min(profile.maximum_persistent_quartet_warps_per_sm, legal_warps));
+  return policy;
+}
+
+std::size_t direct_jk_generated_task_capacity_limit(const DirectJkSchedulePolicy& policy,
+                                                    std::size_t generated_task_bytes) noexcept {
+  if (generated_task_bytes == 0) return 0;
+  return std::min(policy.maximum_generated_task_capacity,
+                  policy.generated_task_arena_maximum_bytes / generated_task_bytes);
+}
 
 bool reuse_converged_fock_requested() noexcept {
   const char* force_rebuild = std::getenv("VIBEQC_FINAL_FOCK_REBUILD");
@@ -215,6 +267,14 @@ bool bounded_fock_class_timing_requested() noexcept {
   return selected("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE", "profile");
 }
 
+bool aot_shell_class_selection_override_requested() noexcept {
+  const char* selection = std::getenv("VIBEQC_AOT_SHELL_CLASSES");
+  // Match the generated registry: absent, empty, and "all" all mean the full
+  // compiled profile. Any other spelling intentionally narrows the force
+  // registry and may therefore exercise the generic fallback for diagnostics.
+  return selection != nullptr && *selection != '\0' && std::strcmp(selection, "all") != 0;
+}
+
 bool direct_tile_validation_requested() noexcept {
   return selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
 }
@@ -283,11 +343,11 @@ bool generated_one_electron_derivatives_requested() noexcept {
 
 unsigned one_electron_derivative_mapping_requested() noexcept {
   const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING");
-  if (selection == nullptr) return 3U;
+  if (selection == nullptr) return NucleusCooperativeSchedule::schedule_code;
   if (std::strcmp(selection, "serial") == 0 || std::strcmp(selection, "2") == 0) return 2U;
   if (std::strcmp(selection, "nucleus_cooperative") == 0 ||
       std::strcmp(selection, "cooperative") == 0 || std::strcmp(selection, "3") == 0)
-    return 3U;
+    return NucleusCooperativeSchedule::schedule_code;
   if (std::strcmp(selection, "shell_warp") == 0 || std::strcmp(selection, "1") == 0) return 1U;
   return 0U;
 }

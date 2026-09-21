@@ -24,7 +24,7 @@ def _value(source: str, name: str = "f", x: float = 2.0) -> float:
 
 
 def test_v9_importer_identity_is_family_agnostic() -> None:
-    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v9"
+    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v10"
 
 
 @pytest.mark.parametrize("whitespace", ("", " ", "\t", " \t "))
@@ -145,7 +145,7 @@ def test_v9_nested_bindings_and_symbolic_bounded_add_lower_statically() -> None:
 
 
 def test_v9_libxc_erf_smoothing_covers_direct_and_large_a_branches() -> None:
-    root = Path(__file__).resolve().parents[2] / "external/libxc-7.0.0"
+    root = Path(__file__).resolve().parents[2] / "upstream/libxc/7.0.0"
     module = libxc_maple.import_maple_file(root, "attenuation.mpl")
     graph = Graph()
     a = graph.variable("a")

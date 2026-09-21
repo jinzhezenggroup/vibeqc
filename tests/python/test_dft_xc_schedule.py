@@ -121,6 +121,8 @@ def test_schedule_admission_is_deterministic_and_conservative() -> None:
     )
     assert first == second and first.legal
     assert first.live_values > 0
+    assert first.schedule_contract.schedule_hash == first.schedule_hash
+    assert not first.schedule_contract.fallback
 
     rejected = assess_grid_xc_schedule(
         DEVICE_FUSED,
@@ -150,6 +152,7 @@ def test_schedule_admission_is_deterministic_and_conservative() -> None:
     )
     assert fallback.legal
     assert fallback.live_values > first.live_values
+    assert fallback.schedule_contract.fallback
 
 
 def endpoint_sample(

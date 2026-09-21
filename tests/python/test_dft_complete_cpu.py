@@ -2,7 +2,8 @@
 
 PySCF is used only here. Its own libcint, libxc, SCF and analytic Becke response
 evaluate the same input basis and atomic quadrature, without calling any of the
-generated derivative graphs under test. Public DFT force capabilities stay off.
+generated derivative graphs under test. Public forces are independently checked
+for the explicitly promoted direct global-hybrid endpoints.
 """
 
 import ctypes as ct
@@ -863,21 +864,24 @@ def independent_global_hybrid_gradient(
 
 @pytest.mark.parametrize("execution", ["reference", "native"])
 @pytest.mark.parametrize(
-    "method,charge,multiplicity,coefficients",
+    "method,charge,multiplicity,coefficients,xc",
     [
-        ("pbe0-rks", 0, 1, (0.75, 1.0, -0.125)),
-        ("pbe0-uks", 1, 2, (0.75, 1.0, -0.25)),
+        ("pbe0-rks", 0, 1, (0.75, 1.0, -0.125), "PBE0"),
+        ("pbe0-uks", 1, 2, (0.75, 1.0, -0.25), "PBE0"),
+        ("b3lyp-rks", 0, 1, (1.0, 1.0, -0.1), "B3LYP"),
+        ("b3lyp-uks", 1, 2, (1.0, 1.0, -0.2), "B3LYP"),
     ],
 )
-def test_pbe0_global_hybrid_complete_gradient_matches_independent_pyscf(
+def test_global_hybrid_complete_gradient_matches_independent_pyscf(
     method: typing.Any,
     charge: typing.Any,
     multiplicity: typing.Any,
     coefficients: typing.Any,
+    xc: typing.Any,
     execution: typing.Any,
 ) -> None:
     """#165: one MethodIR graph controls XC, K, SCF and the K derivative."""
-    pytest.importorskip("pyscf", reason="independent PBE0 gradient requires PySCF")
+    pytest.importorskip("pyscf", reason="independent hybrid gradient requires PySCF")
     calc = calculator(method, max_iterations=200)
     with (
         calc.prepare_batch(
@@ -893,14 +897,14 @@ def test_pbe0_global_hybrid_complete_gradient_matches_independent_pyscf(
         result = complete_rks_gradient_diagnostic(
             state,
             basis,
-            cache=".cache/165-pbe0-tests",
+            cache=".cache/165-global-hybrid-tests",
             execution=execution,
             tile_points=137,
             integral_terms=17,
             primitive_tile=29,
         )
         reference_energy, reference = independent_global_hybrid_gradient(
-            basis, state, method
+            basis, state, method, xc=xc
         )
         assert energy == pytest.approx(reference_energy, abs=2e-9)
         np.testing.assert_allclose(result.gradient, reference, atol=1e-7, rtol=0)
@@ -953,15 +957,21 @@ def test_pbe0_global_hybrid_complete_gradient_matches_independent_pyscf(
             actual = float(np.sum(result.gradient * direction))
             assert abs(estimates[-1] - estimates[-2]) < 1e-6
             assert abs(estimates[-1] - actual) < 1e-6
-        # #163 still owns public DFT force endpoint qualification.
+        # The generated manifest remains backend-neutral/energy-only.  The
+        # Calculator promotes only this qualified all-electron CPU owner.
         assert method_capabilities(method).supported_properties == frozenset({"energy"})
-        with pytest.raises(ValueError, match="does not support properties"):
-            calc.singlepoint(
+        assert calc._capabilities.supported_properties == frozenset(
+            {"energy", "forces"}
+        )
+        if execution == "native":
+            public = calc.singlepoint(
                 ATOMS,
                 charge=charge,
                 multiplicity=multiplicity,
                 properties=("energy", "forces"),
             )
+            assert public.energy == pytest.approx(reference_energy, abs=2e-9)
+            np.testing.assert_allclose(public.forces, -reference, atol=1e-7, rtol=0)
 
 
 def test_second_global_hybrid_composition_reuses_same_scf_and_gradient_path() -> None:

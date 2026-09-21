@@ -8,12 +8,12 @@
 #include <cstdint>
 #include <type_traits>
 
+#include "generated_direct_high_order_pair_gradient.cuh"
 #include "scf/cuda/boys_table.cuh"
 #include "scf/cuda/cartesian_angular.cuh"
 #include "scf/cuda/direct_native_eri_order4.cuh"
 #include "scf/cuda/direct_native_gradient_types.cuh"
 #include "scf/cuda/direct_native_high_order_coulomb.cuh"
-#include "scf/cuda/direct_native_pair_high_order_gradient.cuh"
 #include "scf/cuda/direct_queue_index.cuh"
 #include "scf/cuda/gaussian_geometry.cuh"
 #include "scf/cuda/packed_basis.hpp"

@@ -22,17 +22,20 @@ from vibeqc_compiler.tensor import (
     IndexSpace,
     Program,
     TensorSpec,
-    add,
     constant,
-    divide,
-    exp,
-    multiply,
     power,
     scatter_add,
-    sqrt,
     transpose_program,
 )
 
+from .gfn2_pair import (
+    GFN2_CN_FIRST_STEEPNESS,
+    GFN2_CN_SECOND_RADIUS_SHIFT_BOHR,
+    GFN2_CN_SECOND_STEEPNESS,
+    GFN2_REPULSION_KEXP,
+    GFN2_REPULSION_KLIGHT,
+    gfn2_pair_equations,
+)
 from .ir import (
     GeometryIR,
     PairCutoff,
@@ -61,11 +64,6 @@ GFN2_CUTOFF_BOHR = 25.0
 GFN2_MINIMUM_CN_DISTANCE_SQUARED = 1.0e-12
 GFN2_ANGSTROM_TO_BOHR = 1.8897261246204404
 GFN2_CN_RADIUS_SCALE = (4.0 / 3.0) * GFN2_ANGSTROM_TO_BOHR
-GFN2_CN_FIRST_STEEPNESS = 10.0
-GFN2_CN_SECOND_STEEPNESS = 20.0
-GFN2_CN_SECOND_RADIUS_SHIFT_BOHR = 2.0
-GFN2_REPULSION_KEXP = 1.5
-GFN2_REPULSION_KLIGHT = 1.0
 
 
 @dataclass(frozen=True)
@@ -364,10 +362,6 @@ def _pair_constant(context: PairTensorContext, values: Iterable[float]) -> Node:
     )
 
 
-def _logistic(argument: Node, one: Node, minus_one: Node) -> Node:
-    return divide(one, add(one, exp(multiply(minus_one, argument))))
-
-
 @dataclass(frozen=True)
 class Gfn2ShortRangeProgram:
     """Geometry-owned GFN2 CN/repulsion graph with no MethodIR dependency."""
@@ -449,47 +443,36 @@ def _gfn2_pair_terms(context: PairTensorContext) -> tuple[Node, Node]:
             for first, second in parameters
         ),
     )
-    first_ratio = multiply(radii, inverse_distance)
-    second_ratio = multiply(shifted_radii, inverse_distance)
-    first_delta = add(first_ratio, one, coefficients=(1, -1))
-    second_delta = add(second_ratio, one, coefficients=(1, -1))
-    first_argument = multiply(
-        _pair_constant(context, (GFN2_CN_FIRST_STEEPNESS,) * pair_count),
-        first_delta,
-    )
-    second_argument = multiply(
-        _pair_constant(context, (GFN2_CN_SECOND_STEEPNESS,) * pair_count),
-        second_delta,
-    )
-    pair_coordination = multiply(
-        _logistic(first_argument, one, minus_one),
-        _logistic(second_argument, one, minus_one),
-    )
-    coordination = pair_to_atom(pair_coordination, context)
-
     light = tuple(
         float(first.atomic_number <= 2 and second.atomic_number <= 2)
         for first, second in parameters
     )
     heavy = tuple(1.0 - value for value in light)
-    heavy_distance = multiply(context.distance, sqrt(context.distance))
-    distance_power = add(
-        multiply(_pair_constant(context, light), context.distance),
-        multiply(_pair_constant(context, heavy), heavy_distance),
+    pair_coordination, pair_repulsion = gfn2_pair_equations(
+        distance=context.distance,
+        inverse_distance=inverse_distance,
+        radius=radii,
+        shifted_radius=shifted_radii,
+        one=one,
+        minus_one=minus_one,
+        first_steepness=_pair_constant(
+            context, (GFN2_CN_FIRST_STEEPNESS,) * pair_count
+        ),
+        second_steepness=_pair_constant(
+            context, (GFN2_CN_SECOND_STEEPNESS,) * pair_count
+        ),
+        light_pair=_pair_constant(context, light),
+        heavy_pair=_pair_constant(context, heavy),
+        pair_alpha=_pair_constant(
+            context,
+            ((first.arep * second.arep) ** 0.5 for first, second in parameters),
+        ),
+        pair_charge=_pair_constant(
+            context,
+            (first.zeff * second.zeff for first, second in parameters),
+        ),
     )
-    pair_alpha = _pair_constant(
-        context,
-        ((first.arep * second.arep) ** 0.5 for first, second in parameters),
-    )
-    pair_charge = _pair_constant(
-        context,
-        (first.zeff * second.zeff for first, second in parameters),
-    )
-    decay_argument = multiply(minus_one, multiply(pair_alpha, distance_power))
-    pair_repulsion = multiply(
-        multiply(pair_charge, exp(decay_argument)),
-        inverse_distance,
-    )
+    coordination = pair_to_atom(pair_coordination, context)
     return coordination, pair_repulsion
 
 

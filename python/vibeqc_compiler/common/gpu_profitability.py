@@ -11,6 +11,8 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 
+ENDPOINT_NOISE_FRACTION = 0.01
+
 
 def _optional_count(value: int | None, name: str) -> None:
     if value is not None and (type(value) is not int or value < 0):
@@ -141,6 +143,94 @@ class GpuProfitability:
             self._minimize(self.object_bytes),
             self._minimize(self.endpoint_seconds),
         )
+
+    def endpoint_regressions_against(
+        self,
+        baseline: GpuProfitability,
+        *,
+        minimum_speedup: float = 1.0,
+    ) -> tuple[str, ...]:
+        """Return endpoint-profitability failures from complete measured timing."""
+
+        _optional_float(minimum_speedup, "minimum_speedup")
+        if minimum_speedup < 1.0:
+            raise ValueError("minimum_speedup must be at least one")
+        if self.endpoint_seconds is None or baseline.endpoint_seconds is None:
+            return ()
+        if self.endpoint_seconds <= 0.0 or baseline.endpoint_seconds <= 0.0:
+            raise ValueError("endpoint timing must be positive")
+        speedup = baseline.endpoint_seconds / self.endpoint_seconds
+        if speedup >= minimum_speedup:
+            return ()
+        reason = (
+            f"endpoint speedup {speedup:.6g}x is below "
+            f"the required {minimum_speedup:.6g}x"
+        )
+        return (reason,)
+
+    def resource_regressions_against(
+        self,
+        baseline: GpuProfitability,
+        *,
+        endpoint_noise_fraction: float = ENDPOINT_NOISE_FRACTION,
+    ) -> tuple[str, ...]:
+        """Return measured resource regressions not justified by endpoint speed.
+
+        Relative pressure gates only make a claim when both candidates have
+        complete endpoint timing. A speedup larger than the caller's noise
+        band may justify a resource trade-off; otherwise new spill traffic or
+        register growth that lowers target-estimated occupancy is rejected.
+        Missing resource evidence remains unknown rather than being guessed.
+        """
+
+        _optional_float(
+            endpoint_noise_fraction,
+            "endpoint_noise_fraction",
+            unit_interval=True,
+        )
+        if self.endpoint_seconds is None or baseline.endpoint_seconds is None:
+            return ()
+        if self.endpoint_seconds <= 0.0 or baseline.endpoint_seconds <= 0.0:
+            raise ValueError("endpoint timing must be positive")
+        if self.endpoint_seconds < baseline.endpoint_seconds * (
+            1.0 - float(endpoint_noise_fraction)
+        ):
+            return ()
+
+        reasons = []
+        spill_bytes = self.spill_bytes
+        baseline_spill_bytes = baseline.spill_bytes
+        if (
+            spill_bytes is not None
+            and baseline_spill_bytes is not None
+            and spill_bytes > baseline_spill_bytes
+        ):
+            reasons.append(
+                "spill traffic grows "
+                f"from {baseline_spill_bytes} to {spill_bytes} bytes "
+                "without an endpoint win"
+            )
+
+        registers = self.compiled_registers_per_thread
+        baseline_registers = baseline.compiled_registers_per_thread
+        occupancy = self.compiled_occupancy_upper_bound
+        baseline_occupancy = baseline.compiled_occupancy_upper_bound
+        if (
+            registers is not None
+            and baseline_registers is not None
+            and occupancy is not None
+            and baseline_occupancy is not None
+            and registers > baseline_registers
+            and occupancy < baseline_occupancy
+        ):
+            reasons.append(
+                "registers grow "
+                f"from {baseline_registers} to {registers} per thread while "
+                "target-estimated occupancy falls "
+                f"from {baseline_occupancy:.6g} to {occupancy:.6g} "
+                "without an endpoint win"
+            )
+        return tuple(reasons)
 
     def to_payload(self) -> dict[str, object]:
         """Serialize every known/unknown fact; do not erase negative evidence."""

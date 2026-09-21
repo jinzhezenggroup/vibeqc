@@ -19,7 +19,7 @@ from vibeqc_compiler.xc.program import build_program
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
-LIBXC_ROOT = ROOT / "external/libxc-7.0.0"
+LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
 ZETA_THRESHOLD = "2.220446049250313e-16"
 UNPOLARIZED = ("rho", "sigma", "tau")
 POLARIZED = (
@@ -209,8 +209,12 @@ def test_wb97mv_import_recovers_retained_independent_unpolarized_oracle() -> Non
 def test_imports_pin_complete_source_and_parameter_identity() -> None:
     ityh, _, _, _ = _imported_ityh("unpolarized")
     wb97mv, _, _, _ = _imported_wb97mv("unpolarized")
-    rsh_manifest = json.loads((LIBXC_ROOT / "rsh-manifest.json").read_text())
-    wb_manifest = json.loads((LIBXC_ROOT / "wb97mv-manifest.json").read_text())
+    rsh_manifest = json.loads(
+        (ROOT / "external/libxc-7.0.0/rsh-manifest.json").read_text()
+    )
+    wb_manifest = json.loads(
+        (ROOT / "external/libxc-7.0.0/wb97mv-manifest.json").read_text()
+    )
 
     ityh_hashes = dict(ityh.source_hashes)
     for name in (
