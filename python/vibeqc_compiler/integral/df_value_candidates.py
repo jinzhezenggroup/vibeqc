@@ -70,7 +70,8 @@ def emit_df_value_candidates_cuda(manifest: typing.Any = None) -> typing.Any:
 
     def architecture_condition(architecture: str) -> str:
         major, minor = compute_capability_from_architecture(architecture)
-        return f"defined(__CUDA_ARCH__) && __CUDA_ARCH__ == {major * 100 + minor * 10}"
+        macro = major * 100 + minor * 10
+        return f"defined(__CUDA_ARCH__) && __CUDA_ARCH__ == {macro}"
 
     geometry = emit_df_geometry_cuda(
         "prepare_value_rys_geometry",
