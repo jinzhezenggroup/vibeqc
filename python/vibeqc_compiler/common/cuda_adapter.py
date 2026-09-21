@@ -87,6 +87,37 @@ class CudaCompilerAdapter:
             ]
         )
 
+    def link_shared_objects(
+        self,
+        objects: list[Path] | tuple[Path, ...],
+        output: Path,
+        *,
+        libraries: tuple[str, ...] = (),
+        options: tuple[str, ...] = (),
+        standard: str = "c++17",
+    ) -> CudaCompileResult:
+        """Device-link relocatable CUDA objects into one shared runtime."""
+
+        if not objects:
+            raise ValueError("CUDA shared-object link requires at least one object")
+        return self._run_compiler(
+            [
+                str(self.nvcc),
+                f"-std={standard}",
+                f"-arch={self.target.architecture}",
+                "-O3",
+                "-Xptxas=-v",
+                "--relocatable-device-code=true",
+                "--shared",
+                "-Xcompiler=-fPIC",
+                *options,
+                *(str(item) for item in objects),
+                *(f"-l{name}" for name in libraries),
+                "-o",
+                str(output),
+            ]
+        )
+
     def _run_compiler(self, command: list[str]) -> CudaCompileResult:
         """Bound NVCC and every child for either object or shared-library builds."""
         return run_compiler(command, self.compile_timeout, label="NVCC")
