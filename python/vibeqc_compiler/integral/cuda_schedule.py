@@ -264,8 +264,8 @@ def _default_schedule_priority(
 
     if _uses_scalar_fixed_root_force(integral):
         family_rank = 0 if schedule.kind == ScheduleKind.THREAD_TASKS else 4
-    elif integral.derivative is None:
-        family_rank = 0 if schedule.kind == ScheduleKind.PACKED_TASKS else 3
+    elif integral.derivative is None and schedule.kind == ScheduleKind.PACKED_TASKS:
+        family_rank = 0
     elif schedule.kind == ScheduleKind.COMPONENT_LANES:
         family_rank = 1
     elif schedule.kind == ScheduleKind.TILED_COMPONENTS:
