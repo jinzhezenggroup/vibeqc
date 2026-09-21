@@ -1478,6 +1478,15 @@ class Calculator:
         systems = tuple(
             tuple(Atom.from_value(atom) for atom in system) for system in systems
         )
+        count = len(systems)
+        charges = tuple(0 for _ in range(count)) if charges is None else tuple(charges)
+        multiplicities = (
+            tuple(1 for _ in range(count))
+            if multiplicities is None
+            else tuple(multiplicities)
+        )
+        if len(charges) != count or len(multiplicities) != count:
+            raise ValueError("charges and multiplicities must match the batch size")
         effective_ks_options = self._effective_ks_options(
             systems,
             charges=charges,
