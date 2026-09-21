@@ -48,10 +48,11 @@ def test_xc_retirement_gate_detects_new_expression_module(tmp_path: Path) -> Non
     source.parent.mkdir(parents=True)
     source.write_text("def energy_expression():\n    return None\n")
     failures = errors(tmp_path)
-    assert failures == [
+    expected = (
         "python/vibeqc_compiler/xc/new_expressions.py: "
         "untracked handwritten-looking XC expression module"
-    ]
+    )
+    assert failures == [expected]
 
 
 def test_xc_retirement_final_gate_fails_while_consumers_remain() -> None:
