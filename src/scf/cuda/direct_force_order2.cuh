@@ -10,15 +10,15 @@
 #include <type_traits>
 #include <weighted_eri.cuh>
 
-#include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/boys_table.cuh"
+#include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_force_density.cuh"
-#include "scf/cuda/gaussian_geometry.cuh"
-#include "scf/cuda/scalar_math.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_queue_index.cuh"
+#include "scf/cuda/gaussian_geometry.cuh"
 #include "scf/cuda/matrix_index.cuh"
 #include "scf/cuda/packed_basis.hpp"
+#include "scf/cuda/scalar_math.cuh"
 
 // Retained direct force order2 contraction helpers.
 // Borrow immutable metadata and density/output views; host plans own lifetime.

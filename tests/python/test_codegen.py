@@ -2356,8 +2356,6 @@ def test_ssss_force_retires_handwritten_math_and_selector() -> None:
     assert "~explicit_generated_force_shell_class_mask" in driver
 
 
-
-
 def test_order2_force_codegen_emits_only_independent_gradient_roots() -> None:
     """Keep PSPS/PPSS/DSSS native schedulers backed by force-only compiler roots."""
 
@@ -2368,7 +2366,9 @@ def test_order2_force_codegen_emits_only_independent_gradient_roots() -> None:
         if index + 1 < len(names):
             end = source.index(f"IndependentGradient {names[index + 1]}(", begin)
         else:
-            end = source.index("}  // namespace vibeqc::scf::generated_weighted_eri", begin)
+            end = source.index(
+                "}  // namespace vibeqc::scf::generated_weighted_eri", begin
+            )
         function = source[begin:end]
         assert "result.value" not in function
         assert "result.center[3]" not in function
@@ -2388,7 +2388,9 @@ def test_order2_force_retires_handwritten_gradient_bodies() -> None:
     source = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_order2.cuh").read_text(
         encoding="utf-8"
     )
-    assert "contracted_eri_cartesian_source_order2_generated_weighted_gradient" in source
+    assert (
+        "contracted_eri_cartesian_source_order2_generated_weighted_gradient" in source
+    )
     for name in ("psps", "ppss", "dsss"):
         assert f"generated_weighted_eri::{name}_force" in source
         assert f"direct_native_{name}_gradient.cuh" not in source
