@@ -21,9 +21,9 @@ def test_direct_fock_scatter_has_one_compiler_equation_owner() -> None:
         REPOSITORY_ROOT
         / "python/vibeqc_compiler/integral/lowering/fock_accumulation.py"
     ).read_text(encoding="utf-8")
-    native = (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_fock_accumulation.cuh"
-    ).read_text(encoding="utf-8")
+    native = (REPOSITORY_ROOT / "src/scf/cuda/direct_fock_accumulation.cuh").read_text(
+        encoding="utf-8"
+    )
     shell_lowering = (
         REPOSITORY_ROOT / "python/vibeqc_compiler/integral/lowering/fock.py"
     ).read_text(encoding="utf-8")
