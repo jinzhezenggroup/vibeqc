@@ -28,7 +28,7 @@ def _identifier(value: typing.Any, label: str) -> str:
     return value
 
 
-def _identity(value: typing.Any, label: str) -> str:
+def _identity(value: typing.Any, label: str) -> None:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{label} must be a nonempty identity")
     return value
