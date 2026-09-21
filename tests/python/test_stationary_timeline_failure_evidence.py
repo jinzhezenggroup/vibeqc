@@ -47,6 +47,7 @@ def test_main_persists_completed_rows_when_later_case_fails(
     assert output.is_file(), "later failure discarded all completed measurements"
     payload = json.loads(output.read_text())
     assert completed in payload["records"]
+    assert payload["provenance"]["scf_preparation"] == dict(benchmark.SCF_PREPARATION)
     assert payload["completed"] is False
     assert payload["failure"]["error_type"] == "RuntimeError"
 

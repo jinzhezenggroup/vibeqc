@@ -17,6 +17,7 @@ import tempfile
 import typing
 from pathlib import Path
 from time import perf_counter
+from types import MappingProxyType
 
 import numpy as np
 from vibeqc import Calculator, GridSpec, KsOptions
@@ -55,6 +56,11 @@ DEFAULT_METHODS = (
     "r2scan-uks",
 )
 GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
+# SCF is fixture preparation, not part of the force timeline. These stricter
+# settings qualify the exported physical state without relaxing native checks.
+SCF_PREPARATION = MappingProxyType(
+    {"energy_tolerance": 1e-12, "density_tolerance": 1e-12, "max_iterations": 200}
+)
 
 
 def _spin(method: str) -> tuple[int, int]:
@@ -100,9 +106,7 @@ def _calculator(method: str) -> Calculator:
         method=method,
         device="cuda",
         ks_options=KsOptions(grid=GRID),
-        energy_tolerance=1e-12,
-        density_tolerance=1e-10,
-        max_iterations=200,
+        **SCF_PREPARATION,
     )
 
 
@@ -392,6 +396,7 @@ def main() -> None:
             "nvcc": str(nvcc),
             "target": args.target,
             "grid": [24, 8, 16],
+            "scf_preparation": dict(SCF_PREPARATION),
             "production_defaults": {
                 "tile_points": 256,
                 "integral_terms": 32,

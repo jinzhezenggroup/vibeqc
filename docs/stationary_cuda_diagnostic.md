@@ -49,6 +49,16 @@ including the single-zero-factor derivative and saturated-branch policy.
 Primitive CPU emitted bytes are preserved. Device compilation disables FMA
 contraction; no broad fast-math flag or relaxed acceptance threshold is used.
 
+## Timeline fixture preparation
+
+The timeline benchmark prepares SCF states with density tolerance `1e-12`,
+energy tolerance `1e-12`, and at most 200 iterations. Evidence records these
+settings in `provenance.scf_preparation`, including incomplete campaigns.
+Energy-only SCF preparation is excluded from the force endpoint; explicit
+snapshot export is included. Native snapshot acceptance is unchanged and a
+failed export remains a failed campaign, never a hidden retry or force call.
+See the [preparation decision](../.agents/notes/implemented/numerics/2026-09-21-timeline-snapshot-preparation.md).
+
 ## Bounded resources and failure
 
 Preparation admits at most 32 atoms, 128 AOs, 4096 points per tile, 4096 primitive
