@@ -113,15 +113,12 @@ def _cuda_gfn2_singlepoint_or_skip(
     charge: int = 0,
     multiplicity: int = 1,
 ):
-    try:
-        calculator = Calculator(
-            method="gfn2-xtb",
-            device="cuda",
-            energy_tolerance=1.0e-12,
-            density_tolerance=1.0e-10,
-        )
-    except (RuntimeError, NotImplementedError) as error:
-        pytest.skip(f"CUDA backend unavailable: {error}")
+    calculator = Calculator(
+        method="gfn2-xtb",
+        device="cuda",
+        energy_tolerance=1.0e-12,
+        density_tolerance=1.0e-10,
+    )
 
     try:
         return calculator.singlepoint(
