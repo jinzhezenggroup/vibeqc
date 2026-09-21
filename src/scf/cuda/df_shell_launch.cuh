@@ -113,8 +113,7 @@ cudaError_t launch_packets(std::span<const DfShellBasisView> orbital,
     // planner owns stable profitability ordering and bounded block prefixes;
     // DF owns only the legal signature descriptors and their primitive work.
     runtime::order_homogeneous_task_packet(packet, [](const SignatureSlice& slice) {
-      return static_cast<long double>(slice.a_primitives) * slice.b_primitives *
-             slice.c_primitives;
+      return static_cast<long double>(slice.a_primitives) * slice.b_primitives * slice.c_primitives;
     });
     if (!runtime::finalize_homogeneous_task_packet(packet, Schedule::groups, maximum))
       return cudaErrorInvalidValue;

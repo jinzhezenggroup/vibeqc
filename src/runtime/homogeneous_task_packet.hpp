@@ -29,12 +29,10 @@ struct HomogeneousTaskPacket {
  */
 template <class Packet, class Cost>
 void order_homogeneous_task_packet(Packet& packet, Cost cost) {
-  std::sort(packet.slices, packet.slices + packet.count,
-            [&](const auto& left, const auto& right) {
-              const auto left_cost = cost(left), right_cost = cost(right);
-              return left_cost != right_cost ? left_cost > right_cost
-                                             : left.first_block < right.first_block;
-            });
+  std::sort(packet.slices, packet.slices + packet.count, [&](const auto& left, const auto& right) {
+    const auto left_cost = cost(left), right_cost = cost(right);
+    return left_cost != right_cost ? left_cost > right_cost : left.first_block < right.first_block;
+  });
 }
 
 /** Assign block prefixes without exceeding CUDA's unsigned grid dimension.
@@ -51,8 +49,7 @@ bool finalize_homogeneous_task_packet(
   for (unsigned index = 0; index < packet.count; ++index) {
     auto& slice = packet.slices[index];
     slice.first_block = packet.blocks;
-    const auto blocks =
-        slice.tasks / tasks_per_block + (slice.tasks % tasks_per_block != 0);
+    const auto blocks = slice.tasks / tasks_per_block + (slice.tasks % tasks_per_block != 0);
     if (blocks > maximum_blocks - packet.blocks) return false;
     packet.blocks += static_cast<unsigned>(blocks);
   }
