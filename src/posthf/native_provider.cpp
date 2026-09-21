@@ -14,7 +14,7 @@ NativeBlockProvider::NativeBlockProvider(const integrals::ElectronInteractionSou
     : source_(source),
       ref_(reference),
       budget_(budget),
-      source_bytes_(source_capacity(source.orbital())),
+      source_bytes_(source.retained_numeric_bytes()),
       reference_bytes_(checked_mul(
           8,
           checked_add(checked_mul(5, checked_mul(reference.nbf, reference.nbf)), reference.nbf))) {
