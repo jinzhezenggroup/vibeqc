@@ -165,7 +165,9 @@ def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit()
 def test_stationary_aot_inventory_is_fixed_full_sp_domain() -> None:
     from itertools import product
 
-    from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cuda
+    from vibeqc_compiler.integral.first_derivative_native import (
+        emit_first_derivative_cuda,
+    )
     from vibeqc_compiler.method.stationary_cuda import (
         QUALIFIED_SP_COMPONENTS,
         emit_stationary_aot_cuda,
