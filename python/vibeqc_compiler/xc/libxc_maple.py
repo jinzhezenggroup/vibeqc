@@ -34,12 +34,13 @@ class MapleImportError(ValueError):
     """The pinned Maple source uses syntax outside the qualified importer."""
 
 
-IMPORTER_SEMANTICS = "libxc-maple-graph/v7"
+IMPORTER_SEMANTICS = "libxc-maple-graph/v8"
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _RESERVED = frozenset(
     (
         "Pi",
         "X2S",
+        "X_FACTOR_C",
         "K_FACTOR_C",
         "MU_GE",
         "DBL_EPSILON",
@@ -60,6 +61,7 @@ _RESERVED = frozenset(
         "tt",
         "sqrt",
         "arcsinh",
+        "arctan",
         "exp",
         "log",
         "log1p",
@@ -232,7 +234,7 @@ def _preprocess(
 ) -> str:
     """Select qualified directives and optionally expand pinned includes."""
 
-    source = _strip_comments(source)
+    source = re.sub(r"\\[ \t]*\n", " ", _strip_comments(source))
     active = True
     stack: list[tuple[bool, bool, bool]] = []
     output: list[str] = []
@@ -725,6 +727,10 @@ class _Evaluator:
             return self.graph.approximate_constant(
                 1.0 / (2.0 * (6.0 * math.pi**2) ** (1.0 / 3.0))
             )
+        if name == "X_FACTOR_C":
+            return self.graph.approximate_constant(
+                3.0 / 8.0 * (3.0 / math.pi) ** (1.0 / 3.0) * 4.0 ** (2.0 / 3.0)
+            )
         if name == "K_FACTOR_C":
             return self.graph.approximate_constant(
                 3.0 / 10.0 * (6.0 * math.pi**2) ** (2.0 / 3.0)
@@ -755,6 +761,7 @@ class _Evaluator:
             "tt",
             "sqrt",
             "arcsinh",
+            "arctan",
             "exp",
             "log",
             "log1p",
@@ -1197,6 +1204,8 @@ class _Evaluator:
             return value.pow(0.5)
         if name == "arcsinh":
             return self.graph.transcendental_unary("asinh", value)
+        if name == "arctan":
+            return self.graph.transcendental_unary("atan", value)
         if name == "exp":
             return self.graph.exponential(value)
         if name in ("log", "log1p", "expm1"):

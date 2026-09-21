@@ -45,6 +45,8 @@ DENSITY_FITTING_CUDA = 2
 DENSITY_FITTING_AUTO = 3
 PRECISION_FP64 = 0
 PRECISION_AUTO = 1
+XC_EXECUTION_DEVICE_FUSED = 0
+XC_EXECUTION_HOST_UNFUSED = 1
 BASIS_CARTESIAN = 0
 BASIS_SPHERICAL = 1
 D3_DAMPING_BJ = 1
@@ -203,6 +205,7 @@ class KsOptionsDescriptor(ctypes.Structure):
         ("semilocal_exchange_scale", ctypes.c_double),
         ("semilocal_correlation_scale", ctypes.c_double),
         ("fock_exchange_coefficient", ctypes.c_double),
+        ("xc_execution_schedule", ctypes.c_int32),
     ]
 
 

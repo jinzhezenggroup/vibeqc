@@ -29,9 +29,10 @@ independent references, and performance claims require reproducible gates.
 ## Features
 
 - CPU reference and CUDA backends.
-- Molecular GFN2-xTB energy and analytic forces on CPU, including charged and
-  standard restricted open-shell states for H-Rn. The method uses its intrinsic
-  minimal basis; native CUDA and ragged-batch admission remain separate gates.
+- Molecular GFN2-xTB energy and analytic forces on CPU and native CUDA SDK builds,
+  including charged and standard restricted open-shell states for H-Rn. The method
+  uses its intrinsic minimal basis; CUDA wheels and ragged-batch admission remain
+  separate gates.
 - Ragged batches, per-system failure isolation, and density warm starts.
 - Contracted Cartesian and real-spherical Gaussian bases: `s` through `g` on
   CPU, `s` through `f` on CUDA. See [higher angular momentum](docs/high_angular_momentum.md).
