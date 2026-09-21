@@ -89,6 +89,8 @@ def _evaluate(
             )
         tolerance = 1e-11 if node.spec.dtype == "float64" else 1e-6
         for symmetry in node.spec.symmetries:
+            if node.spec.dtype == "int64":
+                raise ValueError("int64 TensorIR controls cannot declare symmetry")
             if not np.allclose(
                 value,
                 symmetry.sign * value.transpose(symmetry.permutation),
@@ -136,6 +138,25 @@ def _evaluate(
         # contraction-tree selection is a separate lowering concern.
         result = np.einsum(*arguments, list(a["output"]), optimize=False)
         return result * _coefficient(a["coefficient"], node.spec.dtype)
+    if op == "runtime_indexed_select":
+        value, maps = operands[0], operands[1:]
+        axes = tuple(a["axes"])
+        result = np.empty(node.spec.shape, dtype=node.spec.dtype)
+        for mapping, axis in zip(maps, axes, strict=True):
+            if np.any(mapping < 0) or np.any(mapping >= value.shape[axis]):
+                raise ValueError(
+                    "runtime_indexed_select coordinate is outside its source axis"
+                )
+        selected = dict(zip(axes, maps, strict=True))
+        for domain_coordinate in range(node.spec.shape[0]):
+            source = tuple(
+                int(selected[axis][domain_coordinate])
+                if axis in selected
+                else slice(None)
+                for axis in range(value.ndim)
+            )
+            result[domain_coordinate] = value[source]
+        return result
     value = operands[0]
     if op == "transpose":
         return value.transpose(a["axes"])
@@ -229,7 +250,7 @@ def _run(
                         feeds,
                         (
                             None
-                            if precision is None
+                            if precision is None or names[node] not in precision
                             else precision[names[node]].accumulation_dtype
                         ),
                     )

@@ -146,6 +146,11 @@ def r2scan3c_d4_eeq() -> D4Spec:
     return D4Spec(**_parameters.d4_parameters("r2SCAN-3c"))
 
 
+def pbe_d4_eeq_spec() -> D4Spec:
+    """Audited PBE-D4(BJ-EEQ-ATM) parameters from the pinned D4 catalog."""
+    return D4Spec(**_parameters.d4_parameters("PBE-D4(BJ-EEQ-ATM)"))
+
+
 @dataclass(frozen=True)
 class DispersionCorrectionPrimitive:
     """Geometry-only correction request, separate from semilocal XC and Fock.

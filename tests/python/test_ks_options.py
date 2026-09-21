@@ -341,6 +341,31 @@ def test_ks_options_v2_suffix_preserves_v1_prefix_and_pbe0_coefficients() -> Non
         new.semilocal_correlation_scale,
         new.fock_exchange_coefficient,
     ) == (0.75, 1.0, -0.125)
+    with pytest.raises(NotImplementedError, match="cannot serialize composition"):
+        native_ks_options(hybrid, version=1)
+
+
+def test_ks_options_v3_schedule_suffix_preserves_older_prefixes() -> None:
+    from vibeqc import _native
+
+    fused = resolve_ks_options("pbe-rks")
+    unfused = resolve_ks_options("pbe-rks", KsOptions(xc_schedule="host_unfused"))
+    v1 = native_ks_options(fused, version=1)
+    v2 = native_ks_options(fused, version=2)
+    v3 = native_ks_options(unfused, version=3)
+
+    assert v1.struct_size == _native.KsOptionsDescriptor.composition_version.offset
+    assert v2.struct_size == _native.KsOptionsDescriptor.xc_execution_schedule.offset
+    assert v3.struct_size > v2.struct_size
+    assert v3.xc_execution_schedule == _native.XC_EXECUTION_HOST_UNFUSED
+    assert fused.identity != unfused.identity
+    assert fused.to_payload()["xc_schedule"] == "device_fused"
+    assert unfused.to_payload()["xc_schedule"] == "host_unfused"
+    for version in (1, 2):
+        with pytest.raises(NotImplementedError, match="cannot serialize execution"):
+            native_ks_options(unfused, version=version)
+    with pytest.raises(ValueError, match="XC schedule"):
+        KsOptions(xc_schedule="unknown")
 
 
 def test_custom_model_changes_plan_identity_without_materializing_grid(
