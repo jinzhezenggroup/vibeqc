@@ -130,9 +130,7 @@ class CudaTriplesTiles:
         capacity = runtime_tile_capacity(nocc, nvir, chunk)
         attempts = []
         while True:
-            program = build_runtime_tile_triples_program(
-                nocc, nvir, capacity=capacity
-            )
+            program = build_runtime_tile_triples_program(nocc, nvir, capacity=capacity)
             try:
                 plan = self._plan_cuda(
                     program,
@@ -140,10 +138,7 @@ class CudaTriplesTiles:
                     max_bytes=self.config.max_bytes,
                 )
             except ValueError as error:
-                if (
-                    "infeasible tensor byte budget" not in str(error)
-                    or capacity == 1
-                ):
+                if "infeasible tensor byte budget" not in str(error) or capacity == 1:
                     raise
                 attempts.append(
                     {
@@ -275,9 +270,7 @@ class CudaTriplesTiles:
                     timing["run_s"] += time.perf_counter() - t0
 
                     t0 = time.perf_counter()
-                    et_batch = float(
-                        resident.download(leases["triples_energy"])[()]
-                    )
+                    et_batch = float(resident.download(leases["triples_energy"])[()])
                     timing["download_s"] += time.perf_counter() - t0
                     et_tile += et_batch
                 per_tile.append(et_tile)
