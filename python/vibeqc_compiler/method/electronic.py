@@ -129,9 +129,7 @@ class IterationSpec:
         object.__setattr__(self, "states", states)
         _identity(self.solver_contract, "solver contract")
 
-        def mapping(
-            values: typing.Any, label: str
-        ) -> tuple[tuple[str, str], ...]:
+        def mapping(values: typing.Any, label: str) -> tuple[tuple[str, str], ...]:
             if isinstance(values, dict):
                 values = tuple(values.items())
             values = tuple(values)
@@ -144,7 +142,9 @@ class IterationSpec:
                     (_identifier(state, f"{label} state"), _identifier(value, label))
                 )
             if {state for state, _ in checked} != set(states):
-                raise ValueError(f"{label} must cover every iteration state exactly once")
+                raise ValueError(
+                    f"{label} must cover every iteration state exactly once"
+                )
             if len({state for state, _ in checked}) != len(checked):
                 raise ValueError(f"duplicate {label} state")
             return tuple(sorted(checked))
@@ -245,7 +245,9 @@ class ElectronicMethodIR:
         operators = tuple(sorted(tuple(self.operators), key=lambda item: item.name))
         if not states or any(not isinstance(item, StateSpec) for item in states):
             raise ValueError("electronic method requires typed persistent state")
-        if not operators or any(not isinstance(item, OperatorSpec) for item in operators):
+        if not operators or any(
+            not isinstance(item, OperatorSpec) for item in operators
+        ):
             raise ValueError("electronic method requires typed operators")
         if not isinstance(self.energy, EnergySpec):
             raise TypeError("energy must be EnergySpec")
@@ -253,7 +255,9 @@ class ElectronicMethodIR:
             raise TypeError("iteration must be IterationSpec")
         if self.response is not None and not isinstance(self.response, ResponseSpec):
             raise TypeError("response must be ResponseSpec")
-        if self.derivative is not None and not isinstance(self.derivative, DerivativeSpec):
+        if self.derivative is not None and not isinstance(
+            self.derivative, DerivativeSpec
+        ):
             raise TypeError("derivative must be DerivativeSpec")
         object.__setattr__(self, "sources", sources)
         object.__setattr__(self, "states", states)
@@ -270,7 +274,9 @@ class ElectronicMethodIR:
         for operator in operators:
             for output in operator.outputs:
                 if output in state_names or output in sources:
-                    raise ValueError(f"operator output shadows declared value {output!r}")
+                    raise ValueError(
+                        f"operator output shadows declared value {output!r}"
+                    )
                 if output in owner:
                     raise ValueError(f"duplicate operator output {output!r}")
                 owner[output] = operator.name
@@ -306,7 +312,9 @@ class ElectronicMethodIR:
                 raise ValueError("iteration references undeclared state")
             for _, value in (*self.iteration.residuals, *self.iteration.updates):
                 if value not in owner:
-                    raise ValueError("iteration residual/update must be operator output")
+                    raise ValueError(
+                        "iteration residual/update must be operator output"
+                    )
 
         if self.response is not None and set(self.response.states) - state_names:
             raise ValueError("response references undeclared state")
@@ -558,12 +566,10 @@ def rccsd_electronic_method_ir(program: typing.Any) -> ElectronicMethodIR:
         raise TypeError("RCCSD projection requires a TensorIR Program")
     required = {"correlation_energy", "singles_residual", "doubles_residual"}
     if not required <= set(program.outputs):
-        raise ValueError("RCCSD TensorIR must expose energy, singles and doubles residuals")
-    inputs = {
-        node.attrs["name"]
-        for node in program.live_nodes
-        if node.op == "input"
-    }
+        raise ValueError(
+            "RCCSD TensorIR must expose energy, singles and doubles residuals"
+        )
+    inputs = {node.attrs["name"] for node in program.live_nodes if node.op == "input"}
     if not {"t1", "t2"} <= inputs:
         raise ValueError("RCCSD TensorIR must expose t1 and t2 state inputs")
     sources = tuple(sorted((inputs - {"t1", "t2"}) | {"denominators"}))

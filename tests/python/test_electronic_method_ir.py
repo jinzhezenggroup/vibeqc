@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 
 import pytest
-from tools.vibeqc_cc.doubles import build_ccsd_program
 from vibeqc_compiler.method import (
     ElectronicMethodIR,
     EnergySpec,
@@ -13,10 +12,12 @@ from vibeqc_compiler.method import (
     OperatorSpec,
     StateSpec,
     rccsd_electronic_method_ir,
+    resolve_method,
     rhf_electronic_method_ir,
     rks_electronic_method_ir,
-    resolve_method,
 )
+
+from tools.vibeqc_cc.doubles import build_ccsd_program
 
 
 def _before(order: tuple[str, ...], first: str, second: str) -> bool:
