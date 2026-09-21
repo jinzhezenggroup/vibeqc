@@ -26,7 +26,9 @@ def test_cpu_allocation_rejects_nonpositive_or_noninteger_counts(
 
 def test_cpu_allocation_keeps_legacy_positional_time() -> None:
     profile = CudaExecutionProfile(False, "srun", "main", "gpu:1", 1, 1, "00:03:00")
-    executor = CudaBenchmarkExecutor(30, False, "srun", "main", "gpu:1", 1, 1, "00:03:00")
+    executor = CudaBenchmarkExecutor(
+        30, False, "srun", "main", "gpu:1", 1, 1, "00:03:00"
+    )
     assert profile.slurm_time == executor.profile.slurm_time == "00:03:00"
     assert profile.cpus_per_task is None and executor.profile.cpus_per_task is None
     assert "--time=00:03:00" in profile.wrap(["worker"])

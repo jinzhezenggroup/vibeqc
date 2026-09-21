@@ -143,7 +143,9 @@ class CudaExecutionProfile:
         if self.cpus_per_task is not None and (
             type(self.cpus_per_task) is not int or self.cpus_per_task < 1
         ):
-            raise ValueError("CUDA execution cpus_per_task must be a positive integer or None")
+            raise ValueError(
+                "CUDA execution cpus_per_task must be a positive integer or None"
+            )
         if not self.srun.strip():
             raise ValueError("CUDA execution srun command must be non-empty")
         for name in ("partition", "gres", "slurm_time"):
