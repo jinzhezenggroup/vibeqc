@@ -52,7 +52,7 @@ def main() -> None:
         parser.error("--policy-output applies only to values")
     if args.derivative_policy_output and not args.derivatives:
         parser.error("--derivative-policy-output requires --derivatives")
-    if not args.output and not args.cpu_st_output:
+    if not args.output and not args.cpu_st_output and not args.derivative_policy_output:
         parser.error("at least one generated output is required")
     if args.inventory and not args.output:
         parser.error("--inventory requires --output")

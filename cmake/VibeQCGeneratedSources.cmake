@@ -4,6 +4,21 @@ include_guard(GLOBAL)
 # live in VibeQCGenerated.cmake; this file owns generator inputs/outputs and the
 # target(s) that consume each generated family.
 macro(vibeqc_register_host_generated_sources target)
+  # The native host policy is built even when CUDA execution is disabled.
+  # Generate its CUDA-independent constants once for both build variants.
+  set(VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_derivative_policy.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_one_electron_derivative_policy_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
+    OUTPUTS "${VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cooperative_schedule.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_derivative_policy_cuda.py"
+    ARGS --derivatives --derivative-policy-output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER}")
+
   set(VIBEQC_METHOD_PARAMETERS_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_method_parameters.hpp")
   vibeqc_register_generated_sources(
@@ -259,23 +274,16 @@ macro(vibeqc_register_cuda_generated_sources target)
 
   set(VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_derivatives.cuh")
-  set(VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER
-      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_one_electron_derivative_policy.cuh")
   vibeqc_register_generated_sources(
     TARGET ${target}
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_one_electron_kernels.py"
-    OUTPUTS
-      "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
-      "${VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER}"
+    OUTPUTS "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cooperative_schedule.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_derivative_policy_cuda.py"
-    ARGS
-      --derivatives
-      --output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
-      --derivative-policy-output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER}")
+    ARGS --derivatives --output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}")
 
   set(VIBEQC_WEIGHTED_ERI_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/weighted_eri.cuh")
