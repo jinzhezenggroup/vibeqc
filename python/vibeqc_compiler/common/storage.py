@@ -389,7 +389,8 @@ def analyze_storage(
                     and slot["space"] == item.space
                     and slot["last"] == item.first_phase
                     and slot["last_owner"] == expected_donor
-                    and slot["bytes"] == item.bytes
+                    # Earlier best-fit reuse can leave the donor in a larger slot.
+                    and slot["bytes"] >= item.bytes
                 ):
                     donated_index = index
                     break

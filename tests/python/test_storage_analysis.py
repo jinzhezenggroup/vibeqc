@@ -212,3 +212,40 @@ def test_donation_requires_final_use_owned_equal_capacity_and_explicit_effect() 
             inputs=("x",),
             outputs=("c",),
         )
+
+
+@pytest.mark.parametrize("previous_capacity", (128, 256, 512))
+def test_donation_preserves_owner_slot_after_larger_capacity_reuse(
+    previous_capacity: int,
+) -> None:
+    values = (
+        BufferValue("x", 8, "device", compiler_owned=False),
+        BufferValue("large", previous_capacity, "device"),
+        BufferValue("donor", 64, "device"),
+        BufferValue("recipient", 64, "device"),
+        BufferValue("final", 64, "device"),
+    )
+    operations = (
+        explicit("large", ("x",), ("large",)),
+        explicit("small", ("x",), ("donor",)),
+        BufferOp(
+            "transfer",
+            ("donor",),
+            ("recipient",),
+            MemoryEffect.EXPLICIT,
+            donations=(("donor", "recipient"),),
+        ),
+        BufferOp(
+            "transfer_again",
+            ("recipient",),
+            ("final",),
+            MemoryEffect.EXPLICIT,
+            donations=(("recipient", "final"),),
+        ),
+    )
+    analysis = analyze_storage(values, operations, inputs=("x",), outputs=("final",))
+    assert analysis.slot_for("large") == analysis.slot_for("donor")
+    assert analysis.slot_for("donor") == analysis.slot_for("recipient")
+    assert analysis.slot_for("recipient") == analysis.slot_for("final")
+    assert len(analysis.slots) == 1
+    assert analysis.slots[0].bytes == previous_capacity
