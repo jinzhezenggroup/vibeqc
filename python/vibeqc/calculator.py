@@ -477,32 +477,39 @@ class Calculator:
                 for node in supplied_method_ir.primitives
                 if isinstance(node, GeometricCounterpoisePrimitive)
             )
-            if len(corrections) != 1:
-                raise NotImplementedError(
-                    "Calculator MethodIR execution requires exactly one supported dispersion correction"
-                )
-            correction = corrections[0].specification
-            if isinstance(correction, D3Spec):
-                if gcp_nodes:
+            electronic_family = None
+            if corrections:
+                if len(corrections) != 1:
                     raise NotImplementedError(
-                        "Calculator D3 execution does not accept a gCP primitive"
+                        "Calculator MethodIR execution requires exactly one supported dispersion correction"
                     )
-                electronic_family = "pbe"
-            elif isinstance(correction, D4Spec):
-                expected = resolve_method("R2SCAN-3c", spin=supplied_method_ir.spin)
-                if (
-                    len(gcp_nodes) != 1
-                    or supplied_method_ir.manifest_identity
-                    != expected.manifest_identity
-                ):
+                correction = corrections[0].specification
+                if isinstance(correction, D3Spec):
+                    if gcp_nodes:
+                        raise NotImplementedError(
+                            "Calculator D3 execution does not accept a gCP primitive"
+                        )
+                    electronic_family = "pbe"
+                elif isinstance(correction, D4Spec):
+                    expected = resolve_method("R2SCAN-3c", spin=supplied_method_ir.spin)
+                    if (
+                        len(gcp_nodes) != 1
+                        or supplied_method_ir.manifest_identity
+                        != expected.manifest_identity
+                    ):
+                        raise NotImplementedError(
+                            "Calculator D4+gCP execution requires the canonical r2SCAN-3c MethodIR"
+                        )
+                    electronic_family = "r2scan"
+                else:
                     raise NotImplementedError(
-                        "Calculator D4+gCP execution requires the canonical r2SCAN-3c MethodIR"
+                        "Calculator MethodIR execution does not support this correction family"
                     )
-                electronic_family = "r2scan"
-            else:
+            elif gcp_nodes:
                 raise NotImplementedError(
-                    "Calculator MethodIR execution does not support this correction family"
+                    "Calculator MethodIR execution does not accept gCP without its qualified composite owner"
                 )
+
             electronic_primitives = tuple(
                 node
                 for node in supplied_method_ir.primitives
@@ -514,11 +521,15 @@ class Calculator:
                     ),
                 )
             )
-            electronic_ir = replace(
-                supplied_method_ir,
-                identifier=f"{supplied_method_ir.identifier}/electronic",
-                primitives=electronic_primitives,
-                basis=None,
+            electronic_ir = (
+                supplied_method_ir
+                if not corrections and not gcp_nodes
+                else replace(
+                    supplied_method_ir,
+                    identifier=f"{supplied_method_ir.identifier}/electronic",
+                    primitives=electronic_primitives,
+                    basis=None,
+                )
             )
             semilocal = tuple(
                 node
@@ -530,10 +541,17 @@ class Calculator:
                 if len(semilocal) == 1
                 else set()
             )
+            if electronic_family is None:
+                if not components <= {"GGA_X_PBE", "GGA_C_PBE"}:
+                    raise NotImplementedError(
+                        "Calculator electronic MethodIR execution currently supports the PBE family"
+                    )
+                electronic_family = "pbe"
+
             if electronic_family == "pbe":
                 if not components <= {"GGA_X_PBE", "GGA_C_PBE"}:
                     raise NotImplementedError(
-                        "Calculator D3 execution currently supports the PBE electronic family"
+                        "Calculator PBE-family MethodIR has incompatible semilocal components"
                     )
                 method = (
                     "pbe-uks" if supplied_method_ir.spin == "polarized" else "pbe-rks"
@@ -548,6 +566,7 @@ class Calculator:
                     if supplied_method_ir.spin == "polarized"
                     else "r2scan-rks"
                 )
+
             from .ks import KsOptions
 
             if ks_options is None:
@@ -562,7 +581,8 @@ class Calculator:
                 )
             else:
                 ks_options = replace(ks_options, composition=electronic_ir)
-            self._dispersion_method_ir = supplied_method_ir
+            if corrections:
+                self._dispersion_method_ir = supplied_method_ir
 
         if not isinstance(method, str) or method.lower() not in _METHODS:
             raise ValueError(f"unknown method {method!r}")
@@ -883,6 +903,10 @@ class Calculator:
                 raise NotImplementedError(
                     "native library does not support KS execution schedules v3"
                 )
+            elif self._ks_options_version < 5 and self._ks_options.requires_nonlocal_v5:
+                raise NotImplementedError(
+                    "native library does not support KS nonlocal correlation v5"
+                )
 
         available = ctypes.c_int32()
         _native.check(
@@ -1052,7 +1076,7 @@ class Calculator:
             descriptor.ks_options = ctypes.pointer(
                 native_ks_options(
                     active_ks_options,
-                    version=min(self._ks_options_version, 4),
+                    version=min(self._ks_options_version, 5),
                 )
             )
         if self._method in _COUPLED_CLUSTER_METHODS:
@@ -1677,7 +1701,7 @@ class Calculator:
             else:
                 native_ks_options(
                     selection.options,
-                    version=min(self._ks_options_version, 4),
+                    version=min(self._ks_options_version, 5),
                 )
         return selection
 

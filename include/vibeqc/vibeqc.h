@@ -586,9 +586,10 @@ typedef struct vibeqc_system_descriptor {
 } vibeqc_system_descriptor;
 
 /** Native KS model snapshot, copied during preparation. Suffixes supply resolved
- * composition (v2), XC execution schedule (v3), and compiler-resolved spin/family
- * identity (v4). Legacy v1/v2/v3 callers retain method-selector compatibility
- * projection; v1/v2 retain device-fused CUDA XC. */
+ * composition (v2), XC execution schedule (v3), compiler-resolved spin/family
+ * identity (v4), and optional nonlocal-correlation primitive parameters (v5).
+ * Legacy v1/v2/v3/v4 callers retain method-selector compatibility projection;
+ * v1/v2 retain device-fused CUDA XC. */
 typedef struct vibeqc_ks_options {
   uint32_t struct_size;
   uint32_t abi_version;
@@ -631,9 +632,19 @@ typedef struct vibeqc_ks_options {
   uint32_t spin_channels;
   uint32_t semilocal_family;
   uint32_t reserved_v4_padding;
+  /** Optional v5 suffix: one MethodIR NonlocalCorrelation contribution.
+   * Version 0 means absent; version 1 makes the fields below authoritative.
+   * This is a scientific primitive description, not a named-method selector.
+   * maximum_bytes bounds the retained/native pair-provider workspace. */
+  uint32_t nonlocal_correlation_version;
+  vibeqc_nonlocal_variant nonlocal_variant;
+  double nonlocal_b;
+  double nonlocal_c;
+  double nonlocal_coefficient;
+  uint64_t nonlocal_maximum_bytes;
 } vibeqc_ks_options;
 
-/** Pure capability query. Version 4 accepts the v1/v2/v3 prefixes and v4 suffix. */
+/** Pure capability query. Version 5 accepts the v1/v2/v3/v4 prefixes and v5 suffix. */
 VIBEQC_API uint32_t vibeqc_ks_options_version(void);
 
 typedef struct vibeqc_method_descriptor {

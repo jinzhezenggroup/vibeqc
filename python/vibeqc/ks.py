@@ -64,6 +64,7 @@ class KsOptions:
     tile_points: int = 256
     xc_schedule: str = "device_fused"
     scf_domain: str = SCF_DOMAIN
+    nonlocal_memory_budget_bytes: int = 256 << 20
     _method_ir: MethodIR | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -84,6 +85,13 @@ class KsOptions:
             raise ValueError("KS XC schedule must be 'device_fused' or 'host_unfused'")
         if self.scf_domain not in _NATIVE_SCF_DOMAINS:
             raise NotImplementedError("unsupported native KS tail/spin domain policy")
+        if (
+            type(self.nonlocal_memory_budget_bytes) is not int
+            or not 0 < self.nonlocal_memory_budget_bytes < 2**64
+        ):
+            raise ValueError(
+                "nonlocal_memory_budget_bytes must be a positive uint64 integer"
+            )
 
     @property
     def method_ir(self) -> typing.Any:
@@ -113,6 +121,10 @@ class KsOptions:
         return self.xc_schedule != "device_fused"
 
     @property
+    def requires_nonlocal_v5(self) -> bool:
+        return self.execution_plan.nonlocal_correlation is not None
+
+    @property
     def ao_order(self) -> typing.Any:
         """SCF needs the potential; GGA/meta-GGA compositions need first AO jets."""
         if self.functional is None:
@@ -140,6 +152,10 @@ class KsOptions:
         if self._method_ir is not None:
             payload["method_ir"] = self._method_ir.to_payload()
             payload["method_ir_identity"] = self._method_ir.identity
+            if self.execution_plan.nonlocal_correlation is not None:
+                payload["nonlocal_memory_budget_bytes"] = (
+                    self.nonlocal_memory_budget_bytes
+                )
         return payload
 
     @property
@@ -165,8 +181,6 @@ def _native_execution_plan(method_ir: typing.Any) -> typing.Any:
             "require a separate qualified composition owner"
         )
     missing = []
-    if plan.nonlocal_correlation is not None:
-        missing.append("nonlocal-correlation")
     missing.extend(
         f"{term.operator}-exchange"
         for term in plan.exchange
@@ -531,7 +545,7 @@ def profiled_ks_options(
     ).options
 
 
-def native_ks_options(options: typing.Any, *, version: int = 4) -> typing.Any:
+def native_ks_options(options: typing.Any, *, version: int = 5) -> typing.Any:
     """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
     import ctypes
 
@@ -546,8 +560,8 @@ def native_ks_options(options: typing.Any, *, version: int = 4) -> typing.Any:
         radii = (ctypes.c_double * 119)(*[fill] * 119)
         for z, radius in grid.element_radii:
             radii[z] = radius
-    if version not in (1, 2, 3, 4):
-        raise ValueError("native KS options version must be 1, 2, 3, or 4")
+    if version not in (1, 2, 3, 4, 5):
+        raise ValueError("native KS options version must be 1, 2, 3, 4, or 5")
     if version == 1 and options.requires_composition_v2:
         raise NotImplementedError(
             "native KS options v1 cannot serialize composition options v2"
@@ -556,6 +570,10 @@ def native_ks_options(options: typing.Any, *, version: int = 4) -> typing.Any:
         raise NotImplementedError(
             f"native KS options v{version} cannot serialize execution schedules v3"
         )
+    if version < 5 and options.requires_nonlocal_v5:
+        raise NotImplementedError(
+            f"native KS options v{version} cannot serialize nonlocal correlation v5"
+        )
     size = (
         _native.KsOptionsDescriptor.composition_version.offset
         if version == 1
@@ -563,10 +581,28 @@ def native_ks_options(options: typing.Any, *, version: int = 4) -> typing.Any:
         if version == 2
         else _native.KsOptionsDescriptor.execution_plan_version.offset
         if version == 3
+        else _native.KsOptionsDescriptor.nonlocal_correlation_version.offset
+        if version == 4
         else ctypes.sizeof(_native.KsOptionsDescriptor)
     )
     spin_channels = 1 if options.method_ir.spin == "unpolarized" else 2
     semilocal_family = _native_semilocal_family(options.method_ir)
+    nonlocal_primitive = options.execution_plan.nonlocal_correlation
+    nonlocal_version = 1 if version >= 5 and nonlocal_primitive is not None else 0
+    variants = {"vv10": _native.NONLOCAL_VV10, "rvv10": _native.NONLOCAL_RVV10}
+    if nonlocal_primitive is not None:
+        try:
+            nonlocal_variant = variants[nonlocal_primitive.spec.variant]
+        except KeyError as error:
+            raise NotImplementedError(
+                f"unsupported native nonlocal variant {nonlocal_primitive.spec.variant!r}"
+            ) from error
+        nonlocal_b = float(nonlocal_primitive.spec.b)
+        nonlocal_c = float(nonlocal_primitive.spec.c)
+        nonlocal_coefficient = float(nonlocal_primitive.coefficient)
+    else:
+        nonlocal_variant = 0
+        nonlocal_b = nonlocal_c = nonlocal_coefficient = 0.0
     return _native.KsOptionsDescriptor(
         size,
         _native.ABI_VERSION,
@@ -591,4 +627,10 @@ def native_ks_options(options: typing.Any, *, version: int = 4) -> typing.Any:
         spin_channels if version >= 4 else 0,
         semilocal_family if version >= 4 else 0,
         0,
+        nonlocal_version,
+        nonlocal_variant if nonlocal_version else 0,
+        nonlocal_b if nonlocal_version else 0.0,
+        nonlocal_c if nonlocal_version else 0.0,
+        nonlocal_coefficient if nonlocal_version else 0.0,
+        options.nonlocal_memory_budget_bytes if nonlocal_version else 0,
     )

@@ -49,6 +49,7 @@ function(vibeqc_add_dft_sources target)
     src/dft/dispersion/d3_runtime.cpp
     src/dft/dispersion/d4_runtime.cpp
     src/dft/nonlocal_correlation/vv10_runtime.cpp
+    src/dft/nonlocal_correlation/vv10_integration.cpp
     src/methods/dft_method.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE

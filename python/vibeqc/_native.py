@@ -213,6 +213,12 @@ class KsOptionsDescriptor(ctypes.Structure):
         ("spin_channels", ctypes.c_uint32),
         ("semilocal_family", ctypes.c_uint32),
         ("reserved_v4_padding", ctypes.c_uint32),
+        ("nonlocal_correlation_version", ctypes.c_uint32),
+        ("nonlocal_variant", ctypes.c_int32),
+        ("nonlocal_b", ctypes.c_double),
+        ("nonlocal_c", ctypes.c_double),
+        ("nonlocal_coefficient", ctypes.c_double),
+        ("nonlocal_maximum_bytes", ctypes.c_uint64),
     ]
 
 
