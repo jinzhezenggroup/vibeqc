@@ -358,3 +358,116 @@ def compile_runtime(
     ) != file_hash(library):
         raise ValueError(f"{'CPU' if cpu else 'CUDA'} runtime cache integrity failure")
     return CudaArtifact(library, metadata)
+
+
+def compile_runtime_bundle(
+    compiler: typing.Any,
+    cache: typing.Any,
+    sources: typing.Iterable[typing.Any],
+    *,
+    headers: typing.Any = (),
+    libraries: typing.Any = (),
+    options: typing.Any = None,
+) -> typing.Any:
+    """Compile exact CPU translation units into one hash-verified shared artifact.
+
+    This is deliberately CPU-only for the first aggregation slice.  It preserves
+    each generated program as an independent translation unit while paying the
+    shared-library link/load cost once for the exact ordered source set.
+    """
+    if not isinstance(compiler, CppCompilerAdapter):
+        raise TypeError(
+            "native runtime bundles currently require a CPU compiler adapter"
+        )
+    sources = tuple(Path(source).resolve() for source in sources)
+    if not sources:
+        raise ValueError("native runtime bundle requires at least one source")
+    if options is None:
+        options = ("-ffp-contract=off",)
+    options = tuple(options)
+    libraries = tuple(libraries)
+    headers = tuple(Path(header).resolve() for header in headers)
+    # Preserve source/header associations without pinning installation paths.
+    logical_root = Path(os.path.commonpath([p.parent for p in (*sources, *headers)]))
+    executable = Path(compiler.cxx).resolve()
+    identity = {
+        "schema": 2,
+        "backend": "cpu-bundle",
+        "sources": [
+            {
+                "name": source.relative_to(logical_root).as_posix(),
+                "sha256": file_hash(source),
+            }
+            for source in sources
+        ],
+        "headers": [
+            {
+                "name": header.relative_to(logical_root).as_posix(),
+                "sha256": file_hash(header),
+            }
+            for header in headers
+        ],
+        "compiler": {
+            "invocation": str(compiler.cxx),
+            "path": str(executable),
+            "sha256": file_hash(executable),
+            "version": subprocess.check_output(
+                [str(executable), "--version"], text=True, timeout=30
+            ),
+        },
+        "target": asdict(compiler.target),
+        "flags": ["c++17", "O3", "shared", "fPIC", *options],
+        "libraries": list(libraries),
+        "environment": {
+            key: os.environ.get(key, "")
+            for key in (
+                "CPATH",
+                "CPLUS_INCLUDE_PATH",
+                "LIBRARY_PATH",
+                "COMPILER_PATH",
+                "GCC_EXEC_PREFIX",
+                "SOURCE_DATE_EPOCH",
+            )
+        },
+    }
+    key = canonical_hash(identity)
+    cache = Path(cache).resolve()
+    cache.mkdir(parents=True, exist_ok=True)
+    destination = cache / key
+    if not destination.exists():
+        with tempfile.TemporaryDirectory(
+            prefix=".native-runtime-bundle-", dir=cache
+        ) as temporary:
+            folder = Path(temporary)
+            library = folder / "runtime.so"
+            result = compiler.compile_shared_many(
+                sources, library, libraries=libraries, options=options
+            )
+            (folder / "compiler.log").write_text(result.stdout + result.stderr)
+            if result.returncode:
+                raise RuntimeError(
+                    "CPU runtime bundle compilation failed: "
+                    + result.stdout
+                    + result.stderr
+                )
+            metadata = {
+                "identity": identity,
+                "key": key,
+                "binary_sha256": file_hash(library),
+                "compile_seconds": result.duration_seconds,
+                "source_count": len(sources),
+                "resources": [],
+            }
+            atomic_json(folder / "artifact.json", metadata)
+            try:
+                os.rename(folder, destination)
+            except OSError:
+                if not destination.is_dir():
+                    raise
+    metadata = json.loads((destination / "artifact.json").read_text())
+    library = destination / "runtime.so"
+    if canonical_hash(metadata.get("identity")) != key or metadata.get(
+        "binary_sha256"
+    ) != file_hash(library):
+        raise ValueError("CPU runtime bundle cache integrity failure")
+    return CudaArtifact(library, metadata)
