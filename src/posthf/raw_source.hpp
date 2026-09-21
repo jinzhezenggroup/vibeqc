@@ -31,7 +31,7 @@ class RawSource final : public integrals::ElectronInteractionSource {
   const core::System& auxiliary() const;
   std::size_t nbf() const override;
   std::size_t naux() const override;
-  std::size_t retained_numeric_bytes() const override { return source_capacity(orbital()); }
+  std::size_t retained_numeric_bytes() const override;
   bool supports(Operator op) const noexcept override {
     switch (op) {
       case Operator::overlap:

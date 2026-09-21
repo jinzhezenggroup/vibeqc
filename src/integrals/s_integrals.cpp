@@ -1974,6 +1974,11 @@ const core::System& RawSource::auxiliary() const {
   if (!impl_->has_auxiliary) throw std::invalid_argument("auxiliary basis required");
   return impl_->auxiliary;
 }
+std::size_t RawSource::retained_numeric_bytes() const {
+  auto bytes = source_capacity(impl_->orbital);
+  if (impl_->has_auxiliary) bytes = checked_add(bytes, source_capacity(impl_->auxiliary));
+  return checked_add(bytes, checked_mul(sizeof(double), impl_->ecp_matrix.capacity()));
+}
 std::size_t RawSource::nbf() const { return impl_->public_aos.size(); }
 std::size_t RawSource::naux() const { return impl_->public_aux.size(); }
 void RawSource::read(Operator op, const std::array<std::size_t, 4>& begin,

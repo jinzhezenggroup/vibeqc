@@ -97,6 +97,16 @@ void provider_and_reference() {
   vibeqc::posthf::NativeBlockProvider provider(source, ref, 256ULL << 20, 1);
   const vibeqc::posthf::MOSlots slots{{{1, 0}, {0, 1}, {1, 0}, {0, 1}}};
   const auto values = provider.get(slots);
+  vibeqc::posthf::RawSource source_with_auxiliary(system, &system);
+  const auto source_and_auxiliary_bytes = vibeqc::posthf::checked_add(
+      vibeqc::posthf::source_capacity(source_with_auxiliary.orbital()),
+      vibeqc::posthf::source_capacity(source_with_auxiliary.auxiliary()));
+  require(source_with_auxiliary.retained_numeric_bytes() >= source_and_auxiliary_bytes,
+          "shared raw source omitted its retained auxiliary basis");
+  vibeqc::posthf::NativeBlockProvider auxiliary_provider(source_with_auxiliary, ref, 256ULL << 20,
+                                                         1);
+  require(auxiliary_provider.source_bytes() >= source_and_auxiliary_bytes,
+          "MO provider omitted the auxiliary source from endpoint memory admission");
   ForwardingInteractionSource generic_source(source);
   vibeqc::posthf::NativeBlockProvider generic_provider(generic_source, ref, 256ULL << 20, 1);
   require(generic_provider.get(slots) == values,
