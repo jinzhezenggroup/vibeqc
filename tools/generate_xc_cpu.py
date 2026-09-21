@@ -520,7 +520,7 @@ def emit_pbe_polarized_production() -> str:
             "}",
             "",
             "inline PbeProductionValue pbe_polarized_production(",
-            "    double rho_a, double rho_b, const double (&gradient)[2][3],",
+            "    double rho_a, double rho_b, const double gradient[2][3],",
             "    double exchange_scale = 1.0, double correlation_scale = 1.0) {",
             "  PbeProductionValue out{};",
             "  const double rho_scale = rho_a + rho_b;",
