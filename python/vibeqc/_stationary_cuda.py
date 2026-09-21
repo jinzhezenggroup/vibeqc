@@ -673,10 +673,9 @@ class PreparedStationaryCudaExecution:
                     source_bytes,
                     spin_blocks=plan.spin_blocks,
                     work_budget=work_budget,
+                    profile_device=profile_device,
                 )
             )
-            if profile_device:
-                sources.enable_profile()
             needs_first = functional != 0
             grid = stack.enter_context(
                 CudaGrid(
@@ -1117,11 +1116,10 @@ def _complete_rks_cuda_gradient_diagnostic(
                         source_bytes,
                         spin_blocks=plan.spin_blocks,
                         work_budget=records,
+                        profile_device=profile_device,
                     )
                 )
                 sources.timeline = timeline
-                if profile_device:
-                    sources.enable_profile()
                 ao = stack.enter_context(
                     CudaGrid(
                         basis,
