@@ -5,13 +5,12 @@ must supply a verified :class:`CudaCompilerAdapter` and a writable cache
 directory.  Real-device validation requires CUDA; machines without CUDA
 raise an explicit error at preparation time.
 
-The host extracts exact-shape sub-blocks from the full-system tensors before
-each tile upload.  Label axes are prefix-bounded by the tile's ``a_end``,
-while the W1 virtual summation axes remain full ``nvir``.  One resident plan
-is compiled per tile range/shape; compilation is transparently cached to disk
-via ``compile_resident``.  Each resident is created per tile and closed before
-the next tile, so no full ``nocc³ × nvir³`` T3 or denominator tensor is ever
-allocated.
+The #783 path builds one fixed-capacity runtime-indexed TensorIR graph for the
+largest triangular virtual tile in the session. Full scientific inputs are
+uploaded once; each logical tile updates only int64 coordinate maps plus its
+active/degeneracy controls. One compiled resident owner therefore executes all
+tile ranges without rebuilding the scientific graph or materializing a full
+``nocc³ × nvir³`` T3/denominator tensor.
 
 The shared input guards from ``triples._validate`` and
 ``triples._check_denominators`` run once before any GPU work, matching the
@@ -81,12 +80,11 @@ class CudaTriplesResult:
 
 
 class CudaTriplesTiles:
-    """Compile per-tile plans and evaluate each through its own resident owner.
+    """Execute runtime-indexed tiles through one fixed-capacity resident owner.
 
-    One :class:`PreparedResident` is created per tile (with the exact
-    sub-block virtual dimension and triangular range), used for one
-    upload/run/download cycle, then closed.  Compilation is transparently
-    cached to disk so repeated tile shapes reuse the cached artifact.
+    One :class:`PreparedResident` is compiled/prepared per run and reused for
+    every logical tile. Scientific arrays stay resident while only bounded
+    coordinate/control vectors change between runs.
 
     The shared input/denominator guards from :mod:`triples` run once before
     any GPU work.  The CPU masked-oracle comparison is opt-in (``oracle=True``)
