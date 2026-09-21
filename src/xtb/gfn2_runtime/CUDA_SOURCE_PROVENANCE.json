@@ -2,9 +2,7 @@
   "adaptations": {
     "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references.",
     "src/backends/cuda/gfn2_preprocessing.cu": "Backport xTBloom #487: pass committed pair-list CUDA kernel descriptors by value for GPUs without pageable host-memory access.",
-    "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored.",
-    "src/runtime/nvidia_host_api.h": "Reuse CuMetal's provider-owned CUDA Driver API types/declarations instead of redeclaring the curated NVIDIA ABI surface when the CuMetal provider is selected.",
-    "src/runtime/cuda_descriptor_validation.cu": "Preserve NVIDIA stream-to-device ownership validation while using CuMetal's supported stream-flags query to validate handles on its single-device compatibility runtime."
+    "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored."
   },
   "backports": {
     "9881f3ef1c63364cecfc3c1226101b96fc38fd96": "fix(cuda): pass kernel descriptors by value (#487)"
@@ -582,9 +580,9 @@
       "vendored_sha256": "f2c875319f70a2382ac2bc4ac86619b8690530e9a6ec4196492fd0e9d826b967"
     },
     "src/runtime/cuda_descriptor_validation.cu": {
-      "adapted": true,
+      "adapted": false,
       "upstream_sha256": "7444c235bc128dc181389cf899acd8b31b6af449f2126f9e8f1222c1033ab779",
-      "vendored_sha256": "360151f8d27d8b62d3df200d8774e01f0407a0df8bc0073cccda38f1712ccda3"
+      "vendored_sha256": "7444c235bc128dc181389cf899acd8b31b6af449f2126f9e8f1222c1033ab779"
     },
     "src/runtime/cuda_descriptor_validation.hpp": {
       "adapted": false,
@@ -617,9 +615,9 @@
       "vendored_sha256": "e98c96a7fef2b1dc9445bf0db0a17e28c955800d75bf7eb3e9b0953ebc4ab29d"
     },
     "src/runtime/nvidia_host_api.h": {
-      "adapted": true,
+      "adapted": false,
       "upstream_sha256": "431b17c4f112feeff647c4331ecbefbdd751ffa58c15c5d1e2efd32f89eeee2b",
-      "vendored_sha256": "06af1e1aa277d62ba008fda1a32d2c1259812707a87eeccb19336273633bf1a7"
+      "vendored_sha256": "431b17c4f112feeff647c4331ecbefbdd751ffa58c15c5d1e2efd32f89eeee2b"
     },
     "src/runtime/request.hpp": {
       "adapted": false,

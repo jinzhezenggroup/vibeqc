@@ -41,7 +41,8 @@ function(vibeqc_add_gfn2_runtime target)
   # Native molecular GFN2 CUDA bootstrap. The CUDA owner is pinned separately
   # from the later CPU snapshot so no GFN1 runtime is pulled into VibeQC.
   # See CUDA_SOURCE_PROVENANCE.json for the exact source cohort and adaptations.
-  if(VIBEQC_ENABLE_CUDA AND NOT VIBEQC_PYTHON_WHEEL)
+  if(VIBEQC_ENABLE_CUDA AND NOT VIBEQC_PYTHON_WHEEL AND
+     NOT VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
     set(_gfn2_cuda_sources
       ${_gfn2_root}/src/backends/cuda/cuda_runtime.cu
       ${_gfn2_root}/src/runtime/cuda_descriptor_validation.cu
@@ -105,11 +106,6 @@ function(vibeqc_add_gfn2_runtime target)
       ${CMAKE_CURRENT_SOURCE_DIR}/include
       ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_definitions(vibeqc_gfn2_cuda PRIVATE XTBLOOM_HAS_CUDA=1)
-    if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
-      target_compile_definitions(vibeqc_gfn2_cuda PRIVATE VIBEQC_CUDA_PROVIDER_CUMETAL=1)
-    else()
-      target_compile_definitions(vibeqc_gfn2_cuda PRIVATE VIBEQC_CUDA_PROVIDER_CUMETAL=0)
-    endif()
     set_target_properties(vibeqc_gfn2_cuda PROPERTIES
       POSITION_INDEPENDENT_CODE ON
       CUDA_STANDARD 20

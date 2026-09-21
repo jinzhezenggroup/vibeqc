@@ -50,14 +50,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifndef VIBEQC_CUDA_PROVIDER_CUMETAL
-#define VIBEQC_CUDA_PROVIDER_CUMETAL 0
-#endif
-
-#if VIBEQC_CUDA_PROVIDER_CUMETAL
-#include <cuda.h>
-#endif
-
 #define CUBLAS_VERSION 120901  /* cuBLAS 12.9.1: minimum runtime the build targets */
 #define CUSOLVER_VERSION 11705 /* cuSOLVER 11.7.5: minimum runtime the build targets */
 
@@ -222,13 +214,6 @@ cusolverStatus_t cusolverGetProperty(libraryPropertyType type, int* value);
 /* CUDA driver API                                                     */
 /* ------------------------------------------------------------------ */
 
-#if VIBEQC_CUDA_PROVIDER_CUMETAL
-/*
- * CuMetal's CUDA compatibility headers already own CUresult/CUdeviceptr and
- * the supported Driver API declarations. Reuse that provider surface instead
- * of redeclaring NVIDIA's curated ABI aliases on top of it.
- */
-#else
 typedef enum {
   CUDA_SUCCESS = 0,
   CUDA_ERROR_INVALID_VALUE = 1,
@@ -247,7 +232,6 @@ typedef unsigned long long CUdeviceptr;
 CUresult cuGetErrorString(CUresult error, const char** pStr);
 CUresult cuMemGetAddressRange_v2(CUdeviceptr* pbase, size_t* psize, CUdeviceptr dptr);
 #define cuMemGetAddressRange cuMemGetAddressRange_v2
-#endif
 
 #ifdef __cplusplus
 } /* extern "C" */

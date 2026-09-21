@@ -286,27 +286,6 @@ xtbloom_status_t validate_cuda_stream_owner(std::int32_t device_id, cudaStream_t
     }
   }
 
-#if VIBEQC_CUDA_PROVIDER_CUMETAL
-  /*
-   * CuMetal currently exposes a single-device CUDA compatibility runtime and
-   * does not implement cudaStreamGetDevice. ScopedCudaDevice above has already
-   * selected/validated the requested device, so validate the stream handle
-   * through the portable flags query here. NVIDIA builds retain the stronger
-   * explicit stream-to-device ownership check below.
-   */
-  unsigned int stream_flags = 0u;
-  const cudaError_t cuda_status = cudaStreamGetFlags(stream, &stream_flags);
-  (void)stream_flags;
-  if (cuda_status != cudaSuccess) {
-    consume_validation_error(cuda_status);
-    error = cuda_error_message("cudaStreamGetFlags", cuda_status);
-    const xtbloom_status_t status =
-        cuda_status == cudaErrorInvalidValue || cuda_status == cudaErrorInvalidResourceHandle
-            ? XTBLOOM_STATUS_INVALID_ARGUMENT
-            : XTBLOOM_STATUS_BACKEND_UNAVAILABLE;
-    return finish_with_restore(device, status, error);
-  }
-#else
   int stream_device = -1;
   const cudaError_t cuda_status = cudaStreamGetDevice(stream, &stream_device);
   if (cuda_status != cudaSuccess) {
@@ -323,7 +302,6 @@ xtbloom_status_t validate_cuda_stream_owner(std::int32_t device_id, cudaStream_t
             ", not context device " + std::to_string(device_id);
     return finish_with_restore(device, XTBLOOM_STATUS_INVALID_ARGUMENT, error);
   }
-#endif
 
   return finish_with_restore(device, XTBLOOM_STATUS_SUCCESS, error);
 }
