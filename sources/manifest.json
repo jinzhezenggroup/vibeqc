@@ -245,9 +245,8 @@
           "url": "https://raw.githubusercontent.com/pyscf/gpu4pyscf/db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d/gpu4pyscf/lib/gvhf-rys/rys_roots_dat.cu"
         }
       },
-      "kind": "file-set",
+      "kind": "remote-file-set",
       "license": "Apache-2.0",
-      "local_root": "sources/upstream/gpu4pyscf/db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d",
       "repository": "https://github.com/pyscf/gpu4pyscf",
       "revision": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d"
     },

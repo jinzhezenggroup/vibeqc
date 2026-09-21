@@ -24,7 +24,7 @@ Generated runtime tables remain beside the code that consumes them (for example 
 - **Derived manifests** under `sources/derived/` are compatibility views rendered from `sources/manifest.json`; they must never become an independent source of truth.
 - **Remote file sets** remain schema-supported for exceptional future inputs that are too large to vendor. They materialize only under `.cache/vibeqc-sources/` and must not be required for a clean-checkout regeneration path.
 
-The current checked-in source closure covers Libxc, DFT-D4 reference inputs, EEQ/mctc-lib inputs, dispersion parameter snapshots, GPU4PySCF Rys tables, and simple-DFTD3 gCP inputs. r2SCAN-3c canonical qualification data lives under `sources/canonical/r2scan3c/`.
+The current checked-in source closure covers Libxc, DFT-D4 reference inputs, EEQ/mctc-lib inputs, dispersion parameter snapshots, and simple-DFTD3 gCP inputs. The upstream GPU4PySCF Rys table remains the one remote-only source because its 1.32 MiB file exceeds VibeQC's non-waivable 1 MiB tracked-file retention limit; its deterministic generated products remain checked in. r2SCAN-3c canonical qualification data lives under `sources/canonical/r2scan3c/`.
 
 ## Commands
 

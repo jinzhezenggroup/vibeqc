@@ -20,17 +20,23 @@ def _digest(data: bytes) -> str:
 def test_checked_in_registry_is_offline_verifiable() -> None:
     summary = source_registry.verify()
     assert summary["sources"] >= 7
-    assert summary["local_files"] >= 61
+    assert summary["local_files"] >= 60
     assert summary["cached_files"] == 0
     assert summary["products"] >= 5
     assert summary["derived_manifests"] == 4
 
 
-def test_checked_in_registry_has_no_remote_only_regeneration_inputs() -> None:
+def test_checked_in_registry_limits_remote_only_regeneration_inputs() -> None:
     registry = json.loads(source_registry.REGISTRY.read_text())
+    remote = {
+        source_id
+        for source_id, source in registry["sources"].items()
+        if source["kind"] == "remote-file-set"
+    }
+    assert remote == {"gpu4pyscf-rys"}
     for source_id, source in registry["sources"].items():
-        assert source["kind"] != "remote-file-set", source_id
-        assert source["local_root"].startswith("sources/upstream/"), source_id
+        if source_id not in remote:
+            assert source["local_root"].startswith("sources/upstream/"), source_id
 
 
 def test_libxc_registry_owns_every_pinned_source_file() -> None:
