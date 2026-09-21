@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <limits>
 
+#include "generated_gfn2_electronic_native.hpp"
+
 namespace xtbloom::detail::gfn2 {
 namespace {
 
@@ -441,26 +443,47 @@ xtbloom_status_t add_stationary_integral_adjoints(
         const std::int64_t reverse = matrix_begin + column_local * orbitals + row_local;
         const double pair_density =
             density[forward] + (forward == reverse ? 0.0 : density[reverse]);
-        const double scalar_factor =
-            -0.5 * (scalar_shell_potentials[row_shell] + scalar_shell_potentials[column_shell]);
-        overlap_adjoint[forward] += pair_density * scalar_factor;
+
+        double overlap_increment = 0.0;
+        if (!::vibeqc::xtb::generated::gfn2_scalar_integral_vjp_tensor(
+                0.0, scalar_shell_potentials[row_shell], 0.0,
+                scalar_shell_potentials[column_shell], pair_density, overlap_increment)) {
+          error = "generated stationary Mulliken overlap adjoint overflowed";
+          return XTBLOOM_STATUS_INTERNAL_ERROR;
+        }
+        overlap_adjoint[forward] += overlap_increment;
+
         for (std::int64_t component = 0; dipole_potentials != nullptr && component < 3;
              ++component) {
           const std::int64_t forward_index = component * total_matrix + forward;
           const std::int64_t reverse_index = component * total_matrix + reverse;
-          dipole_adjoint[forward_index] +=
-              -0.5 * pair_density * dipole_potentials[column_atom * 3 + component];
-          dipole_adjoint[reverse_index] +=
-              -0.5 * pair_density * dipole_potentials[row_atom * 3 + component];
+          double forward_increment = 0.0;
+          double reverse_increment = 0.0;
+          if (!::vibeqc::xtb::generated::gfn2_multipole_integral_vjp_tensor(
+                  dipole_potentials[row_atom * 3 + component],
+                  dipole_potentials[column_atom * 3 + component], pair_density,
+                  forward_increment, reverse_increment)) {
+            error = "generated stationary Mulliken dipole adjoint overflowed";
+            return XTBLOOM_STATUS_INTERNAL_ERROR;
+          }
+          dipole_adjoint[forward_index] += forward_increment;
+          dipole_adjoint[reverse_index] += reverse_increment;
         }
         for (std::int64_t component = 0; quadrupole_potentials != nullptr && component < 6;
              ++component) {
           const std::int64_t forward_index = component * total_matrix + forward;
           const std::int64_t reverse_index = component * total_matrix + reverse;
-          quadrupole_adjoint[forward_index] +=
-              -0.5 * pair_density * quadrupole_potentials[column_atom * 6 + component];
-          quadrupole_adjoint[reverse_index] +=
-              -0.5 * pair_density * quadrupole_potentials[row_atom * 6 + component];
+          double forward_increment = 0.0;
+          double reverse_increment = 0.0;
+          if (!::vibeqc::xtb::generated::gfn2_multipole_integral_vjp_tensor(
+                  quadrupole_potentials[row_atom * 6 + component],
+                  quadrupole_potentials[column_atom * 6 + component], pair_density,
+                  forward_increment, reverse_increment)) {
+            error = "generated stationary Mulliken quadrupole adjoint overflowed";
+            return XTBLOOM_STATUS_INTERNAL_ERROR;
+          }
+          quadrupole_adjoint[forward_index] += forward_increment;
+          quadrupole_adjoint[reverse_index] += reverse_increment;
         }
       }
     }

@@ -40,3 +40,8 @@ python/vibeqc_compiler/method/_generated_parameters.py linguist-generated=true
 src/xtb/gfn2_runtime/data/parameters/gfn1.hpp linguist-generated=true
 sources/xtb/gfn1/* -whitespace linguist-vendored=true
 python/vibeqc_compiler/geometry/_gfn1_data.py linguist-generated=true
+
+# Full-tree Libxc mathematical inputs; preserve upstream bytes, not runtime code.
+upstream/libxc-fulltree/7.0.0/** text eol=lf -whitespace linguist-vendored=true
+python/vibeqc_compiler/xc/libxc_bulk_catalog.json linguist-generated=true
+tests/data/xc/libxc-bulk/*.json linguist-generated=true

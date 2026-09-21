@@ -45,6 +45,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   gradients, bounded CUDA contractions and Direct/DF HF adapters.
 - [Density-fitting derivatives](df_derivatives.md): generic A/M responses,
   bounded HF weights, metric subspace response, and fused CUDA contractions.
+- [DF-CCSD(T) gradient composition](df_ccsdt_gradient.md): factorized B
+  cotangents, raw A/M pullback, fixed-rank metric response, and #158 boundaries.
 - [Integral IR contracts](integral_ir.md): operator centers, bounded raw blocks,
   external weights, serialization, and backend capability boundaries.
 - [TensorIR](tensor_ir.md): typed tensor equations, exact factors, symmetry-packed

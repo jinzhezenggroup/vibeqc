@@ -16,6 +16,7 @@ ALLOWED = {
     "initial_guess": ("scf/reference/", "scf/initial_guess/", "core/", "integrals/"),
     "gradient": ("scf/gradient/", "scf/reference/", "integrals/", "core/"),
     "solver": (
+        "solver/",
         "scf/solver/",
         "scf/gradient/",
         "scf/reference/",
