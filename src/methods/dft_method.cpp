@@ -324,12 +324,11 @@ void add_transfers(dft::CudaKsTransfers& target, const dft::CudaKsTransfers& val
 
 class KsPreparedCalculation final : public PreparedCalculation {
  public:
-  KsPreparedCalculation(Capabilities capabilities, core::System system, vibeqc_method method,
+  KsPreparedCalculation(Capabilities capabilities, core::System system,
                         NativeKsExecutionPlan execution_plan, scf::ScfOptions options,
                         dft::GridSpec grid, vibeqc_backend backend, int device)
       : capabilities_(capabilities),
         system_(std::move(system)),
-        method_(method),
         execution_plan_(execution_plan),
         options_(std::move(options)),
         backend_(backend),
@@ -584,7 +583,6 @@ class KsPreparedCalculation final : public PreparedCalculation {
  private:
   Capabilities capabilities_;
   core::System system_;
-  vibeqc_method method_{};
   NativeKsExecutionPlan execution_plan_;
   scf::ScfOptions options_;
   vibeqc_backend backend_;
@@ -643,12 +641,11 @@ vibeqc_status item_exception_status() {
 class KsPreparedBatch final : public PreparedBatch {
  public:
   KsPreparedBatch(Capabilities capabilities, std::vector<core::System> systems,
-                  vibeqc_method method, NativeKsExecutionPlan execution_plan,
+                  NativeKsExecutionPlan execution_plan,
                   scf::ScfOptions options, dft::GridSpec grid, vibeqc_backend backend,
                   int device, bool warm_enabled)
       : capabilities_(capabilities),
         systems_(std::move(systems)),
-        method_(method),
         execution_plan_(execution_plan),
         options_(std::move(options)),
         grid_spec_(std::move(grid)),
@@ -943,7 +940,7 @@ class KsPreparedBatch final : public PreparedBatch {
   };
   std::unique_ptr<KsPreparedCalculation> make_plan(const core::System& system) const {
     return std::make_unique<KsPreparedCalculation>(
-        capabilities_, system, method_, execution_plan_, options_, grid_spec_, backend_, device_);
+        capabilities_, system, execution_plan_, options_, grid_spec_, backend_, device_);
   }
   void materialize_warm(std::size_t i) const {
     const auto& item = items_.at(i);
@@ -953,7 +950,6 @@ class KsPreparedBatch final : public PreparedBatch {
 
   Capabilities capabilities_;
   std::vector<core::System> systems_;
-  vibeqc_method method_;
   NativeKsExecutionPlan execution_plan_;
   scf::ScfOptions options_;
   dft::GridSpec grid_spec_;
@@ -1057,7 +1053,7 @@ std::unique_ptr<PreparedCalculation> prepare_dft_calculation(
   auto options = dft_options(descriptor, context.requested_backend, execution_plan);
   auto grid = ks_grid_options(descriptor, options);
   return std::make_unique<KsPreparedCalculation>(
-      capabilities, system, descriptor.method, execution_plan, std::move(options), std::move(grid),
+      capabilities, system, execution_plan, std::move(options), std::move(grid),
       context.requested_backend, context.device_id);
 }
 
@@ -1077,7 +1073,7 @@ std::unique_ptr<PreparedBatch> prepare_dft_batch(const Capabilities& capabilitie
   auto options = dft_options(descriptor, context.requested_backend, execution_plan);
   auto grid = ks_grid_options(descriptor, options);
   return std::make_unique<KsPreparedBatch>(
-      capabilities, std::move(systems), descriptor.method, execution_plan, std::move(options),
+      capabilities, std::move(systems), execution_plan, std::move(options),
       std::move(grid), context.requested_backend, context.device_id,
       (flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0);
 }
