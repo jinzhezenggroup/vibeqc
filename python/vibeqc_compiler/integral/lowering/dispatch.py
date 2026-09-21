@@ -137,6 +137,28 @@ def emit_shell_class_fused_cuda(
         raise ValueError("current fused CUDA candidate supports s/p/d/f shells")
     maximum_order = spec.maximum_force_coulomb_order
     value_maximum_order = plan.kernel.integral.value_coulomb_order
+    fock_coordinate_power_loop = (
+        f"""#pragma unroll
+    for (unsigned power = 1; power <= {value_maximum_order}U; ++power) {{
+      geometry.coordinate_powers[axis][power] =
+          geometry.coordinate_powers[axis][power - 1U] *
+          geometry.difference[axis];
+    }}
+"""
+        if value_maximum_order
+        else ""
+    )
+    fock_negative_rho_loop = (
+        f"""#pragma unroll
+  for (unsigned power = 1; power <= {value_maximum_order}U; ++power) {{
+    geometry.negative_two_rho_powers[power] =
+        geometry.negative_two_rho_powers[power - 1U] *
+        (-2.0 * geometry.rho);
+  }}
+"""
+        if value_maximum_order
+        else ""
+    )
     force_integral = _packed_force_integral(spec, plan.kernel.integral)
     independent_centers = force_integral.independent_derivative_centers
     recovered_centers = force_integral.recovered_derivative_centers
@@ -953,23 +975,11 @@ __device__ __forceinline__ void generated_dppp_make_fock_primitive_geometry(
     argument_squared_distance +=
         geometry.difference[axis] * geometry.difference[axis];
     geometry.coordinate_powers[axis][0] = 1.0;
-#pragma unroll
-    for (unsigned power = 1; power <= {value_maximum_order}U; ++power) {{
-      geometry.coordinate_powers[axis][power] =
-          geometry.coordinate_powers[axis][power - 1U] *
-          geometry.difference[axis];
-    }}
-  }}
+{fock_coordinate_power_loop}  }}
   boys_values<{value_maximum_order}>(
       geometry.rho * argument_squared_distance, geometry.boys);
   geometry.negative_two_rho_powers[0] = 1.0;
-#pragma unroll
-  for (unsigned power = 1; power <= {value_maximum_order}U; ++power) {{
-    geometry.negative_two_rho_powers[power] =
-        geometry.negative_two_rho_powers[power - 1U] *
-        (-2.0 * geometry.rho);
-  }}
-  geometry.prefactor =
+{fock_negative_rho_loop}  geometry.prefactor =
       34.986836655249725 / (p * q * sqrt(p + q));
   geometry.primitive_coefficient =
       first_pair.weighted_coefficient * second_pair.weighted_coefficient;
