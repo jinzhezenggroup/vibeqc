@@ -22,20 +22,24 @@ struct Vv10Parameters {
 
 struct Vv10ResourceUsage {
   std::uint64_t workspace_bytes{};
+  std::uint64_t host_workspace_bytes{};
+  std::uint64_t device_workspace_bytes{};
   std::uint64_t maximum_bytes{};
   std::uint64_t pair_evaluations{};
+  std::uint64_t tiles{};
   std::uint32_t point_count{};
   std::uint32_t tile_points{};
 };
 
-class Vv10CpuPlan {
+class Vv10Plan {
  public:
-  static std::unique_ptr<Vv10CpuPlan> prepare(vibeqc_backend backend, std::uint32_t point_count,
-                                              std::uint32_t tile_points, Vv10Parameters parameters,
-                                              std::uint64_t maximum_bytes, std::string& detail,
-                                              vibeqc_status& status);
+  static std::unique_ptr<Vv10Plan> prepare(vibeqc_backend backend, int device_id,
+                                           std::uint32_t point_count, std::uint32_t tile_points,
+                                           Vv10Parameters parameters, std::uint64_t maximum_bytes,
+                                           std::string& detail, vibeqc_status& status);
 
   [[nodiscard]] vibeqc_backend backend() const noexcept { return backend_; }
+  [[nodiscard]] int device_id() const noexcept { return device_id_; }
   [[nodiscard]] const Vv10Parameters& parameters() const noexcept { return parameters_; }
   [[nodiscard]] const Vv10ResourceUsage& resources() const noexcept { return resources_; }
 
@@ -46,10 +50,12 @@ class Vv10CpuPlan {
                         std::string& detail);
 
  private:
-  Vv10CpuPlan(vibeqc_backend backend, Vv10Parameters parameters, Vv10ResourceUsage resources)
-      : backend_(backend), parameters_(parameters), resources_(resources) {}
+  Vv10Plan(vibeqc_backend backend, int device_id, Vv10Parameters parameters,
+           Vv10ResourceUsage resources)
+      : backend_(backend), device_id_(device_id), parameters_(parameters), resources_(resources) {}
 
   vibeqc_backend backend_{};
+  int device_id_{};
   Vv10Parameters parameters_{};
   Vv10ResourceUsage resources_{};
   std::vector<double> omega_;
@@ -59,5 +65,13 @@ class Vv10CpuPlan {
   std::vector<double> domega_dsigma_;
   std::vector<double> dkappa_drho_;
 };
+
+#if VIBEQC_HAS_CUDA
+void execute_vv10_cuda(const double* coordinates, const double* weights, const double* density,
+                       const double* density_gradient, std::size_t point_count,
+                       std::size_t tile_points, Vv10Parameters parameters, int device_id,
+                       double& energy, double* vrho, double* vsigma, double* point_derivative,
+                       double* weight_derivative);
+#endif
 
 }  // namespace vibeqc::dft::nlc

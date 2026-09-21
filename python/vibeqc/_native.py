@@ -606,8 +606,11 @@ class NonlocalRuntimeDiagnostic(ctypes.Structure):
         ("abi_version", ctypes.c_uint32),
         ("backend", ctypes.c_int32),
         ("workspace_bytes", ctypes.c_uint64),
+        ("host_workspace_bytes", ctypes.c_uint64),
+        ("device_workspace_bytes", ctypes.c_uint64),
         ("maximum_bytes", ctypes.c_uint64),
         ("pair_evaluations", ctypes.c_uint64),
+        ("tiles", ctypes.c_uint64),
         ("point_count", ctypes.c_uint32),
         ("tile_points", ctypes.c_uint32),
     ]
@@ -816,6 +819,8 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
 
     void_pp = ctypes.POINTER(ctypes.c_void_p)
     library.vibeqc_get_abi_version.restype = ctypes.c_uint32
+    library.vibeqc_get_source_identity.argtypes = []
+    library.vibeqc_get_source_identity.restype = ctypes.c_char_p
     library.vibeqc_status_message.argtypes = [ctypes.c_int]
     library.vibeqc_status_message.restype = ctypes.c_char_p
     library.vibeqc_method_available.argtypes = [

@@ -15,13 +15,33 @@ constexpr double kFourPiOverThree = 4.0 * std::numbers::pi_v<double> / 3.0;
 
 bool finite_positive(double value) { return std::isfinite(value) && value > 0.0; }
 
-std::uint64_t checked_workspace_bytes(std::uint32_t points) {
-  constexpr std::uint64_t arrays = 6;
+std::uint64_t checked_array_bytes(std::uint32_t points, std::uint64_t arrays) {
   constexpr std::uint64_t bytes = sizeof(double);
   const auto n = static_cast<std::uint64_t>(points);
   if (n > std::numeric_limits<std::uint64_t>::max() / arrays / bytes)
     throw std::overflow_error("VV10 workspace extent overflow");
   return arrays * bytes * n;
+}
+
+Vv10ResourceUsage resource_usage(vibeqc_backend backend, std::uint32_t point_count,
+                                 std::uint32_t tile_points, std::uint64_t maximum_bytes) {
+  const auto n = static_cast<std::uint64_t>(point_count);
+  const auto tile = static_cast<std::uint64_t>(std::min(tile_points, point_count));
+  const auto host = checked_array_bytes(point_count, backend == VIBEQC_BACKEND_CUDA ? 7u : 12u);
+  std::uint64_t device = 0;
+  if (backend == VIBEQC_BACKEND_CUDA) {
+    device = checked_array_bytes(point_count, 21u);
+    if (device > std::numeric_limits<std::uint64_t>::max() - sizeof(double))
+      throw std::overflow_error("VV10 CUDA failure-flag extent overflow");
+    device += sizeof(double);
+  }
+  if (host > std::numeric_limits<std::uint64_t>::max() - device)
+    throw std::overflow_error("VV10 total workspace extent overflow");
+  const auto workspace = host + device;
+  return Vv10ResourceUsage{workspace,   host,
+                           device,      maximum_bytes,
+                           n * n,       (n + tile - 1u) / tile,
+                           point_count, static_cast<std::uint32_t>(tile)};
 }
 
 struct PairValues {
@@ -67,16 +87,26 @@ bool finite_pair(const PairValues& value) {
 
 }  // namespace
 
-std::unique_ptr<Vv10CpuPlan> Vv10CpuPlan::prepare(vibeqc_backend backend, std::uint32_t point_count,
-                                                  std::uint32_t tile_points,
-                                                  Vv10Parameters parameters,
-                                                  std::uint64_t maximum_bytes, std::string& detail,
-                                                  vibeqc_status& status) {
+std::unique_ptr<Vv10Plan> Vv10Plan::prepare(vibeqc_backend backend, int device_id,
+                                            std::uint32_t point_count, std::uint32_t tile_points,
+                                            Vv10Parameters parameters, std::uint64_t maximum_bytes,
+                                            std::string& detail, vibeqc_status& status) {
   status = VIBEQC_STATUS_INVALID_ARGUMENT;
   detail.clear();
-  if (backend != VIBEQC_BACKEND_CPU_REFERENCE) {
-    detail = "VV10 production pair execution currently supports the CPU backend only";
+  if (backend != VIBEQC_BACKEND_CPU_REFERENCE && backend != VIBEQC_BACKEND_CUDA) {
+    detail = "VV10 production pair execution requires CPU_REFERENCE or CUDA";
     status = VIBEQC_STATUS_NOT_IMPLEMENTED;
+    return nullptr;
+  }
+#if !VIBEQC_HAS_CUDA
+  if (backend == VIBEQC_BACKEND_CUDA) {
+    detail = "VV10 CUDA lowerer is unavailable in this build";
+    status = VIBEQC_STATUS_NOT_IMPLEMENTED;
+    return nullptr;
+  }
+#endif
+  if (backend == VIBEQC_BACKEND_CUDA && device_id < 0) {
+    detail = "VV10 CUDA execution requires a nonnegative device id";
     return nullptr;
   }
   if (!point_count || !tile_points) {
@@ -102,27 +132,25 @@ std::unique_ptr<Vv10CpuPlan> Vv10CpuPlan::prepare(vibeqc_backend backend, std::u
   }
 
   try {
-    const auto workspace = checked_workspace_bytes(point_count);
-    if (workspace > maximum_bytes) {
-      detail = "VV10 local-scale workspace exceeds maximum_bytes before execution";
+    const auto resources = resource_usage(backend, point_count, tile_points, maximum_bytes);
+    if (resources.workspace_bytes > maximum_bytes) {
+      detail = "VV10 provider workspace exceeds maximum_bytes before execution";
       status = VIBEQC_STATUS_OUT_OF_MEMORY;
       return nullptr;
     }
-    const auto n = static_cast<std::uint64_t>(point_count);
-    auto plan = std::unique_ptr<Vv10CpuPlan>(
-        new Vv10CpuPlan(backend, parameters,
-                        Vv10ResourceUsage{workspace, maximum_bytes, n * n, point_count,
-                                          std::min(tile_points, point_count)}));
-    plan->omega_.resize(point_count);
-    plan->kappa_.resize(point_count);
-    plan->weighted_density_.resize(point_count);
-    plan->domega_drho_.resize(point_count);
-    plan->domega_dsigma_.resize(point_count);
-    plan->dkappa_drho_.resize(point_count);
+    auto plan = std::unique_ptr<Vv10Plan>(new Vv10Plan(backend, device_id, parameters, resources));
+    if (backend == VIBEQC_BACKEND_CPU_REFERENCE) {
+      plan->omega_.resize(point_count);
+      plan->kappa_.resize(point_count);
+      plan->weighted_density_.resize(point_count);
+      plan->domega_drho_.resize(point_count);
+      plan->domega_dsigma_.resize(point_count);
+      plan->dkappa_drho_.resize(point_count);
+    }
     status = VIBEQC_STATUS_SUCCESS;
     return plan;
   } catch (const std::bad_alloc&) {
-    detail = "VV10 CPU workspace allocation failed";
+    detail = "VV10 provider workspace allocation failed";
     status = VIBEQC_STATUS_OUT_OF_MEMORY;
     return nullptr;
   } catch (const std::overflow_error& error) {
@@ -132,12 +160,12 @@ std::unique_ptr<Vv10CpuPlan> Vv10CpuPlan::prepare(vibeqc_backend backend, std::u
   }
 }
 
-vibeqc_status Vv10CpuPlan::execute(std::span<const double> coordinates,
-                                   std::span<const double> weights, std::span<const double> density,
-                                   std::span<const double> density_gradient, double& energy,
-                                   std::span<double> vrho, std::span<double> vsigma,
-                                   std::span<double> point_derivative,
-                                   std::span<double> weight_derivative, std::string& detail) {
+vibeqc_status Vv10Plan::execute(std::span<const double> coordinates,
+                                std::span<const double> weights, std::span<const double> density,
+                                std::span<const double> density_gradient, double& energy,
+                                std::span<double> vrho, std::span<double> vsigma,
+                                std::span<double> point_derivative,
+                                std::span<double> weight_derivative, std::string& detail) {
   detail.clear();
   const auto n = static_cast<std::size_t>(resources_.point_count);
   if (coordinates.size() != 3 * n || weights.size() != n || density.size() != n ||
@@ -155,6 +183,36 @@ vibeqc_status Vv10CpuPlan::execute(std::span<const double> coordinates,
     detail = "VV10 geometry derivatives require matching point/weight output arrays";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  for (std::size_t i = 0; i < n; ++i) {
+    if (!finite_positive(density[i]) || !std::isfinite(weights[i]) ||
+        !std::isfinite(density_gradient[3 * i]) || !std::isfinite(density_gradient[3 * i + 1]) ||
+        !std::isfinite(density_gradient[3 * i + 2]) || !std::isfinite(coordinates[3 * i]) ||
+        !std::isfinite(coordinates[3 * i + 1]) || !std::isfinite(coordinates[3 * i + 2])) {
+      detail = "VV10 fixed-grid inputs must be finite with strictly positive density";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+  }
+
+#if VIBEQC_HAS_CUDA
+  if (backend_ == VIBEQC_BACKEND_CUDA) {
+    try {
+      execute_vv10_cuda(coordinates.data(), weights.data(), density.data(), density_gradient.data(),
+                        n, resources_.tile_points, parameters_, device_id_, energy, vrho.data(),
+                        vsigma.data(), want_geometry ? point_derivative.data() : nullptr,
+                        want_geometry ? weight_derivative.data() : nullptr);
+      return VIBEQC_STATUS_SUCCESS;
+    } catch (const std::bad_alloc&) {
+      detail = "VV10 CUDA workspace allocation failed";
+      return VIBEQC_STATUS_OUT_OF_MEMORY;
+    } catch (const std::overflow_error& error) {
+      detail = error.what();
+      return VIBEQC_STATUS_NUMERICAL_FAILURE;
+    } catch (const std::exception& error) {
+      detail = error.what();
+      return VIBEQC_STATUS_CUDA_ERROR;
+    }
+  }
+#endif
 
   const auto b = parameters_.b;
   const auto c = parameters_.c;
@@ -170,15 +228,6 @@ vibeqc_status Vv10CpuPlan::execute(std::span<const double> coordinates,
     const auto x = density_gradient[3 * i];
     const auto y = density_gradient[3 * i + 1];
     const auto z = density_gradient[3 * i + 2];
-    const auto cx = coordinates[3 * i];
-    const auto cy = coordinates[3 * i + 1];
-    const auto cz = coordinates[3 * i + 2];
-    if (!finite_positive(rho) || !std::isfinite(weights[i]) || !std::isfinite(x) ||
-        !std::isfinite(y) || !std::isfinite(z) || !std::isfinite(cx) || !std::isfinite(cy) ||
-        !std::isfinite(cz)) {
-      detail = "VV10 fixed-grid inputs must be finite with strictly positive density";
-      return VIBEQC_STATUS_INVALID_ARGUMENT;
-    }
     const auto sigma = x * x + y * y + z * z;
     const auto rho2 = rho * rho;
     const auto rho4 = rho2 * rho2;

@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <memory>
 #include <mutex>
 #include <span>
+#include <vector>
 
 #include "api/error.hpp"
 #include "api/handles.hpp"
@@ -9,7 +11,7 @@
 
 struct vibeqc_nonlocal_plan {
   vibeqc_context* context{};
-  std::unique_ptr<vibeqc::dft::nlc::Vv10CpuPlan> plan;
+  std::unique_ptr<vibeqc::dft::nlc::Vv10Plan> plan;
 };
 
 namespace {
@@ -43,9 +45,9 @@ vibeqc_status vibeqc_nonlocal_plan_prepare(vibeqc_context* context,
     vibeqc_status status = VIBEQC_STATUS_INTERNAL_ERROR;
     const vibeqc::dft::nlc::Vv10Parameters parameters{variant(model->variant), model->b, model->c,
                                                       model->coefficient};
-    auto native = vibeqc::dft::nlc::Vv10CpuPlan::prepare(
-        context->state.executed_backend, model->point_count, model->tile_points, parameters,
-        model->maximum_bytes, context->last_detail, status);
+    auto native = vibeqc::dft::nlc::Vv10Plan::prepare(
+        context->state.executed_backend, context->state.device_id, model->point_count,
+        model->tile_points, parameters, model->maximum_bytes, context->last_detail, status);
     if (!native) return status;
     auto owner = std::make_unique<vibeqc_nonlocal_plan>();
     owner->context = context;
@@ -67,8 +69,11 @@ vibeqc_status vibeqc_nonlocal_plan_get_diagnostic(const vibeqc_nonlocal_plan* pl
   const auto& resources = plan->plan->resources();
   diagnostic->backend = plan->plan->backend();
   diagnostic->workspace_bytes = resources.workspace_bytes;
+  diagnostic->host_workspace_bytes = resources.host_workspace_bytes;
+  diagnostic->device_workspace_bytes = resources.device_workspace_bytes;
   diagnostic->maximum_bytes = resources.maximum_bytes;
   diagnostic->pair_evaluations = resources.pair_evaluations;
+  diagnostic->tiles = resources.tiles;
   diagnostic->point_count = resources.point_count;
   diagnostic->tile_points = resources.tile_points;
   return VIBEQC_STATUS_SUCCESS;
@@ -95,14 +100,36 @@ vibeqc_status vibeqc_nonlocal_plan_execute(vibeqc_nonlocal_plan* plan,
         optional_span(result->point_derivative, result->point_derivative_count, "point_derivative");
     auto weight = optional_span(result->weight_derivative, result->weight_derivative_count,
                                 "weight_derivative");
+    const bool publish_features = !vrho.empty() || !vsigma.empty();
+    if (publish_features && (vrho.size() != points || vsigma.size() != points)) {
+      plan->context->last_detail = "VV10 feature outputs do not match the prepared point count";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    const bool publish_geometry = !point.empty() || !weight.empty();
+    if (publish_geometry && (point.size() != 3u * points || weight.size() != points)) {
+      plan->context->last_detail = "VV10 geometry outputs do not match the prepared point count";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+    std::vector<double> staged_vrho(points);
+    std::vector<double> staged_vsigma(points);
+    std::vector<double> staged_point(publish_geometry ? 3u * points : 0u);
+    std::vector<double> staged_weight(publish_geometry ? points : 0u);
     double energy{};
     const auto status = plan->plan->execute(
         std::span<const double>(input->coordinates, input->coordinate_count),
         std::span<const double>(input->weights, input->weight_count),
         std::span<const double>(input->density, input->density_count),
         std::span<const double>(input->density_gradient, input->density_gradient_count), energy,
-        vrho, vsigma, point, weight, plan->context->last_detail);
+        staged_vrho, staged_vsigma, staged_point, staged_weight, plan->context->last_detail);
     if (status != VIBEQC_STATUS_SUCCESS) return status;
+    if (publish_features) {
+      std::copy(staged_vrho.begin(), staged_vrho.end(), vrho.begin());
+      std::copy(staged_vsigma.begin(), staged_vsigma.end(), vsigma.begin());
+    }
+    if (publish_geometry) {
+      std::copy(staged_point.begin(), staged_point.end(), point.begin());
+      std::copy(staged_weight.begin(), staged_weight.end(), weight.begin());
+    }
     result->energy = energy;
     result->executed_backend = plan->plan->backend();
     return VIBEQC_STATUS_SUCCESS;

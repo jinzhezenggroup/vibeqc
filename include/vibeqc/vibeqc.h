@@ -351,8 +351,11 @@ typedef struct vibeqc_nonlocal_runtime_diagnostic {
   uint32_t abi_version;
   vibeqc_backend backend;
   uint64_t workspace_bytes;
+  uint64_t host_workspace_bytes;
+  uint64_t device_workspace_bytes;
   uint64_t maximum_bytes;
   uint64_t pair_evaluations;
+  uint64_t tiles;
   uint32_t point_count;
   uint32_t tile_points;
 } vibeqc_nonlocal_runtime_diagnostic;
@@ -1339,8 +1342,9 @@ VIBEQC_API vibeqc_status vibeqc_d4_batch_execute(vibeqc_d4_batch* batch,
 /**
  * Prepare a bounded fixed-grid VV10/rVV10 pair evaluator.
  *
- * The current production foundation accepts CPU_REFERENCE only. It retains
- * O(N_grid) scratch and never materializes the full pair matrix.
+ * CPU_REFERENCE and qualified CUDA backends retain O(N_grid) storage and never
+ * materialize the full pair matrix. maximum_bytes bounds provider-owned peak
+ * host/device workspace, including transactional output staging.
  */
 VIBEQC_API vibeqc_status vibeqc_nonlocal_plan_prepare(vibeqc_context* context,
                                                       const vibeqc_nonlocal_descriptor* model,

@@ -1,0 +1,14 @@
+{
+  "path": "src/dft/nonlocal_correlation/vv10_runtime_cuda.cu",
+  "reason": "First-class bounded VV10/rVV10 CUDA primitive: maintained FP64 local-scale and ordered-pair scientific algebra with O(N) device workspace; it remains distinct from semilocal XC and retains an independent direct CPU/reference oracle.",
+  "regions": [
+    {
+      "start": "void execute_vv10_cuda(",
+      "stop": null,
+      "role": "runtime",
+      "reason": "Device/stream scope, bounded arena partitioning, H2D/D2H transfers, deterministic outer-point tiling, failure publication and ordered host energy reduction around the same primitive mathematics."
+    }
+  ],
+  "role": "scientific",
+  "subsystem": "nonlocal_correlation"
+}

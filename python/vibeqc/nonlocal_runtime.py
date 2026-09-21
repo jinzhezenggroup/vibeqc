@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import ctypes
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from fractions import Fraction
+from hashlib import sha256
 
 import numpy as np
 from vibeqc_compiler.common.nonlocal_correlation import NonlocalCorrelationSpec
+from vibeqc_compiler.common.provenance import canonical_hash
 
 from . import _native
 
@@ -27,8 +29,11 @@ class NonlocalRuntimeDiagnostic:
 
     backend: str
     workspace_bytes: int
+    host_workspace_bytes: int
+    device_workspace_bytes: int
     maximum_bytes: int
     pair_evaluations: int
+    tiles: int
     point_count: int
     tile_points: int
 
@@ -43,6 +48,23 @@ class NonlocalFixedGridResult:
     point_derivative: np.ndarray | None
     weight_derivative: np.ndarray | None
     backend: str
+    identity: str
+    plan_identity: str
+    provider_identity: str | None
+    host_workspace_bytes: int
+    device_workspace_bytes: int
+    pair_evaluations: int
+    tiles: int
+    tile_points: int
+
+
+@dataclass(frozen=True)
+class NonlocalBatchResult:
+    """Atomic Python publication for a bounded ragged primitive batch."""
+
+    results: tuple[NonlocalFixedGridResult, ...]
+    pair_evaluations: int
+    peak_owned_workspace_bytes: int
 
 
 def _positive_uint32(value: typing.Any, label: str) -> int:
@@ -71,7 +93,7 @@ def _array(value: typing.Any, shape: tuple[int, ...], label: str) -> np.ndarray:
 
 
 class NonlocalFixedGridPlan:
-    """Persistent O(N_grid)-workspace CPU plan for VV10/rVV10 pair execution."""
+    """Persistent bounded CPU/CUDA plan for VV10/rVV10 pair execution."""
 
     def __init__(
         self,
@@ -82,6 +104,8 @@ class NonlocalFixedGridPlan:
         tile_points: int = 256,
         maximum_bytes: int = 256 << 20,
         device: str = "cpu",
+        device_id: int = 0,
+        library: typing.Any = None,
     ) -> None:
         if not isinstance(spec, NonlocalCorrelationSpec):
             raise TypeError("spec must be NonlocalCorrelationSpec")
@@ -95,13 +119,22 @@ class NonlocalFixedGridPlan:
         tile_points = _positive_uint32(tile_points, "tile_points")
         if type(maximum_bytes) is not int or not 0 < maximum_bytes < 2**64:
             raise ValueError("maximum_bytes must be a positive uint64 integer")
-        if device != "cpu":
-            raise NotImplementedError("native VV10 CUDA lowerer is not yet qualified")
+        if device not in ("cpu", "cuda"):
+            raise ValueError("native VV10 device must be cpu or cuda")
+        if type(device_id) is not int or device_id < 0:
+            raise ValueError("device_id must be a nonnegative integer")
 
         self.spec = spec
         self.coefficient = coefficient
         self.point_count = point_count
-        self._library = _native.load_library()
+        self.device = device
+        self.device_id = device_id
+        self.maximum_bytes = maximum_bytes
+        self._library = (
+            _native.load_library(device=device, device_id=device_id)
+            if library is None
+            else library
+        )
         if not hasattr(self._library, "vibeqc_nonlocal_plan_prepare"):
             raise RuntimeError(
                 "loaded VIBEQC library does not expose native nonlocal execution"
@@ -111,8 +144,8 @@ class NonlocalFixedGridPlan:
         context_descriptor = _native.ContextDescriptor(
             ctypes.sizeof(_native.ContextDescriptor),
             _native.ABI_VERSION,
-            0,
-            _native.BACKEND_CPU_REFERENCE,
+            device_id,
+            _native.BACKEND_CUDA if device == "cuda" else _native.BACKEND_CPU_REFERENCE,
         )
         variant = {
             "vv10": _native.NONLOCAL_VV10,
@@ -148,6 +181,33 @@ class NonlocalFixedGridPlan:
         except Exception:
             self.close()
             raise
+        source = self._library.vibeqc_get_source_identity().decode()
+        diagnostic = self.diagnostic()
+        self._identity = canonical_hash(
+            {
+                "schema": "vibeqc.nonlocal-fixed-grid-plan/v2",
+                "source": source,
+                "spec": spec.identity,
+                "variant": spec.variant,
+                "b": str(spec.b),
+                "c": str(spec.c),
+                "coefficient": str(coefficient),
+                "backend": diagnostic.backend,
+                "device_id": device_id if diagnostic.backend == "cuda" else None,
+                "point_count": point_count,
+                "tile_points": diagnostic.tile_points,
+                "maximum_bytes": maximum_bytes,
+                "workspace_bytes": diagnostic.workspace_bytes,
+                "host_workspace_bytes": diagnostic.host_workspace_bytes,
+                "device_workspace_bytes": diagnostic.device_workspace_bytes,
+                "derivatives": ("energy", "vrho", "vsigma", "geometry"),
+                "response": False,
+            }
+        )
+
+    @property
+    def identity(self) -> str:
+        return self._identity
 
     def close(self) -> None:
         if self._plan.value:
@@ -183,8 +243,11 @@ class NonlocalFixedGridPlan:
         return NonlocalRuntimeDiagnostic(
             backend=_backend_name(native.backend),
             workspace_bytes=int(native.workspace_bytes),
+            host_workspace_bytes=int(native.host_workspace_bytes),
+            device_workspace_bytes=int(native.device_workspace_bytes),
             maximum_bytes=int(native.maximum_bytes),
             pair_evaluations=int(native.pair_evaluations),
+            tiles=int(native.tiles),
             point_count=int(native.point_count),
             tile_points=int(native.tile_points),
         )
@@ -255,6 +318,25 @@ class NonlocalFixedGridPlan:
             ),
             context=self._context,
         )
+        diagnostic = self.diagnostic()
+        if _backend_name(output.executed_backend) != diagnostic.backend:
+            raise RuntimeError(
+                "native nonlocal execution backend changed after preparation"
+            )
+        result_identity = canonical_hash(
+            {
+                "schema": "vibeqc.nonlocal-fixed-grid-evaluation/v2",
+                "plan": self.identity,
+                "coordinates_sha256": sha256(coordinates.tobytes()).hexdigest(),
+                "weights_sha256": sha256(weights.tobytes()).hexdigest(),
+                "density_sha256": sha256(density.tobytes()).hexdigest(),
+                "density_gradient_sha256": sha256(
+                    density_gradient.tobytes()
+                ).hexdigest(),
+                "features": features,
+                "geometry": geometry,
+            }
+        )
         return NonlocalFixedGridResult(
             energy=float(output.energy),
             vrho=None if vrho is None else vrho.copy(),
@@ -262,4 +344,132 @@ class NonlocalFixedGridPlan:
             point_derivative=None if point is None else point.copy(),
             weight_derivative=None if weight is None else weight.copy(),
             backend=_backend_name(output.executed_backend),
+            identity=result_identity,
+            plan_identity=self.identity,
+            provider_identity=None,
+            host_workspace_bytes=diagnostic.host_workspace_bytes,
+            device_workspace_bytes=diagnostic.device_workspace_bytes,
+            pair_evaluations=diagnostic.pair_evaluations,
+            tiles=diagnostic.tiles,
+            tile_points=diagnostic.tile_points,
         )
+
+
+class NativeNonlocalPairProvider:
+    """Method-name-independent bounded provider injected into compiler integration."""
+
+    def __init__(
+        self,
+        *,
+        device: str = "cpu",
+        device_id: int = 0,
+        memory_budget_bytes: int = 256 << 20,
+        library: typing.Any = None,
+    ) -> None:
+        if device not in ("cpu", "cuda"):
+            raise ValueError("native nonlocal provider device must be cpu or cuda")
+        if type(device_id) is not int or device_id < 0:
+            raise ValueError("device_id must be a nonnegative integer")
+        if type(memory_budget_bytes) is not int or not 0 < memory_budget_bytes < 2**64:
+            raise ValueError("memory_budget_bytes must be a positive uint64 integer")
+        self.device = device
+        self.device_id = device_id
+        self.memory_budget_bytes = memory_budget_bytes
+        self._library = (
+            _native.load_library(device=device, device_id=device_id)
+            if library is None
+            else library
+        )
+        self._source_identity = self._library.vibeqc_get_source_identity().decode()
+        self._identity = canonical_hash(
+            {
+                "schema": "vibeqc.native-nonlocal-pair-provider/v1",
+                "source": self._source_identity,
+                "backend": device,
+                "device_id": device_id if device == "cuda" else None,
+                "memory_budget_bytes": memory_budget_bytes,
+                "precision": "float64",
+                "capabilities": {
+                    "energy": True,
+                    "potential": True,
+                    "first_nuclear_geometry": True,
+                    "response_hv": False,
+                },
+            }
+        )
+
+    @property
+    def identity(self) -> str:
+        return self._identity
+
+    @classmethod
+    def from_fock(
+        cls, fock: typing.Any, *, memory_budget_bytes: int = 256 << 20
+    ) -> typing.Any:
+        diagnostics = fock.diagnostics
+        device = diagnostics["backend"]
+        device_id = diagnostics["device_id"] if device == "cuda" else 0
+        return cls(
+            device=device,
+            device_id=0 if device_id is None else int(device_id),
+            memory_budget_bytes=memory_budget_bytes,
+            library=fock._library,
+        )
+
+    def evaluate(
+        self,
+        coordinates: typing.Any,
+        weights: typing.Any,
+        density: typing.Any,
+        density_gradient: typing.Any,
+        spec: NonlocalCorrelationSpec,
+        coefficient: Fraction,
+        *,
+        tile_points: int = 256,
+        geometry: bool = False,
+    ) -> NonlocalFixedGridResult:
+        point_count = len(np.asarray(weights))
+        with NonlocalFixedGridPlan(
+            spec,
+            point_count,
+            coefficient=coefficient,
+            tile_points=tile_points,
+            maximum_bytes=self.memory_budget_bytes,
+            device=self.device,
+            device_id=self.device_id,
+            library=self._library,
+        ) as plan:
+            result = plan.execute(
+                coordinates,
+                weights,
+                density,
+                density_gradient,
+                features=True,
+                geometry=geometry,
+            )
+        return replace(result, provider_identity=self.identity)
+
+    def evaluate_batch(
+        self,
+        requests: typing.Iterable[tuple[typing.Any, ...]],
+        *,
+        tile_points: int = 256,
+        geometry: bool = False,
+    ) -> NonlocalBatchResult:
+        staged: list[NonlocalFixedGridResult] = []
+        pair_evaluations = 0
+        peak = 0
+        for index, request in enumerate(requests):
+            try:
+                result = self.evaluate(
+                    *request, tile_points=tile_points, geometry=geometry
+                )
+            except Exception as error:
+                raise RuntimeError(f"ragged member {index} failed: {error}") from error
+            staged.append(result)
+            pair_evaluations += result.pair_evaluations
+            peak = max(
+                peak,
+                result.host_workspace_bytes + result.device_workspace_bytes,
+            )
+        return NonlocalBatchResult(tuple(staged), pair_evaluations, peak)
