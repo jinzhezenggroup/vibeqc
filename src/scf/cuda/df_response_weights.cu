@@ -150,8 +150,8 @@ static cudaError_t contract_full_rank_response(
     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
     cudaStream_t stream, cublasHandle_t blas, bool serial_metric_dot, bool blas_products,
     const std::function<void(std::size_t, double*)>& read_values,
-    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
-    const CudaDfResponseBuffers* borrowed, std::span<const double> raw_host) {
+    const CudaDfResponseConsumer& consume, const CudaDfResponseBuffers* borrowed,
+    std::span<const double> raw_host) {
   const auto matrix = n * n, aa = a * a;
   auto* inverse = workspace;
   auto* bar_metric = inverse + aa;
@@ -260,9 +260,9 @@ static cudaError_t contract_full_rank_response(
   for (std::size_t begin = 0; begin < a; begin += tile) {
     const auto count = std::min(tile, a - begin);
     runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
-    consume(0, {begin, matrix, 1, a}, count * matrix, weights + begin * matrix);
+    consume({0, {begin, matrix, 1, a}, count * matrix, weights + begin * matrix});
   }
-  consume(1, {}, aa, bar_metric);
+  consume({1, {}, aa, bar_metric});
   return cudaSuccess;
 }
 
@@ -279,8 +279,7 @@ static cudaError_t contract_full_rank_panels(
     const double* densities, std::size_t tile, double* workspace, cudaStream_t stream,
     cublasHandle_t blas, bool serial_metric_dot, bool blas_products,
     const std::function<void(std::size_t, std::size_t, double*)>& read_fitted,
-    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
-    const double* all_fitted = nullptr) {
+    const CudaDfResponseConsumer& consume, const double* all_fitted = nullptr) {
   const auto matrix = n * n, aa = a * a;
   auto* bar_metric = workspace + aa;
   auto* temporary = workspace + 4 * aa + matrix;
@@ -364,7 +363,7 @@ static cudaError_t contract_full_rank_panels(
     }
     error = cudaGetLastError();
     if (error != cudaSuccess) return error;
-    consume(0, {begin, matrix, 1, a}, count * matrix, weights);
+    consume({0, {begin, matrix, 1, a}, count * matrix, weights});
     runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
   }
   symmetrize_kernel<<<blocks(aa), threads, 0, stream>>>(a, bar_metric);
@@ -373,7 +372,7 @@ static cudaError_t contract_full_rank_panels(
   runtime::cuda_trace::trace_counter(
       all_fitted ? "response_full_rank_single_tensor" : "response_full_rank_bounded_factor_first",
       1);
-  consume(1, {}, aa, bar_metric);
+  consume({1, {}, aa, bar_metric});
   return cudaSuccess;
 }
 
@@ -426,9 +425,7 @@ static cudaError_t contract_resident_response(
     std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
     cudaStream_t stream, cublasHandle_t blas, const CudaDfResponseBuffers& buffers,
-    std::span<const double> raw_host,
-    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>&
-        consume) {
+    std::span<const double> raw_host, const CudaDfResponseConsumer& consume) {
   const auto matrix = n * n, aa = a * a;
   auto* inverse = workspace;
   auto* bar_inverse = inverse + aa;
@@ -548,7 +545,7 @@ static cudaError_t contract_resident_response(
   for (std::size_t begin = 0; begin < a; begin += tile) {
     const auto count = std::min(tile, a - begin);
     runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
-    consume(0, {begin, matrix, 1, a}, count * matrix, weights + begin * matrix);
+    consume({0, {begin, matrix, 1, a}, count * matrix, weights + begin * matrix});
   }
   runtime::cuda_trace::TraceRegion reverse("metric_frechet_response", stream);
   tensor::launch_symmetric_pseudoinverse_vjp(a, metric.eigenvectors, metric.eigenvalues,
@@ -557,7 +554,7 @@ static cudaError_t contract_resident_response(
   error = cudaGetLastError();
   if (error != cudaSuccess) return error;
   reverse.finish();
-  consume(1, {}, aa, bar_inverse);
+  consume({1, {}, aa, bar_inverse});
   return cudaSuccess;
 }
 
@@ -573,10 +570,10 @@ static cudaError_t contract_occupied_response(
     std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,
     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
     cudaStream_t stream, cublasHandle_t blas, const CudaDfResponseBuffers& buffers,
-    std::span<const double> raw_host,
-    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
-    bool packed_pairs, std::span<const std::int64_t> auxiliary_shell_offsets,
-    std::size_t ao_block_rows, const std::function<void(std::size_t, double*)>& read_values = {}) {
+    std::span<const double> raw_host, const CudaDfResponseConsumer& consume, bool packed_pairs,
+    std::span<const std::int64_t> auxiliary_shell_offsets, std::size_t ao_block_rows,
+    const std::function<void(std::size_t, double*)>& read_values = {},
+    bool factorized_exchange = false) {
   const auto matrix = n * n, aa = a * a;
   const auto pair_stride = packed_pairs ? n * (n + 1) / 2 : matrix;
   auto* inverse = workspace;
@@ -846,6 +843,7 @@ static cudaError_t contract_occupied_response(
     peak_count = std::max(peak_count, count);
     error = cudaMemsetAsync(weights, 0, count * pair_stride * sizeof(double), stream);
     if (error != cudaSuccess) return error;
+    CudaDfResponsePanel fused_panel{};
     std::size_t offset = 0;
     for (std::size_t t = 0; t < terms.size(); ++t) {
       if (terms[t].coulomb_coefficient != 0) {
@@ -884,6 +882,26 @@ static cudaError_t contract_occupied_response(
         runtime::cuda_trace::trace_counter("response_pseudo_density_products", 1);
         runtime::cuda_trace::trace_counter("response_pseudo_density_blas_calls", 1);
         runtime::cuda_trace::trace_counter("response_pseudo_density_flops", 2 * count * n * rr);
+        if (factorized_exchange && packed_pairs && terms.size() == 1) {
+          // Candidate A for #419: retain the exact C*U factor until the shell
+          // consumer. The materialized packed panel still carries Coulomb; the
+          // exchange contribution is reconstructed by an exact rank dot for
+          // each public AO pair that the derivative kernel actually consumes.
+          fused_panel = {2,
+                         {begin, pair_stride, 1, a},
+                         count * pair_stride,
+                         weights,
+                         factor.coefficients,
+                         cu,
+                         r,
+                         alpha};
+          runtime::cuda_trace::trace_counter("response_factorized_exchange_panels", 1);
+          runtime::cuda_trace::trace_counter("response_factorized_exchange_rank", r);
+          runtime::cuda_trace::trace_counter("response_factorized_exchange_projected_elements",
+                                             count * n * r);
+          offset += a * rr;
+          continue;
+        }
         if (packed_pairs) {
           for (std::size_t row = 0; row < n; row += ao_block_rows) {
             const auto rows = std::min(ao_block_rows, n - row), columns = row + rows;
@@ -956,7 +974,10 @@ static cudaError_t contract_occupied_response(
       offset += a * rr;
     }
     runtime::cuda_trace::trace_counter("response_auxiliary_blocks", 1);
-    consume(packed_pairs ? 2 : 0, {begin, pair_stride, 1, a}, count * pair_stride, weights);
+    if (fused_panel.factorized_exchange())
+      consume(fused_panel);
+    else
+      consume({packed_pairs ? 2U : 0U, {begin, pair_stride, 1, a}, count * pair_stride, weights});
     begin += count;
   }
   runtime::cuda_trace::trace_counter("response_pseudo_density_peak_elements",
@@ -987,7 +1008,7 @@ static cudaError_t contract_occupied_response(
   error = cudaGetLastError();
   if (error != cudaSuccess) return error;
   reverse.finish();
-  consume(1, {}, aa, bar_inverse);
+  consume({1, {}, aa, bar_inverse});
   return cudaSuccess;
 }
 
@@ -996,18 +1017,19 @@ cudaError_t contract_cuda_df_response_weights(
     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
     cudaStream_t stream, cublasHandle_t blas, bool serial_metric_dot, bool blas_products,
     const std::function<void(std::size_t, double*)>& read_values,
-    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
-    const CudaDfResponseBuffers* borrowed, std::span<const double> raw_host, bool packed_pairs,
+    const CudaDfResponseConsumer& consume, const CudaDfResponseBuffers* borrowed,
+    std::span<const double> raw_host, bool packed_pairs,
     std::span<const std::int64_t> auxiliary_shell_offsets, std::size_t packed_block_rows,
     const std::function<void(std::size_t, std::size_t, double*)>& read_fitted,
-    bool single_fitted_tensor, const CudaDfResponseBuffers* streamed_occupied) {
+    bool single_fitted_tensor, const CudaDfResponseBuffers* streamed_occupied,
+    bool factorized_exchange) {
   if (streamed_occupied) {
     if (!metric.full_rank || borrowed || read_fitted || packed_pairs || single_fitted_tensor ||
         !read_values || !streamed_occupied->occupied_response)
       return cudaErrorInvalidValue;
     return contract_occupied_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
                                       *streamed_occupied, {}, consume, false, {}, packed_block_rows,
-                                      read_values);
+                                      read_values, false);
   }
   if (single_fitted_tensor) {
     if (!metric.full_rank || borrowed || read_fitted || packed_pairs) return cudaErrorInvalidValue;
@@ -1021,9 +1043,9 @@ cudaError_t contract_cuda_df_response_weights(
   if (packed_pairs && (!borrowed || !borrowed->occupied_response || !packed_block_rows))
     return cudaErrorInvalidValue;
   if (borrowed && borrowed->occupied_response)
-    return contract_occupied_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
-                                      *borrowed, raw_host, consume, packed_pairs,
-                                      auxiliary_shell_offsets, packed_block_rows);
+    return contract_occupied_response(
+        n, a, terms, densities, metric, tile, workspace, stream, blas, *borrowed, raw_host, consume,
+        packed_pairs, auxiliary_shell_offsets, packed_block_rows, {}, factorized_exchange);
   // A validated resident fitted reader takes precedence even for a full-width
   // panel. Capacity is not permission to discard immutable forward values and
   // regenerate raw integrals. Borrowed/raw and rank-truncated routes stay below.
@@ -1170,7 +1192,7 @@ cudaError_t contract_cuda_df_response_weights(
     }
     error = cudaGetLastError();
     if (error != cudaSuccess) return error;
-    consume(0, {begin, matrix, 1, a}, count * matrix, weights);
+    consume({0, {begin, matrix, 1, a}, count * matrix, weights});
   }
   runtime::cuda_trace::TraceRegion metric_response("metric_frechet_response", stream);
   tensor::launch_symmetric_pseudoinverse_vjp(a, metric.eigenvectors, metric.eigenvalues,
@@ -1179,7 +1201,7 @@ cudaError_t contract_cuda_df_response_weights(
   error = cudaGetLastError();
   if (error != cudaSuccess) return error;
   metric_response.finish();
-  consume(1, {}, aa, bar_inverse);
+  consume({1, {}, aa, bar_inverse});
   return cudaSuccess;
 }
 }  // namespace vibeqc::scf

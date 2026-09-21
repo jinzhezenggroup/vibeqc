@@ -32,6 +32,23 @@ struct DfShellBasisView {
  */
 enum class DfDerivativePairs { full, symmetric, packed };
 
+/** Exact factorized exchange contribution for one transient auxiliary panel.
+ * coefficients is column-major [nbf, rank]. projected stores one column-major
+ * [nbf, rank] C*U block per auxiliary AO in panel order. coefficient is the
+ * exact prefactor applied before packed off-diagonal folding. Empty fields mean
+ * no factorized contribution; the ordinary materialized-weight ABI is unchanged.
+ */
+struct DfFactorizedExchangeView {
+  const double* coefficients{};
+  const double* projected{};
+  std::size_t rank{};
+  double coefficient{};
+
+  [[nodiscard]] constexpr explicit operator bool() const noexcept {
+    return coefficients && projected && rank;
+  }
+};
+
 /** Launch generated weighted derivatives on a complete auxiliary-major AO panel.
  * All pointers belong to the caller and remain live through its stream drain.
  * Optional device counters record visited/nonzero shell triples, nonzero
@@ -42,14 +59,12 @@ enum class DfDerivativePairs { full, symmetric, packed };
  * non-SSS s/p classes for comparison. Variants 0/1/2 select the compiler's warp,
  * packed-warp and compact-subgroup schedules, with identical mathematics.
  */
-cudaError_t launch_df_shell_derivative_panel(DfShellBasisView orbital, DfShellBasisView auxiliary,
-                                             const double* positions, std::size_t auxiliary_begin,
-                                             std::size_t auxiliary_count, const double* weights,
-                                             double* gradient, unsigned long long* counters,
-                                             cudaStream_t stream, bool full_domain = false,
-                                             unsigned variant = 0,
-                                             DfDerivativePairs pairs = DfDerivativePairs::full,
-                                             DfShellDiagnostics* diagnostics = nullptr);
+cudaError_t launch_df_shell_derivative_panel(
+    DfShellBasisView orbital, DfShellBasisView auxiliary, const double* positions,
+    std::size_t auxiliary_begin, std::size_t auxiliary_count, const double* weights,
+    double* gradient, unsigned long long* counters, cudaStream_t stream, bool full_domain = false,
+    unsigned variant = 0, DfDerivativePairs pairs = DfDerivativePairs::full,
+    DfShellDiagnostics* diagnostics = nullptr, DfFactorizedExchangeView factorized = {});
 
 /** Launch one primitive-signature shell-group product.
  * The first/second orbital views each contain exactly one angular/signature
@@ -62,20 +77,18 @@ cudaError_t launch_df_shell_derivative_group(
     const double* positions, std::size_t auxiliary_begin, std::size_t auxiliary_count,
     const double* weights, double* gradient, unsigned long long* counters, cudaStream_t stream,
     bool full_domain, unsigned variant, DfDerivativePairs pairs, bool triangle,
-    DfShellDiagnostics* diagnostics = nullptr);
+    DfShellDiagnostics* diagnostics = nullptr, DfFactorizedExchangeView factorized = {});
 /** Batch homogeneous block ranges in bounded kernel parameters.
  * The host spans contain disjoint signature slices sharing each basis and AO
  * offsets. Each block belongs to one signature; full/symmetric/packed coverage
  * matches the individual-group launcher. No per-triple task list or additional
  * device allocation is created. Larger signature domains flush bounded packets.
  */
-cudaError_t launch_df_shell_derivative_packets(std::span<const DfShellBasisView> orbital_groups,
-                                               std::span<const DfShellBasisView> auxiliary_groups,
-                                               const double* positions, std::size_t begin,
-                                               std::size_t count, const double* weights,
-                                               double* gradient, unsigned long long* counters,
-                                               cudaStream_t stream, bool full_domain,
-                                               unsigned variant, DfDerivativePairs pairs,
-                                               DfShellDiagnostics* diagnostics = nullptr);
+cudaError_t launch_df_shell_derivative_packets(
+    std::span<const DfShellBasisView> orbital_groups,
+    std::span<const DfShellBasisView> auxiliary_groups, const double* positions, std::size_t begin,
+    std::size_t count, const double* weights, double* gradient, unsigned long long* counters,
+    cudaStream_t stream, bool full_domain, unsigned variant, DfDerivativePairs pairs,
+    DfShellDiagnostics* diagnostics = nullptr, DfFactorizedExchangeView factorized = {});
 
 }  // namespace vibeqc::scf

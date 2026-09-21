@@ -870,6 +870,14 @@ vibeqc_status execute_cuda_df_hf_gradient(
     // ordered adjoints when a generated shell consumer is available.
     const bool packed_pairs = pair_policy == "packed" && shell_execution && full_shell_domain &&
                               borrowed && borrowed->occupied_response;
+    const char* fusion_control = std::getenv("VIBEQC_DF_RESPONSE_FUSION");
+    const std::string_view fusion_policy = fusion_control ? fusion_control : "off";
+    if (fusion_policy != "off" && fusion_policy != "factorized")
+      throw std::invalid_argument("unknown DF response fusion (use off or factorized)");
+    if (fusion_policy == "factorized" && (!packed_pairs || terms.size() != 1))
+      throw std::invalid_argument(
+          "factorized DF response fusion requires a packed one-term occupied response");
+    const bool factorized_exchange = fusion_policy == "factorized";
     const auto derivative_pairs = packed_pairs ? DfDerivativePairs::packed
                                   : pair_policy == "symmetric" || pair_policy == "packed" ||
                                           (pair_policy == "auto" && promoted_default)
@@ -1411,10 +1419,22 @@ vibeqc_status execute_cuda_df_hf_gradient(
             }
             ++arena.stats.value_slices;
           },
-          [&](unsigned kind, runtime::StridedRange range, std::size_t count,
-              const double* weights) {
+          [&](const CudaDfResponsePanel& panel) {
+            const auto kind = panel.kind;
+            const auto range = panel.range;
+            const auto count = panel.count;
+            const auto* weights = panel.weights;
+            const DfFactorizedExchangeView factorized{panel.coefficients, panel.projected,
+                                                      panel.rank, panel.coefficient};
             const bool metric_weights = kind == 1;
             const auto stride = kind == 2 ? n * (n + 1) / 2 : n * n;
+            if (panel.factorized_exchange()) {
+              runtime::cuda_trace::trace_counter("response_factorized_consumer_panels", 1);
+              runtime::cuda_trace::trace_counter("response_factorized_consumer_rank", panel.rank);
+              runtime::cuda_trace::trace_counter(
+                  "response_factorized_consumer_projected_bytes",
+                  (count / stride) * n * panel.rank * sizeof(double));
+            }
             runtime::cuda_trace::TraceRegion derivatives(
                 metric_weights ? "metric_center_derivative_contraction"
                                : "three_center_derivative_contraction",
@@ -1472,7 +1492,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
                   check(launch_df_shell_derivative_packets(
                       orbital_groups, auxiliary_groups, r, range.offset, panel_count, weights,
                       derivative_output, shell_counters, arena.stream, full_shell_domain,
-                      shell_variant, derivative_pairs, shell_diagnostics));
+                      shell_variant, derivative_pairs, shell_diagnostics, factorized));
                 } else {
                   std::size_t signature_launches = 0;
                   for (std::size_t ga = 0; ga < shell_o->signature_groups.size(); ++ga) {
@@ -1497,7 +1517,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
                             weights, derivative_output, shell_counters, arena.stream,
                             full_shell_domain, shell_variant, derivative_pairs,
                             derivative_pairs != DfDerivativePairs::full && ga == gb,
-                            shell_diagnostics));
+                            shell_diagnostics, factorized));
                         ++signature_launches;
                       }
                     }
@@ -1509,7 +1529,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
                 check(launch_df_shell_derivative_panel(
                     shell_o->view, shell_x->panel(range.offset, panel_count), r, range.offset,
                     panel_count, weights, derivative_output, shell_counters, arena.stream,
-                    full_shell_domain, shell_variant, derivative_pairs, shell_diagnostics));
+                    full_shell_domain, shell_variant, derivative_pairs, shell_diagnostics,
+                    factorized));
               }
               runtime::cuda_trace::trace_counter("three_center_shell_panels", 1);
             }
@@ -1524,7 +1545,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
           packed_pairs ? std::span<const std::int64_t>(shell_x->offsets)
                        : std::span<const std::int64_t>{},
           packed_block_rows, read_fitted, single_fitted_tensor,
-          owned_occupied ? &owned_buffers : nullptr));
+          owned_occupied ? &owned_buffers : nullptr, factorized_exchange));
       if (gradient_copies > 1) {
         runtime::cuda_trace::TraceRegion reduction("gradient_probe_shard_reduction", arena.stream);
         // Each column is already a complete contracted atom gradient, not an

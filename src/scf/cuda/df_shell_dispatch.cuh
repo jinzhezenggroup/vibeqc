@@ -14,6 +14,7 @@ struct DfShellLaunch {
   unsigned variant;
   DfDerivativePairs pairs;
   DfShellDiagnostics* diagnostics;
+  DfFactorizedExchangeView factorized{};
   bool rys = false;
 };
 

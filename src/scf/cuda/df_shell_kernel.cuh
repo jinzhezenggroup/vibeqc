@@ -40,7 +40,8 @@ __device__ __forceinline__ void contract_shell_task(
     DfShellBasisView first, DfShellBasisView second, DfShellBasisView auxiliary,
     const double* positions, std::size_t panel_begin, std::size_t panel_count,
     const double* weights, double* gradient, unsigned long long* counters, DfDerivativePairs pairs,
-    bool triangle, std::size_t task, std::size_t tasks, unsigned long long* work) {
+    DfFactorizedExchangeView factorized, bool triangle, std::size_t task, std::size_t tasks,
+    unsigned long long* work) {
   using Math = std::conditional_t<Rys, generated::RysShell<A, B, C>, generated::Shell<A, B, C>>;
   using Schedule = generated::Schedule<A, B, C, Variant>;
   constexpr bool prepare_cache = !Rys || Math::shared_root_state;
@@ -91,6 +92,16 @@ __device__ __forceinline__ void contract_shell_task(
       const auto hi = ai > bi ? ai : bi, lo = ai > bi ? bi : ai;
       weight = weights[(ci - panel_begin) * o.nbf * (o.nbf + 1) / 2 + hi * (hi + 1) / 2 + lo];
       ++public_loads;
+      if (factorized.coefficients && factorized.projected && factorized.rank) {
+        const auto panel = ci - panel_begin;
+        const auto* cu = factorized.projected + panel * o.nbf * factorized.rank;
+        double exchange = 0;
+        // C and C*U are column-major [nbf,rank]. U is explicitly symmetrized
+        // by the response owner, so either triangular orientation is exact.
+        for (std::size_t k = 0; k < factorized.rank; ++k)
+          exchange += factorized.coefficients[lo + k * o.nbf] * cu[hi + k * o.nbf];
+        weight += factorized.coefficient * (hi == lo ? 1.0 : 2.0) * exchange;
+      }
     } else {
       const auto offset = (ci - panel_begin) * o.nbf * o.nbf;
       weight = weights[offset + ai * o.nbf + bi];
@@ -298,13 +309,14 @@ template <unsigned A, unsigned B, unsigned C, unsigned Variant, bool Rys = false
 __global__ void shell_panel(DfShellBasisView first, DfShellBasisView second,
                             DfShellBasisView auxiliary, const double* positions, std::size_t begin,
                             std::size_t count, const double* weights, double* gradient,
-                            unsigned long long* counters, DfDerivativePairs pairs, bool triangle,
-                            std::size_t tasks, unsigned long long* work) {
+                            unsigned long long* counters, DfDerivativePairs pairs,
+                            DfFactorizedExchangeView factorized, bool triangle, std::size_t tasks,
+                            unsigned long long* work) {
   using Schedule = generated::Schedule<A, B, C, Variant>;
   const auto task = std::size_t{blockIdx.x} * Schedule::groups + threadIdx.x / Schedule::lanes;
   contract_shell_task<A, B, C, Variant, Rys, Screening>(first, second, auxiliary, positions, begin,
                                                         count, weights, gradient, counters, pairs,
-                                                        triangle, task, tasks, work);
+                                                        factorized, triangle, task, tasks, work);
 }
 
 template <unsigned A, unsigned B, unsigned C, unsigned Variant, bool Rys = false,
@@ -312,7 +324,7 @@ template <unsigned A, unsigned B, unsigned C, unsigned Variant, bool Rys = false
 __global__ void shell_packet(DfShellBasisView orbital, DfShellBasisView auxiliary,
                              const double* positions, std::size_t begin, std::size_t count,
                              const double* weights, double* gradient, unsigned long long* counters,
-                             DfDerivativePairs pairs,
+                             DfDerivativePairs pairs, DfFactorizedExchangeView factorized,
                              const __grid_constant__ SignaturePacket packet,
                              unsigned long long* work) {
   using Schedule = generated::Schedule<A, B, C, Variant>;
@@ -345,7 +357,7 @@ __global__ void shell_packet(DfShellBasisView orbital, DfShellBasisView auxiliar
   const auto task = (std::size_t{blockIdx.x} - slice.first_block) * Schedule::groups +
                     threadIdx.x / Schedule::lanes;
   contract_shell_task<A, B, C, Variant, Rys, Screening>(
-      first, second, third, positions, begin, count, weights, gradient, counters, pairs,
+      first, second, third, positions, begin, count, weights, gradient, counters, pairs, factorized,
       slice.triangle, task, slice.tasks,
       work ? work + low * DfShellDiagnostics::row_elements : nullptr);
 }

@@ -18,6 +18,32 @@ struct CudaDfResponseBlasFailure {
   cublasStatus_t status;
 };
 
+/** One transient response panel consumed on the producer stream.
+ * Kinds 0/1/2 retain dense three-center, metric and packed-weight semantics.
+ * A packed kind-2 panel may additionally carry an exact occupied-response
+ * factorization. In that case weights contains the non-exchange contribution
+ * (currently Coulomb), while coefficients/projected/rank/coefficient describe
+ * W_ex = coefficient * C U C^T. projected is auxiliary-major: each public
+ * auxiliary column owns one column-major nbf-by-rank C*U block. Pointers stay
+ * valid until the next producer operation on the same stream.
+ */
+struct CudaDfResponsePanel {
+  unsigned kind{};
+  runtime::StridedRange range{};
+  std::size_t count{};
+  const double* weights{};
+  const double* coefficients{};
+  const double* projected{};
+  std::size_t rank{};
+  double coefficient{};
+
+  [[nodiscard]] bool factorized_exchange() const noexcept {
+    return kind == 2 && coefficients && projected && rank;
+  }
+};
+
+using CudaDfResponseConsumer = std::function<void(const CudaDfResponsePanel&)>;
+
 /** Device scratch in doubles, excluding borrowed densities and metric factors.
  * The caller validates size products before using this allocation-free interface.
  * There are four metric matrices, three AO matrices, two auxiliary blocks and
@@ -75,12 +101,12 @@ cudaError_t contract_cuda_df_response_weights(
     const double* densities, CudaDfMetricView metric, std::size_t tile, double* workspace,
     cudaStream_t stream, cublasHandle_t blas, bool serial_metric_dot, bool blas_products,
     const std::function<void(std::size_t, double*)>& read_values,
-    const std::function<void(unsigned, runtime::StridedRange, std::size_t, const double*)>& consume,
-    const CudaDfResponseBuffers* borrowed = nullptr, std::span<const double> raw_host = {},
-    bool packed_pairs = false, std::span<const std::int64_t> auxiliary_shell_offsets = {},
-    std::size_t packed_block_rows = 256,
+    const CudaDfResponseConsumer& consume, const CudaDfResponseBuffers* borrowed = nullptr,
+    std::span<const double> raw_host = {}, bool packed_pairs = false,
+    std::span<const std::int64_t> auxiliary_shell_offsets = {}, std::size_t packed_block_rows = 256,
     const std::function<void(std::size_t, std::size_t, double*)>& read_fitted = {},
-    bool single_fitted_tensor = false, const CudaDfResponseBuffers* streamed_occupied = nullptr);
+    bool single_fitted_tensor = false, const CudaDfResponseBuffers* streamed_occupied = nullptr,
+    bool factorized_exchange = false);
 
 }  // namespace vibeqc::scf
 #endif

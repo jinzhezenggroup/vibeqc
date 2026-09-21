@@ -39,19 +39,17 @@ DfShellLaunch select_launch(unsigned architecture, DfShellLaunch context) {
 }
 }  // namespace
 
-cudaError_t launch_df_shell_derivative_panel(DfShellBasisView o, DfShellBasisView x,
-                                             const double* positions, std::size_t begin,
-                                             std::size_t count, const double* weights,
-                                             double* gradient, unsigned long long* counters,
-                                             cudaStream_t stream, bool full_domain,
-                                             unsigned variant, DfDerivativePairs pairs,
-                                             DfShellDiagnostics* diagnostics) {
+cudaError_t launch_df_shell_derivative_panel(
+    DfShellBasisView o, DfShellBasisView x, const double* positions, std::size_t begin,
+    std::size_t count, const double* weights, double* gradient, unsigned long long* counters,
+    cudaStream_t stream, bool full_domain, unsigned variant, DfDerivativePairs pairs,
+    DfShellDiagnostics* diagnostics, DfFactorizedExchangeView factorized) {
   if (variant > 2) return cudaErrorInvalidValue;
   unsigned architecture = 0;
   auto status = production_target(architecture);
   if (status != cudaSuccess) return status;
-  const DfShellLaunch context{positions, begin,  count,   weights, gradient,
-                              counters,  stream, variant, pairs,   diagnostics};
+  const DfShellLaunch context{positions, begin,   count, weights,     gradient,  counters,
+                              stream,    variant, pairs, diagnostics, factorized};
   generated_df_dispatch::for_each_class(
       [&]<unsigned A, unsigned B, unsigned C>(const DfShellDispatch& entry) {
         if (status != cudaSuccess || (!full_domain && (A > 1 || B > 1 || C > 1 || A + B + C == 0)))
@@ -65,13 +63,14 @@ cudaError_t launch_df_shell_derivative_group(
     DfShellBasisView first, DfShellBasisView second, DfShellBasisView x, const double* positions,
     std::size_t begin, std::size_t count, const double* weights, double* gradient,
     unsigned long long* counters, cudaStream_t stream, bool full_domain, unsigned variant,
-    DfDerivativePairs pairs, bool triangle, DfShellDiagnostics* diagnostics) {
+    DfDerivativePairs pairs, bool triangle, DfShellDiagnostics* diagnostics,
+    DfFactorizedExchangeView factorized) {
   if (variant > 2) return cudaErrorInvalidValue;
   unsigned architecture = 0;
   auto status = production_target(architecture);
   if (status != cudaSuccess) return status;
-  const DfShellLaunch context{positions, begin,  count,   weights, gradient,
-                              counters,  stream, variant, pairs,   diagnostics};
+  const DfShellLaunch context{positions, begin,   count, weights,     gradient,  counters,
+                              stream,    variant, pairs, diagnostics, factorized};
   generated_df_dispatch::for_each_class([&]<unsigned A, unsigned B, unsigned C>(
                                             const DfShellDispatch& entry) {
     if (status != cudaSuccess || (!full_domain && (A > 1 || B > 1 || C > 1 || A + B + C == 0)))
@@ -85,14 +84,15 @@ cudaError_t launch_df_shell_derivative_packets(
     std::span<const DfShellBasisView> orbital, std::span<const DfShellBasisView> auxiliary,
     const double* positions, std::size_t begin, std::size_t count, const double* weights,
     double* gradient, unsigned long long* counters, cudaStream_t stream, bool full_domain,
-    unsigned variant, DfDerivativePairs pairs, DfShellDiagnostics* diagnostics) {
+    unsigned variant, DfDerivativePairs pairs, DfShellDiagnostics* diagnostics,
+    DfFactorizedExchangeView factorized) {
   if (variant > 2) return cudaErrorInvalidValue;
   if (orbital.empty() || auxiliary.empty()) return cudaSuccess;
   unsigned architecture = 0;
   auto status = production_target(architecture);
   if (status != cudaSuccess) return status;
-  const DfShellLaunch context{positions, begin,  count,   weights, gradient,
-                              counters,  stream, variant, pairs,   diagnostics};
+  const DfShellLaunch context{positions, begin,   count, weights,     gradient,  counters,
+                              stream,    variant, pairs, diagnostics, factorized};
   generated_df_dispatch::for_each_class(
       [&]<unsigned A, unsigned B, unsigned C>(const DfShellDispatch& entry) {
         if (status != cudaSuccess || (!full_domain && (A > 1 || B > 1 || C > 1 || A + B + C == 0)))

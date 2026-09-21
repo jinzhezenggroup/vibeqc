@@ -38,12 +38,14 @@ CONTROLS = (
     "DERIVATIVE_PAIRS",
     "SHELL_SCHEDULE",
     "PRIMITIVE_BUCKETS",
+    "RESPONSE_FUSION",
 )
 VARIANTS = {
-    "auto": (None, None, None, None),
-    "shell": ("shell", "symmetric", "compact", "off"),
-    "packet": ("shell", "symmetric", "compact", "packet"),
-    "packed": ("shell", "packed", "compact", "packet"),
+    "auto": (None, None, None, None, None),
+    "shell": ("shell", "symmetric", "compact", "off", None),
+    "packet": ("shell", "symmetric", "compact", "packet", None),
+    "packed": ("shell", "packed", "compact", "packet", "off"),
+    "factorized": ("shell", "packed", "compact", "packet", "factorized"),
 }
 TRACE_CONTROLS = ("TRACE", "HOST_TRACE", "PROGRESS_TRACE", "SHELL_COUNTERS")
 

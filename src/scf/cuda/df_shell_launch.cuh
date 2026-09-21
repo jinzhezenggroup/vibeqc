@@ -98,7 +98,8 @@ cudaError_t launch_packets(std::span<const DfShellBasisView> orbital,
                            std::span<const DfShellBasisView> auxiliary, const double* positions,
                            std::size_t begin, std::size_t count, const double* weights,
                            double* gradient, unsigned long long* counters, cudaStream_t stream,
-                           DfDerivativePairs pairs, DfShellDiagnostics* diagnostics) {
+                           DfDerivativePairs pairs, DfShellDiagnostics* diagnostics,
+                           DfFactorizedExchangeView factorized) {
   if (pairs != DfDerivativePairs::full && A < B) return cudaSuccess;
   using Schedule = generated::Schedule<A, B, C, Variant>;
   constexpr auto maximum = static_cast<std::size_t>(std::numeric_limits<int>::max());
@@ -135,7 +136,7 @@ cudaError_t launch_packets(std::span<const DfShellBasisView> orbital,
       shell_packet<A, B, C, Variant, Rys, Screening>
           <<<packet.blocks, Schedule::lanes * Schedule::groups, 0, stream>>>(
               orbital.front(), auxiliary.front(), positions, begin, count, weights, gradient,
-              counters, pairs, packet, diagnostics ? diagnostics->device : nullptr);
+              counters, pairs, factorized, packet, diagnostics ? diagnostics->device : nullptr);
     }
     error = cudaPeekAtLastError();
     if (error == cudaSuccess) error = read_work(diagnostics, packet.count, stream);
@@ -201,7 +202,7 @@ cudaError_t launch_group(DfShellBasisView first, DfShellBasisView second, DfShel
                          const double* positions, std::size_t begin, std::size_t count,
                          const double* weights, double* gradient, unsigned long long* counters,
                          cudaStream_t stream, DfDerivativePairs pairs, bool triangle,
-                         DfShellDiagnostics* diagnostics) {
+                         DfShellDiagnostics* diagnostics, DfFactorizedExchangeView factorized) {
   if (!first.count[A] || !second.count[B] || !x.count[C]) return cudaSuccess;
   if (triangle &&
       (pairs == DfDerivativePairs::full || A != B || first.count[A] != second.count[B] ||
@@ -235,8 +236,8 @@ cudaError_t launch_group(DfShellBasisView first, DfShellBasisView second, DfShel
     shell_panel<A, B, C, Variant, Rys, Screening>
         <<<static_cast<unsigned>((tasks + Schedule::groups - 1) / Schedule::groups),
            Schedule::lanes * Schedule::groups, 0, stream>>>(
-            first, second, x, positions, begin, count, weights, gradient, counters, pairs, triangle,
-            tasks, diagnostics ? diagnostics->device : nullptr);
+            first, second, x, positions, begin, count, weights, gradient, counters, pairs,
+            factorized, triangle, tasks, diagnostics ? diagnostics->device : nullptr);
   error = cudaPeekAtLastError();
   profile.finish();
   if (error == cudaSuccess) error = read_work(diagnostics, 1, stream);
@@ -250,11 +251,11 @@ template <unsigned A, unsigned B, unsigned C, unsigned Variant, bool Rys = false
 cudaError_t launch(DfShellBasisView o, DfShellBasisView x, const double* positions,
                    std::size_t begin, std::size_t count, const double* weights, double* gradient,
                    unsigned long long* counters, cudaStream_t stream, DfDerivativePairs pairs,
-                   DfShellDiagnostics* diagnostics) {
+                   DfShellDiagnostics* diagnostics, DfFactorizedExchangeView factorized) {
   if (pairs != DfDerivativePairs::full && A < B) return cudaSuccess;
   return launch_group<A, B, C, Variant, Rys, Screening>(
       o, o, x, positions, begin, count, weights, gradient, counters, stream, pairs,
-      pairs != DfDerivativePairs::full && A == B, diagnostics);
+      pairs != DfDerivativePairs::full && A == B, diagnostics, factorized);
 }
 template <unsigned A, unsigned B, unsigned C, bool Rys, class Launch>
 cudaError_t dispatch_screening(double budget, Launch&& launch) {
@@ -283,7 +284,7 @@ cudaError_t launch_panel_class(DfShellBasisView o, DfShellBasisView x, const DfS
       c, o.force_screen_budget, [&]<unsigned Variant, bool Rys, bool Screening>() {
         return launch<A, B, C, Variant, Rys, Screening>(o, x, c.positions, c.begin, c.count,
                                                         c.weights, c.gradient, c.counters, c.stream,
-                                                        c.pairs, c.diagnostics);
+                                                        c.pairs, c.diagnostics, c.factorized);
       });
 }
 
@@ -294,19 +295,19 @@ cudaError_t launch_group_class(DfShellBasisView first, DfShellBasisView second, 
       c, first.force_screen_budget, [&]<unsigned Variant, bool Rys, bool Screening>() {
         return launch_group<A, B, C, Variant, Rys, Screening>(
             first, second, x, c.positions, c.begin, c.count, c.weights, c.gradient, c.counters,
-            c.stream, c.pairs, triangle, c.diagnostics);
+            c.stream, c.pairs, triangle, c.diagnostics, c.factorized);
       });
 }
 
 template <unsigned A, unsigned B, unsigned C>
 cudaError_t launch_packets_class(std::span<const DfShellBasisView> o,
                                  std::span<const DfShellBasisView> x, const DfShellLaunch& c) {
-  return dispatch_class<A, B, C>(
-      c, o.front().force_screen_budget, [&]<unsigned Variant, bool Rys, bool Screening>() {
-        return launch_packets<A, B, C, Variant, Rys, Screening>(o, x, c.positions, c.begin, c.count,
-                                                                c.weights, c.gradient, c.counters,
-                                                                c.stream, c.pairs, c.diagnostics);
-      });
+  return dispatch_class<A, B, C>(c, o.front().force_screen_budget,
+                                 [&]<unsigned Variant, bool Rys, bool Screening>() {
+                                   return launch_packets<A, B, C, Variant, Rys, Screening>(
+                                       o, x, c.positions, c.begin, c.count, c.weights, c.gradient,
+                                       c.counters, c.stream, c.pairs, c.diagnostics, c.factorized);
+                                 });
 }
 }  // namespace
 }  // namespace vibeqc::scf
