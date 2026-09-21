@@ -11,7 +11,6 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 
-
 ENDPOINT_NOISE_FRACTION = 0.01
 
 
@@ -147,7 +146,7 @@ class GpuProfitability:
 
     def resource_regressions_against(
         self,
-        baseline: "GpuProfitability",
+        baseline: GpuProfitability,
         *,
         endpoint_noise_fraction: float = ENDPOINT_NOISE_FRACTION,
     ) -> tuple[str, ...]:
