@@ -83,7 +83,9 @@ def grid_response_program(kind: typing.Any, iterations: typing.Any = 3) -> typin
 
 
 @lru_cache(maxsize=8, typed=True)
-def grid_mixed_response_program(kind: typing.Any, iterations: typing.Any = 3) -> typing.Any:
+def grid_mixed_response_program(
+    kind: typing.Any, iterations: typing.Any = 3
+) -> typing.Any:
     """Generate primal, two JVPs and their mixed directional derivative.
 
     The left/right tangent leaves are independent. mixed_* inputs describe
@@ -476,9 +478,7 @@ def partition_mixed_response(
                 zero_left[inactive, atom] += left[inactive]
                 zero_right[inactive, atom] += right[inactive]
                 zero_mixed[inactive, atom] += mixed[inactive]
-                zero_left_right_same[inactive, atom] += (
-                    left[inactive] * right[inactive]
-                )
+                zero_left_right_same[inactive, atom] += left[inactive] * right[inactive]
 
     live = zeros == 0
     maximum = np.max(np.where(live, logs, -np.inf), axis=1, keepdims=True)
@@ -510,8 +510,7 @@ def partition_mixed_response(
         double = zeros == 2
         q_double = np.exp(shifted[double])
         mixed_products[double] = q_double * (
-            zero_left[double] * zero_right[double]
-            - zero_left_right_same[double]
+            zero_left[double] * zero_right[double] - zero_left_right_same[double]
         )
 
     weights, left, right, mixed = ratio.evaluate(
