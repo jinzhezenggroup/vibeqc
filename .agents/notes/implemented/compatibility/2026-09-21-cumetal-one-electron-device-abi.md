@@ -82,3 +82,33 @@ aggregate return lowering.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+
+## Independent validation of the published flat ABI
+
+The separately prepared f8a7331e value-only patch was initially inspected during
+review. Before publication, the concurrent bdacdca5 repair supplied a more complete
+shared-body solution covering value and derivative entries. That published repair
+was preserved; this review adds validation rather than replacing it.
+
+On integrated source b11a695d, all 121 selected workflow, emitted one-electron
+value/derivative and launch-contract tests passed without skips. The new launch
+regression compiles and executes the actual entry bodies, host argument lists,
+binding macros and shared scheduling bodies. Only the scientific pair evaluator
+is replaced by a capture probe. It checks all 17 view fields, all four output
+pointers, optional null outputs, both schedules, noncanonical pair maps, two
+systems, partial blocks/warps and exact-once ownership. It is an ABI/scheduling
+test, not CUDA numerical execution.
+
+Fresh NVCC 12.4 / sm_80 PTX compilation used exact-source regenerated helpers
+and both real production translation units. The two value entries have 24/21
+scalar or pointer parameters; the four derivative entries have 29/29/26/26.
+No entry contains an aggregate .b8 parameter. Ruff and formatting checks pass.
+These results do not establish Apple's Clang/PTX/CuMetal execution or speed.
+
+The earlier Apple job 106162926229 failed all three endpoints at an indirect
+parameter load. New exact-head Apple endpoint CI must pass before overall LGTM
+or auto-merge. No scientific tolerance, IEEE64 policy, or backend was weakened.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro
