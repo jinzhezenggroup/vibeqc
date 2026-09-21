@@ -18,9 +18,9 @@ from vibeqc_compiler.dft.grid import (
     grid_policy_provenance,
 )
 from vibeqc_compiler.method import (
-    ExactExchangePrimitive,
     MethodIR,
     SemilocalXCPrimitive,
+    compile_ks_execution_plan,
     resolve_method,
 )
 from vibeqc_compiler.xc.spec import FunctionalSpec, functional
@@ -83,8 +83,13 @@ class KsOptions:
         return self._method_ir
 
     @property
+    def execution_plan(self) -> typing.Any:
+        """Method-name-free scientific contribution plan for this KS calculation."""
+        return compile_ks_execution_plan(self.method_ir)
+
+    @property
     def coefficients(self) -> typing.Any:
-        """Resolved (semilocal X, semilocal C, raw Fock K) coefficients."""
+        """Resolved legacy native (semilocal X, semilocal C, full-range K) projection."""
         return ks_coefficients(self.method_ir)
 
     @property
@@ -118,6 +123,8 @@ class KsOptions:
         if self._method_ir is not None:
             payload["method_ir"] = self._method_ir.to_payload()
             payload["method_ir_identity"] = self._method_ir.identity
+            payload["ks_execution_plan"] = self.execution_plan.to_payload()
+            payload["ks_execution_plan_identity"] = self.execution_plan.identity
         return payload
 
     @property
@@ -125,38 +132,41 @@ class KsOptions:
         return canonical_hash(self.to_payload())
 
 
-def _native_components(method_ir: typing.Any) -> typing.Any:
-    """Select supported primitive families by type, not by a method alias."""
-    semilocal = tuple(
-        primitive
-        for primitive in method_ir.primitives
-        if type(primitive) is SemilocalXCPrimitive
+def _native_execution_plan(method_ir: typing.Any) -> typing.Any:
+    """Project the common KS plan onto primitive lowerers available in native v2."""
+    plan = compile_ks_execution_plan(method_ir)
+    missing = []
+    if plan.nonlocal_correlation is not None:
+        missing.append("nonlocal-correlation")
+    if plan.post_scf:
+        missing.extend(primitive.kind for primitive in plan.post_scf)
+    missing.extend(
+        f"{term.operator}-exchange"
+        for term in plan.exchange
+        if term.operator != "full-range"
     )
-    exchange = tuple(
-        primitive
-        for primitive in method_ir.primitives
-        if type(primitive) is ExactExchangePrimitive
-    )
-    if (
-        len(semilocal) != 1
-        or len(exchange) > 1
-        or len(semilocal) + len(exchange) != len(method_ir.primitives)
-    ):
+    if missing:
         raise NotImplementedError(
-            "native KS requires one semilocal XC primitive plus optional full-range exchange"
+            "native KS execution plan requires unavailable lowerers: "
+            + ", ".join(missing)
         )
-    return semilocal[0].functional, exchange[0] if exchange else None
+    if len(plan.exchange) > 1:
+        raise NotImplementedError(
+            "native KS v2 accepts at most one full-range exchange contribution"
+        )
+    return plan
 
 
 def _native_semilocal(method_ir: typing.Any) -> typing.Any:
-    return _native_components(method_ir)[0]
+    return _native_execution_plan(method_ir).semilocal.functional
 
 
 def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     """Lower one supported MethodIR graph to explicit native X/C/K coefficients."""
     if not isinstance(method_ir, MethodIR):
         raise TypeError("KS coefficients require a resolved MethodIR")
-    spec, exact_exchange = _native_components(method_ir)
+    plan = _native_execution_plan(method_ir)
+    spec = plan.semilocal.functional
     components = dict(spec.components)
     if set(components) <= {"GGA_X_PBE", "GGA_C_PBE"}:
         exchange_scale = components.get("GGA_X_PBE", Fraction(0))
@@ -173,9 +183,7 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     else:
         raise NotImplementedError("unsupported native KS semilocal composition")
     fock_exchange = (
-        exact_exchange.fock_coefficient(method_ir.spin)
-        if exact_exchange is not None
-        else Fraction(0)
+        plan.exchange[0].fock_coefficient if plan.exchange else Fraction(0)
     )
     values = tuple(
         float(value) for value in (exchange_scale, correlation_scale, fock_exchange)
