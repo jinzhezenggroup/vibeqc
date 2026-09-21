@@ -37,7 +37,10 @@ def _cuda_host_identity(
     host_compiler = os.environ.get("NVCC_CCBIN") or shutil.which("gcc")
     if host_compiler is None:
         raise RuntimeError("CUDA host compiler not found")
-    path = Path(host_compiler).resolve()
+    resolved = shutil.which(host_compiler)
+    if resolved is None:
+        raise RuntimeError(f"CUDA host compiler not found: {host_compiler}")
+    path = Path(resolved).resolve()
     return path, {
         "host_compiler": file_hash(path),
         "host_version": subprocess.check_output(
