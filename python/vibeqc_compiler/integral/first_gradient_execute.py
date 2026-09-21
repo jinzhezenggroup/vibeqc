@@ -183,6 +183,11 @@ def _bind(artifact: CompiledFirstGradient) -> ct.CDLL:
         ct.c_size_t,
         ct.POINTER(_Mapping),
     ] + tail
+    lib.vibeqc_first_gradient_output_device_v1.argtypes = [
+        ct.c_void_p,
+        ct.POINTER(ct.c_void_p),
+        ct.POINTER(ct.c_size_t),
+    ] + tail
     lib.vibeqc_first_gradient_finish_v1.argtypes = [
         ct.c_void_p,
         _DOUBLE,
@@ -460,6 +465,27 @@ class FirstGradientAccumulator:
             if count:
                 flush()
             self._failed = False
+
+    def device_output(self) -> tuple[int, int]:
+        """Borrow the validated device gradient until this owner is mutated or closed."""
+        with self._lock:
+            self._ensure_open()
+            if self._failed:
+                raise RuntimeError(
+                    "first-gradient accumulator requires successful reset"
+                )
+            pointer = ct.c_void_p()
+            count = ct.c_size_t()
+            self._call(
+                self._library,
+                "output_device",
+                self._handle,
+                ct.byref(pointer),
+                ct.byref(count),
+            )
+            if not pointer.value or count.value != self.natoms * 3:
+                raise RuntimeError("first-gradient device output contract mismatch")
+            return int(pointer.value), int(count.value)
 
     def finish(self) -> np.ndarray:
         with self._lock:

@@ -162,8 +162,10 @@ class TensorSpec:
             raise TypeError("tensor axes must be Index objects")
         if len({i.name for i in self.indices}) != len(self.indices):
             raise ValueError("tensor axis names must be unique; use einsum for traces")
-        if self.dtype not in ("float32", "float64"):
-            raise ValueError("only real float32/float64 tensors are supported")
+        if self.dtype not in ("float32", "float64", "int64"):
+            raise ValueError(
+                "only real float32/float64 and int64 control tensors are supported"
+            )
         if self.representation not in ("general", "restricted_spatial", "spin_orbital"):
             raise ValueError("unsupported orbital representation")
         if self.role not in ("input", "constant", "parameter", "intermediate"):
@@ -172,6 +174,19 @@ class TensorSpec:
             raise ValueError("differentiable must be a Boolean")
         if self.role == "constant" and self.differentiable:
             raise ValueError("constants cannot be differentiable")
+        if self.dtype == "int64":
+            if self.role not in ("input", "parameter"):
+                raise ValueError(
+                    "int64 TensorIR values are immutable runtime control inputs"
+                )
+            if (
+                self.representation != "general"
+                or self.differentiable
+                or self.symmetries
+            ):
+                raise ValueError(
+                    "int64 TensorIR control inputs must be general, non-differentiable, and symmetry-free"
+                )
         symmetries = tuple(sorted(set(self.symmetries)))
         object.__setattr__(self, "symmetries", symmetries)
         for symmetry in symmetries:
@@ -190,7 +205,7 @@ class TensorSpec:
 
     @property
     def itemsize(self) -> int:
-        return 8 if self.dtype == "float64" else 4
+        return 8 if self.dtype in ("float64", "int64") else 4
 
     @property
     def size(self) -> int:

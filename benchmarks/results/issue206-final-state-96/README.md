@@ -1,5 +1,14 @@
 # Final-state and combined host-work ablations at 96 AOs
 
+> **Checkout retention (2026-09-21):** `endpoints.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue206-final-state-96/endpoints.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue206-final-state-96/endpoints.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
 The current #206 runner at `90e4f53` compares verified retention with actual
 forced ordinary-device rebuilding, and separately compares the combined
 lazy/cache/device/verified-state path against eager/rebuilt reference setup

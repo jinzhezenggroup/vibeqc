@@ -417,9 +417,15 @@ def lower_precision(
         storage_dtype = (
             node.spec.dtype if directive is None else directive.storage_dtype
         )
-        inputs = tuple(
-            ensure_dtype(mapping[child], compute_dtype) for child in node.inputs
-        )
+        if node.op == "runtime_indexed_select":
+            inputs = (
+                ensure_dtype(mapping[node.inputs[0]], compute_dtype),
+                *(mapping[child] for child in node.inputs[1:]),
+            )
+        else:
+            inputs = tuple(
+                ensure_dtype(mapping[child], compute_dtype) for child in node.inputs
+            )
         declared = replace(
             node.spec,
             dtype=compute_dtype,
@@ -562,6 +568,8 @@ def describe_precision(
     values = []
     casts = []
     for node in program.live_nodes:
+        if node.spec.dtype == "int64":
+            continue
         sensitivity = _sensitivity(node.op)
         binding = execution.get(names[node])
         accumulation_dtype = (

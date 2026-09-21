@@ -160,6 +160,58 @@ class GridXcScientificIdentity:
         return canonical_hash(self.to_payload())
 
 
+def molecular_grid_xc_workload(
+    *,
+    architecture: str,
+    functional: typing.Any,
+    atoms: typing.Any,
+    grid_spec: typing.Any,
+    charge: int,
+    multiplicity: int,
+    source_identity: str,
+    screening_identity: str | None = None,
+    observable: str = "potential",
+    density_route: str = "density_matrix",
+) -> GridXcScientificIdentity:
+    """Build the canonical DFT09 workload without materializing molecular quadrature."""
+
+    from vibeqc_compiler.dft.ao import jet_indices
+    from vibeqc_compiler.dft.grid import molecular_grid_identity
+
+    declared = tuple(functional.ingredients)
+    if "tau" in declared:
+        ingredients = ("rho", "gradient", "sigma", "tau")
+        ao_order = 1
+    elif "sigma" in declared:
+        ingredients = ("rho", "gradient", "sigma")
+        ao_order = 1
+    else:
+        ingredients = ("rho",)
+        ao_order = 0
+    return GridXcScientificIdentity(
+        architecture=architecture,
+        functional=functional.identifier,
+        functional_identity=functional.identity,
+        ingredients=ingredients,
+        jet_outputs=jet_indices(ao_order),
+        grid_identity=molecular_grid_identity(
+            atoms,
+            grid_spec,
+            charge=charge,
+            multiplicity=multiplicity,
+        ),
+        grid_model=canonical_hash(
+            {"kind": "MolecularGrid", "model": asdict(grid_spec)}
+        ),
+        screening_identity=screening_identity,
+        precision="fp64",
+        spin=functional.spin,
+        observable=observable,
+        density_route=density_route,
+        source_identity=source_identity,
+    )
+
+
 @dataclass(frozen=True)
 class GridXcCandidateShape:
     """Measured/planned shape used by deterministic pre-compilation admission."""

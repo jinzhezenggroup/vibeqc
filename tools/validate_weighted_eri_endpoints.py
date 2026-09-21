@@ -1,8 +1,11 @@
-"""Compare retained/generated psss with complete public RHF/UHF force endpoints.
+"""Compare retired/reference and production psss complete HF force endpoints.
 
-Each route starts in a fresh process and prepared plan, preserving the selected
-library and frozen resident-bra policy. Mixed batches include an s-only system.
-Changed-geometry warm replays always supply the changed coordinates explicitly.
+After #356 retirement the current library has no psss formula selector. Matrix
+mode therefore requires a pre-retirement baseline library: the reference route
+executes its retained native formula, while the current library executes the
+unconditional generated force-only mathematics. Each route starts in a fresh
+process and prepared plan. Changed-geometry warm replays supply coordinates
+explicitly.
 """
 
 # Source-tree CLI bootstrap for transitive compiler clients.
@@ -197,6 +200,10 @@ def main() -> None:
         return
     if args.output is None or args.repeats < 1 or any(b < 1 for b in args.batches):
         parser.error("output, positive repeats, and positive batches are required")
+    if args.baseline_library is None:
+        parser.error(
+            "--baseline-library is required after retirement of VIBEQC_PSSS_WEIGHTED"
+        )
     current_library = Path(os.environ["VIBEQC_LIBRARY"])
     report = {
         "slurm_job_id": os.environ["SLURM_JOB_ID"],
@@ -221,8 +228,6 @@ def main() -> None:
                         "repeats": args.repeats,
                     }
                     routes = ["reference", "generated"]
-                    if args.baseline_library:
-                        routes.insert(0, "baseline")
                     samples = {}
                     for route in routes:
                         env = {
@@ -234,7 +239,7 @@ def main() -> None:
                             else "none",
                             "VIBEQC_LIBRARY": str(
                                 args.baseline_library
-                                if route == "baseline"
+                                if route == "reference"
                                 else current_library
                             ),
                         }

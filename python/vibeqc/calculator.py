@@ -512,6 +512,11 @@ class Calculator:
             and self._precision_mode != _native.PRECISION_FP64
         ):
             raise NotImplementedError("r2SCAN currently requires strict FP64")
+        if (
+            self._method == _native.METHOD_PBE_D4_RKS
+            and self._precision_mode != _native.PRECISION_FP64
+        ):
+            raise NotImplementedError("PBE-D4 currently requires strict FP64")
         self._ks_options = None
         if self._method_name in (
             "lda-rks",
@@ -524,6 +529,7 @@ class Calculator:
             "r2scan-uks",
             "b3lyp-rks",
             "b3lyp-uks",
+            "pbe-d4-rks",
         ):
             from .ks import resolve_ks_options
 
@@ -684,6 +690,10 @@ class Calculator:
                 raise NotImplementedError(
                     "native library does not support KS composition options v2"
                 )
+            elif self._ks_options_version < 3 and self._ks_options.requires_schedule_v3:
+                raise NotImplementedError(
+                    "native library does not support KS execution schedules v3"
+                )
 
         available = ctypes.c_int32()
         _native.check(
@@ -785,6 +795,7 @@ class Calculator:
                 {
                     "source": "cpu",
                     "identity": None,
+                    "target": None,
                     "kernels": [],
                     "dft_schedules": [],
                     "rejected": [],
@@ -805,6 +816,7 @@ class Calculator:
         auxiliary_basis: ctypes.c_void_p | None = None,
         *,
         resource_plan: typing.Any = None,
+        ks_options: typing.Any = None,
     ) -> _native.MethodDescriptor:
         df_budget = self._density_fitting_memory_budget_bytes
         if resource_plan is not None and self._method in _HF_METHODS:
@@ -833,13 +845,14 @@ class Calculator:
             self._correlation_memory_budget_bytes,
             self._mp2_denominator_threshold,
         )
-        if self._ks_options is not None and self._ks_options_version >= 1:
+        active_ks_options = self._ks_options if ks_options is None else ks_options
+        if active_ks_options is not None and self._ks_options_version >= 1:
             from .ks import native_ks_options
 
             descriptor.ks_options = ctypes.pointer(
                 native_ks_options(
-                    self._ks_options,
-                    version=1 if self._ks_options_version == 1 else 2,
+                    active_ks_options,
+                    version=min(self._ks_options_version, 3),
                 )
             )
         if self._method == _native.METHOD_RCCSD:
@@ -1326,6 +1339,7 @@ class Calculator:
         *,
         charges: typing.Any = None,
         multiplicities: typing.Any = None,
+        ks_options: typing.Any = None,
     ) -> typing.Any:
         """Resolve this calculator's active scientific controls without executing."""
         if self._capabilities.family == "density_functional":
@@ -1348,7 +1362,7 @@ class Calculator:
                 energy_tolerance=self._energy_tolerance,
                 density_tolerance=self._density_tolerance,
                 screening_tolerance=self._screening_tolerance,
-                ks_options=self._ks_options,
+                ks_options=self._ks_options if ks_options is None else ks_options,
                 device_id=self._device_id,
                 library=self._library,
             )
@@ -1407,6 +1421,69 @@ class Calculator:
                 )
         return request
 
+    def _effective_ks_selection(
+        self,
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        """Resolve and ABI-check one batch-local DFT09 profile selection."""
+
+        from .ks import ProfiledKsSelection
+
+        if (
+            self._ks_options is None
+            or self._device_name != "cuda"
+            or self._precision_mode != _native.PRECISION_FP64
+        ):
+            return ProfiledKsSelection(self._ks_options)
+        count = len(systems)
+        charges = tuple(0 for _ in range(count)) if charges is None else tuple(charges)
+        multiplicities = (
+            tuple(1 for _ in range(count))
+            if multiplicities is None
+            else tuple(multiplicities)
+        )
+        if len(charges) != count or len(multiplicities) != count:
+            raise ValueError("charges and multiplicities must match the batch size")
+        from .ks import native_ks_options, profiled_ks_selection
+
+        selection = profiled_ks_selection(
+            self._ks_options,
+            self.profile_diagnostics,
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+        )
+        if selection.options is not None:
+            if self._ks_options_version == 0:
+                if selection.options != self._ks_options:
+                    raise NotImplementedError(
+                        "native library does not support profile-selected KS model options"
+                    )
+            else:
+                native_ks_options(
+                    selection.options,
+                    version=min(self._ks_options_version, 3),
+                )
+        return selection
+
+    def _effective_ks_options(
+        self,
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        """Resolve an exact local DFT09 schedule for this batch without mutation."""
+
+        return self._effective_ks_selection(
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+        ).options
+
     def estimate_resources(
         self,
         systems: typing.Any,
@@ -1418,11 +1495,31 @@ class Calculator:
         """Dry-run the active scientific inputs; no solve or warm-state mutation."""
         from .resources import ResourceBudget, plan_resources
 
+        systems = tuple(
+            tuple(Atom.from_value(atom) for atom in system) for system in systems
+        )
+        count = len(systems)
+        charges = tuple(0 for _ in range(count)) if charges is None else tuple(charges)
+        multiplicities = (
+            tuple(1 for _ in range(count))
+            if multiplicities is None
+            else tuple(multiplicities)
+        )
+        if len(charges) != count or len(multiplicities) != count:
+            raise ValueError("charges and multiplicities must match the batch size")
+        effective_ks_options = self._effective_ks_options(
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+        )
         budget = self._resource_budget if budget is None else budget
         return plan_resources(
             (
                 self._resource_request(
-                    systems, charges=charges, multiplicities=multiplicities
+                    systems,
+                    charges=charges,
+                    multiplicities=multiplicities,
+                    ks_options=effective_ks_options,
                 ),
             ),
             ResourceBudget() if budget is None else budget,
@@ -1531,6 +1628,11 @@ class Calculator:
         if not native_atoms:
             raise ValueError("at least one atom is required")
         self._preflight_hf_basis(native_atoms, compute_forces=compute_forces)
+        effective_ks_options = self._effective_ks_options(
+            (native_atoms,),
+            charges=(charge,),
+            multiplicities=(multiplicity,),
+        )
         resource_plan = None
         if self._resource_budget is not None:
             resource_plan = self.estimate_resources(
@@ -1602,6 +1704,7 @@ class Calculator:
             method_descriptor = self._method_descriptor(
                 auxiliary_system if auxiliary_system.value else None,
                 resource_plan=resource_plan,
+                ks_options=effective_ks_options,
             )
 
             def prepare() -> typing.Any:

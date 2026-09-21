@@ -40,6 +40,12 @@ __global__ void validate_finite_weights(const double* values, std::size_t count,
     if (!isfinite(values[i])) atomicCAS(error, 0, 1);
 }
 
+__global__ inline void validate_output(const double* values, std::size_t count, int* error) {
+  for (std::size_t i = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < count;
+       i += std::size_t(blockDim.x) * gridDim.x)
+    if (!isfinite(values[i])) atomicCAS(error, 0, 1);
+}
+
 struct Plan {
   static constexpr uint64_t tag_value = 0x5649424546475231ULL;
   uint64_t tag = tag_value;
@@ -124,6 +130,22 @@ struct Plan {
     if (error) throw NumericalFailure("nonfinite first-gradient resident weight");
     valid = true;
   }
+  const double* output_device(const char* identity) {
+    std::lock_guard<std::mutex> lock(context.mutex);
+    check(identity);
+    if (!valid) throw std::runtime_error("first-gradient plan requires successful reset/run");
+    vibeqc_tensor::cuda_check(cudaMemsetAsync(context.error, 0, sizeof(int), context.stream));
+    validate_output<<<vibeqc_tensor::blocks(output_size, 128), 128, 0, context.stream>>>(
+        data() + output_offset, output_size, context.error);
+    vibeqc_tensor::cuda_check(cudaGetLastError());
+    int error = 0;
+    vibeqc_tensor::cuda_check(cudaMemcpyAsync(&error, context.error, sizeof(int),
+                                              cudaMemcpyDeviceToHost, context.stream));
+    vibeqc_tensor::cuda_check(cudaStreamSynchronize(context.stream));
+    if (error) throw NumericalFailure("nonfinite first-gradient resident output");
+    return data() + output_offset;
+  }
+
   void finish(double* output, std::size_t size, const char* identity) {
     std::lock_guard<std::mutex> lock(context.mutex);
     check(identity);

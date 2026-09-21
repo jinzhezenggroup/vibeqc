@@ -12,6 +12,7 @@ function(vibeqc_add_api_sources target)
     src/api/c_api_projection.cpp
     src/api/c_api_df_gradient.cpp
     src/api/c_api_d3.cpp
+    src/api/c_api_d4.cpp
     src/api/c_api_common.cpp
     src/api/c_api_context.cpp
     src/api/c_api_resources.cpp
@@ -44,6 +45,7 @@ function(vibeqc_add_dft_sources target)
     src/dft/uks.cpp
     src/dft/xc.cpp
     src/dft/dispersion/d3_runtime.cpp
+    src/dft/dispersion/d4_runtime.cpp
     src/methods/dft_method.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
@@ -55,7 +57,8 @@ function(vibeqc_add_dft_sources target)
       src/dft/cuda_ks.cpp
       src/dft/cuda_ks_kernels.cu
       src/dft/dispersion/d3_cuda.cu
-      src/dft/dispersion/d4_cuda.cu)
+      src/dft/dispersion/d4_cuda.cu
+      src/dft/dispersion/d4_runtime_cuda.cu)
   endif()
 endfunction()
 

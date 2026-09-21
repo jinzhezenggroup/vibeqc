@@ -6,6 +6,7 @@ import copy
 
 import pytest
 from vibeqc.autotune import dft_endpoint_gate
+from vibeqc_compiler.dft.grid import GridSpec, MolecularGrid, molecular_grid_identity
 from vibeqc_compiler.dft.xc_schedule import (
     DEVICE_FUSED,
     HOST_UNFUSED,
@@ -15,6 +16,19 @@ from vibeqc_compiler.dft.xc_schedule import (
     assess_grid_xc_schedule,
     grid_xc_schedule,
 )
+
+
+def test_compact_grid_identity_matches_materialized_molecular_grid() -> None:
+    atoms = [("H", (0.1, -0.2, -0.7)), ("H", (0.2, 0.1, 0.8))]
+    spec = GridSpec(
+        radial_points=8,
+        angular_polar=4,
+        angular_azimuth=8,
+        partition_iterations=2,
+    )
+    compact = molecular_grid_identity(atoms, spec, charge=0, multiplicity=1)
+    materialized = MolecularGrid(atoms, spec, charge=0, multiplicity=1)
+    assert compact == materialized.identity
 
 
 def scientific() -> GridXcScientificIdentity:

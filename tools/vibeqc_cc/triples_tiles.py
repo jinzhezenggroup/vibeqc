@@ -25,7 +25,9 @@ from vibeqc_compiler.tensor import (
     execute,
     gather,
     input_tensor,
+    multiply,
     reduce_sum,
+    runtime_indexed_select,
     transpose,
 )
 
@@ -472,6 +474,271 @@ def _tile_input_feeds(arrays: typing.Any, a_end: typing.Any) -> typing.Any:
         "eps_o": np.ascontiguousarray(eps_o),
         "eps_v": np.ascontiguousarray(eps_v[:a_end]),
     }
+
+
+# ---------------------------------------------------------------------------
+# Runtime-indexed TensorIR tile program (#783)
+# ---------------------------------------------------------------------------
+
+
+def runtime_tile_capacity(
+    nocc: typing.Any, nvir: typing.Any, vir_chunk_size: typing.Any
+) -> int:
+    """Maximum triangular-domain lanes needed by one runtime a-chunk."""
+    tiles = tuple(TriplesTileEnumerator(nocc, nvir, vir_chunk_size=vir_chunk_size))
+    return max(tile.ntriples for tile in tiles)
+
+
+def _runtime_controls(
+    coordinates: typing.Iterable[tuple[int, int, int]], capacity: int
+) -> dict[str, np.ndarray]:
+    """Pack at most capacity triangular coordinates into runtime controls."""
+    if type(capacity) is not int or capacity < 1:
+        raise ValueError("runtime triples capacity must be a positive integer")
+    coordinates = tuple(coordinates)
+    if len(coordinates) > capacity:
+        raise ValueError("runtime triples batch exceeds its domain capacity")
+    a_map = np.zeros(capacity, dtype=np.int64)
+    b_map = np.zeros(capacity, dtype=np.int64)
+    c_map = np.zeros(capacity, dtype=np.int64)
+    active = np.zeros(capacity, dtype=np.float64)
+    degeneracy = np.ones(capacity, dtype=np.float64)
+    for lane, (a, b, c) in enumerate(coordinates):
+        a_map[lane], b_map[lane], c_map[lane] = a, b, c
+        active[lane] = 1.0
+        degeneracy[lane] = float(_degeneracy(a, b, c))
+    return {
+        "a_map": a_map,
+        "b_map": b_map,
+        "c_map": c_map,
+        "active": active,
+        "degeneracy": degeneracy,
+    }
+
+
+def runtime_tile_controls(tile: TileSpec, capacity: int) -> dict[str, np.ndarray]:
+    """Pack one complete logical tile when it fits the runtime domain."""
+    if capacity < tile.ntriples:
+        raise ValueError("runtime triples capacity is smaller than the tile domain")
+    return _runtime_controls(tile, capacity)
+
+
+def runtime_tile_control_batches(
+    tile: TileSpec, capacity: int
+) -> typing.Iterator[dict[str, np.ndarray]]:
+    """Yield bounded runtime controls without materializing a large q-domain."""
+    if type(capacity) is not int or capacity < 1:
+        raise ValueError("runtime triples capacity must be a positive integer")
+    batch: list[tuple[int, int, int]] = []
+    for coordinates in tile:
+        batch.append(coordinates)
+        if len(batch) == capacity:
+            yield _runtime_controls(batch, capacity)
+            batch.clear()
+    if batch:
+        yield _runtime_controls(batch, capacity)
+
+
+def runtime_tile_static_feeds(arrays: typing.Any) -> dict[str, np.ndarray]:
+    """Contiguous full-system scientific inputs uploaded once per owner."""
+    return {
+        name: np.ascontiguousarray(arrays[name])
+        for name in ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v")
+    }
+
+
+def _runtime_select(
+    value: typing.Any,
+    domain: Index,
+    *selections: tuple[int, typing.Any],
+) -> typing.Any:
+    return runtime_indexed_select(value, selections, domain)
+
+
+def _runtime_w_node(
+    views: typing.Any, domain: Index, coordinates: tuple[typing.Any, ...]
+) -> typing.Any:
+    a, b, c = coordinates
+    ab = _runtime_select(views["vvov"], domain, (0, a), (1, b))
+    cc = _runtime_select(views["t2T"], domain, (0, c))
+    w1 = einsum("qif,qfkj->qijk", ab, cc)
+    a0 = _runtime_select(views["vooo"], domain, (0, a))
+    bc = _runtime_select(views["t2T"], domain, (0, b), (1, c))
+    w2 = einsum("qijm,qmk->qijk", a0, bc)
+    return add(w1, w2, coefficients=(1, -1))
+
+
+def _runtime_v_node(
+    views: typing.Any, domain: Index, coordinates: tuple[typing.Any, ...]
+) -> typing.Any:
+    a, b, c = coordinates
+    ab = _runtime_select(views["vvoo"], domain, (0, a), (1, b))
+    cc = _runtime_select(views["t1T"], domain, (0, c))
+    v1 = einsum("qij,qk->qijk", ab, cc)
+    ab2 = _runtime_select(views["t2T"], domain, (0, a), (1, b))
+    c2 = _runtime_select(views["fvo"], domain, (0, c))
+    v2 = einsum("qij,qk->qijk", ab2, c2)
+    return add(v1, v2, coefficients=(1, 1))
+
+
+def _runtime_r3_node(w: typing.Any) -> typing.Any:
+    return add(
+        *(
+            transpose(w, (0, *(axis + 1 for axis in permutation)))
+            for _, permutation in R3
+        ),
+        coefficients=tuple(coefficient for coefficient, _ in R3),
+    )
+
+
+def build_runtime_tile_triples_program(
+    nocc: typing.Any, nvir: typing.Any, *, capacity: typing.Any
+) -> Program:
+    """Build one fixed-capacity triples graph reused across runtime tile ranges.
+
+    The graph contains no Python/IR loop over (a,b,c). Runtime int64 maps bind
+    triangular virtual triples to the leading domain axis; all W/V/R3 algebra
+    is vectorized over that domain and reduced only after the scientific body.
+    """
+    if any(type(n) is not int or n < 1 for n in (nocc, nvir, capacity)):
+        raise ValueError(
+            "runtime triples require positive occupied/virtual/domain sizes"
+        )
+    occ = IndexSpace("runtime_occupied", "occupied", nocc)
+    vir = IndexSpace("runtime_virtual", "virtual", nvir)
+    lanes = IndexSpace("runtime_triples", "batch", capacity)
+
+    def O(name: str) -> Index:
+        return Index(name, occ)
+
+    def V(name: str) -> Index:
+        return Index(name, vir)
+
+    q = Index("q", lanes)
+    common = {
+        "role": "parameter",
+        "differentiable": True,
+        "representation": "restricted_spatial",
+    }
+    nodes = {
+        "ovvv": input_tensor(
+            "ovvv", TensorSpec((O("i0"), V("a0"), V("f0"), V("b0")), **common)
+        ),
+        "ovoo": input_tensor(
+            "ovoo", TensorSpec((O("i1"), V("a1"), O("j1"), O("m1")), **common)
+        ),
+        "ovov": input_tensor(
+            "ovov", TensorSpec((O("i2"), V("a2"), O("j2"), V("b2")), **common)
+        ),
+        "fov": input_tensor("fov", TensorSpec((O("k3"), V("c3")), **common)),
+        "t1": input_tensor("t1", TensorSpec((O("i4"), V("a4")), **common)),
+        "t2": input_tensor(
+            "t2", TensorSpec((O("i5"), O("j5"), V("a5"), V("f5")), **common)
+        ),
+        "eps_o": input_tensor("eps_o", TensorSpec((O("i6"),), **common)),
+        "eps_v": input_tensor("eps_v", TensorSpec((V("a7"),), **common)),
+        "a_map": input_tensor("a_map", TensorSpec((q,), dtype="int64", role="input")),
+        "b_map": input_tensor("b_map", TensorSpec((q,), dtype="int64", role="input")),
+        "c_map": input_tensor("c_map", TensorSpec((q,), dtype="int64", role="input")),
+        "active": input_tensor(
+            "active",
+            TensorSpec((q,), role="input", representation="restricted_spatial"),
+        ),
+        "degeneracy": input_tensor(
+            "degeneracy",
+            TensorSpec((q,), role="input", representation="restricted_spatial"),
+        ),
+    }
+    views = _t_views_tile(nodes)
+    base_maps = (nodes["a_map"], nodes["b_map"], nodes["c_map"])
+    coordinates = {
+        label: tuple(base_maps[position] for position in VP[label]) for label in _LABELS
+    }
+    ws = {label: _runtime_w_node(views, q, coordinates[label]) for label in _LABELS}
+    vs = {label: _runtime_v_node(views, q, coordinates[label]) for label in _LABELS}
+
+    ijk = (O("io"), O("jo"), O("ko"))
+    qijk = (q, *ijk)
+    eijk = add(
+        broadcast(nodes["eps_o"], ijk, (0,)),
+        broadcast(nodes["eps_o"], ijk, (1,)),
+        broadcast(nodes["eps_o"], ijk, (2,)),
+    )
+    virtual_sum = add(
+        _runtime_select(nodes["eps_v"], q, (0, nodes["a_map"])),
+        _runtime_select(nodes["eps_v"], q, (0, nodes["b_map"])),
+        _runtime_select(nodes["eps_v"], q, (0, nodes["c_map"])),
+    )
+    denominator = multiply(
+        add(
+            broadcast(eijk, qijk, (1, 2, 3)),
+            broadcast(virtual_sum, qijk, (0,)),
+            coefficients=(1, -1),
+        ),
+        broadcast(nodes["degeneracy"], qijk, (0,)),
+    )
+    halves = Fraction(1, 2)
+    zs = {
+        label: divide(
+            _runtime_r3_node(add(ws[label], vs[label], coefficients=(1, halves))),
+            denominator,
+        )
+        for label in _LABELS
+    }
+    lane_terms = []
+    for zlabel, row in SLOW_TABLE.items():
+        for wlabel, occupied_order in row:
+            axes = (0, *(axis + 1 for axis in OP[occupied_order]))
+            lane_terms.append(
+                einsum("qijk,qijk->q", transpose(ws[wlabel], axes), zs[zlabel])
+            )
+    lane_energy = add(*lane_terms)
+    total = reduce_sum(multiply(lane_energy, nodes["active"]), (0,))
+    energy = add(total, coefficients=(2,))
+    return Program(
+        {"triples_energy": energy},
+        provenance={
+            "method": "RCCSD(T)",
+            "slice": "#783-runtime-indexed",
+            "inventory_version": VERSION,
+            "inventory_hash": INVENTORY_HASH,
+            "runtime_domain_capacity": capacity,
+            "runtime_domain": "triangular a>=b>=c supplied by int64 maps",
+        },
+    )
+
+
+def runtime_tile_triples_energy_tensorir(
+    nocc: typing.Any,
+    nvir: typing.Any,
+    arrays: typing.Any,
+    *,
+    vir_chunk_size: int = 1,
+    denominator_threshold: typing.Any = 1e-10,
+) -> float:
+    """CPU-reference execution of one reusable runtime-indexed tile graph."""
+    _validate(
+        nocc,
+        nvir,
+        arrays["ovvv"],
+        arrays["ovoo"],
+        arrays["ovov"],
+        arrays["fov"],
+        arrays["t1"],
+        arrays["t2"],
+        arrays["eps_o"],
+        arrays["eps_v"],
+    )
+    _check_denominators(arrays["eps_o"], arrays["eps_v"], denominator_threshold)
+    tiles = tuple(TriplesTileEnumerator(nocc, nvir, vir_chunk_size=vir_chunk_size))
+    capacity = max(tile.ntriples for tile in tiles)
+    program = build_runtime_tile_triples_program(nocc, nvir, capacity=capacity)
+    static = runtime_tile_static_feeds(arrays)
+    total = 0.0
+    for tile in tiles:
+        feeds = {**static, **runtime_tile_controls(tile, capacity)}
+        total += float(execute(program, feeds).outputs["triples_energy"])
+    return total
 
 
 def tile_triples_energy_tensorir(

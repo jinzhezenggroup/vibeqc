@@ -147,8 +147,6 @@ bool generated_one_electron_derivatives_requested() noexcept;
  * 2: deterministic serial diagnostics; 3: AO-pair warp with nucleus lanes (default). */
 unsigned one_electron_derivative_mapping_requested() noexcept;
 bool resident_psss_bra_requested() noexcept;
-/** Generated weighted primitive candidate; frozen into a prepared bucket. */
-bool generated_psss_weighted_requested() noexcept;
 
 /** 0: cooperative dense elements; 1: deterministic serial traversal. */
 unsigned df_derivative_mapping_requested() noexcept;
