@@ -78,16 +78,14 @@ VIBEQC_D3_MODEL_HD inline bool d3_pair_term(std::size_t first, std::size_t secon
     if (pair_cutoff > 0.0 && r2 > pair_cutoff * pair_cutoff) return true;
     const double r0 = tables.pairs[pair_index(z[first], z[second])].vdw_radius;
     if (!(r0 > 0.0) || !finite(r0)) return false;
-    const auto term6 =
-        d3_zero_detail::damped_inverse_power(r, r2, p.rs6 * r0, p.alpha6, 6);
-    const auto term8 =
-        d3_zero_detail::damped_inverse_power(r, r2, p.rs8 * r0, p.alpha6 + 2.0, 8);
-    if (!finite(term6.value) || !finite(term8.value) ||
-        !finite(term6.derivative_over_distance) || !finite(term8.derivative_over_distance))
+    const auto term6 = d3_zero_detail::damped_inverse_power(r, r2, p.rs6 * r0, p.alpha6, 6);
+    const auto term8 = d3_zero_detail::damped_inverse_power(r, r2, p.rs8 * r0, p.alpha6 + 2.0, 8);
+    if (!finite(term6.value) || !finite(term8.value) || !finite(term6.derivative_over_distance) ||
+        !finite(term8.derivative_over_distance))
       return false;
     phi = p.s6 * term6.value + p.s8 * rr * term8.value;
-    derivative_over_distance = p.s6 * term6.derivative_over_distance +
-                               p.s8 * rr * term8.derivative_over_distance;
+    derivative_over_distance =
+        p.s6 * term6.derivative_over_distance + p.s8 * rr * term8.derivative_over_distance;
   } else {
     return false;
   }

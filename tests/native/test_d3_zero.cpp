@@ -175,8 +175,10 @@ void test_pair_helper_overflowing_damping_keeps_representable_results() {
   const double r = std::ldexp(1.0, -16);
   const double r2 = std::ldexp(1.0, -32);
   const double r0 =
-      tables.pairs[vibeqc::dft::dispersion::d3_detail::pair_index(numbers[0], numbers[1])].vdw_radius;
-  const double rr = 3.0 * tables.elements[numbers[0] - 1].r4r2 * tables.elements[numbers[1] - 1].r4r2;
+      tables.pairs[vibeqc::dft::dispersion::d3_detail::pair_index(numbers[0], numbers[1])]
+          .vdw_radius;
+  const double rr =
+      3.0 * tables.elements[numbers[0] - 1].r4r2 * tables.elements[numbers[1] - 1].r4r2;
 
   D3ModelParameters model{};
   model.damping = D3Damping::zero;
