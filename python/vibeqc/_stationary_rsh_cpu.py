@@ -69,9 +69,7 @@ class RangeExchangeExecutor:
     def _component(row: typing.Any) -> tuple[int, int]:
         powers = tuple(int(value) for value in row[4:7])
         angular = sum(powers)
-        label = "".join(
-            axis * power for axis, power in zip("xyz", powers, strict=True)
-        )
+        label = "".join(axis * power for axis, power in zip("xyz", powers, strict=True))
         return angular, cartesian_components(angular).index(label)
 
     def _primitive_shell(self, row: typing.Any) -> tuple[tuple[float, float], ...]:

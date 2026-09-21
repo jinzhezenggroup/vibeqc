@@ -35,9 +35,7 @@ def _fake_s_basis() -> SimpleNamespace:
             [-0.21, 0.48, -0.63],
         ]
     )
-    primitives = np.array(
-        [[0.57, 0.83], [0.71, -0.19], [0.89, 0.67], [1.13, 0.42]]
-    )
+    primitives = np.array([[0.57, 0.83], [0.71, -0.19], [0.89, 0.67], [1.13, 0.42]])
     aos = np.zeros((4, 16))
     for index in range(4):
         aos[index, :8] = (index, index, 1, 1, 0, 0, 0, 1)
@@ -65,17 +63,11 @@ def test_range_exchange_radial_partition_matches_full_coulomb(
         if type(primitive) is RangeSeparatedExchangePrimitive
     }
     full = _PrimitiveExecutor(basis, tmp_path / "full", 8, compiler)
-    expected_owners, expected = full.integral(
-        "four_center_eri", (0, 1, 2, 3), 1.0
-    )
+    expected_owners, expected = full.integral("four_center_eri", (0, 1, 2, 3), 1.0)
     ranged = RangeExchangeExecutor(basis, tmp_path / "range", 8, compiler)
     try:
-        actual_owners, short = ranged.integral(
-            ranges["short-range"], (0, 1, 2, 3), 1.0
-        )
-        _, long = ranged.integral(
-            ranges["long-range"], (0, 1, 2, 3), 1.0
-        )
+        actual_owners, short = ranged.integral(ranges["short-range"], (0, 1, 2, 3), 1.0)
+        _, long = ranged.integral(ranges["long-range"], (0, 1, 2, 3), 1.0)
     finally:
         ranged.close()
     assert actual_owners == expected_owners == [0, 1, 2, 3]
@@ -117,16 +109,20 @@ def _pyscf_energy(
     signed_omega = -omega if primitive.operator == "short-range" else omega
     with mol.with_range_coulomb(signed_omega):
         eri = mol.intor("int2e")
-    return -float(primitive.coefficient) * np.einsum(
-        "ij,kl,ikjl->", density, density, eri
-    ) / 4
+    return (
+        -float(primitive.coefficient)
+        * np.einsum("ij,kl,ikjl->", density, density, eri)
+        / 4
+    )
 
 
 @pytest.mark.parametrize("operator", ("short-range", "long-range"))
 def test_range_exchange_executor_matches_fixed_density_finite_difference(
     tmp_path: Path, operator: str
 ) -> None:
-    pytest.importorskip("pyscf", reason="independent RSH integral oracle requires PySCF")
+    pytest.importorskip(
+        "pyscf", reason="independent RSH integral oracle requires PySCF"
+    )
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("native C++ compiler unavailable")
@@ -139,9 +135,7 @@ def test_range_exchange_executor_matches_fixed_density_finite_difference(
             if type(item) is RangeSeparatedExchangePrimitive
             and item.operator == operator
         )
-        plan = StationaryGradientPlan(
-            method, StationaryMeanField(SCF_POINT_MODEL)
-        )
+        plan = StationaryGradientPlan(method, StationaryMeanField(SCF_POINT_MODEL))
         source = {
             "short-range": "exchange_short_range",
             "long-range": "exchange_long_range",
@@ -177,12 +171,8 @@ def test_range_exchange_executor_matches_fixed_density_finite_difference(
         for atom, axis in product(range(basis.natom), range(3)):
             displacement = np.zeros_like(coordinates)
             displacement[atom, axis] = step
-            plus = _pyscf_energy(
-                basis, density, primitive, coordinates + displacement
-            )
-            minus = _pyscf_energy(
-                basis, density, primitive, coordinates - displacement
-            )
+            plus = _pyscf_energy(basis, density, primitive, coordinates + displacement)
+            minus = _pyscf_energy(basis, density, primitive, coordinates - displacement)
             expected[atom, axis] = (plus - minus) / (2 * step)
 
         np.testing.assert_allclose(actual, expected, atol=2e-8, rtol=2e-7)
