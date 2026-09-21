@@ -8,9 +8,12 @@ from __future__ import annotations
 import math
 import typing
 from functools import cache
+from pathlib import Path
 
 from vibeqc_compiler.common.paths import asset_path
+from vibeqc_compiler.common.provenance import file_hash
 
+from . import libxc_maple
 from .libxc_maple import (
     IMPORTER_SEMANTICS,
     MapleModule,
@@ -129,5 +132,7 @@ def pbe_maple_provenance(
     return {
         "kind": "libxc-maple",
         "importer_semantics": IMPORTER_SEMANTICS,
+        "adapter_sha256": file_hash(Path(__file__)),
+        "importer_sha256": file_hash(Path(libxc_maple.__file__)),
         "components": selected,
     }
