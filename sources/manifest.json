@@ -113,10 +113,11 @@
         "python/vibeqc_compiler/xc/expressions.py": "349f45b1770e725ebb1a4781dc19a41ed6ec74f39affc3702cbdc55375e7f60e",
         "python/vibeqc_compiler/xc/p86_pz_maple.py": "a1bbdfe8bba635389861c87a99da072dce6b74dd820b0259593e6eb3a0a04f15",
         "python/vibeqc_compiler/xc/pbe_maple.py": "177ec68c70f8c0c59b1d4a01fba275cc101c959238ad3583e2294c0017647e8e",
-        "python/vibeqc_compiler/xc/rsh_expressions.py": "c9f00713bdee06639d035f755975c24a65d39b28fe025b2054aafd32d4f2806a",
+        "python/vibeqc_compiler/xc/pw91_maple.py": "1171d5171401090ac13352525d3df49ffe48863cc149851d36d34af4e7fe983a",
+        "python/vibeqc_compiler/xc/rsh_expressions.py": "636ff472dd5615f66af5ca882e0e0bd44c333b6910ca21c7ce5d4ec789a701ad",
         "python/vibeqc_compiler/xc/rsh_maple.py": "fe2a2748861b63920be5ac10ad74d137fe30506afd5d9efce013bc98fede8bb3",
         "python/vibeqc_compiler/xc/scan_maple.py": "4d0078a8148e5be8435660b7677c685a55ee27360f4c84efaf15581e82b46e1b",
-        "python/vibeqc_compiler/xc/spec.py": "6921d00bb79edd8501c52770964ced73f5a944e4702b331491e52c8e723a99a6",
+        "python/vibeqc_compiler/xc/spec.py": "1c817045e02bb61c66ed8467c81ddb6296e51ace47ee9cd86c665100a33d3313",
         "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
