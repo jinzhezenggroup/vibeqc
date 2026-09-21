@@ -33,6 +33,7 @@ from vibeqc_compiler.method.gfn2_h0_force_runtime import (
     build_gfn2_h0_onsite_vjp_program,
     build_gfn2_h0_pulay_seed_program,
 )
+from vibeqc_compiler.tensor.program import Program
 from vibeqc_compiler.tensor.scalar_cpp import emit_scalar_cpp
 
 PAIR_INPUT_ORDER = (
@@ -63,7 +64,7 @@ def _device(source: str, function_name: str) -> str:
     return source.replace(needle, replacement, 1)
 
 
-def _inputs(program, canonical: tuple[str, ...]) -> tuple[str, ...]:
+def _inputs(program: Program, canonical: tuple[str, ...]) -> tuple[str, ...]:
     live = {node.attrs["name"] for node in program.live_nodes if node.op == "input"}
     ordered = tuple(name for name in canonical if name in live)
     if set(ordered) != live:
