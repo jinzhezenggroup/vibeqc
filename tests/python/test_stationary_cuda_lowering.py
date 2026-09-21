@@ -18,7 +18,7 @@ class Block:
 sys.meta_path.insert(0,Block())
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cuda, emit_first_derivative_cpu
 from vibeqc_compiler.method import resolve_method
-from vibeqc_compiler.method.stationary_cuda import emit_stationary_cuda
+from vibeqc_compiler.method.stationary_cuda import emit_stationary_cuda, emit_stationary_wrapper_cuda
 from vibeqc_compiler.method.stationary_gradient import SCF_POINT_MODEL, StationaryGradientPlan, StationaryMeanField
 requests=(('overlap',('','')),('kinetic',('','')),('nuclear_attraction',('','')),
           ('four_center_eri',('','','','')),('nuclear',()))
@@ -36,7 +36,12 @@ assert 'vibeqc_first_derivative_cpu' in cpu
 for functional in (0,1,2):
     method=resolve_method(('LDA_XC_PW','PBE','R2SCAN')[functional],spin='unpolarized')
     plan=StationaryGradientPlan(method,StationaryMeanField(SCF_POINT_MODEL))
+    wrapper=emit_stationary_wrapper_cuda(functional=functional,plan=plan)
+    assert 'primitive_0(' not in wrapper
+    assert 'extern __device__ bool first_derivative' in wrapper
     s=emit_stationary_cuda(primitive,functional=functional,plan=plan)
+    assert s.startswith(primitive)
+    assert 'extern __device__ bool first_derivative' not in s[len(primitive):]
     assert 'vibeqc_first_derivative_cpu' not in s
     assert '__device__ bool first_derivative' in s
     assert 'stationary_gradient_cuda.cuh' in s
@@ -142,8 +147,9 @@ def test_strict_stationary_cuda_rejects_environment_overrides(
             "strict arithmetic override reached source generation or compilation"
         )
 
-    monkeypatch.setattr(stationary_cuda, "emit_stationary_cuda", forbidden)
-    monkeypatch.setattr(stationary_cuda, "compile_runtime", forbidden)
+    monkeypatch.setattr(stationary_cuda, "emit_stationary_wrapper_cuda", forbidden)
+    monkeypatch.setattr(stationary_cuda, "compile_cuda_object", forbidden)
+    monkeypatch.setattr(stationary_cuda, "link_cuda_objects", forbidden)
     cache = tmp_path / "uncreated"
     with pytest.raises(ValueError, match="strict.*NVCC.*override"):
         stationary_cuda.compile_stationary_cuda(

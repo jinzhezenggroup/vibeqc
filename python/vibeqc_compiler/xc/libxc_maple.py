@@ -34,7 +34,17 @@ class MapleImportError(ValueError):
     """The pinned Maple source uses syntax outside the qualified importer."""
 
 
-IMPORTER_SEMANTICS = "libxc-maple-graph/v8"
+IMPORTER_SEMANTICS = "libxc-maple-graph/v9"
+# Whitespace-normalized helper definitions from pinned Libxc 7.0.0 attenuation.mpl.
+_ERF_SMOOTHING_HELPERS = (
+    "attenuation_erf0",
+    "att_erf_aux1",
+    "att_erf_aux2",
+    "att_erf_aux3",
+)
+_ERF_SMOOTHING_SOURCE_SHA256 = (
+    "8e8cb43d75cff9793f45c0d0e38361865f3b093fc8d5977155ceddd882227da9"
+)
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _RESERVED = frozenset(
     (
@@ -44,7 +54,9 @@ _RESERVED = frozenset(
         "K_FACTOR_C",
         "MU_GE",
         "DBL_EPSILON",
+        "RS_FACTOR",
         "gga_exchange",
+        "gga_exchange_nsp",
         "mgga_exchange",
         "my_piecewise3",
         "my_piecewise5",
@@ -54,7 +66,15 @@ _RESERVED = frozenset(
         "abs",
         "t_total",
         "n_total",
+        "n_spin",
+        "screen_dens",
+        "screen_dens_zeta",
+        "z_thr",
         "opz_pow_n",
+        "lda_stoll_par",
+        "lda_stoll_perp",
+        "enforce_smooth_lr",
+        "_maple_bounded_add",
         "_maple_diff2",
         "f_zeta",
         "mphi",
@@ -62,6 +82,7 @@ _RESERVED = frozenset(
         "sqrt",
         "arcsinh",
         "arctan",
+        "erf",
         "exp",
         "log",
         "log1p",
@@ -97,26 +118,46 @@ class _Comparison:
     right: object
 
 
-def _normalize_bindings(
-    bindings: Mapping[str, str | int | float | Fraction] | None,
-) -> tuple[tuple[str, str], ...]:
-    """Canonicalize caller-owned Libxc scalar parameters for identity/lowering."""
+@dataclass(frozen=True, slots=True)
+class _LogicalOr:
+    left: object
+    right: object
 
-    normalized: list[tuple[str, str]] = []
+
+def _normalize_binding_value(raw_value: object, *, depth: int = 0) -> object:
+    """Canonicalize one bounded scalar/list Libxc parameter value."""
+
+    if depth > 3:
+        raise MapleImportError("Maple binding nesting exceeds the qualified limit")
+    if isinstance(raw_value, (list, tuple)):
+        if not raw_value or len(raw_value) > 32:
+            raise MapleImportError("Maple binding lists require 1..32 elements")
+        return tuple(
+            _normalize_binding_value(item, depth=depth + 1) for item in raw_value
+        )
+    try:
+        value = (
+            raw_value if isinstance(raw_value, Fraction) else Fraction(str(raw_value))
+        )
+    except (ValueError, ZeroDivisionError) as error:
+        raise MapleImportError(
+            "Maple bindings must contain only finite scalars or bounded lists"
+        ) from error
+    return str(value)
+
+
+def _normalize_bindings(
+    bindings: Mapping[str, object] | None,
+) -> tuple[tuple[str, object], ...]:
+    """Canonicalize caller-owned Libxc parameters for identity/lowering."""
+
+    normalized: list[tuple[str, object]] = []
     for name, raw_value in sorted((bindings or {}).items()):
-        if not _IDENTIFIER.fullmatch(name) or name in _RESERVED:
+        if not _IDENTIFIER.fullmatch(name) or (
+            name in _RESERVED and name != "RS_FACTOR"
+        ):
             raise MapleImportError(f"unsupported Maple binding name {name!r}")
-        try:
-            value = (
-                raw_value
-                if isinstance(raw_value, Fraction)
-                else Fraction(str(raw_value))
-            )
-        except (ValueError, ZeroDivisionError) as error:
-            raise MapleImportError(
-                f"Maple binding {name!r} must be a finite scalar"
-            ) from error
-        normalized.append((name, str(value)))
+        normalized.append((name, _normalize_binding_value(raw_value)))
     return tuple(normalized)
 
 
@@ -131,7 +172,7 @@ class MapleModule:
     include_edges: tuple[tuple[str, str], ...] = ()
     defines: tuple[str, ...] = ()
     initial_defines: tuple[str, ...] = ()
-    bindings: tuple[tuple[str, str], ...] = ()
+    bindings: tuple[tuple[str, object], ...] = ()
 
     @property
     def transitive_sha256(self) -> str:
@@ -347,7 +388,7 @@ def _parse_selected_source(
     include_edges: tuple[tuple[str, str], ...],
     defines: tuple[str, ...],
     initial_defines: tuple[str, ...],
-    bindings: tuple[tuple[str, str], ...],
+    bindings: tuple[tuple[str, object], ...],
     allow_redefinition: bool,
 ) -> MapleModule:
     """Parse one selected source stream into final Maple definitions."""
@@ -423,7 +464,7 @@ def import_maple_source(
     source: str,
     *,
     defines: Iterable[str] = (),
-    bindings: Mapping[str, str | int | float | Fraction] | None = None,
+    bindings: Mapping[str, object] | None = None,
 ) -> MapleModule:
     """Parse one in-memory source without permitting includes or redefinition."""
 
@@ -450,7 +491,7 @@ def import_maple_file(
     *,
     defines: Iterable[str] = (),
     support_files: Iterable[str] = (),
-    bindings: Mapping[str, str | int | float | Fraction] | None = None,
+    bindings: Mapping[str, object] | None = None,
     allow_duplicate_includes: bool = False,
 ) -> MapleModule:
     """Load one bounded include graph rooted inside a pinned source directory."""
@@ -591,22 +632,35 @@ def _expand_bounded_add(expression: str) -> str:
         inside = expression[open_paren + 1 : close_paren - 1]
         body, range_text = _split_top_level_once(inside)
         range_match = re.fullmatch(
-            r"\s*([A-Za-z_]\w*)\s*=\s*(-?\d+)\s*\.\.\s*(-?\d+)\s*",
+            r"\s*([A-Za-z_]\w*)\s*=\s*(-?\d+)\s*\.\.\s*"
+            r"(-?\d+|[A-Za-z_]\w*)\s*",
             range_text,
         )
         if range_match is None:
             raise MapleImportError(
-                "only finite integer Maple add(body, i=N..M) is supported"
+                "only bounded Maple add(body, i=N..M) with an integer or "
+                "compile-time scalar upper bound is supported"
             )
         variable, lower_text, upper_text = range_match.groups()
-        lower, upper = int(lower_text), int(upper_text)
-        if upper < lower or upper - lower > 32:
-            raise MapleImportError("bounded Maple add range is unsupported")
-        terms = [
-            re.sub(rf"\b{re.escape(variable)}\b", f"({value})", body)
-            for value in range(lower, upper + 1)
-        ]
-        expanded = "(" + " + ".join(f"({term})" for term in terms) + ")"
+        lower = int(lower_text)
+        if re.fullmatch(r"-?\d+", upper_text):
+            upper = int(upper_text)
+            if upper < lower or upper - lower > 32:
+                raise MapleImportError("bounded Maple add range is unsupported")
+            terms = [
+                re.sub(rf"\b{re.escape(variable)}\b", f"({value})", body)
+                for value in range(lower, upper + 1)
+            ]
+            expanded = "(" + " + ".join(f"({term})" for term in terms) + ")"
+        else:
+            if "add(" in body:
+                raise MapleImportError("nested symbolic Maple add is unsupported")
+            terms = [
+                re.sub(rf"\b{re.escape(variable)}\b", f"({value})", body)
+                for value in range(lower, lower + 33)
+            ]
+            encoded = ", ".join(repr(term) for term in terms)
+            expanded = f"_maple_bounded_add({upper_text}, {lower}, [{encoded}])"
         expression = expression[:start] + expanded + expression[close_paren:]
 
 
@@ -670,7 +724,15 @@ class _Evaluator:
         self.graph = graph
         self.assignments = dict(module.assignments)
         self.functions = dict(module.functions)
-        self.bindings = {name: Fraction(value) for name, value in module.bindings}
+
+        def decode_binding(value: object) -> object:
+            if isinstance(value, tuple):
+                return tuple(decode_binding(item) for item in value)
+            if isinstance(value, str):
+                return Fraction(value)
+            raise MapleImportError("invalid normalized Maple binding")
+
+        self.bindings = {name: decode_binding(value) for name, value in module.bindings}
         self._assignment_cache: dict[str, object] = {}
         self._assignment_stack: set[str] = set()
         self._derivative_cache: dict[
@@ -739,12 +801,19 @@ class _Evaluator:
             return Fraction(10, 81)
         if name == "DBL_EPSILON":
             return self.graph.approximate_constant(2.220446049250313e-16)
+        if name == "RS_FACTOR":
+            if name in self.bindings:
+                return self.bindings[name]
+            return self.graph.approximate_constant(
+                (3.0 / (4.0 * math.pi)) ** (1.0 / 3.0)
+            )
         if name in self.bindings:
             return self.bindings[name]
         if name in self.functions:
             return _FunctionRef(name)
         if name in (
             "gga_exchange",
+            "gga_exchange_nsp",
             "mgga_exchange",
             "my_piecewise3",
             "my_piecewise5",
@@ -754,7 +823,14 @@ class _Evaluator:
             "abs",
             "t_total",
             "n_total",
+            "n_spin",
+            "screen_dens",
+            "screen_dens_zeta",
+            "z_thr",
             "opz_pow_n",
+            "lda_stoll_par",
+            "lda_stoll_perp",
+            "enforce_smooth_lr",
             "_maple_diff2",
             "f_zeta",
             "mphi",
@@ -762,6 +838,7 @@ class _Evaluator:
             "sqrt",
             "arcsinh",
             "arctan",
+            "erf",
             "exp",
             "log",
             "log1p",
@@ -935,6 +1012,45 @@ class _Evaluator:
                 return left_expr / right_expr
             raise MapleImportError("unsupported binary operator")
         if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id == "_maple_bounded_add":
+                if len(node.args) != 3 or not isinstance(node.args[2], ast.List):
+                    raise MapleImportError(
+                        "_maple_bounded_add requires upper, lower and encoded terms"
+                    )
+                upper = self._eval(node.args[0], environment)
+                lower = self._eval(node.args[1], environment)
+                if (
+                    not isinstance(upper, Fraction)
+                    or upper.denominator != 1
+                    or not isinstance(lower, Fraction)
+                    or lower.denominator != 1
+                ):
+                    raise MapleImportError(
+                        "symbolic Maple add bounds must resolve to compile-time integers"
+                    )
+                lower_int, upper_int = int(lower), int(upper)
+                if upper_int < lower_int or upper_int - lower_int > 32:
+                    raise MapleImportError("bounded Maple add range is unsupported")
+                count = upper_int - lower_int + 1
+                encoded_terms = node.args[2].elts
+                if count > len(encoded_terms):
+                    raise MapleImportError(
+                        "bounded Maple add term inventory is incomplete"
+                    )
+                terms = []
+                for item in encoded_terms[:count]:
+                    if not isinstance(item, ast.Constant) or not isinstance(
+                        item.value, str
+                    ):
+                        raise MapleImportError(
+                            "bounded Maple add terms must be encoded expressions"
+                        )
+                    terms.append(
+                        self._eval(_parse_expression(item.value).body, environment)
+                    )
+                if all(isinstance(item, Fraction) for item in terms):
+                    return sum(typing.cast("list[Fraction]", terms), Fraction(0))
+                return self.graph.sum(self._as_expr(item) for item in terms)
             target = self._eval(node.func, environment)
             if (
                 target == _IntrinsicRef("log")
@@ -952,6 +1068,19 @@ class _Evaluator:
                 return self._intrinsic(target.name, arguments)
             raise MapleImportError("Maple call target is not callable")
         raise MapleImportError(f"unsupported Maple node {type(node).__name__}")
+
+    def _select_condition(
+        self,
+        condition: object,
+        if_true: object,
+        if_false: object,
+    ) -> Expr:
+        if isinstance(condition, _LogicalOr):
+            fallback = self._select_condition(condition.right, if_true, if_false)
+            return self._select_condition(condition.left, if_true, fallback)
+        if not isinstance(condition, _Comparison):
+            raise MapleImportError("Maple piecewise condition is unsupported")
+        return self._select_comparison(condition, if_true, if_false)
 
     def _select_comparison(
         self,
@@ -979,6 +1108,33 @@ class _Evaluator:
         if comparison.operation == "ge":
             return self.graph.select_le(right_expr, left_expr, true_expr, false_expr)
         raise MapleImportError("unsupported Maple comparison")
+
+    def _require_erf_smoothing_source(self) -> None:
+        """Do not apply the qualified asymptotic series to a same-named formula."""
+        try:
+            definitions = [
+                (
+                    name,
+                    self.functions[name].parameters,
+                    re.sub(r"\s+", "", self.functions[name].expression),
+                )
+                for name in _ERF_SMOOTHING_HELPERS
+            ]
+        except KeyError as error:
+            raise MapleImportError("unqualified smooth-LR source closure") from error
+        digest = hashlib.sha256(
+            json.dumps(definitions, separators=(",", ":")).encode()
+        ).hexdigest()
+        if digest != _ERF_SMOOTHING_SOURCE_SHA256:
+            raise MapleImportError("unqualified smooth-LR source closure")
+
+    def _scalar_binding(self, name: str) -> Fraction:
+        value = self.bindings.get(name)
+        if not isinstance(value, Fraction):
+            raise MapleImportError(
+                f"Libxc Maple intrinsic requires scalar binding {name!r}"
+            )
+        return value
 
     def _substitute(
         self,
@@ -1033,7 +1189,7 @@ class _Evaluator:
 
         return visit(root.identifier)
 
-    def _intrinsic(self, name: str, arguments: Sequence[object]) -> Expr:
+    def _intrinsic(self, name: str, arguments: Sequence[object]) -> object:
         if name == "_maple_diff2":
             if (
                 len(arguments) != 4
@@ -1090,6 +1246,46 @@ class _Evaluator:
                 (3.0 / (4.0 * math.pi)) ** (1.0 / 3.0)
             )
             return (rs_factor / rs).pow(3.0)
+        if name == "n_spin":
+            if len(arguments) != 2:
+                raise MapleImportError("n_spin requires rs and zeta")
+            rs = self._as_expr(arguments[0])
+            z = self._as_expr(arguments[1])
+            return (1 + z) * self._as_expr(self._intrinsic("n_total", (rs,))) / 2
+        if name == "screen_dens":
+            if len(arguments) != 2:
+                raise MapleImportError("screen_dens requires rs and zeta")
+            density = self._intrinsic("n_spin", arguments)
+            return _Comparison(
+                "le", density, self._scalar_binding("p_a_dens_threshold")
+            )
+        if name == "screen_dens_zeta":
+            if len(arguments) != 2:
+                raise MapleImportError("screen_dens_zeta requires rs and zeta")
+            z = self._as_expr(arguments[1])
+            return _LogicalOr(
+                self._intrinsic("screen_dens", arguments),
+                _Comparison(
+                    "le",
+                    1 + z,
+                    self._scalar_binding("p_a_zeta_threshold"),
+                ),
+            )
+        if name == "z_thr":
+            if len(arguments) != 1:
+                raise MapleImportError("z_thr requires zeta")
+            z = self._as_expr(arguments[0])
+            threshold = self._scalar_binding("p_a_zeta_threshold")
+            fallback = self._select_condition(
+                _Comparison("le", 1 - z, threshold),
+                1 - threshold,
+                z,
+            )
+            return self._select_condition(
+                _Comparison("le", 1 + z, threshold),
+                threshold - 1,
+                fallback,
+            )
         if name == "opz_pow_n":
             if len(arguments) != 2:
                 raise MapleImportError("opz_pow_n requires zeta and exponent")
@@ -1099,24 +1295,31 @@ class _Evaluator:
                 raise MapleImportError(
                     "opz_pow_n exponent must be a compile-time scalar"
                 )
-            return (1 + z).pow(float(exponent))
+            regular = (1 + z).pow(float(exponent))
+            threshold = self.bindings.get("p_a_zeta_threshold")
+            if threshold is None:
+                return regular
+            if not isinstance(threshold, Fraction):
+                raise MapleImportError("p_a_zeta_threshold must be scalar")
+            clamped = self.graph.constant(threshold).pow(float(exponent))
+            return self._select_condition(
+                _Comparison("le", 1 + z, threshold),
+                clamped,
+                regular,
+            )
         if name == "my_piecewise3":
-            if len(arguments) != 3 or not isinstance(arguments[0], _Comparison):
+            if len(arguments) != 3:
                 raise MapleImportError(
-                    "my_piecewise3 requires one comparison and two scalar branches"
+                    "my_piecewise3 requires one condition and two scalar branches"
                 )
-            return self._select_comparison(arguments[0], arguments[1], arguments[2])
+            return self._select_condition(arguments[0], arguments[1], arguments[2])
         if name == "my_piecewise5":
-            if (
-                len(arguments) != 5
-                or not isinstance(arguments[0], _Comparison)
-                or not isinstance(arguments[2], _Comparison)
-            ):
+            if len(arguments) != 5:
                 raise MapleImportError(
-                    "my_piecewise5 requires two comparisons and three scalar branches"
+                    "my_piecewise5 requires two conditions and three scalar branches"
                 )
-            fallback = self._select_comparison(arguments[2], arguments[3], arguments[4])
-            return self._select_comparison(arguments[0], arguments[1], fallback)
+            fallback = self._select_condition(arguments[2], arguments[3], arguments[4])
+            return self._select_condition(arguments[0], arguments[1], fallback)
         if name in ("m_min", "m_max"):
             if len(arguments) != 2:
                 raise MapleImportError(f"{name} requires two scalar arguments")
@@ -1135,24 +1338,129 @@ class _Evaluator:
             if len(arguments) != 1:
                 raise MapleImportError("f_zeta requires one scalar argument")
             z = self._as_expr(arguments[0])
+            plus = self._as_expr(self._intrinsic("opz_pow_n", (z, Fraction(4, 3))))
+            minus = self._as_expr(self._intrinsic("opz_pow_n", (-z, Fraction(4, 3))))
             two_four_thirds = self.graph.approximate_constant(2.0 ** (4.0 / 3.0))
-            return ((1 + z).pow(4.0 / 3.0) + (1 - z).pow(4.0 / 3.0) - 2) / (
-                two_four_thirds - 2
-            )
+            return (plus + minus - 2) / (two_four_thirds - 2)
         if name == "mphi":
             if len(arguments) != 1:
                 raise MapleImportError("mphi requires one scalar argument")
             z = self._as_expr(arguments[0])
-            return ((1 + z).pow(2.0 / 3.0) + (1 - z).pow(2.0 / 3.0)) / 2
+            plus = self._as_expr(self._intrinsic("opz_pow_n", (z, Fraction(2, 3))))
+            minus = self._as_expr(self._intrinsic("opz_pow_n", (-z, Fraction(2, 3))))
+            return (plus + minus) / 2
         if name == "tt":
             if len(arguments) != 3:
                 raise MapleImportError("tt requires rs, zeta and xt")
             rs = self._as_expr(arguments[0])
             z = self._as_expr(arguments[1])
             xt = self._as_expr(arguments[2])
-            phi = self._intrinsic("mphi", (z,))
+            phi = self._as_expr(self._intrinsic("mphi", (z,)))
             two_one_third = self.graph.approximate_constant(2.0 ** (1.0 / 3.0))
             return xt / (4 * two_one_third * phi * rs.pow(0.5))
+        if name == "lda_stoll_par":
+            if len(arguments) not in (3, 4) or not isinstance(
+                arguments[0], _FunctionRef
+            ):
+                raise MapleImportError(
+                    "lda_stoll_par requires an LDA function, rs and zeta"
+                )
+            # Libxc 7.0.0 b97mv.mpl passes a fourth spin marker although
+            # util.mpl's arrow helper consumes only the first three arguments.
+            function = arguments[0]
+            rs_raw, z_raw = arguments[1:3]
+            rs = self._as_expr(rs_raw)
+            z = self._as_expr(z_raw)
+            opz = self._as_expr(self._intrinsic("opz_pow_n", (z, Fraction(1))))
+            scaled_rs = (
+                rs
+                * self.graph.approximate_constant(2.0 ** (1.0 / 3.0))
+                * self._as_expr(self._intrinsic("opz_pow_n", (z, Fraction(-1, 3))))
+            )
+            value = opz / 2 * self.call(function.name, (scaled_rs, Fraction(1)))
+            condition = self._intrinsic("screen_dens_zeta", (rs, z))
+            return self._select_condition(condition, 0, value)
+        if name == "lda_stoll_perp":
+            if len(arguments) != 3 or not isinstance(arguments[0], _FunctionRef):
+                raise MapleImportError(
+                    "lda_stoll_perp requires an LDA function, rs and zeta"
+                )
+            function = arguments[0]
+            rs_raw, z_raw = arguments[1:]
+            rs = self._as_expr(rs_raw)
+            z = self._as_expr(z_raw)
+            total = self.call(function.name, (rs, z))
+            parallel_up = self._as_expr(
+                self._intrinsic("lda_stoll_par", (function, rs, z))
+            )
+            parallel_down = self._as_expr(
+                self._intrinsic("lda_stoll_par", (function, rs, -z))
+            )
+            return total - parallel_up - parallel_down
+        if name == "enforce_smooth_lr":
+            if (
+                len(arguments) != 4
+                or not isinstance(arguments[0], _FunctionRef)
+                or arguments[0].name != "attenuation_erf0"
+                or arguments[2] != Fraction(27, 20)
+                or arguments[3] != Fraction(16)
+            ):
+                raise MapleImportError(
+                    "enforce_smooth_lr is qualified only for Libxc 7.0.0 "
+                    "attenuation_erf0(a), cutoff=1.35, order=16"
+                )
+            self._require_erf_smoothing_source()
+            function = arguments[0]
+            a = self._as_expr(arguments[1])
+            cutoff = self.graph.constant(Fraction(27, 20))
+            direct_a = self.graph.select_le(a, cutoff, a, cutoff)
+            large_a = self.graph.select_le(a, cutoff, cutoff, a)
+            direct = self.call(function.name, (direct_a,))
+            inv2 = large_a.pow(-2.0)
+            denominators = (
+                36,
+                960,
+                26880,
+                829440,
+                28385280,
+                1073479680,
+                44590694400,
+                2021444812800,
+            )
+            series = self.graph.constant(0)
+            power = inv2
+            for index, denominator in enumerate(denominators):
+                coefficient = Fraction(1 if index % 2 == 0 else -1, denominator)
+                series = series + coefficient * power
+                power = power * inv2
+            return self.graph.select_le(cutoff, a, series, direct)
+        if name == "gga_exchange_nsp":
+            if len(arguments) != 5 or not isinstance(arguments[0], _FunctionRef):
+                raise MapleImportError(
+                    "gga_exchange_nsp requires a function and four scalars"
+                )
+            function = arguments[0]
+            rs, z, xs0, xs1 = arguments[1:]
+            rs_expr, z_expr = self._as_expr(rs), self._as_expr(z)
+            z0 = self._as_expr(self._intrinsic("z_thr", (z_expr,)))
+            z1 = self._as_expr(self._intrinsic("z_thr", (-z_expr,)))
+            term0 = self._lda_x_spin(rs_expr, z0) * self.call(
+                function.name, (rs_expr, z0, self._as_expr(xs0))
+            )
+            term1 = self._lda_x_spin(rs_expr, z1) * self.call(
+                function.name, (rs_expr, z1, self._as_expr(xs1))
+            )
+            term0 = self._select_condition(
+                self._intrinsic("screen_dens", (rs_expr, z_expr)),
+                0,
+                term0,
+            )
+            term1 = self._select_condition(
+                self._intrinsic("screen_dens", (rs_expr, -z_expr)),
+                0,
+                term1,
+            )
+            return term0 + term1
         if name == "gga_exchange":
             if len(arguments) != 5 or not isinstance(arguments[0], _FunctionRef):
                 raise MapleImportError(
@@ -1206,6 +1514,8 @@ class _Evaluator:
             return self.graph.transcendental_unary("asinh", value)
         if name == "arctan":
             return self.graph.transcendental_unary("atan", value)
+        if name == "erf":
+            return self.graph.transcendental_unary("erf", value)
         if name == "exp":
             return self.graph.exponential(value)
         if name in ("log", "log1p", "expm1"):
@@ -1220,4 +1530,5 @@ class _Evaluator:
         coefficient = self.graph.approximate_constant(
             -x_factor * 2.0 ** (-4.0 / 3.0) * rs_factor
         )
-        return coefficient * (1 + z).pow(4.0 / 3.0) / rs
+        spin_power = self._as_expr(self._intrinsic("opz_pow_n", (z, Fraction(4, 3))))
+        return coefficient * spin_power / rs

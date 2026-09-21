@@ -105,6 +105,7 @@ def emit_cpu(
     *,
     max_bytes: typing.Any = 8 * 1024 * 1024,
     max_work: typing.Any = 100_000_000,
+    max_nodes: typing.Any = 4096,
     symbol: str = "tensor_cpu",
 ) -> typing.Any:
     """Return source and exact bounded storage/work requirements without runtime imports.
@@ -121,8 +122,11 @@ def emit_cpu(
         raise ValueError("CPU entry symbol must be a C identifier")
     checked_size(max_bytes, "CPU byte budget")
     checked_size(max_work, "CPU work budget")
+    checked_size(max_nodes, "CPU node budget")
+    if max_nodes == 0 or max_nodes > 16384:
+        raise ValueError("CPU node budget must lie in [1, 16384]")
     nodes = program.live_nodes
-    if len(nodes) > 4096:
+    if len(nodes) > max_nodes:
         raise ValueError("CPU program exceeds node budget")
     offsets, cursor, inputs, work = {}, 0, [], 0
     for node in nodes:
@@ -339,12 +343,17 @@ class NativeTensorProgram:
         cache: typing.Any,
         max_bytes: typing.Any = 8 * 1024 * 1024,
         max_work: typing.Any = 100_000_000,
+        max_nodes: typing.Any = 4096,
         symbol: str = "tensor_cpu",
     ) -> None:
         if not isinstance(compiler, CppCompilerAdapter):
             raise TypeError("native TensorIR requires a CPU compiler adapter")
         source, self.resources = emit_cpu(
-            program, max_bytes=max_bytes, max_work=max_work, symbol=symbol
+            program,
+            max_bytes=max_bytes,
+            max_work=max_work,
+            max_nodes=max_nodes,
+            symbol=symbol,
         )
         self.program, self.max_bytes = program, max_bytes
         self.inputs = tuple(n for n in program.live_nodes if n.op == "input")

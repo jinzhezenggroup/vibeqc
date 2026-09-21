@@ -14,7 +14,10 @@ from fractions import Fraction
 from pathlib import Path
 
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.common.native_runtime import compile_runtime
+from vibeqc_compiler.common.native_runtime import (
+    compile_cuda_object,
+    link_cuda_objects,
+)
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.source_cache import cache_source
@@ -461,23 +464,26 @@ def emit_stationary_scientific_kernels(plan: typing.Any) -> str:
     )
 
 
-def emit_stationary_cuda(
-    primitive_source: typing.Any,
+_FIRST_DERIVATIVE_DECLARATION = """#include <cuda_runtime.h>
+extern __device__ bool first_derivative(
+    unsigned kind, const double* e, const double* c, double* out);
+"""
+
+
+def emit_stationary_wrapper_cuda(
     *,
     functional: typing.Any = None,
     pbe: typing.Any = None,
     plan: typing.Any,
     iterations: typing.Any = 3,
+    declare_primitive: bool = True,
 ) -> typing.Any:
-    """Compose explicit primitive lowering and shared XC geometric lowering.
+    """Emit the small method-specific TU linked against cached primitive code."""
 
-    ``pbe`` remains a compatibility spelling for historical LDA/PBE callers.
-    New method-owned lowering passes 0=LDA, 1=PBE, or 2=r2SCAN explicitly.
-    """
     if not isinstance(plan, StationaryGradientPlan):
         raise TypeError("stationary CUDA requires StationaryGradientPlan")
     return (
-        primitive_source
+        (_FIRST_DERIVATIVE_DECLARATION if declare_primitive else "")
         + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
         + "namespace vibeqc_stationary_cuda {\n"
         + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
@@ -487,6 +493,29 @@ def emit_stationary_cuda(
         + "}\n"
         + '#include "dft/stationary_gradient_cuda.cuh"\n'
         + emit_stationary_scientific_kernels(plan)
+    )
+
+
+def emit_stationary_cuda(
+    primitive_source: typing.Any,
+    *,
+    functional: typing.Any = None,
+    pbe: typing.Any = None,
+    plan: typing.Any,
+    iterations: typing.Any = 3,
+) -> typing.Any:
+    """Compose the legacy single-TU source for inspection and provenance tests.
+
+    Runtime compilation uses separable CUDA objects so the large primitive
+    lowering is cached independently of functional and spin specialization.
+    """
+
+    return primitive_source + emit_stationary_wrapper_cuda(
+        functional=functional,
+        pbe=pbe,
+        plan=plan,
+        iterations=iterations,
+        declare_primitive=False,
     )
 
 
@@ -500,13 +529,14 @@ def compile_stationary_cuda(
     compiler: typing.Any,
     cache: typing.Any,
 ) -> typing.Any:
-    """Compile a finite strict-FP64 artifact with transitive header identities."""
+    """Compile strict-FP64 primitive and wrapper objects, then device-link them."""
+
     if not isinstance(compiler, CudaCompilerAdapter):
         raise TypeError("stationary CUDA requires an explicit CUDA compiler adapter")
     if os.environ.get("NVCC_PREPEND_FLAGS") or os.environ.get("NVCC_APPEND_FLAGS"):
         raise ValueError("stationary strict CUDA rejects NVCC flag overrides")
-    source = emit_stationary_cuda(
-        primitive_source,
+
+    wrapper_source = emit_stationary_wrapper_cuda(
         functional=functional,
         pbe=pbe,
         plan=plan,
@@ -514,36 +544,58 @@ def compile_stationary_cuda(
     )
     cache = Path(cache)
     cache.mkdir(parents=True, exist_ok=True)
-    path = cache / (canonical_hash(source) + ".cu")
-    cache_source(path, source)
+    primitive_path = cache / (canonical_hash(primitive_source) + ".primitive.cu")
+    wrapper_path = cache / (canonical_hash(wrapper_source) + ".stationary.cu")
+    cache_source(primitive_path, primitive_source)
+    cache_source(wrapper_path, wrapper_source)
+
     header = asset_path("src/dft/stationary_gradient_cuda.cuh")
-    return compile_runtime(
+    include = f"-I{header.parents[1]}"
+    primitive_headers = tuple(
+        asset_path(name)
+        for name in (
+            "src/integrals/eri_geometry.hpp",
+            "src/integrals/range_moments.hpp",
+        )
+    )
+    wrapper_headers = tuple(
+        asset_path(name)
+        for name in (
+            "src/dft/stationary_gradient_cuda.cuh",
+            "src/dft/grid_task_view.cuh",
+            "src/dft/xc_point.hpp",
+            "src/tensor/cuda_runtime.cuh",
+            "src/runtime/bounded_workspace.hpp",
+            "src/runtime/cuda_resources.cuh",
+            "src/runtime/resource_cuda.cuh",
+            "src/runtime/resource_ledger.hpp",
+            "src/tensor/cuda_error.hpp",
+            "src/tensor/metrics.hpp",
+            "src/runtime/allocation_measurement.hpp",
+        )
+    )
+    primitive = compile_cuda_object(
         compiler,
         cache,
-        path,
-        headers=tuple(
-            asset_path(name)
-            for name in (
-                "src/dft/stationary_gradient_cuda.cuh",
-                "src/dft/grid_task_view.cuh",
-                "src/dft/xc_point.hpp",
-                "src/integrals/eri_geometry.hpp",
-                "src/integrals/range_moments.hpp",
-                "src/tensor/cuda_runtime.cuh",
-                "src/runtime/bounded_workspace.hpp",
-                "src/runtime/cuda_resources.cuh",
-                "src/runtime/resource_cuda.cuh",
-                "src/runtime/resource_ledger.hpp",
-                "src/tensor/cuda_error.hpp",
-                "src/tensor/metrics.hpp",
-                "src/runtime/allocation_measurement.hpp",
-            )
-        ),
-        libraries=("cublas",),
+        primitive_path,
+        headers=primitive_headers,
         options=(
             "--fmad=false",
             "--expt-relaxed-constexpr",
-            f"-I{header.parents[1]}",
+            include,
             *_split_compile_options(),
         ),
+    )
+    wrapper = compile_cuda_object(
+        compiler,
+        cache,
+        wrapper_path,
+        headers=wrapper_headers,
+        options=("--fmad=false", "--expt-relaxed-constexpr", include),
+    )
+    return link_cuda_objects(
+        compiler,
+        cache,
+        (primitive, wrapper),
+        libraries=("cublas",),
     )
