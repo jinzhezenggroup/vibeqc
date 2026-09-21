@@ -31,6 +31,7 @@ except ModuleNotFoundError:
     from _retention import raw_output_path
 
 from benchmarks.df_component_ledger import read_trace
+from benchmarks.df_shell_work_ledger import DISTANCE_EDGES_BOHR, EXPONENT_EDGES
 
 SCHEMA = "vibeqc.issue437_practical_jkfit_work"
 VERSION = 1
@@ -192,6 +193,32 @@ def _weight_histogram(
     }
 
 
+def _validate_distance_histogram(feature: dict, expected: int) -> None:
+    """Reject corrupt bins instead of trusting the headline work total."""
+    total = _nonnegative_integer(
+        feature.get("primitive_products_considered"), "feature primitive count"
+    )
+    if total != expected:
+        raise ValueError("distance/exponent histogram does not conserve primitive work")
+    for name, axes, width in (
+        ("distance_bohr", ("ab", "ac", "bc"), len(DISTANCE_EDGES_BOHR) + 2),
+        ("exponents", ("alpha", "beta", "gamma"), len(EXPONENT_EDGES) + 1),
+    ):
+        histograms = feature.get(name)
+        if not isinstance(histograms, dict) or set(histograms) != set(axes):
+            raise ValueError("invalid distance/exponent histogram axes")
+        for histogram in histograms.values():
+            if not isinstance(histogram, list) or len(histogram) != width:
+                raise ValueError("invalid distance/exponent histogram width")
+            counts = [
+                _nonnegative_integer(x, "feature histogram bin") for x in histogram
+            ]
+            if sum(counts) != total:
+                raise ValueError(
+                    "distance/exponent histogram does not conserve primitive work"
+                )
+
+
 def summarize_cell(
     label: str,
     role: str,
@@ -293,14 +320,8 @@ def summarize_cell(
         class_gpu_ms += gpu_ms
         weight_histogram = _weight_histogram(counters, angular, work)
         distance_feature = distance_features.get(angular)
-        if (
-            distance_feature is not None
-            and distance_feature.get("primitive_products_considered")
-            != primitive_considered
-        ):
-            raise ValueError(
-                "distance/exponent histogram does not conserve primitive work"
-            )
+        if distance_feature is not None:
+            _validate_distance_histogram(distance_feature, primitive_considered)
 
         row = {
             "angular": list(angular),

@@ -363,3 +363,29 @@ def test_weight_histogram_conserves_folded_samples_and_public_loads() -> None:
     broken["counters"]["shell_000_weight_underlying_loads"] = 2
     with pytest.raises(ValueError, match="conserve public loads"):
         summarize_cell("practical", "practical", work, broken)
+
+
+@pytest.mark.parametrize(
+    "corruption", ["wrong_sum", "negative", "bool", "missing_axis", "wrong_width"]
+)
+def test_distance_histogram_rejects_corrupt_bins(corruption: str) -> None:
+    work, trace = _minimal_cell("practical")
+    row = {
+        "angular": [0, 0, 0],
+        "primitive_products_considered": 4,
+        "distance_bohr": {key: [4] + [0] * 7 for key in ("ab", "ac", "bc")},
+        "exponents": {key: [4] + [0] * 10 for key in ("alpha", "beta", "gamma")},
+    }
+    work["distance_exponent_bins"] = {"classes": [row]}
+    if corruption == "wrong_sum":
+        row["distance_bohr"]["ab"][0] = 3
+    elif corruption == "negative":
+        row["exponents"]["alpha"][:2] = [-1, 5]
+    elif corruption == "bool":
+        row["distance_bohr"]["ab"][:2] = [True, 3]
+    elif corruption == "missing_axis":
+        del row["exponents"]["gamma"]
+    else:
+        row["distance_bohr"]["bc"].append(0)
+    with pytest.raises((ValueError, TypeError), match="histogram|integer|feature"):
+        summarize_cell("practical", "practical", work, trace)

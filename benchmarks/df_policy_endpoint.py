@@ -16,6 +16,7 @@ import os
 import subprocess
 import time
 import typing
+from contextlib import contextmanager
 from pathlib import Path
 
 import numpy as np
@@ -42,6 +43,24 @@ CASES = {
     768: "water-32mer-4s4-def2-svp-spherical",
     864: "water-36mer-water27-derived-def2-svp-spherical",
 }
+
+
+@contextmanager
+def _screening_feature_scope(enabled: bool) -> typing.Iterator[None]:
+    """Keep diagnostic work out of clean samples and restore on every exit."""
+    name = "VIBEQC_DF_SCREENING_FEATURES"
+    previous = os.environ.get(name)
+    if enabled:
+        os.environ[name] = "1"
+    else:
+        os.environ.pop(name, None)
+    try:
+        yield
+    finally:
+        if previous is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = previous
 
 
 def independent_reference(
@@ -400,16 +419,19 @@ def main() -> None:
         """Keep raw numerical evidence even if a subsequent gate fails."""
         args.output.write_text(json.dumps(payload, indent=2) + "\n")
 
-    def execute(batch: typing.Any, *, cold: typing.Any = False) -> typing.Any:
-        """Time the complete strict energy-and-force endpoint."""
-        start = time.perf_counter()
-        result = batch.execute(
-            strict=True,
-            properties=("energy",)
-            if args.energy_only and not cold
-            else ("energy", "forces"),
-        )
-        seconds = time.perf_counter() - start
+    def execute(
+        batch: typing.Any, *, cold: typing.Any = False, screening_features: bool = False
+    ) -> typing.Any:
+        """Time the complete endpoint, excluding diagnostic control changes."""
+        with _screening_feature_scope(screening_features):
+            start = time.perf_counter()
+            result = batch.execute(
+                strict=True,
+                properties=("energy",)
+                if args.energy_only and not cold
+                else ("energy", "forces"),
+            )
+            seconds = time.perf_counter() - start
         return result, seconds
 
     select_policy(args.policies[0])
@@ -559,14 +581,13 @@ def main() -> None:
                     raise RuntimeError("cudaProfilerStart failed")
             previous_work = os.environ.get("VIBEQC_DF_SHELL_WORK")
             previous_counters = os.environ.get("VIBEQC_DF_SHELL_COUNTERS")
-            previous_features = os.environ.get("VIBEQC_DF_SCREENING_FEATURES")
             if diagnostic:
                 os.environ["VIBEQC_DF_SHELL_COUNTERS"] = "1"
                 if args.shell_work:
                     os.environ["VIBEQC_DF_SHELL_WORK"] = "1"
-                if args.screening_features:
-                    os.environ["VIBEQC_DF_SCREENING_FEATURES"] = "1"
-            result, seconds = execute(batch)
+            result, seconds = execute(
+                batch, screening_features=diagnostic and args.screening_features
+            )
             if diagnostic:
                 if previous_counters is None:
                     os.environ.pop("VIBEQC_DF_SHELL_COUNTERS", None)
@@ -576,10 +597,6 @@ def main() -> None:
                 os.environ.pop("VIBEQC_DF_SHELL_WORK", None)
             else:
                 os.environ["VIBEQC_DF_SHELL_WORK"] = previous_work
-            if previous_features is None:
-                os.environ.pop("VIBEQC_DF_SCREENING_FEATURES", None)
-            else:
-                os.environ["VIBEQC_DF_SCREENING_FEATURES"] = previous_features
             if args.cuda_profile and cudart.cudaProfilerStop() != 0:
                 raise RuntimeError("cudaProfilerStop failed")
             os.environ.pop("VIBEQC_DF_PROGRESS_TRACE", None)

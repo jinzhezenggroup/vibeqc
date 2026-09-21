@@ -200,6 +200,28 @@ struct Arena {
   }
 };
 
+/** Reuse only drained diagnostic storage, admitted before allocation/copy. */
+std::span<double> prepare_screening_buffer(std::unique_ptr<double[]>& storage,
+                                           std::size_t& capacity, std::size_t count, Arena& arena) {
+  if (count > capacity) {
+    const auto retained = capacity * sizeof(double);
+    if (retained > arena.stats.host_bytes)
+      throw std::logic_error("invalid screening storage charge");
+    const auto other = arena.stats.host_bytes - retained;
+    if (other > arena.budget || count > (arena.budget - other) / sizeof(double))
+      throw std::bad_alloc();
+    // The previous diagnostic D2H was synchronized before this callback returns.
+    // Release it first: growing must not transiently retain two response panels.
+    storage.reset();
+    capacity = 0;
+    arena.stats.host_bytes = other;
+    storage = std::make_unique<double[]>(count);
+    capacity = count;
+    arena.stats.host_bytes += capacity * sizeof(double);
+  }
+  return {storage.get(), count};
+}
+
 /** Optional shell traversal metadata, charged to the response owner's budget.
  * Class lists retain original shell order, so clipping a panel needs only two
  * binary searches per angular class, including panels cutting through a shell.
@@ -801,7 +823,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
     // The host destination must outlive Arena's exceptional-path stream drain.
     std::array<unsigned long long, 6> observed_shell_work{};
     std::array<unsigned long long, 3> observed_screen_work{};
-    std::vector<double> screening_feature_weights;
+    std::unique_ptr<double[]> screening_feature_weights;
+    std::size_t screening_feature_capacity{};
     unsigned long long* screen_counters = nullptr;
     std::vector<unsigned long long> detailed_shell_work_host;
     DfShellDiagnostics detailed_shell_work;
@@ -1406,17 +1429,21 @@ vibeqc_status execute_cuda_df_hf_gradient(
             if (shell_execution && !metric_weights) {
               const auto panel_count = count / stride;
               if (screening_features) {
-                screening_feature_weights.resize(count);
-                check(cudaMemcpyAsync(screening_feature_weights.data(), weights,
-                                      count * sizeof(double), cudaMemcpyDeviceToHost,
-                                      arena.stream));
+                const auto features = prepare_screening_buffer(
+                    screening_feature_weights, screening_feature_capacity, count, arena);
+                check(cudaMemcpyAsync(features.data(), weights, count * sizeof(double),
+                                      cudaMemcpyDeviceToHost, arena.stream));
+                arena.stats.device_to_host_bytes += count * sizeof(double);
                 check(cudaStreamSynchronize(arena.stream));
+                ++arena.stats.stream_synchronizations;
+                runtime::cuda_trace::trace_maximum("screening_feature_host_capacity_bytes",
+                                                   screening_feature_capacity * sizeof(double));
                 runtime::cuda_trace::trace_counter("screening_feature_weight_d2h_bytes",
                                                    count * sizeof(double));
                 runtime::cuda_trace::trace_counter("screening_feature_stream_drains", 1);
                 trace_df_weight_histogram(*shell_o, *shell_x, range.offset, panel_count, n,
-                                          std::span<const double>(screening_feature_weights),
-                                          derivative_pairs, full_shell_domain);
+                                          std::span<const double>(features), derivative_pairs,
+                                          full_shell_domain);
               }
               if (shell_diagnostics) {
                 char panel_name[96];
