@@ -59,6 +59,65 @@ def test_compiled_priority_never_rewards_spills_for_a_smaller_artifact() -> None
     assert healthy.compiled_resource_priority() < spilled.compiled_resource_priority()
 
 
+def test_endpoint_profitability_rejects_a_slower_candidate() -> None:
+    baseline = GpuProfitability(endpoint_seconds=0.010)
+    slower = GpuProfitability(endpoint_seconds=0.012)
+
+    reasons = slower.endpoint_regressions_against(baseline, minimum_speedup=1.02)
+
+    assert reasons == ("endpoint speedup 0.833333x is below the required 1.02x",)
+
+
+def test_endpoint_profitability_allows_a_qualified_speedup() -> None:
+    baseline = GpuProfitability(endpoint_seconds=0.010)
+    faster = GpuProfitability(endpoint_seconds=0.009)
+
+    assert faster.endpoint_regressions_against(baseline, minimum_speedup=1.02) == ()
+
+
+def test_resource_regression_gate_rejects_pressure_growth_inside_noise_band() -> None:
+    baseline = GpuProfitability(
+        compiled_registers_per_thread=64,
+        spill_store_bytes=0,
+        spill_load_bytes=0,
+        compiled_occupancy_upper_bound=0.75,
+        endpoint_seconds=0.01000,
+    )
+    retained = GpuProfitability(
+        compiled_registers_per_thread=96,
+        spill_store_bytes=8,
+        spill_load_bytes=8,
+        compiled_occupancy_upper_bound=0.50,
+        endpoint_seconds=0.00995,
+    )
+
+    reasons = retained.resource_regressions_against(baseline)
+
+    assert len(reasons) == 2
+    assert reasons[0].startswith("spill traffic grows from 0 to 16 bytes")
+    assert "registers grow from 64 to 96 per thread" in reasons[1]
+    assert "occupancy falls from 0.75 to 0.5" in reasons[1]
+
+
+def test_resource_regression_gate_allows_measured_endpoint_win() -> None:
+    baseline = GpuProfitability(
+        compiled_registers_per_thread=64,
+        spill_store_bytes=0,
+        spill_load_bytes=0,
+        compiled_occupancy_upper_bound=0.75,
+        endpoint_seconds=0.01000,
+    )
+    faster = GpuProfitability(
+        compiled_registers_per_thread=96,
+        spill_store_bytes=8,
+        spill_load_bytes=8,
+        compiled_occupancy_upper_bound=0.50,
+        endpoint_seconds=0.00950,
+    )
+
+    assert faster.resource_regressions_against(baseline) == ()
+
+
 def test_payload_preserves_unknown_evidence_instead_of_guessing() -> None:
     cost = GpuProfitability(
         arithmetic_operation_count=12,

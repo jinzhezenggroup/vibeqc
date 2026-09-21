@@ -15,6 +15,11 @@ from math import prod
 
 from vibeqc_compiler.common.gpu_profitability import GpuProfitability
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.schedule import (
+    ScheduleContract,
+    ScheduleResources,
+    ScheduleTopology,
+)
 
 from .cuda_emit import cooperative_reduction_shared_bytes, emit_cuda
 from .cuda_gemm import gemm_contract
@@ -275,6 +280,47 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         launch_count=launches,
         source_bytes=source_bytes,
     )
+    batch = plan.batch_schedule
+    contract = ScheduleContract(
+        consumer="tensor.cuda",
+        schedule_hash=canonical_hash(
+            {
+                "schedule": asdict(plan.schedule),
+                "precision_schedule": plan.precision_schedule.identity,
+            }
+        ),
+        workload_hash=plan.program.logical_hash,
+        target_hash=canonical_hash(plan.target.to_payload()),
+        precision_schedule_hash=plan.precision_schedule.identity,
+        fallback=plan.schedule == TensorSchedule() and plan.precision == "fp64",
+        topology=ScheduleTopology(
+            tiles=(plan.schedule.tile_m, plan.schedule.tile_n, plan.schedule.tile_k),
+            workgroup_threads=plan.schedule.threads,
+            subgroup_size=plan.target.warp_size,
+            fusion="fused" if plan.schedule.fuse else "unfused",
+            materialization=("recompute" if plan.schedule.recompute else "materialize"),
+            residency="planned-device",
+            staging_width=plan.schedule.staging_width,
+            reduction=f"unroll-{plan.schedule.reduction_unroll}",
+            bucket="ragged" if batch.ragged_steps else "homogeneous",
+        ),
+        resources=ScheduleResources(
+            device_bytes=plan.device_bytes,
+            host_bytes=plan.host_bytes,
+            workspace_bytes=plan.allocation_bytes,
+            peak_live_values=max(live_values, default=0),
+            registers_per_thread=registers,
+            shared_bytes=0,
+            resident_workgroups=resident,
+            source_bytes=source_bytes,
+        ),
+        profitability=profitability,
+        provenance=(
+            ("batch_schedule_identity", canonical_hash(batch.to_payload())),
+            ("layout_identity", plan.layout_identity),
+            ("plan_identity", plan.identity),
+        ),
+    )
     return {
         "schema": "vibeqc.tensor.cuda.static-cost.v4",
         "peak_numeric_bytes": plan.peak_bytes,
@@ -306,6 +352,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "generated_source_bytes": source_bytes,
         "generated_static_data_bytes": plan.static_data_bytes,
         "profitability": profitability.to_payload(),
+        "schedule_contract": contract.to_payload(),
         "compile_cost_proxy": "generated_source_bytes calibrated against compiler-reported seconds; immutable static payload is external and is not parsed by NVCC",
     }
 

@@ -3,6 +3,8 @@
 import ast
 import copy
 import json
+import subprocess
+import sys
 import typing
 from pathlib import Path
 
@@ -56,3 +58,31 @@ def test_production_facade_does_not_import_reference_or_pyscf() -> None:
             else:
                 continue
             assert not any("pyscf" in n or "oracle" in n for n in names)
+
+
+def test_production_facade_does_not_transitively_load_df_oracle() -> None:
+    """A clean production import must not load dense validation-only providers."""
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; import tools.vibeqc_cc; "
+                "assert 'tools.vibeqc_cc.df_ccsdt_oracle' not in sys.modules; "
+                "assert not any(n == 'pyscf' or n.startswith('pyscf.') for n in sys.modules)"
+            ),
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_df_oracle_shares_the_production_method_contract() -> None:
+    from tools.vibeqc_cc import df_ccsdt_oracle, df_contract
+
+    assert df_ccsdt_oracle.DFCCSDTMethodContract is df_contract.DFCCSDTMethodContract
+    assert (
+        df_ccsdt_oracle.correlation_df_reference is df_contract.correlation_df_reference
+    )

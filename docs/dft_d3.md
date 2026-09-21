@@ -14,9 +14,11 @@ performance/retirement work.
 
 The production model is nonperiodic, real FP64, two-body D3(BJ), with `s9=0`.
 `D3Spec` records explicit `s6/s8/a1/a2`, source-data SHA-256 identities,
-coordination and pair cutoffs, and the pair-switch width. ATM, zero damping,
-unsupported versions, invalid coefficients and mismatched table identities are
-rejected rather than silently approximated.
+coordination and pair cutoffs, and the pair-switch width. ATM and original
+zero damping now have standalone CPU/CUDA qualification primitives, but neither
+widens the public production owner: unsupported variants, invalid coefficients
+and mismatched table identities are still rejected rather than silently
+approximated.
 
 The audited method catalog includes `PBE-D3(BJ)` and `PBE0-D3(BJ)`. Their
 `MethodIR` graphs contain the normal semilocal/exact-exchange primitives followed
@@ -215,9 +217,9 @@ The public correction owner remains deliberately separate from the electronic DF
 SCF/Fock equation, but `Calculator` now owns their exact-once energy/force
 composition at the prepared execution boundary. Remaining #492 work is the
 pair-parallel/generated CUDA production promotion and retirement evidence, plus
-production admission of separately validated ATM and zero-damping variants. The
-standalone ATM reference does not grant nonzero-`s9` production capability. Native
-DFT paths must continue to reject a correction node unless the Calculator
+production admission of the separately validated ATM and zero-damping variants.
+The standalone ATM and D3(0) references do not grant nonzero-`s9` or zero-damping
+production capability. Native DFT paths must continue to reject a correction node unless the Calculator
 composition owner has explicitly split and retained it.
 
 See [data provenance](../external/xtbloom-d3/README.md), the

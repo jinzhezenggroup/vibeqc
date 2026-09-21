@@ -277,6 +277,19 @@ macro(vibeqc_register_cuda_generated_sources target)
     OUTPUTS "${VIBEQC_WEIGHTED_ERI_HEADER}"
     ARGS --output "${VIBEQC_WEIGHTED_ERI_HEADER}")
 
+  set(VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_direct_high_order_pair_gradient.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_direct_high_order_pair_gradient_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_direct_pair_gradient.py"
+    OUTPUTS "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py"
+    ARGS --output "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}"
+    COMMENT "Generating compiler-owned Direct-HF high-order pair-gradient helper")
+
   set(VIBEQC_R2SCAN_CUDA_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_r2scan_device.cuh")
   vibeqc_register_generated_sources(

@@ -48,6 +48,22 @@ int main(int argc, char** argv) {
     }
     return 1;
   }
+  if (mode == "trsm_alpha_zero") {
+    double matrix[4]{nan, nan, nan, nan};
+    cpu_trsm('L', 'L', 'N', 'N', 2, 2, &nan, matrix, 0.0, plan);
+    for (double value : matrix)
+      if (value != 0.0) return 1;
+    return 0;
+  }
+  if (mode == "trsm_extent") {
+    try {
+      cpu_trsm('L', 'L', 'N', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, &c,
+               0.0, plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
   if (mode == "cholesky_extent") {
     try {
       cpu_cholesky_lower(&c, std::size_t(1) << (sizeof(std::size_t) * 4), plan);
