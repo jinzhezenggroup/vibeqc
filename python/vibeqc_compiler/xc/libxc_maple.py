@@ -14,11 +14,14 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import json
 import math
 import re
+import typing
 from dataclasses import dataclass
 from fractions import Fraction
 from functools import cache
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -31,10 +34,25 @@ class MapleImportError(ValueError):
     """The pinned Maple source uses syntax outside the qualified importer."""
 
 
+IMPORTER_SEMANTICS = "libxc-maple-graph/v3"
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _RESERVED = frozenset(
-    ("Pi", "X2S", "gga_exchange", "sqrt", "exp", "log", "log1p", "expm1")
+    (
+        "Pi",
+        "X2S",
+        "gga_exchange",
+        "f_zeta",
+        "mphi",
+        "tt",
+        "sqrt",
+        "exp",
+        "log",
+        "log1p",
+        "expm1",
+    )
 )
+_DEFINE = re.compile(r"^\$define\s+([A-Za-z_]\w*)\s*$")
+_INCLUDE = re.compile(r'^\$include\s+"([^"]+)"\s*$')
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +80,28 @@ class MapleModule:
     assignments: tuple[tuple[str, str], ...]
     functions: tuple[tuple[str, MapleFunction], ...]
     source_sha256: str
+    source_hashes: tuple[tuple[str, str], ...] = ()
+    include_edges: tuple[tuple[str, str], ...] = ()
+    defines: tuple[str, ...] = ()
+    initial_defines: tuple[str, ...] = ()
+
+    @property
+    def transitive_sha256(self) -> str:
+        """Hash the selected source graph and active preprocessor symbols."""
+
+        payload = json.dumps(
+            {
+                "entry_sha256": self.source_sha256,
+                "defines": self.defines,
+                "initial_defines": self.initial_defines,
+                "importer_semantics": IMPORTER_SEMANTICS,
+                "include_edges": self.include_edges,
+                "sources": self.source_hashes,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+        return hashlib.sha256(payload).hexdigest()
 
     @property
     def assignment_names(self) -> tuple[str, ...]:
@@ -85,6 +125,7 @@ class MapleModule:
 
 def _strip_comments(source: str) -> str:
     """Preserve line boundaries while removing Maple line/nested block comments."""
+
     output: list[str] = []
     offset = 0
     depth = 0
@@ -136,8 +177,13 @@ def _strip_comments(source: str) -> str:
     return "".join(output)
 
 
-def _preprocess(source: str, defines: frozenset[str]) -> str:
-    """Select a deterministic subset of Libxc's simple conditional directives."""
+def _preprocess(
+    source: str,
+    defines: set[str],
+    *,
+    include_loader: typing.Callable[[str], str] | None = None,
+) -> str:
+    """Select qualified directives and optionally expand pinned includes."""
 
     source = _strip_comments(source)
     active = True
@@ -149,6 +195,18 @@ def _preprocess(source: str, defines: frozenset[str]) -> str:
         if not line:
             if active:
                 output.append(raw_line)
+            continue
+        define = _DEFINE.fullmatch(line)
+        if define:
+            if active:
+                defines.add(define.group(1))
+            continue
+        include = _INCLUDE.fullmatch(line)
+        if include:
+            if active:
+                if include_loader is None:
+                    raise MapleImportError(f"unsupported Maple directive {line!r}")
+                output.append(include_loader(include.group(1)))
             continue
         if line.startswith("$ifdef "):
             symbol = line.split(None, 1)[1].strip()
@@ -194,10 +252,56 @@ def _preprocess(source: str, defines: frozenset[str]) -> str:
     return "\n".join(output)
 
 
-def import_maple_source(source: str, *, defines: Iterable[str] = ()) -> MapleModule:
-    """Parse the qualified assignment/arrow-function subset used by PBE-X."""
+def _reject_captured_redefinition(
+    name: str,
+    assignments: Mapping[str, str],
+    functions: Mapping[str, MapleFunction],
+) -> None:
+    """Reject overrides that require unsupported assignment-time value capture."""
 
-    selected = _preprocess(source, frozenset(defines))
+    def references(expression: str) -> set[str]:
+        return {
+            node.id
+            for node in ast.walk(_parse_expression(expression))
+            if isinstance(node, ast.Name)
+        }
+
+    for captured, expression in assignments.items():
+        if captured == name:
+            continue
+        pending = references(expression)
+        visited: set[str] = set()
+        while pending:
+            dependency = pending.pop()
+            if dependency == name:
+                raise MapleImportError(
+                    f"redefinition of {name!r} would change captured assignment "
+                    f"{captured!r}; assignment-time rebinding is not supported"
+                )
+            if dependency in visited:
+                continue
+            visited.add(dependency)
+            if dependency in assignments:
+                pending.update(references(assignments[dependency]))
+            elif dependency in functions:
+                function = functions[dependency]
+                pending.update(
+                    references(function.expression) - set(function.parameters)
+                )
+
+
+def _parse_selected_source(
+    selected: str,
+    *,
+    source_sha256: str,
+    source_hashes: tuple[tuple[str, str], ...],
+    include_edges: tuple[tuple[str, str], ...],
+    defines: tuple[str, ...],
+    initial_defines: tuple[str, ...],
+    allow_redefinition: bool,
+) -> MapleModule:
+    """Parse one selected source stream into final Maple definitions."""
+
     assignments: dict[str, str] = {}
     functions: dict[str, MapleFunction] = {}
     for raw_statement in re.split(r":(?![=])", selected):
@@ -214,9 +318,15 @@ def import_maple_source(source: str, *, defines: Iterable[str] = ()) -> MapleMod
             raise MapleImportError(
                 f"reserved Maple intrinsic cannot be redefined: {name!r}"
             )
+        is_function = "->" in right
         if name in assignments or name in functions:
-            raise MapleImportError(f"duplicate Maple definition {name!r}")
-        if "->" not in right:
+            same_kind = (is_function and name in functions) or (
+                not is_function and name in assignments
+            )
+            if not allow_redefinition or not same_kind:
+                raise MapleImportError(f"duplicate Maple definition {name!r}")
+            _reject_captured_redefinition(name, assignments, functions)
+        if not is_function:
             _parse_expression(right)
             assignments[name] = right
             continue
@@ -233,9 +343,113 @@ def import_maple_source(source: str, *, defines: Iterable[str] = ()) -> MapleMod
         _parse_expression(expression)
         functions[name] = MapleFunction(parameters, expression)
     return MapleModule(
-        tuple(assignments.items()),
-        tuple(functions.items()),
-        hashlib.sha256(source.encode()).hexdigest(),
+        assignments=tuple(assignments.items()),
+        functions=tuple(functions.items()),
+        source_sha256=source_sha256,
+        source_hashes=source_hashes,
+        include_edges=include_edges,
+        defines=defines,
+        initial_defines=initial_defines,
+    )
+
+
+def import_maple_source(source: str, *, defines: Iterable[str] = ()) -> MapleModule:
+    """Parse one in-memory source without permitting includes or redefinition."""
+
+    initial_defines = tuple(sorted(set(defines)))
+    selected_defines = set(initial_defines)
+    selected = _preprocess(source, selected_defines)
+    sha256 = hashlib.sha256(source.encode()).hexdigest()
+    return _parse_selected_source(
+        selected,
+        source_sha256=sha256,
+        source_hashes=(("<memory>", sha256),),
+        include_edges=(),
+        defines=tuple(sorted(selected_defines)),
+        initial_defines=initial_defines,
+        allow_redefinition=False,
+    )
+
+
+def import_maple_file(
+    root: Path,
+    entry: str,
+    *,
+    defines: Iterable[str] = (),
+    support_files: Iterable[str] = (),
+) -> MapleModule:
+    """Load one bounded include graph rooted inside a pinned source directory."""
+
+    source_root = Path(root).resolve()
+    initial_defines = tuple(sorted(set(defines)))
+    selected_defines = set(initial_defines)
+    visiting: list[Path] = []
+    loaded: set[Path] = set()
+    hashes: dict[str, str] = {}
+    include_edges: list[tuple[str, str]] = []
+
+    def resolve(candidate: Path) -> tuple[Path, str]:
+        try:
+            resolved = candidate.resolve(strict=True)
+            relative = resolved.relative_to(source_root).as_posix()
+        except (OSError, ValueError) as error:
+            raise MapleImportError(
+                f"Maple source escapes or is absent from pinned root: {candidate}"
+            ) from error
+        if not resolved.is_file():
+            raise MapleImportError(f"Maple source is not a regular file: {relative}")
+        return resolved, relative
+
+    def read_source(resolved: Path, relative: str) -> str:
+        raw = resolved.read_bytes()
+        try:
+            source = raw.decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise MapleImportError(f"Maple source is not UTF-8: {relative}") from error
+        hashes[relative] = hashlib.sha256(raw).hexdigest()
+        return source
+
+    def load(candidate: Path, *, parent: str | None = None) -> str:
+        resolved, relative = resolve(candidate)
+        if resolved in visiting:
+            names = [
+                *(item.relative_to(source_root).as_posix() for item in visiting),
+                relative,
+            ]
+            raise MapleImportError(f"cyclic Maple include: {' -> '.join(names)}")
+        if resolved in loaded:
+            raise MapleImportError(f"duplicate Maple include {relative!r}")
+        if parent is not None:
+            include_edges.append((parent, relative))
+        visiting.append(resolved)
+        loaded.add(resolved)
+        source = read_source(resolved, relative)
+        try:
+            return _preprocess(
+                source,
+                selected_defines,
+                include_loader=lambda name: load(
+                    resolved.parent / name, parent=relative
+                ),
+            )
+        finally:
+            visiting.pop()
+
+    entry_path, entry_relative = resolve(source_root / entry)
+    selected = load(entry_path)
+    for support in support_files:
+        support_path, support_relative = resolve(source_root / support)
+        if support_path not in loaded:
+            read_source(support_path, support_relative)
+    source_hashes = tuple(sorted(hashes.items()))
+    return _parse_selected_source(
+        selected,
+        source_sha256=hashes[entry_relative],
+        source_hashes=source_hashes,
+        include_edges=tuple(include_edges),
+        defines=tuple(sorted(selected_defines)),
+        initial_defines=initial_defines,
+        allow_redefinition=True,
     )
 
 
@@ -246,6 +460,8 @@ _ALLOWED_AST = (
     ast.Call,
     ast.Name,
     ast.Constant,
+    ast.List,
+    ast.Subscript,
     ast.Add,
     ast.Sub,
     ast.Mult,
@@ -286,13 +502,13 @@ class _Evaluator:
         self.graph = graph
         self.assignments = dict(module.assignments)
         self.functions = dict(module.functions)
-        self._assignment_cache: dict[str, Expr] = {}
+        self._assignment_cache: dict[str, object] = {}
         self._assignment_stack: set[str] = set()
 
     def call(
         self,
         name: str,
-        arguments: Sequence[Expr | float | Fraction],
+        arguments: Sequence[object],
     ) -> Expr:
         function = self.functions.get(name)
         if function is None:
@@ -330,7 +546,17 @@ class _Evaluator:
             )
         if name in self.functions:
             return _FunctionRef(name)
-        if name in ("gga_exchange", "sqrt", "exp", "log", "log1p", "expm1"):
+        if name in (
+            "gga_exchange",
+            "f_zeta",
+            "mphi",
+            "tt",
+            "sqrt",
+            "exp",
+            "log",
+            "log1p",
+            "expm1",
+        ):
             return _IntrinsicRef(name)
         if name not in self.assignments:
             raise MapleImportError(f"unknown Maple symbol {name!r}")
@@ -342,36 +568,132 @@ class _Evaluator:
             raise MapleImportError(f"cyclic Maple assignment involving {name!r}")
         self._assignment_stack.add(name)
         try:
-            value = self._as_expr(
-                self._eval(_parse_expression(self.assignments[name]).body, {})
-            )
+            value = self._eval(_parse_expression(self.assignments[name]).body, {})
         finally:
             self._assignment_stack.remove(name)
         self._assignment_cache[name] = value
         return value
 
+    def _even_power(self, value: Expr, exponent: int) -> Expr:
+        """Lower the pinned even-power forms before symbolic differentiation."""
+
+        from vibeqc_compiler.integral.expr import Expr
+
+        if exponent not in (2, 4):
+            raise MapleImportError("qualified even-power lowering supports 2 and 4")
+        if exponent == 4:
+            squared = self._even_power(value, 2)
+            return self._even_power(squared, 2)
+        node = self.graph.node(value)
+        if node.operation == "multiply":
+            return self.graph.multiply_many(
+                self._even_power(Expr(self.graph, identifier), 2)
+                for identifier in node.arguments
+            )
+        if node.operation == "reciprocal":
+            child = Expr(self.graph, node.arguments[0])
+            return self.graph.reciprocal(self._even_power(child, 2))
+        if (
+            node.operation == "power"
+            and isinstance(node.payload, float)
+            and node.payload == 0.5
+        ):
+            return Expr(self.graph, node.arguments[0])
+        return value.pow(2.0)
+
+    @staticmethod
+    def _literal_one(node: ast.AST) -> bool:
+        return (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, int | float)
+            and node.value == 1
+        )
+
+    @classmethod
+    def _one_plus_operand(cls, node: ast.AST) -> ast.AST | None:
+        if not isinstance(node, ast.BinOp) or not isinstance(node.op, ast.Add):
+            return None
+        if cls._literal_one(node.left):
+            return node.right
+        if cls._literal_one(node.right):
+            return node.left
+        return None
+
     def _eval(self, node: ast.AST, environment: Mapping[str, object]) -> object:
         if isinstance(node, ast.Constant) and isinstance(node.value, int | float):
             return Fraction(str(node.value))
+        if isinstance(node, ast.List):
+            return tuple(self._eval(item, environment) for item in node.elts)
+        if isinstance(node, ast.Subscript):
+            values = self._eval(node.value, environment)
+            index = self._eval(node.slice, environment)
+            if (
+                not isinstance(values, tuple)
+                or not isinstance(index, Fraction)
+                or index.denominator != 1
+            ):
+                raise MapleImportError(
+                    "Maple indexing requires a constant one-based list index"
+                )
+            offset = int(index) - 1
+            if not 0 <= offset < len(values):
+                raise MapleImportError("Maple list index is out of bounds")
+            return values[offset]
         if isinstance(node, ast.Name):
             return self._name(node.id, environment)
         if isinstance(node, ast.UnaryOp):
-            value = self._as_expr(self._eval(node.operand, environment))
+            value = self._eval(node.operand, environment)
+            if isinstance(value, Fraction):
+                if isinstance(node.op, ast.UAdd):
+                    return value
+                if isinstance(node.op, ast.USub):
+                    return -value
+            scalar = self._as_expr(value)
             if isinstance(node.op, ast.UAdd):
-                return value
+                return scalar
             if isinstance(node.op, ast.USub):
-                return -value
+                return -scalar
             raise MapleImportError("unsupported unary operator")
 
         if isinstance(node, ast.BinOp):
+            if (
+                isinstance(node.op, ast.Sub)
+                and self._literal_one(node.right)
+                and isinstance(node.left, ast.Call)
+                and isinstance(node.left.func, ast.Name)
+                and self._eval(node.left.func, environment) == _IntrinsicRef("exp")
+                and len(node.left.args) == 1
+                and not node.left.keywords
+            ):
+                argument = self._as_expr(self._eval(node.left.args[0], environment))
+                return self.graph.stable_unary("expm1", argument)
             left = self._eval(node.left, environment)
             right = self._eval(node.right, environment)
+            if isinstance(left, Fraction) and isinstance(right, Fraction):
+                if isinstance(node.op, ast.Add):
+                    return left + right
+                if isinstance(node.op, ast.Sub):
+                    return left - right
+                if isinstance(node.op, ast.Mult):
+                    return left * right
+                if isinstance(node.op, ast.Div):
+                    return left / right
+                if isinstance(node.op, ast.Pow):
+                    if right.denominator == 1:
+                        return left ** int(right)
+                    return float(left) ** float(right)
             if isinstance(node.op, ast.Pow):
                 base = self._as_expr(left)
                 if not isinstance(right, Fraction | int | float):
                     raise MapleImportError(
                         "Maple exponents must be compile-time scalars"
                     )
+                if (
+                    isinstance(right, Fraction)
+                    and right.denominator == 1
+                    and int(right) in (2, 4)
+                ):
+                    return self._even_power(base, int(right))
                 return base.pow(float(right))
             left_expr = self._as_expr(left)
             right_expr = self._as_expr(right)
@@ -386,16 +708,46 @@ class _Evaluator:
             raise MapleImportError("unsupported binary operator")
         if isinstance(node, ast.Call):
             target = self._eval(node.func, environment)
+            if (
+                target == _IntrinsicRef("log")
+                and len(node.args) == 1
+                and not node.keywords
+            ):
+                operand = self._one_plus_operand(node.args[0])
+                if operand is not None:
+                    value = self._as_expr(self._eval(operand, environment))
+                    return self.graph.stable_unary("log1p", value)
             arguments = tuple(self._eval(item, environment) for item in node.args)
             if isinstance(target, _FunctionRef):
-                scalar_arguments = tuple(self._as_expr(value) for value in arguments)
-                return self.call(target.name, scalar_arguments)
+                return self.call(target.name, arguments)
             if isinstance(target, _IntrinsicRef):
                 return self._intrinsic(target.name, arguments)
             raise MapleImportError("Maple call target is not callable")
         raise MapleImportError(f"unsupported Maple node {type(node).__name__}")
 
     def _intrinsic(self, name: str, arguments: Sequence[object]) -> Expr:
+        if name == "f_zeta":
+            if len(arguments) != 1:
+                raise MapleImportError("f_zeta requires one scalar argument")
+            z = self._as_expr(arguments[0])
+            two_four_thirds = self.graph.approximate_constant(2.0 ** (4.0 / 3.0))
+            return ((1 + z).pow(4.0 / 3.0) + (1 - z).pow(4.0 / 3.0) - 2) / (
+                two_four_thirds - 2
+            )
+        if name == "mphi":
+            if len(arguments) != 1:
+                raise MapleImportError("mphi requires one scalar argument")
+            z = self._as_expr(arguments[0])
+            return ((1 + z).pow(2.0 / 3.0) + (1 - z).pow(2.0 / 3.0)) / 2
+        if name == "tt":
+            if len(arguments) != 3:
+                raise MapleImportError("tt requires rs, zeta and xt")
+            rs = self._as_expr(arguments[0])
+            z = self._as_expr(arguments[1])
+            xt = self._as_expr(arguments[2])
+            phi = self._intrinsic("mphi", (z,))
+            two_one_third = self.graph.approximate_constant(2.0 ** (1.0 / 3.0))
+            return xt / (4 * two_one_third * phi * rs.pow(0.5))
         if name == "gga_exchange":
             if len(arguments) != 5 or not isinstance(arguments[0], _FunctionRef):
                 raise MapleImportError(
