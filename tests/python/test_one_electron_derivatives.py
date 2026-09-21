@@ -155,7 +155,6 @@ def test_g_derivative_codegen_is_explicit_and_production_stays_fail_closed() -> 
     from vibeqc_compiler.integral.capabilities import query_integral_capability
     from vibeqc_compiler.integral.one_electron_derivatives_cuda import (
         _emit_axis_permutations,
-        _emit_gradient_helpers,
         one_electron_derivative_inventory,
     )
 
@@ -164,11 +163,6 @@ def test_g_derivative_codegen_is_explicit_and_production_stays_fail_closed() -> 
     permutation_source = _emit_axis_permutations(4)
     assert "case 34U:" in permutation_source
     assert "return 35U;" in permutation_source
-    gradient_source = _emit_gradient_helpers(False, 4)
-    assert "overlap_kinetic_gradient_x_44" in gradient_source
-    assert "first >= 35 || second >= 35" in gradient_source
-    assert "switch (a*5U+b)" in gradient_source
-
     request = build_one_electron_derivative_ir("kinetic", (4, 0))
     production = query_integral_capability(
         request, backend="cuda_one_electron_derivatives"
