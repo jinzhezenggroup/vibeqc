@@ -125,8 +125,7 @@ def test_jet_dictionary_and_spatial_center_chain_rule() -> None:
                 moved_atoms = [
                     (
                         z,
-                        np.asarray(xyz)
-                        + sign * step * center_motion[atom],
+                        np.asarray(xyz) + sign * step * center_motion[atom],
                     )
                     for atom, (z, xyz) in enumerate(args["atoms"])
                 ]
