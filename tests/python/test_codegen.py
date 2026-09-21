@@ -952,12 +952,26 @@ def test_large_dddd_class_defaults_to_tiled_lowering() -> None:
     assert DDDD_SPEC.pair_orders == (4, 4)
     integral = build_integral_ir(DDDD_SPEC)
     candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
-    assert [item.kind for item in candidates] == [
-        ScheduleKind.TILED_COMPONENTS,
-        ScheduleKind.TILED_COMPONENTS,
-        ScheduleKind.TILED_COMPONENTS,
+    # Search now exposes all target-legal mappings; the production default
+    # below must still use the qualified 64-component tile.
+    tiled = [item for item in candidates if item.kind == ScheduleKind.TILED_COMPONENTS]
+    limit = min(
+        TEST_CUDA_TARGET.maximum_threads_per_block,
+        TEST_CUDA_TARGET.maximum_threads_per_sm,
+    )
+    expected_tiles = [
+        TEST_CUDA_TARGET.warp_size * 2**power
+        for power in range(1, limit.bit_length())
+        if TEST_CUDA_TARGET.warp_size * 2**power <= limit
+        and TEST_CUDA_TARGET.warp_size * 2**power < DDDD_SPEC.component_count
     ]
-    assert [item.component_tile for item in candidates] == [64, 128, 256]
+    assert [item.component_tile for item in tiled] == expected_tiles
+    assert {item.kind for item in candidates} == {
+        ScheduleKind.PACKED_TASKS,
+        ScheduleKind.SHELL_TASK,
+        ScheduleKind.SUBGROUP_TASKS,
+        ScheduleKind.TILED_COMPONENTS,
+    }
     plan = build_fused_shell_plan(DDDD_SPEC, target=TEST_CUDA_TARGET)
     assert plan.schedule.kind == ScheduleKind.TILED_COMPONENTS
     assert plan.block_threads == 64
@@ -970,8 +984,16 @@ def test_large_dddd_class_defaults_to_tiled_lowering() -> None:
     assert "component_tile_begin += 64U" in source
 
     trials = supported_schedule_trials(DDDD_SPEC, target=TEST_CUDA_TARGET)
-    assert len(trials) == 24
     assert len({trial.schedule_id for trial in trials}) == len(trials)
+    tiled_trials = [
+        trial
+        for trial in trials
+        if trial.schedule.kind == ScheduleKind.TILED_COMPONENTS
+    ]
+    assert (
+        len(tiled_trials)
+        == len(expected_tiles) * len(PairStorage) * len(PairOrientation) * 2
+    )
     assert {
         (
             trial.schedule.component_tile,
@@ -979,10 +1001,10 @@ def test_large_dddd_class_defaults_to_tiled_lowering() -> None:
             trial.schedule.pair_orientation,
             trial.schedule.unroll_pair_terms,
         )
-        for trial in trials
+        for trial in tiled_trials
     } == {
         (tile, storage, orientation, unrolled)
-        for tile in (64, 128, 256)
+        for tile in expected_tiles
         for storage in PairStorage
         for orientation in PairOrientation
         for unrolled in (True, False)
