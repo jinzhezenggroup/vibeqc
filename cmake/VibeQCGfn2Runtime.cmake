@@ -114,7 +114,10 @@ function(vibeqc_add_gfn2_runtime target)
         "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
       ARGS --output "${VIBEQC_GFN2_ELECTRONIC_CUDA_HEADER}"
       COMMENT "Generating compiler-owned GFN2 CUDA electronic pair science")
+    # Both CPU and CUDA consume the one compiler-owned pair artifact.
+    add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_pair_cpu_codegen)
     target_include_directories(vibeqc_gfn2_cuda PRIVATE
+      "${CMAKE_CURRENT_BINARY_DIR}/generated"
       ${_gfn2_root}
       ${_gfn2_root}/include
       ${_gfn2_root}/src

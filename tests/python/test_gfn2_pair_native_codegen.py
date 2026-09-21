@@ -92,3 +92,24 @@ def test_gfn2_native_pair_codegen_needs_no_site_packages(tmp_path: Path) -> None
     assert "gfn2_pair_distance_jvp_hash" in source
     assert "evaluate_gfn2_coordination_pair" in source
     assert "evaluate_gfn2_repulsion_pair" in source
+    assert "#define VIBEQC_GFN2_PAIR_HOST_DEVICE __host__ __device__" in source
+    assert source.count("VIBEQC_GFN2_PAIR_HOST_DEVICE inline bool") == 4
+
+
+def test_gfn2_cuda_pair_science_consumes_generated_helpers() -> None:
+    geometry = (
+        ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_geometry.cu"
+    ).read_text(encoding="utf-8")
+    repulsion = (
+        ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_repulsion.cu"
+    ).read_text(encoding="utf-8")
+
+    for source in (geometry, repulsion):
+        assert '#include "generated_gfn2_pair_native.hpp"' in source
+
+    assert "evaluate_gfn2_coordination_pair" in geometry
+    assert "kFirstSteepness" not in geometry
+    assert "double logistic(" not in geometry
+    assert "evaluate_gfn2_repulsion_pair" in repulsion
+    assert "distance_power" not in repulsion
+    assert "pair_energy = pair_charge * exp" not in repulsion

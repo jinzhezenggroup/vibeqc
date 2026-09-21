@@ -21,3 +21,11 @@ No new numerical, capability or performance promotion is implied.
 
 Agent: ChatGPT (Odd-PR Review)
 Model: GPT-6 Astra Pro
+
+## Subsequent CN/repulsion integration
+
+After the first merge, #905 landed the independent CUDA CN/repulsion pair
+consumer. Retain both the common pair-codegen dependency and the electronic
+pair-codegen target. Union the exact source-adaptation entries and keep their
+manifest gate sorted. No scientific source or emitter is changed by this
+second conflict resolution.
