@@ -15,7 +15,7 @@ from .expr import (
     RematerializationPolicy,
 )
 from .ir import IntegralIR, KernelConsumer, OperatorFamily
-from .shell_spec import ShellClassSpec
+from .shell_spec import AXES, ShellClassSpec
 
 if TYPE_CHECKING:
     from .cuda_target import CudaTargetInfo
