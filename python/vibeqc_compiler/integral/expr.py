@@ -16,6 +16,11 @@ from fractions import Fraction
 from functools import cache
 from typing import TYPE_CHECKING
 
+from vibeqc_compiler.common.value_numbering import (
+    ValueNumberingDiagnostics,
+    ValueNumberTable,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
 
@@ -344,17 +349,22 @@ class Graph:
 
     def __init__(self) -> None:
         self.nodes: list[Node] = []
-        self._identifiers: dict[Node, int] = {}
         self._constants: dict[Coefficient, Expr] = {}
         self._variables: dict[str, Expr] = {}
+        self._value_numbers = ValueNumberTable[Node]()
 
     def _intern(self, node: Node) -> Expr:
-        identifier = self._identifiers.get(node)
-        if identifier is None:
-            identifier = len(self.nodes)
+        identifier = self._value_numbers.number_exact_pure(node)
+        if identifier == len(self.nodes):
             self.nodes.append(node)
-            self._identifiers[node] = identifier
+        elif identifier > len(self.nodes):
+            raise RuntimeError("scalar DAG value numbering lost dense identifiers")
         return Expr(self, identifier)
+
+    @property
+    def value_numbering_diagnostics(self) -> ValueNumberingDiagnostics:
+        """Return structural-GVN evidence for this generated scalar DAG."""
+        return self._value_numbers.diagnostics
 
     def node(self, expression: Expr) -> Node:
         self._require_graph(expression)
