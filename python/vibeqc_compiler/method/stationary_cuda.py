@@ -416,6 +416,14 @@ __global__ void geometry_reduce(const double* partial, size_t na, double* output
   for (size_t lane = 0; lane < workers; ++lane) sum += partial[lane * 9 * na + i];
   output[i] = finite(output[i] + sum, error, 0);
 }
+__global__ void source_reduce(const double* input, size_t na, double* output, int* error) {
+  if (*error) return;
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= 3 * na) return;
+  double sum = 0;
+  for (size_t source = 0; source < 7; ++source) sum += input[source * 3 * na + i];
+  output[i] = finite(sum, error, 0);
+}
 }  // namespace vibeqc_stationary_cuda
 """
 

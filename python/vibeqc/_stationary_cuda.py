@@ -24,6 +24,7 @@ import numpy as np
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_runtime import CudaArtifact
+from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from vibeqc_compiler.dft.cuda import (
     CudaGrid,
@@ -122,6 +123,7 @@ class _CudaSources:
         records: typing.Any,
         budget: typing.Any,
         spin_blocks: typing.Any = 1,
+        target: typing.Any = None,
         work_budget: typing.Any = 2_000_000,
     ) -> None:
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
@@ -195,6 +197,12 @@ class _CudaSources:
             *tail,
         ]
         lib.stationary_finish.argtypes = [ct.c_void_p, _DOUBLE, ct.c_size_t, *tail]
+        lib.stationary_finish_reduced.argtypes = [
+            ct.c_void_p,
+            _DOUBLE,
+            ct.c_size_t,
+            *tail,
+        ]
         lib.stationary_metrics.argtypes = [
             ct.c_void_p,
             ct.POINTER(ct.c_uint64),
@@ -205,7 +213,7 @@ class _CudaSources:
         self._call(
             "stationary_create",
             device,
-            *compiler.target.compute_capability,
+            *(compiler.target if target is None else target).compute_capability,
             basis.natom,
             basis.nao,
             basis.nprimitive,
@@ -368,6 +376,12 @@ class _CudaSources:
         self._call("stationary_finish", self.handle, _ptr(out), out.size)
         return {name: out[i] for i, name in enumerate(_SOURCE_NAMES)}
 
+    def reduced(self) -> typing.Any:
+        """Return the fixed seven-source all-electron sum reduced on CUDA."""
+        out = np.empty((self.natom, 3))
+        self._call("stationary_finish_reduced", self.handle, _ptr(out), out.size)
+        return out
+
     def metrics(self) -> typing.Any:
         values = (ct.c_uint64 * 10)()
         if self.library.stationary_metrics(self.handle, values, 10):
@@ -456,6 +470,7 @@ class PreparedStationaryCudaExecution:
         cache: typing.Any,
         aot_directory: typing.Any = None,
         native_grid_library: typing.Any = None,
+        target: typing.Any = None,
         requests: typing.Any,
         functional: int,
         ecp: bool,
@@ -471,6 +486,7 @@ class PreparedStationaryCudaExecution:
         max_host_bytes: int,
         host_bound: int,
     ) -> None:
+        target = compiler.target if target is None else target
         topology = _basis_topology_identity(basis)
         key = (
             plan.identity,
@@ -488,7 +504,7 @@ class PreparedStationaryCudaExecution:
                 else ("all-electron",)
             ),
             device,
-            repr(compiler.target.to_payload()),
+            repr(target.to_payload()),
             None if aot_directory is None else str(Path(aot_directory).resolve()),
             None
             if native_grid_library is None
@@ -557,16 +573,14 @@ class PreparedStationaryCudaExecution:
                 functional=functional,
                 spin=contract.spin,
                 plan=plan,
-                architecture=compiler.target.architecture,
+                architecture=target.architecture,
                 iterations=spec.partition_iterations,
             )
         )
         grid_artifact = (
             compile_grid(compiler, cache)
             if native_grid_library is None
-            else _native_grid_artifact(
-                native_grid_library, compiler.target.architecture
-            )
+            else _native_grid_artifact(native_grid_library, target.architecture)
         )
         tensor_artifacts = {
             name: compile_cuda(value, compiler, cache)
@@ -584,6 +598,7 @@ class PreparedStationaryCudaExecution:
                     primitive_tile,
                     source_bytes,
                     spin_blocks=plan.spin_blocks,
+                    target=target,
                     work_budget=work_budget,
                 )
             )
@@ -712,6 +727,7 @@ def _complete_rks_cuda_gradient_diagnostic(
     cache: typing.Any,
     aot_directory: typing.Any = None,
     native_grid_library: typing.Any = None,
+    target: CudaTargetInfo | None = None,
     tile_points: typing.Any = 256,
     integral_terms: typing.Any = 32,
     primitive_tile: typing.Any = 128,
@@ -758,8 +774,21 @@ def _complete_rks_cuda_gradient_diagnostic(
         - basis.charge
     ):
         raise NotImplementedError("CUDA gradient diagnostic requires bound ECP states")
-    if not isinstance(compiler, CudaCompilerAdapter):
+    if compiler is None:
+        if ecp or aot_directory is None or native_grid_library is None:
+            raise TypeError(
+                "runtime compilation requires an explicit CUDA compiler adapter"
+            )
+        if not isinstance(target, CudaTargetInfo):
+            raise TypeError(
+                "packaged stationary CUDA requires an explicit execution target"
+            )
+    elif not isinstance(compiler, CudaCompilerAdapter):
         raise TypeError("an explicit CUDA compiler adapter is required")
+    elif target is not None and target != compiler.target:
+        raise ValueError("stationary CUDA compiler/execution target mismatch")
+    else:
+        target = compiler.target
     for value, name, cap in (
         (tile_points, "tile_points", 4096),
         (primitive_tile, "primitive_tile", 4096),
@@ -835,11 +864,11 @@ def _complete_rks_cuda_gradient_diagnostic(
     available = max_device_bytes - grid_plan.peak_bytes - source_bytes
     if available <= 0:
         raise ValueError("stationary additional-device budget exceeded")
-    tensor_plans = {
-        "reduction": plan_cuda(
-            plan.reduction_program(atoms=na), compiler.target, max_bytes=available
+    tensor_plans = {}
+    if ecp:
+        tensor_plans["reduction"] = plan_cuda(
+            plan.reduction_program(atoms=na), target, max_bytes=available
         )
-    }
     # Conservative numeric-array bound: compact task pages/sort staging, resident
     # topology mirrors, D/W admission copies, adapter staging,
     # candidate/publication copies, and tile owners.
@@ -858,7 +887,7 @@ def _complete_rks_cuda_gradient_diagnostic(
             + 4 * n
             + 80
         )
-        + max(tp.host_bytes for tp in tensor_plans.values())
+        + max((tp.host_bytes for tp in tensor_plans.values()), default=0)
     )
     if host_bound > max_host_bytes:
         raise ValueError("stationary additional-host byte budget exceeded")
@@ -907,7 +936,7 @@ def _complete_rks_cuda_gradient_diagnostic(
         for name in ("ecp_local", "ecp_nonlocal"):
             tensor_plans[name] = plan_cuda(
                 plan.integral_block(name, terms=n * n, coordinates=3 * na).contraction,
-                compiler.target,
+                target,
                 max_bytes=available,
             )
         # Provider export occurs before the grid/source/TensorIR owners exist.
@@ -937,16 +966,14 @@ def _complete_rks_cuda_gradient_diagnostic(
                 functional=functional,
                 spin=contract.spin,
                 plan=plan,
-                architecture=compiler.target.architecture,
+                architecture=target.architecture,
                 iterations=spec.partition_iterations,
             )
         )
         grid_artifact = (
             compile_grid(compiler, cache)
             if native_grid_library is None
-            else _native_grid_artifact(
-                native_grid_library, compiler.target.architecture
-            )
+            else _native_grid_artifact(native_grid_library, target.architecture)
         )
         artifacts = [artifact, grid_artifact]
     else:
@@ -960,6 +987,7 @@ def _complete_rks_cuda_gradient_diagnostic(
             cache=cache,
             aot_directory=aot_directory,
             native_grid_library=native_grid_library,
+            target=target,
             requests=requests,
             functional=functional,
             ecp=ecp,
@@ -1023,6 +1051,7 @@ def _complete_rks_cuda_gradient_diagnostic(
                     primitive_tile,
                     source_bytes,
                     spin_blocks=plan.spin_blocks,
+                    target=target,
                     work_budget=records,
                 )
             )
@@ -1108,17 +1137,22 @@ def _complete_rks_cuda_gradient_diagnostic(
                     result = contraction.execute(feeds)
                     record_tensor(result, feeds)
                     components[name] = result.outputs["gradient"].reshape(na, 3)
-        # Validate actual coverage before the pre-admitted complete reduction.
+        # Validate actual coverage before the complete reduction. All-electron
+        # seven-source work reduces inside the stationary owner; ECP retains the
+        # generated TensorIR sum because its two extra sources are separate owners.
         plan.reduction_program(atoms=na, sources=components)
-        tp = tensor_plans["reduction"]
-        if prepared is None:
-            peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
-        with _tensor_execution(
-            prepared, "reduction", tp, compiler, cache, device, artifacts
-        ) as reduction:
-            reduced = reduction.execute(components)
-            record_tensor(reduced, components)
-            gradient = reduced.outputs["gradient"]
+        if ecp:
+            tp = tensor_plans["reduction"]
+            if prepared is None:
+                peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
+            with _tensor_execution(
+                prepared, "reduction", tp, compiler, cache, device, artifacts
+            ) as reduction:
+                reduced = reduction.execute(components)
+                record_tensor(reduced, components)
+                gradient = reduced.outputs["gradient"]
+        else:
+            gradient = sources.reduced()
         source_after = sources.metrics()
         grid_after = ao.metrics()
         work = (
@@ -1164,6 +1198,9 @@ def _complete_rks_cuda_gradient_diagnostic(
         },
         stationary_weight_tensor_executions=0,
         stationary_weight_roundtrip_bytes=0,
+        stationary_final_reduction=(
+            "generated-tensorir-v1" if ecp else "native-seven-source-device-sum-v1"
+        ),
         stationary_state_dw_upload_bytes=(
             state.density.nbytes + state.weighted_density.nbytes
         ),
@@ -1227,6 +1264,7 @@ def complete_rks_cuda_gradient_diagnostic(
     cache: typing.Any,
     aot_directory: typing.Any = None,
     native_grid_library: typing.Any = None,
+    target: CudaTargetInfo | None = None,
     tile_points: typing.Any = 256,
     integral_terms: typing.Any = 32,
     primitive_tile: typing.Any = 128,
@@ -1244,6 +1282,7 @@ def complete_rks_cuda_gradient_diagnostic(
         "cache": cache,
         "aot_directory": aot_directory,
         "native_grid_library": native_grid_library,
+        "target": target,
         "tile_points": tile_points,
         "integral_terms": integral_terms,
         "primitive_tile": primitive_tile,

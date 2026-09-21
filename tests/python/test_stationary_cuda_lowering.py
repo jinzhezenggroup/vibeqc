@@ -212,13 +212,11 @@ def test_stationary_aot_inventory_is_fixed_full_sp_domain() -> None:
             assert stationary_aot_plan_identity(functional, spin=spin)
             assert f"stationary_functional = {functional}" in source
             assert f"stationary_spin_blocks = {blocks}" in source
+            assert "__global__ void source_reduce" in source
         assert len(identities) == 2
     with pytest.raises(ValueError, match="partition_iterations=3"):
         emit_stationary_aot_cuda(
-            0,
-            primitive_source=primitive_source,
-            spin="unpolarized",
-            iterations=2,
+            0, primitive_source=primitive_source, spin="unpolarized", iterations=2
         )
 
 
