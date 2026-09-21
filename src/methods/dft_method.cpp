@@ -38,40 +38,51 @@ std::uint64_t next_cpu_ks_owner() {
   return value;
 }
 
-bool is_uks(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_LDA_UKS || method == VIBEQC_METHOD_PBE_UKS ||
-         method == VIBEQC_METHOD_PBE0_UKS || method == VIBEQC_METHOD_R2SCAN_UKS;
+enum : std::uint32_t {
+  kKsSemilocalLda = 0,
+  kKsSemilocalPbe = 1,
+  kKsSemilocalR2scan = 2,
+};
+
+struct NativeKsExecutionPlan {
+  std::uint32_t spin_channels{1};
+  std::uint32_t semilocal_family{kKsSemilocalLda};
+  bool compiler_resolved{};
+};
+
+NativeKsExecutionPlan legacy_ks_execution_plan(vibeqc_method method) {
+  switch (method) {
+    case VIBEQC_METHOD_LDA_RKS:
+      return {1, kKsSemilocalLda, false};
+    case VIBEQC_METHOD_LDA_UKS:
+      return {2, kKsSemilocalLda, false};
+    case VIBEQC_METHOD_PBE_RKS:
+    case VIBEQC_METHOD_PBE0_RKS:
+      return {1, kKsSemilocalPbe, false};
+    case VIBEQC_METHOD_PBE_UKS:
+    case VIBEQC_METHOD_PBE0_UKS:
+      return {2, kKsSemilocalPbe, false};
+    case VIBEQC_METHOD_R2SCAN_RKS:
+      return {1, kKsSemilocalR2scan, false};
+    case VIBEQC_METHOD_R2SCAN_UKS:
+      return {2, kKsSemilocalR2scan, false};
+    default:
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "requested DFT method has no legacy KS execution selector");
+  }
 }
 
-bool is_pbe_family(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_PBE_RKS || method == VIBEQC_METHOD_PBE_UKS ||
-         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_PBE0_UKS;
-}
+bool unrestricted(const NativeKsExecutionPlan& plan) noexcept { return plan.spin_channels == 2; }
 
-bool is_pbe0(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_PBE0_UKS;
-}
-
-bool is_r2scan(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_R2SCAN_RKS || method == VIBEQC_METHOD_R2SCAN_UKS;
-}
-
-bool is_supported_dft(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_PBE_RKS ||
-         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_R2SCAN_RKS || is_uks(method);
-}
-
-std::uint32_t functional_code(vibeqc_method method) {
-  if (is_r2scan(method)) return 2U;
-  if (is_pbe_family(method)) return 1U;
-  if (method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_LDA_UKS) return 0U;
-  throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unknown semilocal functional family");
-}
-
-const char* display_method_name(vibeqc_method method) noexcept {
-  if (is_pbe0(method)) return "PBE0";
-  if (is_r2scan(method)) return "R2SCAN";
-  return is_pbe_family(method) ? "PBE" : "LDA";
+const char* semilocal_family_name(const NativeKsExecutionPlan& plan) noexcept {
+  switch (plan.semilocal_family) {
+    case kKsSemilocalPbe:
+      return "PBE";
+    case kKsSemilocalR2scan:
+      return "R2SCAN";
+    default:
+      return "LDA";
+  }
 }
 
 bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offset,
@@ -79,7 +90,9 @@ bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offse
   return descriptor.struct_size >= offset && descriptor.struct_size - offset >= width;
 }
 
-scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_backend backend) {
+scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor,
+                            vibeqc_backend backend,
+                            NativeKsExecutionPlan& execution_plan) {
   if (!std::isfinite(descriptor.energy_tolerance) || !std::isfinite(descriptor.density_tolerance) ||
       !std::isfinite(descriptor.screening_tolerance))
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "DFT tolerances must be finite");
@@ -92,6 +105,40 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
       descriptor.density_tolerance > 0.0 ? descriptor.density_tolerance : 1.0e-8;
   options.screening_tolerance =
       descriptor.screening_tolerance > 0.0 ? descriptor.screening_tolerance : 1.0e-12;
+
+  const auto legacy_plan = legacy_ks_execution_plan(descriptor.method);
+  execution_plan = legacy_plan;
+  const vibeqc_ks_options* ks_input = nullptr;
+  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
+                    sizeof(descriptor.ks_options)) &&
+      descriptor.ks_options) {
+    ks_input = descriptor.ks_options;
+    constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
+    constexpr auto v2_size = offsetof(vibeqc_ks_options, execution_plan_version);
+    constexpr auto v3_size = sizeof(vibeqc_ks_options);
+    if (ks_input->struct_size < v1_size || ks_input->abi_version != VIBEQC_ABI_VERSION)
+      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
+    if (ks_input->struct_size != v1_size && ks_input->struct_size != v2_size &&
+        ks_input->struct_size != v3_size)
+      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS option suffix");
+    if (ks_input->struct_size == v3_size) {
+      if (ks_input->execution_plan_version > 1)
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                          "unsupported KS execution-plan version");
+      if (ks_input->execution_plan_version == 1) {
+        if ((ks_input->spin_channels != 1 && ks_input->spin_channels != 2) ||
+            ks_input->semilocal_family > kKsSemilocalR2scan)
+          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                            "invalid compiler-resolved KS execution plan");
+        execution_plan = {ks_input->spin_channels, ks_input->semilocal_family, true};
+        if (execution_plan.spin_channels != legacy_plan.spin_channels ||
+            execution_plan.semilocal_family != legacy_plan.semilocal_family)
+          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                            "KS execution plan disagrees with the public selector family/spin");
+      }
+    }
+  }
+
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_mode),
                     sizeof(descriptor.density_fitting_mode))) {
     const auto mode = descriptor.density_fitting_mode;
@@ -114,52 +161,49 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && backend != VIBEQC_BACKEND_CUDA)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "DFT automatic precision currently requires CUDA");
-    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && is_r2scan(descriptor.method))
+    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO &&
+        execution_plan.semilocal_family == kKsSemilocalR2scan)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "r2SCAN currently requires strict FP64");
     options.precision_mode = descriptor.precision_mode;
   }
 
   scf::FockBuildSpec fock;
-  fock.spin = is_uks(descriptor.method) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
+  fock.spin =
+      unrestricted(execution_plan) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
   fock.derivative_order = 0;
   fock.exchange.present = false;
   bool composition_seen = false;
-  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
-                    sizeof(descriptor.ks_options)) &&
-      descriptor.ks_options) {
-    const auto& input = *descriptor.ks_options;
-    constexpr auto prefix = offsetof(vibeqc_ks_options, composition_version);
-    if (input.struct_size < prefix || input.abi_version != VIBEQC_ABI_VERSION)
-      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
-    if (input.struct_size > prefix && input.struct_size < sizeof(vibeqc_ks_options))
-      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS composition suffix");
-    if (input.struct_size >= sizeof(vibeqc_ks_options)) {
-      if (input.composition_version > 1)
+  if (ks_input) {
+    constexpr auto v2_size = offsetof(vibeqc_ks_options, execution_plan_version);
+    if (ks_input->struct_size >= v2_size) {
+      if (ks_input->composition_version > 1)
         throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS composition version");
-      if (input.composition_version == 1) {
+      if (ks_input->composition_version == 1) {
         composition_seen = true;
-        const auto x = input.semilocal_exchange_scale;
-        const auto c = input.semilocal_correlation_scale;
-        const auto k = input.fock_exchange_coefficient;
-        if (!std::isfinite(x) || !std::isfinite(c) || !std::isfinite(k) || x < 0 || c < 0 || k > 0)
+        const auto x = ks_input->semilocal_exchange_scale;
+        const auto correlation = ks_input->semilocal_correlation_scale;
+        const auto exchange = ks_input->fock_exchange_coefficient;
+        if (!std::isfinite(x) || !std::isfinite(correlation) || !std::isfinite(exchange) || x < 0 ||
+            correlation < 0 || exchange > 0)
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid KS composition coefficients");
-        const bool changed = x != 1 || c != 1 || k != 0;
-        const bool pbe = is_pbe_family(descriptor.method);
-        if (changed && (!pbe || backend == VIBEQC_BACKEND_CUDA))
+        const bool changed = x != 1 || correlation != 1 || exchange != 0;
+        if (changed &&
+            (execution_plan.semilocal_family != kKsSemilocalPbe ||
+             backend == VIBEQC_BACKEND_CUDA))
           throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                             "scaled/global-hybrid KS requires CPU PBE components");
         options.semilocal_exchange_scale = x;
-        options.semilocal_correlation_scale = c;
-        fock.exchange.present = k != 0;
-        fock.exchange.coefficient = k;
+        options.semilocal_correlation_scale = correlation;
+        fock.exchange.present = exchange != 0;
+        fock.exchange.coefficient = exchange;
       }
     }
   }
-  if (is_pbe0(descriptor.method)) {
+  if (descriptor.method == VIBEQC_METHOD_PBE0_RKS || descriptor.method == VIBEQC_METHOD_PBE0_UKS) {
     if (!composition_seen)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "PBE0 requires explicit resolved KS composition v2");
-    const double expected_k = is_uks(descriptor.method) ? -0.25 : -0.125;
+    const double expected_k = unrestricted(execution_plan) ? -0.25 : -0.125;
     if (options.semilocal_exchange_scale != 0.75 || options.semilocal_correlation_scale != 1.0 ||
         !fock.exchange.present || fock.exchange.coefficient != expected_k)
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
