@@ -69,7 +69,13 @@ def scalar_type(dtype: str) -> CudaScalar:
 
 
 def program_precision(program: typing.Any) -> str:
-    dtypes = {node.spec.dtype for node in program.live_nodes}
+    dtypes = {
+        node.spec.dtype
+        for node in program.live_nodes
+        if node.spec.dtype in ("float32", "float64")
+    }
+    if not dtypes:
+        raise ValueError("TensorIR CUDA program requires at least one floating value")
     if len(dtypes) == 1:
         return "fp32" if dtypes == {"float32"} else "fp64"
     return "typed-fp32-fp64"
