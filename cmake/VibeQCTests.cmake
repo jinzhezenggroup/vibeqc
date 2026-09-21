@@ -108,6 +108,8 @@ macro(vibeqc_add_native_tests)
   target_include_directories(vibeqc_dft_tests PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  target_compile_definitions(vibeqc_dft_tests PRIVATE
+    VIBEQC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   add_test(NAME vibeqc_dft_tests COMMAND vibeqc_dft_tests)
 
   vibeqc_native_test(vibeqc_d3_atm_reference_tests tests/native/test_d3_atm.cpp NO_VIBEQC)
