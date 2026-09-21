@@ -66,7 +66,7 @@ def _manual_pbe_x() -> tuple[typing.Any, typing.Any]:
         (("GGA_X_PBE", Fraction(1)),),
         spin="polarized",
     )
-    graph, energy, variables = energy_expression(spec)
+    graph, energy, variables = energy_expression(spec, source="handwritten")
     roots = (
         energy,
         *(graph.differentiate(energy, variable) for variable in variables[:5]),
@@ -128,7 +128,7 @@ def _manual_pbe_x_qualified(spin: str) -> tuple[Graph, tuple[typing.Any, ...]]:
         (("GGA_X_PBE", Fraction(1)),),
         spin=spin,
     )
-    graph, energy, variables = energy_expression(spec)
+    graph, energy, variables = energy_expression(spec, source="handwritten")
     return graph, _feature_roots(graph, energy, variables)
 
 
@@ -161,7 +161,7 @@ def _manual_pbe_c() -> tuple[typing.Any, typing.Any]:
         (("GGA_C_PBE", Fraction(1)),),
         spin="polarized",
     )
-    graph, energy, variables = energy_expression(spec)
+    graph, energy, variables = energy_expression(spec, source="handwritten")
     return graph, _feature_roots(graph, energy, variables)
 
 
@@ -448,3 +448,66 @@ def test_file_importer_rejects_duplicate_includes(tmp_path: Path) -> None:
 
     with pytest.raises(MapleImportError, match="duplicate Maple include"):
         import_maple_file(tmp_path, "entry.mpl")
+
+
+def test_non_pbe_identity_does_not_claim_maple_source() -> None:
+    spec = FunctionalSpec(
+        "LDA_X_REFERENCE",
+        (("LDA_X", Fraction(1)),),
+        spin="polarized",
+    )
+
+    assert "expression_provenance" not in spec.to_payload()
+
+
+@pytest.mark.parametrize("component", ["GGA_X_PBE", "GGA_C_PBE"])
+def test_pbe_production_identity_records_maple_source(component: str) -> None:
+    spec = FunctionalSpec(
+        f"{component}_PRODUCTION",
+        ((component, Fraction(1)),),
+        spin="polarized",
+    )
+    provenance = spec.to_payload()["expression_provenance"]
+
+    assert provenance["kind"] == "libxc-maple"
+    assert provenance["importer_semantics"].startswith("libxc-maple-graph/")
+    assert set(provenance["components"]) == {component}
+    record = provenance["components"][component]
+    assert len(record["source_sha256"]) == 64
+    assert len(record["transitive_sha256"]) == 64
+
+
+def test_pbe_production_builder_matches_qualified_imported_graph() -> None:
+    features = (0.8, 0.6, 0.12, 0.02, 0.07, 0.0, 0.0)
+    inputs = dict(zip(FEATURES, features, strict=True))
+
+    for component, imported in (
+        ("GGA_X_PBE", _qualified_pbe_x),
+        ("GGA_C_PBE", None),
+    ):
+        spec = FunctionalSpec(
+            f"{component}_PRODUCTION",
+            ((component, Fraction(1)),),
+            spin="polarized",
+        )
+        graph, energy, variables = energy_expression(spec)
+        roots = _feature_roots(graph, energy, variables)
+        if imported is not None:
+            imported_graph, imported_roots, names = imported("polarized")
+        else:
+            _, imported_graph, imported_roots, _ = _imported_pbe_c()
+            names = FEATURES
+
+        actual = np.asarray(
+            evaluate_array_graph(graph, roots, inputs),
+            dtype=float,
+        )
+        expected = np.asarray(
+            evaluate_array_graph(
+                imported_graph,
+                imported_roots,
+                dict(zip(names, features, strict=True)),
+            ),
+            dtype=float,
+        )
+        np.testing.assert_allclose(actual, expected, rtol=2e-13, atol=2e-14)

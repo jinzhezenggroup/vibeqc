@@ -134,16 +134,28 @@ class ReferenceSnapshot:
         eps = self.orbital_energies
         if np.any(np.diff(eps) < -self.validation_tolerance):
             raise ValueError("canonical MO energies must be ascending")
-        smallest = float(np.linalg.eigvalsh(self.overlap)[0])
+        try:
+            with np.errstate(over="ignore", invalid="ignore"):
+                overlap_eigenvalues = np.linalg.eigvalsh(self.overlap)
+        except np.linalg.LinAlgError as exc:
+            raise ValueError("AO overlap eigensystem is invalid") from exc
+        if not np.isfinite(overlap_eigenvalues).all():
+            raise ValueError(
+                "AO overlap eigenvalues must remain finite during validation"
+            )
+        smallest = float(overlap_eigenvalues[0])
         if smallest <= self.overlap_threshold:
             raise ValueError("linearly dependent AO overlap is unsupported")
-        ortho = float(np.max(np.abs(c.T @ self.overlap @ c - np.eye(n))))
-        canonical = float(np.max(np.abs(c.T @ self.fock @ c - np.diag(eps))))
-        generalized = float(np.max(np.abs(self.fock @ c - (self.overlap @ c) * eps)))
-        if (
-            max(ortho, canonical, generalized, self.scf_residual)
-            > self.validation_tolerance
-        ):
+        with np.errstate(over="ignore", invalid="ignore"):
+            ortho = float(np.max(np.abs(c.T @ self.overlap @ c - np.eye(n))))
+            canonical = float(np.max(np.abs(c.T @ self.fock @ c - np.diag(eps))))
+            generalized = float(
+                np.max(np.abs(self.fock @ c - (self.overlap @ c) * eps))
+            )
+        residuals = (ortho, canonical, generalized, self.scf_residual)
+        if not all(math.isfinite(value) for value in residuals):
+            raise ValueError("reference validation produced a non-finite residual")
+        if max(residuals) > self.validation_tolerance:
             raise ValueError(
                 f"invalid RHF reference: orthogonality={ortho}, canonicality={canonical}, eigen_residual={generalized}, scf_residual={self.scf_residual}"
             )

@@ -24,7 +24,13 @@ def argument_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path(os.environ.get("VIBEQC_NVCC", shutil.which("nvcc") or "nvcc")),
     )
-    parser.add_argument("--architecture", default="sm_120")
+    default_architecture = os.environ.get("VIBEQC_CUDA_ARCH")
+    parser.add_argument(
+        "--architecture",
+        default=default_architecture,
+        required=default_architecture is None,
+        help="explicit CUDA target (or set VIBEQC_CUDA_ARCH)",
+    )
     parser.add_argument("--srun")
     parser.add_argument("--partition")
     parser.add_argument("--gres")

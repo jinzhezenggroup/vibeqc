@@ -131,7 +131,7 @@ class CudaExecutionProfile:
     local: bool = False
     srun: str = "srun"
     partition: str | None = "main"
-    gres: str | None = "gpu:5090:1"
+    gres: str | None = "gpu:1"
     nodes: int = 1
     ntasks: int = 1
     slurm_time: str | None = "00:10:00"
@@ -217,8 +217,9 @@ def resolve_cuda_execution_profile(
     """Resolve explicit overrides over environment over project defaults.
 
     Empty optional scheduler strings in the environment disable that flag.
-    The current development-cluster selector remains the portable default, but
-    callers can select another resource without source edits.
+    The default requests one generic GPU without naming a model. Development
+    clusters can select a concrete resource through explicit arguments or
+    environment.
     """
 
     env = os.environ if environment is None else environment
@@ -262,7 +263,7 @@ def resolve_cuda_execution_profile(
         local=resolved_local,
         srun=text_value("VIBEQC_BENCHMARK_SRUN", srun, "srun") or "srun",
         partition=text_value("VIBEQC_BENCHMARK_PARTITION", partition, "main"),
-        gres=text_value("VIBEQC_BENCHMARK_GRES", gres, "gpu:5090:1"),
+        gres=text_value("VIBEQC_BENCHMARK_GRES", gres, "gpu:1"),
         nodes=int_value("VIBEQC_BENCHMARK_NODES", nodes, 1),
         ntasks=int_value("VIBEQC_BENCHMARK_NTASKS", ntasks, 1),
         cpus_per_task=optional_int_value(
@@ -280,7 +281,7 @@ class CudaBenchmarkExecutor:
     local: bool = False
     srun: str = "srun"
     partition: str | None = "main"
-    gres: str | None = "gpu:5090:1"
+    gres: str | None = "gpu:1"
     nodes: int = 1
     ntasks: int = 1
     slurm_time: str | None = "00:10:00"

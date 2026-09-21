@@ -408,13 +408,57 @@ __global__ void geometry_reduce(const double* partial, size_t na, double* output
   for (size_t lane = 0; lane < workers; ++lane) sum += partial[lane * 9 * na + i];
   output[i] = finite(output[i] + sum, error, 0);
 }
+
 }  // namespace vibeqc_stationary_cuda
 """
 
 
+def emit_stationary_reduction_cuda(plan: StationaryGradientPlan) -> str:
+    """Specialize the authoritative ordered TensorIR sum for native source storage."""
+    lines = [
+        "namespace vibeqc_stationary_cuda {",
+        "__global__ void source_reduce(const double* input, size_t na, double* output, int* error) {",
+        "  if (*error) return;",
+    ]
+    if plan.source_names != STATIONARY_RUNTIME_SOURCE_NAMES:
+        # ECP/hybrid/nonlocal sources are not all owned by this seven-source arena.
+        lines += ["  atomicExch(error, 1);", "}", "}", ""]
+        return "\n".join(lines)
+    program = plan.reduction_program(atoms=1)
+    result = program.outputs["gradient"]
+    if (
+        result.op != "add"
+        or result.spec.shape != (1, 3)
+        or result.spec.dtype != "float64"
+        or tuple(node.attrs.get("name") for node in result.inputs)
+        != STATIONARY_RUNTIME_SOURCE_NAMES
+        or any(
+            node.op != "input" or node.spec.shape != (1, 3) for node in result.inputs
+        )
+    ):
+        raise ValueError("unsupported stationary native reduction program")
+    lines += [
+        f"  // stationary-reduction-program: {program.logical_hash}",
+        "  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;",
+        "  if (i >= 3 * na) return;",
+        "  double sum = 0;",
+    ]
+    for node, coefficient in zip(
+        result.inputs, result.attrs["coefficients"], strict=True
+    ):
+        slot = STATIONARY_RUNTIME_SOURCE_NAMES.index(node.attrs["name"])
+        lines.append(f"  sum += {_literal(coefficient)} * input[{slot} * 3 * na + i];")
+    lines += ["  output[i] = finite(sum, error, 0);", "}", "}", ""]
+    return "\n".join(lines)
+
+
 def emit_stationary_scientific_kernels(plan: typing.Any) -> str:
     """Emit bounded task/primitive and XC geometry contractions for the runtime owner."""
-    return emit_stationary_weight_cuda(plan) + _STATIONARY_SCIENTIFIC_KERNELS
+    return (
+        emit_stationary_weight_cuda(plan)
+        + _STATIONARY_SCIENTIFIC_KERNELS
+        + emit_stationary_reduction_cuda(plan)
+    )
 
 
 def emit_stationary_cuda(
@@ -437,6 +481,9 @@ def emit_stationary_cuda(
         + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
         + "namespace vibeqc_stationary_cuda {\n"
         + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
+        + "constexpr bool stationary_native_reduction_supported = "
+        + str(plan.source_names == STATIONARY_RUNTIME_SOURCE_NAMES).lower()
+        + ";\n"
         + "}\n"
         + '#include "dft/stationary_gradient_cuda.cuh"\n'
         + emit_stationary_scientific_kernels(plan)

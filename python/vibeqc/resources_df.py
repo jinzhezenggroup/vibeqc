@@ -9,6 +9,8 @@ import ctypes
 import typing
 from dataclasses import dataclass
 
+from vibeqc_compiler.common.layout import DenseLayout, SymmetricPairLayout
+
 from .resources import checked_bytes
 
 
@@ -35,6 +37,26 @@ class DensityFittingResourceTile:
     projection_capacity_elements: int = 0
     panel_capacity_elements: int = 0
     automatic_rhf_rank: int = 0
+    value_layout_identity: str = ""
+    value_layout_elements_per_system: int = 0
+    dense_equivalent_elements_per_system: int = 0
+    bounded_materialization_bytes: int = 0
+    bounded_conversion_traffic_bytes: int = 0
+
+
+def density_fitting_value_layout(
+    nbf: int, naux: int, pair_storage: str
+) -> DenseLayout | SymmetricPairLayout:
+    """Return the exact compiler-visible physical layout for one DF value tensor."""
+    checked_bytes(nbf, "DF layout orbital dimension")
+    checked_bytes(naux, "DF layout auxiliary dimension")
+    if not nbf or not naux:
+        raise ValueError("DF value layout dimensions must be positive")
+    if pair_storage == "dense":
+        return DenseLayout((nbf, nbf, naux), alignment=8)
+    if pair_storage == "packed":
+        return SymmetricPairLayout(nbf, (naux,), alignment=8)
+    raise ValueError("DF pair storage must be dense or packed")
 
 
 def density_fitting_source_bytes(
@@ -168,6 +190,30 @@ def density_fitting_tile_plan(
         len(error),
     ):
         raise ValueError(error.value.decode())
+
+    layout = density_fitting_value_layout(nbf, naux, pair_storage)
+    if isinstance(layout, SymmetricPairLayout):
+        value_layout_elements = layout.storage_elements
+        dense_equivalent_elements = layout.dense_elements
+        bounded_materialization = layout.dense_materialization_bytes(
+            8, rows=nbf, trailing_shape=(int(values[2]),)
+        )
+        bounded_conversion_traffic = layout.unpack_traffic_bytes(
+            8, rows=nbf, trailing_shape=(int(values[2]),)
+        )
+        expected_factor_bytes = checked_bytes(
+            batch * layout.storage_bytes(8), "packed DF factor bytes"
+        )
+        if int(values[6]) != expected_factor_bytes:
+            raise RuntimeError(
+                "native packed DF capacity disagrees with compiler layout contract"
+            )
+    else:
+        value_layout_elements = layout.storage_elements
+        dense_equivalent_elements = layout.storage_elements
+        bounded_materialization = 0
+        bounded_conversion_traffic = 0
+
     return DensityFittingResourceTile(
         *values[:5],
         bool(values[5]),
@@ -182,6 +228,11 @@ def density_fitting_tile_plan(
         projection_capacity_elements=values[8] if packed else 0,
         panel_capacity_elements=values[9] if packed else 0,
         automatic_rhf_rank=values[-1] if method_aware else 0,
+        value_layout_identity=layout.identity,
+        value_layout_elements_per_system=value_layout_elements,
+        dense_equivalent_elements_per_system=dense_equivalent_elements,
+        bounded_materialization_bytes=bounded_materialization,
+        bounded_conversion_traffic_bytes=bounded_conversion_traffic,
     )
 
 

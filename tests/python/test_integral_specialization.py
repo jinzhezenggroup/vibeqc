@@ -14,6 +14,7 @@ from vibeqc_compiler.integral import (
     build_integral_ir,
     cuda_target_info,
     emit_shell_class_fused_cuda,
+    integral_specialization_diagnostics,
     specialize_integral_ir,
 )
 from vibeqc_compiler.integral.lowering.dispatch import _specialize_fock_plan
@@ -43,6 +44,15 @@ def test_fock_output_pruning_removes_derivative_intent_without_mutating_source()
     assert specialized.contractions == (fock_contraction,)
     assert specialized.maximum_coulomb_order == specialized.value_coulomb_order
     assert specialized.maximum_coulomb_order < mixed.maximum_coulomb_order
+
+    diagnostics = integral_specialization_diagnostics(mixed, specialized)
+    assert diagnostics["schema"] == "vibeqc.compiler.integral-pruning.v1"
+    assert diagnostics["outputs_before"] == ["fock", "force"]
+    assert diagnostics["outputs_after"] == ["fock"]
+    assert diagnostics["removed_outputs"] == ["force"]
+    assert diagnostics["derivative_order_before"] == 1
+    assert diagnostics["derivative_order_after"] is None
+    assert diagnostics["reason"] == "requested-output liveness"
 
 
 def test_rys_specialization_folds_root_count_from_derivative_to_value_order() -> None:

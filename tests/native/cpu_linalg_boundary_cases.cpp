@@ -34,6 +34,20 @@ int main(int argc, char** argv) {
     }
     return 1;
   }
+  if (mode == "syrk_alpha_zero") {
+    double matrix[4]{nan, 9.0, nan, nan};
+    cpu_syrk('L', 'N', 2, 1, &nan, matrix, 0.0, 0.0, plan);
+    return matrix[0] == 0.0 && matrix[1] == 9.0 && matrix[2] == 0.0 && matrix[3] == 0.0 ? 0 : 1;
+  }
+  if (mode == "syrk_extent") {
+    try {
+      cpu_syrk('L', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, &c, 1.0, 0.0,
+               plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
   if (mode == "cholesky_extent") {
     try {
       cpu_cholesky_lower(&c, std::size_t(1) << (sizeof(std::size_t) * 4), plan);

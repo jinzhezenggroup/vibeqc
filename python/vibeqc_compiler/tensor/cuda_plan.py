@@ -20,6 +20,13 @@ from math import prod
 
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
+from vibeqc_compiler.common.storage import (
+    AliasKind,
+    BufferOp,
+    BufferValue,
+    MemoryEffect,
+    analyze_storage,
+)
 
 from .batch_schedule import (
     BatchScheduleIR,
@@ -182,7 +189,11 @@ class TensorPlan:
         """Resolve execution precision once for every live logical node."""
         names = self.program.debug_names
         values = {value.name: value for value in self.precision_schedule.values}
-        return {node: values[names[node]] for node in self.program.live_nodes}
+        return {
+            node: values[names[node]]
+            for node in self.program.live_nodes
+            if names[node] in values
+        }
 
     @property
     def batch_schedule(self) -> BatchScheduleIR:
@@ -308,6 +319,98 @@ class TensorPlan:
             }
         )
 
+    def storage_analysis(self) -> typing.Any:
+        """Adapt TensorIR storage facts to the shared whole-region analysis."""
+
+        storage_views = frozenset(("transpose", "reshape", "slice"))
+        alias_owner: dict[int, int] = {}
+        for index, step in enumerate(self.steps):
+            if (
+                not step.virtual
+                or step.node.op not in storage_views
+                or len(step.inputs) != 1
+            ):
+                continue
+            owner = step.inputs[0]
+            while self.steps[owner].virtual:
+                parent = self.steps[owner]
+                if parent.node.op not in storage_views or len(parent.inputs) != 1:
+                    owner = -1
+                    break
+                owner = parent.inputs[0]
+            if owner >= 0:
+                alias_owner[index] = owner
+
+        def boundary_reads(index: int) -> tuple[int, ...]:
+            if index in alias_owner or not self.steps[index].virtual:
+                return (index,)
+            result: list[int] = []
+            for child in self.steps[index].inputs:
+                for value in boundary_reads(child):
+                    if value not in result:
+                        result.append(value)
+            return tuple(result)
+
+        values = []
+        inputs = []
+        for index, step in enumerate(self.steps):
+            logical_bytes = checked_size(
+                step.node.spec.size * step.node.spec.itemsize,
+                "tensor storage-analysis bytes",
+            )
+            if not step.virtual:
+                values.append(
+                    BufferValue(
+                        index,
+                        aligned(logical_bytes),
+                        "device",
+                        step.layout,
+                        compiler_owned=True,
+                    )
+                )
+                if step.node.op in ("input", "constant"):
+                    inputs.append(index)
+            elif index in alias_owner:
+                values.append(
+                    BufferValue(
+                        index,
+                        logical_bytes,
+                        "device",
+                        alias=AliasKind.VIEW,
+                        alias_of=alias_owner[index],
+                        compiler_owned=False,
+                    )
+                )
+
+        operations = []
+        for index, step in enumerate(self.steps):
+            if index in alias_owner:
+                reads = boundary_reads(step.inputs[0])
+            elif step.virtual or step.node.op in ("input", "constant"):
+                continue
+            else:
+                ordered_reads: list[int] = []
+                for child in step.inputs:
+                    for value in boundary_reads(child):
+                        if value not in ordered_reads:
+                            ordered_reads.append(value)
+                reads = tuple(ordered_reads)
+            operations.append(
+                BufferOp(
+                    ("tensor_step", index),
+                    reads,
+                    (index,),
+                    MemoryEffect.EXPLICIT,
+                )
+            )
+
+        return analyze_storage(
+            tuple(values),
+            tuple(operations),
+            inputs=tuple(inputs),
+            outputs=tuple(index for _, index in self.outputs),
+        )
+
     def to_payload(self) -> dict:
         """Include layouts, aliases, lifetimes, shapes, schedule and reservations."""
         names = self.program.debug_names
@@ -359,6 +462,40 @@ class TensorPlan:
                 for s in self.steps
             ],
         }
+
+
+def estimated_cuda_launches(plan: TensorPlan) -> int:
+    """Count the emitted endpoint launch sequence without executing CUDA."""
+
+    launches = 1  # per-run arithmetic-error reset
+    for step in plan.steps:
+        if (
+            step.virtual
+            or step.node.op in ("input", "constant")
+            or not step.node.spec.size
+        ):
+            continue
+        if step.gemm == "none":
+            launches += 1
+            continue
+        contraction = gemm_contract(step.node)
+        if contraction is None:
+            raise ValueError("GEMM launch estimate requires a contraction node")
+        if not contraction.k:
+            launches += 1
+        elif step.gemm.startswith("direct-"):
+            launches += 2
+        else:
+            tiles = [
+                (size + tile - 1) // tile
+                for size, tile in zip(
+                    (contraction.m, contraction.n, contraction.k),
+                    (plan.schedule.tile_m, plan.schedule.tile_n, plan.schedule.tile_k),
+                    strict=True,
+                )
+            ]
+            launches += contraction.batch * prod(tiles[:2]) * (2 * tiles[2] + 1)
+    return launches
 
 
 def static_data_slices(
@@ -461,10 +598,14 @@ def plan_cuda(
         mixed_accumulation_steps = frozenset(
             i
             for i, (node, _) in enumerate(nodes)
-            if precision_values[program_names[node]].compute_dtype
+            if node.spec.dtype != "int64"
+            and precision_values[program_names[node]].compute_dtype
             != precision_values[program_names[node]].accumulation_dtype
         )
-    if schedule.layouts and any(n.spec.dtype != "float64" for n, _ in nodes):
+    if schedule.layouts and any(
+        n.spec.dtype in ("float32", "float64") and n.spec.dtype != "float64"
+        for n, _ in nodes
+    ):
         raise ValueError("producer layout optimization is qualified only for float64")
     if any(n.op in TRANSCENDENTALS for n, _ in nodes) and len(nodes) > INT_MAX // 2:
         raise ValueError("too many steps for transcendental domain diagnostics")
@@ -473,7 +614,7 @@ def plan_cuda(
             raise ValueError(
                 "CUDA transcendental primitives are qualified only for float64"
             )
-        scalar = scalar_type(node.spec.dtype)
+        scalar = None if node.spec.dtype == "int64" else scalar_type(node.spec.dtype)
         checked_size(node.spec.size * node.spec.itemsize, "tensor bytes")
         for stride in strides(node.spec.shape):
             checked_size(stride, "tensor stride")
@@ -494,12 +635,13 @@ def plan_cuda(
                 ),
                 "einsum reduction domain",
             )
-        for pair in node.attrs.get("coefficients", node.attrs.get("values", ())):
-            scalar.coefficient(pair)
-        if "coefficient" in node.attrs:
-            scalar.coefficient(node.attrs["coefficient"])
-        if "exponent" in node.attrs:
-            scalar.coefficient(node.attrs["exponent"])
+        if scalar is not None:
+            for pair in node.attrs.get("coefficients", node.attrs.get("values", ())):
+                scalar.coefficient(pair)
+            if "coefficient" in node.attrs:
+                scalar.coefficient(node.attrs["coefficient"])
+            if "exponent" in node.attrs:
+                scalar.coefficient(node.attrs["exponent"])
     pinned = {i for _, i in outputs} | {
         i for i, (n, _) in enumerate(nodes) if n.op in ("input", "constant")
     }
@@ -602,6 +744,7 @@ def plan_cuda(
             "constant",
             "gather",
             "indexed_gather",
+            "runtime_indexed_select",
         ):
             flops += sum(child.spec.size for child in node.inputs)
         steps.append(

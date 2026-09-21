@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
+    PASSES,
     Index,
     IndexSpace,
     PrecisionDirective,
@@ -22,7 +23,11 @@ from vibeqc_compiler.tensor import (
     linearize,
     lower_precision,
     multiply,
+    optimize,
     reduce_sum,
+    reshape,
+    rewrite,
+    transpose,
     transpose_program,
     vjp,
 )
@@ -399,6 +404,291 @@ def test_mixed_accumulation_binding_survives_relower_and_rejects_tampering() -> 
     altered = Program(second.outputs, second.definitions, provenance=provenance)
     with pytest.raises(ValueError, match="precision execution.*validated request"):
         describe_precision(altered)
+
+
+def _mixed_and_fp32_reductions(
+    *, mixed_sorts_last: bool = False
+) -> tuple[Program, dict]:
+    space = IndexSpace("optimizer_precision_values", "batch", 4)
+    x = input_tensor(
+        "x", TensorSpec((Index("i", space),), dtype="float64", role="parameter")
+    )
+    mixed = reduce_sum(x, (0,))
+    fp32 = reduce_sum(x, (0,))
+    outputs = (
+        {"a_fp32": fp32, "z_mixed": mixed}
+        if mixed_sorts_last
+        else {"a_mixed": mixed, "b_fp32": fp32}
+    )
+    program = Program(outputs)
+    lowered = lower_precision(
+        program,
+        {
+            program.debug_names[mixed]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="unit/optimizer-mixed",
+            ),
+            program.debug_names[fp32]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float32",
+                qualification="unit/optimizer-fp32",
+            ),
+        },
+    )
+    return lowered, {"x": np.array([1e8, 1, -1e8, 1], dtype=np.float64)}
+
+
+@pytest.mark.parametrize("mixed_sorts_last", [False, True])
+def test_optimizer_keeps_distinct_accumulation_contracts_through_every_pass(
+    mixed_sorts_last: bool,
+) -> None:
+    program, feeds = _mixed_and_fp32_reductions(mixed_sorts_last=mixed_sorts_last)
+    mixed_name = "z_mixed" if mixed_sorts_last else "a_mixed"
+    fp32_name = "a_fp32" if mixed_sorts_last else "b_fp32"
+    expected = execute(program, feeds).outputs
+    assert expected[mixed_name] == 2.0
+    assert expected[fp32_name] == 1.0
+
+    for pass_name in PASSES:
+        rewritten = rewrite(program, pass_name)
+        actual = execute(rewritten, feeds).outputs
+        assert actual[mixed_name] == expected[mixed_name]
+        assert actual[fp32_name] == expected[fp32_name]
+        assert rewritten.outputs[mixed_name] is not rewritten.outputs[fp32_name]
+        replay = Program.loads(rewritten.dumps())
+        assert execute(replay, feeds).outputs[mixed_name] == expected[mixed_name]
+        assert execute(replay, feeds).outputs[fp32_name] == expected[fp32_name]
+
+    optimized = optimize(program)
+    actual = execute(optimized, feeds).outputs
+    assert actual[mixed_name] == expected[mixed_name]
+    assert actual[fp32_name] == expected[fp32_name]
+    assert optimized.outputs[mixed_name] is not optimized.outputs[fp32_name]
+    replay = Program.loads(optimized.dumps())
+    assert execute(replay, feeds).outputs[mixed_name] == expected[mixed_name]
+    assert execute(replay, feeds).outputs[fp32_name] == expected[fp32_name]
+
+    plan = plan_cuda(optimized, cuda_target_info("sm_80"))
+    reductions = [
+        plan.precision_by_node[step.node]
+        for step in plan.steps
+        if step.node.op == "reduce"
+    ]
+    assert sorted(value.accumulation_dtype for value in reductions) == [
+        "float32",
+        "float64",
+    ]
+    source = emit_cuda(plan)
+    assert "double value = 0.0;" in source
+    assert "float value = 0.0f;" in source
+
+
+def test_optimizer_remaps_mixed_accumulation_after_identity_view_rewrites() -> None:
+    space = IndexSpace("optimizer_view_values", "batch", 4)
+    index = Index("i", space)
+    x = input_tensor("x", TensorSpec((index,), dtype="float64", role="parameter"))
+    viewed = transpose(reshape(cast(x, "float64"), (index,)), (0,))
+    reduced = reduce_sum(viewed, (0,))
+    source = Program({"out": reduced})
+    program = lower_precision(
+        source,
+        {
+            source.debug_names[reduced]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="unit/optimizer-view-mixed",
+            )
+        },
+    )
+    feeds = {"x": np.array([1e8, 1, -1e8, 1], dtype=np.float64)}
+    assert execute(program, feeds).outputs["out"] == 2.0
+
+    for pass_name in ("identity_transposes", "view_canonicalization"):
+        rewritten = rewrite(program, pass_name)
+        assert execute(rewritten, feeds).outputs["out"] == 2.0
+        schedule = describe_precision(rewritten)
+        reduction = next(value for value in schedule.values if value.op == "reduce")
+        assert reduction.accumulation_dtype == "float64"
+        assert schedule.execution_scope[0][1] == reduction.name
+
+    optimized = optimize(program)
+    assert execute(optimized, feeds).outputs["out"] == 2.0
+    assert execute(Program.loads(optimized.dumps()), feeds).outputs["out"] == 2.0
+
+
+def test_exact_cse_still_merges_same_mixed_accumulation_contract() -> None:
+    space = IndexSpace("optimizer_same_contract", "batch", 4)
+    x = input_tensor(
+        "x", TensorSpec((Index("i", space),), dtype="float64", role="parameter")
+    )
+    left = reduce_sum(x, (0,))
+    right = reduce_sum(x, (0,))
+    source = Program({"left": left, "right": right})
+    directive = PrecisionDirective(
+        "float32", "float32", "float64", qualification="unit/same-contract"
+    )
+    program = lower_precision(
+        source,
+        {source.debug_names[left]: directive, source.debug_names[right]: directive},
+    )
+
+    rewritten = rewrite(program, "exact_cse")
+    assert rewritten.outputs["left"] is rewritten.outputs["right"]
+    reduction = next(
+        value for value in describe_precision(rewritten).values if value.op == "reduce"
+    )
+    assert reduction.accumulation_dtype == "float64"
+
+
+@pytest.mark.parametrize("mixed_first", (True, False))
+def test_optimizer_keeps_distinct_mixed_accumulation_contracts(
+    mixed_first: bool,
+) -> None:
+    space = IndexSpace("optimizer_mixed_values", "batch", 4)
+    x = input_tensor(
+        "x",
+        TensorSpec((Index("i", space),), dtype="float64", role="parameter"),
+    )
+    mixed = reduce_sum(x, (0,))
+    full_fp32 = reduce_sum(x, (0,))
+    outputs = (
+        {"a_mixed": mixed, "b_fp32": full_fp32}
+        if mixed_first
+        else {"a_fp32": full_fp32, "b_mixed": mixed}
+    )
+    program = Program(outputs)
+    lowered = lower_precision(
+        program,
+        {
+            program.debug_names[mixed]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="unit/optimizer-mixed",
+            ),
+            program.debug_names[full_fp32]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float32",
+                qualification="unit/optimizer-fp32",
+            ),
+        },
+    )
+    feeds = {"x": np.array([1.0e8, 1.0, -1.0e8, 1.0], dtype=np.float64)}
+    before = execute(lowered, feeds).outputs
+    optimized = optimize(lowered)
+    after = execute(optimized, feeds).outputs
+
+    mixed_name = "a_mixed" if mixed_first else "b_mixed"
+    fp32_name = "b_fp32" if mixed_first else "a_fp32"
+    assert before[mixed_name] == after[mixed_name] == 2.0
+    assert before[fp32_name] == after[fp32_name] == 1.0
+    assert optimized.outputs[mixed_name] is not optimized.outputs[fp32_name]
+    assert sorted(
+        value.accumulation_dtype
+        for value in describe_precision(optimized).values
+        if value.op == "reduce"
+    ) == ["float32", "float64"]
+
+    replay = Program.loads(optimized.dumps())
+    replayed = execute(replay, feeds).outputs
+    assert replayed[mixed_name] == 2.0
+    assert replayed[fp32_name] == 1.0
+
+    source = emit_cuda(plan_cuda(optimized, cuda_target_info("sm_80")))
+    assert "double value = 0.0;" in source
+    assert "float value = 0.0f;" in source
+
+
+@pytest.mark.parametrize("view_kind", ("transpose", "reshape", "cast"))
+def test_optimizer_remaps_mixed_accumulation_after_view_rewrites(
+    view_kind: str,
+) -> None:
+    space = IndexSpace("optimizer_view_values", "batch", 4)
+    index = Index("i", space)
+    x = input_tensor(
+        "x",
+        TensorSpec((index,), dtype="float64", role="parameter"),
+    )
+    if view_kind == "transpose":
+        view = transpose(x, (0,))
+    elif view_kind == "reshape":
+        view = reshape(x, (index,))
+    else:
+        view = cast(x, "float64")
+    reduced = reduce_sum(view, (0,))
+    program = Program({"out": reduced})
+    lowered = lower_precision(
+        program,
+        {
+            program.debug_names[reduced]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification=f"unit/optimizer-view-{view_kind}",
+            )
+        },
+    )
+    feeds = {"x": np.array([1.0e8, 1.0, -1.0e8, 1.0], dtype=np.float64)}
+
+    candidate = lowered
+    for pass_name in ("identity_transposes", "view_canonicalization", "exact_cse"):
+        candidate = rewrite(candidate, pass_name)
+        assert execute(candidate, feeds).outputs["out"] == 2.0
+        schedule = describe_precision(candidate)
+        assert len(schedule.execution_scope) == 1
+        assert (
+            next(
+                value.accumulation_dtype
+                for value in schedule.values
+                if value.op == "reduce"
+            )
+            == "float64"
+        )
+
+    optimized = optimize(lowered)
+    assert execute(optimized, feeds).outputs["out"] == 2.0
+    replay = Program.loads(optimized.dumps())
+    assert execute(replay, feeds).outputs["out"] == 2.0
+
+
+def test_exact_cse_merges_equal_mixed_accumulation_contracts() -> None:
+    space = IndexSpace("optimizer_equal_mixed_values", "batch", 4)
+    x = input_tensor(
+        "x",
+        TensorSpec((Index("i", space),), dtype="float64", role="parameter"),
+    )
+    left = reduce_sum(x, (0,))
+    right = reduce_sum(x, (0,))
+    program = Program({"left": left, "right": right})
+    lowered = lower_precision(
+        program,
+        {
+            program.debug_names[left]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="unit/equal-mixed-left",
+            ),
+            program.debug_names[right]: PrecisionDirective(
+                "float32",
+                "float32",
+                "float64",
+                qualification="unit/equal-mixed-right",
+            ),
+        },
+    )
+
+    rewritten = rewrite(lowered, "exact_cse")
+    assert rewritten.outputs["left"] is rewritten.outputs["right"]
+    schedule = describe_precision(rewritten)
+    reductions = [value for value in schedule.values if value.op == "reduce"]
+    assert len(reductions) == 1
+    assert reductions[0].accumulation_dtype == "float64"
 
 
 def test_existing_schedule_search_can_cross_precision_variants() -> None:

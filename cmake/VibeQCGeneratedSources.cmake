@@ -18,6 +18,19 @@ macro(vibeqc_register_host_generated_sources target)
       --cpp-output "${VIBEQC_METHOD_PARAMETERS_HEADER}"
     COMMENT "Generating audited method parameter constants")
 
+  set(VIBEQC_D4_DERIVATIVE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_d4_derivative.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_d4_derivative_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_d4_derivative.py"
+    OUTPUTS "${VIBEQC_D4_DERIVATIVE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/d4_derivative.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/common/provenance.py"
+    ARGS --output "${VIBEQC_D4_DERIVATIVE_HEADER}"
+    COMMENT "Generating compiler-owned D4 EEQ derivative lowering")
+
   set(VIBEQC_D3_DATA_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/d3_data.hpp")
   vibeqc_register_generated_sources(

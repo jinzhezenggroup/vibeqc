@@ -1572,7 +1572,7 @@ def benchmark_command(
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--nvcc", type=Path, required=True)
-    parser.add_argument("--architecture", default="sm_120")
+    parser.add_argument("--architecture", required=True)
     parser.add_argument("--local", action="store_true", default=None)
     parser.add_argument("--srun")
     parser.add_argument("--partition")

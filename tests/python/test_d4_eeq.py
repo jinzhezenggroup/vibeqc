@@ -10,9 +10,11 @@ from vibeqc_compiler.method import (
     METHOD_CATALOG,
     D4Spec,
     DispersionCorrectionPrimitive,
+    pbe_d4_eeq_spec,
     r2scan3c_d4_eeq,
     resolve_method,
 )
+from vibeqc_compiler.method.d4_derivative import PRODUCTION_D4_EEQ_DERIVATIVE
 
 
 def test_r2scan3c_d4_manifest_is_exact_and_roundtrips() -> None:
@@ -90,3 +92,24 @@ def test_d4_and_nonlocal_correlation_survive_shared_method_composition() -> None
         graph.identity
         != resolve_method(replace(combined, nonlocal_correlation=None)).identity
     )
+
+
+def test_pbe_d4_catalog_is_explicit_eeq_not_gfn2() -> None:
+    spec = pbe_d4_eeq_spec()
+    graph = resolve_method("PBE-D4(BJ-EEQ-ATM)")
+    assert spec.reference_model == "eeq"
+    assert spec.charge_model == "eeq2019"
+    assert spec.profile == "standard"
+    assert (spec.ga, spec.gc, spec.s9) == (3.0, 2.0, 1.0)
+    assert graph.primitives[-1] == DispersionCorrectionPrimitive(spec)
+    assert graph.requirements["operators"] == ("semilocal-xc", "geometry-d4-bj-eeq")
+
+
+def test_production_derivative_codegen_retires_complete_handwritten_composition() -> (
+    None
+):
+    source = PRODUCTION_D4_EEQ_DERIVATIVE.emit_cpp()
+    assert "evaluate_complete_d4_eeq" not in source
+    assert "evaluate_eeq2019_with_tables" in source
+    assert "evaluate_d4_fixed_charge" in source
+    assert PRODUCTION_D4_EEQ_DERIVATIVE.identity in source
