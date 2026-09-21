@@ -13,13 +13,19 @@ SUFFIXES = {".cpp", ".hpp", ".cu", ".cuh"}
 
 # These layers are intended to remain reusable by every electronic-structure
 # method. They may depend on one another and on chemistry/integral primitives,
-# but never on a concrete HF/DFT/post-HF/CC method implementation.
+# but never acquire new concrete HF/DFT/post-HF/CC implementation dependencies.
 SHARED_OWNERS = ("core", "runtime", "tensor", "response")
 METHOD_PREFIXES = ("scf/", "dft/", "posthf/", "cc/")
 
-# Agent A is responsible for retiring these known CC-local solver owners. Agent
-# G prevents the debt from growing meanwhile, so the architecture check can land
-# before that refactor without making the current main branch unbuildable.
+# Current reverse edges are explicit debt ceilings, not approved design. The
+# check allows them to disappear but rejects any new shared -> method edge.
+KNOWN_METHOD_EDGES = {
+    ("runtime/cuda_runtime.cu", "scf/aot_shell_registry.hpp"),
+    ("runtime/host_component_trace.hpp", "scf/reference/observation.hpp"),
+}
+
+# The current CC solver still owns local iteration infrastructure. Keep its
+# present count as a ceiling while the shared iterative-solver refactor lands.
 KNOWN_DUPLICATE_INFRASTRUCTURE = {
     "cc_cpu_diis_owner": 1,
     "cc_cpu_local_linear_solver": 1,
@@ -121,6 +127,7 @@ def audit_electronic_structure_boundaries(root: Path = ROOT) -> dict[str, object
     source = (root / "src").resolve()
     errors: list[str] = []
     edges: list[dict[str, str]] = []
+    method_edges: list[dict[str, object]] = []
     modules: list[dict[str, object]] = []
 
     for owner in SHARED_OWNERS:
@@ -148,9 +155,19 @@ def audit_electronic_structure_boundaries(root: Path = ROOT) -> dict[str, object
                 line = text.count("\n", 0, match.start()) + 1
                 edges.append({"source": relative, "target": target})
                 if target.startswith(METHOD_PREFIXES):
-                    errors.append(
-                        f"{relative}:{line}: forbidden {owner} dependency on {target}"
+                    known = (relative, target) in KNOWN_METHOD_EDGES
+                    method_edges.append(
+                        {
+                            "source": relative,
+                            "target": target,
+                            "line": line,
+                            "known_debt": known,
+                        }
                     )
+                    if not known:
+                        errors.append(
+                            f"{relative}:{line}: forbidden {owner} dependency on {target}"
+                        )
 
     duplicate = _duplicate_infrastructure(root)
     for name, item in duplicate.items():
@@ -165,6 +182,7 @@ def audit_electronic_structure_boundaries(root: Path = ROOT) -> dict[str, object
         "errors": errors,
         "modules": modules,
         "edges": edges,
+        "method_edges": method_edges,
         "areas": _area_metrics(root),
         "duplicate_infrastructure": duplicate,
     }
@@ -185,11 +203,15 @@ def main() -> int:
             f"{name}={item['count']}/{item['allowed']}"
             for name, item in debt.items()
         )
+        known_edges = sum(
+            bool(edge["known_debt"]) for edge in report["method_edges"]
+        )
         print(
             f"Checked {len(report['modules'])} shared native modules; "
             f"{len(report['edges'])} local dependency edges; "
             f"{len(report['errors'])} architecture errors; "
-            f"known debt: {debt_text}"
+            f"{known_edges}/{len(KNOWN_METHOD_EDGES)} known reverse edges present; "
+            f"known duplicate debt: {debt_text}"
         )
     return int(bool(report["errors"]))
 
