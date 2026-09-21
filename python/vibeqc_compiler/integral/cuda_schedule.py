@@ -273,6 +273,25 @@ def _power_of_two_subgroup_counts(warp_size: int) -> tuple[int, ...]:
     return tuple(counts)
 
 
+def _subgroup_task_counts(
+    integral: IntegralIR,
+    block_threads: int,
+    warp_size: int,
+) -> tuple[int, ...]:
+    """Return lowering-legal subgroup task splits for this mathematical IR."""
+
+    generic = _power_of_two_subgroup_counts(warp_size)
+    if not integral.recurrence.startswith("rys"):
+        return generic
+    if integral.required_rys_roots not in (3, 4, 5):
+        return ()
+    warp_count = block_threads // warp_size
+    if warp_count < 1 or warp_size % warp_count != 0:
+        return ()
+    tasks_per_warp = warp_size // warp_count
+    return (tasks_per_warp,) if tasks_per_warp in (1, *generic) else ()
+
+
 def _target_register_bounded_block_threads(target: CudaTargetInfo) -> int:
     """Return a warp-aligned block size legal at worst-case register pressure."""
 
@@ -379,7 +398,11 @@ def schedule_candidates(
 
     subgroup_block_threads = _target_register_bounded_block_threads(target)
     if subgroup_block_threads >= warp_size:
-        for tasks_per_warp in _power_of_two_subgroup_counts(warp_size):
+        for tasks_per_warp in _subgroup_task_counts(
+            integral,
+            subgroup_block_threads,
+            warp_size,
+        ):
             candidates.append(
                 CudaScheduleIR(
                     kind=ScheduleKind.SUBGROUP_TASKS,
