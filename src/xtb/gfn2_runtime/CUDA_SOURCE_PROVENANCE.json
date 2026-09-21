@@ -1,0 +1,644 @@
+{
+  "adaptations": {
+    "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references.",
+    "src/backends/cuda/gfn2_preprocessing.cu": "Backport xTBloom #487: pass committed pair-list CUDA kernel descriptors by value for GPUs without pageable host-memory access.",
+    "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored."
+  },
+  "backports": {
+    "9881f3ef1c63364cecfc3c1226101b96fc38fd96": "fix(cuda): pass kernel descriptors by value (#487)"
+  },
+  "cpu_snapshot_commit": "5a67cc59ace94c8296e873503b2ae1298e7c2861",
+  "cuda_sources": [
+    "src/backends/cuda/cuda_runtime.cu",
+    "src/runtime/cuda_descriptor_validation.cu",
+    "src/runtime/gfn2_cuda_topology_staging.cu",
+    "src/runtime/gfn2_cuda_execution.cu",
+    "src/runtime/result_owner_cuda.cu",
+    "src/backends/cuda/gfn2_aes2.cu",
+    "src/backends/cuda/gfn2_classical_force.cu",
+    "src/backends/cuda/gfn2_d4.cu",
+    "src/backends/cuda/gfn2_density.cu",
+    "src/backends/cuda/gfn2_electric_field.cu",
+    "src/backends/cuda/gfn2_electronic_gradient.cu",
+    "src/backends/cuda/gfn2_energy_force_execution.cu",
+    "src/backends/cuda/gfn2_eigensolver.cu",
+    "src/backends/cuda/gfn2_es2.cu",
+    "src/backends/cuda/gfn2_es3.cu",
+    "src/backends/cuda/gfn2_external_point_charges.cu",
+    "src/backends/cuda/gfn2_force_composition.cu",
+    "src/backends/cuda/gfn2_geometry.cu",
+    "src/backends/cuda/gfn2_preprocessing.cu",
+    "src/backends/cuda/gfn2_public_result_bridge.cu",
+    "src/backends/cuda/gfn2_h0_force.cu",
+    "src/backends/cuda/gfn2_hamiltonian.cu",
+    "src/backends/cuda/gfn2_hamiltonian_force.cu",
+    "src/backends/cuda/gfn2_inference_publication.cu",
+    "src/backends/cuda/gfn2_integrals.cu",
+    "src/backends/cuda/gfn2_mulliken.cu",
+    "src/backends/cuda/gfn2_occupations.cu",
+    "src/backends/cuda/gfn2_pairlist.cu",
+    "src/backends/cuda/gfn2_parameters.cu",
+    "src/backends/cuda/gfn2_plan_schema.cu",
+    "src/backends/cuda/gfn2_periodic_embedding.cu",
+    "src/backends/cuda/gfn2_post_scc_potential.cu",
+    "src/backends/cuda/gfn2_repulsion.cu",
+    "src/backends/cuda/gfn2_scc.cu",
+    "src/backends/cuda/gfn2_scc_bridge.cu",
+    "src/backends/cuda/gfn2_scc_classical_energy.cu",
+    "src/backends/cuda/gfn2_scc_energy.cu",
+    "src/backends/cuda/gfn2_scc_free_energy.cu",
+    "src/backends/cuda/gfn2_scc_iteration.cu",
+    "src/backends/cuda/gfn2_scc_loop.cu",
+    "src/backends/cuda/gfn2_scc_iteration_arena.cu",
+    "src/backends/cuda/gfn2_scc_iteration_control.cu",
+    "src/backends/cuda/gfn2_scc_iteration_initialize.cu",
+    "src/backends/cuda/gfn2_scc_iteration_reports.cu",
+    "src/backends/cuda/gfn2_scc_mixer.cu",
+    "src/backends/cuda/gfn2_scc_potential.cu",
+    "src/backends/cuda/gfn2_scc_publication.cu",
+    "src/backends/cuda/gfn2_scc_setup_eigensolver.cu",
+    "src/backends/cuda/gfn2_scc_setup_inputs.cu",
+    "src/backends/cuda/gfn2_scc_setup_topology.cu",
+    "src/backends/cuda/gfn2_spin.cu",
+    "src/backends/cuda/gfn2_terminal_classical_energy.cu",
+    "src/backends/cuda/gfn2_total_energy.cu"
+  ],
+  "files": {
+    "src/backends/cuda/cuda_atomics.cuh": {
+      "adapted": false,
+      "upstream_sha256": "57e6a417df9edeacd92b9062859b2ab9182c3e94da908983f591021cde42d7df",
+      "vendored_sha256": "57e6a417df9edeacd92b9062859b2ab9182c3e94da908983f591021cde42d7df"
+    },
+    "src/backends/cuda/cuda_runtime.cu": {
+      "adapted": false,
+      "upstream_sha256": "ed0b9065a98dcbb191e371ad3680d3a41c21f42a5fc621f8f1e9d6a774010334",
+      "vendored_sha256": "ed0b9065a98dcbb191e371ad3680d3a41c21f42a5fc621f8f1e9d6a774010334"
+    },
+    "src/backends/cuda/gfn2_aes2.cu": {
+      "adapted": false,
+      "upstream_sha256": "86ebfe4e4c846f2f2358e75eaa521b98ff2627e0ff1d659ddb4a64be9eb801de",
+      "vendored_sha256": "86ebfe4e4c846f2f2358e75eaa521b98ff2627e0ff1d659ddb4a64be9eb801de"
+    },
+    "src/backends/cuda/gfn2_aes2.cuh": {
+      "adapted": false,
+      "upstream_sha256": "06e84a7f2d0e1ee9d9fece225176846b8833f1d5542840d77377dcd0e688d0c4",
+      "vendored_sha256": "06e84a7f2d0e1ee9d9fece225176846b8833f1d5542840d77377dcd0e688d0c4"
+    },
+    "src/backends/cuda/gfn2_classical_force.cu": {
+      "adapted": false,
+      "upstream_sha256": "8b210634f051e4ff32a58afeac41f5271b7422f623808a747cb6bb3f075301c3",
+      "vendored_sha256": "8b210634f051e4ff32a58afeac41f5271b7422f623808a747cb6bb3f075301c3"
+    },
+    "src/backends/cuda/gfn2_classical_force.cuh": {
+      "adapted": false,
+      "upstream_sha256": "3d2818e937f453445dc70eb735aee96e629fdafc4a616208abc6becb3f97dc99",
+      "vendored_sha256": "3d2818e937f453445dc70eb735aee96e629fdafc4a616208abc6becb3f97dc99"
+    },
+    "src/backends/cuda/gfn2_d4.cu": {
+      "adapted": false,
+      "upstream_sha256": "9e3982dbf865f64d9c7969a6dd4410bfa39fe6c532edb0124063a28d1be5fbb5",
+      "vendored_sha256": "9e3982dbf865f64d9c7969a6dd4410bfa39fe6c532edb0124063a28d1be5fbb5"
+    },
+    "src/backends/cuda/gfn2_d4.cuh": {
+      "adapted": false,
+      "upstream_sha256": "507ea4a8b3fb0619ed1951dad358a7548b7a395e5c5d0259f7a18937f7658701",
+      "vendored_sha256": "507ea4a8b3fb0619ed1951dad358a7548b7a395e5c5d0259f7a18937f7658701"
+    },
+    "src/backends/cuda/gfn2_density.cu": {
+      "adapted": false,
+      "upstream_sha256": "22e2f182a418ddf43834578605ba913c9e9e043f491e0f95f2f7ec6f16735a34",
+      "vendored_sha256": "22e2f182a418ddf43834578605ba913c9e9e043f491e0f95f2f7ec6f16735a34"
+    },
+    "src/backends/cuda/gfn2_density.cuh": {
+      "adapted": false,
+      "upstream_sha256": "3d3059459ddaec1f8d38e630f42c97992d01dafad4fac9b00ee36e8c1c0368b4",
+      "vendored_sha256": "3d3059459ddaec1f8d38e630f42c97992d01dafad4fac9b00ee36e8c1c0368b4"
+    },
+    "src/backends/cuda/gfn2_device_admission.cuh": {
+      "adapted": false,
+      "upstream_sha256": "fe0244b9a0b675afdce09ec2f1a110bf027df5b6ca5d6393a3da6ce23d0d78c6",
+      "vendored_sha256": "fe0244b9a0b675afdce09ec2f1a110bf027df5b6ca5d6393a3da6ce23d0d78c6"
+    },
+    "src/backends/cuda/gfn2_eigensolver.cu": {
+      "adapted": false,
+      "upstream_sha256": "c4bef7285e6afd0b880a060da005799aa65371135d14e5ad846d4e172b357c54",
+      "vendored_sha256": "c4bef7285e6afd0b880a060da005799aa65371135d14e5ad846d4e172b357c54"
+    },
+    "src/backends/cuda/gfn2_eigensolver.cuh": {
+      "adapted": false,
+      "upstream_sha256": "c6e338e098cbdc9d8623be85c1f27648e03e40bfa51949065d95dd0db1910bbf",
+      "vendored_sha256": "c6e338e098cbdc9d8623be85c1f27648e03e40bfa51949065d95dd0db1910bbf"
+    },
+    "src/backends/cuda/gfn2_electric_field.cu": {
+      "adapted": false,
+      "upstream_sha256": "ac04444ced8026d39c235aa8e4fbdd66ce860d3b2c625bc4293fa3ecfdfa85bb",
+      "vendored_sha256": "ac04444ced8026d39c235aa8e4fbdd66ce860d3b2c625bc4293fa3ecfdfa85bb"
+    },
+    "src/backends/cuda/gfn2_electric_field.cuh": {
+      "adapted": false,
+      "upstream_sha256": "21cecb34be57f2d4f01e573248bed8d0a80f32c3cf82303071f9181783492bf7",
+      "vendored_sha256": "21cecb34be57f2d4f01e573248bed8d0a80f32c3cf82303071f9181783492bf7"
+    },
+    "src/backends/cuda/gfn2_electronic_gradient.cu": {
+      "adapted": false,
+      "upstream_sha256": "9d063923d2addceef68d7bcc16364445c83dfb79dfdcf53a388384e8c95c5a3e",
+      "vendored_sha256": "9d063923d2addceef68d7bcc16364445c83dfb79dfdcf53a388384e8c95c5a3e"
+    },
+    "src/backends/cuda/gfn2_electronic_gradient.cuh": {
+      "adapted": false,
+      "upstream_sha256": "ce26a196a9aeb0da5af27ce593cc05a6765b743a73503607d205ba60c589358a",
+      "vendored_sha256": "ce26a196a9aeb0da5af27ce593cc05a6765b743a73503607d205ba60c589358a"
+    },
+    "src/backends/cuda/gfn2_energy_force_execution.cu": {
+      "adapted": false,
+      "upstream_sha256": "7bba6e839f917110cf6b36a51b3a962df2c7b758b53c2b9dc057f17fcab99329",
+      "vendored_sha256": "7bba6e839f917110cf6b36a51b3a962df2c7b758b53c2b9dc057f17fcab99329"
+    },
+    "src/backends/cuda/gfn2_energy_force_execution.cuh": {
+      "adapted": false,
+      "upstream_sha256": "a136325ad2e5651b20d8f8798312c999eb90b3012d3d83d78adfd19c0b6676b6",
+      "vendored_sha256": "a136325ad2e5651b20d8f8798312c999eb90b3012d3d83d78adfd19c0b6676b6"
+    },
+    "src/backends/cuda/gfn2_es2.cu": {
+      "adapted": false,
+      "upstream_sha256": "1f831ef1b95f4f9a0cdd12629d50cc2b7f5dd2e85d8f9413598ff3a6b862099b",
+      "vendored_sha256": "1f831ef1b95f4f9a0cdd12629d50cc2b7f5dd2e85d8f9413598ff3a6b862099b"
+    },
+    "src/backends/cuda/gfn2_es2.cuh": {
+      "adapted": false,
+      "upstream_sha256": "684fa6494f0ab10d200766b6bd54213edfb29d26c0fd3236a3c2c7cbbf10a6ae",
+      "vendored_sha256": "684fa6494f0ab10d200766b6bd54213edfb29d26c0fd3236a3c2c7cbbf10a6ae"
+    },
+    "src/backends/cuda/gfn2_es3.cu": {
+      "adapted": false,
+      "upstream_sha256": "bc45598ffa06076f991fc118ccb52c61851ebafc1b9f9727b732def37f49f313",
+      "vendored_sha256": "bc45598ffa06076f991fc118ccb52c61851ebafc1b9f9727b732def37f49f313"
+    },
+    "src/backends/cuda/gfn2_es3.cuh": {
+      "adapted": false,
+      "upstream_sha256": "865754a74f4a29b4a2f33eb3648aa26c74a50f2628c38eb1a0d3bf9cb881ba79",
+      "vendored_sha256": "865754a74f4a29b4a2f33eb3648aa26c74a50f2628c38eb1a0d3bf9cb881ba79"
+    },
+    "src/backends/cuda/gfn2_external_point_charges.cu": {
+      "adapted": false,
+      "upstream_sha256": "c281a16ebbf89d9591b63a521a691b35b13872677617599309d015440e9c9790",
+      "vendored_sha256": "c281a16ebbf89d9591b63a521a691b35b13872677617599309d015440e9c9790"
+    },
+    "src/backends/cuda/gfn2_external_point_charges.cuh": {
+      "adapted": false,
+      "upstream_sha256": "7d7aee3f4b8c8523c9e856c91809c4adbb5f7cb3afcaf5967570a8690b203ad7",
+      "vendored_sha256": "7d7aee3f4b8c8523c9e856c91809c4adbb5f7cb3afcaf5967570a8690b203ad7"
+    },
+    "src/backends/cuda/gfn2_force_common.cuh": {
+      "adapted": false,
+      "upstream_sha256": "f71d3f587c9fb04a618ff0a70f2472dcb960ee72fa37e7ef07508331da787822",
+      "vendored_sha256": "f71d3f587c9fb04a618ff0a70f2472dcb960ee72fa37e7ef07508331da787822"
+    },
+    "src/backends/cuda/gfn2_force_composition.cu": {
+      "adapted": false,
+      "upstream_sha256": "689b70b18bbc44368bdb965f42eae0cbead1575ccb0283f62aef0f3bd9e46f08",
+      "vendored_sha256": "689b70b18bbc44368bdb965f42eae0cbead1575ccb0283f62aef0f3bd9e46f08"
+    },
+    "src/backends/cuda/gfn2_force_composition.cuh": {
+      "adapted": false,
+      "upstream_sha256": "c143fbf951d3248535dcbd7fec9d57b4b59585ae8f953577603c38caedb4c3e8",
+      "vendored_sha256": "c143fbf951d3248535dcbd7fec9d57b4b59585ae8f953577603c38caedb4c3e8"
+    },
+    "src/backends/cuda/gfn2_geometry.cu": {
+      "adapted": false,
+      "upstream_sha256": "dab404d81963162181cb357b9bc8288b6a2ee5e6169918363a42f6f9a8bd5003",
+      "vendored_sha256": "dab404d81963162181cb357b9bc8288b6a2ee5e6169918363a42f6f9a8bd5003"
+    },
+    "src/backends/cuda/gfn2_geometry.cuh": {
+      "adapted": false,
+      "upstream_sha256": "2790a8a1f2c40fcda3f5b0359e5a458cb5970945420c6b29099a2b93599d6f87",
+      "vendored_sha256": "2790a8a1f2c40fcda3f5b0359e5a458cb5970945420c6b29099a2b93599d6f87"
+    },
+    "src/backends/cuda/gfn2_h0_force.cu": {
+      "adapted": false,
+      "upstream_sha256": "ffccf6543aefc02feba9c23913bff8c544f6389a67956535d9e2372f1b50176a",
+      "vendored_sha256": "ffccf6543aefc02feba9c23913bff8c544f6389a67956535d9e2372f1b50176a"
+    },
+    "src/backends/cuda/gfn2_h0_force.cuh": {
+      "adapted": false,
+      "upstream_sha256": "2bb34759478f6cc26f98df496d4c826358505c92d66774ef7ab2b4c9043530c6",
+      "vendored_sha256": "2bb34759478f6cc26f98df496d4c826358505c92d66774ef7ab2b4c9043530c6"
+    },
+    "src/backends/cuda/gfn2_hamiltonian.cu": {
+      "adapted": false,
+      "upstream_sha256": "3c3be624100613cef64a01b2d3bc78756f59f0847e832472678b9018bc11729b",
+      "vendored_sha256": "3c3be624100613cef64a01b2d3bc78756f59f0847e832472678b9018bc11729b"
+    },
+    "src/backends/cuda/gfn2_hamiltonian.cuh": {
+      "adapted": false,
+      "upstream_sha256": "2a937211fd28bff5b89979d292787032061016bac4d688ea9fd332032e099fa1",
+      "vendored_sha256": "2a937211fd28bff5b89979d292787032061016bac4d688ea9fd332032e099fa1"
+    },
+    "src/backends/cuda/gfn2_hamiltonian_force.cu": {
+      "adapted": false,
+      "upstream_sha256": "ea38771fa21ca9f1671c2d7b6ac0ac82c9f3b6bdce27c31ad5e9a14f2f976198",
+      "vendored_sha256": "ea38771fa21ca9f1671c2d7b6ac0ac82c9f3b6bdce27c31ad5e9a14f2f976198"
+    },
+    "src/backends/cuda/gfn2_hamiltonian_force.cuh": {
+      "adapted": false,
+      "upstream_sha256": "468134186020f27eb5c5a1d8233394dbda4bc25bc25918a95b24f49e00a86fed",
+      "vendored_sha256": "468134186020f27eb5c5a1d8233394dbda4bc25bc25918a95b24f49e00a86fed"
+    },
+    "src/backends/cuda/gfn2_inference_publication.cu": {
+      "adapted": false,
+      "upstream_sha256": "a7ed69d1caa6cf3e0134a749911c266f03d9f1bcabd7cd669defd8dcc8610967",
+      "vendored_sha256": "a7ed69d1caa6cf3e0134a749911c266f03d9f1bcabd7cd669defd8dcc8610967"
+    },
+    "src/backends/cuda/gfn2_inference_publication.cuh": {
+      "adapted": false,
+      "upstream_sha256": "c15bed593a5f13ddc5422abf0c722f8ebbde623fa4e97b440f7f7fcdf83ccf66",
+      "vendored_sha256": "c15bed593a5f13ddc5422abf0c722f8ebbde623fa4e97b440f7f7fcdf83ccf66"
+    },
+    "src/backends/cuda/gfn2_integral_force.cuh": {
+      "adapted": false,
+      "upstream_sha256": "463d2cbe0dac409c676e4e7af14e2648a27f597eaa70cc86b320b33b7ff7de6d",
+      "vendored_sha256": "463d2cbe0dac409c676e4e7af14e2648a27f597eaa70cc86b320b33b7ff7de6d"
+    },
+    "src/backends/cuda/gfn2_integrals.cu": {
+      "adapted": false,
+      "upstream_sha256": "8da9042b184a7c81650cf9e7f4dbcc4b183cffeee0bf0eab6596b5adb18f99d6",
+      "vendored_sha256": "8da9042b184a7c81650cf9e7f4dbcc4b183cffeee0bf0eab6596b5adb18f99d6"
+    },
+    "src/backends/cuda/gfn2_integrals.cuh": {
+      "adapted": false,
+      "upstream_sha256": "ba0cae1e2f1830a075f0c280605318b0b78c34d03d76073eae46976db9ab7597",
+      "vendored_sha256": "ba0cae1e2f1830a075f0c280605318b0b78c34d03d76073eae46976db9ab7597"
+    },
+    "src/backends/cuda/gfn2_mulliken.cu": {
+      "adapted": false,
+      "upstream_sha256": "a38ac9d9b567181add01e2dbfa4c3955497b0035a774abc4ff3f62bde4124ad1",
+      "vendored_sha256": "a38ac9d9b567181add01e2dbfa4c3955497b0035a774abc4ff3f62bde4124ad1"
+    },
+    "src/backends/cuda/gfn2_mulliken.cuh": {
+      "adapted": false,
+      "upstream_sha256": "d59f514440ed33f40a0135b602f147b2bc307bb3bb4dd5b7f8b0e0e10e07b060",
+      "vendored_sha256": "d59f514440ed33f40a0135b602f147b2bc307bb3bb4dd5b7f8b0e0e10e07b060"
+    },
+    "src/backends/cuda/gfn2_occupations.cu": {
+      "adapted": false,
+      "upstream_sha256": "565d3a11f08d7061ddd83858f3575938c24fd8b0542c0bd8177354e2acac5570",
+      "vendored_sha256": "565d3a11f08d7061ddd83858f3575938c24fd8b0542c0bd8177354e2acac5570"
+    },
+    "src/backends/cuda/gfn2_occupations.cuh": {
+      "adapted": false,
+      "upstream_sha256": "3ea8ddf540d6492abcef07c77313be759a114e621b1940e5e85c3cceab691a6e",
+      "vendored_sha256": "3ea8ddf540d6492abcef07c77313be759a114e621b1940e5e85c3cceab691a6e"
+    },
+    "src/backends/cuda/gfn2_pairlist.cu": {
+      "adapted": true,
+      "upstream_sha256": "4eadf7ae80179453ba3543a6354b9430228efe25575dedf41629b8b94aa8be13",
+      "vendored_sha256": "e934221e547997528fe21cf0287fa1f095d3acf7114857f578846ccccfc5d41b"
+    },
+    "src/backends/cuda/gfn2_pairlist.cuh": {
+      "adapted": false,
+      "upstream_sha256": "e64c830a8583e6ae8584c9d862e4c76771c66b981c96811c6407a850523e2390",
+      "vendored_sha256": "e64c830a8583e6ae8584c9d862e4c76771c66b981c96811c6407a850523e2390"
+    },
+    "src/backends/cuda/gfn2_parameters.cu": {
+      "adapted": false,
+      "upstream_sha256": "54cbbdecf32c94c386c60eae73874445c1b94e005b23b06fabc77e1e1d2c4408",
+      "vendored_sha256": "54cbbdecf32c94c386c60eae73874445c1b94e005b23b06fabc77e1e1d2c4408"
+    },
+    "src/backends/cuda/gfn2_parameters.cuh": {
+      "adapted": false,
+      "upstream_sha256": "91a5810ff3c75b9c3ab598f157d83d2eb003603f46686fbb64bacf4c3d24244f",
+      "vendored_sha256": "91a5810ff3c75b9c3ab598f157d83d2eb003603f46686fbb64bacf4c3d24244f"
+    },
+    "src/backends/cuda/gfn2_periodic_embedding.cu": {
+      "adapted": false,
+      "upstream_sha256": "03b4b00b54b3a83d91ac13e61d330aae01bfcc3594cbc938ea4f1a01a5d363e1",
+      "vendored_sha256": "03b4b00b54b3a83d91ac13e61d330aae01bfcc3594cbc938ea4f1a01a5d363e1"
+    },
+    "src/backends/cuda/gfn2_periodic_embedding.cuh": {
+      "adapted": false,
+      "upstream_sha256": "dde5612841c3956c5fd603f62fa3f5533b927d639c9db636afa619b8dfbf96d1",
+      "vendored_sha256": "dde5612841c3956c5fd603f62fa3f5533b927d639c9db636afa619b8dfbf96d1"
+    },
+    "src/backends/cuda/gfn2_plan_schema.cu": {
+      "adapted": false,
+      "upstream_sha256": "14491b0bc26c4311b7c275a50fac589fc0859904604848dabf27689a987a6555",
+      "vendored_sha256": "14491b0bc26c4311b7c275a50fac589fc0859904604848dabf27689a987a6555"
+    },
+    "src/backends/cuda/gfn2_plan_schema.cuh": {
+      "adapted": false,
+      "upstream_sha256": "af64230b13c0ca7f1c547fbcb17dbd3b5f62b0626ca68a919185293e4b115a7a",
+      "vendored_sha256": "af64230b13c0ca7f1c547fbcb17dbd3b5f62b0626ca68a919185293e4b115a7a"
+    },
+    "src/backends/cuda/gfn2_post_scc_potential.cu": {
+      "adapted": false,
+      "upstream_sha256": "6b6650b56d4dd879f2b48a7185217ff57bad82b96f34e581846a3f4f2edff02d",
+      "vendored_sha256": "6b6650b56d4dd879f2b48a7185217ff57bad82b96f34e581846a3f4f2edff02d"
+    },
+    "src/backends/cuda/gfn2_post_scc_potential.cuh": {
+      "adapted": false,
+      "upstream_sha256": "5e1c65dc16893a58beeef56587abc22fb5968ffa424f057a2aecec62c2d38dae",
+      "vendored_sha256": "5e1c65dc16893a58beeef56587abc22fb5968ffa424f057a2aecec62c2d38dae"
+    },
+    "src/backends/cuda/gfn2_preprocessing.cu": {
+      "adapted": true,
+      "upstream_sha256": "40d112fa6b88cafc78a74bd95f001662b1e81fc2fc1478b134f38353b6e19da9",
+      "vendored_sha256": "6aaf8d905548d19ccd642414653e4afd8fda771a07a4f0b38af8760abf9dd19a"
+    },
+    "src/backends/cuda/gfn2_preprocessing.cuh": {
+      "adapted": false,
+      "upstream_sha256": "fed03f30fdc9cfe5f8ca5508b684451fd288975843fc286962d2b4c305620636",
+      "vendored_sha256": "fed03f30fdc9cfe5f8ca5508b684451fd288975843fc286962d2b4c305620636"
+    },
+    "src/backends/cuda/gfn2_public_result_bridge.cu": {
+      "adapted": false,
+      "upstream_sha256": "1f9d10d1534472b86024e4e5f09dac41e32202fe0cb5918c6e0e302008e79ad1",
+      "vendored_sha256": "1f9d10d1534472b86024e4e5f09dac41e32202fe0cb5918c6e0e302008e79ad1"
+    },
+    "src/backends/cuda/gfn2_public_result_bridge.cuh": {
+      "adapted": false,
+      "upstream_sha256": "d76e4debf164898d776b027e664c297fceb57437e5d252cdd11bd6e4e3ce7403",
+      "vendored_sha256": "d76e4debf164898d776b027e664c297fceb57437e5d252cdd11bd6e4e3ce7403"
+    },
+    "src/backends/cuda/gfn2_repulsion.cu": {
+      "adapted": false,
+      "upstream_sha256": "6a6a587f05ae54ecfa6df1c9fc7b3fadb799cae5c891366d2db5d56ad96d42b1",
+      "vendored_sha256": "6a6a587f05ae54ecfa6df1c9fc7b3fadb799cae5c891366d2db5d56ad96d42b1"
+    },
+    "src/backends/cuda/gfn2_repulsion.cuh": {
+      "adapted": false,
+      "upstream_sha256": "c6d600a8ad626d4e42b921d2c9c96e24b252c4d67045e3105502fb66243c955b",
+      "vendored_sha256": "c6d600a8ad626d4e42b921d2c9c96e24b252c4d67045e3105502fb66243c955b"
+    },
+    "src/backends/cuda/gfn2_scc.cu": {
+      "adapted": false,
+      "upstream_sha256": "8acc22635ac9e520d0688c864c05917a5b3690684f1c7c42dd980a6885c9923f",
+      "vendored_sha256": "8acc22635ac9e520d0688c864c05917a5b3690684f1c7c42dd980a6885c9923f"
+    },
+    "src/backends/cuda/gfn2_scc.cuh": {
+      "adapted": false,
+      "upstream_sha256": "7f59fab7dddcbad62cad83884d2b6542c6e09594d26a28660c0a802a1a4606a3",
+      "vendored_sha256": "7f59fab7dddcbad62cad83884d2b6542c6e09594d26a28660c0a802a1a4606a3"
+    },
+    "src/backends/cuda/gfn2_scc_bridge.cu": {
+      "adapted": false,
+      "upstream_sha256": "d9c6d22b75c34be79b443798222fef05e92513d4d4da8e617a77c743d6781581",
+      "vendored_sha256": "d9c6d22b75c34be79b443798222fef05e92513d4d4da8e617a77c743d6781581"
+    },
+    "src/backends/cuda/gfn2_scc_bridge.cuh": {
+      "adapted": false,
+      "upstream_sha256": "4d462fe1f0b6d23b4b2abab87dcfa90254896a6dd186cc3c29c2a766957a9df9",
+      "vendored_sha256": "4d462fe1f0b6d23b4b2abab87dcfa90254896a6dd186cc3c29c2a766957a9df9"
+    },
+    "src/backends/cuda/gfn2_scc_classical_energy.cu": {
+      "adapted": false,
+      "upstream_sha256": "9088b4a8394f68dd0a1f77b7be20d177f74a218cf31596f42ddc38ca57478bd5",
+      "vendored_sha256": "9088b4a8394f68dd0a1f77b7be20d177f74a218cf31596f42ddc38ca57478bd5"
+    },
+    "src/backends/cuda/gfn2_scc_classical_energy.cuh": {
+      "adapted": false,
+      "upstream_sha256": "3ca39dd7098ab6a9f97f249b21bbe0e724f9d891cec6574943e423ff031ce4ef",
+      "vendored_sha256": "3ca39dd7098ab6a9f97f249b21bbe0e724f9d891cec6574943e423ff031ce4ef"
+    },
+    "src/backends/cuda/gfn2_scc_energy.cu": {
+      "adapted": false,
+      "upstream_sha256": "ae7ac935fa377b9ae59d36c9ddef41905cc48ebaee4b6a917992d41f87389641",
+      "vendored_sha256": "ae7ac935fa377b9ae59d36c9ddef41905cc48ebaee4b6a917992d41f87389641"
+    },
+    "src/backends/cuda/gfn2_scc_energy.cuh": {
+      "adapted": false,
+      "upstream_sha256": "b0750de4298f584e19475a13a4795d4c211b7a192dd2817b9a92a7c5ab0f5919",
+      "vendored_sha256": "b0750de4298f584e19475a13a4795d4c211b7a192dd2817b9a92a7c5ab0f5919"
+    },
+    "src/backends/cuda/gfn2_scc_free_energy.cu": {
+      "adapted": false,
+      "upstream_sha256": "eefc52e4379f86889a4926218216e4276b07215de5abd33d02e321d4093b179b",
+      "vendored_sha256": "eefc52e4379f86889a4926218216e4276b07215de5abd33d02e321d4093b179b"
+    },
+    "src/backends/cuda/gfn2_scc_free_energy.cuh": {
+      "adapted": false,
+      "upstream_sha256": "230c6e9b73f208eac1de9e62ff5dac5b6b0ee8bf7c429c989e8e471139b268bb",
+      "vendored_sha256": "230c6e9b73f208eac1de9e62ff5dac5b6b0ee8bf7c429c989e8e471139b268bb"
+    },
+    "src/backends/cuda/gfn2_scc_iteration.cu": {
+      "adapted": false,
+      "upstream_sha256": "e7eff14cec8cd351edaf52bbf37072bf1f5f1cf981ccaaf38debea5f633e4b2b",
+      "vendored_sha256": "e7eff14cec8cd351edaf52bbf37072bf1f5f1cf981ccaaf38debea5f633e4b2b"
+    },
+    "src/backends/cuda/gfn2_scc_iteration.cuh": {
+      "adapted": false,
+      "upstream_sha256": "ceabc762d5ae800e202f138e56d52c3178d6dbd605e93731c0d18b903a9fdf95",
+      "vendored_sha256": "ceabc762d5ae800e202f138e56d52c3178d6dbd605e93731c0d18b903a9fdf95"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_arena.cu": {
+      "adapted": false,
+      "upstream_sha256": "a145bcce1636b21b0563c440145d985cd8d85a57e69b8af4ce41ecce9d8213ff",
+      "vendored_sha256": "a145bcce1636b21b0563c440145d985cd8d85a57e69b8af4ce41ecce9d8213ff"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_arena.cuh": {
+      "adapted": false,
+      "upstream_sha256": "2c1ba33547bd2b9824014999cdbdedc9a7ff72236c41e5e45b712b7d1cbe4a04",
+      "vendored_sha256": "2c1ba33547bd2b9824014999cdbdedc9a7ff72236c41e5e45b712b7d1cbe4a04"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_control.cu": {
+      "adapted": false,
+      "upstream_sha256": "ab2c4f3dc69365b3c1b72de7fad352dbbf12a39d92c9c69de8ac97ed95e2b23e",
+      "vendored_sha256": "ab2c4f3dc69365b3c1b72de7fad352dbbf12a39d92c9c69de8ac97ed95e2b23e"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_control.cuh": {
+      "adapted": false,
+      "upstream_sha256": "e99384440d8b5567c18a801e150593f46a66c38d7fbce279ef6c02649bba5ee2",
+      "vendored_sha256": "e99384440d8b5567c18a801e150593f46a66c38d7fbce279ef6c02649bba5ee2"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_initialize.cu": {
+      "adapted": false,
+      "upstream_sha256": "b01a899eb4c5d99c6f804824ce3532804b2ccbfc6a6f0628c8179c2e65416b87",
+      "vendored_sha256": "b01a899eb4c5d99c6f804824ce3532804b2ccbfc6a6f0628c8179c2e65416b87"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_initialize.cuh": {
+      "adapted": false,
+      "upstream_sha256": "a08c7d234edcf3cd77051a7d79edf1188ff9340acd5b7a19f7f7e00662d498fc",
+      "vendored_sha256": "a08c7d234edcf3cd77051a7d79edf1188ff9340acd5b7a19f7f7e00662d498fc"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_reports.cu": {
+      "adapted": false,
+      "upstream_sha256": "52738e18988211e8f6735a36ff12786bfc7a7370f02d65c17b54621a1ac85241",
+      "vendored_sha256": "52738e18988211e8f6735a36ff12786bfc7a7370f02d65c17b54621a1ac85241"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_reports.cuh": {
+      "adapted": false,
+      "upstream_sha256": "470991db0f6f23bf58bcdacdf2d82264db36a1804c89165063d807f92dd5fa68",
+      "vendored_sha256": "470991db0f6f23bf58bcdacdf2d82264db36a1804c89165063d807f92dd5fa68"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_test.cuh": {
+      "adapted": false,
+      "upstream_sha256": "f3769bf74b0d56b26a40d6d2b8f7a182ce24fa8c5030051bcfff8eb18ac051f3",
+      "vendored_sha256": "f3769bf74b0d56b26a40d6d2b8f7a182ce24fa8c5030051bcfff8eb18ac051f3"
+    },
+    "src/backends/cuda/gfn2_scc_loop.cu": {
+      "adapted": false,
+      "upstream_sha256": "abd57e39f641f87c56a5780f93e2f1c9bd884d6c6c0dbf9eaf577143cf248d2b",
+      "vendored_sha256": "abd57e39f641f87c56a5780f93e2f1c9bd884d6c6c0dbf9eaf577143cf248d2b"
+    },
+    "src/backends/cuda/gfn2_scc_loop.cuh": {
+      "adapted": false,
+      "upstream_sha256": "318a127086cf15d5b376c1dd967b14c87e074e2fc499ca41a8d89e7ff88aa9ac",
+      "vendored_sha256": "318a127086cf15d5b376c1dd967b14c87e074e2fc499ca41a8d89e7ff88aa9ac"
+    },
+    "src/backends/cuda/gfn2_scc_mixer.cu": {
+      "adapted": false,
+      "upstream_sha256": "459cc3347ae983fbb88080dcba6e37951baafda57b3e9c060503bafa094b1bb1",
+      "vendored_sha256": "459cc3347ae983fbb88080dcba6e37951baafda57b3e9c060503bafa094b1bb1"
+    },
+    "src/backends/cuda/gfn2_scc_mixer.cuh": {
+      "adapted": false,
+      "upstream_sha256": "60ba9a13d8836614afbdb373ec156cd6ff471d0d03417371aad5c2f472eea3d5",
+      "vendored_sha256": "60ba9a13d8836614afbdb373ec156cd6ff471d0d03417371aad5c2f472eea3d5"
+    },
+    "src/backends/cuda/gfn2_scc_potential.cu": {
+      "adapted": false,
+      "upstream_sha256": "3cab6f5a694dbe5ab62440dd473e957524e19956ae87ab00213559c473e1299a",
+      "vendored_sha256": "3cab6f5a694dbe5ab62440dd473e957524e19956ae87ab00213559c473e1299a"
+    },
+    "src/backends/cuda/gfn2_scc_potential.cuh": {
+      "adapted": false,
+      "upstream_sha256": "363bd819599933f2ac8c93fbc4189282d6966b21784c11ec5cd5bdbc801dda95",
+      "vendored_sha256": "363bd819599933f2ac8c93fbc4189282d6966b21784c11ec5cd5bdbc801dda95"
+    },
+    "src/backends/cuda/gfn2_scc_publication.cu": {
+      "adapted": false,
+      "upstream_sha256": "1984e4a3379af5cdf51232bd201836d2f07ceeaea71e3143276f3f69ad0e1ec7",
+      "vendored_sha256": "1984e4a3379af5cdf51232bd201836d2f07ceeaea71e3143276f3f69ad0e1ec7"
+    },
+    "src/backends/cuda/gfn2_scc_publication.cuh": {
+      "adapted": false,
+      "upstream_sha256": "54b69f6c7f570a88cb6154dc7ef01641de2723166eeaf847379eb51ee1923874",
+      "vendored_sha256": "54b69f6c7f570a88cb6154dc7ef01641de2723166eeaf847379eb51ee1923874"
+    },
+    "src/backends/cuda/gfn2_scc_setup_eigensolver.cu": {
+      "adapted": false,
+      "upstream_sha256": "b53efa1527059556065800aa9c455a3ab361a3e0f639b24a201f9edae81e7f07",
+      "vendored_sha256": "b53efa1527059556065800aa9c455a3ab361a3e0f639b24a201f9edae81e7f07"
+    },
+    "src/backends/cuda/gfn2_scc_setup_eigensolver.cuh": {
+      "adapted": false,
+      "upstream_sha256": "a522550fba995c8b16ad064360d8b258aad7bea544d55ea4498f0d1b3b7aa36b",
+      "vendored_sha256": "a522550fba995c8b16ad064360d8b258aad7bea544d55ea4498f0d1b3b7aa36b"
+    },
+    "src/backends/cuda/gfn2_scc_setup_inputs.cu": {
+      "adapted": false,
+      "upstream_sha256": "6496a8dd876ff075b6f596afae85ffe2c28a6c98ac964e222bb321e892eb16b3",
+      "vendored_sha256": "6496a8dd876ff075b6f596afae85ffe2c28a6c98ac964e222bb321e892eb16b3"
+    },
+    "src/backends/cuda/gfn2_scc_setup_inputs.cuh": {
+      "adapted": false,
+      "upstream_sha256": "c2a8604d877d6bd093a47a398c6981839dee484444eb3e18977925de5cec808d",
+      "vendored_sha256": "c2a8604d877d6bd093a47a398c6981839dee484444eb3e18977925de5cec808d"
+    },
+    "src/backends/cuda/gfn2_scc_setup_topology.cu": {
+      "adapted": false,
+      "upstream_sha256": "0b4113f1834be74fa929d46df3419aa1929f748d455e34b2fe4c03aa78c3f088",
+      "vendored_sha256": "0b4113f1834be74fa929d46df3419aa1929f748d455e34b2fe4c03aa78c3f088"
+    },
+    "src/backends/cuda/gfn2_scc_setup_topology.hpp": {
+      "adapted": false,
+      "upstream_sha256": "ca2b7a6cb9b785452761ec6ed616bd05ba6bb55f775e78e062a06d9d0a7b9633",
+      "vendored_sha256": "ca2b7a6cb9b785452761ec6ed616bd05ba6bb55f775e78e062a06d9d0a7b9633"
+    },
+    "src/backends/cuda/gfn2_spin.cu": {
+      "adapted": false,
+      "upstream_sha256": "06b898fd6a4b63f8e84d641a05cf61df2da8c98caa4a65d011d8dd2e475fc957",
+      "vendored_sha256": "06b898fd6a4b63f8e84d641a05cf61df2da8c98caa4a65d011d8dd2e475fc957"
+    },
+    "src/backends/cuda/gfn2_spin.cuh": {
+      "adapted": false,
+      "upstream_sha256": "b317a7cd34f237847221b42dcd0f93c6ed3bf398e5634aa540b535615b90f105",
+      "vendored_sha256": "b317a7cd34f237847221b42dcd0f93c6ed3bf398e5634aa540b535615b90f105"
+    },
+    "src/backends/cuda/gfn2_terminal_classical_energy.cu": {
+      "adapted": false,
+      "upstream_sha256": "5ce8d1562e9fb955f0c6b35190e0c08053cc829570701beab190eca1516e869e",
+      "vendored_sha256": "5ce8d1562e9fb955f0c6b35190e0c08053cc829570701beab190eca1516e869e"
+    },
+    "src/backends/cuda/gfn2_terminal_classical_energy.cuh": {
+      "adapted": false,
+      "upstream_sha256": "b31e95fd57f7260b568f2f96a76c1ad903088015edafdb2617bccee89e1251db",
+      "vendored_sha256": "b31e95fd57f7260b568f2f96a76c1ad903088015edafdb2617bccee89e1251db"
+    },
+    "src/backends/cuda/gfn2_total_energy.cu": {
+      "adapted": false,
+      "upstream_sha256": "af65a0738e4e207b5d31c205b7e8924791b441897226bd666a3ddf8df609a6ff",
+      "vendored_sha256": "af65a0738e4e207b5d31c205b7e8924791b441897226bd666a3ddf8df609a6ff"
+    },
+    "src/backends/cuda/gfn2_total_energy.cuh": {
+      "adapted": false,
+      "upstream_sha256": "4827c2580aef42add2fab2af1d6929d41558182976b8117a939676a9536236e8",
+      "vendored_sha256": "4827c2580aef42add2fab2af1d6929d41558182976b8117a939676a9536236e8"
+    },
+    "src/runtime/backend.hpp": {
+      "adapted": false,
+      "upstream_sha256": "f2c875319f70a2382ac2bc4ac86619b8690530e9a6ec4196492fd0e9d826b967",
+      "vendored_sha256": "f2c875319f70a2382ac2bc4ac86619b8690530e9a6ec4196492fd0e9d826b967"
+    },
+    "src/runtime/cuda_descriptor_validation.cu": {
+      "adapted": false,
+      "upstream_sha256": "7444c235bc128dc181389cf899acd8b31b6af449f2126f9e8f1222c1033ab779",
+      "vendored_sha256": "7444c235bc128dc181389cf899acd8b31b6af449f2126f9e8f1222c1033ab779"
+    },
+    "src/runtime/cuda_descriptor_validation.hpp": {
+      "adapted": false,
+      "upstream_sha256": "24318d733e893bf728f4ecb25df45e8b53f1b2d97018e0d1f1e98ccc4b4b64a2",
+      "vendored_sha256": "24318d733e893bf728f4ecb25df45e8b53f1b2d97018e0d1f1e98ccc4b4b64a2"
+    },
+    "src/runtime/dlpack_layout.hpp": {
+      "adapted": false,
+      "upstream_sha256": "1d1d09b2ec5ee5da3174aecccd0692f20be419f887d51a3f99b358209a97ce5d",
+      "vendored_sha256": "1d1d09b2ec5ee5da3174aecccd0692f20be419f887d51a3f99b358209a97ce5d"
+    },
+    "src/runtime/gfn2_cuda_execution.cu": {
+      "adapted": true,
+      "upstream_sha256": "593eb50ce83db6f066748a29f41f09438c3cc142b5fc45408fefccf4fed317af",
+      "vendored_sha256": "a2d1330953f7a60b956c15acb581874d2947e45b4db4f93c67c4b211acc725cd"
+    },
+    "src/runtime/gfn2_cuda_execution.hpp": {
+      "adapted": false,
+      "upstream_sha256": "6c2a16e4fcaf87b1731d101976360cce27dc15bdef01e8165cacc136d9cbf974",
+      "vendored_sha256": "6c2a16e4fcaf87b1731d101976360cce27dc15bdef01e8165cacc136d9cbf974"
+    },
+    "src/runtime/gfn2_cuda_topology_staging.cu": {
+      "adapted": false,
+      "upstream_sha256": "78e6b96e8d3a0a67c73c1ab6871810bf9e020a053e82d036a92161de4ddc5e4a",
+      "vendored_sha256": "78e6b96e8d3a0a67c73c1ab6871810bf9e020a053e82d036a92161de4ddc5e4a"
+    },
+    "src/runtime/gfn2_cuda_topology_staging.hpp": {
+      "adapted": false,
+      "upstream_sha256": "e98c96a7fef2b1dc9445bf0db0a17e28c955800d75bf7eb3e9b0953ebc4ab29d",
+      "vendored_sha256": "e98c96a7fef2b1dc9445bf0db0a17e28c955800d75bf7eb3e9b0953ebc4ab29d"
+    },
+    "src/runtime/nvidia_host_api.h": {
+      "adapted": false,
+      "upstream_sha256": "431b17c4f112feeff647c4331ecbefbdd751ffa58c15c5d1e2efd32f89eeee2b",
+      "vendored_sha256": "431b17c4f112feeff647c4331ecbefbdd751ffa58c15c5d1e2efd32f89eeee2b"
+    },
+    "src/runtime/request.hpp": {
+      "adapted": false,
+      "upstream_sha256": "948a98d2841e8258635630eb7fb3207a941f1ec0c4cdc205a43965bb70b86952",
+      "vendored_sha256": "948a98d2841e8258635630eb7fb3207a941f1ec0c4cdc205a43965bb70b86952"
+    },
+    "src/runtime/result_owner.hpp": {
+      "adapted": false,
+      "upstream_sha256": "0bf8775ea558faf44a872fedff4ce6fa50e380456409fda4051fa5e92e28400e",
+      "vendored_sha256": "0bf8775ea558faf44a872fedff4ce6fa50e380456409fda4051fa5e92e28400e"
+    },
+    "src/runtime/result_owner_cuda.cu": {
+      "adapted": false,
+      "upstream_sha256": "80f95c4e4d2d107053404f213599ee449bd7a04377276ecf51f00c024d2bbad3",
+      "vendored_sha256": "80f95c4e4d2d107053404f213599ee449bd7a04377276ecf51f00c024d2bbad3"
+    }
+  },
+  "schema_version": 1,
+  "scope": "Native non-wheel molecular GFN2-xTB CUDA bootstrap",
+  "selection_reason": "Repository state immediately before xTBloom production GFN1 CUDA execution was integrated; selected to keep VibeQC CUDA ownership GFN2-only.",
+  "upstream_commit": "3c21f50195389b093941eb5ed6f1143b8802f96e",
+  "upstream_commit_subject": "chore(deps): bump astral-sh/setup-uv from 9.0.0 to 10.0.1 (#436)",
+  "upstream_repository": "https://github.com/jinzhezenggroup/xtbloom"
+}

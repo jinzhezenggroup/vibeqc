@@ -40,8 +40,6 @@ def test_gfn2_capability_and_intrinsic_basis_contract() -> None:
 
     with pytest.raises(ValueError, match="intrinsic minimal basis"):
         Calculator(method="gfn2-xtb", basis="sto-3g", device="cpu")
-    with pytest.raises(NotImplementedError, match="CUDA"):
-        Calculator(method="gfn2-xtb", device="cuda")
 
 
 def test_gfn2_h3_plus_matches_independent_tblite_golden() -> None:
@@ -107,3 +105,32 @@ def test_gfn2_oh_analytic_force_matches_energy_finite_difference() -> None:
     step = 1.0e-4
     finite_difference_force = -(energy(step) - energy(-step)) / (2.0 * step)
     assert result.forces[1, 2] == pytest.approx(finite_difference_force, abs=2.0e-8)
+
+
+def _cuda_gfn2_or_skip() -> Calculator:
+    try:
+        return Calculator(
+            method="gfn2-xtb",
+            device="cuda",
+            energy_tolerance=1.0e-12,
+            density_tolerance=1.0e-10,
+        )
+    except (RuntimeError, NotImplementedError) as error:
+        pytest.skip(f"native GFN2 CUDA unavailable: {error}")
+
+
+def test_gfn2_cuda_h3_plus_matches_independent_tblite_golden() -> None:
+    result = _cuda_gfn2_or_skip().singlepoint(H3_PLUS, charge=1)
+    assert result.converged
+    assert result.executed_backend == "cuda"
+    assert result.energy == pytest.approx(H3_PLUS_ENERGY, abs=5.0e-7)
+    assert np.allclose(result.forces, H3_PLUS_FORCES, atol=5.0e-7, rtol=0.0)
+    assert np.max(np.abs(result.forces.sum(axis=0))) < 1.0e-12
+
+
+def test_gfn2_cuda_oh_radical_matches_independent_xtb_golden() -> None:
+    result = _cuda_gfn2_or_skip().singlepoint(OH_RADICAL, multiplicity=2)
+    assert result.converged
+    assert result.executed_backend == "cuda"
+    assert result.energy == pytest.approx(OH_ENERGY, abs=5.0e-7)
+    assert np.allclose(result.forces, OH_FORCES, atol=5.0e-7, rtol=0.0)
