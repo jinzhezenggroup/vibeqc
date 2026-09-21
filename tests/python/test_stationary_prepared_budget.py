@@ -40,6 +40,7 @@ def test_retained_host_budget_is_rechecked_before_rebind(
         4,
         5,
         6,
+        7,
         10,
         (),
     )
@@ -69,6 +70,7 @@ def test_retained_host_budget_is_rechecked_before_rebind(
         "tile_points": 4,
         "primitive_tile": 5,
         "integral_terms": 6,
+        "work_budget": 7,
         "max_device_bytes": 30,
         "max_host_bytes": 99,
         "host_bound": 80,

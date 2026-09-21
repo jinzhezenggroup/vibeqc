@@ -36,6 +36,8 @@ struct CudaKsTransfers {
   /** Internal execution evidence. A selected two-slot RKS chunk can submit one
    * bounded unused slot when its first physical iteration terminates. */
   std::uint64_t submitted_iterations{}, iteration_chunks{}, iteration_synchronizations{};
+  /** Explicit host-unfused XC staging, separate from ordinary setup/seed movement. */
+  std::uint64_t xc_host_d2h_bytes{}, xc_host_h2d_bytes{}, xc_host_synchronizations{};
 };
 
 /** Exact state-arena size from the allocator's own typed layout. This query

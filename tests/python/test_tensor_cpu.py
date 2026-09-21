@@ -11,19 +11,34 @@ from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
     Program,
+    Symmetry,
     TensorSpec,
     add,
+    broadcast,
+    divide,
     einsum,
+    execute,
+    exp,
+    gather,
+    indexed_gather,
     input_tensor,
     multiply,
     reduce_sum,
     reshape,
+    scaled_bilinear,
+    scatter_add,
+    segment_sum,
+    slice_tensor,
+    transpose,
 )
 from vibeqc_compiler.tensor.cpu import NativeTensorProgram, emit_cpu
 
 
 def tensor(
-    name: typing.Any, shape: typing.Any, dtype: typing.Any = "float64"
+    name: typing.Any,
+    shape: typing.Any,
+    dtype: typing.Any = "float64",
+    symmetries: typing.Any = (),
 ) -> typing.Any:
     return input_tensor(
         name,
@@ -34,6 +49,7 @@ def tensor(
             ),
             dtype=dtype,
             role="input",
+            symmetries=tuple(symmetries),
         ),
     )
 
@@ -81,12 +97,134 @@ def test_ordinary_pointwise_arithmetic(tmp_path: typing.Any) -> None:
     )
 
 
+def test_views_indexing_division_and_broadcast_match_interpreter(
+    tmp_path: typing.Any,
+) -> None:
+    o, v = IndexSpace("o", "occupied", 3), IndexSpace("v", "virtual", 4)
+    i, a = Index("i", o), Index("a", v)
+    x = input_tensor("x", TensorSpec((i, a), role="input"))
+    y = input_tensor("y", TensorSpec((i, a), role="input"))
+    tile = slice_tensor(x, ((1, 3), (1, 4)))
+    selected = gather(tile, 1, (2, 0, 2))
+    reduced = reduce_sum(selected, (1,))
+    batch = Index("batch", IndexSpace("batch", "batch", 2))
+    expanded = broadcast(reduced, (batch, reduced.spec.indices[0]), (1,))
+    permuted = transpose(selected, (1, 0))
+    flat_axis = Index("flat", IndexSpace("flat", "batch", 6))
+    flat = reshape(permuted, (flat_axis,))
+    reordered = broadcast(x, (a, batch, i), (2, 0))
+    program = Program(
+        {
+            "selected": selected,
+            "expanded": expanded,
+            "flat": flat,
+            "reordered": reordered,
+            "quotient": divide(x, y),
+        }
+    )
+    xv = np.arange(24.0).reshape(3, 8)[:, ::-2]
+    yv = np.arange(12.0).reshape(3, 4) + 1
+    feeds = {"x": xv, "y": yv}
+    expected = execute(program, feeds).outputs
+    actual = native(program, tmp_path).execute(feeds)
+    for output_name in program.outputs:
+        np.testing.assert_array_equal(actual[output_name], expected[output_name])
+
+
+def test_ragged_and_scaled_bilinear_match_interpreter(tmp_path: typing.Any) -> None:
+    shell = Index("s", IndexSpace("shell", "shell", 3))
+    orbital = Index("p", IndexSpace("orbital", "orbital", 5))
+    segment = Index("g", IndexSpace("segment", "batch", 3))
+    shells = input_tensor("shells", TensorSpec((shell,), role="input"))
+    values = input_tensor("values", TensorSpec((orbital,), role="input"))
+    mapping = (0, 0, 1, 2, 2)
+    gathered = indexed_gather(shells, 0, mapping, orbital)
+    scattered = scatter_add(values, 0, mapping, shell)
+    segmented = segment_sum(values, 0, (0, 2, 2, 5), segment)
+    nodes = [
+        input_tensor(name, TensorSpec((orbital,), role="input"))
+        for name in ("a", "b", "c", "d", "e", "f")
+    ]
+    safe = scaled_bilinear(*nodes)
+    program = Program(
+        {
+            "gathered": gathered,
+            "scattered": scattered,
+            "segmented": segmented,
+            "safe": safe,
+        }
+    )
+    feeds = {
+        "shells": np.array([2.0, -1.0, 4.0]),
+        "values": np.array([1.0, 2.0, -3.0, 4.0, 5.0]),
+        "a": np.array([1.0, 3.0, 5.0, 7.0, 11.0]),
+        "b": np.array([2.0, -2.0, 4.0, 8.0, 3.0]),
+        "c": np.array([0.5, 1.0, -2.0, 6.0, 4.0]),
+        "d": np.array([1.0, -3.0, 2.0, 1.0, 5.0]),
+        "e": np.array([2.0, 3.0, 4.0, 5.0, 6.0]),
+        "f": np.array([7.0, 8.0, 9.0, 10.0, 11.0]),
+    }
+    expected = execute(program, feeds).outputs
+    executor = native(program, tmp_path)
+    actual = executor.execute(feeds)
+    for output_name in program.outputs:
+        np.testing.assert_allclose(
+            actual[output_name], expected[output_name], rtol=2e-15, atol=1e-15
+        )
+    bad = dict(feeds)
+    bad["e"] = np.array([2.0, 0.0, 4.0, 5.0, 6.0])
+    with pytest.raises(ValueError, match="native CPU tensor evaluation failed"):
+        executor.execute(bad)
+
+
+def test_dense_symmetry_is_validated_not_rejected(tmp_path: typing.Any) -> None:
+    i = Index("i", IndexSpace("o", "occupied", 2))
+    j = Index("j", i.space)
+    x = input_tensor(
+        "x",
+        TensorSpec((i, j), role="input", symmetries=(Symmetry((1, 0)),)),
+    )
+    program = Program({"x": x, "t": transpose(x, (1, 0))})
+    executor = native(program, tmp_path)
+    symmetric = np.array([[1.0, 2.0], [2.0, 3.0]])
+    result = executor.execute({"x": symmetric})
+    np.testing.assert_array_equal(result["x"], symmetric)
+    np.testing.assert_array_equal(result["t"], symmetric.T)
+    with pytest.raises(ValueError, match="declared symmetry"):
+        executor.execute({"x": np.array([[1.0, 2.0], [3.0, 4.0]])})
+
+
+def test_scaled_bilinear_extreme_products_match_stable_interpreter(
+    tmp_path: typing.Any,
+) -> None:
+    axis = Index("i", IndexSpace("case", "batch", 3))
+    nodes = [
+        input_tensor(name, TensorSpec((axis,), role="input"))
+        for name in ("a", "b", "c", "d", "e", "f")
+    ]
+    program = Program({"out": scaled_bilinear(*nodes)})
+    high = 1.0e300
+    low = 1.0e-300
+    feeds = {
+        "a": np.array([high, low, high]),
+        "b": np.array([high, low, low]),
+        "c": np.array([high, low, 0.5]),
+        "d": np.array([np.nextafter(high, 0.0), np.nextafter(low, 0.0), 1.0]),
+        "e": np.array([high, low, 1.0e200]),
+        "f": np.array([high, low, 1.0e-200]),
+    }
+    expected = execute(program, feeds).outputs["out"]
+    actual = native(program, tmp_path).execute(feeds)["out"]
+    assert np.isfinite(expected).all()
+    np.testing.assert_allclose(actual, expected, rtol=2e-15, atol=0)
+
+
 def test_preallocation_and_semantic_rejection(tmp_path: typing.Any) -> None:
     a = tensor("a", (3,))
     for program, message in (
         (Program({"a": tensor("a", (3,), "float32")}), "float64"),
         (
-            Program({"a": reshape(a, a.spec.indices)}),
+            Program({"a": exp(a)}),
             "unsupported",
         ),
     ):

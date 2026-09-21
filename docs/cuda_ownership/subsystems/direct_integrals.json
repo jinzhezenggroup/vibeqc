@@ -5,10 +5,11 @@
     "docs/weighted_eri.md",
     "docs/second_integral_derivatives.md",
     "python/vibeqc_compiler/integral/production_shell_classes.json",
-    "benchmarks/results/weighted-eri-144/README.md"
+    "benchmarks/results/weighted-eri-144/README.md",
+    "benchmarks/results/issue356-psss-retirement/README.md"
   ],
   "generated_capability": "IntegralIR values/first derivatives, weighted ERI and second-order providers through f",
-  "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. The archived 72-run weighted-ERI comparison has ratios crossing one, so psss remains a measured production exception. Unpromoted registry classes retain their bounded fallback; generated source existence alone does not authorize class retirement. Native numerical families and fused consumers now have separate bounded owners. The remaining HF driver compiles as C++ and is outside the CUDA-only census; neither this structural conversion nor the source-count reduction retires formulas.",
+  "missing_capability": "Class/consumer-specific lowering and complete endpoint promotion remain necessary. Direct-HF ssss and psss force mathematics are compiler-owned in production while retaining their qualified native schedulers. Unpromoted registry classes retain bounded fallbacks or measured schedule exceptions; generated source existence alone does not authorize class retirement. Native numerical families and fused consumers now have separate bounded owners. The remaining HF driver compiles as C++ and is outside the CUDA-only census; structural conversion or source-count reduction alone does not retire formulas.",
   "owner": "direct_integrals",
   "retirement_condition": "remove each old scientific class when numerical/resource/full endpoint gates pass and no independent role remains",
   "status": "partial"

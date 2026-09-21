@@ -37,8 +37,10 @@ def test_source_owner_validates_spin_storage_and_packs_ao_indices(
 
     names = (
         "stationary_create",
+        "stationary_topology",
         "stationary_reset",
-        "stationary_records",
+        "stationary_tasks",
+        "stationary_nuclear",
         "stationary_geometry",
         "stationary_finish",
         "stationary_metrics",
@@ -85,15 +87,15 @@ def test_source_owner_validates_spin_storage_and_packs_ao_indices(
     owner = runtime._CudaSources(
         basis, artifact, compiler, 0, 4, 2, 4096, spin_blocks=2
     )
-    assert owner.maps.shape == (2, 8)
+    assert owner.tasks.shape == (2, 9)
     density = np.stack((np.eye(2), 2 * np.eye(2)))
     owner.reset(1.0e-12, density, 3 * density)
     owner.integral(0, "four_center_eri", (0, 1, 0, 1), charge=2.5)
 
     assert owner.spin_blocks == 2
     assert owner.used == 1
-    assert owner.buffer[0, 25] == pytest.approx(2.5)
-    np.testing.assert_array_equal(owner.maps[0, 4:8], [0, 1, 0, 1])
+    assert owner.charges[0] == pytest.approx(2.5)
+    np.testing.assert_array_equal(owner.tasks[0, :9], [0, 0, 4, -1, 0, 1, 0, 1, 1])
 
 
 def test_weight_fusion_orchestration_runs_without_a_device(
@@ -190,9 +192,11 @@ def test_weight_fusion_orchestration_runs_without_a_device(
         budget: int,
         *,
         spin_blocks: int = 1,
+        work_budget: int = 2_000_000,
     ) -> MagicMock:
         admitted["budget"] = budget
         admitted["spin_blocks"] = spin_blocks
+        admitted["work_budget"] = work_budget
         return owner
 
     monkeypatch.setattr(runtime, "_CudaSources", make_owner)
@@ -205,6 +209,8 @@ def test_weight_fusion_orchestration_runs_without_a_device(
         "xc_points": 0,
         "grid_pair_visits": 0,
         "stream": 0,
+        "task_descriptors": owner.integral.call_count,
+        "task_batches": owner.integral.call_count,
     }
 
     grid_owner = MagicMock()

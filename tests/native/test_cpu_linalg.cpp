@@ -115,6 +115,11 @@ int main() {
     std::cerr << "default thread ownership is not task-parallel/single-thread\n";
     return 2;
   }
+  if (automatic.cpu_target.empty() ||
+      automatic.cpu_target != vibeqc::tensor::cpu_linalg_target_name()) {
+    std::cerr << "CPU target identity is missing or inconsistent\n";
+    return 7;
+  }
 
   if (vibeqc::tensor::cpu_openblas_built()) {
     const bool local = vibeqc::tensor::cpu_openblas_local_thread_control_built();
