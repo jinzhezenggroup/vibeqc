@@ -8,6 +8,7 @@
 #include <type_traits>
 
 #include "scf/cuda/direct_angular_force.hpp"
+#include "generated_direct_resident_psss_schedule.cuh"
 #include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_force_low_order.cuh"
 #include "scf/cuda/direct_force_order2.cuh"
@@ -71,7 +72,8 @@ template <bool Unrestricted>
 // 128 registers/thread on sm_120.  The extra occupancy hides the long
 // primitive-pair dependency chain without changing the resident-bra schedule.
 __global__
-__launch_bounds__(kResidentPsssThreads, 4) void two_electron_force_psss_resident_bra_kernel(
+__launch_bounds__(kResidentPsssThreads, kResidentPsssMinimumBlocksPerSm)
+void two_electron_force_psss_resident_bra_kernel(
     DeviceBatch batch, const PsssResidentTask* resident_tasks,
     const std::uint32_t* resident_ket_pairs, std::size_t resident_task_count,
     double screening_tolerance, const double* shell_pair_bounds,
