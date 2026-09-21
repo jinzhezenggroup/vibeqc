@@ -112,7 +112,7 @@ def _cuda_gfn2_singlepoint_or_skip(
     *,
     charge: int = 0,
     multiplicity: int = 1,
-):
+) -> object:
     calculator = Calculator(
         method="gfn2-xtb",
         device="cuda",
