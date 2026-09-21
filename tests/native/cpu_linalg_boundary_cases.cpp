@@ -52,6 +52,20 @@ int main(int argc, char** argv) {
     }
     return 1;
   }
+  if (mode == "symm_alpha_zero") {
+    double output[2]{2.0, -3.0};
+    cpu_symm('L', 'U', 1, 2, &nan, &nan, output, 0.0, 4.0, plan);
+    return output[0] == 8.0 && output[1] == -12.0 ? 0 : 1;
+  }
+  if (mode == "symm_extent") {
+    try {
+      cpu_symm('L', 'U', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, nullptr, &c,
+               0.0, 0.0, plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
   if (mode == "syrk_alpha_zero") {
     double matrix[4]{nan, 9.0, nan, nan};
     cpu_syrk('L', 'N', 2, 1, &nan, matrix, 0.0, 0.0, plan);

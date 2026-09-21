@@ -51,6 +51,18 @@ bool syrk_transpose(char value) {
   throw std::invalid_argument("CPU SYRK transpose must be N or T");
 }
 
+bool symm_left_side(char value) {
+  if (value == 'L' || value == 'l') return true;
+  if (value == 'R' || value == 'r') return false;
+  throw std::invalid_argument("CPU SYMM side must be L or R");
+}
+
+bool symm_upper_triangle(char value) {
+  if (value == 'U' || value == 'u') return true;
+  if (value == 'L' || value == 'l') return false;
+  throw std::invalid_argument("CPU SYMM triangle must be U or L");
+}
+
 bool upper_triangle(char value) {
   if (value == 'U' || value == 'u') return true;
   if (value == 'L' || value == 'l') return false;
@@ -121,6 +133,31 @@ void scalar_gemv(bool trans, std::size_t m, std::size_t n, const double* a, cons
       sum += av * x[j];
     }
     y[i] = beta == 0.0 ? alpha * sum : alpha * sum + beta * y[i];
+  }
+}
+
+void scalar_symm(bool left, bool upper, std::size_t m, std::size_t n, const double* a,
+                 const double* b, double* c, double alpha, double beta) {
+  const std::size_t order = left ? m : n;
+  const auto symmetric_value = [&](std::size_t row, std::size_t column) {
+    if (upper) {
+      if (row > column) std::swap(row, column);
+    } else if (row < column) {
+      std::swap(row, column);
+    }
+    return a[row * order + column];
+  };
+  for (std::size_t i = 0; i < m; ++i) {
+    for (std::size_t j = 0; j < n; ++j) {
+      double sum = 0.0;
+      if (left) {
+        for (std::size_t p = 0; p < m; ++p) sum += symmetric_value(i, p) * b[p * n + j];
+      } else {
+        for (std::size_t p = 0; p < n; ++p) sum += b[i * n + p] * symmetric_value(p, j);
+      }
+      const std::size_t index = i * n + j;
+      c[index] = beta == 0.0 ? alpha * sum : alpha * sum + beta * c[index];
+    }
   }
 }
 
@@ -400,6 +437,24 @@ void openblas_gemv(bool trans, std::size_t m, std::size_t n, const double* a, co
 #endif
 }
 
+void openblas_symm(bool left, bool upper, std::size_t m, std::size_t n, const double* a,
+                   const double* b, double* c, double alpha, double beta,
+                   const CpuLinalgPlan& plan) {
+  const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  if (m > limit || n > limit) throw std::length_error("OpenBLAS SYMM dimensions exceed int range");
+  OpenBlasThreadGuard guard(plan);
+  const auto side = left ? CblasLeft : CblasRight;
+  const auto triangle = upper ? CblasUpper : CblasLower;
+  const int order = static_cast<int>(left ? m : n);
+#if VIBEQC_OPENBLAS_SCIPY_PREFIX
+  scipy_cblas_dsymm(CblasRowMajor, side, triangle, static_cast<int>(m), static_cast<int>(n), alpha,
+                    a, order, b, static_cast<int>(n), beta, c, static_cast<int>(n));
+#else
+  cblas_dsymm(CblasRowMajor, side, triangle, static_cast<int>(m), static_cast<int>(n), alpha, a,
+              order, b, static_cast<int>(n), beta, c, static_cast<int>(n));
+#endif
+}
+
 void openblas_syrk(bool upper, bool trans, std::size_t n, std::size_t k, const double* a, double* c,
                    double alpha, double beta, const CpuLinalgPlan& plan) {
   const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
@@ -633,6 +688,41 @@ void cpu_gemv(char trans, std::size_t m, std::size_t n, const double* a, const d
   }
 #endif
   scalar_gemv(transposed, m, n, a, x, y, alpha, beta);
+}
+
+void cpu_symm(char side, char uplo, std::size_t m, std::size_t n, const double* a, const double* b,
+              double* c, double alpha, double beta, const CpuLinalgPlan& plan) {
+  const bool left = symm_left_side(side);
+  const bool upper = symm_upper_triangle(uplo);
+  validate_plan(plan);
+  if (!m || !n) return;
+  const auto elements = checked_matrix_elements(m, n);
+  if (!c) throw std::invalid_argument("CPU SYMM received null output storage");
+  if (alpha == 0.0) {
+    if (beta == 0.0)
+      std::fill(c, c + elements, 0.0);
+    else if (beta != 1.0)
+      for (std::size_t i = 0; i < elements; ++i) c[i] *= beta;
+    return;
+  }
+  const std::size_t order = left ? m : n;
+  checked_matrix_elements(order, order);
+  if (!a || !b) throw std::invalid_argument("CPU SYMM received null input storage");
+
+  CpuLinalgProvider provider = plan.provider;
+  if (provider == CpuLinalgProvider::automatic) {
+    provider =
+        fits_openblas(m, n, order) ? resolve_cpu_linalg_provider(plan) : CpuLinalgProvider::scalar;
+  } else {
+    provider = resolve_cpu_linalg_provider(plan);
+  }
+#if VIBEQC_HAS_OPENBLAS
+  if (provider == CpuLinalgProvider::openblas) {
+    openblas_symm(left, upper, m, n, a, b, c, alpha, beta, plan);
+    return;
+  }
+#endif
+  scalar_symm(left, upper, m, n, a, b, c, alpha, beta);
 }
 
 void cpu_syrk(char uplo, char trans, std::size_t n, std::size_t k, const double* a, double* c,
