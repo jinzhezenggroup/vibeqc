@@ -396,7 +396,7 @@ void verify_final_state_reuse(bool unrestricted, bool with_peer = false) {
   std::vector<const std::vector<double>*> resident_density(systems.size(), nullptr);
   for (std::size_t index = 0; index < systems.size(); ++index)
     resident_density[index] = &seeded[index].scf.density;
-  const std::vector<vibeqc::scf::RhfBucketItem> retained = run_cached(resident_density);
+  std::vector<vibeqc::scf::RhfBucketItem> retained = run_cached(resident_density);
   require(retained.size() == systems.size(), "force-ready replay changed bucket size");
   const auto retained_audit = final_state_audit();
   require(
@@ -426,6 +426,19 @@ void verify_final_state_reuse(bool unrestricted, bool with_peer = false) {
   std::vector<const std::vector<double>*> aliased_resident_density(systems.size(), nullptr);
   for (std::size_t index = 0; index < systems.size(); ++index)
     aliased_resident_density[index] = &retained[index].scf.density;
+  const auto aliased_baseline = run_cached(aliased_resident_density);
+  const auto aliased_baseline_audit = final_state_audit();
+  require(aliased_baseline.size() == systems.size() &&
+              aliased_baseline_audit.route ==
+                  vibeqc::scf::CudaDirectFinalStateRoute::scf_force_ready &&
+              aliased_baseline_audit.seed_provenance,
+          "same-pointer mutation fixture did not start from a force-ready resident state");
+  for (std::size_t index = 0; index < systems.size(); ++index) {
+    require(aliased_baseline[index].scf.density.size() == retained[index].scf.density.size(),
+            "same-pointer mutation fixture changed density shape");
+    std::copy(aliased_baseline[index].scf.density.begin(),
+              aliased_baseline[index].scf.density.end(), retained[index].scf.density.begin());
+  }
   std::vector<double>& aliased_density = retained[0].scf.density;
   require(aliased_resident_density[0] == &aliased_density,
           "same-pointer mutation fixture lost its host object identity");
