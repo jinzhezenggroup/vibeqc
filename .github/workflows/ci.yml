@@ -558,6 +558,7 @@ jobs:
           esac
           .venv/bin/python -m pytest "${test_targets[@]}" -q \
             -n 4 --dist="$dist_mode" --durations=25 \
+            --junitxml=".artifacts/pytest-${{ matrix.shard }}.xml" \
             --cov --cov-report="xml:coverage-python-${{ matrix.shard }}.xml" \
             "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
