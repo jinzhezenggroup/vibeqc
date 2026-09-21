@@ -50,20 +50,31 @@ for functional in (0,1,2):
     assert 'stationary-weight-program-coulomb:' in s
     assert '__device__ inline bool stationary_source_weight' in s
     include = s.index('#include "dft/stationary_gradient_cuda.cuh"')
-    for scientific in ('__global__ void primitive_kernel', '__global__ void geometry_kernel'):
+    for scientific in ('__global__ void task_kernel', '__global__ void geometry_kernel'):
         assert scientific in s
         assert s.index(scientific) > include
     assert f'stationary_functional = {functional}' in s
+    assert 'stationary_records' not in s
     assert s == emit_stationary_cuda(primitive,functional=functional,plan=plan)
 template=open('src/dft/stationary_gradient_cuda.cuh').read()
-assert '__global__ void primitive_kernel' in template
+assert '__global__ void primitive_kernel' not in template
+assert '__global__ void task_kernel' in template
+assert 'stationary_tasks' in template
+assert 'stationary_topology' in template
+assert 'stationary_records' not in template
 assert 'for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < count' not in template
+assert 'for (size_t linear = 0; linear < primitive_work; ++linear)' not in template
 r2scan=emit_stationary_cuda(primitive,functional=2,plan=plan)
 assert 'stationary_coefficients = 5' in r2scan
 assert 'tau[0]' in r2scan and 'kinetic[0]' in r2scan
 for functional in (0,1):
     plan=StationaryGradientPlan(resolve_method(('LDA_XC_PW','PBE')[functional],spin='unpolarized'),StationaryMeanField(SCF_POINT_MODEL))
     assert emit_stationary_cuda(primitive,pbe=bool(functional),plan=plan) == emit_stationary_cuda(primitive,functional=functional,plan=plan)
+driver=open('python/vibeqc/_stationary_cuda.py').read()
+assert 'stationary_records' not in driver
+assert 'for ids in product(*ranges)' not in driver
+assert '"stationary_tasks"' in driver
+assert 'np.lexsort' in driver
 """
     subprocess.run(
         [sys.executable, "-c", script],
@@ -160,3 +171,32 @@ def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit()
     assert "vibeqc_xc_gradient_grid_policy::axis_jet" in gradient
     assert "namespace vibeqc_grid_adjoint {" in gradient
     assert "grid_response_adjoint.hpp" not in gradient
+
+
+@pytest.mark.parametrize(
+    ("environment", "expected"),
+    [
+        ({}, ()),
+        ({"VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS": "1"}, ()),
+        (
+            {"VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS": "8"},
+            ("--split-compile=8",),
+        ),
+    ],
+)
+def test_stationary_split_compile_options_are_explicit(
+    environment: dict[str, str], expected: tuple[str, ...]
+) -> None:
+    from vibeqc_compiler.method.stationary_cuda import _split_compile_options
+
+    assert _split_compile_options(environment) == expected
+
+
+@pytest.mark.parametrize("value", ["0", "33", "many"])
+def test_stationary_split_compile_options_fail_closed(value: str) -> None:
+    from vibeqc_compiler.method.stationary_cuda import _split_compile_options
+
+    with pytest.raises(
+        ValueError, match="VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS"
+    ):
+        _split_compile_options({"VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS": value})

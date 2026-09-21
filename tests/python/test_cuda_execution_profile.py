@@ -41,6 +41,7 @@ def test_cuda_execution_profile_environment_overrides_project_defaults() -> None
             "VIBEQC_BENCHMARK_GRES": "gpu:a100:2",
             "VIBEQC_BENCHMARK_NODES": "2",
             "VIBEQC_BENCHMARK_NTASKS": "4",
+            "VIBEQC_BENCHMARK_CPUS_PER_TASK": "8",
             "VIBEQC_BENCHMARK_TIME": "00:25:00",
             "VIBEQC_BENCHMARK_SRUN": "/opt/slurm/bin/srun",
         }
@@ -49,6 +50,7 @@ def test_cuda_execution_profile_environment_overrides_project_defaults() -> None
     assert profile.gres == "gpu:a100:2"
     assert profile.nodes == 2
     assert profile.ntasks == 4
+    assert profile.cpus_per_task == 8
     assert profile.slurm_time == "00:25:00"
     assert profile.srun == "/opt/slurm/bin/srun"
 
@@ -107,6 +109,7 @@ def test_executor_uses_caller_time_as_default_but_environment_can_override() -> 
     [
         ({"VIBEQC_BENCHMARK_LOCAL": "sometimes"}, "boolean"),
         ({"VIBEQC_BENCHMARK_NODES": "many"}, "integer"),
+        ({"VIBEQC_BENCHMARK_CPUS_PER_TASK": "many"}, "integer"),
     ],
 )
 def test_invalid_execution_environment_fails_closed(

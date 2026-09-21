@@ -103,6 +103,8 @@ def test_tensor_optimizer_records_shared_pipeline_without_changing_equation() ->
     assert [item["name"] for item in provenance["optimizer_passes"]] == [
         "dead_nodes",
         "identity_transposes",
+        "view_canonicalization",
+        "algebraic_canonicalization",
         "exact_cse",
         "scalar_constants",
         "post_fold_exact_cse",
@@ -111,6 +113,8 @@ def test_tensor_optimizer_records_shared_pipeline_without_changing_equation() ->
     assert provenance["rewrites"] == [
         "dead_nodes",
         "identity_transposes",
+        "view_canonicalization",
+        "algebraic_canonicalization",
         "exact_cse",
         "scalar_constants",
         "exact_cse",

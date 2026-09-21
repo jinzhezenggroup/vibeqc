@@ -105,11 +105,18 @@ files, preserving the original array bytes and numeric identity checks.
 The same retention checker also enforces the optional
 `benchmark_results_max_bytes` policy field across **all** indexed files under
 `benchmarks/results/`, including manifests and summaries. Its current budget is
-128 MiB. Many individually sub-limit files cannot bypass this aggregate guard;
+96 MiB. Many individually sub-limit files cannot bypass this aggregate guard;
 classification exceptions cannot waive it. Permanent fixtures under
 `tests/reference_data/`, `tests/data/` and audited external sources are not
 counted. Changing the budget is an explicit policy review, not an automatic
 response to another benchmark dump.
+
+The 2026-09-21 checkout trim moves 15 non-test-consumed legacy evidence archives
+(4,840,512 bytes) out of the current tree while preserving exact
+Git-object recovery identities in `benchmarks/results/retention-2026-09-21/migration.json`.
+Publication-bound records, live summarizer inputs, indexed f-shell reports and
+test-consumed permanent evidence archives remain in Git. This does not rewrite
+history, weaken scientific gates, or authorize a Release.
 
 Full logs, retries and profiler traces belong in `.artifacts/` or external
 storage. Do not compress them, rename them or split binary archives into chunks

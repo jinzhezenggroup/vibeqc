@@ -1,5 +1,14 @@
 # Verified RHF energy-state qualification
 
+> **Checkout retention (2026-09-21):** `qualification.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue311-rhf-energy/qualification.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue311-rhf-energy/qualification.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
 Implementation source: `69f2c912e4dcf0c33d48b633c6a3c9c6c6f6240a`. The manifest pins the
 matching scientific source and native CUDA library. Final qualification used
 Slurm job 9494 on `main` with one RTX 5090 and a finite 20-minute allocation.

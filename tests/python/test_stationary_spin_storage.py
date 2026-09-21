@@ -35,8 +35,8 @@ constexpr size_t workers=32, record_stride=26, map_stride=8;
 constexpr unsigned stationary_spin_blocks={blocks};
 {function.group()}
 int main() {{
-  if (allocation(2, 3, 8, 4, {blocks}) == 0) return 1;
-  try {{ allocation(2, 3, 8, 4, {3 - blocks}); }}
+  if (allocation(2, 3, 8, 4, 4, {blocks}) == 0) return 1;
+  try {{ allocation(2, 3, 8, 4, 4, {3 - blocks}); }}
   catch (const std::invalid_argument&) {{ return 0; }}
   return 2;
 }}

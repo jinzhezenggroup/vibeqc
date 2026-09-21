@@ -88,6 +88,50 @@ def _feature_roots(
     return (energy, *first, *second)
 
 
+def _qualified_pbe_x(
+    spin: str,
+) -> tuple[Graph, tuple[typing.Any, ...], tuple[str, ...]]:
+    """Build the imported PBE-X graph in canonical spin-channel coordinates."""
+
+    graph = Graph()
+    if spin == "polarized":
+        names = FEATURES
+        variables = tuple(graph.variable(name) for name in names)
+        rho_a, rho_b, sigma_aa, _, sigma_bb, _, _ = variables
+    elif spin == "unpolarized":
+        names = ("rho", "sigma", "tau")
+        variables = tuple(graph.variable(name) for name in names)
+        rho, sigma, _ = variables
+        rho_a = rho_b = rho / 2
+        sigma_aa = sigma_bb = sigma / 4
+    else:
+        raise ValueError(f"unknown spin layout {spin!r}")
+
+    module = import_maple_source(PBE_X.read_text(), defines={"gga_x_pbe_params"})
+    cx = 3.0 / 8.0 * (3.0 / math.pi) ** (1.0 / 3.0) * 4.0 ** (2.0 / 3.0)
+    energy = graph.sum(
+        -cx
+        * density.pow(4.0 / 3.0)
+        * module.call(
+            graph,
+            "pbe_f",
+            sigma.pow(0.5) * density.pow(-4.0 / 3.0),
+        )
+        for density, sigma in ((rho_a, sigma_aa), (rho_b, sigma_bb))
+    )
+    return graph, _feature_roots(graph, energy, variables), names
+
+
+def _manual_pbe_x_qualified(spin: str) -> tuple[Graph, tuple[typing.Any, ...]]:
+    spec = FunctionalSpec(
+        "PBE_X_MPL_QUALIFIED_REFERENCE",
+        (("GGA_X_PBE", Fraction(1)),),
+        spin=spin,
+    )
+    graph, energy, variables = energy_expression(spec)
+    return graph, _feature_roots(graph, energy, variables)
+
+
 def _imported_pbe_c() -> tuple[typing.Any, typing.Any, typing.Any, typing.Any]:
     graph = Graph()
     variables = tuple(graph.variable(name) for name in FEATURES)
@@ -183,6 +227,67 @@ def test_imported_pbe_x_matches_audited_dag_energy_and_first_partials(
     )
 
     np.testing.assert_allclose(imported, manual, rtol=2e-14, atol=2e-15)
+
+
+@pytest.mark.parametrize(
+    "features",
+    [
+        (0.8, 0.6, 0.12, 0.02, 0.07, 0.0, 0.0),
+        (1.4, 0.3, 0.4, -0.05, 0.08, 0.0, 0.0),
+    ],
+)
+def test_imported_pbe_x_matches_audited_dag_through_feature_hessian(
+    features: tuple[float, ...],
+) -> None:
+    graph, roots, names = _qualified_pbe_x("polarized")
+    manual_graph, manual_roots = _manual_pbe_x_qualified("polarized")
+    inputs = dict(zip(names, features, strict=True))
+
+    imported = np.asarray(evaluate_array_graph(graph, roots, inputs), dtype=float)
+    manual = np.asarray(
+        evaluate_array_graph(manual_graph, manual_roots, inputs), dtype=float
+    )
+    np.testing.assert_allclose(imported, manual, rtol=2e-12, atol=2e-13)
+
+
+@pytest.mark.parametrize("domain", ["typical", "boundary"])
+@pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
+def test_imported_pbe_x_matches_pinned_independent_oracle(
+    spin: str, domain: str
+) -> None:
+    metadata, features, expected, _ = load_fixture(
+        "GGA_X_PBE", spin=spin, domain=domain
+    )
+    graph, roots, names = _qualified_pbe_x(spin)
+    evaluated = evaluate_array_graph(
+        graph,
+        roots,
+        dict(zip(names, features, strict=True)),
+    )
+    actual = np.stack(
+        [np.broadcast_to(value, expected.shape[1:]) for value in evaluated],
+        axis=0,
+    ).astype(float, copy=False)
+    report = block_error(
+        actual,
+        expected,
+        **metadata[f"{domain}_tolerance"],
+    )
+
+    assert np.isfinite(actual).all()
+    assert report["passed"], report
+
+
+def test_imported_pbe_x_feature_hessian_uses_existing_scalar_c_emitter() -> None:
+    graph, roots, names = _qualified_pbe_x("polarized")
+    emitter = ScalarCEmitter(graph, {name: name for name in names})
+
+    emitter.emit(roots)
+    references = tuple(emitter.reference(root) for root in roots)
+
+    assert emitter.lines
+    assert len(references) == 36
+    assert all(references)
 
 
 def test_imported_pbe_x_uses_existing_scalar_c_emitter() -> None:

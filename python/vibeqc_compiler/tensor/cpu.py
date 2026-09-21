@@ -1,8 +1,10 @@
 """Explicit bounded FP64 CPU lowering of ordinary TensorIR primitives.
 
-This intentionally small materializing executor accepts input/constant, add,
-multiply, reduce and einsum. It never dispatches on method or source names.
-Unsupported semantics fail at generation, before any allocation or compilation.
+This materializing correctness backend accepts the ordinary FP64 primitives
+needed by generated stationary/response programs, including indexing/reordering,
+ragged accumulation, division and the range-safe bilinear quotient. It never
+dispatches on method or source names. Unsupported semantics fail at generation,
+before any allocation or compilation.
 """
 
 import ctypes as ct
@@ -21,6 +23,7 @@ from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.source_cache import cache_source
 
+from .batch_schedule import scatter_add_inverted_table
 from .cuda_emit import _coordinate, _flat
 from .program import Program
 from .types import checked_size
@@ -33,6 +36,69 @@ def _literal(pair: typing.Any) -> typing.Any:
     return value.hex()
 
 
+CPU_PRIMITIVES = frozenset(
+    {
+        "input",
+        "constant",
+        "add",
+        "multiply",
+        "divide",
+        "scaled_bilinear",
+        "einsum",
+        "transpose",
+        "reshape",
+        "slice",
+        "gather",
+        "indexed_gather",
+        "scatter_add",
+        "segment_sum",
+        "reduce",
+        "broadcast",
+    }
+)
+
+
+def _scaled_bilinear_helper() -> str:
+    """Emit the FP64 fused quotient used by TensorIR division VJPs."""
+
+    return r"""
+static inline bool tensor_scaled_bilinear(
+    double a, double b, double c, double d, double e, double f, double& out) {
+  if (e == 0.0 || f == 0.0) return false;
+  int ea, eb, ec, ed, ee, ef;
+  const double ma = std::frexp(a, &ea), mb = std::frexp(b, &eb);
+  const double mc = std::frexp(c, &ec), md = std::frexp(d, &ed);
+  const double me = std::frexp(e, &ee), mf = std::frexp(f, &ef);
+  double p = ma * mb, q = mc * md;
+  double pe = std::fma(ma, mb, -p), qe = std::fma(mc, md, -q);
+  const int ep = ea + eb, eq = ec + ed;
+  const int exponent = p == 0.0 ? eq : (q == 0.0 ? ep : std::max(ep, eq));
+  constexpr int limit = 110;
+  const int dp = ep - exponent, dq = eq - exponent;
+  if (dp < -limit) {
+    p = 0.0;
+    pe = 0.0;
+  } else {
+    p = std::scalbn(p, dp);
+    pe = std::scalbn(pe, dp);
+  }
+  if (dq < -limit) {
+    q = 0.0;
+    qe = 0.0;
+  } else {
+    q = std::scalbn(q, dq);
+    qe = std::scalbn(qe, dq);
+  }
+  const double difference = p - q;
+  const double tail = difference - p;
+  const double residual = (p - (difference - tail)) - (q + tail);
+  const double numerator = difference + ((pe - qe) + residual);
+  out = std::scalbn(numerator / (me * mf), exponent - ee - ef);
+  return std::isfinite(out);
+}
+"""
+
+
 def emit_cpu(
     program: typing.Any,
     *,
@@ -41,7 +107,7 @@ def emit_cpu(
 ) -> typing.Any:
     """Return source and exact bounded storage/work requirements without runtime imports.
 
-    No packed/symmetric semantics or implicit dtype conversion are admitted.
+    No packed-storage semantics or implicit dtype conversion are admitted.
     Index expressions are shared with CUDA; CUDA emission bytes are unchanged.
     """
     if not isinstance(program, Program):
@@ -53,10 +119,10 @@ def emit_cpu(
         raise ValueError("CPU program exceeds node budget")
     offsets, cursor, inputs, work = {}, 0, [], 0
     for node in nodes:
-        if node.op not in {"input", "constant", "add", "multiply", "reduce", "einsum"}:
+        if node.op not in CPU_PRIMITIVES:
             raise ValueError(f"unsupported CPU primitive: {node.op}")
-        if node.spec.dtype != "float64" or node.spec.symmetries:
-            raise ValueError("CPU lowering requires plain real float64 semantics")
+        if node.spec.dtype != "float64":
+            raise ValueError("CPU lowering requires real float64 semantics")
         offsets[node], cursor = cursor, cursor + node.spec.size
         if node.op == "input":
             inputs.append(node)
@@ -70,7 +136,10 @@ def emit_cpu(
             reduction = prod(
                 v for k, v in domains.items() if k not in node.attrs["output"]
             )
-        work += node.spec.size * reduction * max(1, len(node.inputs))
+        if node.op in {"scatter_add", "segment_sum"}:
+            work += node.spec.size + node.inputs[0].spec.size
+        else:
+            work += node.spec.size * reduction * max(1, len(node.inputs))
     ni = sum(n.spec.size for n in inputs)
     no = sum(n.spec.size for n in program.outputs.values())
     arena = cursor + no
@@ -79,6 +148,11 @@ def emit_cpu(
         raise ValueError("CPU program exceeds byte/work budget")
     lines = [
         '#include "cpu_runtime.hpp"',
+        *(
+            [_scaled_bilinear_helper()]
+            if any(n.op == "scaled_bilinear" for n in nodes)
+            else []
+        ),
         f"// TensorIR {program.logical_hash}; provenance {canonical_hash(program.provenance)}",
         'extern "C" int tensor_cpu(const double* input, size_t ni, double* output, size_t no, size_t budget) noexcept {',
         f"return vibeqc_tensor_cpu::run(input, ni, output, no, budget, {ni}ULL, {no}ULL, {arena}ULL, {required}ULL,",
@@ -107,7 +181,18 @@ def emit_cpu(
             expression = "value"
         elif node.op == "multiply":
             expression = f"{read(node.inputs[0])} * {read(node.inputs[1])}"
-        else:
+        elif node.op == "divide":
+            body.append(f"const double denominator = {read(node.inputs[1])};")
+            body.append("if (denominator == 0.0) return false;")
+            expression = f"{read(node.inputs[0])} / denominator"
+        elif node.op == "scaled_bilinear":
+            body.append("double value = 0.0;")
+            arguments = ", ".join(read(child) for child in node.inputs)
+            body.append(
+                f"if (!tensor_scaled_bilinear({arguments}, value)) return false;"
+            )
+            expression = "value"
+        elif node.op in {"reduce", "einsum"}:
             if node.op == "reduce":
                 child = node.inputs[0]
                 rs = tuple(child.spec.shape[axis] for axis in a["axes"])
@@ -141,6 +226,72 @@ def emit_cpu(
                 "if (!std::isfinite(value)) return false;",
             ]
             expression = f"value * {factor}"
+        else:
+            child = node.inputs[0]
+            source_shape = child.spec.shape
+            if node.op == "reshape":
+                index = "z"
+            elif node.op == "transpose":
+                source = [c[a["axes"].index(axis)] for axis in range(len(source_shape))]
+                index = _flat(source, source_shape)
+            elif node.op == "slice":
+                index = _flat(
+                    [
+                        f"({coord} + {start}LL)"
+                        for coord, (start, _) in zip(c, a["ranges"], strict=True)
+                    ],
+                    source_shape,
+                )
+            elif node.op == "broadcast":
+                index = _flat([c[axis] for axis in a["axes"]], source_shape)
+            elif node.op in {"gather", "indexed_gather"}:
+                values = ", ".join(f"{value}LL" for value in a["positions"]) or "0LL"
+                lines.append(f"static const I index_{i}[] = {{{values}}};")
+                mapped = list(c)
+                mapped[a["axis"]] = f"index_{i}[{c[a['axis']]}]"
+                index = _flat(mapped, source_shape)
+            elif node.op == "scatter_add":
+                axis = a["axis"]
+                if not source_shape[axis]:
+                    expression = "0.0"
+                    index = None
+                else:
+                    table = scatter_add_inverted_table(node)
+                    values = ", ".join(f"{value}LL" for value in table)
+                    lines.append(f"static const I index_{i}[] = {{{values}}};")
+                    target = c[axis]
+                    source = list(c)
+                    source[axis] = "r"
+                    body += [
+                        "double value = 0.0;",
+                        f"const I begin = index_{i}[{target}];",
+                        f"const I end = index_{i}[{target} + 1];",
+                        "for (I q = begin; q < end; ++q) {",
+                        f"  const I r = index_{i}[{shape[axis] + 1}LL + q];",
+                        f"  value += {read(child, _flat(source, source_shape))};",
+                        "}",
+                    ]
+                    expression = "value"
+                    index = None
+            elif node.op == "segment_sum":
+                axis = a["axis"]
+                values = ", ".join(f"{value}LL" for value in a["offsets"])
+                lines.append(f"static const I index_{i}[] = {{{values}}};")
+                segment = c[axis]
+                source = list(c)
+                source[axis] = "r"
+                body += [
+                    "double value = 0.0;",
+                    f"const I begin = index_{i}[{segment}];",
+                    f"const I end = index_{i}[{segment} + 1];",
+                    f"for (I r = begin; r < end; ++r) value += {read(child, _flat(source, source_shape))};",
+                ]
+                expression = "value"
+                index = None
+            else:
+                raise ValueError(f"unsupported CPU primitive: {node.op}")
+            if index is not None:
+                expression = read(child, index)
         lines += [
             f"for (I z = 0; z < {node.spec.size}LL; ++z) {{",
             *body,
@@ -231,6 +382,14 @@ class NativeTensorProgram:
                 or not np.isfinite(value).all()
             ):
                 raise ValueError(f"invalid float64 tensor input: {name}")
+            for symmetry in node.spec.symmetries:
+                if not np.allclose(
+                    value,
+                    symmetry.sign * value.transpose(symmetry.permutation),
+                    atol=1e-11,
+                    rtol=1e-10,
+                ):
+                    raise ValueError(f"input {name} violates its declared symmetry")
             values.append(value.reshape(-1))
         packed = np.concatenate(values) if values else np.empty(0)
         output = np.empty(self.resources["output_count"])
