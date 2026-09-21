@@ -243,6 +243,7 @@ def supported_schedule_trials(
         if schedule.kind
         in (
             ScheduleKind.PACKED_TASKS,
+            ScheduleKind.THREAD_TASKS,
             ScheduleKind.SUBGROUP_TASKS,
             ScheduleKind.SHELL_TASK,
             ScheduleKind.COMPONENT_LANES,
