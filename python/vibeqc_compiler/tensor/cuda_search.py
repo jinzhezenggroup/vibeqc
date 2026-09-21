@@ -34,6 +34,9 @@ class TensorScheduleSpace:
     views: tuple[bool, ...] = (True, False)
     fuse: tuple[bool, ...] = (True, False)
     recompute: tuple[bool, ...] = (False, True)
+    # Qualification-only by default: #783 evidence shows a memory win but a
+    # runtime/compile regression before cooperative reduction lowering lands.
+    stream_reductions: tuple[bool, ...] = (False,)
     direct_gemm: tuple[bool, ...] = (True, False)
     layouts: tuple[bool, ...] = (False, True)
     threads: tuple[int, ...] = (128, 64, 256)
