@@ -15,10 +15,10 @@ VibeQC wheel.
 
 ## Scientific regeneration source snapshots
 
-The source registry in `sources/manifest.json` pins the exact upstream files used
+The source registry in `upstream/manifest.json` pins the exact upstream files used
 for scientific provenance and deterministic regeneration. Only source bytes
 needed directly by normal compiler/catalog development are checked in under
-`sources/upstream/<provider>/<revision>/`: the admitted Libxc closure and the
+`upstream/<provider>/<revision>/`: the admitted Libxc closure and the
 DFT-D4/simple-DFTD3 parameter catalogs. Larger or qualification-only upstream
 implementation sources (DFT-D4 reference files, EEQ support sources,
 simple-DFTD3 gCP sources, and the GPU4PySCF Rys table) remain hash-pinned
@@ -60,8 +60,8 @@ runtime; independent upstream tools are used to generate its test fixtures.
 
 ## Pinned dispersion parameter catalogs
 
-The repository-only snapshots under `sources/upstream/simple-dftd3/` and
-`sources/upstream/dftd4/` retain the upstream damping-parameter tables used to
+The repository-only snapshots under `upstream/simple-dftd3/` and
+`upstream/dftd4/` retain the upstream damping-parameter tables used to
 generate VibeQC's static method catalog. The simple-dftd3 snapshot is pinned to commit
 `41d5a07b98ce15e97bec7a1815869725f6c7b0c2`; the DFT-D4 snapshot is pinned
 to commit `82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4`. Both are

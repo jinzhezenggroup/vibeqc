@@ -45,7 +45,7 @@ def test_initial_upstream_sources_are_vendored_under_one_tree() -> None:
     for source_id in VENDORED_INITIAL_SOURCES:
         source = registry["sources"][source_id]
         assert source["kind"] != "remote-file-set"
-        assert source["local_root"].startswith("sources/upstream/")
+        assert source["local_root"].startswith("upstream/")
         root = source_registry.ROOT / source["local_root"]
         for name in source["files"]:
             assert (root / name).is_file()

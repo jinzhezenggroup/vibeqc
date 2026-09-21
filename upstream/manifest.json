@@ -158,7 +158,7 @@
       },
       "kind": "snapshot",
       "license": "LGPL-3.0-or-later",
-      "local_root": "sources/upstream/dftd4/82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4",
+      "local_root": "upstream/dftd4/82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4",
       "repository": "https://github.com/dftd4/dftd4",
       "revision": "82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4"
     },
@@ -532,7 +532,7 @@
       },
       "kind": "file-set",
       "license": "MPL-2.0",
-      "local_root": "sources/upstream/libxc/7.0.0",
+      "local_root": "upstream/libxc/7.0.0",
       "repository": "https://gitlab.com/libxc/libxc",
       "revision": "7.0.0"
     },
@@ -617,7 +617,7 @@
       },
       "kind": "snapshot",
       "license": "LGPL-3.0-or-later",
-      "local_root": "sources/upstream/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
+      "local_root": "upstream/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
       "repository": "https://github.com/dftd3/simple-dftd3",
       "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
     }
