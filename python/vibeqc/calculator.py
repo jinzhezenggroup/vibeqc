@@ -30,6 +30,11 @@ if TYPE_CHECKING:
     from .ks_diagnostics import KsDiagnostic, KsTransportDiagnostic
 
 _METHODS = _method_manifest.METHOD_NAME_TO_ID
+_COMPOSITE_METHOD_ALIASES = {
+    "r2scan-3c": ("R2SCAN-3c", "unpolarized"),
+    "r2scan-3c-rks": ("R2SCAN-3c", "unpolarized"),
+    "r2scan-3c-uks": ("R2SCAN-3c", "polarized"),
+}
 _HF_METHODS = _method_manifest.HF_METHOD_IDS
 _COUPLED_CLUSTER_METHODS = frozenset((_native.METHOD_RCCSD, _native.METHOD_RCCSD_T))
 _CORRELATED_METHODS = frozenset((_native.METHOD_MP2, *_COUPLED_CLUSTER_METHODS))
@@ -216,6 +221,11 @@ def method_capabilities(method: str) -> MethodCapabilities:
     """Query method support without constructing a calculator or system."""
 
     canonical = method.lower()
+    composite = _COMPOSITE_METHOD_ALIASES.get(canonical)
+    if composite is not None:
+        _, spin = composite
+        electronic = "r2scan-uks" if spin == "polarized" else "r2scan-rks"
+        return replace(method_capabilities(electronic), method=canonical)
     try:
         method_id = _METHODS[canonical]
     except KeyError as error:
@@ -424,9 +434,10 @@ class Calculator:
         successful results report ``unverified`` and numerical defaults remain
         unchanged. It never certifies an error from ``energy_tolerance``.
 
-        ``method`` may be a native selector string, a spin-explicit PBE-family
+        ``method`` may be a native selector string, the public
+        ``r2scan-3c[-rks|-uks]`` composite selectors, a spin-explicit PBE-family
         MethodIR with one production D3(BJ) correction, or the canonical
-        r2SCAN-3c MethodIR. The latter binds its exact def2-mTZVPP basis and
+        r2SCAN-3c MethodIR. The latter forms bind the exact def2-mTZVPP basis and
         composes r2SCAN + D4 + gCP without a named native scientific driver.
         ``ks_options`` snapshots the electronic composition, GridSpec and XC
         tile schedule. ``dispersion_memory_budget_bytes`` independently bounds
@@ -466,6 +477,11 @@ class Calculator:
             validate_basis_snapshot,
         )
 
+        if isinstance(method, str):
+            composite = _COMPOSITE_METHOD_ALIASES.get(method.lower())
+            if composite is not None:
+                identifier, spin = composite
+                method = resolve_method(identifier, spin=spin)
         supplied_method_ir = method if isinstance(method, MethodIR) else None
         if supplied_method_ir is not None:
             corrections = tuple(
