@@ -128,12 +128,13 @@ def test_symmetric_pair_layout_matches_native_lower_triangle_and_costs() -> None
     assert layout.dense_elements == 112
     assert layout.storage_bytes(8) == 560
     assert layout.dense_equivalent_bytes(8) == 896
-    assert layout.dense_materialization_bytes(
-        8, rows=2, trailing_shape=(3,)
-    ) == 2 * 4 * 3 * 8
-    assert layout.unpack_traffic_bytes(
-        8, rows=2, trailing_shape=(3,)
-    ) == 2 * 2 * 4 * 3 * 8
+    assert (
+        layout.dense_materialization_bytes(8, rows=2, trailing_shape=(3,))
+        == 2 * 4 * 3 * 8
+    )
+    assert (
+        layout.unpack_traffic_bytes(8, rows=2, trailing_shape=(3,)) == 2 * 2 * 4 * 3 * 8
+    )
 
     expected = {
         (high, low): high * (high + 1) // 2 + low
