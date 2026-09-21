@@ -71,6 +71,17 @@
         "python/vibeqc_compiler/method/method_parameters.json": "3403bdc5fecce8889aceef071d46f9e6fff1ff8ff74e3f212cf6013b9dbcea19"
       }
     },
+    "gfn1-geometry-python-data": {
+      "generator": "tools/parameters/generate_gfn1_geometry.py",
+      "generator_sha256": "ae89cd60a1603775f6bcda589f74ab59f2b040827ef7646cf0de7f426933d632",
+      "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
+      "inputs": [
+        "xtbloom-gfn1-parameters"
+      ],
+      "outputs": {
+        "python/vibeqc_compiler/geometry/_gfn1_data.py": "747b332cf082b0ac1bd995780d46a3ae3513c087aaeb70bb8ea63dba901954fa"
+      }
+    },
     "gfn1-parameter-header": {
       "generator": "tools/parameters/generate_gfn1.py",
       "generator_sha256": "050f61c6a6c6c8cb0858704d5fa4565db307b7aa05c3d42475e3891c3a41c11e",
@@ -634,8 +645,10 @@
     },
     "xtbloom-gfn1-parameters": {
       "consumers": [
+        "python/vibeqc_compiler/geometry/_gfn1_data.py",
+        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp",
         "tools/parameters/generate_gfn1.py",
-        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp"
+        "tools/parameters/generate_gfn1_geometry.py"
       ],
       "files": {
         "gfn1.json": {
