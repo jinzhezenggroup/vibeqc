@@ -31,7 +31,9 @@ def test_gfn2_cuda_source_manifest_is_current_and_gfn2_only() -> None:
     assert adapted == [
         "src/backends/cuda/gfn2_pairlist.cu",
         "src/backends/cuda/gfn2_preprocessing.cu",
+        "src/runtime/cuda_descriptor_validation.cu",
         "src/runtime/gfn2_cuda_execution.cu",
+        "src/runtime/nvidia_host_api.h",
     ]
 
 
