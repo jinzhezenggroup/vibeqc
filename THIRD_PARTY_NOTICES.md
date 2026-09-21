@@ -16,13 +16,14 @@ VibeQC wheel.
 ## Scientific regeneration source snapshots
 
 The source registry in `sources/manifest.json` pins the exact upstream files used
-for deterministic scientific regeneration. Checked-in upstream bytes live only
-under `sources/upstream/<provider>/<revision>/`; this includes the admitted
-Libxc closure, DFT-D4 reference inputs, simple-DFTD3 gCP/parameter inputs,
-mctc-lib and multicharge EEQ inputs, and the GPU4PySCF Rys source table.
-Their original SPDX identities remain recorded per source in the registry and in
-the retained license files under `LICENSES/`. These snapshots are development-
-time source inputs, not runtime dependencies.
+for scientific provenance and deterministic regeneration. Only source bytes
+needed directly by normal compiler/catalog development are checked in under
+`sources/upstream/<provider>/<revision>/`: the admitted Libxc closure and the
+DFT-D4/simple-DFTD3 parameter catalogs. Larger or qualification-only upstream
+implementation sources (DFT-D4 reference files, EEQ support sources,
+simple-DFTD3 gCP sources, and the GPU4PySCF Rys table) remain hash-pinned
+remote file sets and are materialized explicitly for maintainer regeneration.
+Their SPDX identities remain recorded in the registry and retained license files.
 
 ## xTBloom D3 qualification baseline
 

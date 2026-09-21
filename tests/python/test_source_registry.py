@@ -27,13 +27,16 @@ def test_checked_in_registry_is_offline_verifiable() -> None:
 
 VENDORED_INITIAL_SOURCES = {
     "dftd4-parameters",
+    "libxc-7.0.0",
+    "simple-dftd3-parameters",
+}
+
+REMOTE_REGENERATION_SOURCES = {
     "dftd4-reference",
     "gpu4pyscf-rys",
-    "libxc-7.0.0",
     "mctc-lib-eeq",
     "multicharge-eeq2019",
     "simple-dftd3-gcp",
-    "simple-dftd3-parameters",
 }
 
 
@@ -46,6 +49,14 @@ def test_initial_upstream_sources_are_vendored_under_one_tree() -> None:
         root = source_registry.ROOT / source["local_root"]
         for name in source["files"]:
             assert (root / name).is_file()
+
+
+def test_large_or_qualification_only_sources_stay_remote() -> None:
+    registry = json.loads(source_registry.REGISTRY.read_text())
+    for source_id in REMOTE_REGENERATION_SOURCES:
+        source = registry["sources"][source_id]
+        assert source["kind"] == "remote-file-set"
+        assert "local_root" not in source
 
 
 def test_libxc_registry_owns_every_pinned_source_file() -> None:
