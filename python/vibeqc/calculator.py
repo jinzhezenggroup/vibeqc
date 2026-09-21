@@ -31,7 +31,8 @@ if TYPE_CHECKING:
 
 _METHODS = _method_manifest.METHOD_NAME_TO_ID
 _HF_METHODS = _method_manifest.HF_METHOD_IDS
-_CORRELATED_METHODS = frozenset((_native.METHOD_MP2, _native.METHOD_RCCSD))
+_COUPLED_CLUSTER_METHODS = frozenset((_native.METHOD_RCCSD, _native.METHOD_RCCSD_T))
+_CORRELATED_METHODS = frozenset((_native.METHOD_MP2, *_COUPLED_CLUSTER_METHODS))
 
 
 @dataclass(frozen=True)
@@ -123,6 +124,10 @@ class CorrelationResult:
     ccsd_amplitude_d2h_bytes: int
     ccsd_synchronizations: int
     ccsd_replay_equation_hash: str
+    ccsd_t_triples_energy: float
+    ccsd_t_virtual_triples: int
+    ccsd_t_workspace_bytes: int
+    ccsd_t_equation_hash: str
 
 
 def _read_correlation_result(
@@ -158,7 +163,12 @@ def _read_correlation_result(
         if name not in ("struct_size", "abi_version")
     }
     values["mo_host_staging"] = bool(values["mo_host_staging"])
-    for key in ("equation_hash", "response_operator_hash", "ccsd_replay_equation_hash"):
+    for key in (
+        "equation_hash",
+        "response_operator_hash",
+        "ccsd_replay_equation_hash",
+        "ccsd_t_equation_hash",
+    ):
         values[key] = values[key].decode("ascii")
     return CorrelationResult(**values)
 
@@ -187,6 +197,7 @@ class Result:
     physical_residual_rms: float | None = None
     ks_diagnostic: KsDiagnostic | None = None
     ks_transport_diagnostic: KsTransportDiagnostic | None = None
+    dispersion: object | None = None
 
 
 @dataclass(frozen=True)
@@ -367,7 +378,7 @@ class Calculator:
 
     def __init__(
         self,
-        method: str = "rhf",
+        method: typing.Any = "rhf",
         basis: str | Path | BasisSet | Sequence[Shell] | None = None,
         device: str = "cpu",
         device_id: int = 0,
@@ -396,6 +407,7 @@ class Calculator:
         target_accuracy: TargetAccuracy | None = None,
         resource_budget: typing.Any = None,
         ks_options: typing.Any = None,
+        dispersion_memory_budget_bytes: int = 256 * 1024 * 1024,
     ) -> None:
         """Create a calculator, optionally selecting CPU or CUDA DF.
 
@@ -412,8 +424,11 @@ class Calculator:
         successful results report ``unverified`` and numerical defaults remain
         unchanged. It never certifies an error from ``energy_tolerance``.
 
-        ``ks_options`` snapshots an explicit semilocal composition, GridSpec
-        and XC tile schedule for LDA/PBE RKS/UKS. Other methods reject it.
+        ``method`` may be a native selector string or a spin-explicit PBE-family
+        MethodIR containing one production D3(BJ) correction. ``ks_options``
+        snapshots the electronic composition, GridSpec and XC tile schedule.
+        ``dispersion_memory_budget_bytes`` independently bounds the retained D3
+        owner; the global ResourceBudget does not yet aggregate that owner.
         """
         if target_accuracy is not None and not isinstance(
             target_accuracy, TargetAccuracy
@@ -426,7 +441,78 @@ class Calculator:
             if not isinstance(resource_budget, ResourceBudget):
                 raise TypeError("resource_budget must be a ResourceBudget")
         self._resource_budget = resource_budget
-        if method.lower() not in _METHODS:
+        if (
+            type(dispersion_memory_budget_bytes) is not int
+            or not 0 < dispersion_memory_budget_bytes < 2**64
+        ):
+            raise ValueError(
+                "dispersion_memory_budget_bytes must be a positive uint64 integer"
+            )
+        self._dispersion_memory_budget_bytes = dispersion_memory_budget_bytes
+        self._dispersion_method_ir = None
+
+        from vibeqc_compiler.method import (
+            D3Spec,
+            DispersionCorrectionPrimitive,
+            MethodIR,
+            SemilocalXCPrimitive,
+        )
+
+        supplied_method_ir = method if isinstance(method, MethodIR) else None
+        if supplied_method_ir is not None:
+            corrections = tuple(
+                node
+                for node in supplied_method_ir.primitives
+                if isinstance(node, DispersionCorrectionPrimitive)
+            )
+            if len(corrections) != 1 or not isinstance(
+                corrections[0].specification, D3Spec
+            ):
+                raise NotImplementedError(
+                    "Calculator MethodIR execution currently requires exactly one D3 correction"
+                )
+            electronic_primitives = tuple(
+                node
+                for node in supplied_method_ir.primitives
+                if not isinstance(node, DispersionCorrectionPrimitive)
+            )
+            electronic_ir = replace(
+                supplied_method_ir,
+                identifier=f"{supplied_method_ir.identifier}/electronic",
+                primitives=electronic_primitives,
+            )
+            semilocal = tuple(
+                node
+                for node in electronic_ir.primitives
+                if isinstance(node, SemilocalXCPrimitive)
+            )
+            if len(semilocal) != 1 or not set(
+                dict(semilocal[0].functional.components)
+            ) <= {
+                "GGA_X_PBE",
+                "GGA_C_PBE",
+            }:
+                raise NotImplementedError(
+                    "Calculator MethodIR execution currently supports D3 on the PBE electronic family"
+                )
+            method = "pbe-uks" if supplied_method_ir.spin == "polarized" else "pbe-rks"
+            from .ks import KsOptions
+
+            if ks_options is None:
+                ks_options = KsOptions(composition=electronic_ir)
+            elif not isinstance(ks_options, KsOptions):
+                raise TypeError("ks_options must be KsOptions")
+            elif (
+                ks_options.functional is not None or ks_options.composition is not None
+            ):
+                raise ValueError(
+                    "a MethodIR calculator owns its KS composition; ks_options may only set execution controls"
+                )
+            else:
+                ks_options = replace(ks_options, composition=electronic_ir)
+            self._dispersion_method_ir = supplied_method_ir
+
+        if not isinstance(method, str) or method.lower() not in _METHODS:
             raise ValueError(f"unknown method {method!r}")
         if device not in {"cpu", "cuda"}:
             raise ValueError("device must be 'cpu' or 'cuda'")
@@ -512,6 +598,11 @@ class Calculator:
             and self._precision_mode != _native.PRECISION_FP64
         ):
             raise NotImplementedError("r2SCAN currently requires strict FP64")
+        if (
+            self._method == _native.METHOD_PBE_D4_RKS
+            and self._precision_mode != _native.PRECISION_FP64
+        ):
+            raise NotImplementedError("PBE-D4 currently requires strict FP64")
         self._ks_options = None
         if self._method_name in (
             "lda-rks",
@@ -522,17 +613,55 @@ class Calculator:
             "pbe0-uks",
             "r2scan-rks",
             "r2scan-uks",
+            "pbe-d4-rks",
         ):
-            from .ks import resolve_ks_options
+            from .ks import KsOptions, resolve_ks_options
 
+            if supplied_method_ir is None and isinstance(ks_options, KsOptions):
+                full_graph = ks_options.composition or ks_options._method_ir
+                if full_graph is not None:
+                    corrections = tuple(
+                        node
+                        for node in full_graph.primitives
+                        if isinstance(node, DispersionCorrectionPrimitive)
+                    )
+                    # Leave non-D3 recipes to the existing native resolver;
+                    # explicit/resolved PBE-D4 options already have an owner.
+                    if any(
+                        isinstance(node.specification, D3Spec) for node in corrections
+                    ):
+                        if len(corrections) != 1 or not isinstance(
+                            corrections[0].specification, D3Spec
+                        ):
+                            raise NotImplementedError(
+                                "Calculator supports exactly one D3 correction primitive"
+                            )
+                        electronic_graph = replace(
+                            full_graph,
+                            identifier=f"{full_graph.identifier}/electronic",
+                            primitives=tuple(
+                                node
+                                for node in full_graph.primitives
+                                if not isinstance(node, DispersionCorrectionPrimitive)
+                            ),
+                        )
+                        ks_options = replace(
+                            ks_options,
+                            functional=None,
+                            composition=electronic_graph,
+                        )
+                        self._dispersion_method_ir = full_graph
             self._ks_options = resolve_ks_options(self._method_name, ks_options)
         elif ks_options is not None:
             raise ValueError("ks_options requires a supported RKS/UKS method")
+        if self._dispersion_method_ir is not None and resource_budget is not None:
+            raise NotImplementedError(
+                "global resource_budget does not yet include the separate D3 owner; "
+                "use dispersion_memory_budget_bytes for the bounded correction"
+            )
         if self._method == _native.METHOD_GFN2_XTB:
-            if device != "cpu":
-                raise NotImplementedError(
-                    "GFN2-xTB CUDA execution is not admitted yet; use device='cpu'"
-                )
+            # Backend-specific admission is owned by native calculation preparation.
+            # Native SDK builds may include GFN2 CUDA while CUDA wheels currently do not.
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise ValueError("GFN2-xTB does not use Gaussian density fitting")
             if target_accuracy is not None:
@@ -577,7 +706,7 @@ class Calculator:
             )
         if not np.isfinite(mp2_denominator_threshold) or mp2_denominator_threshold <= 0:
             raise ValueError("mp2_denominator_threshold must be finite and positive")
-        if self._method == _native.METHOD_RCCSD:
+        if self._method in _COUPLED_CLUSTER_METHODS:
             for name, value in (
                 ("ccsd_max_iterations", ccsd_max_iterations),
                 ("ccsd_diis_history", ccsd_diis_history),
@@ -611,7 +740,7 @@ class Calculator:
                 raise ValueError("ccsd_frozen_core must be a non-negative integer")
             if ccsd_frozen_core:
                 raise NotImplementedError(
-                    "native RCCSD frozen-core references are not implemented"
+                    "native coupled-cluster frozen-core references are not implemented"
                 )
         self._correlation_memory_budget_bytes = correlation_memory_budget_bytes
         self._mp2_denominator_threshold = float(mp2_denominator_threshold)
@@ -682,6 +811,10 @@ class Calculator:
                 raise NotImplementedError(
                     "native library does not support KS composition options v2"
                 )
+            elif self._ks_options_version < 3 and self._ks_options.requires_schedule_v3:
+                raise NotImplementedError(
+                    "native library does not support KS execution schedules v3"
+                )
 
         available = ctypes.c_int32()
         _native.check(
@@ -728,14 +861,18 @@ class Calculator:
                 supported_properties=self._capabilities.supported_properties
                 | {"forces"},
             )
-        if self._method == _native.METHOD_RCCSD:
+        if self._method in _COUPLED_CLUSTER_METHODS:
+            if self._method == _native.METHOD_RCCSD_T and device != "cpu":
+                raise NotImplementedError(
+                    "native RCCSD(T) CUDA owner is not promoted yet; use device='cpu'"
+                )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError(
-                    "native RCCSD density fitting is not implemented"
+                    "native coupled-cluster density fitting is not implemented"
                 )
             if auxiliary_basis is not None:
                 raise ValueError(
-                    "conventional RCCSD does not accept an auxiliary basis"
+                    "conventional coupled-cluster methods do not accept an auxiliary basis"
                 )
         if self._capabilities.family == "density_functional":
             if (
@@ -755,6 +892,13 @@ class Calculator:
                 )
 
     @property
+    def method_ir(self) -> typing.Any:
+        """Resolved full KS MethodIR, including an external D3 correction when present."""
+        if self._dispersion_method_ir is not None:
+            return self._dispersion_method_ir
+        return None if self._ks_options is None else self._ks_options.method_ir
+
+    @property
     def ks_options(self) -> typing.Any:
         """Resolved immutable KS model, or None for another method family."""
         return self._ks_options
@@ -771,6 +915,7 @@ class Calculator:
                 {
                     "source": "cpu",
                     "identity": None,
+                    "target": None,
                     "kernels": [],
                     "dft_schedules": [],
                     "rejected": [],
@@ -791,6 +936,7 @@ class Calculator:
         auxiliary_basis: ctypes.c_void_p | None = None,
         *,
         resource_plan: typing.Any = None,
+        ks_options: typing.Any = None,
     ) -> _native.MethodDescriptor:
         df_budget = self._density_fitting_memory_budget_bytes
         if resource_plan is not None and self._method in _HF_METHODS:
@@ -819,16 +965,17 @@ class Calculator:
             self._correlation_memory_budget_bytes,
             self._mp2_denominator_threshold,
         )
-        if self._ks_options is not None and self._ks_options_version >= 1:
+        active_ks_options = self._ks_options if ks_options is None else ks_options
+        if active_ks_options is not None and self._ks_options_version >= 1:
             from .ks import native_ks_options
 
             descriptor.ks_options = ctypes.pointer(
                 native_ks_options(
-                    self._ks_options,
-                    version=1 if self._ks_options_version == 1 else 2,
+                    active_ks_options,
+                    version=min(self._ks_options_version, 4),
                 )
             )
-        if self._method == _native.METHOD_RCCSD:
+        if self._method in _COUPLED_CLUSTER_METHODS:
             descriptor.ccsd_max_iterations = self._ccsd_max_iterations
             descriptor.ccsd_diis_history = self._ccsd_diis_history
             descriptor.ccsd_energy_tolerance = self._ccsd_energy_tolerance
@@ -952,6 +1099,14 @@ class Calculator:
                 ),
                 **(
                     {
+                        "dispersion_method_ir": self._dispersion_method_ir.to_payload(),
+                        "dispersion_memory_budget_bytes": self._dispersion_memory_budget_bytes,
+                    }
+                    if self._dispersion_method_ir is not None
+                    else {}
+                ),
+                **(
+                    {
                         "correlation_memory_budget_bytes": self._correlation_memory_budget_bytes,
                         "mp2_denominator_threshold": self._mp2_denominator_threshold,
                     }
@@ -970,7 +1125,7 @@ class Calculator:
                         "ccsd_level_shift": self._ccsd_level_shift,
                         "ccsd_frozen_core": self._ccsd_frozen_core,
                     }
-                    if self._method == _native.METHOD_RCCSD
+                    if self._method in _COUPLED_CLUSTER_METHODS
                     else {}
                 ),
                 "density_fitting": self._density_fitting_mode,
@@ -1312,6 +1467,7 @@ class Calculator:
         *,
         charges: typing.Any = None,
         multiplicities: typing.Any = None,
+        ks_options: typing.Any = None,
     ) -> typing.Any:
         """Resolve this calculator's active scientific controls without executing."""
         if self._capabilities.family == "density_functional":
@@ -1334,7 +1490,7 @@ class Calculator:
                 energy_tolerance=self._energy_tolerance,
                 density_tolerance=self._density_tolerance,
                 screening_tolerance=self._screening_tolerance,
-                ks_options=self._ks_options,
+                ks_options=self._ks_options if ks_options is None else ks_options,
                 device_id=self._device_id,
                 library=self._library,
             )
@@ -1393,6 +1549,69 @@ class Calculator:
                 )
         return request
 
+    def _effective_ks_selection(
+        self,
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        """Resolve and ABI-check one batch-local DFT09 profile selection."""
+
+        from .ks import ProfiledKsSelection
+
+        if (
+            self._ks_options is None
+            or self._device_name != "cuda"
+            or self._precision_mode != _native.PRECISION_FP64
+        ):
+            return ProfiledKsSelection(self._ks_options)
+        count = len(systems)
+        charges = tuple(0 for _ in range(count)) if charges is None else tuple(charges)
+        multiplicities = (
+            tuple(1 for _ in range(count))
+            if multiplicities is None
+            else tuple(multiplicities)
+        )
+        if len(charges) != count or len(multiplicities) != count:
+            raise ValueError("charges and multiplicities must match the batch size")
+        from .ks import native_ks_options, profiled_ks_selection
+
+        selection = profiled_ks_selection(
+            self._ks_options,
+            self.profile_diagnostics,
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+        )
+        if selection.options is not None:
+            if self._ks_options_version == 0:
+                if selection.options != self._ks_options:
+                    raise NotImplementedError(
+                        "native library does not support profile-selected KS model options"
+                    )
+            else:
+                native_ks_options(
+                    selection.options,
+                    version=min(self._ks_options_version, 4),
+                )
+        return selection
+
+    def _effective_ks_options(
+        self,
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        """Resolve an exact local DFT09 schedule for this batch without mutation."""
+
+        return self._effective_ks_selection(
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+        ).options
+
     def estimate_resources(
         self,
         systems: typing.Any,
@@ -1402,13 +1621,37 @@ class Calculator:
         budget: typing.Any = None,
     ) -> typing.Any:
         """Dry-run the active scientific inputs; no solve or warm-state mutation."""
+        if self._dispersion_method_ir is not None:
+            raise NotImplementedError(
+                "composed resource estimation does not yet include the bounded D3 owner"
+            )
         from .resources import ResourceBudget, plan_resources
 
+        systems = tuple(
+            tuple(Atom.from_value(atom) for atom in system) for system in systems
+        )
+        count = len(systems)
+        charges = tuple(0 for _ in range(count)) if charges is None else tuple(charges)
+        multiplicities = (
+            tuple(1 for _ in range(count))
+            if multiplicities is None
+            else tuple(multiplicities)
+        )
+        if len(charges) != count or len(multiplicities) != count:
+            raise ValueError("charges and multiplicities must match the batch size")
+        effective_ks_options = self._effective_ks_options(
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+        )
         budget = self._resource_budget if budget is None else budget
         return plan_resources(
             (
                 self._resource_request(
-                    systems, charges=charges, multiplicities=multiplicities
+                    systems,
+                    charges=charges,
+                    multiplicities=multiplicities,
+                    ks_options=effective_ks_options,
                 ),
             ),
             ResourceBudget() if budget is None else budget,
@@ -1431,6 +1674,10 @@ class Calculator:
         remain disabled during normal endpoint timing.
         """
 
+        if self._dispersion_method_ir is not None and resource_plan is not None:
+            raise NotImplementedError(
+                "a global ResourcePlan does not yet account for the separate D3 owner"
+            )
         if not self._capabilities.supports_batch:
             raise NotImplementedError(
                 f"method {self._method_name!r} does not support prepared batches"
@@ -1517,12 +1764,19 @@ class Calculator:
         if not native_atoms:
             raise ValueError("at least one atom is required")
         self._preflight_hf_basis(native_atoms, compute_forces=compute_forces)
+        effective_ks_options = self._effective_ks_options(
+            (native_atoms,),
+            charges=(charge,),
+            multiplicities=(multiplicity,),
+        )
         resource_plan = None
         if self._resource_budget is not None:
             resource_plan = self.estimate_resources(
                 [native_atoms], charges=[charge], multiplicities=[multiplicity]
             ).require_feasible()
-        if compute_forces and self._capabilities.family == "density_functional":
+        if self._dispersion_method_ir is not None or (
+            compute_forces and self._capabilities.family == "density_functional"
+        ):
             # Reuse the prepared-batch owner because the stationary snapshot ABI
             # is intentionally tied to a live native owner.  This avoids a second
             # scientific implementation in the single-system path.
@@ -1551,6 +1805,7 @@ class Calculator:
                     physical_residual_rms=item.physical_residual_rms,
                     ks_diagnostic=item.ks_diagnostic,
                     ks_transport_diagnostic=batch.ks_transport_diagnostics[0],
+                    dispersion=item.dispersion,
                 )
         context = ctypes.c_void_p()
         _native.check(
@@ -1588,6 +1843,7 @@ class Calculator:
             method_descriptor = self._method_descriptor(
                 auxiliary_system if auxiliary_system.value else None,
                 resource_plan=resource_plan,
+                ks_options=effective_ks_options,
             )
 
             def prepare() -> typing.Any:

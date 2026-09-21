@@ -12,6 +12,7 @@
 #include "dft/ao_grid.hpp"
 #include "dft/grid.hpp"
 #include "dft/xc.hpp"
+#include "dft/xc_point.hpp"
 #include "molecule/basis.hpp"
 #include "xc_cpu_generated.hpp"
 
@@ -60,13 +61,13 @@ int main() {
     require(std::abs(vibeqc::dft::generated::kB3lypExactExchange - 0.2) < 1e-16,
             "B3LYP generated exact-exchange fraction disagrees with MethodIR");
 
-    std::ifstream lda_fixture(VIBEQC_SOURCE_DIR "/tests/data/xc/scf_domain.tsv");
-    require(static_cast<bool>(lda_fixture), "missing independent XC SCF-domain fixture");
-    std::string lda_line;
-    std::size_t lda_rows = 0;
-    while (std::getline(lda_fixture, lda_line)) {
-      if (lda_line.empty() || lda_line[0] == '#') continue;
-      std::istringstream row(lda_line);
+    std::ifstream xc_fixture(VIBEQC_SOURCE_DIR "/tests/data/xc/scf_domain.tsv");
+    require(static_cast<bool>(xc_fixture), "missing independent XC SCF-domain fixture");
+    std::string xc_line;
+    std::size_t lda_rows = 0, pbe_rows = 0;
+    while (std::getline(xc_fixture, xc_line)) {
+      if (xc_line.empty() || xc_line[0] == '#') continue;
+      std::istringstream row(xc_line);
       int pbe = 0, oracle = 0;
       double rho[2]{}, gradient[2][3]{}, expected[9]{};
       row >> pbe >> oracle >> rho[0] >> rho[1];
@@ -74,24 +75,73 @@ int main() {
         for (double& component : spin) row >> component;
       for (double& component : expected) row >> component;
       require(static_cast<bool>(row), "malformed XC SCF-domain fixture");
-      if (pbe != 0) continue;
-      const auto value = vibeqc::dft::generated::lda_xc_pw_polarized_production(rho[0], rho[1]);
-      const double actual[]{value.energy_density, value.feature_derivative[0],
-                            value.feature_derivative[1]};
-      for (unsigned i = 0; i < 3; ++i) {
-        const double tolerance = 5.0e-10 * std::abs(expected[i]) + 1.0e-322;
-        require(std::isfinite(actual[i]) && std::abs(actual[i] - expected[i]) <= tolerance,
-                "compiler-owned polarized LDA differs from independent SCF-domain reference");
+      if (pbe == 0) {
+        const auto value = vibeqc::dft::generated::lda_xc_pw_polarized_production(rho[0], rho[1]);
+        const double actual[]{value.energy_density, value.feature_derivative[0],
+                              value.feature_derivative[1]};
+        for (unsigned i = 0; i < 3; ++i) {
+          const double tolerance = 5.0e-10 * std::abs(expected[i]) + 1.0e-322;
+          require(std::isfinite(actual[i]) && std::abs(actual[i] - expected[i]) <= tolerance,
+                  "compiler-owned polarized LDA differs from independent SCF-domain reference");
+        }
+        for (unsigned i = 3; i < 9; ++i)
+          require(expected[i] == 0.0, "independent LDA fixture has a gradient coefficient");
+        ++lda_rows;
+      } else {
+        const auto value =
+            vibeqc::dft::generated::pbe_polarized_production(rho[0], rho[1], gradient);
+        const double actual[]{
+            value.energy_density, value.rho[0],         value.rho[1],
+            value.gradient[0][0], value.gradient[0][1], value.gradient[0][2],
+            value.gradient[1][0], value.gradient[1][1], value.gradient[1][2],
+        };
+        for (unsigned i = 0; i < 9; ++i) {
+          const double tolerance = 5.0e-10 * std::abs(expected[i]) + 1.0e-322;
+          require(std::isfinite(actual[i]) && std::abs(actual[i] - expected[i]) <= tolerance,
+                  "compiler-owned polarized PBE differs from independent SCF-domain reference");
+        }
+        ++pbe_rows;
       }
-      for (unsigned i = 3; i < 9; ++i)
-        require(expected[i] == 0.0, "independent LDA fixture has a gradient coefficient");
-      ++lda_rows;
     }
     require(lda_rows == 36, "incomplete independent polarized LDA reference coverage");
+    require(pbe_rows == 61, "incomplete independent polarized PBE reference coverage");
     const auto lda_vacuum = vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
     require(lda_vacuum.energy_density == 0.0 && lda_vacuum.feature_derivative[0] == 0.0 &&
                 lda_vacuum.feature_derivative[1] == 0.0,
             "compiler-owned polarized LDA vacuum limit is wrong");
+    const double zero_gradient[2][3]{};
+    const auto generated_pbe_vacuum =
+        vibeqc::dft::generated::pbe_polarized_production(0.0, 0.0, zero_gradient);
+    require(generated_pbe_vacuum.energy_density == 0.0 && generated_pbe_vacuum.rho[0] == 0.0 &&
+                generated_pbe_vacuum.rho[1] == 0.0,
+            "compiler-owned polarized PBE vacuum limit is wrong");
+
+    {
+      const double rho[2]{0.3, 0.2};
+      const double gradient[2][3]{{0.11, -0.07, 0.03}, {-0.02, 0.09, -0.04}};
+      for (const auto scales :
+           {std::array<double, 2>{0.75, 1.0}, std::array<double, 2>{0.37, 0.61}}) {
+        const auto expected =
+            vibeqc::dft::point::evaluate(true, rho, gradient, scales[0], scales[1]);
+        const auto actual = vibeqc::dft::generated::pbe_polarized_production(
+            rho[0], rho[1], gradient, scales[0], scales[1]);
+        const double generated[]{
+            actual.energy_density, actual.rho[0],         actual.rho[1],
+            actual.gradient[0][0], actual.gradient[0][1], actual.gradient[0][2],
+            actual.gradient[1][0], actual.gradient[1][1], actual.gradient[1][2],
+        };
+        const double reference[]{
+            expected.energy,         expected.rho[0],         expected.rho[1],
+            expected.gradient[0][0], expected.gradient[0][1], expected.gradient[0][2],
+            expected.gradient[1][0], expected.gradient[1][1], expected.gradient[1][2],
+        };
+        require(expected.valid, "independent scaled PBE oracle rejected an interior point");
+        for (unsigned i = 0; i < 9; ++i)
+          require(std::abs(generated[i] - reference[i]) <
+                      3.0e-13 * std::max(1.0, std::abs(reference[i])),
+                  "generated PBE X/C scaling differs from the independent point oracle");
+      }
+    }
 
     const auto cam_point =
         vibeqc::dft::generated::cam_b3lyp_polarized(0.3, 0.2, 0.015, 0.003, 0.01);

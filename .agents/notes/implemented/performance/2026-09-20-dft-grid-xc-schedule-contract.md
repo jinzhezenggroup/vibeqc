@@ -96,17 +96,50 @@ with SHA-256
 `e45f191e9ca0885da1c8ffc74b7f164b11d732344a54bb94308ff7a4e7d9637d`.
 This component evidence is deliberately marked non-promotion evidence.
 
+## Native-KS follow-up
+
+After PR #713 and PR #725 merged, the public CUDA KS owner gained an execution
+policy seam without changing the semilocal mathematics. KS options v3 selects
+`device_fused` or `host_unfused`; v1/v2 descriptors preserve the historical
+device-fused default. The unfused path explicitly stages the current density to
+the audited CPU semilocal integrator and uploads Vxc into the same CUDA SCF
+control flow. Resource planning accounts for the missing resident XC arena and
+the added host staging.
+
+Runtime profile application is batch-local. It derives the same compiler-owned
+scientific workload identity from geometry/GridSpec/functional/source/target
+without materializing another quadrature, and applies a validated local winner
+only when every item exact-matches the profile and selects one common resolved
+schedule. Geometry changes or mixed matches keep the portable default.
+
+At revision `39c31ff8bfd9e532aee7ac02638b4ea64089d31a`, qz job
+`vibeqc-168-endpoint-c124-39c31ff8` retained compile-cold records plus seven
+interleaved synchronized warm complete `energy+forces` pairs on an RTX 4090.
+`device_fused` passed `dft_endpoint_gate` against `host_unfused` for H2,
+water, and an H2 batch of two with median speedups 1.116x, 1.141x, and 1.146x;
+the corresponding 95% bootstrap lower bounds were 1.085x, 1.134x, and 1.140x.
+SCF branches matched, and the largest energy/force discrepancies were below
+`2e-13`/`2e-14`. Changed-geometry replay also preserved parity.
+
+The raw runner recorded the schedule-family hashes before binding the default
+`point_tile=256`; it is retained as benchmark evidence, not relabeled as an
+installable local profile. The resolved execution hashes are recorded alongside
+the raw evidence in
+`benchmarks/results/issue168-grid-xc-schedules/complete-endpoint-summary.json`.
+The profile bundle validator still requires matching legality, resources,
+independent numerical evidence, source hashes and the resolved schedule
+identity before activation.
+
 ## Consequences and revisit conditions
 
-The generated/prepared grid-XC schedule and profile/promotion contracts are now
-explicit and independently testable. The public CUDA KS/force endpoint still
-runs through the native C++ path rather than `PreparedXCContractions`, so this
-slice does not claim full #168 closure or a complete-SCF schedule speedup.
-PR #713 remains separately owned and does not yet expose these prepared
-schedules as a selectable public CUDA KS plan. After that native endpoint
-wiring exists, run cold, warm same-geometry, changed-geometry, multi-scale and
-batch interleaved complete energy-plus-force evidence and publish a winner only
-if the full promotion gate passes. Retain negative evidence otherwise.
+The grid/XC execution choice is now represented consistently across prepared
+contractions, native CUDA KS, resource planning, complete endpoint evidence and
+local profile lookup. `device_fused` is the measured complete-endpoint winner
+for the retained RTX 4090 PBE/STO-3G workloads and remains the portable default.
+No claim is made that this one hardware/workload family is globally optimal;
+new architectures, grids, functionals, arithmetic policies or algorithmic
+candidates still require their own exact workload identity and promotion
+evidence.
 
 ## References
 

@@ -271,6 +271,34 @@ def test_static_accounting_reuses_combined_numeric_budget_and_labels_unknowns() 
     assert "calibrated" in estimate["compile_cost_proxy"]
 
 
+def test_fusion_profitability_exposes_launch_traffic_pressure_tradeoff() -> None:
+    program = vector_program()
+    separate = estimate_schedule(
+        plan_cuda(program, TARGET, schedule=TensorSchedule(fuse=False))
+    )
+    fused = estimate_schedule(
+        plan_cuda(program, TARGET, schedule=TensorSchedule(fuse=True))
+    )
+
+    assert fused["estimated_kernel_launches"] < separate["estimated_kernel_launches"]
+    assert (
+        fused["estimated_endpoint_semantic_traffic_bytes"]
+        < (separate["estimated_endpoint_semantic_traffic_bytes"])
+    )
+    assert (
+        fused["estimated_registers_per_thread"]
+        > (separate["estimated_registers_per_thread"])
+    )
+    assert (
+        fused["profitability"]["static"]["launch_count"]
+        == (fused["estimated_kernel_launches"])
+    )
+    assert (
+        fused["profitability"]["static"]["semantic_traffic_bytes"]
+        == (fused["estimated_endpoint_semantic_traffic_bytes"])
+    )
+
+
 def test_semantic_traffic_accounts_endpoint_copies_and_packing_exactly() -> None:
     direct = plan_cuda(gemm_program(), TARGET)
     direct_traffic = direct.semantic_traffic

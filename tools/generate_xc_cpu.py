@@ -37,6 +37,9 @@ from vibeqc_compiler.xc.expressions import (
     energy_expression,
     lda_xc_pw_polarized_tail_expression,
     lda_xc_pw_unpolarized_tail_expression,
+    pbe_correlation_scaled_expression,
+    pbe_exchange_direct_expression,
+    pbe_exchange_reciprocal_expression,
 )
 from vibeqc_compiler.xc.rsh_expressions import (
     energy_expression as rsh_energy_expression,
@@ -131,6 +134,7 @@ def emit_lda_xc_pw() -> str:
         "// Generated from audited MPL-2.0 expressions; see external/libxc-7.0.0/COPYING.",
         "#pragma once",
         "#include <cmath>",
+        "#include <cfloat>",
         "namespace vibeqc::dft::generated {",
         "struct LdaXcPwValue { double energy_density; double density_derivative; };",
         f'inline constexpr const char* kLdaXcPwExpressionIdentity = "{expression_hash}";',
@@ -378,6 +382,221 @@ def emit_pbe_polarized() -> str:
     return "\n".join(lines)
 
 
+def emit_pbe_polarized_production() -> str:
+    """Emit the tail-stable Cartesian-gradient PBE production E/vxc."""
+
+    correlation_functions = []
+    correlation_identities = []
+    correlation_names = (
+        "normalized_rho_a",
+        "normalized_rho_b",
+        "rho_scale",
+        "rho_scale_sixth_root",
+        "rho_scale_cuberoot",
+        "gradient_ratio",
+        "normalized_gradient_0",
+        "normalized_gradient_1",
+        "normalized_gradient_2",
+    )
+    for gradient_correction, suffix in ((False, "zero"), (True, "gradient")):
+        graph, roots, _ = pbe_correlation_scaled_expression(
+            gradient_correction=gradient_correction
+        )
+        graph, roots = graph.lower_small_integer_powers(roots)
+        emitter = ScalarCEmitter(graph, {name: name for name in correlation_names})
+        emitter.emit(roots)
+        references = [emitter.reference(root) for root in roots]
+        correlation_identities.append(
+            graph_identity(f"pbe-correlation-scaled-{suffix}-v1", graph, roots)
+        )
+        correlation_functions.extend(
+            [
+                f"inline PbeCorrelationProductionValue pbe_correlation_scaled_{suffix}(",
+                "    double normalized_rho_a, double normalized_rho_b, double rho_scale,",
+                "    double rho_scale_sixth_root, double rho_scale_cuberoot,",
+                "    double gradient_ratio, double normalized_gradient_0,",
+                "    double normalized_gradient_1, double normalized_gradient_2) {",
+                *emitter.lines,
+                "  return {"
+                + references[0]
+                + ", {"
+                + references[1]
+                + ", "
+                + references[2]
+                + "}, {"
+                + ", ".join(references[3:])
+                + "}};",
+                "}",
+                "",
+            ]
+        )
+
+    graph, roots, _ = pbe_exchange_direct_expression()
+    graph, roots = graph.lower_small_integer_powers(roots)
+    direct_names = (
+        "rho_cuberoot",
+        "rho_four_thirds",
+        "reduced_gradient_0",
+        "reduced_gradient_1",
+        "reduced_gradient_2",
+    )
+    direct = ScalarCEmitter(graph, {name: name for name in direct_names})
+    direct.emit(roots)
+    direct_refs = [direct.reference(root) for root in roots]
+    direct_identity = graph_identity("pbe-exchange-direct-v1", graph, roots)
+
+    graph, roots, _ = pbe_exchange_reciprocal_expression()
+    graph, roots = graph.lower_small_integer_powers(roots)
+    reciprocal_names = (
+        "rho_cuberoot",
+        "rho_four_thirds",
+        "reciprocal_reduced_gradient",
+        "gradient_direction_0",
+        "gradient_direction_1",
+        "gradient_direction_2",
+    )
+    reciprocal = ScalarCEmitter(graph, {name: name for name in reciprocal_names})
+    reciprocal.emit(roots)
+    reciprocal_refs = [reciprocal.reference(root) for root in roots]
+    reciprocal_identity = graph_identity("pbe-exchange-reciprocal-v1", graph, roots)
+
+    return "\n".join(
+        [
+            "struct PbeCorrelationProductionValue {",
+            "  double energy_density;",
+            "  double rho[2];",
+            "  double gradient[3];",
+            "};",
+            "struct PbeExchangeProductionValue {",
+            "  double energy_density;",
+            "  double rho;",
+            "  double gradient[3];",
+            "};",
+            "struct PbeProductionValue {",
+            "  double energy_density;",
+            "  double rho[2];",
+            "  double gradient[2][3];",
+            "};",
+            f'inline constexpr const char* kPbeCorrelationZeroProductionIdentity = "{correlation_identities[0]}";',
+            f'inline constexpr const char* kPbeCorrelationGradientProductionIdentity = "{correlation_identities[1]}";',
+            f'inline constexpr const char* kPbeExchangeDirectProductionIdentity = "{direct_identity}";',
+            f'inline constexpr const char* kPbeExchangeReciprocalProductionIdentity = "{reciprocal_identity}";',
+            'inline constexpr const char* kPbeProductionPolicy = "semilocal-scaled-v1/pbe-spin-c2-1e-18";',
+            *correlation_functions,
+            "inline PbeExchangeProductionValue pbe_exchange_direct(",
+            "    double rho_cuberoot, double rho_four_thirds,",
+            "    double reduced_gradient_0, double reduced_gradient_1,",
+            "    double reduced_gradient_2) {",
+            *direct.lines,
+            "  return {"
+            + direct_refs[0]
+            + ", "
+            + direct_refs[1]
+            + ", {"
+            + ", ".join(direct_refs[2:])
+            + "}};",
+            "}",
+            "",
+            "inline PbeExchangeProductionValue pbe_exchange_reciprocal(",
+            "    double rho_cuberoot, double rho_four_thirds,",
+            "    double reciprocal_reduced_gradient, double gradient_direction_0,",
+            "    double gradient_direction_1, double gradient_direction_2) {",
+            *reciprocal.lines,
+            "  return {"
+            + reciprocal_refs[0]
+            + ", "
+            + reciprocal_refs[1]
+            + ", {"
+            + ", ".join(reciprocal_refs[2:])
+            + "}};",
+            "}",
+            "",
+            "inline PbeProductionValue pbe_polarized_production(",
+            "    double rho_a, double rho_b, const double gradient[2][3],",
+            "    double exchange_scale = 1.0, double correlation_scale = 1.0) {",
+            "  PbeProductionValue out{};",
+            "  const double rho_scale = rho_a + rho_b;",
+            "  if (rho_scale == 0.0) return out;",
+            "  const double normalized_rho_a = rho_a / rho_scale;",
+            "  const double normalized_rho_b = rho_b / rho_scale;",
+            "  const double rho_scale_sixth_root = pow(rho_scale, 1.0 / 6.0);",
+            "  const double rho_scale_cuberoot = cbrt(rho_scale);",
+            "  double total_gradient[3]{};",
+            "  double gradient_scale = rho_scale;",
+            "  for (unsigned axis = 0; axis < 3; ++axis) {",
+            "    total_gradient[axis] = gradient[0][axis] + gradient[1][axis];",
+            "    gradient_scale = std::isfinite(total_gradient[axis])",
+            "        ? std::fmax(gradient_scale, std::fabs(total_gradient[axis]))",
+            "        : DBL_MAX;",
+            "  }",
+            "  const double gradient_ratio = rho_scale / gradient_scale;",
+            "  double normalized_gradient[3]{};",
+            "  bool nonzero_gradient = false;",
+            "  for (unsigned axis = 0; axis < 3; ++axis) {",
+            "    normalized_gradient[axis] = std::isfinite(total_gradient[axis])",
+            "        ? total_gradient[axis] / gradient_scale",
+            "        : gradient[0][axis] / gradient_scale + gradient[1][axis] / gradient_scale;",
+            "    nonzero_gradient = nonzero_gradient || normalized_gradient[axis] != 0.0;",
+            "  }",
+            "  const auto correlation = nonzero_gradient",
+            "      ? pbe_correlation_scaled_gradient(",
+            "            normalized_rho_a, normalized_rho_b, rho_scale,",
+            "            rho_scale_sixth_root, rho_scale_cuberoot, gradient_ratio,",
+            "            normalized_gradient[0], normalized_gradient[1], normalized_gradient[2])",
+            "      : pbe_correlation_scaled_zero(",
+            "            normalized_rho_a, normalized_rho_b, rho_scale,",
+            "            rho_scale_sixth_root, rho_scale_cuberoot, gradient_ratio,",
+            "            0.0, 0.0, 0.0);",
+            "  out.energy_density = correlation_scale * correlation.energy_density;",
+            "  out.rho[0] = correlation_scale * correlation.rho[0];",
+            "  out.rho[1] = correlation_scale * correlation.rho[1];",
+            "  for (unsigned axis = 0; axis < 3; ++axis)",
+            "    out.gradient[0][axis] = out.gradient[1][axis] =",
+            "        correlation_scale * correlation.gradient[axis];",
+            "  const double rho[2]{rho_a, rho_b};",
+            "  for (unsigned spin = 0; spin < 2; ++spin) {",
+            "    if (rho[spin] == 0.0) continue;",
+            "    const double rho_cuberoot = cbrt(rho[spin]);",
+            "    const double rho_four_thirds = rho[spin] * rho_cuberoot;",
+            "    const double largest = std::fmax(std::fabs(gradient[spin][0]),",
+            "        std::fmax(std::fabs(gradient[spin][1]), std::fabs(gradient[spin][2])));",
+            "    PbeExchangeProductionValue exchange{};",
+            "    if (largest == 0.0) {",
+            "      exchange = pbe_exchange_direct(rho_cuberoot, rho_four_thirds, 0.0, 0.0, 0.0);",
+            "    } else {",
+            "      double direction[3]{};",
+            "      double norm2 = 0.0;",
+            "      for (unsigned axis = 0; axis < 3; ++axis) {",
+            "        direction[axis] = gradient[spin][axis] / largest;",
+            "        norm2 += direction[axis] * direction[axis];",
+            "      }",
+            "      const double norm = sqrt(norm2);",
+            "      if (rho_four_thirds != 0.0 && largest <= rho_four_thirds / norm) {",
+            "        exchange = pbe_exchange_direct(",
+            "            rho_cuberoot, rho_four_thirds,",
+            "            gradient[spin][0] / rho_four_thirds,",
+            "            gradient[spin][1] / rho_four_thirds,",
+            "            gradient[spin][2] / rho_four_thirds);",
+            "      } else {",
+            "        const double reciprocal_reduced_gradient =",
+            "            (rho[spin] / largest) * (rho_cuberoot / norm);",
+            "        exchange = pbe_exchange_reciprocal(",
+            "            rho_cuberoot, rho_four_thirds, reciprocal_reduced_gradient,",
+            "            direction[0] / norm, direction[1] / norm, direction[2] / norm);",
+            "      }",
+            "    }",
+            "    out.energy_density += exchange_scale * exchange.energy_density;",
+            "    out.rho[spin] += exchange_scale * exchange.rho;",
+            "    for (unsigned axis = 0; axis < 3; ++axis)",
+            "      out.gradient[spin][axis] += exchange_scale * exchange.gradient[axis];",
+            "  }",
+            "  return out;",
+            "}",
+            "",
+        ]
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
@@ -388,6 +607,7 @@ def main() -> None:
         + emit_lda_xc_pw_polarized()
         + emit_lda_xc_pw_polarized_production()
         + emit_pbe_polarized()
+        + emit_pbe_polarized_production()
         + emit_b3lyp_polarized()
         + emit_cam_b3lyp_polarized()
         + emit_r2scan_polarized()

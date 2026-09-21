@@ -1,9 +1,9 @@
 {
   "owner": "d4_dispersion",
-  "current_default": "Internal bounded molecular D4 qualification with a block-cooperative fixed-charge CUDA scheduler plus complete EEQ-D4 CPU/CUDA correctness endpoints; no public production DFT-D4 endpoint.",
-  "generated_capability": "No generated D4 execution yet; MethodIR owns explicit D4 semantic identity and reference/charge data export is reproducible.",
-  "missing_capability": "Production provider/runtime integration, parallel EEQ charge/response scheduling, compiler-generated derivative execution, endpoint performance qualification, PBC/Hessian, and public named-method registration. Canonical r2SCAN-3c still needs its electronic/basis/gCP components under #172.",
-  "retirement_condition": "Retain the scalar path as the numerical oracle and the cooperative scheduler as a bounded native runtime until common compiler primitives reproduce independently validated complete D4 derivatives and production endpoint performance; no per-functional handwritten kernels.",
+  "current_default": "Production molecular D4(BJ)-EEQ owns a bounded ragged CPU/CUDA runtime. CUDA uses bounded EEQ workers plus the separate block-cooperative fixed-charge scheduler; changed geometry, item failure and publication state are explicit.",
+  "generated_capability": "Compiler-generated D4 derivative lowering owns the production EEQ response VJP composition. The retained complete handwritten evaluator is qualification-only.",
+  "missing_capability": "PBC and Hessian execution remain unsupported. Canonical r2SCAN-3c still needs its electronic/basis/gCP components under #172.",
+  "retirement_condition": "Retain the scalar complete evaluator only as a numerical oracle. Production must continue through generated derivative composition and the bounded native scheduler without per-functional handwritten complete-D4 paths.",
   "evidence": [
     "docs/d4_reference.md",
     "tests/data/d4/oracle_manifest.json",
@@ -11,9 +11,12 @@
     "tests/native/test_d4_eeq.cpp",
     "tests/native/test_d4_eeq_cuda.cu",
     "tests/native/test_d4_schedule_cuda.cu",
+    "tests/native/test_d4_production.cpp",
+    "tests/native/test_d4_ragged.cpp",
     ".agents/notes/implemented/architecture/2026-09-19-d4-migration-baseline.md",
     ".agents/notes/implemented/architecture/2026-09-19-d4-eeq-response.md",
+    ".agents/notes/implemented/architecture/2026-09-20-d4-production-runtime.md",
     ".agents/notes/implemented/performance/2026-09-20-d4-cuda-scheduling.md"
   ],
-  "status": "partial"
+  "status": "production"
 }

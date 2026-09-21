@@ -17,6 +17,8 @@ from fractions import Fraction as F
 
 from vibeqc_compiler.integral.expr import Graph
 
+from .pbe_maple import pbe_correlation, pbe_exchange
+
 _PW_PARAMETERS = {
     False: {
         "a": ("0.031091", "0.015545", "0.016887"),
@@ -161,12 +163,176 @@ def lda_xc_pw_polarized_tail_expression() -> typing.Any:
     )
 
 
-def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.Any:
+def pbe_correlation_scaled_expression(*, gradient_correction: bool) -> typing.Any:
+    """Return tail-stable polarized PBE correlation E/vxc in scaled coordinates.
+
+    rho_scale and gradient_ratio are fixed numerical scales selected by the
+    production lowering. Differentiation is therefore only with respect to
+    normalized spin densities and bounded total-gradient components, exactly as
+    documented by semilocal-scaled-v1/pbe-spin-c2-1e-18.
+    """
+
+    graph = Graph()
+    a = graph.variable("normalized_rho_a")
+    b = graph.variable("normalized_rho_b")
+    scale = graph.variable("rho_scale")
+    scale_sixth_root = graph.variable("rho_scale_sixth_root")
+    scale_cuberoot = graph.variable("rho_scale_cuberoot")
+    ratio = graph.variable("gradient_ratio")
+    g = tuple(graph.variable(f"normalized_gradient_{axis}") for axis in range(3))
+    n = a + b
+    up, down = 2 * a / n, 2 * b / n
+    z = (a - b) / n
+    x = scale_sixth_root * n.pow(1.0 / 6.0)
+
+    def log1p_over_x(value: typing.Any) -> typing.Any:
+        series = 1 + value * (
+            F(-1, 2)
+            + value
+            * (F(1, 3) + value * (F(-1, 4) + value * (F(1, 5) - value * F(1, 6))))
+        )
+        return graph.select_le(
+            value,
+            F("1e-4"),
+            series,
+            graph.stable_unary("log1p", value) / value,
+        )
+
+    def pw_channel(index: int) -> typing.Any:
+        parameters = _PW_PARAMETERS[True]
+        aa = F(parameters["a"][index])
+        alpha = F(parameters["alpha"][index])
+        b1 = F(parameters["b1"][index])
+        b2 = F(parameters["b2"][index])
+        b3 = F(parameters["b3"][index])
+        b4 = F(parameters["b4"][index])
+        c = (3 / (4 * math.pi)) ** (1 / 3)
+        x2 = x * x
+        q = b1 * math.sqrt(c) * x2 * x + b2 * c * x2 + b3 * c**1.5 * x + b4 * c**2
+        u = x2 * x2 / (2 * aa * q)
+        return -(x2 + alpha * c) * x2 / q * log1p_over_x(u)
+
+    e0, e1, em = (pw_channel(index) for index in range(3))
+    fz20 = F("1.709920934161365617563962776245")
+    fz = (up.pow(4.0 / 3.0) + down.pow(4.0 / 3.0) - 2) / (2 ** (4 / 3) - 2)
+    eps = e0 + z.pow(4) * fz * (e1 - e0 + em / fz20) - fz * em / fz20
+
+    if gradient_correction:
+        cutoff = F("1e-18")
+
+        def spin_two_thirds(value: typing.Any) -> typing.Any:
+            t = value / cutoff
+            extension = F("1e-12") * t * (F(14, 9) + t * (F(-7, 9) + t * F(2, 9)))
+            return graph.select_le(value, cutoff, extension, value.pow(2.0 / 3.0))
+
+        beta = F("0.06672455060314922")
+        gamma = (1 - math.log(2)) / math.pi**2
+        phi = (spin_two_thirds(up) + spin_two_thirds(down)) / 2
+        phi3 = phi.pow(3)
+        g2 = graph.sum(component * component for component in g)
+        d = (
+            16
+            * 2 ** (2 / 3)
+            * (3 / (4 * math.pi)) ** (1 / 3)
+            * (ratio * scale_cuberoot)
+            * ratio
+            * n.pow(7.0 / 3.0)
+            * phi
+            * phi
+        )
+        aa = beta / (gamma * graph.stable_unary("expm1", -eps / (gamma * phi3)))
+        denominator = d + aa * g2
+        v = d / denominator
+        shape = 1 - v + v * v
+        ordinary = eps + gamma * phi3 * graph.stable_unary(
+            "log1p", (beta / gamma) * g2 / (denominator * shape)
+        )
+        q = -graph.stable_unary("expm1", eps / (gamma * phi3))
+        tail = gamma * phi3 * graph.stable_unary("log1p", -q * v * v / shape)
+        eps = graph.select_le(F(1, 2), v, ordinary, tail)
+
+    correlation = n * eps
+    rho_a = graph.differentiate(correlation, a)
+    rho_b = graph.differentiate(correlation, b)
+    gradient = tuple(
+        ratio * graph.differentiate(correlation, component) for component in g
+    )
+    return (
+        graph,
+        (scale * correlation, rho_a, rho_b, *gradient),
+        (a, b, scale, scale_sixth_root, scale_cuberoot, ratio, *g),
+    )
+
+
+def pbe_exchange_direct_expression() -> typing.Any:
+    """Return the bounded direct-reduced-gradient PBE exchange branch."""
+
+    graph = Graph()
+    rho_cuberoot = graph.variable("rho_cuberoot")
+    rho_four_thirds = graph.variable("rho_four_thirds")
+    u = tuple(graph.variable(f"reduced_gradient_{axis}") for axis in range(3))
+    beta = F("0.06672455060314922")
+    kappa = F("0.804")
+    pi = math.pi
+    cx = F(3, 8) * (3 / pi) ** (1 / 3) * 4 ** (2 / 3)
+    mu = beta * pi * pi / (12 * (6 * pi * pi) ** (2 / 3))
+    u2 = graph.sum(component * component for component in u)
+    denominator = kappa + mu * u2
+    response = mu * kappa * kappa / (denominator * denominator)
+    enhancement = 1 + kappa * mu * u2 / denominator
+    radial_response = response * u2
+    energy = -cx * rho_four_thirds * enhancement
+    rho = -cx * F(4, 3) * rho_cuberoot * (enhancement - 2 * radial_response)
+    gradient = tuple(-2 * cx * response * component for component in u)
+    return graph, (energy, rho, *gradient), (rho_cuberoot, rho_four_thirds, *u)
+
+
+def pbe_exchange_reciprocal_expression() -> typing.Any:
+    """Return the bounded reciprocal-reduced-gradient PBE exchange branch."""
+
+    graph = Graph()
+    rho_cuberoot = graph.variable("rho_cuberoot")
+    rho_four_thirds = graph.variable("rho_four_thirds")
+    reciprocal_reduced = graph.variable("reciprocal_reduced_gradient")
+    direction = tuple(graph.variable(f"gradient_direction_{axis}") for axis in range(3))
+    beta = F("0.06672455060314922")
+    kappa = F("0.804")
+    pi = math.pi
+    cx = F(3, 8) * (3 / pi) ** (1 / 3) * 4 ** (2 / 3)
+    mu = beta * pi * pi / (12 * (6 * pi * pi) ** (2 / 3))
+    t2 = reciprocal_reduced * reciprocal_reduced
+    denominator = kappa * t2 + mu
+    response = mu * kappa * kappa / (denominator * denominator)
+    enhancement = 1 + kappa - kappa * kappa * t2 / denominator
+    radial_response = response * t2
+    energy = -cx * rho_four_thirds * enhancement
+    rho = -cx * F(4, 3) * rho_cuberoot * (enhancement - 2 * radial_response)
+    gradient = tuple(
+        -2 * cx * response * t2 * reciprocal_reduced * component
+        for component in direction
+    )
+    return (
+        graph,
+        (energy, rho, *gradient),
+        (rho_cuberoot, rho_four_thirds, reciprocal_reduced, *direction),
+    )
+
+
+def energy_expression(
+    spec: typing.Any,
+    *,
+    production: bool = False,
+    source: str = "production",
+) -> typing.Any:
     """Return the energy DAG and ordered feature variables.
 
-    Production mode adds only versioned endpoint continuations used by native
-    SCF; the canonical audited expression remains the default.
+    PBE canonical mathematics is lowered from the pinned Libxc Maple source.
+    ``source="handwritten"`` remains only as the #745 retirement/qualification
+    gate. Production mode independently selects versioned SCF endpoint
+    continuations for families that still require them.
     """
+    if source not in ("production", "handwritten"):
+        raise ValueError("XC expression source must be production or handwritten")
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
     if spec.spin == "polarized":
@@ -541,10 +707,18 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
 
     builders = {
         "LDA_X": lambda: exchange(False),
-        "GGA_X_PBE": lambda: exchange(True),
+        "GGA_X_PBE": lambda: (
+            pbe_exchange(graph, spec, variables)
+            if source == "production"
+            else exchange(True)
+        ),
         "LDA_C_PW": lambda: correlation(False, False),
         "LDA_C_PW_MOD": lambda: correlation(False, True),
-        "GGA_C_PBE": lambda: correlation(True, True),
+        "GGA_C_PBE": lambda: (
+            pbe_correlation(graph, spec, variables)
+            if source == "production"
+            else correlation(True, True)
+        ),
         "MGGA_X_SCAN": scan_exchange,
         "MGGA_C_SCAN": scan_correlation,
         "MGGA_X_R2SCAN": r2scan_exchange,

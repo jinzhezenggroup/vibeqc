@@ -7,11 +7,11 @@ RCCSD state has converged and, for the resident CUDA backend, carries the exact
 ``resident_solved_state_identity`` produced by the independent expanded
 physical replay.
 
-This module remains an internal post-HF product boundary. The force binding reuses
-the qualified #746 analytic-gradient owner and does not add another CC/Lambda/Z
-stack. The reserved public C-ABI ``VIBEQC_METHOD_RCCSD_T`` entry stays inactive
-until the generated response graph has a native method owner; Calculator is not
-given a Python-only special case.
+This module remains the internal post-HF energy/force composition boundary.
+The force binding reuses the qualified #746 analytic-gradient owner and does not
+add another CC/Lambda/Z stack. The public native registry separately owns the
+qualified CPU energy path; ``native_public=False`` below means this internal
+force facade is not itself the native/public force implementation.
 """
 
 from __future__ import annotations
@@ -71,9 +71,9 @@ class RCCSDTCapabilities:
 def rccsd_t_method_capabilities(method: str = "rccsd(t)") -> RCCSDTCapabilities:
     """Report the executable internal RCCSD(T) facade capability.
 
-    ``ccsd(t)`` is accepted as a spelling alias because the Python Calculator
-    already uses that public method string for the reserved ABI identifier.
-    The canonical capability identity remains ``rccsd(t)``.
+    ``ccsd(t)`` is accepted as a spelling alias used by the public Calculator.
+    The canonical capability identity remains ``rccsd(t)``. This internal
+    record is distinct from the native registry's current energy-only boundary.
     """
 
     normalized = method.lower().replace(" ", "")

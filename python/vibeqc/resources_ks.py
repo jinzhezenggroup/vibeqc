@@ -76,9 +76,19 @@ def _item_host_inventory(
     quadrature = 16 * (model.grid.radial_points + model.grid.angular_polar) + 8 * a
     matrix_work = byte_product(8, spins, n2, 128 + 2 * (diis_history + 1))
     matrix_work += byte_product(16, diis_history + 1, diis_history + 1)
-    xc_tile = byte_product(
-        8, min(points, model.tile_points), n, 4 if pbe else 1
-    ) + byte_product(8, spins, n2)
+    host_unfused = backend == "cuda" and model.xc_schedule == "host_unfused"
+    xc_tile = (
+        byte_product(8, min(points, model.tile_points), n, 4 if pbe else 1)
+        + byte_product(8, spins, n2)
+        if backend == "cpu" or host_unfused
+        else 0
+    )
+    # Match CudaKsPlan's retained host staging exactly. Host-unfused owns one
+    # density and one Vxc matrix per spin; UKS additionally owns split alpha/
+    # beta matrices for the audited CPU integrator.
+    xc_schedule_staging = (
+        byte_product(8, n2, 2 * spins + (2 if spins == 2 else 0)) if host_unfused else 0
+    )
     if backend == "cpu":
         # Value-only Jet objects retain no derivative arrays. Raw Cartesian
         # Jet integrals coexist with unpacked and spherical transform buffers.
@@ -105,6 +115,7 @@ def _item_host_inventory(
             "warm_and_matrices": warm_and_matrices,
             "history": history,
             "provider": provider,
+            "xc_schedule_staging": xc_schedule_staging,
             "retained": retained,
             "setup_workspace": setup,
             "scf_workspace": matrix_work + xc_tile,
@@ -343,6 +354,7 @@ def ks_resource_request(
         "warm_and_matrices",
         "history",
         "provider",
+        "xc_schedule_staging",
     ):
         estimates.append(
             ResourceEstimate(
@@ -391,7 +403,13 @@ def ks_resource_request(
                         ctypes.c_uint32,
                     )
                 version_value = 0 if options_version is None else options_version()
-                required = 2 if model.requires_composition_v2 else 1
+                required = (
+                    3
+                    if model.requires_schedule_v3
+                    else 2
+                    if model.requires_composition_v2
+                    else 1
+                )
                 if version_value < required:
                     raise NotImplementedError(
                         f"native library does not support KS model options v{required}"
@@ -420,6 +438,9 @@ def ks_resource_request(
                 )
                 for item in items
             ]
+            if model.xc_schedule == "host_unfused":
+                for item in device:
+                    item["xc"] = 0
             for key in ("state", "xc", "coulomb"):
                 estimates.append(
                     ResourceEstimate(

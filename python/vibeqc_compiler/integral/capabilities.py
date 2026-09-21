@@ -456,9 +456,9 @@ def _production_index(
 
     if manifest is None:
         return {}
-    # Import lazily: production.py consumes capability normalization, so an
+    # Import lazily: production_profile.py consumes capability normalization, so an
     # eager import here would create a module cycle during normal generation.
-    from .production import resolve_production_profile
+    from .production_profile import resolve_production_profile
 
     resolved = resolve_production_profile(manifest, architecture, profile)
     result: dict[str, dict[str, object]] = {}
@@ -588,7 +588,7 @@ def main() -> None:
     """Emit the structural/production capability report as JSON."""
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--architecture", default="sm_120")
+    parser.add_argument("--architecture", required=True)
     parser.add_argument(
         "--manifest",
         type=Path,

@@ -71,6 +71,7 @@
     "tools/generate_grid_kernels.py",
     "tools/generate_mp2_native.py",
     "tools/generate_rccsd_native.py",
+    "tools/generate_rccsdt_native.py",
     "tools/generate_xc_cpu.py",
     "tools/generate_xc_gradient_cuda.py",
     "tools/run_codegen.py",
