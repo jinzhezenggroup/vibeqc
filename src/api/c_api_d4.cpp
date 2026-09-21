@@ -92,14 +92,13 @@ vibeqc_status vibeqc_d4_batch_prepare(vibeqc_context* context,
 
   std::lock_guard<std::recursive_mutex> lock(context->mutex);
   try {
-    std::vector<std::uint32_t> offsets;
-    std::vector<std::int32_t> atomic_numbers;
-    std::vector<double> total_charges;
-    std::vector<double> coordinates;
-    offsets.reserve(static_cast<std::size_t>(system_count) + 1);
-    total_charges.reserve(system_count);
-    offsets.push_back(0);
+    if (model->maximum_bytes == 0) {
+      context->last_detail = "D4 production maximum_bytes must be nonzero";
+      return VIBEQC_STATUS_INVALID_ARGUMENT;
+    }
+
     std::uint64_t total_atoms = 0;
+    std::size_t maximum_atoms = 0;
     for (std::uint32_t system = 0; system < system_count; ++system) {
       const auto& input = systems[system];
       if (!vibeqc::api::valid_descriptor(&input)) return VIBEQC_STATUS_ABI_MISMATCH;
@@ -109,17 +108,47 @@ vibeqc_status vibeqc_d4_batch_prepare(vibeqc_context* context,
             "D4 systems require nonempty atomic numbers/coordinates and finite charge";
         return VIBEQC_STATUS_INVALID_ARGUMENT;
       }
+      if (input.atom_count > static_cast<std::uint32_t>(vibeqc::dft::dispersion::kD4MaximumAtoms)) {
+        context->last_detail = "D4 system exceeds the production per-system atom bound";
+        return VIBEQC_STATUS_NOT_IMPLEMENTED;
+      }
       total_atoms += input.atom_count;
-      if (total_atoms > std::numeric_limits<std::uint32_t>::max()) {
+      if (total_atoms > std::numeric_limits<std::uint32_t>::max() ||
+          total_atoms > std::numeric_limits<std::size_t>::max() / 3u) {
         context->last_detail = "D4 ragged fleet exceeds the public offset domain";
         return VIBEQC_STATUS_OUT_OF_MEMORY;
       }
+      maximum_atoms = std::max(maximum_atoms, static_cast<std::size_t>(input.atom_count));
+    }
+    if (!vibeqc::dft::dispersion::d4_minimum_resource_budget_fits(
+            context->state.executed_backend, system_count, static_cast<std::size_t>(total_atoms),
+            maximum_atoms, model->maximum_bytes)) {
+      context->last_detail =
+          "D4 production plan exceeds maximum_bytes even at the minimum workspace schedule";
+      return VIBEQC_STATUS_OUT_OF_MEMORY;
+    }
+
+    std::vector<std::uint32_t> offsets;
+    std::vector<std::int32_t> atomic_numbers;
+    std::vector<double> total_charges;
+    std::vector<double> coordinates;
+    offsets.reserve(static_cast<std::size_t>(system_count) + 1);
+    atomic_numbers.reserve(static_cast<std::size_t>(total_atoms));
+    total_charges.reserve(system_count);
+    coordinates.reserve(3u * static_cast<std::size_t>(total_atoms));
+    offsets.push_back(0);
+    std::uint64_t copied_atoms = 0;
+    for (std::uint32_t system = 0; system < system_count; ++system) {
+      const auto& input = systems[system];
+      copied_atoms += input.atom_count;
+      const auto atom_count = static_cast<std::size_t>(input.atom_count);
+      const auto coordinate_count = 3u * atom_count;
       atomic_numbers.insert(atomic_numbers.end(), input.atomic_numbers,
-                            input.atomic_numbers + input.atom_count);
+                            input.atomic_numbers + atom_count);
       coordinates.insert(coordinates.end(), input.coordinates,
-                         input.coordinates + 3u * input.atom_count);
+                         input.coordinates + coordinate_count);
       total_charges.push_back(input.total_charge);
-      offsets.push_back(static_cast<std::uint32_t>(total_atoms));
+      offsets.push_back(static_cast<std::uint32_t>(copied_atoms));
     }
     vibeqc::dft::dispersion::D4Parameters parameters{
         vibeqc::dft::dispersion::D4ReferenceModel::eeq,

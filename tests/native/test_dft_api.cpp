@@ -415,6 +415,36 @@ int main() {
                                          60.0,
                                          40.0,
                                          64u << 20};
+    {
+      auto inaccessible = d4_system;
+      inaccessible.atomic_numbers =
+          reinterpret_cast<const std::int32_t*>(static_cast<std::uintptr_t>(1));
+      inaccessible.coordinates = reinterpret_cast<const double*>(static_cast<std::uintptr_t>(1));
+      vibeqc_d4_batch* rejected =
+          reinterpret_cast<vibeqc_d4_batch*>(static_cast<std::uintptr_t>(1));
+
+      auto invalid_budget = d4_model;
+      invalid_budget.maximum_bytes = 0;
+      require(vibeqc_d4_batch_prepare(fixture.context, &inaccessible, 1, &invalid_budget,
+                                      &rejected) == VIBEQC_STATUS_INVALID_ARGUMENT &&
+                  rejected == nullptr,
+              "D4 zero-budget admission touched caller arrays or published a batch");
+
+      rejected = reinterpret_cast<vibeqc_d4_batch*>(static_cast<std::uintptr_t>(1));
+      invalid_budget.maximum_bytes = 1;
+      require(vibeqc_d4_batch_prepare(fixture.context, &inaccessible, 1, &invalid_budget,
+                                      &rejected) == VIBEQC_STATUS_OUT_OF_MEMORY &&
+                  rejected == nullptr,
+              "D4 impossible-budget admission touched caller arrays or published a batch");
+
+      rejected = reinterpret_cast<vibeqc_d4_batch*>(static_cast<std::uintptr_t>(1));
+      auto oversized = inaccessible;
+      oversized.atom_count = 257;
+      require(vibeqc_d4_batch_prepare(fixture.context, &oversized, 1, &d4_model, &rejected) ==
+                      VIBEQC_STATUS_NOT_IMPLEMENTED &&
+                  rejected == nullptr,
+              "D4 oversized-system admission touched caller arrays or published a batch");
+    }
     vibeqc_d4_batch* d4_batch = nullptr;
     require(vibeqc_d4_batch_prepare(fixture.context, &d4_system, 1, &d4_model, &d4_batch) ==
                 VIBEQC_STATUS_SUCCESS,

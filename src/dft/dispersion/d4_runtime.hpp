@@ -44,6 +44,10 @@ struct D4RuntimeCounters {
 
 struct D4CudaOwner;
 
+[[nodiscard]] bool d4_minimum_resource_budget_fits(vibeqc_backend backend, std::size_t systems,
+                                                   std::size_t atoms, std::size_t maximum_atoms,
+                                                   std::uint64_t maximum_bytes) noexcept;
+
 class D4Plan {
  public:
   static std::unique_ptr<D4Plan> prepare(

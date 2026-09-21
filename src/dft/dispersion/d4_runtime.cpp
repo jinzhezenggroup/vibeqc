@@ -91,6 +91,17 @@ bool valid_profile_parameters(const D4Parameters& p, D4EEQProfile profile) {
 
 }  // namespace
 
+bool d4_minimum_resource_budget_fits(vibeqc_backend backend, std::size_t systems, std::size_t atoms,
+                                     std::size_t maximum_atoms,
+                                     std::uint64_t maximum_bytes) noexcept {
+  if (!maximum_bytes || !systems || !atoms || !maximum_atoms ||
+      maximum_atoms > static_cast<std::size_t>(kD4MaximumAtoms))
+    return false;
+  bool overflow = false;
+  (void)resources_for(backend, systems, atoms, maximum_atoms, maximum_bytes, 1u, overflow);
+  return !overflow;
+}
+
 std::unique_ptr<D4Plan> D4Plan::prepare(
     vibeqc_backend backend, int device_id, std::vector<std::uint32_t> offsets,
     std::vector<std::int32_t> atomic_numbers, std::vector<double> total_charges,
