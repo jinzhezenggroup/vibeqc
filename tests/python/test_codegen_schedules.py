@@ -165,8 +165,8 @@ def test_small_shell_schedule_space_includes_packed_and_cooperative_variants() -
     assert candidates[3].tasks_per_block == 32
 
 
-def test_scalar_rys2_schedule_is_compiler_owned_for_untuned_class() -> None:
-    """Let a compatible class inherit scalar Rys2 without a class table."""
+def test_two_root_scalar_schedule_is_compiler_owned_for_untuned_class() -> None:
+    """Let a compatible two-root force inherit scalar mapping from IR traits."""
 
     integral = build_integral_ir(
         PSSS_SPEC,
@@ -178,7 +178,16 @@ def test_scalar_rys2_schedule_is_compiler_owned_for_untuned_class() -> None:
     assert len(scalar) == 1
     assert scalar[0].block_threads == TEST_CUDA_TARGET.warp_size == 32
     assert scalar[0].tasks_per_warp == TEST_CUDA_TARGET.warp_size
-    assert scalar[0].minimum_blocks_per_sm == 8
+    expected_resident_blocks = min(
+        TEST_CUDA_TARGET.maximum_blocks_per_sm,
+        TEST_CUDA_TARGET.maximum_threads_per_sm // TEST_CUDA_TARGET.warp_size,
+        TEST_CUDA_TARGET.registers_per_sm
+        // (
+            TEST_CUDA_TARGET.maximum_registers_per_thread
+            * TEST_CUDA_TARGET.warp_size
+        ),
+    )
+    assert scalar[0].minimum_blocks_per_sm == expected_resident_blocks
     assert not scalar[0].shared_coulomb
 
     constrained_target = replace(TEST_CUDA_TARGET, maximum_blocks_per_sm=4)
@@ -207,14 +216,25 @@ def test_scalar_rys2_schedule_is_compiler_owned_for_untuned_class() -> None:
     assert any(trial.schedule == scalar[0] for trial in trials)
 
 
+    generic = build_integral_ir(
+        PSSS_SPEC,
+        consumers=(KernelConsumer.FORCE,),
+        recurrence="subset_wick",
+    )
+    assert all(
+        candidate.kind != ScheduleKind.THREAD_TASKS
+        for candidate in schedule_candidates(generic, target=TEST_CUDA_TARGET)
+    )
+
+
 @pytest.mark.parametrize(
     "sm_threads,block_limit,expected",
     [(32, 16, 1), (64, 16, 2), (128, 16, 4), (1536, 4, 4), (1536, 24, 8)],
 )
-def test_scalar_rys2_launch_bounds_fit_resident_threads(
+def test_scalar_two_root_launch_bounds_fit_target_resources(
     sm_threads: int, block_limit: int, expected: int
 ) -> None:
-    """Runtime-enriched targets must fit both resident blocks and threads."""
+    """Launch bounds must fit the target block, thread, and register limits."""
     target = replace(
         TEST_CUDA_TARGET,
         maximum_threads_per_block=min(
