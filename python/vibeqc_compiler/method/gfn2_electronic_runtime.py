@@ -54,7 +54,10 @@ def build_gfn2_runtime_electronic_pair_primal() -> Program:
     overlap = _input("overlap", differentiable=True)
     row_scalar = _input("row_scalar_potential")
     column_scalar = _input("column_scalar_potential")
-    terms = [multiply(overlap, add(row_scalar, column_scalar))]
+    # Preserve the native finite-range contract: apply -1/2 before products,
+    # and do not form a potentially overflowing sum of unscaled potentials.
+    half_overlap = add(overlap, coefficients=("-1/2",))
+    terms = [multiply(half_overlap, row_scalar), multiply(half_overlap, column_scalar)]
 
     for prefix, components in (
         ("dipole", GFN2_DIPOLE_COMPONENTS),
@@ -67,12 +70,12 @@ def build_gfn2_runtime_electronic_pair_primal() -> Program:
             column_potential = _input(f"{prefix}_column_potential_{component}")
             terms.extend(
                 (
-                    multiply(forward, column_potential),
-                    multiply(reverse, row_potential),
+                    multiply(add(forward, coefficients=("-1/2",)), column_potential),
+                    multiply(add(reverse, coefficients=("-1/2",)), row_potential),
                 )
             )
 
-    shift = add(*terms, coefficients=("-1/2",) * len(terms))
+    shift = add(*terms)
     return Program(
         {"shift": shift},
         provenance={
