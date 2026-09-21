@@ -51,6 +51,30 @@ bool upper_triangle(char value) {
   throw std::invalid_argument("CPU SYRK triangle must be U or L");
 }
 
+bool trsm_left_side(char value) {
+  if (value == 'L' || value == 'l') return true;
+  if (value == 'R' || value == 'r') return false;
+  throw std::invalid_argument("CPU TRSM side must be L or R");
+}
+
+bool trsm_upper_triangle(char value) {
+  if (value == 'U' || value == 'u') return true;
+  if (value == 'L' || value == 'l') return false;
+  throw std::invalid_argument("CPU TRSM triangle must be U or L");
+}
+
+bool trsm_transpose(char value) {
+  if (value == 'N' || value == 'n') return false;
+  if (value == 'T' || value == 't') return true;
+  throw std::invalid_argument("CPU TRSM transpose must be N or T");
+}
+
+bool trsm_unit_diagonal(char value) {
+  if (value == 'U' || value == 'u') return true;
+  if (value == 'N' || value == 'n') return false;
+  throw std::invalid_argument("CPU TRSM diagonal must be U or N");
+}
+
 void validate_plan(const CpuLinalgPlan& plan) {
   if (plan.provider_threads < 1)
     throw std::invalid_argument("CPU linear algebra thread count must be positive");
@@ -94,6 +118,49 @@ void scalar_syrk(bool upper, bool trans, std::size_t n, std::size_t k, const dou
       }
       const std::size_t index = i * n + j;
       c[index] = beta == 0.0 ? alpha * sum : alpha * sum + beta * c[index];
+    }
+  }
+}
+
+void scalar_trsm(bool left, bool upper, bool trans, bool unit_diagonal, std::size_t m,
+                 std::size_t n, const double* a, double* b, double alpha) {
+  const std::size_t order = left ? m : n;
+  const bool effective_upper = trans ? !upper : upper;
+  const auto a_value = [&](std::size_t row, std::size_t column) {
+    return trans ? a[column * order + row] : a[row * order + column];
+  };
+
+  if (alpha != 1.0)
+    for (std::size_t index = 0; index < m * n; ++index) b[index] *= alpha;
+
+  if (left) {
+    for (std::size_t column = 0; column < n; ++column) {
+      for (std::size_t step = 0; step < m; ++step) {
+        const std::size_t row = effective_upper ? m - 1 - step : step;
+        double value = b[row * n + column];
+        if (effective_upper) {
+          for (std::size_t p = row + 1; p < m; ++p) value -= a_value(row, p) * b[p * n + column];
+        } else {
+          for (std::size_t p = 0; p < row; ++p) value -= a_value(row, p) * b[p * n + column];
+        }
+        if (!unit_diagonal) value /= a_value(row, row);
+        b[row * n + column] = value;
+      }
+    }
+    return;
+  }
+
+  for (std::size_t row = 0; row < m; ++row) {
+    for (std::size_t step = 0; step < n; ++step) {
+      const std::size_t column = effective_upper ? step : n - 1 - step;
+      double value = b[row * n + column];
+      if (effective_upper) {
+        for (std::size_t p = 0; p < column; ++p) value -= b[row * n + p] * a_value(p, column);
+      } else {
+        for (std::size_t p = column + 1; p < n; ++p) value -= b[row * n + p] * a_value(p, column);
+      }
+      if (!unit_diagonal) value /= a_value(column, column);
+      b[row * n + column] = value;
     }
   }
 }
@@ -314,6 +381,26 @@ void openblas_syrk(bool upper, bool trans, std::size_t n, std::size_t k, const d
 #endif
 }
 
+void openblas_trsm(bool left, bool upper, bool trans, bool unit_diagonal, std::size_t m,
+                   std::size_t n, const double* a, double* b, double alpha,
+                   const CpuLinalgPlan& plan) {
+  const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  if (m > limit || n > limit) throw std::length_error("OpenBLAS TRSM dimensions exceed int range");
+  OpenBlasThreadGuard guard(plan);
+  const auto side = left ? CblasLeft : CblasRight;
+  const auto triangle = upper ? CblasUpper : CblasLower;
+  const auto transpose_a = trans ? CblasTrans : CblasNoTrans;
+  const auto diagonal = unit_diagonal ? CblasUnit : CblasNonUnit;
+  const int order = static_cast<int>(left ? m : n);
+#if VIBEQC_OPENBLAS_SCIPY_PREFIX
+  scipy_cblas_dtrsm(CblasRowMajor, side, triangle, transpose_a, diagonal, static_cast<int>(m),
+                    static_cast<int>(n), alpha, a, order, b, static_cast<int>(n));
+#else
+  cblas_dtrsm(CblasRowMajor, side, triangle, transpose_a, diagonal, static_cast<int>(m),
+              static_cast<int>(n), alpha, a, order, b, static_cast<int>(n));
+#endif
+}
+
 int openblas_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& plan) {
 #if VIBEQC_OPENBLAS_HAS_LAPACKE
   if (n > static_cast<std::size_t>(std::numeric_limits<int>::max()))
@@ -517,6 +604,40 @@ void cpu_syrk(char uplo, char trans, std::size_t n, std::size_t k, const double*
   }
 #endif
   scalar_syrk(upper, transposed, n, k, a, c, alpha, beta);
+}
+
+void cpu_trsm(char side, char uplo, char trans, char diag, std::size_t m, std::size_t n,
+              const double* a, double* b, double alpha, const CpuLinalgPlan& plan) {
+  const bool left = trsm_left_side(side);
+  const bool upper = trsm_upper_triangle(uplo);
+  const bool transposed = trsm_transpose(trans);
+  const bool unit_diagonal = trsm_unit_diagonal(diag);
+  validate_plan(plan);
+  if (!m || !n) return;
+  const auto elements = checked_matrix_elements(m, n);
+  if (!b) throw std::invalid_argument("CPU TRSM received null output storage");
+  if (alpha == 0.0) {
+    std::fill(b, b + elements, 0.0);
+    return;
+  }
+  const std::size_t order = left ? m : n;
+  checked_matrix_elements(order, order);
+  if (!a) throw std::invalid_argument("CPU TRSM received null triangular storage");
+
+  CpuLinalgProvider provider = plan.provider;
+  if (provider == CpuLinalgProvider::automatic) {
+    provider =
+        fits_openblas(m, n, order) ? resolve_cpu_linalg_provider(plan) : CpuLinalgProvider::scalar;
+  } else {
+    provider = resolve_cpu_linalg_provider(plan);
+  }
+#if VIBEQC_HAS_OPENBLAS
+  if (provider == CpuLinalgProvider::openblas) {
+    openblas_trsm(left, upper, transposed, unit_diagonal, m, n, a, b, alpha, plan);
+    return;
+  }
+#endif
+  scalar_trsm(left, upper, transposed, unit_diagonal, m, n, a, b, alpha);
 }
 
 int cpu_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& plan) {
