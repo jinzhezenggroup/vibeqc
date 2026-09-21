@@ -110,8 +110,8 @@ vibeqc_status vibeqc_nonlocal_plan_execute(vibeqc_nonlocal_plan* plan,
       plan->context->last_detail = "VV10 geometry outputs do not match the prepared point count";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
-    std::vector<double> staged_vrho(points);
-    std::vector<double> staged_vsigma(points);
+    std::vector<double> staged_vrho(publish_features ? points : 0u);
+    std::vector<double> staged_vsigma(publish_features ? points : 0u);
     std::vector<double> staged_point(publish_geometry ? 3u * points : 0u);
     std::vector<double> staged_weight(publish_geometry ? points : 0u);
     double energy{};

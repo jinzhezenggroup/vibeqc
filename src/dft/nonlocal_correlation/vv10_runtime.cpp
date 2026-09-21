@@ -231,15 +231,18 @@ vibeqc_status Vv10Plan::execute(std::span<const double> coordinates,
     const auto sigma = x * x + y * y + z * z;
     const auto rho2 = rho * rho;
     const auto rho4 = rho2 * rho2;
-    const auto rho5 = rho4 * rho;
     const auto sigma2 = sigma * sigma;
     const auto omega2 = c * sigma2 / rho4 + kFourPiOverThree * rho;
     const auto omega = std::sqrt(omega2);
     const auto kappa = b * 1.5 * std::numbers::pi_v<double> *
                        std::pow(rho / (9.0 * std::numbers::pi_v<double>), 1.0 / 6.0);
-    const auto domega_drho = (kFourPiOverThree - 4.0 * c * sigma2 / rho5) / (2.0 * omega);
-    const auto domega_dsigma = c * sigma / (omega * rho4);
-    const auto dkappa_drho = kappa / (6.0 * rho);
+    double domega_drho = 0.0, domega_dsigma = 0.0, dkappa_drho = 0.0;
+    if (want_features) {
+      const auto rho5 = rho4 * rho;
+      domega_drho = (kFourPiOverThree - 4.0 * c * sigma2 / rho5) / (2.0 * omega);
+      domega_dsigma = c * sigma / (omega * rho4);
+      dkappa_drho = kappa / (6.0 * rho);
+    }
     if (!finite_positive(omega) || !finite_positive(kappa) || !std::isfinite(domega_drho) ||
         !std::isfinite(domega_dsigma) || !std::isfinite(dkappa_drho)) {
       detail = "VV10 local scales are nonfinite";

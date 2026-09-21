@@ -38,7 +38,8 @@ unsigned launch_blocks(std::size_t count, unsigned threads) {
 __global__ void local_scales_kernel(std::size_t npoint, double b, double c, const double* weights,
                                     const double* density, const double* gradient, double* omega,
                                     double* kappa, double* domega_drho, double* domega_dsigma,
-                                    double* dkappa_drho, double* weighted_density, int* failed) {
+                                    double* dkappa_drho, double* weighted_density,
+                                    bool want_features, int* failed) {
   const auto i = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (i >= npoint) return;
   const double gx = gradient[3 * i];
@@ -49,12 +50,15 @@ __global__ void local_scales_kernel(std::size_t npoint, double b, double c, cons
   const double ratio = sigma / (rho * rho);
   omega[i] = sqrt(c * ratio * ratio + (4.0 * kPi / 3.0) * rho);
   kappa[i] = b * 1.5 * kPi * pow(rho / (9.0 * kPi), 1.0 / 6.0);
+  weighted_density[i] = weights[i] * rho;
+  if (!isfinite(omega[i]) || !isfinite(kappa[i]) || kappa[i] <= 0.0 ||
+      !isfinite(weighted_density[i]))
+    atomicExch(failed, 1);
+  if (!want_features) return;
   domega_drho[i] = ((4.0 * kPi / 3.0) - 4.0 * c * sigma * sigma / pow(rho, 5.0)) / (2.0 * omega[i]);
   domega_dsigma[i] = c * sigma / (omega[i] * pow(rho, 4.0));
   dkappa_drho[i] = kappa[i] / (6.0 * rho);
-  weighted_density[i] = weights[i] * rho;
-  if (!isfinite(omega[i]) || !isfinite(kappa[i]) || kappa[i] <= 0.0 || !isfinite(domega_drho[i]) ||
-      !isfinite(domega_dsigma[i]) || !isfinite(dkappa_drho[i]) || !isfinite(weighted_density[i]))
+  if (!isfinite(domega_drho[i]) || !isfinite(domega_dsigma[i]) || !isfinite(dkappa_drho[i]))
     atomicExch(failed, 1);
 }
 
@@ -79,27 +83,29 @@ __global__ void pair_kernel_ordered(std::size_t begin, std::size_t count, std::s
     const double dz = points[3 * j + 2] - points[3 * i + 2];
     const double r2 = dx * dx + dy * dy + dz * dz;
     const double phi = pair_kernel(r2, omega[i], omega[j], kappa[i], kappa[j], parameters.variant);
-    double dphi_domega = 0.0;
-    double dphi_dkappa = 0.0;
-    if (parameters.variant == Vv10Variant::rvv10) {
-      const double zi = 1.0 + omega[i] / kappa[i] * r2;
-      const double zj = 1.0 + omega[j] / kappa[j] * r2;
-      const double factor_z = 1.0 / zi + 1.0 / (zi + zj);
-      dphi_domega = -phi * r2 / kappa[i] * factor_z;
-      dphi_dkappa = phi / kappa[i] * (-1.5 + (zi - 1.0) * factor_z);
-    } else {
-      const double gi = omega[i] * r2 + kappa[i];
-      const double gj = omega[j] * r2 + kappa[j];
-      const double dphi_dgi = -phi * (1.0 / gi + 1.0 / (gi + gj));
-      dphi_domega = dphi_dgi * r2;
-      dphi_dkappa = dphi_dgi;
-    }
-    const double dphi_drho = dphi_domega * domega_drho[i] + dphi_dkappa * dkappa_drho[i];
-    const double dphi_dsigma = dphi_domega * domega_dsigma[i];
     const double factor = weighted_density[j];
     sum_phi += factor * phi;
-    sum_rho += factor * dphi_drho;
-    sum_sigma += factor * dphi_dsigma;
+    if (vrho) {
+      double dphi_domega = 0.0;
+      double dphi_dkappa = 0.0;
+      if (parameters.variant == Vv10Variant::rvv10) {
+        const double zi = 1.0 + omega[i] / kappa[i] * r2;
+        const double zj = 1.0 + omega[j] / kappa[j] * r2;
+        const double factor_z = 1.0 / zi + 1.0 / (zi + zj);
+        dphi_domega = -phi * r2 / kappa[i] * factor_z;
+        dphi_dkappa = phi / kappa[i] * (-1.5 + (zi - 1.0) * factor_z);
+      } else {
+        const double gi = omega[i] * r2 + kappa[i];
+        const double gj = omega[j] * r2 + kappa[j];
+        const double dphi_dgi = -phi * (1.0 / gi + 1.0 / (gi + gj));
+        dphi_domega = dphi_dgi * r2;
+        dphi_dkappa = dphi_dgi;
+      }
+      const double dphi_drho = dphi_domega * domega_drho[i] + dphi_dkappa * dkappa_drho[i];
+      const double dphi_dsigma = dphi_domega * domega_dsigma[i];
+      sum_rho += factor * dphi_drho;
+      sum_sigma += factor * dphi_dsigma;
+    }
     if (point_derivative) {
       double logarithmic = 0.0;
       if (parameters.variant == Vv10Variant::rvv10) {
@@ -122,15 +128,17 @@ __global__ void pair_kernel_ordered(std::size_t begin, std::size_t count, std::s
   }
   const double scale = parameters.coefficient;
   energy_terms[i] = scale * weighted_density[i] * (beta + 0.5 * sum_phi);
-  vrho[i] = scale * (beta + sum_phi + density[i] * sum_rho);
-  vsigma[i] = scale * density[i] * sum_sigma;
+  if (vrho) {
+    vrho[i] = scale * (beta + sum_phi + density[i] * sum_rho);
+    vsigma[i] = scale * density[i] * sum_sigma;
+  }
   if (point_derivative) {
     point_derivative[3 * i] = scale * weighted_density[i] * coordinate_sum[0];
     point_derivative[3 * i + 1] = scale * weighted_density[i] * coordinate_sum[1];
     point_derivative[3 * i + 2] = scale * weighted_density[i] * coordinate_sum[2];
     weight_derivative[i] = scale * density[i] * (beta + sum_phi);
   }
-  if (!isfinite(energy_terms[i]) || !isfinite(vrho[i]) || !isfinite(vsigma[i]) ||
+  if (!isfinite(energy_terms[i]) || (vrho && (!isfinite(vrho[i]) || !isfinite(vsigma[i]))) ||
       (point_derivative &&
        (!isfinite(point_derivative[3 * i]) || !isfinite(point_derivative[3 * i + 1]) ||
         !isfinite(point_derivative[3 * i + 2]) || !isfinite(weight_derivative[i]))))
@@ -145,12 +153,18 @@ void execute_vv10_cuda(const double* points_xyz, const double* weights, const do
                        double* vsigma, double* point_derivative, double* weight_derivative) {
   if ((point_derivative == nullptr) != (weight_derivative == nullptr))
     throw std::invalid_argument("nonlocal geometry outputs must be requested together");
+  if ((vrho == nullptr) != (vsigma == nullptr))
+    throw std::invalid_argument("nonlocal feature outputs must be requested together");
+  const bool features = vrho != nullptr;
   const bool geometry = point_derivative != nullptr;
   const auto effective_tile = std::min(tile_points, npoint);
-  const auto arrays = geometry ? std::size_t{21} : std::size_t{17};
+  const auto arrays = std::size_t{12} + (features ? 5u : 0u) + (geometry ? 4u : 0u);
   const auto doubles =
       runtime::size_add(runtime::size_mul(arrays, npoint, "VV10 CUDA workspace extent overflow"),
                         std::size_t{1}, "VV10 CUDA failure-flag extent overflow");
+  // Host destinations must outlive stream/arena teardown on every error path.
+  std::vector<double> host_energy(npoint);
+  int host_failed = 0;
   runtime::CudaDeviceScope device(device_id);
   runtime::OwnedCudaStream stream(device_id);
   runtime::OwnedCudaBuffer<double> arena(device_id, doubles, stream.get());
@@ -166,13 +180,13 @@ void execute_vv10_cuda(const double* points_xyz, const double* weights, const do
   double* d_gradient = take(3 * npoint);
   double* omega = take(npoint);
   double* kappa = take(npoint);
-  double* domega_drho = take(npoint);
-  double* domega_dsigma = take(npoint);
-  double* dkappa_drho = take(npoint);
+  double* domega_drho = features ? take(npoint) : nullptr;
+  double* domega_dsigma = features ? take(npoint) : nullptr;
+  double* dkappa_drho = features ? take(npoint) : nullptr;
   double* weighted_density = take(npoint);
   double* energy_terms = take(npoint);
-  double* d_vrho = take(npoint);
-  double* d_vsigma = take(npoint);
+  double* d_vrho = features ? take(npoint) : nullptr;
+  double* d_vsigma = features ? take(npoint) : nullptr;
   double* d_point_derivative = geometry ? take(3 * npoint) : nullptr;
   double* d_weight_derivative = geometry ? take(npoint) : nullptr;
   int* failed = reinterpret_cast<int*>(cursor);
@@ -193,7 +207,7 @@ void execute_vv10_cuda(const double* points_xyz, const double* weights, const do
   const auto blocks = launch_blocks(npoint, threads);
   local_scales_kernel<<<blocks, threads, 0, stream.get()>>>(
       npoint, parameters.b, parameters.c, d_weights, d_density, d_gradient, omega, kappa,
-      domega_drho, domega_dsigma, dkappa_drho, weighted_density, failed);
+      domega_drho, domega_dsigma, dkappa_drho, weighted_density, features, failed);
   runtime::cuda_resource_check(cudaGetLastError());
   const double beta = std::pow(3.0 / (parameters.b * parameters.b), 0.75) / 32.0;
   for (std::size_t begin = 0; begin < npoint; begin += effective_tile) {
@@ -206,7 +220,6 @@ void execute_vv10_cuda(const double* points_xyz, const double* weights, const do
     runtime::cuda_resource_check(cudaGetLastError());
   }
 
-  std::vector<double> host_energy(npoint);
   runtime::cuda_resource_check(cudaMemcpyAsync(host_energy.data(), energy_terms,
                                                npoint * sizeof(double), cudaMemcpyDeviceToHost,
                                                stream.get()));
@@ -224,7 +237,6 @@ void execute_vv10_cuda(const double* points_xyz, const double* weights, const do
                                                  npoint * sizeof(double), cudaMemcpyDeviceToHost,
                                                  stream.get()));
   }
-  int host_failed = 0;
   runtime::cuda_resource_check(
       cudaMemcpyAsync(&host_failed, failed, sizeof(int), cudaMemcpyDeviceToHost, stream.get()));
   stream.synchronize();
