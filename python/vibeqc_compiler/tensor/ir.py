@@ -657,7 +657,48 @@ def segment_sum(
     )
 
 
-def runtime_indexed_select(\n    value: Node,\n    selections: typing.Iterable[tuple[int, Node]],\n    index: Index,\n) -> Node:\n    """Select runtime source coordinates into one explicit leading domain.\n\n    Every map is a rank-one int64 control tensor on the output index and\n    supplies one source coordinate per domain element. Selected axes disappear\n    from the source; all remaining source axes retain their semantic domains.\n    Executors validate every runtime coordinate before reading the source.\n    """\n\n    if not isinstance(index, Index):\n        raise TypeError("runtime_indexed_select requires an explicit output Index")\n    selections = tuple(selections)\n    if not selections:\n        raise ValueError("runtime_indexed_select requires at least one selected axis")\n    axes = tuple(axis for axis, _ in selections)\n    maps = tuple(mapping for _, mapping in selections)\n    selected = set(axes)\n    indices = (index,) + tuple(\n        source_index\n        for axis, source_index in enumerate(value.spec.indices)\n        if axis not in selected\n    )\n    declared = value.spec.result(indices=indices, symmetries=())\n    spec = _infer(\n        "runtime_indexed_select",\n        (value, *maps),\n        {"axes": axes},\n        declared,\n    )\n    return Node(\n        "runtime_indexed_select",\n        (value, *maps),\n        spec,\n        (("axes", axes),),\n    )\n\ndef reduce_sum(value: Node, axes: typing.Any) -> Node:
+def runtime_indexed_select(
+    value: Node,
+    selections: typing.Iterable[tuple[int, Node]],
+    index: Index,
+) -> Node:
+    """Select runtime source coordinates into one explicit leading domain.
+
+    Every map is a rank-one int64 control tensor on the output index and
+    supplies one source coordinate per domain element. Selected axes disappear
+    from the source; all remaining source axes retain their semantic domains.
+    Executors validate every runtime coordinate before reading the source.
+    """
+
+    if not isinstance(index, Index):
+        raise TypeError("runtime_indexed_select requires an explicit output Index")
+    selections = tuple(selections)
+    if not selections:
+        raise ValueError("runtime_indexed_select requires at least one selected axis")
+    axes = tuple(axis for axis, _ in selections)
+    maps = tuple(mapping for _, mapping in selections)
+    selected = set(axes)
+    indices = (index,) + tuple(
+        source_index
+        for axis, source_index in enumerate(value.spec.indices)
+        if axis not in selected
+    )
+    declared = value.spec.result(indices=indices, symmetries=())
+    spec = _infer(
+        "runtime_indexed_select",
+        (value, *maps),
+        {"axes": axes},
+        declared,
+    )
+    return Node(
+        "runtime_indexed_select",
+        (value, *maps),
+        spec,
+        (("axes", axes),),
+    )
+
+
+def reduce_sum(value: Node, axes: typing.Any) -> Node:
     """Sum specified axes; reducing every axis produces a rank-zero scalar."""
     axes = _axes(axes, len(value.spec.indices))
     return _make("reduce", (value,), {"axes": tuple(sorted(axes))})
