@@ -40,6 +40,7 @@
 #include "scf/cuda/direct_bounded_pages.hpp"
 #include "scf/cuda/direct_bounded_tasks.hpp"
 #include "scf/cuda/direct_cached_tensor_kernels.hpp"
+#include "generated_direct_resident_psss_schedule.cuh"
 #include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_density_bounds.hpp"
 #include "scf/cuda/direct_generated_tasks.hpp"
