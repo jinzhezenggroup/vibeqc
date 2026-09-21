@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import math
 import typing
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field, fields, replace
 from hashlib import sha256
 from types import SimpleNamespace
@@ -36,6 +37,7 @@ class DFCCSDTMethodContract:
     reference_identity: str
     reference_hamiltonian_id: str
     correlation_hamiltonian_id: str
+    correlation_snapshot_identity: str
     geometry_hash: str
     orbital_basis_hash: str
     auxiliary_basis_hash: str
@@ -130,10 +132,12 @@ def correlation_df_reference(
         or metric.inverse_square_root.shape != (source.naux, source.naux)
     ):
         raise ValueError("reference/source/metric identity mismatch")
+    correlated = replace(reference, hamiltonian_id=metric.hamiltonian_id)
     contract = DFCCSDTMethodContract(
         reference_identity=reference.identity,
         reference_hamiltonian_id=reference.hamiltonian_id,
         correlation_hamiltonian_id=metric.hamiltonian_id,
+        correlation_snapshot_identity=correlated.identity,
         geometry_hash=reference.geometry_hash,
         orbital_basis_hash=reference.basis_hash,
         auxiliary_basis_hash=metric.auxiliary_hash,
@@ -148,7 +152,6 @@ def correlation_df_reference(
     # C, eps, F and E_HF are deliberately unchanged.  The new snapshot identity
     # only says that correlation integral blocks belong to the selected DF
     # Hamiltonian instead of the four-center Hamiltonian.
-    correlated = replace(reference, hamiltonian_id=metric.hamiltonian_id)
     return correlated, contract
 
 
@@ -225,6 +228,7 @@ class DenseDFOracleProvider(ConventionalProvider):
             not isinstance(snapshot, ReferenceSnapshot)
             or not isinstance(contract, DFCCSDTMethodContract)
             or snapshot.hamiltonian_id != contract.correlation_hamiltonian_id
+            or snapshot.identity != contract.correlation_snapshot_identity
             or snapshot.geometry_hash != contract.geometry_hash
             or snapshot.basis_hash != contract.orbital_basis_hash
         ):
@@ -302,8 +306,11 @@ def dense_df_oracle_from_three_index(
 ) -> PreparedDenseDFCCSDTOracle:
     """Create the independent dense oracle from an already-whitened B tensor."""
 
-    if snapshot.hamiltonian_id != contract.correlation_hamiltonian_id:
-        raise ValueError("snapshot does not carry the DF correlation Hamiltonian")
+    if (
+        snapshot.hamiltonian_id != contract.correlation_hamiltonian_id
+        or snapshot.identity != contract.correlation_snapshot_identity
+    ):
+        raise ValueError("dense DF oracle snapshot identity mismatch")
     source_b = _validate_three_index(
         three_index, snapshot.nmo, contract.metric_dimension
     )
@@ -415,11 +422,17 @@ def run_dense_df_ccsdt_oracle(
         options=options,
         vir_chunk_size=vir_chunk_size,
     )
+    diagnostics = deepcopy(prepared.diagnostics)
+    diagnostics.update(
+        method_contract_identity=prepared.contract.identity,
+        three_index_sha256=_array_hash(prepared.three_index),
+        eri_sha256=_array_hash(prepared.eri_mo),
+    )
     identity = canonical_hash(
         {
             "method_contract_identity": prepared.contract.identity,
-            "three_index_sha256": prepared.diagnostics["three_index_sha256"],
-            "eri_sha256": prepared.diagnostics["eri_sha256"],
+            "three_index_sha256": diagnostics["three_index_sha256"],
+            "eri_sha256": diagnostics["eri_sha256"],
             "rccsd_t_result_identity": result.provenance["result_identity"],
         }
     )
@@ -431,8 +444,8 @@ def run_dense_df_ccsdt_oracle(
             "schema": "vibeqc.df-ccsd-t.oracle-result/1",
             "method": "df-rccsd(t)-correlation-only",
             "method_contract": prepared.contract.record(),
-            "oracle": prepared.diagnostics,
+            "oracle": diagnostics,
             "oracle_identity": identity,
-            "rccsd_t": result.provenance,
+            "rccsd_t": deepcopy(result.provenance),
         },
     )
