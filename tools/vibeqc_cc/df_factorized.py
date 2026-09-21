@@ -54,9 +54,7 @@ def _validate_factor_inputs(
     t2: typing.Any,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     bov, bvv, t1, t2 = (np.asarray(x) for x in (bov, bvv, t1, t2))
-    if any(
-        x.dtype != np.float64 or not np.isfinite(x).all() for x in (bov, bvv, t1, t2)
-    ):
+    if any(x.dtype != np.float64 for x in (bov, bvv, t1, t2)):
         raise ValueError("DF virtual corrections require finite FP64 arrays")
     if bov.ndim != 3 or bvv.ndim != 3 or t1.ndim != 2 or t2.ndim != 4:
         raise ValueError("invalid DF factor/amplitude ranks")
@@ -68,8 +66,6 @@ def _validate_factor_inputs(
         or t2.shape != (o, o, v, v)
     ):
         raise ValueError("incompatible DF factor/amplitude shapes")
-    if np.max(np.abs(bvv - bvv.transpose(0, 2, 1))) > 1e-10:
-        raise ValueError("B_vv must preserve the symmetric spatial-MO pair")
     return bov, bvv, t1, t2
 
 
@@ -95,6 +91,16 @@ def virtual_corrections(
         raise MemoryError(
             f"DF virtual residual correction requires {required} numeric bytes"
         )
+
+    # Validate only after admitting scratch, and slice factor checks by Q so
+    # validation itself cannot allocate an unbudgeted O(naux*nvir**2) temporary.
+    if not all(np.isfinite(x).all() for x in (t1, t2)):
+        raise ValueError("DF virtual corrections require finite FP64 arrays")
+    for ov, vv in zip(bov, bvv, strict=True):
+        if not np.isfinite(ov).all() or not np.isfinite(vv).all():
+            raise ValueError("DF virtual corrections require finite FP64 arrays")
+        if np.max(np.abs(vv - vv.T)) > 1e-10:
+            raise ValueError("B_vv must preserve the symmetric spatial-MO pair")
 
     r1 = np.zeros_like(t1)
     r2 = np.zeros_like(t2)
