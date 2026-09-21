@@ -110,16 +110,17 @@
     "libxc-xc-admission": {
       "canonical_inputs": {
         "python/vibeqc_compiler/xc/b88_vwn_maple.py": "b51c019c6f51f17b58121f20cc631099b6228f1b43f0134a9666ecb174ca076b",
-        "python/vibeqc_compiler/xc/expressions.py": "4a78d3b127a5317ea962298ddb1daefbad81fcf63dccd4c4f4dc42bfd349c5b3",
+        "python/vibeqc_compiler/xc/expressions.py": "349f45b1770e725ebb1a4781dc19a41ed6ec74f39affc3702cbdc55375e7f60e",
         "python/vibeqc_compiler/xc/p86_pz_maple.py": "a1bbdfe8bba635389861c87a99da072dce6b74dd820b0259593e6eb3a0a04f15",
         "python/vibeqc_compiler/xc/pbe_maple.py": "177ec68c70f8c0c59b1d4a01fba275cc101c959238ad3583e2294c0017647e8e",
         "python/vibeqc_compiler/xc/rsh_expressions.py": "3c3c37d98ee324d64b2e693d51d0566c73bfbd9944e79741bc5dccd7f8c8eb98",
         "python/vibeqc_compiler/xc/rsh_maple.py": "fe2a2748861b63920be5ac10ad74d137fe30506afd5d9efce013bc98fede8bb3",
-        "python/vibeqc_compiler/xc/spec.py": "01eaa62827dd9d402c361559c0f95c5287b43e2c53b59fedff2e610fec6f2e87",
+        "python/vibeqc_compiler/xc/scan_maple.py": "4d0078a8148e5be8435660b7677c685a55ee27360f4c84efaf15581e82b46e1b",
+        "python/vibeqc_compiler/xc/spec.py": "6921d00bb79edd8501c52770964ced73f5a944e4702b331491e52c8e723a99a6",
         "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
-      "generator_sha256": "0bf8ce34b6e6b22e946c2220aaeb29f9f053993b2965255ce887330505339ddf",
+      "generator_sha256": "721b2492beddf6fa5cf97671b374258c4c2771b7a5b8459900bb2f49fe65890a",
       "input_identity_sha256": "2664145467e9ab5103bd6994ceb604f3127b6492d974db01768ba0e7029a5633",
       "inputs": [
         "libxc-7.0.0"
@@ -278,8 +279,8 @@
     "libxc-7.0.0": {
       "admission": {
         "importer": "python/vibeqc_compiler/xc/libxc_maple.py",
-        "importer_sha256": "0bf8ce34b6e6b22e946c2220aaeb29f9f053993b2965255ce887330505339ddf",
-        "semantics": "libxc-maple-graph/v9"
+        "importer_sha256": "721b2492beddf6fa5cf97671b374258c4c2771b7a5b8459900bb2f49fe65890a",
+        "semantics": "libxc-maple-graph/v10"
       },
       "collections": {
         "core": [

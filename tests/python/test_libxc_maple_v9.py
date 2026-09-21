@@ -24,7 +24,7 @@ def _value(source: str, name: str = "f", x: float = 2.0) -> float:
 
 
 def test_v9_importer_identity_is_family_agnostic() -> None:
-    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v9"
+    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v10"
 
 
 @pytest.mark.parametrize("whitespace", ("", " ", "\t", " \t "))

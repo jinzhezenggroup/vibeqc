@@ -34,7 +34,7 @@ class MapleImportError(ValueError):
     """The pinned Maple source uses syntax outside the qualified importer."""
 
 
-IMPORTER_SEMANTICS = "libxc-maple-graph/v9"
+IMPORTER_SEMANTICS = "libxc-maple-graph/v10"
 # Whitespace-normalized helper definitions from pinned Libxc 7.0.0 attenuation.mpl.
 _ERF_SMOOTHING_HELPERS = (
     "attenuation_erf0",
@@ -868,6 +868,26 @@ class _Evaluator:
 
         if exponent not in (2, 4):
             raise MapleImportError("qualified even-power lowering supports 2 and 4")
+
+        def has_sqrt_factor(expr: Expr) -> bool:
+            node = self.graph.node(expr)
+            if (
+                node.operation == "power"
+                and isinstance(node.payload, float)
+                and node.payload == 0.5
+            ):
+                return True
+            if node.operation in ("multiply", "reciprocal"):
+                return any(
+                    has_sqrt_factor(Expr(self.graph, child)) for child in node.arguments
+                )
+            return False
+
+        # Distribute even powers only when that can cancel an explicit square
+        # root. Expanding a bounded ratio z**4 into numerator/denominator
+        # powers manufactures inverse eighth powers in low-density derivatives.
+        if not has_sqrt_factor(value):
+            return value.pow(float(exponent))
         if exponent == 4:
             squared = self._even_power(value, 2)
             return self._even_power(squared, 2)
