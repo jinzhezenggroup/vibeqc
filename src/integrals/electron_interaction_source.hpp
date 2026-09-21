@@ -32,6 +32,11 @@ class ElectronInteractionSource {
   virtual const core::System& orbital() const = 0;
   virtual std::size_t nbf() const = 0;
   virtual std::size_t naux() const = 0;
+  /** Numeric bytes retained by this source while a consumer borrows it.
+   * Consumers use this value for endpoint memory admission; it must not omit
+   * resident value tensors merely because they are immutable or shared.
+   */
+  virtual std::size_t retained_numeric_bytes() const = 0;
   virtual bool supports(Operator op) const noexcept = 0;
 
   virtual void read(Operator op, const std::array<std::size_t, 4>& begin,
