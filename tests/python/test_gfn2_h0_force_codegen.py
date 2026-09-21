@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -17,9 +18,12 @@ from vibeqc_compiler.method.gfn2_h0_force_runtime import (
     build_gfn2_h0_onsite_vjp_program,
     build_gfn2_h0_pulay_seed_program,
 )
-from vibeqc_compiler.tensor import Program, execute
+from vibeqc_compiler.tensor import execute
 
 ROOT = Path(__file__).resolve().parents[2]
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.tensor import Program
 
 
 def _run(program: Program, feeds: dict[str, float]) -> dict[str, float]:
