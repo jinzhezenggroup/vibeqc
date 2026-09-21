@@ -419,7 +419,7 @@ def rhf_electronic_method_ir() -> ElectronicMethodIR:
             OperatorSpec(
                 "hf_energy",
                 "energy",
-                ("core_hamiltonian", "density", "fock"),
+                ("core_hamiltonian", "density", "fock", "nuclear_repulsion"),
                 ("total_energy",),
             ),
         ),
@@ -521,6 +521,7 @@ def rks_electronic_method_ir(method: typing.Any) -> ElectronicMethodIR:
             "basis",
             "core_hamiltonian",
             "eri_provider",
+            "nuclear_repulsion",
             "occupations",
             "overlap",
             "quadrature",
