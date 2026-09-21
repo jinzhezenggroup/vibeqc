@@ -47,9 +47,8 @@ void execute_one(D4Plan& plan, const std::vector<double>& xyz, bool gradient,
   const std::uint8_t active = 1;
   const std::uint8_t requested = gradient ? 1 : 0;
   std::string detail;
-  const auto status =
-      plan.execute(xyz, std::span(&active, 1), std::span(&requested, 1), statuses, components,
-                   gradients, charges, detail);
+  const auto status = plan.execute(xyz, std::span(&active, 1), std::span(&requested, 1), statuses,
+                                   components, gradients, charges, detail);
   if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
 }
 

@@ -396,16 +396,25 @@ int main() {
     const std::array<std::int32_t, 2> d4_z{1, 1};
     const std::array<double, 6> d4_xyz{0.0, 0.0, -0.7, 0.0, 0.0, 0.7};
     vibeqc_d4_system_descriptor d4_system{sizeof(vibeqc_d4_system_descriptor),
-                                         VIBEQC_ABI_VERSION, d4_z.data(), d4_xyz.data(),
-                                         static_cast<std::uint32_t>(d4_z.size()), 0.0};
-    vibeqc_d4_bj_eeq_descriptor d4_model{
-        sizeof(vibeqc_d4_bj_eeq_descriptor), VIBEQC_ABI_VERSION,
-        VIBEQC_D4_PROFILE_STANDARD_EEQ,       1.0,
-        0.95948085,                           1.0,
-        0.38574991,                           4.80688534,
-        3.0,                                  2.0,
-        30.0,                                 60.0,
-        40.0,                                 64u << 20};
+                                          VIBEQC_ABI_VERSION,
+                                          d4_z.data(),
+                                          d4_xyz.data(),
+                                          static_cast<std::uint32_t>(d4_z.size()),
+                                          0.0};
+    vibeqc_d4_bj_eeq_descriptor d4_model{sizeof(vibeqc_d4_bj_eeq_descriptor),
+                                         VIBEQC_ABI_VERSION,
+                                         VIBEQC_D4_PROFILE_STANDARD_EEQ,
+                                         1.0,
+                                         0.95948085,
+                                         1.0,
+                                         0.38574991,
+                                         4.80688534,
+                                         3.0,
+                                         2.0,
+                                         30.0,
+                                         60.0,
+                                         40.0,
+                                         64u << 20};
     vibeqc_d4_batch* d4_batch = nullptr;
     require(vibeqc_d4_batch_prepare(fixture.context, &d4_system, 1, &d4_model, &d4_batch) ==
                 VIBEQC_STATUS_SUCCESS,
@@ -413,8 +422,7 @@ int main() {
     vibeqc_d4_batch_item_result_descriptor d4_result{};
     d4_result.struct_size = sizeof(d4_result);
     d4_result.abi_version = VIBEQC_ABI_VERSION;
-    require(vibeqc_d4_batch_execute(d4_batch, nullptr, 0, &d4_result, 1) ==
-                VIBEQC_STATUS_SUCCESS &&
+    require(vibeqc_d4_batch_execute(d4_batch, nullptr, 0, &d4_result, 1) == VIBEQC_STATUS_SUCCESS &&
                 d4_result.status == VIBEQC_STATUS_SUCCESS && std::isfinite(d4_result.energy),
             "standalone public D4 execution failed");
     const double d4_energy = d4_result.energy;

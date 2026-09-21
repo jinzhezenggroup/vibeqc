@@ -105,7 +105,9 @@ def test_pbe_d4_catalog_is_explicit_eeq_not_gfn2() -> None:
     assert graph.requirements["operators"] == ("semilocal-xc", "geometry-d4-bj-eeq")
 
 
-def test_production_derivative_codegen_retires_complete_handwritten_composition() -> None:
+def test_production_derivative_codegen_retires_complete_handwritten_composition() -> (
+    None
+):
     source = PRODUCTION_D4_EEQ_DERIVATIVE.emit_cpp()
     assert "evaluate_complete_d4_eeq" not in source
     assert "evaluate_eeq2019_with_tables" in source

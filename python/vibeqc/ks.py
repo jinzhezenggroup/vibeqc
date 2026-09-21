@@ -216,7 +216,9 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
 
     if identifier == "PBE-D4(BJ-EEQ-ATM)":
         if ks_coefficients(method_ir) != (1.0, 1.0, 0.0):
-            raise RuntimeError("PBE-D4 MethodIR disagrees with its native PBE composition")
+            raise RuntimeError(
+                "PBE-D4 MethodIR disagrees with its native PBE composition"
+            )
         return method_ir, functional("PBE", spin=spin)
 
     # Pure LDA/PBE selectors retain the independent catalog projection gate.
@@ -309,7 +311,9 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
             )
         else:
             grid_method = "pbe-rks" if method == "pbe-d4-rks" else method
-            grid = GridPolicy(options.grid_accuracy).resolve(grid_method, derivative_order=0)
+            grid = GridPolicy(options.grid_accuracy).resolve(
+                grid_method, derivative_order=0
+            )
     result = replace(options, functional=resolved, composition=None, grid=grid)
     object.__setattr__(result, "_method_ir", method_ir)
     return result

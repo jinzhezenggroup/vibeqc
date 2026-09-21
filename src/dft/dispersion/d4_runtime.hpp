@@ -113,18 +113,20 @@ class D4Plan {
   D4CudaOwner* cuda_{};
 };
 
-D4CudaOwner* create_d4_cuda_owner(
-    int device_id, std::span<const std::uint32_t> offsets,
-    std::span<const std::int32_t> atomic_numbers, std::span<const double> total_charges,
-    std::span<const double> default_coordinates, D4EEQProfile profile,
-    const D4ResourceUsage& resources, std::string& detail, vibeqc_status& status);
+D4CudaOwner* create_d4_cuda_owner(int device_id, std::span<const std::uint32_t> offsets,
+                                  std::span<const std::int32_t> atomic_numbers,
+                                  std::span<const double> total_charges,
+                                  std::span<const double> default_coordinates, D4EEQProfile profile,
+                                  const D4ResourceUsage& resources, std::string& detail,
+                                  vibeqc_status& status);
 void destroy_d4_cuda_owner(D4CudaOwner* owner) noexcept;
-vibeqc_status execute_d4_cuda(
-    D4CudaOwner* owner, const D4Parameters& parameters, D4EEQProfile profile,
-    std::span<const double> coordinates, bool coordinates_changed,
-    std::span<const std::uint8_t> active, std::span<const std::uint8_t> want_gradient,
-    std::vector<D4Status>& statuses, std::vector<double>& energy_components,
-    std::vector<double>& gradients, std::vector<double>& charges,
-    D4RuntimeCounters& counters, std::string& detail);
+vibeqc_status execute_d4_cuda(D4CudaOwner* owner, const D4Parameters& parameters,
+                              D4EEQProfile profile, std::span<const double> coordinates,
+                              bool coordinates_changed, std::span<const std::uint8_t> active,
+                              std::span<const std::uint8_t> want_gradient,
+                              std::vector<D4Status>& statuses,
+                              std::vector<double>& energy_components,
+                              std::vector<double>& gradients, std::vector<double>& charges,
+                              D4RuntimeCounters& counters, std::string& detail);
 
 }  // namespace vibeqc::dft::dispersion

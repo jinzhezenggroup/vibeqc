@@ -39,11 +39,10 @@ D4ResourceUsage resources_for(vibeqc_backend backend, std::size_t systems, std::
   r.table_bytes = static_table_bytes();
   r.plan_host_bytes = (systems + 1) * sizeof(std::uint32_t) + atoms * sizeof(std::int32_t) +
                       systems * sizeof(double) + 6 * atoms * sizeof(double);
-  r.execution_host_bytes =
-      3 * atoms * sizeof(double) + 2 * systems * sizeof(std::uint8_t) +
-      systems * sizeof(vibeqc_status) +
-      systems * sizeof(D4Status) + 2 * systems * sizeof(double) +
-      3 * atoms * sizeof(double) + atoms * sizeof(double);
+  r.execution_host_bytes = 3 * atoms * sizeof(double) + 2 * systems * sizeof(std::uint8_t) +
+                           systems * sizeof(vibeqc_status) + systems * sizeof(D4Status) +
+                           2 * systems * sizeof(double) + 3 * atoms * sizeof(double) +
+                           atoms * sizeof(double);
 
   const auto cpu_workspace_per_system =
       complete_d4_eeq_workspace_elements(static_cast<int>(maximum_atoms)) * sizeof(double);
@@ -51,9 +50,8 @@ D4ResourceUsage resources_for(vibeqc_backend backend, std::size_t systems, std::
     r.workspace_bytes = cpu_workspace_per_system;
     r.execution_host_bytes += cpu_workspace_per_system + (4 * maximum_atoms + 2) * sizeof(double);
   } else if (backend == VIBEQC_BACKEND_CUDA) {
-    const auto eeq_worker_elements =
-        eeq2019_workspace_elements(static_cast<int>(maximum_atoms)) +
-        3 * maximum_atoms * maximum_atoms;
+    const auto eeq_worker_elements = eeq2019_workspace_elements(static_cast<int>(maximum_atoms)) +
+                                     3 * maximum_atoms * maximum_atoms;
     const auto eeq_worker_bytes = eeq_worker_elements * sizeof(double);
 #if VIBEQC_HAS_CUDA
     const auto fixed_workspace_bytes = d4_cuda_workspace_elements(atoms) * sizeof(double);
@@ -71,10 +69,9 @@ D4ResourceUsage resources_for(vibeqc_backend backend, std::size_t systems, std::
     }
     r.device_bytes =
         (systems + 1) * sizeof(std::uint32_t) + atoms * sizeof(std::int32_t) +
-        systems * sizeof(double) + 3 * atoms * sizeof(double) +
-        3 * systems * sizeof(std::uint8_t) + 2 * systems * sizeof(D4Status) +
-        2 * systems * sizeof(double) + 3 * atoms * sizeof(double) + 2 * atoms * sizeof(double) +
-        sizeof(std::uint32_t) + r.workspace_bytes + r.table_bytes;
+        systems * sizeof(double) + 3 * atoms * sizeof(double) + 3 * systems * sizeof(std::uint8_t) +
+        2 * systems * sizeof(D4Status) + 2 * systems * sizeof(double) + 3 * atoms * sizeof(double) +
+        2 * atoms * sizeof(double) + sizeof(std::uint32_t) + r.workspace_bytes + r.table_bytes;
   }
   std::uint64_t total = 0;
   overflow = !add_bytes(total, r.plan_host_bytes) || !add_bytes(total, r.execution_host_bytes) ||
@@ -102,8 +99,7 @@ std::unique_ptr<D4Plan> D4Plan::prepare(
   status = VIBEQC_STATUS_INVALID_ARGUMENT;
   if ((backend != VIBEQC_BACKEND_CPU_REFERENCE && backend != VIBEQC_BACKEND_CUDA) ||
       maximum_bytes == 0 || offsets.size() < 2 || offsets.front() != 0 ||
-      offsets.back() != atomic_numbers.size() ||
-      total_charges.size() + 1 != offsets.size() ||
+      offsets.back() != atomic_numbers.size() || total_charges.size() + 1 != offsets.size() ||
       default_coordinates.size() != 3 * atomic_numbers.size() ||
       !valid_profile_parameters(parameters, profile)) {
     detail = "invalid D4(BJ)-EEQ production plan descriptor";
@@ -142,10 +138,9 @@ std::unique_ptr<D4Plan> D4Plan::prepare(
     }
 
   const auto systems = offsets.size() - 1;
-  std::uint32_t workers =
-      backend == VIBEQC_BACKEND_CUDA
-          ? static_cast<std::uint32_t>(std::min<std::size_t>(systems, 32))
-          : 1u;
+  std::uint32_t workers = backend == VIBEQC_BACKEND_CUDA
+                              ? static_cast<std::uint32_t>(std::min<std::size_t>(systems, 32))
+                              : 1u;
   D4ResourceUsage resources{};
   bool budget_failure = true;
   while (workers) {
@@ -162,14 +157,13 @@ std::unique_ptr<D4Plan> D4Plan::prepare(
   }
 
   try {
-    auto result = std::unique_ptr<D4Plan>(
-        new D4Plan(backend, device_id, std::move(offsets), std::move(atomic_numbers),
-                   std::move(total_charges), std::move(default_coordinates), parameters, profile,
-                   resources));
+    auto result = std::unique_ptr<D4Plan>(new D4Plan(
+        backend, device_id, std::move(offsets), std::move(atomic_numbers), std::move(total_charges),
+        std::move(default_coordinates), parameters, profile, resources));
     if (backend == VIBEQC_BACKEND_CUDA) {
-      result->cuda_ = create_d4_cuda_owner(
-          device_id, result->offsets_, result->atomic_numbers_, result->total_charges_,
-          result->default_coordinates_, profile, resources, detail, status);
+      result->cuda_ = create_d4_cuda_owner(device_id, result->offsets_, result->atomic_numbers_,
+                                           result->total_charges_, result->default_coordinates_,
+                                           profile, resources, detail, status);
       if (!result->cuda_) return nullptr;
     }
     status = VIBEQC_STATUS_SUCCESS;
@@ -188,11 +182,13 @@ std::unique_ptr<D4Plan> D4Plan::prepare(
 
 D4Plan::~D4Plan() { destroy_d4_cuda_owner(cuda_); }
 
-vibeqc_status D4Plan::execute(
-    std::span<const double> packed_coordinates, std::span<const std::uint8_t> active,
-    std::span<const std::uint8_t> want_gradient, std::vector<D4Status>& statuses,
-    std::vector<double>& energy_components, std::vector<double>& packed_gradients,
-    std::vector<double>& packed_charges, std::string& detail) {
+vibeqc_status D4Plan::execute(std::span<const double> packed_coordinates,
+                              std::span<const std::uint8_t> active,
+                              std::span<const std::uint8_t> want_gradient,
+                              std::vector<D4Status>& statuses,
+                              std::vector<double>& energy_components,
+                              std::vector<double>& packed_gradients,
+                              std::vector<double>& packed_charges, std::string& detail) {
   const auto systems = system_count();
   const auto atoms = atomic_numbers_.size();
   if (packed_coordinates.size() != 3 * atoms || active.size() != systems ||
@@ -214,9 +210,9 @@ vibeqc_status D4Plan::execute(
     packed_gradients.assign(3 * atoms, 0.0);
     packed_charges.assign(atoms, 0.0);
     if (backend_ == VIBEQC_BACKEND_CUDA) {
-      const auto status = execute_d4_cuda(
-          cuda_, parameters_, profile_, packed_coordinates, changed, active, want_gradient, statuses,
-          energy_components, packed_gradients, packed_charges, counters_, detail);
+      const auto status = execute_d4_cuda(cuda_, parameters_, profile_, packed_coordinates, changed,
+                                          active, want_gradient, statuses, energy_components,
+                                          packed_gradients, packed_charges, counters_, detail);
       if (status == VIBEQC_STATUS_SUCCESS && changed)
         last_coordinates_.assign(packed_coordinates.begin(), packed_coordinates.end());
       return status;
@@ -260,19 +256,18 @@ vibeqc_status D4Plan::execute(
 #if !VIBEQC_HAS_CUDA
 D4CudaOwner* create_d4_cuda_owner(int, std::span<const std::uint32_t>,
                                   std::span<const std::int32_t>, std::span<const double>,
-                                  std::span<const double>, D4EEQProfile,
-                                  const D4ResourceUsage&, std::string& detail,
-                                  vibeqc_status& status) {
+                                  std::span<const double>, D4EEQProfile, const D4ResourceUsage&,
+                                  std::string& detail, vibeqc_status& status) {
   detail = "D4 CUDA production execution is unavailable in this build";
   status = VIBEQC_STATUS_NOT_IMPLEMENTED;
   return nullptr;
 }
 void destroy_d4_cuda_owner(D4CudaOwner*) noexcept {}
-vibeqc_status execute_d4_cuda(
-    D4CudaOwner*, const D4Parameters&, D4EEQProfile, std::span<const double>, bool,
-    std::span<const std::uint8_t>, std::span<const std::uint8_t>, std::vector<D4Status>&,
-    std::vector<double>&, std::vector<double>&, std::vector<double>&, D4RuntimeCounters&,
-    std::string& detail) {
+vibeqc_status execute_d4_cuda(D4CudaOwner*, const D4Parameters&, D4EEQProfile,
+                              std::span<const double>, bool, std::span<const std::uint8_t>,
+                              std::span<const std::uint8_t>, std::vector<D4Status>&,
+                              std::vector<double>&, std::vector<double>&, std::vector<double>&,
+                              D4RuntimeCounters&, std::string& detail) {
   detail = "D4 CUDA production execution is unavailable in this build";
   return VIBEQC_STATUS_NOT_IMPLEMENTED;
 }

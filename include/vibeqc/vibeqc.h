@@ -203,10 +203,7 @@ typedef struct vibeqc_d3_runtime_diagnostic {
 } vibeqc_d3_runtime_diagnostic;
 
 typedef int32_t vibeqc_d4_profile;
-enum {
-  VIBEQC_D4_PROFILE_STANDARD_EEQ = 1,
-  VIBEQC_D4_PROFILE_R2SCAN3C_EEQ = 2
-};
+enum { VIBEQC_D4_PROFILE_STANDARD_EEQ = 1, VIBEQC_D4_PROFILE_R2SCAN3C_EEQ = 2 };
 
 /** Molecular nonperiodic D4(BJ)-EEQ system. Coordinates are Bohr. */
 typedef struct vibeqc_d4_system_descriptor {
@@ -1240,13 +1237,14 @@ VIBEQC_API const char* vibeqc_d4_scheduler_identity(void);
  * prepared geometries are copied. maximum_bytes bounds all persistent owner
  * state plus worst-case execution staging/workspace.
  */
-VIBEQC_API vibeqc_status vibeqc_d4_batch_prepare(
-    vibeqc_context* context, const vibeqc_d4_system_descriptor* systems,
-    uint32_t system_count, const vibeqc_d4_bj_eeq_descriptor* model,
-    vibeqc_d4_batch** batch);
+VIBEQC_API vibeqc_status vibeqc_d4_batch_prepare(vibeqc_context* context,
+                                                 const vibeqc_d4_system_descriptor* systems,
+                                                 uint32_t system_count,
+                                                 const vibeqc_d4_bj_eeq_descriptor* model,
+                                                 vibeqc_d4_batch** batch);
 VIBEQC_API void vibeqc_d4_batch_destroy(vibeqc_d4_batch* batch);
-VIBEQC_API vibeqc_status vibeqc_d4_batch_get_diagnostic(
-    const vibeqc_d4_batch* batch, vibeqc_d4_runtime_diagnostic* diagnostic);
+VIBEQC_API vibeqc_status vibeqc_d4_batch_get_diagnostic(const vibeqc_d4_batch* batch,
+                                                        vibeqc_d4_runtime_diagnostic* diagnostic);
 
 /**
  * Execute complete molecular D4(BJ)-EEQ energy and analytic dE/dR.
@@ -1255,10 +1253,11 @@ VIBEQC_API vibeqc_status vibeqc_d4_batch_get_diagnostic(
  * failures are isolated; successful function return means the replay itself
  * was structurally valid.
  */
-VIBEQC_API vibeqc_status vibeqc_d4_batch_execute(
-    vibeqc_d4_batch* batch, const vibeqc_d4_batch_input_descriptor* inputs,
-    uint32_t input_count, vibeqc_d4_batch_item_result_descriptor* results,
-    uint32_t result_count);
+VIBEQC_API vibeqc_status vibeqc_d4_batch_execute(vibeqc_d4_batch* batch,
+                                                 const vibeqc_d4_batch_input_descriptor* inputs,
+                                                 uint32_t input_count,
+                                                 vibeqc_d4_batch_item_result_descriptor* results,
+                                                 uint32_t result_count);
 
 #ifdef __cplusplus
 }

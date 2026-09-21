@@ -113,13 +113,14 @@ __device__ void zero_item(std::uint32_t system, const std::uint32_t* offsets, do
   }
 }
 
-__global__ void eeq_prepare_kernel(
-    std::uint32_t systems, const std::uint32_t* offsets, const std::int32_t* atomic_numbers,
-    const double* total_charges, const double* coordinates, const std::uint8_t* active,
-    EEQTables eeq_tables, std::uint32_t* next_system, double* eeq_workspace,
-    std::size_t eeq_workspace_stride, double* dqdr_workspace, std::size_t dqdr_stride,
-    D4Status* statuses, std::uint8_t* fixed_active, double* charges, double* energies,
-    double* gradients) {
+__global__ void eeq_prepare_kernel(std::uint32_t systems, const std::uint32_t* offsets,
+                                   const std::int32_t* atomic_numbers, const double* total_charges,
+                                   const double* coordinates, const std::uint8_t* active,
+                                   EEQTables eeq_tables, std::uint32_t* next_system,
+                                   double* eeq_workspace, std::size_t eeq_workspace_stride,
+                                   double* dqdr_workspace, std::size_t dqdr_stride,
+                                   D4Status* statuses, std::uint8_t* fixed_active, double* charges,
+                                   double* energies, double* gradients) {
   if (threadIdx.x != 0) return;
   const auto slot = static_cast<std::size_t>(blockIdx.x);
   double* workspace = eeq_workspace + slot * eeq_workspace_stride;
@@ -144,13 +145,15 @@ __global__ void eeq_prepare_kernel(
   }
 }
 
-__global__ void eeq_compose_kernel(
-    std::uint32_t systems, const std::uint32_t* offsets, const std::int32_t* atomic_numbers,
-    const double* total_charges, const double* coordinates, const std::uint8_t* active,
-    const std::uint8_t* want_gradient, const D4Status* fixed_statuses, EEQTables eeq_tables,
-    std::uint32_t* next_system, double* eeq_workspace, std::size_t eeq_workspace_stride,
-    double* dqdr_workspace, std::size_t dqdr_stride, D4Status* statuses, double* energies,
-    double* gradients, double* charges, const double* dedq) {
+__global__ void eeq_compose_kernel(std::uint32_t systems, const std::uint32_t* offsets,
+                                   const std::int32_t* atomic_numbers, const double* total_charges,
+                                   const double* coordinates, const std::uint8_t* active,
+                                   const std::uint8_t* want_gradient,
+                                   const D4Status* fixed_statuses, EEQTables eeq_tables,
+                                   std::uint32_t* next_system, double* eeq_workspace,
+                                   std::size_t eeq_workspace_stride, double* dqdr_workspace,
+                                   std::size_t dqdr_stride, D4Status* statuses, double* energies,
+                                   double* gradients, double* charges, const double* dedq) {
   if (threadIdx.x != 0) return;
   const auto slot = static_cast<std::size_t>(blockIdx.x);
   double* workspace = eeq_workspace + slot * eeq_workspace_stride;
@@ -191,11 +194,12 @@ __global__ void eeq_compose_kernel(
 
 }  // namespace
 
-D4CudaOwner* create_d4_cuda_owner(
-    int device_id, std::span<const std::uint32_t> offsets,
-    std::span<const std::int32_t> atomic_numbers, std::span<const double> total_charges,
-    std::span<const double> default_coordinates, D4EEQProfile profile,
-    const D4ResourceUsage& resources, std::string& detail, vibeqc_status& status) {
+D4CudaOwner* create_d4_cuda_owner(int device_id, std::span<const std::uint32_t> offsets,
+                                  std::span<const std::int32_t> atomic_numbers,
+                                  std::span<const double> total_charges,
+                                  std::span<const double> default_coordinates, D4EEQProfile profile,
+                                  const D4ResourceUsage& resources, std::string& detail,
+                                  vibeqc_status& status) {
   status = VIBEQC_STATUS_CUDA_ERROR;
   DeviceScope scope(device_id);
   if (scope.error() != cudaSuccess) {
@@ -236,10 +240,8 @@ D4CudaOwner* create_d4_cuda_owner(
       !allocate(owner->statuses, systems, detail) ||
       !allocate(owner->fixed_statuses, systems, detail) ||
       !allocate(owner->energies, 2 * systems, detail) ||
-      !allocate(owner->gradients, 3 * atoms, detail) ||
-      !allocate(owner->charges, atoms, detail) ||
-      !allocate(owner->dedq, atoms, detail) ||
-      !allocate(owner->next_system, 1, detail) ||
+      !allocate(owner->gradients, 3 * atoms, detail) || !allocate(owner->charges, atoms, detail) ||
+      !allocate(owner->dedq, atoms, detail) || !allocate(owner->next_system, 1, detail) ||
       !allocate(owner->eeq_workspace,
                 static_cast<std::size_t>(owner->workers) * owner->eeq_workspace_stride, detail) ||
       !allocate(owner->dqdr_workspace,
@@ -254,15 +256,14 @@ D4CudaOwner* create_d4_cuda_owner(
     return nullptr;
   }
 
-  const double* c6 = profile == D4EEQProfile::r2scan3c
-                         ? eeq_data::kReferenceC6R2SCAN3C.data()
-                         : eeq_data::kReferenceC6Standard.data();
+  const double* c6 = profile == D4EEQProfile::r2scan3c ? eeq_data::kReferenceC6R2SCAN3C.data()
+                                                       : eeq_data::kReferenceC6Standard.data();
   if (!upload(owner->stream, owner->offsets, offsets.data(), offsets.size(), detail) ||
       !upload(owner->stream, owner->atomic_numbers, atomic_numbers.data(), atoms, detail) ||
       !upload(owner->stream, owner->total_charges, total_charges.data(), systems, detail) ||
       !upload(owner->stream, owner->coordinates, default_coordinates.data(), 3 * atoms, detail) ||
-      !upload(owner->stream, owner->elements, eeq_data::kElements.data(),
-              eeq_data::kElementCount, detail) ||
+      !upload(owner->stream, owner->elements, eeq_data::kElements.data(), eeq_data::kElementCount,
+              detail) ||
       !upload(owner->stream, owner->references, eeq_data::kReferences.data(),
               eeq_data::kReferenceCount, detail) ||
       !upload(owner->stream, owner->reference_c6, c6, c6_count, detail) ||
@@ -313,17 +314,18 @@ void destroy_d4_cuda_owner(D4CudaOwner* owner) noexcept {
   delete owner;
 }
 
-vibeqc_status execute_d4_cuda(
-    D4CudaOwner* owner, const D4Parameters& parameters, D4EEQProfile profile,
-    std::span<const double> coordinates, bool coordinates_changed,
-    std::span<const std::uint8_t> active, std::span<const std::uint8_t> want_gradient,
-    std::vector<D4Status>& statuses, std::vector<double>& energy_components,
-    std::vector<double>& gradients, std::vector<double>& charges,
-    D4RuntimeCounters& counters, std::string& detail) {
-  if (!owner || coordinates.size() != 3 * owner->atoms ||
-      active.size() != owner->systems || want_gradient.size() != owner->systems ||
-      statuses.size() != owner->systems || energy_components.size() != 2 * owner->systems ||
-      gradients.size() != 3 * owner->atoms || charges.size() != owner->atoms) {
+vibeqc_status execute_d4_cuda(D4CudaOwner* owner, const D4Parameters& parameters,
+                              D4EEQProfile profile, std::span<const double> coordinates,
+                              bool coordinates_changed, std::span<const std::uint8_t> active,
+                              std::span<const std::uint8_t> want_gradient,
+                              std::vector<D4Status>& statuses,
+                              std::vector<double>& energy_components,
+                              std::vector<double>& gradients, std::vector<double>& charges,
+                              D4RuntimeCounters& counters, std::string& detail) {
+  if (!owner || coordinates.size() != 3 * owner->atoms || active.size() != owner->systems ||
+      want_gradient.size() != owner->systems || statuses.size() != owner->systems ||
+      energy_components.size() != 2 * owner->systems || gradients.size() != 3 * owner->atoms ||
+      charges.size() != owner->atoms) {
     detail = "invalid D4 CUDA replay shape";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
@@ -336,8 +338,7 @@ vibeqc_status execute_d4_cuda(
     if (!bytes) return VIBEQC_STATUS_SUCCESS;
     const auto error =
         cudaMemcpyAsync(destination, source, bytes, cudaMemcpyHostToDevice, owner->stream);
-    return error == cudaSuccess ? VIBEQC_STATUS_SUCCESS
-                                : cuda_failure(error, action, detail);
+    return error == cudaSuccess ? VIBEQC_STATUS_SUCCESS : cuda_failure(error, action, detail);
   };
   vibeqc_status status = VIBEQC_STATUS_SUCCESS;
   if (coordinates_changed) {
@@ -352,12 +353,12 @@ vibeqc_status execute_d4_cuda(
                     "upload D4 gradient mask");
   if (status != VIBEQC_STATUS_SUCCESS) return status;
 
-  for (const auto& clear : {
-           std::pair<void*, std::size_t>{owner->energies, energy_components.size() * sizeof(double)},
-           {owner->gradients, gradients.size() * sizeof(double)},
-           {owner->charges, charges.size() * sizeof(double)},
-           {owner->dedq, charges.size() * sizeof(double)},
-           {owner->next_system, sizeof(std::uint32_t)}}) {
+  for (const auto& clear :
+       {std::pair<void*, std::size_t>{owner->energies, energy_components.size() * sizeof(double)},
+        {owner->gradients, gradients.size() * sizeof(double)},
+        {owner->charges, charges.size() * sizeof(double)},
+        {owner->dedq, charges.size() * sizeof(double)},
+        {owner->next_system, sizeof(std::uint32_t)}}) {
     const auto error = cudaMemsetAsync(clear.first, 0, clear.second, owner->stream);
     if (error != cudaSuccess) return cuda_failure(error, "clear D4 CUDA publication", detail);
   }
@@ -373,12 +374,18 @@ vibeqc_status execute_d4_cuda(
   if (error != cudaSuccess) return cuda_failure(error, "launch D4 EEQ prepare kernel", detail);
 
   const bool r2scan = profile == D4EEQProfile::r2scan3c;
-  const D4Tables d4_tables{
-      D4ReferenceModel::eeq, owner->elements, owner->references, owner->reference_c6,
-      eeq_data::kElementCount, eeq_data::kReferenceCount,
-      eeq_data::kReferenceC6Standard.size(), r2scan ? 2.0 : 3.0, r2scan ? 1.0 : 2.0};
-  const D4CudaBatch batch{owner->systems, static_cast<std::uint32_t>(owner->atoms), owner->offsets,
-                          owner->atomic_numbers, owner->coordinates, owner->charges,
+  const D4Tables d4_tables{D4ReferenceModel::eeq,
+                           owner->elements,
+                           owner->references,
+                           owner->reference_c6,
+                           eeq_data::kElementCount,
+                           eeq_data::kReferenceCount,
+                           eeq_data::kReferenceC6Standard.size(),
+                           r2scan ? 2.0 : 3.0,
+                           r2scan ? 1.0 : 2.0};
+  const D4CudaBatch batch{owner->systems,     static_cast<std::uint32_t>(owner->atoms),
+                          owner->offsets,     owner->atomic_numbers,
+                          owner->coordinates, owner->charges,
                           owner->fixed_active};
   const D4CudaResult result{owner->fixed_statuses, owner->energies, owner->gradients, owner->dedq};
   error = launch_d4_fixed_charge_batched_cuda(
@@ -388,9 +395,8 @@ vibeqc_status execute_d4_cuda(
   if (error != cudaSuccess)
     return cuda_failure(error, "launch cooperative fixed-charge D4 scheduler", detail);
 
-  const bool gradients_requested =
-      std::any_of(want_gradient.begin(), want_gradient.end(),
-                  [](std::uint8_t value) { return value != 0; });
+  const bool gradients_requested = std::any_of(want_gradient.begin(), want_gradient.end(),
+                                               [](std::uint8_t value) { return value != 0; });
   error = cudaMemsetAsync(owner->next_system, 0, sizeof(std::uint32_t), owner->stream);
   if (error != cudaSuccess) return cuda_failure(error, "reset D4 EEQ compose queue", detail);
   eeq_compose_kernel<<<owner->workers, 1, 0, owner->stream>>>(

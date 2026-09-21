@@ -502,7 +502,7 @@ class D4CorrectionBatch:
             raise ValueError("maximum_bytes must be a positive uint64 integer")
         graph = _method_ir(method)
         correction = _d4_correction(graph)
-        spec = typing.cast(D4Spec, correction.specification)
+        spec = typing.cast("D4Spec", correction.specification)
         normalized = tuple(_normalize_d4_system(system) for system in systems)
         if not normalized:
             raise ValueError("D4 correction batch requires at least one system")
@@ -526,7 +526,9 @@ class D4CorrectionBatch:
             "ascii"
         )
         provider_identity = self._library.vibeqc_d4_provider_identity().decode("ascii")
-        scheduler_identity = self._library.vibeqc_d4_scheduler_identity().decode("ascii")
+        scheduler_identity = self._library.vibeqc_d4_scheduler_identity().decode(
+            "ascii"
+        )
         if (
             table_sha256 != spec.table_sha256
             or charge_sha256 != spec.charge_parameter_sha256
@@ -560,9 +562,7 @@ class D4CorrectionBatch:
         }[spec.profile]
 
         backend = (
-            _native.BACKEND_CUDA
-            if device == "cuda"
-            else _native.BACKEND_CPU_REFERENCE
+            _native.BACKEND_CUDA if device == "cuda" else _native.BACKEND_CPU_REFERENCE
         )
         context_descriptor = _native.ContextDescriptor(
             ctypes.sizeof(_native.ContextDescriptor),
@@ -796,7 +796,9 @@ class D4CorrectionBatch:
                     energy=float(native.energy),
                     two_body_energy=float(native.two_body_energy),
                     atm_energy=float(native.atm_energy),
-                    gradient=gradient.copy() if gradient is not None and success else None,
+                    gradient=gradient.copy()
+                    if gradient is not None and success
+                    else None,
                     charges=(
                         charge_values.copy()
                         if charge_values is not None and success

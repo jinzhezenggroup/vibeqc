@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 from vibeqc import Calculator, D4CorrectionBatch, ResourceBudget, evaluate_d4_correction
 
-
 _NUMBERS = np.array([6, 8, 7, 1], dtype=np.int32)
 _POSITIONS = np.array(
     [
@@ -110,9 +109,7 @@ def test_public_named_pbe_d4_cpu_adds_native_correction() -> None:
     assert combined.executed_backend == "cpu_reference"
     assert combined.energy == pytest.approx(pbe.energy + d4.energy, abs=2.0e-12)
     with pytest.raises(NotImplementedError, match="strict FP64"):
-        Calculator(
-            method="pbe-d4-rks", basis="sto-3g", device="cuda", precision="auto"
-        )
+        Calculator(method="pbe-d4-rks", basis="sto-3g", device="cuda", precision="auto")
 
 
 def test_public_named_pbe_d4_global_resource_plan_fails_closed() -> None:
@@ -147,7 +144,9 @@ def test_production_cuda_matches_cpu_and_replay_accounting() -> None:
         changed = batch.execute([moved])[0]
         cpu = evaluate_d4_correction("PBE-D4(BJ-EEQ-ATM)", _NUMBERS, moved)
         assert changed.energy == pytest.approx(cpu.energy, abs=2.0e-13)
-        np.testing.assert_allclose(changed.gradient, cpu.gradient, atol=2.0e-12, rtol=0.0)
+        np.testing.assert_allclose(
+            changed.gradient, cpu.gradient, atol=2.0e-12, rtol=0.0
+        )
 
         diagnostic = batch.diagnostic()
         assert diagnostic.backend == "cuda"
@@ -170,7 +169,9 @@ def test_public_named_pbe_d4_cuda_matches_cpu() -> None:
         "PBE-D4(BJ-EEQ-ATM)", numbers, positions, device="cuda"
     )
     assert pair_cuda.energy == pytest.approx(pair_cpu.energy, abs=2.0e-13)
-    np.testing.assert_allclose(pair_cuda.charges, pair_cpu.charges, atol=1.0e-12, rtol=0.0)
+    np.testing.assert_allclose(
+        pair_cuda.charges, pair_cpu.charges, atol=1.0e-12, rtol=0.0
+    )
     assert pair_cpu.atm_energy == pytest.approx(0.0, abs=1.0e-18)
     assert pair_cuda.atm_energy == pytest.approx(0.0, abs=1.0e-18)
 

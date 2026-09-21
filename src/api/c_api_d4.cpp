@@ -34,8 +34,7 @@ vibeqc_status public_status(vibeqc::dft::dispersion::D4Status status) {
   return VIBEQC_STATUS_INTERNAL_ERROR;
 }
 
-bool profile_from_public(vibeqc_d4_profile value,
-                         vibeqc::dft::dispersion::D4EEQProfile& profile) {
+bool profile_from_public(vibeqc_d4_profile value, vibeqc::dft::dispersion::D4EEQProfile& profile) {
   using vibeqc::dft::dispersion::D4EEQProfile;
   if (value == VIBEQC_D4_PROFILE_STANDARD_EEQ) {
     profile = D4EEQProfile::standard;
@@ -58,9 +57,7 @@ vibeqc_d4_profile public_profile(vibeqc::dft::dispersion::D4EEQProfile profile) 
 
 extern "C" {
 
-const char* vibeqc_d4_table_sha256(void) {
-  return vibeqc::dft::dispersion::kD4EEQTableSha256;
-}
+const char* vibeqc_d4_table_sha256(void) { return vibeqc::dft::dispersion::kD4EEQTableSha256; }
 
 const char* vibeqc_d4_charge_parameter_sha256(void) {
   return vibeqc::dft::dispersion::kD4EEQChargeParameterSha256;
@@ -78,10 +75,11 @@ const char* vibeqc_d4_scheduler_identity(void) {
   return vibeqc::dft::dispersion::kD4ProductionSchedulerIdentity;
 }
 
-vibeqc_status vibeqc_d4_batch_prepare(
-    vibeqc_context* context, const vibeqc_d4_system_descriptor* systems,
-    uint32_t system_count, const vibeqc_d4_bj_eeq_descriptor* model,
-    vibeqc_d4_batch** batch) {
+vibeqc_status vibeqc_d4_batch_prepare(vibeqc_context* context,
+                                      const vibeqc_d4_system_descriptor* systems,
+                                      uint32_t system_count,
+                                      const vibeqc_d4_bj_eeq_descriptor* model,
+                                      vibeqc_d4_batch** batch) {
   if (!context || !systems || !system_count || !model || !batch)
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   *batch = nullptr;
@@ -139,8 +137,8 @@ vibeqc_status vibeqc_d4_batch_prepare(
     vibeqc_status status = VIBEQC_STATUS_INTERNAL_ERROR;
     auto plan = vibeqc::dft::dispersion::D4Plan::prepare(
         context->state.executed_backend, context->state.device_id, std::move(offsets),
-        std::move(atomic_numbers), std::move(total_charges), std::move(coordinates),
-        parameters, profile, model->maximum_bytes, context->last_detail, status);
+        std::move(atomic_numbers), std::move(total_charges), std::move(coordinates), parameters,
+        profile, model->maximum_bytes, context->last_detail, status);
     if (!plan) return status;
     auto candidate = std::make_unique<vibeqc_d4_batch>();
     candidate->context = context;
@@ -154,8 +152,8 @@ vibeqc_status vibeqc_d4_batch_prepare(
 
 void vibeqc_d4_batch_destroy(vibeqc_d4_batch* batch) { delete batch; }
 
-vibeqc_status vibeqc_d4_batch_get_diagnostic(
-    const vibeqc_d4_batch* batch, vibeqc_d4_runtime_diagnostic* diagnostic) {
+vibeqc_status vibeqc_d4_batch_get_diagnostic(const vibeqc_d4_batch* batch,
+                                             vibeqc_d4_runtime_diagnostic* diagnostic) {
   if (!batch || !diagnostic) return VIBEQC_STATUS_INVALID_ARGUMENT;
   if (!vibeqc::api::valid_descriptor(diagnostic)) return VIBEQC_STATUS_ABI_MISMATCH;
   std::lock_guard<std::recursive_mutex> lock(batch->context->mutex);
@@ -183,10 +181,11 @@ vibeqc_status vibeqc_d4_batch_get_diagnostic(
   return VIBEQC_STATUS_SUCCESS;
 }
 
-vibeqc_status vibeqc_d4_batch_execute(
-    vibeqc_d4_batch* batch, const vibeqc_d4_batch_input_descriptor* inputs,
-    uint32_t input_count, vibeqc_d4_batch_item_result_descriptor* results,
-    uint32_t result_count) {
+vibeqc_status vibeqc_d4_batch_execute(vibeqc_d4_batch* batch,
+                                      const vibeqc_d4_batch_input_descriptor* inputs,
+                                      uint32_t input_count,
+                                      vibeqc_d4_batch_item_result_descriptor* results,
+                                      uint32_t result_count) {
   if (!batch || !results) return VIBEQC_STATUS_INVALID_ARGUMENT;
   const auto systems = batch->plan->system_count();
   if (result_count != systems) return VIBEQC_STATUS_INVALID_ARGUMENT;
@@ -238,9 +237,9 @@ vibeqc_status vibeqc_d4_batch_execute(
     std::vector<double> energy_components;
     std::vector<double> gradients;
     std::vector<double> charges;
-    const auto status = batch->plan->execute(
-        coordinates, active, want_gradient, statuses, energy_components, gradients,
-        charges, batch->context->last_detail);
+    const auto status =
+        batch->plan->execute(coordinates, active, want_gradient, statuses, energy_components,
+                             gradients, charges, batch->context->last_detail);
     if (status != VIBEQC_STATUS_SUCCESS) return status;
 
     std::size_t atom_cursor = 0;
@@ -257,8 +256,7 @@ vibeqc_status vibeqc_d4_batch_execute(
         output.energy = output.two_body_energy + output.atm_energy;
         if (output.gradient)
           std::copy_n(gradients.data() + 3 * atom_cursor, 3u * atoms, output.gradient);
-        if (output.charges)
-          std::copy_n(charges.data() + atom_cursor, atoms, output.charges);
+        if (output.charges) std::copy_n(charges.data() + atom_cursor, atoms, output.charges);
       } else {
         const double nan = std::numeric_limits<double>::quiet_NaN();
         output.energy = nan;

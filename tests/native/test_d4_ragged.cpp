@@ -38,8 +38,8 @@ int main(int argc, char**) {
     std::vector<double> total_charges(systems, 0.0);
     std::vector<double> coordinates(3 * systems, 0.0);
     const auto p = ::vibeqc::generated::method_parameters::pbeD4();
-    D4Parameters parameters{D4ReferenceModel::eeq, p.s6, p.s8, p.s9, p.a1, p.a2,
-                            p.cn_cutoff, p.pair_cutoff, p.atm_cutoff, p.ga, p.gc};
+    D4Parameters parameters{D4ReferenceModel::eeq, p.s6,          p.s8,         p.s9, p.a1, p.a2,
+                            p.cn_cutoff,           p.pair_cutoff, p.atm_cutoff, p.ga, p.gc};
     std::string detail;
     vibeqc_status status{};
     auto plan = D4Plan::prepare(device ? VIBEQC_BACKEND_CUDA : VIBEQC_BACKEND_CPU_REFERENCE, 0,
@@ -47,20 +47,16 @@ int main(int argc, char**) {
                                 D4EEQProfile::standard, 64u << 20, detail, status);
     if (!plan || status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
     const auto slots = device ? std::uint32_t{32} : std::uint32_t{1};
-    const auto expected_workspace = device
-                                        ? (slots * (eeq2019_workspace_elements(1) + 3u) +
-                                           27u * systems) *
-                                              sizeof(double)
-                                        : complete_d4_eeq_workspace_elements(1) * sizeof(double);
-    if (plan->resources().worker_blocks != slots ||
-        plan->resources().workspace_slots != slots ||
+    const auto expected_workspace =
+        device ? (slots * (eeq2019_workspace_elements(1) + 3u) + 27u * systems) * sizeof(double)
+               : complete_d4_eeq_workspace_elements(1) * sizeof(double);
+    if (plan->resources().worker_blocks != slots || plan->resources().workspace_slots != slots ||
         plan->resources().workspace_bytes != expected_workspace)
       throw std::runtime_error("D4 workspace is not bounded by worker slots");
     const auto minimum_execution_host =
         3 * systems * sizeof(double) + 2 * systems * sizeof(std::uint8_t) +
         systems * sizeof(vibeqc_status) + systems * sizeof(D4Status) +
-        2 * systems * sizeof(double) + 3 * systems * sizeof(double) +
-        systems * sizeof(double);
+        2 * systems * sizeof(double) + 3 * systems * sizeof(double) + systems * sizeof(double);
     if (plan->resources().execution_host_bytes < minimum_execution_host)
       throw std::runtime_error("D4 public replay staging is missing from host resource accounting");
 

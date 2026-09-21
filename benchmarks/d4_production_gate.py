@@ -7,7 +7,6 @@ import statistics
 import time
 
 import numpy as np
-
 from _support import (
     cuda_accelerator_metadata,
     environment_metadata,
@@ -41,7 +40,9 @@ def _medium() -> tuple[np.ndarray, np.ndarray, float]:
     return z, xyz, 0.0
 
 
-def _changed(systems: tuple[tuple[np.ndarray, np.ndarray, float], ...]) -> list[np.ndarray]:
+def _changed(
+    systems: tuple[tuple[np.ndarray, np.ndarray, float], ...],
+) -> list[np.ndarray]:
     changed = []
     for index, (_, xyz, _) in enumerate(systems):
         geometry = xyz.copy()
@@ -92,7 +93,7 @@ def _measure(
             raise RuntimeError("D4 performance gate observed a failed/nonfinite item")
     return {
         "systems": len(systems),
-        "atoms": [int(len(system[0])) for system in systems],
+        "atoms": [len(system[0]) for system in systems],
         "timing_seconds": {
             "prepare": prepare_seconds,
             "cold": cold_seconds,
@@ -106,7 +107,9 @@ def _measure(
         "endpoint": {
             "cold_energy_hartree": [float(item.energy) for item in cold],
             "cold_gradient_norm": [
-                float(np.linalg.norm(item.gradient)) if item.gradient is not None else None
+                float(np.linalg.norm(item.gradient))
+                if item.gradient is not None
+                else None
                 for item in cold
             ],
             "executed_backend": sorted({item.backend for item in cold}),

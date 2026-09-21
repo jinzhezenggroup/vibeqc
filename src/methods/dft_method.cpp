@@ -331,7 +331,8 @@ class KsPreparedCalculation final : public PreparedCalculation {
     if (d4_) {
       const auto& resources = d4_->resources();
       bytes = runtime::add_capacity(bytes, static_cast<std::size_t>(resources.plan_host_bytes));
-      bytes = runtime::add_capacity(bytes, static_cast<std::size_t>(resources.execution_host_bytes));
+      bytes =
+          runtime::add_capacity(bytes, static_cast<std::size_t>(resources.execution_host_bytes));
     }
     return bytes;
   }
@@ -474,8 +475,9 @@ class KsPreparedCalculation final : public PreparedCalculation {
     std::vector<dft::dispersion::D4Status> statuses;
     std::vector<double> components, gradients, charges;
     std::string detail;
-    const auto status = d4_->execute(coordinates, std::span(&active, 1), std::span(&want_gradient, 1),
-                                     statuses, components, gradients, charges, detail);
+    const auto status =
+        d4_->execute(coordinates, std::span(&active, 1), std::span(&want_gradient, 1), statuses,
+                     components, gradients, charges, detail);
     if (status != VIBEQC_STATUS_SUCCESS || statuses.size() != 1 ||
         statuses[0] != dft::dispersion::D4Status::success || components.size() != 2)
       throw MethodError(status == VIBEQC_STATUS_SUCCESS ? VIBEQC_STATUS_NUMERICAL_FAILURE : status,
@@ -572,9 +574,17 @@ class KsPreparedCalculation final : public PreparedCalculation {
  private:
   void prepare_d4(int device) {
     const auto source = ::vibeqc::generated::method_parameters::pbeD4();
-    dft::dispersion::D4Parameters parameters{
-        dft::dispersion::D4ReferenceModel::eeq, source.s6, source.s8, source.s9, source.a1,
-        source.a2, source.cn_cutoff, source.pair_cutoff, source.atm_cutoff, source.ga, source.gc};
+    dft::dispersion::D4Parameters parameters{dft::dispersion::D4ReferenceModel::eeq,
+                                             source.s6,
+                                             source.s8,
+                                             source.s9,
+                                             source.a1,
+                                             source.a2,
+                                             source.cn_cutoff,
+                                             source.pair_cutoff,
+                                             source.atm_cutoff,
+                                             source.ga,
+                                             source.gc};
     std::vector<std::uint32_t> offsets{0, static_cast<std::uint32_t>(system_.atoms.size())};
     std::vector<std::int32_t> atomic_numbers;
     std::vector<double> coordinates;
@@ -588,10 +598,12 @@ class KsPreparedCalculation final : public PreparedCalculation {
     std::string detail;
     d4_ = dft::dispersion::D4Plan::prepare(
         backend_, device, std::move(offsets), std::move(atomic_numbers),
-        std::vector<double>{static_cast<double>(system_.charge)}, std::move(coordinates), parameters,
-        dft::dispersion::D4EEQProfile::standard, 256ull * 1024ull * 1024ull, detail, status);
+        std::vector<double>{static_cast<double>(system_.charge)}, std::move(coordinates),
+        parameters, dft::dispersion::D4EEQProfile::standard, 256ull * 1024ull * 1024ull, detail,
+        status);
     if (!d4_)
-      throw MethodError(status, detail.empty() ? "PBE-D4 production plan preparation failed" : detail);
+      throw MethodError(status,
+                        detail.empty() ? "PBE-D4 production plan preparation failed" : detail);
   }
 
   Capabilities capabilities_;
