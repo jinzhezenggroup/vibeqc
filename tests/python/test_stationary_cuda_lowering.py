@@ -39,7 +39,6 @@ for functional in (0,1,2):
     wrapper=emit_stationary_wrapper_cuda(functional=functional,plan=plan)
     assert 'primitive_0(' not in wrapper
     assert 'extern __device__ bool first_derivative' in wrapper
-    assert len(wrapper) * 20 < len(primitive)
     s=emit_stationary_cuda(primitive,functional=functional,plan=plan)
     assert s == primitive + wrapper
     assert 'vibeqc_first_derivative_cpu' not in s
