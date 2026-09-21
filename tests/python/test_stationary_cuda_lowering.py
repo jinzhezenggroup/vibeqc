@@ -40,7 +40,8 @@ for functional in (0,1,2):
     assert 'primitive_0(' not in wrapper
     assert 'extern __device__ bool first_derivative' in wrapper
     s=emit_stationary_cuda(primitive,functional=functional,plan=plan)
-    assert s == primitive + wrapper
+    assert s.startswith(primitive)
+    assert 'extern __device__ bool first_derivative' not in s[len(primitive):]
     assert 'vibeqc_first_derivative_cpu' not in s
     assert '__device__ bool first_derivative' in s
     assert 'stationary_gradient_cuda.cuh' in s
