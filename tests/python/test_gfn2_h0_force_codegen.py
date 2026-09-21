@@ -9,10 +9,13 @@ from pathlib import Path
 import numpy as np
 from vibeqc_compiler.method.gfn2_h0_force_runtime import (
     build_gfn2_h0_ao_update_program,
+    build_gfn2_h0_distance_program,
+    build_gfn2_h0_distance_vjp_program,
     build_gfn2_h0_offsite_factor_program,
     build_gfn2_h0_offsite_vjp_program,
     build_gfn2_h0_onsite_factor_program,
     build_gfn2_h0_onsite_vjp_program,
+    build_gfn2_h0_pulay_seed_program,
 )
 from vibeqc_compiler.tensor import execute
 
@@ -150,6 +153,58 @@ def test_h0_ao_contraction_is_compiler_owned() -> None:
     )
 
 
+def test_h0_distance_and_cartesian_vjp_are_generated() -> None:
+    feeds = {"dx": 0.3, "dy": -0.4, "dz": 1.2}
+    actual = _run(build_gfn2_h0_distance_program(), feeds)
+    expected_squared = sum(value * value for value in feeds.values())
+    expected_distance = np.sqrt(expected_squared)
+    np.testing.assert_allclose(
+        actual["distance_squared"], expected_squared, rtol=0, atol=2e-16
+    )
+    np.testing.assert_allclose(
+        actual["distance"], expected_distance, rtol=0, atol=2e-16
+    )
+
+    bar = -0.57
+    adjoint = _run(
+        build_gfn2_h0_distance_vjp_program(),
+        {**feeds, "bar_distance": bar},
+    )
+    for axis in ("x", "y", "z"):
+        np.testing.assert_allclose(
+            adjoint[f"bar_d{axis}"],
+            bar * feeds[f"d{axis}"] / expected_distance,
+            rtol=2e-15,
+            atol=2e-16,
+        )
+
+
+def test_h0_pulay_seed_is_compiler_owned() -> None:
+    actual = _run(
+        build_gfn2_h0_pulay_seed_program(),
+        {"seed": 0.41, "weighted": -0.17},
+    )
+    np.testing.assert_allclose(actual["pulay_seed"], 0.58, rtol=0, atol=1e-16)
+
+
+def test_h0_offsite_preserves_native_left_to_right_product_range() -> None:
+    feeds = _pair_inputs()
+    feeds.update(
+        {
+            "first_cn_scale": 0.0,
+            "second_cn_scale": 0.0,
+            "first_radius": 0.5,
+            "second_radius": 0.5,
+            "distance": 1.0,
+            "first_polynomial": 1.0e300,
+            "second_polynomial": 1.0e100,
+            "pair_scale": 1.0e-300,
+        }
+    )
+    factor = _run(build_gfn2_h0_offsite_factor_program(), feeds)["factor"]
+    assert np.isfinite(factor)
+
+
 def test_generated_header_and_runtime_retire_handwritten_h0_force_math(
     tmp_path: Path,
 ) -> None:
@@ -168,6 +223,9 @@ def test_generated_header_and_runtime_retire_handwritten_h0_force_math(
     assert "__device__ inline bool gfn2_h0_offsite_factor_tensor" in generated
     assert "__device__ inline bool gfn2_h0_offsite_vjp_tensor" in generated
     assert "__device__ inline bool gfn2_h0_ao_update_tensor" in generated
+    assert "__device__ inline bool gfn2_h0_distance_tensor" in generated
+    assert "__device__ inline bool gfn2_h0_distance_vjp_tensor" in generated
+    assert "__device__ inline bool gfn2_h0_pulay_seed_tensor" in generated
     assert "bar_distance" in generated
 
     consumer = (
@@ -177,6 +235,9 @@ def test_generated_header_and_runtime_retire_handwritten_h0_force_math(
     assert "evaluate_gfn2_h0_offsite_factor" in consumer
     assert "evaluate_gfn2_h0_offsite_vjp" in consumer
     assert "accumulate_gfn2_h0_ao" in consumer
+    assert "evaluate_gfn2_h0_distance" in consumer
+    assert "evaluate_gfn2_h0_distance_vjp" in consumer
+    assert "evaluate_gfn2_h0_pulay_seed" in consumer
     for retired in (
         "spatial_scale_derivative",
         "polynomial_derivative",
@@ -184,6 +245,9 @@ def test_generated_header_and_runtime_retire_handwritten_h0_force_math(
         "radial_derivative",
         "overlap_contribution",
         "weight_contribution",
+        "coordinate_scale",
+        "const double pulay_seed = seed - weighted",
+        "distance_squared = dx * dx",
     ):
         assert retired not in consumer
 
