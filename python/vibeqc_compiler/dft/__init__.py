@@ -36,6 +36,7 @@ from .xc_schedule import (
     GridXcScientificIdentity,
     assess_grid_xc_schedule,
     grid_xc_schedule,
+    rank_grid_xc_schedules,
 )
 
 __all__ = [
@@ -64,6 +65,7 @@ __all__ = [
     "density_features",
     "grid_policy_provenance",
     "grid_xc_schedule",
+    "rank_grid_xc_schedules",
     "jet_indices",
     "nonlocal_energy_density_reference",
     "nonlocal_energy_reference",
