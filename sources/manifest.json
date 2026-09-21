@@ -71,6 +71,17 @@
         "python/vibeqc_compiler/method/method_parameters.json": "3403bdc5fecce8889aceef071d46f9e6fff1ff8ff74e3f212cf6013b9dbcea19"
       }
     },
+    "gfn1-parameter-header": {
+      "generator": "tools/parameters/generate_gfn1.py",
+      "generator_sha256": "050f61c6a6c6c8cb0858704d5fa4565db307b7aa05c3d42475e3891c3a41c11e",
+      "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
+      "inputs": [
+        "xtbloom-gfn1-parameters"
+      ],
+      "outputs": {
+        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp": "ff1391b44f390f4d8d73ffd87013476aebed9075437e17d1b55185c36c1ce2ef"
+      }
+    },
     "gpu4pyscf-rys-fixed": {
       "generator": "python/vibeqc_compiler/integral/extract_rys_table.py",
       "generator_sha256": "13c22fd7e485df832b12a138c0e665eaa85e28cd0f574a28db6997ac90ceb03f",
@@ -94,7 +105,7 @@
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
       "generator_sha256": "c36b8227e56a7d35cfe1aea9d2d312bf8438f0c55ea7dc5b41c695d1f95adf61",
-      "input_identity_sha256": "53d9389dcdcb033df0b14f187d2f9a98e6f5415971949655caf9aeb9cd4b6ec7",
+      "input_identity_sha256": "2664145467e9ab5103bd6994ceb604f3127b6492d974db01768ba0e7029a5633",
       "inputs": [
         "libxc-7.0.0"
       ],
@@ -281,6 +292,7 @@
         "rsh": [
           "COPYING",
           "attenuation.mpl",
+          "gga_c_lyp.c",
           "gga_c_lyp.mpl",
           "gga_c_p86.c",
           "gga_c_p86.mpl",
@@ -330,6 +342,11 @@
           "sha256": "cfaacb3b656066ab286df9120c27423985a4bc2766ee385a13b86115b6b4b8cc",
           "upstream_path": "maple/b97mv.mpl",
           "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/b97mv.mpl"
+        },
+        "gga_c_lyp.c": {
+          "sha256": "d34fb158f6174ee2c27b4fb06a5dd203b71299a0aae7857dba85953a41cc62c6",
+          "upstream_path": "src/gga_c_lyp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_lyp.c"
         },
         "gga_c_lyp.mpl": {
           "sha256": "8113c2d995ee6ee1463b99a7ff7f3d462cfbefae6e6e70ffca22077a9cde21ac",
@@ -614,6 +631,34 @@
       "local_root": "tools/parameters/upstream",
       "repository": "https://github.com/dftd3/simple-dftd3",
       "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
+    },
+    "xtbloom-gfn1-parameters": {
+      "consumers": [
+        "tools/parameters/generate_gfn1.py",
+        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp"
+      ],
+      "files": {
+        "gfn1.json": {
+          "sha256": "0ecdc3f5f12990c5a7e0f0bd7e6fe931ecf72d7630e6a6a3cc396c51766a40a0",
+          "upstream_path": "data/parameters/gfn1.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1.json"
+        },
+        "gfn1.toml": {
+          "sha256": "38572810c111e118d03a27137dfbc3363ce5247a400bb25ee83e15e712dcb389",
+          "upstream_path": "data/parameters/gfn1.toml",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1.toml"
+        },
+        "gfn1_manifest.json": {
+          "sha256": "e93710d277aa2216d24215b6c458805ae7d96e27937294cd685c710e2dd4007b",
+          "upstream_path": "data/parameters/gfn1_manifest.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_manifest.json"
+        }
+      },
+      "kind": "snapshot",
+      "license": "LGPL-3.0-or-later AND Apache-2.0",
+      "local_root": "sources/xtb/gfn1",
+      "repository": "https://github.com/jinzhezenggroup/xtbloom",
+      "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
     }
   }
 }
