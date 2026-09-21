@@ -10,6 +10,7 @@ from pathlib import Path
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
+from .p86_pz_maple import p86_pz_maple_provenance
 from .pbe_maple import pbe_maple_provenance
 
 VERSION = "libxc-7.0.0/interior-v1"
@@ -156,7 +157,30 @@ class FunctionalSpec:
         else:
             manifest = "rsh-manifest.json" if special else "manifest.json"
             expression_source = "rsh_expressions.py" if special else "expressions.py"
-        expression_provenance = pbe_maple_provenance(self.components)
+        pbe_provenance = pbe_maple_provenance(self.components)
+        p86_pz_provenance = p86_pz_maple_provenance(self.components)
+        expression_provenance = pbe_provenance or p86_pz_provenance
+        if pbe_provenance is not None and p86_pz_provenance is not None:
+            for key in ("kind", "importer_semantics", "importer_sha256"):
+                if pbe_provenance[key] != p86_pz_provenance[key]:
+                    raise UnsupportedXC("incompatible Libxc Maple provenance")
+            expression_provenance = {
+                "kind": pbe_provenance["kind"],
+                "importer_semantics": pbe_provenance["importer_semantics"],
+                "adapter_sha256": canonical_hash(
+                    sorted(
+                        (
+                            pbe_provenance["adapter_sha256"],
+                            p86_pz_provenance["adapter_sha256"],
+                        )
+                    )
+                ),
+                "importer_sha256": pbe_provenance["importer_sha256"],
+                "components": {
+                    **pbe_provenance["components"],
+                    **p86_pz_provenance["components"],
+                },
+            }
         return {
             **payload,
             "ingredients": self.ingredients,

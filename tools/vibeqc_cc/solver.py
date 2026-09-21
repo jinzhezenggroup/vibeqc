@@ -10,6 +10,13 @@ from hashlib import sha256
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.program import PlanCall, ProgramBuffer, ProgramIR
+from vibeqc_compiler.common.solver_region import (
+    RegionCarry,
+    RegionCheckpoint,
+    RegionPredicate,
+    SolverRegion,
+)
 from vibeqc_compiler.tensor import Program, execute
 
 from tools.vibeqc_posthf import MOBlock, ReferenceSnapshot
@@ -231,6 +238,7 @@ class PreparedCCSD:
             if t1 is None
             else (np.array(t1, copy=True), np.array(t2, copy=True))
         )
+        self.solver_region = _ccsd_solver_region(self)
 
     def validate_amplitudes(self, t1: typing.Any, t2: typing.Any) -> None:
         execute(
@@ -261,6 +269,104 @@ class PreparedCCSD:
         return self.layouts[0].unpack(vector[:split]), self.layouts[1].unpack(
             vector[split:]
         )
+
+
+def _ccsd_solver_region(prepared: typing.Any) -> SolverRegion:
+    """Describe the existing RCCSD loop without moving its scientific policy."""
+
+    options = prepared.options
+    state_bytes = sum(np.asarray(value).nbytes for value in prepared.initial)
+    control_identity = canonical_hash(
+        {
+            "kind": "rccsd-cpu-controller-v1",
+            "energy_tolerance": options.energy_tolerance,
+            "residual_tolerance": options.residual_tolerance,
+            "damping": options.damping,
+            "level_shift": options.level_shift,
+            "diis_size": options.diis_size,
+            "independent_equation": prepared.reference_program.logical_hash,
+            "failure": "nonfinite-preserve-last-finite-v1",
+        }
+    )
+    body = ProgramIR(
+        "rccsd-iteration",
+        (
+            # Scientific/provider inputs and DIIS storage are owned outside this
+            # boundary. Zero-byte tokens make those dependencies explicit
+            # without double-counting the existing solver resource model.
+            ProgramBuffer("problem", 0),
+            ProgramBuffer("state", state_bytes),
+            ProgramBuffer("history", 0),
+            ProgramBuffer("control", 0),
+            ProgramBuffer("proposal", state_bytes),
+            ProgramBuffer("next_state", state_bytes),
+            ProgramBuffer("next_history", 0),
+            ProgramBuffer("next_control", 0),
+            ProgramBuffer("converged", 0),
+            ProgramBuffer("failed", 0),
+            ProgramBuffer("observable", 4 * 8),
+        ),
+        ("problem", "state", "history", "control"),
+        (
+            PlanCall(
+                "equations",
+                "ccsd.tensorir",
+                prepared.program.logical_hash,
+                ("problem", "state"),
+                ("proposal", "observable"),
+            ),
+            PlanCall(
+                "controller",
+                "ccsd.runtime_control",
+                control_identity,
+                ("problem", "state", "history", "control", "proposal", "observable"),
+                (
+                    "next_state",
+                    "next_history",
+                    "next_control",
+                    "converged",
+                    "failed",
+                ),
+            ),
+        ),
+        (
+            "next_state",
+            "next_history",
+            "next_control",
+            "converged",
+            "failed",
+            "observable",
+        ),
+    )
+    convergence_identity = canonical_hash(
+        {
+            "energy_tolerance": options.energy_tolerance,
+            "residual_tolerance": options.residual_tolerance,
+            "independent_equation": prepared.reference_program.logical_hash,
+            "acceptance": "delta-e+physical-r1-r2+fresh-expanded-replay-v1",
+        }
+    )
+    return SolverRegion(
+        "rccsd-cpu",
+        body,
+        ("problem",),
+        (
+            RegionCarry("state", "next_state"),
+            RegionCarry("history", "next_history"),
+            RegionCarry("control", "next_control"),
+        ),
+        ("next_state", "observable"),
+        options.max_iterations + 1,
+        RegionPredicate("converged", convergence_identity),
+        RegionPredicate("failed", "nonfinite-preserve-last-finite-v1"),
+        checkpoints=(
+            RegionCheckpoint("iteration_control", "iteration", ("observable",), True),
+            RegionCheckpoint(
+                "accepted_state", "success", ("next_state", "observable"), True
+            ),
+            RegionCheckpoint("failure_state", "failure", ("next_state",), True),
+        ),
+    )
 
 
 class _DIIS:
@@ -456,6 +562,8 @@ def solve(
         "options": asdict(options),
         "diis_restarts": diis.restarts,
         "logical_required_bytes": prepared.logical_required_bytes,
+        "solver_region_identity": prepared.solver_region.identity,
+        "solver_region_max_steps": prepared.solver_region.max_steps,
         "reference_energy": snapshot.reference_energy,
         "solver_source_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
     }
