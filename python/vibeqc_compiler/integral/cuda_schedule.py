@@ -397,9 +397,14 @@ def default_schedule(
     """Return a conservative target-legal schedule for ``integral``."""
 
     candidates = schedule_candidates(integral, target)
-    if candidates:
+    conservative = tuple(
+        candidate
+        for candidate in candidates
+        if _default_schedule_priority(integral, candidate) < 3
+    )
+    if conservative:
         return min(
-            candidates,
+            conservative,
             key=lambda candidate: _default_schedule_priority(integral, candidate),
         )
     name = (
