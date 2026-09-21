@@ -87,7 +87,9 @@ class GeneratedKernelSignature:
         original_names = original.names
         retained = set(self.names)
         if not retained <= set(original_names):
-            raise ValueError("pruned signature contains arguments absent from the source")
+            raise ValueError(
+                "pruned signature contains arguments absent from the source"
+            )
         ordered_retained = tuple(name for name in original_names if name in retained)
         if ordered_retained != self.names:
             raise ValueError("pruned signature must preserve source argument order")
