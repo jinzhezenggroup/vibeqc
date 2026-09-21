@@ -491,7 +491,9 @@ class PairedDifferenceEstimator:
         if method not in self.methods:
             raise ValueError("method is outside paired-estimator calibration domain")
         if numerical_family_id != self.numerical_family_id:
-            raise ValueError("numerical-level family is outside paired-estimator calibration")
+            raise ValueError(
+                "numerical-level family is outside paired-estimator calibration"
+            )
         floored = ObservableDelta(
             max(paired_delta.energy_abs, self.energy_floor),
             tuple(

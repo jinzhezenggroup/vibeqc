@@ -945,7 +945,9 @@ def main() -> None:
         raise RuntimeError("insufficient successful molecular families for calibration")
     estimators = tuple(PairedDifferenceEstimator.fit(group) for group in training)
 
-    holdout_samples: tuple[list[PairedCalibrationSample], list[PairedCalibrationSample]] = (
+    holdout_samples: tuple[
+        list[PairedCalibrationSample], list[PairedCalibrationSample]
+    ] = (
         [],
         [],
     )
