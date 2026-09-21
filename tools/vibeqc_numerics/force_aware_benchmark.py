@@ -22,6 +22,7 @@ import os
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from functools import lru_cache
 from pathlib import Path
@@ -57,7 +58,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft import GridPolicy, MolecularGrid, NativeAO
 from vibeqc_compiler.dft.spatial import SpatialPolicy
 from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
-from vibeqc_compiler.xc import FixedDensityXC
+from vibeqc_compiler.xc.contractions import ContractionProgram
 
 
 @dataclass(frozen=True)
@@ -247,6 +248,46 @@ def _diffuse_oh_basis() -> tuple[Shell, ...]:
     )
 
 
+def _hf_diffuse_basis() -> tuple[Shell, ...]:
+    """Checked-in def2-SVP for H/F plus explicit stable diffuse s/p primitives."""
+    pack = json.loads((ROOT / "python/vibeqc/data/basis_pack.json").read_text())[
+        "bases"
+    ]["def2-svp"]["elements"]
+    shells: list[Shell] = []
+    for atom_index, atomic_number in enumerate((1, 9)):
+        for source in pack[str(atomic_number)]:
+            angular = source["angular_momentum"]
+            if isinstance(angular, list):
+                if len(angular) != 1:
+                    raise ValueError(
+                        "NUM03 HF diffuse fixture requires one-l shell records"
+                    )
+                angular = angular[0]
+            shells.append(
+                Shell(
+                    atom_index,
+                    int(angular),
+                    tuple(
+                        Primitive(float(exponent), float(coefficient))
+                        for exponent, coefficient in zip(
+                            source["exponents"], source["coefficients"], strict=True
+                        )
+                    ),
+                )
+            )
+    # qz qualification found the explicit 0.02 bohr^-2 Gaussian branch stable.
+    # The exact exponent is part of the serialized Shell identity; no augmented
+    # basis name is invented.
+    shells.extend(
+        (
+            Shell(0, 0, (Primitive(0.02, 1.0),)),
+            Shell(1, 0, (Primitive(0.02, 1.0),)),
+            Shell(1, 1, (Primitive(0.02, 1.0),)),
+        )
+    )
+    return tuple(shells)
+
+
 def cases() -> tuple[Case, ...]:
     water = (
         ("O", (0.0, 0.0, 0.0)),
@@ -292,6 +333,7 @@ def cases() -> tuple[Case, ...]:
             multiplicity=2,
             basis=_diffuse_oh_basis(),
             representation="spherical",
+            role="negative",
             tags=("uks", "open-shell", "diffuse"),
         ),
         Case(
@@ -299,7 +341,26 @@ def cases() -> tuple[Case, ...]:
             "lih-stretched",
             "pbe-rks",
             (("Li", (0.0, 0.0, -3.0)), ("H", (0.0, 0.0, 3.0))),
+            role="negative",
             tags=("rks", "stretched-small-gap-proxy"),
+        ),
+        Case(
+            "hf_diffuse_holdout_rks",
+            "hf-diffuse",
+            "pbe-rks",
+            (("H", (0.0, 0.0, -0.85)), ("F", (0.0, 0.0, 0.85))),
+            basis=_hf_diffuse_basis(),
+            representation="spherical",
+            role="holdout",
+            tags=("rks", "diffuse", "qz-stable"),
+        ),
+        Case(
+            "lih_small_gap_holdout_rks",
+            "lih-small-gap",
+            "pbe-rks",
+            (("Li", (0.0, 0.0, -2.5)), ("H", (0.0, 0.0, 2.5))),
+            role="holdout",
+            tags=("rks", "stretched", "small-gap", "qz-stable"),
         ),
         Case(
             "water_changed_geometry",
@@ -591,31 +652,9 @@ def strict_frontier_gap(case: Case, device: str) -> dict[str, Any]:
     }
 
 
-def _fixed_density_xc_energy(
-    case: Case,
-    atoms: tuple[tuple[str, tuple[float, float, float]], ...],
-    density: np.ndarray,
-    functional: Any,
-    grid_spec: Any,
-) -> float:
-    with NativeAO(
-        atoms,
-        basis=case.basis,
-        representation=case.representation,
-        charge=case.charge,
-        multiplicity=case.multiplicity,
-    ) as basis:
-        grid = MolecularGrid(
-            basis.atoms,
-            grid_spec,
-            charge=case.charge,
-            multiplicity=case.multiplicity,
-        )
-        return float(FixedDensityXC(functional).integrate(basis, grid, density).energy)
-
-
-def _strict_density_and_functional(case: Case, device: str) -> tuple[np.ndarray, Any]:
-    """Return a detached strict converged AO density and its exact XC functional."""
+@contextmanager
+def _strict_stationary_context(case: Case, device: str) -> Any:
+    """Keep the native snapshot alive while SCF-domain point values are consumed."""
     strict_level, strict_grid = level_contracts(case.method)[-1]
     calc = Calculator(
         method=case.method,
@@ -646,7 +685,65 @@ def _strict_density_and_functional(case: Case, device: str) -> tuple[np.ndarray,
         batch.execute(strict=True, properties=("energy",))
         state = StationaryKsState.from_native(batch, basis)
         density = state.density[0] if case.method.endswith("rks") else state.density
-        return np.array(density, copy=True), state._source.functional
+        yield state, np.array(density, copy=True), state._source.functional, basis
+
+
+def _scf_point_energy(
+    source: Any,
+    functional: Any,
+    features: dict[str, np.ndarray],
+    weights: np.ndarray,
+) -> float:
+    """Integrate one tile with the exact native SCF point regularization."""
+    family = (
+        "lda"
+        if functional.ingredients == ("rho",)
+        else "mgga"
+        if "tau" in functional.ingredients
+        else "gga"
+    )
+    code = {"lda": 0, "gga": 1, "mgga": 2}[family]
+    npoint = len(weights)
+    point_values = source.evaluate_xc_points(
+        code,
+        features["rho"],
+        features.get("gradient", np.zeros((2, npoint, 3))),
+        features.get("tau"),
+    )
+    value = float(np.asarray(weights) @ np.asarray(point_values["energy"]))
+    if not np.isfinite(value):
+        raise ArithmeticError("nonfinite SCF-domain fixed-density XC energy")
+    return value
+
+
+def _fixed_density_xc_energy(
+    case: Case,
+    atoms: tuple[tuple[str, tuple[float, float, float]], ...],
+    density: np.ndarray,
+    source: Any,
+    functional: Any,
+    grid_spec: Any,
+) -> float:
+    with NativeAO(
+        atoms,
+        basis=case.basis,
+        representation=case.representation,
+        charge=case.charge,
+        multiplicity=case.multiplicity,
+    ) as basis:
+        grid = MolecularGrid(
+            basis.atoms,
+            grid_spec,
+            charge=case.charge,
+            multiplicity=case.multiplicity,
+        )
+        program = ContractionProgram(functional, "potential")
+        energy = 0.0
+        for tile in grid.tiles(256):
+            jets = basis.evaluate(tile.points, program.contract.ao_order)
+            features = program.features(jets, density)
+            energy += _scf_point_energy(source, functional, features, tile.weights)
+        return energy
 
 
 def fixed_density_xc_audit(
@@ -657,38 +754,49 @@ def fixed_density_xc_audit(
 ) -> dict[str, Any]:
     """Compare grid-only XC errors at one strict converged AO density."""
     levels = level_contracts(case.method)
-    density, functional = _strict_density_and_functional(case, device)
-
     rows: dict[str, Any] = {}
-    for level, grid_spec in levels:
-        started = time.perf_counter()
-        energy = _fixed_density_xc_energy(
-            case, case.atoms, density, functional, grid_spec
-        )
-        gradient = np.zeros((len(case.atoms), 3))
-        for atom_index in range(len(case.atoms)):
-            for axis in range(3):
-                displaced = []
-                for sign in (+1.0, -1.0):
-                    moved = [(symbol, list(xyz)) for symbol, xyz in case.atoms]
-                    moved[atom_index][1][axis] += sign * step
-                    moved_atoms = tuple(
-                        (symbol, tuple(float(x) for x in xyz)) for symbol, xyz in moved
-                    )
-                    displaced.append(
-                        _fixed_density_xc_energy(
-                            case, moved_atoms, density, functional, grid_spec
+    with _strict_stationary_context(case, device) as (state, density, functional, _):
+        for level, grid_spec in levels:
+            started = time.perf_counter()
+            energy = _fixed_density_xc_energy(
+                case, case.atoms, density, state._source, functional, grid_spec
+            )
+            gradient = np.zeros((len(case.atoms), 3))
+            for atom_index in range(len(case.atoms)):
+                for axis in range(3):
+                    displaced = []
+                    for sign in (+1.0, -1.0):
+                        moved = [(symbol, list(xyz)) for symbol, xyz in case.atoms]
+                        moved[atom_index][1][axis] += sign * step
+                        moved_atoms = tuple(
+                            (symbol, tuple(float(x) for x in xyz))
+                            for symbol, xyz in moved
                         )
+                        displaced.append(
+                            _fixed_density_xc_energy(
+                                case,
+                                moved_atoms,
+                                density,
+                                state._source,
+                                functional,
+                                grid_spec,
+                            )
+                        )
+                    gradient[atom_index, axis] = (displaced[0] - displaced[1]) / (
+                        2 * step
                     )
-                gradient[atom_index, axis] = (displaced[0] - displaced[1]) / (2 * step)
-        rows[level.name] = {
-            "energy": energy,
-            "gradient": gradient.tolist(),
-            "seconds": time.perf_counter() - started,
-            "grid_id": level.grid_identity,
-            "screening_tolerance": level.screening_tolerance,
-            "semantics": "fixed-AO-density XC finite difference with rebuilt moving grid/partition",
-        }
+            rows[level.name] = {
+                "energy": energy,
+                "gradient": gradient.tolist(),
+                "seconds": time.perf_counter() - started,
+                "grid_id": level.grid_identity,
+                "screening_tolerance": level.screening_tolerance,
+                "point_model": "native-scf-domain",
+                "semantics": (
+                    "fixed-AO-density XC finite difference with rebuilt "
+                    "moving grid/partition and native SCF point regularization"
+                ),
+            }
     strict = rows["strict"]
     for level in ("coarse", "standard"):
         rows[level]["actual_vs_strict"] = _jsonable(
@@ -713,18 +821,16 @@ def spatial_screening_audit(
 
     SpatialTask.discarded_max certifies omitted AO value/first-derivative
     envelopes for a region.  It is a screening signal only: the independently
-    measured E_xc/V_xc difference below is kept separate, and complete molecular
+    measured E_xc difference below is kept separate, and complete molecular
     force error is measured by the reconverged endpoint sweeps.
     """
-    density, functional = _strict_density_and_functional(case, device)
     _, strict_grid = level_contracts(case.method)[-1]
-    with NativeAO(
-        case.atoms,
-        basis=case.basis,
-        representation=case.representation,
-        charge=case.charge,
-        multiplicity=case.multiplicity,
-    ) as basis:
+    with _strict_stationary_context(case, device) as (
+        state,
+        density,
+        functional,
+        basis,
+    ):
         grid = MolecularGrid(
             basis.atoms,
             strict_grid,
@@ -745,10 +851,26 @@ def spatial_screening_audit(
                 basis, grid, policy=screened_policy, backend="cpu"
             ) as screened,
         ):
-            consumer = FixedDensityXC(functional)
             started = time.perf_counter()
-            baseline = consumer.integrate(basis, grid, density, spatial=unscreened)
-            candidate = consumer.integrate(basis, grid, density, spatial=screened)
+            ingredients = (
+                ("rho",) if functional.ingredients == ("rho",) else ("rho", "gradient")
+            )
+
+            def masked_energy(owner: PreparedSpatialGrid) -> float:
+                return sum(
+                    _scf_point_energy(
+                        state._source,
+                        functional,
+                        tile.features,
+                        tile.weights,
+                    )
+                    for tile in owner.iter_features(
+                        density, ingredients=ingredients, order=1
+                    )
+                )
+
+            baseline_energy = masked_energy(unscreened)
+            candidate_energy = masked_energy(screened)
             elapsed = time.perf_counter() - started
             task_rows = []
             for index, task in enumerate(screened.tasks.tasks):
@@ -762,9 +884,6 @@ def spatial_screening_audit(
                         "discarded_max_ao_jets": task.discarded_max.tolist(),
                     }
                 )
-            candidate_potential = np.asarray(candidate.potential)
-            baseline_potential = np.asarray(baseline.potential)
-            potential_error = np.abs(candidate_potential - baseline_potential)
             discarded_totals = np.sum(
                 [np.asarray(row["discarded_max_ao_jets"]) for row in task_rows],
                 axis=0,
@@ -774,19 +893,18 @@ def spatial_screening_audit(
                 "region_points": region_points,
                 "screening_signal_semantics": (
                     "absolute AO value/first-derivative regional envelopes; "
-                    "not an energy/potential/force bound"
+                    "not an energy/force bound"
                 ),
+                "point_model": "native-scf-domain",
                 "derivatives": ["value", "dx", "dy", "dz"],
                 "task_count": len(task_rows),
                 "tasks": task_rows,
                 "all_omitted_regions_recorded": True,
                 "cumulative_raw_discarded_max": discarded_totals.tolist(),
                 "actual_fixed_density": {
-                    "energy_abs": abs(float(candidate.energy) - float(baseline.energy)),
-                    "potential_max_abs": float(np.max(potential_error)),
-                    "potential_rms": float(np.sqrt(np.mean(potential_error**2))),
-                    "screened_energy": float(candidate.energy),
-                    "unscreened_energy": float(baseline.energy),
+                    "energy_abs": abs(candidate_energy - baseline_energy),
+                    "screened_energy": candidate_energy,
+                    "unscreened_energy": baseline_energy,
                 },
                 "mask_identity": screened.tasks.identity,
                 "unscreened_mask_identity": unscreened.tasks.identity,
@@ -904,6 +1022,7 @@ def evaluate_case(
                     "standard candidate is paired directly with the strict target",
                     "observed pair is excluded from empirical validation aggregates",
                 ),
+                method=case.method,
             )
             estimator_model_seconds = 0.0
             evidence_kind = "observed_strict_pair"
@@ -974,19 +1093,19 @@ def main() -> None:
     parser.add_argument("--force-target", type=float, default=1e-5)
     parser.add_argument(
         "--fixed-density-cases",
-        default="h2_train_rks,water_train_rks,ch3_train_uks,oh_diffuse_holdout_uks",
+        default="h2_train_rks,water_train_rks,ch3_train_uks,hf_diffuse_holdout_rks",
     )
     parser.add_argument("--fd-case", default="water_train_rks")
     parser.add_argument(
         "--axis-cases",
-        default="water_train_rks,ch3_train_uks,oh_diffuse_holdout_uks,lih_stretched_holdout_rks",
+        default="water_train_rks,ch3_train_uks,hf_diffuse_holdout_rks,lih_small_gap_holdout_rks",
     )
     parser.add_argument(
-        "--gap-cases", default="lih_stretched_holdout_rks,oh_diffuse_holdout_uks"
+        "--gap-cases", default="lih_small_gap_holdout_rks,hf_diffuse_holdout_rks"
     )
     parser.add_argument(
         "--spatial-screening-cases",
-        default="h2_train_rks,ch3_train_uks,oh_diffuse_holdout_uks",
+        default="h2_train_rks,ch3_train_uks,hf_diffuse_holdout_rks",
     )
     parser.add_argument("--spatial-screening-cutoff", type=float, default=1e-8)
     args = parser.parse_args()
@@ -1023,6 +1142,7 @@ def main() -> None:
             }
     raw: dict[str, list[Endpoint]] = {}
     errors: dict[str, str] = {}
+    negative_results: dict[str, Any] = {}
     for case in selected_cases:
         rows = []
         try:
@@ -1039,9 +1159,23 @@ def main() -> None:
                     )
                 )
         except Exception as error:  # noqa: BLE001 - retain failed benchmark cases
-            errors[case.name] = f"{type(error).__name__}: {error}"
+            message = f"{type(error).__name__}: {error}"
+            if case.role == "negative":
+                negative_results[case.name] = {
+                    "status": "observed_failure",
+                    "error": message,
+                    "tags": case.tags,
+                }
+            else:
+                errors[case.name] = message
             continue
         raw[case.name] = rows
+        if case.role == "negative":
+            negative_results[case.name] = {
+                "status": "unexpected_success",
+                "tags": case.tags,
+                "endpoints": [_jsonable(row) for row in rows],
+            }
 
     training: list[PairedCalibrationSample] = []
     for case in selected_cases:
@@ -1167,6 +1301,7 @@ def main() -> None:
         deliberate_delta,
         "deliberate-small-energy-large-force",
         ("constructed acceptance counterexample",),
+        method="pbe-rks",
     )
     deliberate_policy = AdaptiveNumericsPolicy(
         tuple(item[0] for item in level_contracts("pbe-rks")), budget
@@ -1316,6 +1451,7 @@ def main() -> None:
             name: [_jsonable(row) for row in rows] for name, rows in raw.items()
         },
         "errors": errors,
+        "negative_case_results": negative_results,
         "section_failures": section_failures,
         "performance_interpretation": {
             "claim_success_only_if_speedup_gt_one_at_matched_actual_force_accuracy": True,
