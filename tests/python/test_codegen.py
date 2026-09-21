@@ -246,7 +246,6 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_queue_diagnostics.cu",
             "cuda/direct_native_cartesian.cuh",
             "cuda/direct_native_contraction.cuh",
-            "cuda/direct_native_dsss_gradient.cuh",
             "cuda/direct_native_eri_order2.cuh",
             "cuda/direct_native_eri_order3.cuh",
             "cuda/direct_native_eri_order4.cuh",
@@ -262,8 +261,6 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_native_pair_order2_gradient.cuh",
             "cuda/direct_native_pair_order3.cuh",
             "cuda/direct_native_pair_order3_gradient.cuh",
-            "cuda/direct_native_ppss_gradient.cuh",
-            "cuda/direct_native_psps_gradient.cuh",
             "cuda/direct_native_psss.cuh",
             "cuda/direct_native_shell_class.cuh",
             "cuda/direct_native_shell_pair_hermite.cuh",
@@ -2357,6 +2354,47 @@ def test_ssss_force_retires_handwritten_math_and_selector() -> None:
     assert "const std::uint64_t ssss_shell_class_mask" in driver
     assert "~ssss_shell_class_mask" in driver
     assert "~explicit_generated_force_shell_class_mask" in driver
+
+
+
+
+def test_order2_force_codegen_emits_only_independent_gradient_roots() -> None:
+    """Keep PSPS/PPSS/DSSS native schedulers backed by force-only compiler roots."""
+
+    source = emit_low_order_weighted_header(inline_single_use=True)
+    names = ("psps_force", "ppss_force", "dsss_force")
+    for index, name in enumerate(names):
+        begin = source.index(f"IndependentGradient {name}(")
+        if index + 1 < len(names):
+            end = source.index(f"IndependentGradient {names[index + 1]}(", begin)
+        else:
+            end = source.index("}  // namespace vibeqc::scf::generated_weighted_eri", begin)
+        function = source[begin:end]
+        assert "result.value" not in function
+        assert "result.center[3]" not in function
+        for center in range(3):
+            for axis in range(3):
+                assert f"result.center[{center}][{axis}]" in function
+
+
+def test_order2_force_retires_handwritten_gradient_bodies() -> None:
+    """Keep exact order-two Direct-HF force mathematics compiler-owned."""
+
+    for name in ("dsss", "ppss", "psps"):
+        assert not (
+            REPOSITORY_ROOT / f"src/scf/cuda/direct_native_{name}_gradient.cuh"
+        ).exists()
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_order2.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert "contracted_eri_cartesian_source_order2_generated_weighted_gradient" in source
+    for name in ("psps", "ppss", "dsss"):
+        assert f"generated_weighted_eri::{name}_force" in source
+        assert f"direct_native_{name}_gradient.cuh" not in source
+        assert f"contracted_eri_cartesian_source_{name}_weighted_gradient" not in source
+    assert "generated_weighted_eri::Geometry geometry;" in source
+    assert "generated_weighted_eri::Geometry geometry{};" not in source
 
 
 def test_bounded_psss_resident_path_is_allocated_and_disjoint_from_page_fallback() -> (
