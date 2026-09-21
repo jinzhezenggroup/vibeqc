@@ -134,14 +134,16 @@ class CudaExecutionProfile:
     gres: str | None = "gpu:5090:1"
     nodes: int = 1
     ntasks: int = 1
-    cpus_per_task: int | None = None
     slurm_time: str | None = "00:10:00"
+    cpus_per_task: int | None = None
 
     def __post_init__(self) -> None:
         if self.nodes < 1 or self.ntasks < 1:
             raise ValueError("CUDA execution nodes/tasks must be positive")
-        if self.cpus_per_task is not None and self.cpus_per_task < 1:
-            raise ValueError("CUDA execution cpus_per_task must be positive or None")
+        if self.cpus_per_task is not None and (
+            type(self.cpus_per_task) is not int or self.cpus_per_task < 1
+        ):
+            raise ValueError("CUDA execution cpus_per_task must be a positive integer or None")
         if not self.srun.strip():
             raise ValueError("CUDA execution srun command must be non-empty")
         for name in ("partition", "gres", "slurm_time"):
@@ -279,8 +281,8 @@ class CudaBenchmarkExecutor:
     gres: str | None = "gpu:5090:1"
     nodes: int = 1
     ntasks: int = 1
-    cpus_per_task: int | None = None
     slurm_time: str | None = "00:10:00"
+    cpus_per_task: int | None = None
 
     @classmethod
     def from_environment(
