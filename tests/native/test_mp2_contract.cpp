@@ -29,6 +29,9 @@ class ForwardingInteractionSource final : public vibeqc::integrals::ElectronInte
   const vibeqc::core::System& orbital() const override { return source_.orbital(); }
   std::size_t nbf() const override { return source_.nbf(); }
   std::size_t naux() const override { return source_.naux(); }
+  std::size_t retained_numeric_bytes() const override {
+    return source_.retained_numeric_bytes();
+  }
   bool supports(Operator op) const noexcept override { return source_.supports(op); }
   void read(Operator op, const std::array<std::size_t, 4>& begin,
             const std::array<std::size_t, 4>& count, double* out,
