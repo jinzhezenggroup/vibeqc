@@ -41,7 +41,11 @@ def test_p86_pz_identity_records_pinned_source_provenance(
     assert provenance["kind"] == "libxc-maple"
     assert provenance["importer_semantics"] == libxc_maple.IMPORTER_SEMANTICS
     component = provenance["components"][name]
-    module = p86_pz_maple._pz_module() if name == "LDA_C_PZ" else p86_pz_maple._p86_module()
+    module = (
+        p86_pz_maple._pz_module()
+        if name == "LDA_C_PZ"
+        else p86_pz_maple._p86_module()
+    )
     assert component == {
         "entry": entry,
         "source_sha256": module.source_sha256,
