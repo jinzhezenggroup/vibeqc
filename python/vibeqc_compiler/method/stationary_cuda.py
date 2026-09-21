@@ -432,13 +432,14 @@ def emit_stationary_wrapper_cuda(
     pbe: typing.Any = None,
     plan: typing.Any,
     iterations: typing.Any = 3,
+    declare_primitive: bool = True,
 ) -> typing.Any:
     """Emit the small method-specific TU linked against cached primitive code."""
 
     if not isinstance(plan, StationaryGradientPlan):
         raise TypeError("stationary CUDA requires StationaryGradientPlan")
     return (
-        _FIRST_DERIVATIVE_DECLARATION
+        (_FIRST_DERIVATIVE_DECLARATION if declare_primitive else "")
         + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
         + "namespace vibeqc_stationary_cuda {\n"
         + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
@@ -467,6 +468,7 @@ def emit_stationary_cuda(
         pbe=pbe,
         plan=plan,
         iterations=iterations,
+        declare_primitive=False,
     )
 
 
