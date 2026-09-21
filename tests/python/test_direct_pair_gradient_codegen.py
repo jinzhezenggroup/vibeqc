@@ -24,19 +24,20 @@ def test_high_order_pair_gradient_header_is_compiler_owned() -> None:
     assert "gradient[3][coordinate] =" in source
 
 
-def test_order456_consumes_generated_pair_gradient_without_native_duplicate() -> None:
-    order456 = (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order456_gradient.cuh"
+def test_order456_consumer_is_fully_compiler_owned() -> None:
+    source = emit_direct_high_order_pair_gradient_header()
+    assert "contracted_eri_cartesian_source_order4_gradient(" in source
+    assert "contracted_eri_cartesian_source_order5_gradient(" in source
+    assert "contracted_eri_cartesian_source_order6_gradient(" in source
+
+    native = REPOSITORY_ROOT / "src/scf/cuda/direct_native_order456_gradient.cuh"
+    assert not native.exists()
+
+    force = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh"
     ).read_text(encoding="utf-8")
-    assert '#include "generated_direct_high_order_pair_gradient.cuh"' in order456
-    assert "direct_native_pair_high_order_gradient.cuh" not in order456
-    assert "__device__ inline void primitive_eri_order456_gradient(" not in order456
-    assert "make_high_order_pair_gradient_term" not in order456
-    assert "high_order_coulomb<CoulombOrder>" not in order456
-    assert "boys_values<" not in order456
-    assert not (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_native_pair_high_order_gradient.cuh"
-    ).exists()
+    assert '#include "generated_direct_high_order_pair_gradient.cuh"' in force
+    assert "direct_native_order456_gradient.cuh" not in force
 
     generated = (REPOSITORY_ROOT / "cmake/VibeQCGeneratedSources.cmake").read_text(
         encoding="utf-8"

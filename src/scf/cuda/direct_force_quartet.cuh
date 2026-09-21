@@ -15,7 +15,7 @@
 #include "scf/cuda/direct_native_order01_gradient.cuh"
 #include "scf/cuda/direct_native_order2_gradient.cuh"
 #include "scf/cuda/direct_native_order3_gradient.cuh"
-#include "scf/cuda/direct_native_order456_gradient.cuh"
+#include "generated_direct_high_order_pair_gradient.cuh"
 #include "scf/cuda/direct_native_source_contraction.cuh"
 #include "scf/cuda/direct_queue_index.cuh"
 #include "scf/cuda/matrix_index.cuh"
