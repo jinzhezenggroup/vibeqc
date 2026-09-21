@@ -818,6 +818,53 @@ def test_public_cuda_grid_xc_schedules_preserve_complete_endpoint() -> None:
     np.testing.assert_allclose(unfused.forces.sum(axis=0), 0, atol=1e-7, rtol=0)
 
 
+def test_profiled_xc_schedule_reaches_direct_and_resource_aware_batch_paths(
+    monkeypatch: typing.Any,
+) -> None:
+    """DFT09: one resolved profile schedule must survive every public KS path."""
+    from vibeqc import Calculator, KsOptions, ResourceBudget
+    from vibeqc.ks import resolve_ks_options
+
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    resolved = resolve_ks_options(
+        "pbe-rks", KsOptions(xc_schedule="host_unfused", tile_points=31)
+    )
+    calculator = Calculator(
+        method="pbe-rks",
+        basis="sto-3g",
+        device="cuda",
+        resource_budget=ResourceBudget(),
+        max_iterations=200,
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+    )
+
+    def selected(
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        assert len(systems) == 1
+        assert tuple(charges) == (0,)
+        assert tuple(multiplicities) == (1,)
+        return resolved
+
+    monkeypatch.setattr(calculator, "_effective_ks_options", selected)
+
+    direct = calculator.singlepoint(atoms, properties=("energy",))
+    assert direct.converged and direct.executed_backend == "cuda"
+    assert direct.ks_diagnostic.tile_points == 31
+
+    with calculator.prepare_batch([atoms], warm_start=True) as batch:
+        first = batch.execute(strict=True, properties=("energy",)).items[0]
+        second = batch.execute(strict=True, properties=("energy",)).items[0]
+        assert first.converged and second.converged
+        assert first.executed_backend == second.executed_backend == "cuda"
+        assert first.ks_diagnostic.tile_points == 31
+        assert second.ks_diagnostic.tile_points == 31
+
+
 def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
     """C2: rebuilt owners get fresh forces and a bad neighbor cannot poison them."""
     from test_dft_complete_cpu import ATOMS

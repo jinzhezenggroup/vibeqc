@@ -1570,6 +1570,11 @@ class Calculator:
         if not native_atoms:
             raise ValueError("at least one atom is required")
         self._preflight_hf_basis(native_atoms, compute_forces=compute_forces)
+        effective_ks_options = self._effective_ks_options(
+            (native_atoms,),
+            charges=(charge,),
+            multiplicities=(multiplicity,),
+        )
         resource_plan = None
         if self._resource_budget is not None:
             resource_plan = self.estimate_resources(
@@ -1641,6 +1646,7 @@ class Calculator:
             method_descriptor = self._method_descriptor(
                 auxiliary_system if auxiliary_system.value else None,
                 resource_plan=resource_plan,
+                ks_options=effective_ks_options,
             )
 
             def prepare() -> typing.Any:

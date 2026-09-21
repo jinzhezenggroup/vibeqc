@@ -866,6 +866,7 @@ class PreparedBatch:
                 self._systems,
                 charges=self._charges,
                 multiplicities=self._multiplicities,
+                ks_options=self._effective_ks_options,
             )
             if current != next(
                 r for r in self.resource_plan.requests if r.name == current.name
