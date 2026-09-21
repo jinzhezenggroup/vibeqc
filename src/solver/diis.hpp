@@ -51,8 +51,7 @@ class Diis {
       std::vector<double> system((n + 1) * (n + 1)), rhs(n + 1), solution;
       for (std::size_t i = 0; i < n; ++i)
         for (std::size_t j = 0; j < n; ++j) system[i * (n + 1) + j] = gram[i * n + j] / scale;
-      for (std::size_t i = 0; i < n; ++i)
-        system[i * (n + 1) + n] = system[n * (n + 1) + i] = -1.0;
+      for (std::size_t i = 0; i < n; ++i) system[i * (n + 1) + n] = system[n * (n + 1) + i] = -1.0;
       rhs[n] = -1.0;
 
       if (solve_linear(system, rhs, solution)) {
@@ -85,8 +84,7 @@ class Diis {
       const double divisor = matrix[pivot * n + col];
       if (!std::isfinite(divisor) || std::abs(divisor) < 1e-14) return false;
       if (pivot != col) {
-        for (std::size_t j = 0; j < n; ++j)
-          std::swap(matrix[col * n + j], matrix[pivot * n + j]);
+        for (std::size_t j = 0; j < n; ++j) std::swap(matrix[col * n + j], matrix[pivot * n + j]);
         std::swap(rhs[col], rhs[pivot]);
       }
       for (std::size_t j = col; j < n; ++j) matrix[col * n + j] /= divisor;
@@ -94,8 +92,7 @@ class Diis {
       for (std::size_t row = 0; row < n; ++row) {
         if (row == col) continue;
         const double factor = matrix[row * n + col];
-        for (std::size_t j = col; j < n; ++j)
-          matrix[row * n + j] -= factor * matrix[col * n + j];
+        for (std::size_t j = col; j < n; ++j) matrix[row * n + j] -= factor * matrix[col * n + j];
         rhs[row] -= factor * rhs[col];
       }
     }
