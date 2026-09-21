@@ -105,7 +105,7 @@ def lda_xc_pw_polarized_tail_expression() -> typing.Any:
     n = a + b
     up, down = 2 * a / n, 2 * b / n
     z = (a - b) / n
-    x = scale_sixth_root * n.pow(F(1, 6))
+    x = scale_sixth_root * n.pow(1.0 / 6.0)
 
     c = (3 / (4 * math.pi)) ** (1 / 3)
     sqrt_c = math.sqrt(c)
@@ -138,18 +138,18 @@ def lda_xc_pw_polarized_tail_expression() -> typing.Any:
 
     e0, e1, em = (pw_channel(i) for i in range(3))
     fz20 = F("1.709921")
-    fz = (up.pow(F(4, 3)) + down.pow(F(4, 3)) - 2) / (2 ** (4 / 3) - 2)
+    fz = (up.pow(4.0 / 3.0) + down.pow(4.0 / 3.0) - 2) / (2 ** (4 / 3) - 2)
     eps = e0 + z.pow(4) * fz * (e1 - e0 + em / fz20) - fz * em / fz20
     correlation = n * eps
     correlation_a = graph.differentiate(correlation, a)
     correlation_b = graph.differentiate(correlation, b)
 
     cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
-    exchange_shape = -(a.pow(F(4, 3)) + b.pow(F(4, 3))) * cx
+    exchange_shape = -(a.pow(4.0 / 3.0) + b.pow(4.0 / 3.0)) * cx
     exchange_energy = scale_sixth_root.pow(8) * exchange_shape
     exchange_factor = -F(4, 3) * cx * scale_sixth_root.pow(2)
-    exchange_a = exchange_factor * a.pow(F(1, 3))
-    exchange_b = exchange_factor * b.pow(F(1, 3))
+    exchange_a = exchange_factor * a.pow(1.0 / 3.0)
+    exchange_b = exchange_factor * b.pow(1.0 / 3.0)
 
     energy = scale * correlation + exchange_energy
     return (
