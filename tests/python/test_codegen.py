@@ -3553,6 +3553,24 @@ def test_cuda_target_request_is_resolved_before_language_enablement() -> None:
     assert "set(CMAKE_CUDA_ARCHITECTURES 120)" not in cuda_block
 
 
+def test_virtual_cuda_target_keeps_host_profile_portable() -> None:
+    """Do not apply a measured host schedule to PTX that may JIT on a future GPU."""
+
+    cmake = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    profile_block = cmake.split(
+        "# A single real architecture may use", 1
+    )[1].split("vibeqc_register_cuda_generated_sources", 1)[0]
+    virtual_guard = profile_block.index(
+        'if(NOT _vibeqc_cuda_profile_architecture MATCHES "-virtual$")'
+    )
+    real_normalization = profile_block.index(
+        'string(REGEX REPLACE "-real$" "" _vibeqc_cuda_profile_architecture'
+    )
+    profile_define = profile_block.index("VIBEQC_CUDA_PROFILE_ARCHITECTURE=")
+    assert virtual_guard < real_normalization < profile_define
+    assert 'REGEX REPLACE "-.*$"' not in profile_block
+
+
 def test_batch_screening_ranks_real_profile_and_emits_one_process_driver() -> None:
     with pytest.raises(ValueError, match="requires --profile"):
         candidate_specs()
