@@ -111,10 +111,10 @@ classification exceptions cannot waive it. Permanent fixtures under
 counted. Changing the budget is an explicit policy review, not an automatic
 response to another benchmark dump.
 
-The 2026-09-21 checkout trim moved 9 non-publication-bound historical benchmark
-records (3,395,480 bytes) out of the current tree while preserving exact
+The 2026-09-21 checkout trim moved 24 non-publication-bound historical benchmark
+records and legacy archives (8,235,992 bytes) out of the current tree while preserving exact
 Git-object recovery identities in `benchmarks/results/retention-2026-09-21/migration.json`.
-This does not rewrite history, weaken scientific gates, or authorize a Release.
+Test-consumed permanent evidence archives remain in Git. This does not rewrite history, weaken scientific gates, or authorize a Release.
 
 Full logs, retries and profiler traces belong in `.artifacts/` or external
 storage. Do not compress them, rename them or split binary archives into chunks

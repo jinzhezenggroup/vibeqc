@@ -1,5 +1,17 @@
 # Issue #308 follow-up stage ledger
 
+> **Checkout retention (2026-09-21):** `historical-followup.zip`, `stage-evidence.zip` were moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue308-stage-ledger/historical-followup.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue308-stage-ledger/historical-followup.zip
+> python tools/restore_retained_evidence.py benchmarks/results/issue308-stage-ledger/stage-evidence.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue308-stage-ledger/stage-evidence.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
 This increment follows the September 14 analysis in
 [issue comment 5661246967](https://github.com/jinzhezenggroup/vibeqc/issues/308#issuecomment-5661246967).
 It adds crash-visible phase observations and bounded fixed-density experiments.

@@ -1,5 +1,14 @@
 # Final-state and rejected combined ablations at 192 AOs
 
+> **Checkout retention (2026-09-21):** `endpoints.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue206-final-state-192/endpoints.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue206-final-state-192/endpoints.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
 Slurm job 9503 ran the WATER27 S4 water octamer: 24 atoms, 192 spherical
 AOs, def2-SVP orbital/auxiliary basis, RHF, batch one, resident DF and FP64.
 The finite allocation used one RTX 5090 on `main`. Source commit and native
