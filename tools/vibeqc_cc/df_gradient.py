@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 from vibeqc_compiler.method.matrix_function import SymmetricMatrixFunctionSpec
@@ -49,7 +49,7 @@ def _symmetric(value: np.ndarray, name: str) -> np.ndarray:
     scale = float(np.max(np.abs(value))) if value.size else 0.0
     if scale and np.max(np.abs(value / scale - value.T / scale)) > 1e-12:
         raise ValueError(f"{name} must be symmetric")
-    return 0.5 * (value + value.T)
+    return 0.5 * value + 0.5 * value.T
 
 
 def pullback_df_three_index(
@@ -85,8 +85,7 @@ def pullback_df_three_index(
             "relative_threshold must be a float strictly between zero and one"
         )
 
-    m = _symmetric(m, "DF metric")
-    max_block = 0
+    max_block = max_intermediate = max_columns = 0
     checked: list[tuple[tuple[int, ...], tuple[int, ...], np.ndarray]] = []
     for block in blocks:
         if not isinstance(block, DFThreeIndexCotangent):
@@ -102,24 +101,35 @@ def pullback_df_three_index(
         if bar.shape != (naux, len(p), len(q)):
             raise ValueError("DF B cotangent shape does not match its MO columns")
         max_block = max(max_block, bar.size)
+        max_intermediate = max(max_intermediate, naux * nao * max(len(p), len(q)))
+        max_columns = max(max_columns, len(p) + len(q))
         checked.append((p, q, bar))
 
-    metric_hash = hashlib.sha256(
-        np.ascontiguousarray(m, dtype="<f8").tobytes()
-    ).hexdigest()
     rule = SymmetricMatrixFunctionSpec(
         naux,
-        "df-ccsdt-metric:" + metric_hash,
+        "df-ccsdt-metric:admission",
         relative_threshold=relative_threshold,
     )
+    # Include simultaneous accumulators, bounded contraction intermediates,
+    # symmetric projection and immutable publication; exclude caller-owned input
+    # arrays and opaque BLAS workspace, as in the shared spectral rule.
     logical_required = rule.logical_workspace_bytes + 8 * (
-        a.size + 3 * naux * naux + 3 * max_block + 2 * nao * nmo
+        4 * a.size
+        + 6 * naux * naux
+        + 4 * max_block
+        + 2 * max_intermediate
+        + 2 * nao * max_columns
     )
     if logical_required > max_bytes:
         raise MemoryError(
             f"DF three-index pullback requires {logical_required} logical numeric bytes"
         )
 
+    m = _symmetric(m, "DF metric")
+    metric_hash = hashlib.sha256(
+        np.ascontiguousarray(m, dtype="<f8").tobytes()
+    ).hexdigest()
+    rule = replace(rule, matrix_identity="df-ccsdt-metric:" + metric_hash)
     evaluation = rule.prepare(
         m,
         max_bytes=max_bytes,
@@ -131,14 +141,22 @@ def pullback_df_three_index(
 
     for p, q, bar_b in checked:
         cp, cq = c[:, p], c[:, q]
-        transformed = np.einsum("mp,nq,mnP->Ppq", cp, cq, a, optimize=True)
+        transformed = np.einsum(
+            "mp,nq,mnP->Ppq", cp, cq, a, optimize=["einsum_path", (0, 2), (0, 1)]
+        )
         bar_transformed = np.einsum("PQ,Qpq->Ppq", inverse_root, bar_b, optimize=True)
-        bar_a += np.einsum("mp,nq,Ppq->mnP", cp, cq, bar_transformed, optimize=True)
+        bar_a += np.einsum(
+            "mp,nq,Ppq->mnP",
+            cp,
+            cq,
+            bar_transformed,
+            optimize=["einsum_path", (0, 2), (0, 1)],
+        )
         bar_inverse_root += np.einsum("Ppq,Qpq->PQ", transformed, bar_b, optimize=True)
 
     # A and M are physical symmetric sources. Project each cotangent exactly once
     # before it reaches the generated raw derivative consumer.
-    bar_a = 0.5 * (bar_a + bar_a.transpose(1, 0, 2))
+    bar_a = 0.5 * bar_a + 0.5 * bar_a.transpose(1, 0, 2)
     bar_m = evaluation.vjp(bar_inverse_root)
     return DFThreeIndexPullback(
         immutable(bar_a),
