@@ -198,7 +198,9 @@ return finite({scaled}, error, {i});"""
             else:
                 coordinates.append(c[output_axis])
                 output_axis += 1
-        lines.append(f"return {_read(child, _flat(coordinates, source_shape), prefix)};")
+        lines.append(
+            f"return {_read(child, _flat(coordinates, source_shape), prefix)};"
+        )
         return "\n".join(lines)
     child = args[0]
     source_shape = plan.steps[child].node.spec.shape
@@ -282,9 +284,7 @@ def _arithmetic_error_expression(plan: typing.Any, legacy: typing.Any) -> typing
     separate range below -2n. The planner bounds the integer diagnostic range.
     """
     transcendental = any(s.node.op in TRANSCENDENTALS for s in plan.steps)
-    runtime_indexed = any(
-        s.node.op == "runtime_indexed_select" for s in plan.steps
-    )
+    runtime_indexed = any(s.node.op == "runtime_indexed_select" for s in plan.steps)
     if not transcendental and not runtime_indexed:
         return legacy
     n = len(plan.steps)

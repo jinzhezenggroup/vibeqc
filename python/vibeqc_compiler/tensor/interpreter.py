@@ -144,7 +144,9 @@ def _evaluate(
         result = np.empty(node.spec.shape, dtype=node.spec.dtype)
         for mapping, axis in zip(maps, axes, strict=True):
             if np.any(mapping < 0) or np.any(mapping >= value.shape[axis]):
-                raise ValueError("runtime_indexed_select coordinate is outside its source axis")
+                raise ValueError(
+                    "runtime_indexed_select coordinate is outside its source axis"
+                )
         selected = dict(zip(axes, maps, strict=True))
         for domain_coordinate in range(node.spec.shape[0]):
             source = tuple(

@@ -16,7 +16,6 @@ from vibeqc_compiler.tensor import (
 from vibeqc_compiler.tensor.cuda_emit import emit_cuda
 from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
-
 TARGET = cuda_target_info("sm_120")
 
 
@@ -113,5 +112,7 @@ def test_runtime_indexed_cuda_plan_uses_runtime_maps_not_static_tables() -> None
 
 def test_runtime_indexed_generated_ad_fails_closed_until_transpose_rule_lands() -> None:
     program = _program()
-    with pytest.raises(ValueError, match="no demand-driven JVP rule.*runtime_indexed_select"):
+    with pytest.raises(
+        ValueError, match="no demand-driven JVP rule.*runtime_indexed_select"
+    ):
         linearize(program, ["source"])
