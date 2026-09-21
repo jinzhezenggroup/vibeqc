@@ -12,6 +12,7 @@ _EXPORTS = {
     "D3_TABLE_SHA256": ".dispersion",
     "pbe0_d3_bj_spec": ".dispersion",
     "pbe_d3_bj_spec": ".dispersion",
+    "pbe_d4_eeq_spec": ".dispersion",
     "BasisBinding": ".basis_binding",
     "CorrectionProvenance": ".correction",
     "CorrectionResult": ".correction",

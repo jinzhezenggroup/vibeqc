@@ -116,6 +116,14 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_d3_ragged_tests tests/native/test_d3_ragged.cpp)
   add_dependencies(vibeqc_d3_ragged_tests vibeqc)
   target_include_directories(vibeqc_d3_ragged_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  vibeqc_native_test(vibeqc_d4_production_tests tests/native/test_d4_production.cpp)
+  vibeqc_native_test(vibeqc_d4_ragged_tests tests/native/test_d4_ragged.cpp)
+  foreach(_vibeqc_d4_production_test IN ITEMS vibeqc_d4_production_tests vibeqc_d4_ragged_tests)
+    add_dependencies(${_vibeqc_d4_production_test} vibeqc vibeqc_method_parameters_codegen
+                     vibeqc_d4_derivative_codegen)
+    target_include_directories(
+      ${_vibeqc_d4_production_test} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  endforeach()
   vibeqc_native_test(vibeqc_d4_reference_tests tests/native/test_d4_reference.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_d4_eeq_tests tests/native/test_d4_eeq.cpp NO_VIBEQC)
   vibeqc_native_test(vibeqc_gcp_r2scan3c_tests tests/native/test_gcp_r2scan3c.cpp NO_VIBEQC)
@@ -142,6 +150,13 @@ macro(vibeqc_add_native_tests)
     add_dependencies(vibeqc_d3_atm_cuda_tests vibeqc_d3_codegen)
     target_include_directories(vibeqc_d3_atm_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
     set_target_properties(vibeqc_d3_atm_cuda_tests PROPERTIES CUDA_STANDARD 20)
+
+    target_link_libraries(vibeqc_d4_production_tests PRIVATE CUDA::cudart)
+    target_link_libraries(vibeqc_d4_ragged_tests PRIVATE CUDA::cudart)
+    add_test(NAME vibeqc_d4_production_cuda_tests COMMAND vibeqc_d4_production_tests cuda)
+    add_test(NAME vibeqc_d4_ragged_cuda_tests COMMAND vibeqc_d4_ragged_tests cuda)
+    set_tests_properties(vibeqc_d4_production_cuda_tests vibeqc_d4_ragged_cuda_tests
+                         PROPERTIES SKIP_RETURN_CODE 77)
 
     vibeqc_native_test(vibeqc_d4_reference_cuda_tests tests/native/test_d4_reference_cuda.cu
                        NO_VIBEQC SKIP_77)

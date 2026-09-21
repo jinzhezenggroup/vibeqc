@@ -137,6 +137,7 @@ typedef struct vibeqc_calculation vibeqc_calculation;
 typedef struct vibeqc_batch vibeqc_batch;
 
 typedef struct vibeqc_d3_batch vibeqc_d3_batch;
+typedef struct vibeqc_d4_batch vibeqc_d4_batch;
 
 typedef int32_t vibeqc_d3_damping;
 enum { VIBEQC_D3_DAMPING_BJ = 1 };
@@ -200,6 +201,90 @@ typedef struct vibeqc_d3_runtime_diagnostic {
   uint32_t system_count;
   uint32_t maximum_atoms;
 } vibeqc_d3_runtime_diagnostic;
+
+typedef int32_t vibeqc_d4_profile;
+enum {
+  VIBEQC_D4_PROFILE_STANDARD_EEQ = 1,
+  VIBEQC_D4_PROFILE_R2SCAN3C_EEQ = 2
+};
+
+/** Molecular nonperiodic D4(BJ)-EEQ system. Coordinates are Bohr. */
+typedef struct vibeqc_d4_system_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  const int32_t* atomic_numbers;
+  const double* coordinates;
+  uint32_t atom_count;
+  double total_charge;
+} vibeqc_d4_system_descriptor;
+
+/**
+ * Explicit D4(BJ)-EEQ model identity. There is deliberately no generic GFN2
+ * default: callers must provide the named-method parameters and EEQ profile.
+ */
+typedef struct vibeqc_d4_bj_eeq_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_d4_profile profile;
+  double s6;
+  double s8;
+  double s9;
+  double a1;
+  double a2;
+  double ga;
+  double gc;
+  double cn_cutoff;
+  double pair_cutoff;
+  double atm_cutoff;
+  uint64_t maximum_bytes;
+} vibeqc_d4_bj_eeq_descriptor;
+
+typedef struct vibeqc_d4_batch_input_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  const double* coordinates;
+  uint32_t coordinate_count;
+} vibeqc_d4_batch_input_descriptor;
+
+/** Caller-owned D4 result buffers; gradient is dE/dR, charges are EEQ2019. */
+typedef struct vibeqc_d4_batch_item_result_descriptor {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_status status;
+  double energy;
+  double two_body_energy;
+  double atm_energy;
+  double* gradient;
+  uint32_t gradient_count;
+  double* charges;
+  uint32_t charge_count;
+  vibeqc_backend executed_backend;
+} vibeqc_d4_batch_item_result_descriptor;
+
+/** Bounded production owner and replay/scheduling evidence. */
+typedef struct vibeqc_d4_runtime_diagnostic {
+  uint32_t struct_size;
+  uint32_t abi_version;
+  vibeqc_backend backend;
+  vibeqc_d4_profile profile;
+  uint64_t plan_host_bytes;
+  uint64_t execution_host_bytes;
+  uint64_t device_bytes;
+  uint64_t table_bytes;
+  uint64_t workspace_bytes;
+  uint64_t maximum_bytes;
+  uint64_t total_atoms;
+  uint32_t system_count;
+  uint32_t maximum_atoms;
+  uint32_t worker_blocks;
+  uint32_t workspace_slots;
+  uint64_t execution_count;
+  uint64_t unchanged_geometry_replays;
+  uint64_t changed_geometry_replays;
+  uint64_t coordinate_h2d_bytes;
+  uint64_t kernel_launches;
+  int32_t atm_enabled;
+} vibeqc_d4_runtime_diagnostic;
 
 typedef uint32_t vibeqc_batch_flags;
 enum {
@@ -1142,6 +1227,38 @@ VIBEQC_API vibeqc_status vibeqc_d3_batch_execute(vibeqc_d3_batch* batch,
                                                  uint32_t input_count,
                                                  vibeqc_d3_batch_item_result_descriptor* results,
                                                  uint32_t result_count);
+
+/** Audited identities compiled into the production D4(BJ)-EEQ provider. */
+VIBEQC_API const char* vibeqc_d4_table_sha256(void);
+VIBEQC_API const char* vibeqc_d4_charge_parameter_sha256(void);
+VIBEQC_API const char* vibeqc_d4_derivative_identity(void);
+VIBEQC_API const char* vibeqc_d4_provider_identity(void);
+VIBEQC_API const char* vibeqc_d4_scheduler_identity(void);
+
+/**
+ * Prepare a standalone D4(BJ)-EEQ ragged fleet. Atomic numbers, charges and
+ * prepared geometries are copied. maximum_bytes bounds all persistent owner
+ * state plus worst-case execution staging/workspace.
+ */
+VIBEQC_API vibeqc_status vibeqc_d4_batch_prepare(
+    vibeqc_context* context, const vibeqc_d4_system_descriptor* systems,
+    uint32_t system_count, const vibeqc_d4_bj_eeq_descriptor* model,
+    vibeqc_d4_batch** batch);
+VIBEQC_API void vibeqc_d4_batch_destroy(vibeqc_d4_batch* batch);
+VIBEQC_API vibeqc_status vibeqc_d4_batch_get_diagnostic(
+    const vibeqc_d4_batch* batch, vibeqc_d4_runtime_diagnostic* diagnostic);
+
+/**
+ * Execute complete molecular D4(BJ)-EEQ energy and analytic dE/dR.
+ * inputs=NULL,input_count=0 replays prepared geometries. Otherwise each input
+ * may independently select prepared or changed coordinates. Item scientific
+ * failures are isolated; successful function return means the replay itself
+ * was structurally valid.
+ */
+VIBEQC_API vibeqc_status vibeqc_d4_batch_execute(
+    vibeqc_d4_batch* batch, const vibeqc_d4_batch_input_descriptor* inputs,
+    uint32_t input_count, vibeqc_d4_batch_item_result_descriptor* results,
+    uint32_t result_count);
 
 #ifdef __cplusplus
 }

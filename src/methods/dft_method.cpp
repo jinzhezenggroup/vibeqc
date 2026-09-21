@@ -10,7 +10,9 @@
 #include <utility>
 
 #include "dft/ao_grid.hpp"
+#include "dft/dispersion/d4_runtime.hpp"
 #include "dft/grid.hpp"
+#include "generated_method_parameters.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_usage.hpp"
 #include "scf/fock_prepared.hpp"
@@ -56,20 +58,24 @@ bool is_r2scan(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_R2SCAN_RKS || method == VIBEQC_METHOD_R2SCAN_UKS;
 }
 
+bool is_pbe_d4(vibeqc_method method) noexcept { return method == VIBEQC_METHOD_PBE_D4_RKS; }
+
 bool is_supported_dft(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_PBE_RKS ||
-         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_R2SCAN_RKS || is_uks(method);
+         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_R2SCAN_RKS ||
+         is_pbe_d4(method) || is_uks(method);
 }
 
 std::uint32_t functional_code(vibeqc_method method) {
   if (is_r2scan(method)) return 2U;
-  if (is_pbe_family(method)) return 1U;
+  if (is_pbe_family(method) || is_pbe_d4(method)) return 1U;
   if (method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_LDA_UKS) return 0U;
   throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unknown semilocal functional family");
 }
 
 const char* display_method_name(vibeqc_method method) noexcept {
   if (is_pbe0(method)) return "PBE0";
+  if (is_pbe_d4(method)) return "PBE-D4";
   if (is_r2scan(method)) return "R2SCAN";
   return is_pbe_family(method) ? "PBE" : "LDA";
 }
@@ -114,6 +120,8 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && backend != VIBEQC_BACKEND_CUDA)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "DFT automatic precision currently requires CUDA");
+    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && is_pbe_d4(descriptor.method))
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "PBE-D4 currently requires strict FP64");
     if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && is_r2scan(descriptor.method))
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "r2SCAN currently requires strict FP64");
     options.precision_mode = descriptor.precision_mode;
@@ -298,6 +306,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
       cuda_ = std::make_unique<dft::CudaKsPlan>(fock_, basis_, grid_, options_,
                                                 functional_code(method_), options_.xc_tile_points);
 #endif
+    if (is_pbe_d4(method_)) prepare_d4(device);
     runtime::sample_cpu_capacity(host_numeric_capacity());
   }
 
@@ -319,6 +328,11 @@ class KsPreparedCalculation final : public PreparedCalculation {
 #if VIBEQC_HAS_CUDA
     if (cuda_) bytes = runtime::add_capacity(bytes, cuda_->resources().retained_host_numeric_bytes);
 #endif
+    if (d4_) {
+      const auto& resources = d4_->resources();
+      bytes = runtime::add_capacity(bytes, static_cast<std::size_t>(resources.plan_host_bytes));
+      bytes = runtime::add_capacity(bytes, static_cast<std::size_t>(resources.execution_host_bytes));
+    }
     return bytes;
   }
 
@@ -444,7 +458,29 @@ class KsPreparedCalculation final : public PreparedCalculation {
                         std::string(method_name) +
                             " KS nuclear gradients are tracked separately in issue " + issue);
     }
-    return adapt_result(run(nullptr, true, true), backend_);
+    auto result = adapt_result(run(nullptr, true, true), backend_);
+    apply_d4(result);
+    return result;
+  }
+
+  void apply_d4(Result& result) {
+    if (!d4_) return;
+    std::vector<double> coordinates;
+    coordinates.reserve(3 * system_.atoms.size());
+    for (const auto& atom : system_.atoms)
+      coordinates.insert(coordinates.end(), atom.position.begin(), atom.position.end());
+    const std::uint8_t active = 1;
+    const std::uint8_t want_gradient = 0;
+    std::vector<dft::dispersion::D4Status> statuses;
+    std::vector<double> components, gradients, charges;
+    std::string detail;
+    const auto status = d4_->execute(coordinates, std::span(&active, 1), std::span(&want_gradient, 1),
+                                     statuses, components, gradients, charges, detail);
+    if (status != VIBEQC_STATUS_SUCCESS || statuses.size() != 1 ||
+        statuses[0] != dft::dispersion::D4Status::success || components.size() != 2)
+      throw MethodError(status == VIBEQC_STATUS_SUCCESS ? VIBEQC_STATUS_NUMERICAL_FAILURE : status,
+                        detail.empty() ? "PBE-D4 correction failed" : detail);
+    result.energy += components[0] + components[1];
   }
 
   /** Single-system and native batch paths share the same scientific owner. */
@@ -477,7 +513,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
       native = scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
     else if (is_uks(method_))
       native = scf::run_uks(fock_, basis_, grid_, options_, is_pbe_family(method_), seed);
-    else if (is_pbe_family(method_))
+    else if (is_pbe_family(method_) || is_pbe_d4(method_))
       native = scf::run_pbe_rks(fock_, basis_, grid_, options_, seed);
     else
       native = scf::run_lda_rks(fock_, basis_, grid_, options_, seed);
@@ -534,6 +570,30 @@ class KsPreparedCalculation final : public PreparedCalculation {
   }
 
  private:
+  void prepare_d4(int device) {
+    const auto source = ::vibeqc::generated::method_parameters::pbeD4();
+    dft::dispersion::D4Parameters parameters{
+        dft::dispersion::D4ReferenceModel::eeq, source.s6, source.s8, source.s9, source.a1,
+        source.a2, source.cn_cutoff, source.pair_cutoff, source.atm_cutoff, source.ga, source.gc};
+    std::vector<std::uint32_t> offsets{0, static_cast<std::uint32_t>(system_.atoms.size())};
+    std::vector<std::int32_t> atomic_numbers;
+    std::vector<double> coordinates;
+    atomic_numbers.reserve(system_.atoms.size());
+    coordinates.reserve(3 * system_.atoms.size());
+    for (const auto& atom : system_.atoms) {
+      atomic_numbers.push_back(atom.atomic_number);
+      coordinates.insert(coordinates.end(), atom.position.begin(), atom.position.end());
+    }
+    vibeqc_status status = VIBEQC_STATUS_INTERNAL_ERROR;
+    std::string detail;
+    d4_ = dft::dispersion::D4Plan::prepare(
+        backend_, device, std::move(offsets), std::move(atomic_numbers),
+        std::vector<double>{static_cast<double>(system_.charge)}, std::move(coordinates), parameters,
+        dft::dispersion::D4EEQProfile::standard, 256ull * 1024ull * 1024ull, detail, status);
+    if (!d4_)
+      throw MethodError(status, detail.empty() ? "PBE-D4 production plan preparation failed" : detail);
+  }
+
   Capabilities capabilities_;
   core::System system_;
   vibeqc_method method_{};
@@ -546,6 +606,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
   const std::uint64_t cpu_owner_{next_cpu_ks_owner()};
   std::uint64_t cpu_epoch_{};
   std::optional<dft::KsPhysicalState> cpu_physical_;
+  std::unique_ptr<dft::dispersion::D4Plan> d4_;
 #if VIBEQC_HAS_CUDA
   std::unique_ptr<dft::CudaKsPlan> cuda_;
 #endif
@@ -667,6 +728,7 @@ class KsPreparedBatch final : public PreparedBatch {
     const auto finish = [&](std::size_t i, scf::ScfResult native) {
       auto& result = results[i];
       result.calculation = adapt_result(std::move(native), backend_);
+      items_[i].plan->apply_d4(result.calculation);
       const auto& calculation = result.calculation;
       result.status =
           calculation.convergence.converged ? VIBEQC_STATUS_SUCCESS : VIBEQC_STATUS_NOT_CONVERGED;

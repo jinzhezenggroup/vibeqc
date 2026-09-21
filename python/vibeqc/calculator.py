@@ -508,10 +508,15 @@ class Calculator:
         except KeyError as error:
             raise ValueError("precision must be 'fp64' or 'auto'") from error
         if (
-            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
+            self._method
+            in (
+                _native.METHOD_R2SCAN_RKS,
+                _native.METHOD_R2SCAN_UKS,
+                _native.METHOD_PBE_D4_RKS,
+            )
             and self._precision_mode != _native.PRECISION_FP64
         ):
-            raise NotImplementedError("r2SCAN currently requires strict FP64")
+            raise NotImplementedError("this DFT method currently requires strict FP64")
         self._ks_options = None
         if self._method_name in (
             "lda-rks",
@@ -522,6 +527,7 @@ class Calculator:
             "pbe0-uks",
             "r2scan-rks",
             "r2scan-uks",
+            "pbe-d4-rks",
         ):
             from .ks import resolve_ks_options
 

@@ -341,7 +341,7 @@ int main() {
     for (vibeqc_method registered :
          {VIBEQC_METHOD_LDA_RKS, VIBEQC_METHOD_PBE_RKS, VIBEQC_METHOD_R2SCAN_RKS,
           VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_R2SCAN_UKS,
-          VIBEQC_METHOD_PBE0_RKS, VIBEQC_METHOD_PBE0_UKS}) {
+          VIBEQC_METHOD_PBE0_RKS, VIBEQC_METHOD_PBE0_UKS, VIBEQC_METHOD_PBE_D4_RKS}) {
       require(vibeqc_method_get_capabilities(registered, &capabilities) == VIBEQC_STATUS_SUCCESS &&
                   capabilities.family == VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL &&
                   capabilities.supported_properties == VIBEQC_PROPERTY_ENERGY &&
@@ -389,7 +389,56 @@ int main() {
             "PBE RKS energy-only execution failed");
     require(std::abs(result.energy - (-1.1520643753396715)) < 2.0e-12,
             "PBE RKS H2 implementation regression energy changed");
+    const double pbe_energy = result.energy;
     std::cout << std::setprecision(17) << "PBE RKS H2 energy: " << result.energy << "\n";
+    vibeqc_calculation_destroy(calculation);
+
+    const std::array<std::int32_t, 2> d4_z{1, 1};
+    const std::array<double, 6> d4_xyz{0.0, 0.0, -0.7, 0.0, 0.0, 0.7};
+    vibeqc_d4_system_descriptor d4_system{sizeof(vibeqc_d4_system_descriptor),
+                                         VIBEQC_ABI_VERSION, d4_z.data(), d4_xyz.data(),
+                                         static_cast<std::uint32_t>(d4_z.size()), 0.0};
+    vibeqc_d4_bj_eeq_descriptor d4_model{
+        sizeof(vibeqc_d4_bj_eeq_descriptor), VIBEQC_ABI_VERSION,
+        VIBEQC_D4_PROFILE_STANDARD_EEQ,       1.0,
+        0.95948085,                           1.0,
+        0.38574991,                           4.80688534,
+        3.0,                                  2.0,
+        30.0,                                 60.0,
+        40.0,                                 64u << 20};
+    vibeqc_d4_batch* d4_batch = nullptr;
+    require(vibeqc_d4_batch_prepare(fixture.context, &d4_system, 1, &d4_model, &d4_batch) ==
+                VIBEQC_STATUS_SUCCESS,
+            "standalone public D4 preparation failed");
+    vibeqc_d4_batch_item_result_descriptor d4_result{};
+    d4_result.struct_size = sizeof(d4_result);
+    d4_result.abi_version = VIBEQC_ABI_VERSION;
+    require(vibeqc_d4_batch_execute(d4_batch, nullptr, 0, &d4_result, 1) ==
+                VIBEQC_STATUS_SUCCESS &&
+                d4_result.status == VIBEQC_STATUS_SUCCESS && std::isfinite(d4_result.energy),
+            "standalone public D4 execution failed");
+    const double d4_energy = d4_result.energy;
+    vibeqc_d4_batch_destroy(d4_batch);
+
+    method = lda_method();
+    method.method = VIBEQC_METHOD_PBE_D4_RKS;
+    calculation = nullptr;
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+                VIBEQC_STATUS_SUCCESS,
+            "PBE-D4 RKS preparation failed");
+    result = {sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, nullptr, 0, 0, 0.0, 0.0, 0,
+              VIBEQC_BACKEND_CPU_REFERENCE};
+    require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
+                result.converged == 1 && std::isfinite(result.energy) &&
+                std::abs(result.energy - (pbe_energy + d4_energy)) < 2e-12,
+            "PBE-D4 public named method did not add the production D4 correction");
+    result.forces = forces.data();
+    result.force_count = static_cast<uint32_t>(forces.size());
+    require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "PBE-D4 silently widened the public force capability");
+    detail = vibeqc_context_get_last_detail(fixture.context);
+    require(detail != nullptr && std::string(detail).find("issue #163") != std::string::npos,
+            "PBE-D4 force rejection omitted the PBE stationary-gradient boundary");
     vibeqc_calculation_destroy(calculation);
 
     method = lda_method();
@@ -637,10 +686,13 @@ int main() {
         if (ks == VIBEQC_METHOD_LDA_RKS) {
           // Cover both the owner and generated-XC error boundaries. Neither
           // runtime nor allocation failure may be hidden by a cold warm retry.
-          for (const auto& [fail, expected_status] :
-               {std::pair{ks_cuda_fail_next_runtime_for_test_v1, VIBEQC_STATUS_CUDA_ERROR},
-                std::pair{xc_cuda_fail_next_runtime_for_test_v1, VIBEQC_STATUS_CUDA_ERROR},
-                std::pair{xc_cuda_fail_next_allocation_for_test_v1, VIBEQC_STATUS_OUT_OF_MEMORY}}) {
+          using fail_function = void (*)();
+          const std::array<std::pair<fail_function, vibeqc_status>, 3> failures{{
+              {&ks_cuda_fail_next_runtime_for_test_v1, VIBEQC_STATUS_CUDA_ERROR},
+              {&xc_cuda_fail_next_runtime_for_test_v1, VIBEQC_STATUS_CUDA_ERROR},
+              {&xc_cuda_fail_next_allocation_for_test_v1, VIBEQC_STATUS_OUT_OF_MEMORY},
+          }};
+          for (const auto& [fail, expected_status] : failures) {
             fail();
             require(vibeqc_calculation_execute(cuda_calculation, &cuda_result) == expected_status,
                     "CUDA KS runtime failure lost its public status");

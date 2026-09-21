@@ -18,6 +18,7 @@ from vibeqc_compiler.dft.grid import (
     grid_policy_provenance,
 )
 from vibeqc_compiler.method import (
+    DispersionCorrectionPrimitive,
     ExactExchangePrimitive,
     MethodIR,
     SemilocalXCPrimitive,
@@ -36,6 +37,7 @@ _NATIVE_KS_METHODS = {
     "pbe0-uks": ("PBE0", "polarized"),
     "r2scan-rks": ("R2SCAN", "unpolarized"),
     "r2scan-uks": ("R2SCAN", "polarized"),
+    "pbe-d4-rks": ("PBE-D4(BJ-EEQ-ATM)", "unpolarized"),
 }
 
 
@@ -137,15 +139,30 @@ def _native_components(method_ir: typing.Any) -> typing.Any:
         for primitive in method_ir.primitives
         if type(primitive) is ExactExchangePrimitive
     )
+    dispersion = tuple(
+        primitive
+        for primitive in method_ir.primitives
+        if type(primitive) is DispersionCorrectionPrimitive
+    )
+    allow_d4 = (
+        method_ir.identity
+        == resolve_method("PBE-D4(BJ-EEQ-ATM)", spin="unpolarized").identity
+    )
     if (
         len(semilocal) != 1
         or len(exchange) > 1
-        or len(semilocal) + len(exchange) != len(method_ir.primitives)
+        or len(dispersion) > (1 if allow_d4 else 0)
+        or len(semilocal) + len(exchange) + len(dispersion) != len(method_ir.primitives)
+        or (allow_d4 and (len(dispersion) != 1 or exchange))
     ):
         raise NotImplementedError(
-            "native KS requires one semilocal XC primitive plus optional full-range exchange"
+            "native KS requires one semilocal XC primitive plus an audited optional correction"
         )
-    return semilocal[0].functional, exchange[0] if exchange else None
+    return (
+        semilocal[0].functional,
+        exchange[0] if exchange else None,
+        dispersion[0] if dispersion else None,
+    )
 
 
 def _native_semilocal(method_ir: typing.Any) -> typing.Any:
@@ -156,7 +173,7 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     """Lower one supported MethodIR graph to explicit native X/C/K coefficients."""
     if not isinstance(method_ir, MethodIR):
         raise TypeError("KS coefficients require a resolved MethodIR")
-    spec, exact_exchange = _native_components(method_ir)
+    spec, exact_exchange, _dispersion = _native_components(method_ir)
     components = dict(spec.components)
     if set(components) <= {"GGA_X_PBE", "GGA_C_PBE"}:
         exchange_scale = components.get("GGA_X_PBE", Fraction(0))
@@ -197,6 +214,11 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
     method_ir = resolve_method(identifier, spin=spin)
     semilocal = _native_semilocal(method_ir)
 
+    if identifier == "PBE-D4(BJ-EEQ-ATM)":
+        if ks_coefficients(method_ir) != (1.0, 1.0, 0.0):
+            raise RuntimeError("PBE-D4 MethodIR disagrees with its native PBE composition")
+        return method_ir, functional("PBE", spin=spin)
+
     # Pure LDA/PBE selectors retain the independent catalog projection gate.
     if identifier != "PBE0":
         if len(method_ir.primitives) != 1:
@@ -234,6 +256,10 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
     composition = options.composition or options._method_ir
     if composition is not None:
         method_ir = composition
+        if method == "pbe-d4-rks" and method_ir.identity != named_ir.identity:
+            raise NotImplementedError(
+                "public PBE-D4 requires the pinned named MethodIR without parameter overrides"
+            )
         selected = _native_semilocal(method_ir)
         # The native selector chooses only the ingredient/spin family; all
         # scientific coefficients remain explicit in the supplied MethodIR.
@@ -282,7 +308,8 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
                 "global-hybrid grid policy requires an explicit GridSpec"
             )
         else:
-            grid = GridPolicy(options.grid_accuracy).resolve(method, derivative_order=0)
+            grid_method = "pbe-rks" if method == "pbe-d4-rks" else method
+            grid = GridPolicy(options.grid_accuracy).resolve(grid_method, derivative_order=0)
     result = replace(options, functional=resolved, composition=None, grid=grid)
     object.__setattr__(result, "_method_ir", method_ir)
     return result
