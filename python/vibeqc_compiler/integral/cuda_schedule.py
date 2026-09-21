@@ -154,13 +154,10 @@ class CudaScheduleIR:
             if self.warp_size % self.tasks_per_warp != 0:
                 raise ValueError("subgroup tasks must divide the target warp")
             subgroup_lanes = self.warp_size // self.tasks_per_warp
-            if (
-                self.tasks_per_warp & (self.tasks_per_warp - 1)
-                or subgroup_lanes & (subgroup_lanes - 1)
+            if self.tasks_per_warp & (self.tasks_per_warp - 1) or subgroup_lanes & (
+                subgroup_lanes - 1
             ):
-                raise ValueError(
-                    "subgroup tasks and lane widths must be powers of two"
-                )
+                raise ValueError("subgroup tasks and lane widths must be powers of two")
             if not self.shared_coulomb:
                 raise ValueError(
                     "subgroup tasks require task-local shared Coulomb data"
@@ -279,9 +276,7 @@ def _power_of_two_subgroup_counts(warp_size: int) -> tuple[int, ...]:
 def _target_register_bounded_block_threads(target: CudaTargetInfo) -> int:
     """Return a warp-aligned block size legal at worst-case register pressure."""
 
-    register_threads = (
-        target.registers_per_sm // target.maximum_registers_per_thread
-    )
+    register_threads = target.registers_per_sm // target.maximum_registers_per_thread
     threads = min(
         target.maximum_threads_per_block,
         target.maximum_threads_per_sm,
@@ -398,9 +393,7 @@ def schedule_candidates(
 
     coulomb_state_count = comb(integral.maximum_coulomb_order + 3, 3)
     derivative_output_count = (
-        len(integral.operator.centers) * 3
-        if integral.derivative is not None
-        else 1
+        len(integral.operator.centers) * 3 if integral.derivative is not None else 1
     )
     cooperative_threads = (
         (
