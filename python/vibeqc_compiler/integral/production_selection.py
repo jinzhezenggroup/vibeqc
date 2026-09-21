@@ -9,10 +9,15 @@ from typing import TYPE_CHECKING
 from .capabilities import normalize_capabilities
 from .cuda_lowering import supports_component_lane_rys
 from .cuda_schedule import ScheduleIR, ScheduleKind
+from .cuda_target import cuda_target_info
+from .fused_schedule import build_fused_shell_plan
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
+from .production_cost import shell_class_index
 from .specialize import specialize_integral_ir
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from .shell_spec import ShellClassSpec
 
 _SUPPORTED_RECURRENCES = frozenset(("subset_wick", "rys2", "rys3", "rys4", "rys5"))
@@ -241,4 +246,34 @@ def _selection_integral(
         base,
         consumers=selected_consumers,
         recurrence=recurrence,
+    )
+
+
+def _as_selection(item: ShellClassSpec | KernelSelection) -> KernelSelection:
+    """Normalize compatibility callers to the explicit production IR."""
+
+    if isinstance(item, KernelSelection):
+        return item
+    # Historical bare-spec compatibility is intentionally isolated here.
+    # New production paths resolve an explicit profile/architecture first.
+    legacy_target = cuda_target_info("sm_120")
+    plan = build_fused_shell_plan(item, target=legacy_target)
+    return KernelSelection(
+        architecture=legacy_target.architecture,
+        spec=item,
+        consumers=(KernelConsumer.FORCE,),
+        schedule=plan.schedule,
+    )
+
+
+def _stable_selection_order(
+    specifications: Iterable[ShellClassSpec | KernelSelection],
+) -> tuple[KernelSelection, ...]:
+    """Materialize selections in canonical class order for registry sources."""
+
+    return tuple(
+        sorted(
+            map(_as_selection, specifications),
+            key=lambda item: (shell_class_index(item.spec), item.spec.name),
+        )
     )
