@@ -22,6 +22,24 @@ void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
 
+class ForwardingInteractionSource final : public vibeqc::integrals::ElectronInteractionSource {
+ public:
+  explicit ForwardingInteractionSource(const vibeqc::posthf::RawSource& source) : source_(source) {}
+
+  const vibeqc::core::System& orbital() const override { return source_.orbital(); }
+  std::size_t nbf() const override { return source_.nbf(); }
+  std::size_t naux() const override { return source_.naux(); }
+  bool supports(Operator op) const noexcept override { return source_.supports(op); }
+  void read(Operator op, const std::array<std::size_t, 4>& begin,
+            const std::array<std::size_t, 4>& count, double* out,
+            std::size_t elements) const override {
+    source_.read(op, begin, count, out, elements);
+  }
+
+ private:
+  const vibeqc::posthf::RawSource& source_;
+};
+
 vibeqc::core::System h2() {
   vibeqc::core::System system;
   system.atoms = {{1, {0, 0, -0.7}}, {1, {0, 0, 0.7}}};
@@ -77,6 +95,10 @@ void provider_and_reference() {
   vibeqc::posthf::NativeBlockProvider provider(source, ref, 256ULL << 20, 1);
   const vibeqc::posthf::MOSlots slots{{{1, 0}, {0, 1}, {1, 0}, {0, 1}}};
   const auto values = provider.get(slots);
+  ForwardingInteractionSource generic_source(source);
+  vibeqc::posthf::NativeBlockProvider generic_provider(generic_source, ref, 256ULL << 20, 1);
+  require(generic_provider.get(slots) == values,
+          "native MO provider still depends on the concrete RawSource type");
   // The full AO tensor exists only in this deliberately tiny independent
   // eight-loop transform oracle. The native consumer never allocates it.
   const auto oracle = vibeqc::integrals::build_integrals(system);
