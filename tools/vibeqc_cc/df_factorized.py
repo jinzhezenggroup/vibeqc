@@ -22,7 +22,7 @@ from tools.vibeqc_posthf.df import DFProvider
 from tools.vibeqc_posthf.reference import immutable
 from tools.vibeqc_validation.schema import canonical_hash
 
-from .df_ccsdt_oracle import DFCCSDTMethodContract
+from .df_contract import DFCCSDTMethodContract
 from .doubles import build_ccsd_program
 from .equations import amplitude_layouts
 from .solver import _DIIS, SolverOptions, _ccsd_solver_region
