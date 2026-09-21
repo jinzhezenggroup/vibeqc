@@ -476,7 +476,6 @@ def rks_electronic_method_ir(method: typing.Any) -> ElectronicMethodIR:
             "semilocal_xc",
             ("basis", "density", "quadrature"),
             ("xc_energy", "xc_potential"),
-            ir_identity=method.identity,
         ),
     ]
     if has_exchange:
