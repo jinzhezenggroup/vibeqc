@@ -13,7 +13,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_cuda_ri_mp2_keeps_transformed_b_on_device(\n    tmp_path: Path, monkeypatch: pytest.MonkeyPatch\n) -> None:
+def test_cuda_ri_mp2_keeps_transformed_b_on_device(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     trace = tmp_path / "ri-mp2.jsonl"
     monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
     atoms = [
