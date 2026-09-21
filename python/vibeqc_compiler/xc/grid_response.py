@@ -1,9 +1,10 @@
 """Generated directional response of the existing unpruned Becke grid.
 
-This is a tiled CPU diagnostic/consumer building block for #163 B, not a
-complete KS gradient or a native force capability. Scalar derivatives use the
-common Graph. Pair/product reductions retain O(point_tile * atom) storage;
-no coordinate-by-grid Jacobian or SCF iteration tape is constructed.
+This is a tiled CPU diagnostic/consumer building block for #163 B and #180,
+not a complete KS gradient/HVP or a native derivative capability. Scalar first
+and mixed-second derivatives use the common Graph. Pair/product reductions
+retain O(point_tile * atom) storage; no coordinate-by-grid Jacobian, partition
+Hessian tensor or SCF iteration tape is constructed.
 """
 
 import typing
