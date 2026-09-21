@@ -11,12 +11,12 @@ from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
-from vibeqc_compiler.xc.rsh_expressions import energy_expression
 from vibeqc_compiler.xc.libxc_maple import (
     IMPORTER_SEMANTICS,
     MapleModule,
     import_maple_file,
 )
+from vibeqc_compiler.xc.rsh_expressions import energy_expression
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
