@@ -51,8 +51,11 @@ int main(int argc, char** argv) try {
   const double seconds = std::chrono::duration<double>(stop - start).count() / repeats;
   const double gflops = (2.0 * static_cast<double>(n) * n * n) / seconds / 1.0e9;
 
-  std::cout << "{\"n\":" << n << ",\"repeats\":" << repeats << ",\"provider\":\""
-            << vibeqc::tensor::cpu_linalg_provider_name(diagnostic.provider)
+  std::cout << "{\"schema\":\"vibeqc.cpu-linalg-probe.v1\",\"operation\":\"gemm\",\"m\":" << n
+            << ",\"n\":" << n << ",\"k\":" << n << ",\"transpose_a\":\"N\",\"transpose_b\":\"N\""
+            << ",\"repeats\":" << repeats << ",\"cpu_target\":\"" << diagnostic.cpu_target
+            << "\",\"requested_provider\":\"" << vibeqc::tensor::cpu_linalg_provider_name(provider)
+            << "\",\"provider\":\"" << vibeqc::tensor::cpu_linalg_provider_name(diagnostic.provider)
             << "\",\"provider_threads\":" << diagnostic.provider_threads
             << ",\"thread_ownership\":\""
             << (diagnostic.thread_ownership == CpuLinalgThreadOwnership::task_parallel

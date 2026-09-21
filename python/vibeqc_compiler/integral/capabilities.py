@@ -588,7 +588,7 @@ def main() -> None:
     """Emit the structural/production capability report as JSON."""
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--architecture", default="sm_120")
+    parser.add_argument("--architecture", required=True)
     parser.add_argument(
         "--manifest",
         type=Path,

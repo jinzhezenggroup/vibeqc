@@ -53,6 +53,7 @@ from .ir import (
     power,
     reduce_sum,
     reshape,
+    runtime_indexed_select,
     scaled_bilinear,
     scatter_add,
     segment_sum,
@@ -741,6 +742,12 @@ def _rebuild_node(node: Node, inputs: typing.Any) -> Node:
         axis = node.attrs["axis"]
         return segment_sum(
             inputs[0], axis, node.attrs["offsets"], node.spec.indices[axis]
+        )
+    if node.op == "runtime_indexed_select":
+        return runtime_indexed_select(
+            inputs[0],
+            tuple(zip(node.attrs["axes"], inputs[1:], strict=True)),
+            node.spec.indices[0],
         )
     if node.op == "reduce":
         return reduce_sum(inputs[0], node.attrs["axes"])

@@ -127,30 +127,33 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if(VIBEQC_ENABLE_CUDA)
+  # Resolve only caller-supplied target sources before CUDA language enablement.
+  # CMake may otherwise initialize CMAKE_CUDA_ARCHITECTURES from NVCC's legacy
+  # compiler default, which must not become an implicit VibeQC target.
+  set(_vibeqc_cuda_requested_architectures "")
+  if(VIBEQC_CUDA_COMPILE_ARCHITECTURES)
+    set(_vibeqc_cuda_requested_architectures
+        ${VIBEQC_CUDA_COMPILE_ARCHITECTURES})
+  elseif(VIBEQC_CUDA_ARCHITECTURES)
+    set(_vibeqc_cuda_requested_architectures ${VIBEQC_CUDA_ARCHITECTURES})
+  elseif(DEFINED CMAKE_CUDA_ARCHITECTURES AND CMAKE_CUDA_ARCHITECTURES)
+    set(_vibeqc_cuda_requested_architectures ${CMAKE_CUDA_ARCHITECTURES})
+  elseif(DEFINED ENV{CUDAARCHS} AND NOT "$ENV{CUDAARCHS}" STREQUAL "")
+    set(_vibeqc_cuda_requested_architectures "$ENV{CUDAARCHS}")
+  endif()
+
   include(CheckLanguage)
   check_language(CUDA)
   if(CMAKE_CUDA_COMPILER)
-    # Set the project default before enabling CUDA.  Once CUDA is enabled,
-    # CMake may populate CMAKE_CUDA_ARCHITECTURES from NVCC's legacy default
-    # (commonly sm_52), which cannot compile the FP64 atomic force consumers.
-    # An explicit VIBEQC_CUDA_ARCHITECTURES or CMAKE_CUDA_ARCHITECTURES value
-    # remains authoritative for callers targeting another supported device.
-    if(VIBEQC_CUDA_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_ARCHITECTURES})
-    elseif(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES 120)
+    if(NOT _vibeqc_cuda_requested_architectures)
+      message(FATAL_ERROR
+        "CUDA target architecture is required; set VIBEQC_CUDA_ARCHITECTURES, "
+        "CMAKE_CUDA_ARCHITECTURES, VIBEQC_CUDA_COMPILE_ARCHITECTURES, or CUDAARCHS")
     endif()
+    set(CMAKE_CUDA_ARCHITECTURES ${_vibeqc_cuda_requested_architectures})
     enable_language(CUDA)
     set(CMAKE_CUDA_STANDARD 20)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-    if(VIBEQC_CUDA_COMPILE_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_COMPILE_ARCHITECTURES})
-    elseif(VIBEQC_CUDA_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_ARCHITECTURES})
-    endif()
-    if(NOT CMAKE_CUDA_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES 120)
-    endif()
     # Preserve NVCC's real/virtual suffixes for compilation. A separate
     # numeric profile identity is derived below for manifest and cache paths.
     set(_vibeqc_cuda_compile_architectures ${CMAKE_CUDA_ARCHITECTURES})
@@ -234,6 +237,20 @@ endif()
 target_compile_options(vibeqc PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>)
 
 if(VIBEQC_ENABLE_CUDA)
+  # A single real architecture may use that architecture's measured host-side
+  # candidate schedule. Fat binaries and virtual/PTX-only targets keep host
+  # scheduling portable: their active runtime device is not a compile-time
+  # property of shared host code and may differ from the PTX target.
+  list(LENGTH _vibeqc_cuda_compile_architectures _vibeqc_cuda_architecture_count)
+  if(_vibeqc_cuda_architecture_count EQUAL 1)
+    list(GET _vibeqc_cuda_compile_architectures 0 _vibeqc_cuda_profile_architecture)
+    if(NOT _vibeqc_cuda_profile_architecture MATCHES "-virtual$")
+      string(REGEX REPLACE "-real$" "" _vibeqc_cuda_profile_architecture
+             "${_vibeqc_cuda_profile_architecture}")
+      target_compile_definitions(
+        vibeqc PRIVATE VIBEQC_CUDA_PROFILE_ARCHITECTURE=${_vibeqc_cuda_profile_architecture})
+    endif()
+  endif()
   vibeqc_register_cuda_generated_sources(vibeqc)
   vibeqc_configure_cuda_backend(vibeqc)
 else()

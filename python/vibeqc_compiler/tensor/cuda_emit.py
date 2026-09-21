@@ -94,6 +94,8 @@ def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.A
     """Emit scalar evaluation with each original arithmetic error boundary."""
     step = plan.steps[i]
     node, a, args = step.node, step.node.attrs, step.inputs
+    if node.spec.dtype == "int64":
+        raise ValueError("int64 TensorIR controls are read-only CUDA inputs")
     scalar = scalar_type(node.spec.dtype)
     precision = _value_precision(plan, i)
     accumulator = scalar_type(precision.accumulation_dtype)
@@ -173,6 +175,33 @@ def _value(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.A
 {reduction_pragma}for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
     value = {acc_add}(value, {accumulated_term});
 return finite({scaled}, error, {i});"""
+    if node.op == "runtime_indexed_select":
+        child, maps = args[0], args[1:]
+        source_shape = plan.steps[child].node.spec.shape
+        domain = c[0]
+        selected = {}
+        lines = []
+        error_code = -(2 * len(plan.steps) + i + 1)
+        for ordinal, (axis, mapping) in enumerate(zip(a["axes"], maps, strict=True)):
+            variable = f"runtime_index_{ordinal}"
+            lines.append(f"const I {variable} = {_read(mapping, domain, prefix)};")
+            lines.append(
+                f"if ({variable} < 0 || {variable} >= {_integer(source_shape[axis])}) "
+                f"{{ atomicCAS(error, 0, {error_code}); return {scalar.zero}; }}"
+            )
+            selected[axis] = variable
+        coordinates = []
+        output_axis = 1
+        for axis in range(len(source_shape)):
+            if axis in selected:
+                coordinates.append(selected[axis])
+            else:
+                coordinates.append(c[output_axis])
+                output_axis += 1
+        lines.append(
+            f"return {_read(child, _flat(coordinates, source_shape), prefix)};"
+        )
+        return "\n".join(lines)
     child = args[0]
     source_shape = plan.steps[child].node.spec.shape
     if node.op == "reshape":
@@ -251,16 +280,28 @@ def _arithmetic_error_expression(plan: typing.Any, legacy: typing.Any) -> typing
     """Extend diagnostics only for new graphs; keep legacy emitted bytes intact.
 
     Zero is success, +[1,n] is nonfinite, -[1,n] is division by zero,
-    and -[n+1,2n] is a scalar-domain error. The planner bounds the int range.
+    -[n+1,2n] is a scalar-domain error, and runtime index failures occupy a
+    separate range below -2n. The planner bounds the integer diagnostic range.
     """
-    if not any(s.node.op in TRANSCENDENTALS for s in plan.steps):
+    transcendental = any(s.node.op in TRANSCENDENTALS for s in plan.steps)
+    runtime_indexed = any(s.node.op == "runtime_indexed_select" for s in plan.steps)
+    if not transcendental and not runtime_indexed:
         return legacy
     n = len(plan.steps)
-    return (
-        f"(arithmetic_error < -{n} ? "
-        'std::string("tensor transcendental domain error at step ") + '
-        f"std::to_string(-arithmetic_error - {n} - 1) : ({legacy}))"
-    )
+    expression = legacy
+    if transcendental:
+        expression = (
+            f"(arithmetic_error < -{n} ? "
+            'std::string("tensor transcendental domain error at step ") + '
+            f"std::to_string(-arithmetic_error - {n} - 1) : ({legacy}))"
+        )
+    if runtime_indexed:
+        expression = (
+            f"(arithmetic_error < -{2 * n} ? "
+            'std::string("tensor runtime index out of bounds at step ") + '
+            f"std::to_string(-arithmetic_error - {2 * n} - 1) : ({expression}))"
+        )
+    return expression
 
 
 def _group_map(g: typing.Any, labels: typing.Any) -> typing.Any:
@@ -357,10 +398,10 @@ __global__ void {_name(prefix, f"scatter_{i}")}(unsigned char* p, const {ty}* c,
 def _launch(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.Any:
     step, threads = plan.steps[i], plan.schedule.threads
     node = step.node
-    scalar = scalar_type(node.spec.dtype)
-    ty = scalar.ctype
     if step.virtual or node.op in ("input", "constant") or not node.spec.size:
         return ""
+    scalar = scalar_type(node.spec.dtype)
+    ty = scalar.ctype
     pointer = f"reinterpret_cast<{ty}*>(p + {step.offset})"
     if step.gemm == "none":
         width = plan.schedule.elements_per_thread
@@ -472,8 +513,8 @@ def emit_cuda(
     tables = dict(plan.index_tables)
     for i, step in enumerate(plan.steps):
         node = step.node
-        scalar = scalar_type(node.spec.dtype)
-        ty = scalar.ctype
+        scalar = None if node.spec.dtype == "int64" else scalar_type(node.spec.dtype)
+        ty = "I" if scalar is None else scalar.ctype
         if embed_static_data and node.op == "constant" and node.spec.size:
             values = ", ".join(scalar.literal(pair) for pair in node.attrs["values"])
             parts.append(f"static const {ty} {prefix}constant_{i}[] = {{{values}}};")

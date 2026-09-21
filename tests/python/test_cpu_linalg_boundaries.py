@@ -1,5 +1,6 @@
 """Compile the actual scalar provider and check independent boundary results."""
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -92,7 +93,23 @@ def test_probe_multithread_contract(probe_binary: Path, provider: str) -> None:
         check=False,
     )
     assert run.returncode == 0, run.stderr
-    assert '"provider_threads":4' in run.stdout
+    record = json.loads(run.stdout)
+    assert record["schema"] == "vibeqc.cpu-linalg-probe.v1"
+    assert record["operation"] == "gemm"
+    assert record["requested_provider"] == (
+        "automatic" if provider == "auto" else provider
+    )
+    assert (record["m"], record["n"], record["k"]) == (8, 8, 8)
+    assert record["transpose_a"] == record["transpose_b"] == "N"
+    assert record["provider_threads"] == 4
+    assert record["cpu_target"] in {
+        "x86_64-generic",
+        "x86_64-avx2",
+        "x86_64-avx2-fma",
+        "x86_64-avx512f-fma",
+        "aarch64-generic",
+        "generic",
+    }
 
 
 def test_probe_reports_unavailable_provider(probe_binary: Path) -> None:

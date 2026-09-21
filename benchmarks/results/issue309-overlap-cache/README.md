@@ -1,5 +1,23 @@
 # #309 prepared overlap cache and separate preparation ablations
 
+> **Checkout retention (2026-09-21):** `raw-evidence.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue309-overlap-cache/raw-evidence.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue309-overlap-cache/raw-evidence.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
+For commands below that previously unpacked the checkout directly, pass the
+restored archive explicitly:
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/issue309-overlap-cache \
+  --archive .artifacts/issue309-overlap-cache/raw-evidence.zip \
+  --output .artifacts/issue309-overlap-cache-unpacked
+```
+
 The [larger-domain follow-up](../issue309-overlap-cache-larger/README.md) adds
 five-pair 96-AO/batch-4 and 192-AO/batch-1 comparisons using the same validated
 native scientific source and library. This record preserves the first domain.
@@ -60,6 +78,7 @@ members were restored and compared byte for byte before publication.
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue309-overlap-cache \
+  --archive .artifacts/issue309-overlap-cache/raw-evidence.zip \
   --output /tmp/issue309-cache-evidence
 ```
 
