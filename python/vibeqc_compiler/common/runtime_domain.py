@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import typing
 from dataclasses import dataclass
-from itertools import islice, pairwise, product
+from itertools import islice, pairwise
 from math import comb, prod
 
 from .provenance import canonical_hash
@@ -81,6 +81,7 @@ class RuntimeTaskPage:
                 "offset": self.offset,
                 "capacity": self.capacity,
                 "count": self.count,
+                "coordinates": self.coordinates,
             }
         )
 
@@ -192,8 +193,18 @@ class RuntimeTaskDomain:
 
     def __iter__(self) -> typing.Iterator[tuple[int, ...]]:
         if self.kind == "rectangular":
-            yield from product(*(range(extent) for extent in self.extents))
-            return
+            # itertools.product pools every input range before its first yield.
+            # Advance mixed-radix coordinates with only O(rank) retained state.
+            coordinate = [0] * self.rank
+            while True:
+                yield tuple(coordinate)
+                for axis in range(self.rank - 1, -1, -1):
+                    coordinate[axis] += 1
+                    if coordinate[axis] < self.extents[axis]:
+                        break
+                    coordinate[axis] = 0
+                else:
+                    return
         start, stop = typing.cast("tuple[int, int]", self.outer)
 
         def descend(prefix: tuple[int, ...]) -> typing.Iterator[tuple[int, ...]]:
