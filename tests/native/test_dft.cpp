@@ -12,6 +12,7 @@
 #include "dft/ao_grid.hpp"
 #include "dft/grid.hpp"
 #include "dft/xc.hpp"
+#include "dft/xc_point.hpp"
 #include "molecule/basis.hpp"
 #include "xc_cpu_generated.hpp"
 
@@ -117,6 +118,33 @@ int main() {
                 generated_pbe_vacuum.rho[0] == 0.0 &&
                 generated_pbe_vacuum.rho[1] == 0.0,
             "compiler-owned polarized PBE vacuum limit is wrong");
+
+    {
+      const double rho[2]{0.3, 0.2};
+      const double gradient[2][3]{{0.11, -0.07, 0.03}, {-0.02, 0.09, -0.04}};
+      for (const auto scales :
+           {std::array<double, 2>{0.75, 1.0}, std::array<double, 2>{0.37, 0.61}}) {
+        const auto expected =
+            vibeqc::dft::point::evaluate(true, rho, gradient, scales[0], scales[1]);
+        const auto actual = vibeqc::dft::generated::pbe_polarized_production(
+            rho[0], rho[1], gradient, scales[0], scales[1]);
+        const double generated[]{
+            actual.energy_density, actual.rho[0], actual.rho[1], actual.gradient[0][0],
+            actual.gradient[0][1], actual.gradient[0][2], actual.gradient[1][0],
+            actual.gradient[1][1], actual.gradient[1][2],
+        };
+        const double reference[]{
+            expected.energy, expected.rho[0], expected.rho[1], expected.gradient[0][0],
+            expected.gradient[0][1], expected.gradient[0][2], expected.gradient[1][0],
+            expected.gradient[1][1], expected.gradient[1][2],
+        };
+        require(expected.valid, "independent scaled PBE oracle rejected an interior point");
+        for (unsigned i = 0; i < 9; ++i)
+          require(std::abs(generated[i] - reference[i]) <
+                      3.0e-13 * std::max(1.0, std::abs(reference[i])),
+                  "generated PBE X/C scaling differs from the independent point oracle");
+      }
+    }
 
     const auto cam_point =
         vibeqc::dft::generated::cam_b3lyp_polarized(0.3, 0.2, 0.015, 0.003, 0.01);
