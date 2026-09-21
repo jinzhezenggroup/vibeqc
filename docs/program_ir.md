@@ -215,8 +215,21 @@ ProgramIR last-use resource intervals now consume these shared ranges.
 This remains analysis, not a second allocator. Unknown alias metadata blocks
 reuse for its memory space and opaque effects retain touched owners through the
 region boundary. TensorIR keeps its qualified arena offsets as the execution plan
-of record until a later #831 slice independently validates allocator migration or
-cross-subsystem materialization removal.
+of record until a later #831 slice independently validates allocator migration.
+
+The first production layout-propagation slice now goes one step beyond the #460
+feature-input prototype on polarized native CPU fixed-density potentials. Scalar
+XC writes a consumer-ready physical owner whose first row is energy and whose
+remaining rows are the complete feature gradient; inactive derivative rows are
+exact zero. The generated Vxc coefficient function borrows those rows and the
+DFT-owned density-gradient block directly, avoiding the previous gradient rebuild,
+immutable input copies, variable stack, and stack copy. The generic ABI remains
+the fallback for routes outside this qualification. `xc_rows` `DenseLayout` and
+the generated packed root-row metadata are both hashed, so a physical execution
+layout change invalidates the ProgramIR/native artifact identity deliberately.
+
+Rationale and measured endpoint evidence:
+[XC row-layout propagation](../.agents/notes/implemented/performance/2026-09-21-programir-xc-row-layout-propagation.md).
 
 ## Validation and reproduction
 
