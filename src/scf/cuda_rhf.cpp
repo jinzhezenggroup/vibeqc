@@ -3712,8 +3712,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   const generated::ProfileInfo& selected_aot_profile = generated::selected_profile();
   const std::uint64_t unexpected_tuned_spd_fallback_mask =
       uncovered_force_shell_class_mask & kCanonicalSpdShellClassMask;
-  if (bounded_direct_streaming && selected_aot_profile.tuned && selected_aot_profile.compatible &&
-      !aot_shell_class_selection_override_requested() && unexpected_tuned_spd_fallback_mask != 0U) {
+  if (options.compute_forces && bounded_direct_streaming && selected_aot_profile.tuned &&
+      selected_aot_profile.compatible && !aot_shell_class_selection_override_requested() &&
+      unexpected_tuned_spd_fallback_mask != 0U) {
     fill_global_failure(outputs, cuda_status(cudaErrorNotSupported));
     return outputs;
   }
