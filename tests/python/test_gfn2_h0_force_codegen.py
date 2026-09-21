@@ -17,12 +17,12 @@ from vibeqc_compiler.method.gfn2_h0_force_runtime import (
     build_gfn2_h0_onsite_vjp_program,
     build_gfn2_h0_pulay_seed_program,
 )
-from vibeqc_compiler.tensor import execute
+from vibeqc_compiler.tensor import Program, execute
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def _run(program, feeds: dict[str, float]) -> dict[str, float]:
+def _run(program: Program, feeds: dict[str, float]) -> dict[str, float]:
     live = {node.attrs["name"] for node in program.live_nodes if node.op == "input"}
     outputs = execute(
         program,
