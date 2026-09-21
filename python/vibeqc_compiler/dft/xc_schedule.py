@@ -338,7 +338,9 @@ def _storage_pressure(
     density_bytes = scalar_bytes * shape.spins * points * shape.max_active_ao
     feature_bytes = scalar_bytes * shape.spins * points * (1 + 3 + 3 + 1)
     vxc_bytes = scalar_bytes * shape.spins * shape.max_active_ao * shape.max_active_ao
-    seed = BufferValue("density_source", scalar_bytes, "device", compiler_owned=False)
+    # The source is a dependency token here, not another estimate of the full
+    # density owner; PreparedXCContractions already accounts for that storage.
+    seed = BufferValue("density_source", 0, "device", compiler_owned=False)
     if schedule.name == "device_fused":
         values = (
             seed,
