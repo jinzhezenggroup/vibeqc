@@ -11,13 +11,13 @@ from vibeqc_compiler.common.cuda_adapter import (
 )
 
 
-def test_cuda_execution_profile_preserves_current_cluster_default() -> None:
+def test_cuda_execution_profile_uses_device_agnostic_gpu_default() -> None:
     profile = resolve_cuda_execution_profile(environment={})
     assert profile == CudaExecutionProfile(
         local=False,
         srun="srun",
         partition="main",
-        gres="gpu:5090:1",
+        gres="gpu:1",
         nodes=1,
         ntasks=1,
         slurm_time="00:10:00",
@@ -25,7 +25,7 @@ def test_cuda_execution_profile_preserves_current_cluster_default() -> None:
     assert profile.wrap(["python", "worker.py"]) == [
         "srun",
         "--partition=main",
-        "--gres=gpu:5090:1",
+        "--gres=gpu:1",
         "--nodes=1",
         "--ntasks=1",
         "--time=00:10:00",
