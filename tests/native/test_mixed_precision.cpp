@@ -428,11 +428,11 @@ void verify_final_state_reuse(bool unrestricted, bool with_peer = false) {
     aliased_resident_density[index] = &retained[index].scf.density;
   const auto aliased_baseline = run_cached(aliased_resident_density);
   const auto aliased_baseline_audit = final_state_audit();
-  require(aliased_baseline.size() == systems.size() &&
-              aliased_baseline_audit.route ==
-                  vibeqc::scf::CudaDirectFinalStateRoute::scf_force_ready &&
-              aliased_baseline_audit.seed_provenance,
-          "same-pointer mutation fixture did not start from a force-ready resident state");
+  require(
+      aliased_baseline.size() == systems.size() &&
+          aliased_baseline_audit.route == vibeqc::scf::CudaDirectFinalStateRoute::scf_force_ready &&
+          aliased_baseline_audit.seed_provenance,
+      "same-pointer mutation fixture did not start from a force-ready resident state");
   for (std::size_t index = 0; index < systems.size(); ++index) {
     require(aliased_baseline[index].scf.density.size() == retained[index].scf.density.size(),
             "same-pointer mutation fixture changed density shape");
