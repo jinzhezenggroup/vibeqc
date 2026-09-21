@@ -30,6 +30,7 @@ from vibeqc_compiler.integral.ecp_policy import (
     REFINED_RADIAL_POINTS,
 )
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cpu
+from vibeqc_compiler.method.spec import RangeSeparatedExchangePrimitive
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
     StationaryGradientPlan,
@@ -47,6 +48,7 @@ from ._dft_gradient import (
     _native_ao_atoms,
     native_ao_geometry_identity,
 )
+from ._stationary_rsh_cpu import RangeExchangeExecutor
 from .ks import native_xc_functional_code
 
 
@@ -249,17 +251,20 @@ def _admit_work(
         )
     primitive_sum = sum(int(row[2]) * int(row[3]) for row in aos)
     pairs = natom * (natom - 1) // 2
-    exact_exchange = bool(
-        getattr(
-            getattr(state._source, "method_ir", None),
-            "full_range_exact_exchange",
-            0,
-        )
+    method_ir = getattr(state._source, "method_ir", None)
+    exact_exchange = bool(getattr(method_ir, "full_range_exact_exchange", 0))
+    range_exchange = sum(
+        type(primitive) is RangeSeparatedExchangePrimitive
+        for primitive in getattr(method_ir, "primitives", ())
     )
-    # Coulomb always traverses every ordered primitive quartet. A full-range
-    # exact-exchange source is a second, independently weighted ERI derivative
-    # traversal over the same quartet domain and must be charged separately.
-    quartet_passes = 1 + int(exact_exchange)
+    if range_exchange and any(shell.angular_momentum > 1 for shell in basis.shells):
+        raise NotImplementedError(
+            "CPU RSH stationary gradients currently support s/p bases only"
+        )
+    # Coulomb always traverses every ordered primitive quartet. Each full- or
+    # range-separated exact-exchange source is an independently weighted ERI
+    # derivative traversal over that same ordered quartet domain.
+    quartet_passes = 1 + int(exact_exchange) + range_exchange
     records = quartet_passes * primitive_sum**4 + (natom + 2) * primitive_sum**2 + pairs
     points = len(state.grid.points)
     visits = (2 if execution == "native" else 3 * natom) * pairs * points
@@ -336,9 +341,11 @@ def complete_rks_gradient_diagnostic(
 ) -> typing.Any:
     """Consume one live native CPU RKS/UKS state with complete plan-owned sources.
 
-    Admitted domain: direct real FP64 integer RKS/UKS, a validated
-    LDA/PBE/r2SCAN MethodIR (PBE may include full-range exact exchange),
-    s/p/d AOs, native unpruned version-one grid, distinct nuclei and no
+    Admitted public-state domain is direct real FP64 integer RKS/UKS with
+    validated LDA/PBE/r2SCAN/global-hybrid MethodIR. The consumer also executes
+    range-separated exchange sources for validated stationary plans with s/p AOs;
+    public RSH snapshot/capability admission remains a separate boundary. Uses a
+    native unpruned version-one grid, distinct nuclei and no
     point/center collisions. CPU is explicit; CUDA snapshots are rejected.
     Caller chooses an ignored/temporary compilation cache and may supply a
     CppCompilerAdapter; otherwise CXX (or c++) selects the executable. Scientific work is
@@ -401,6 +408,13 @@ def complete_rks_gradient_diagnostic(
     if max_host_bytes is not None:
         from ._cpu_force_resources import cpu_force_inventory
 
+        if any(
+            type(p) is RangeSeparatedExchangePrimitive
+            for p in state._source.method_ir.primitives
+        ):
+            raise NotImplementedError(
+                "CPU RSH stationary gradients do not yet have a combined endpoint host budget"
+            )
         if execution != "native":
             raise ValueError("CPU host budget requires the compiled native consumer")
         if type(max_host_bytes) is not int or not 1 <= max_host_bytes <= 1 << 40:
@@ -520,6 +534,43 @@ def complete_rks_gradient_diagnostic(
                             "nuclear_attraction", indices, weight * charges[atom], atom
                         )
                         np.add.at(components[source], owners, values)
+
+    range_native = None
+    if plan.range_exchange_primitives:
+        range_native = RangeExchangeExecutor(basis, cache, primitive_tile, compiler)
+        try:
+            for range_source in plan.range_exchange_sources:
+                primitive = plan.range_exchange_primitive(range_source.name)
+                iterator = product(range(n), repeat=4)
+                while tuples := tuple(islice(iterator, integral_terms)):
+                    ids = np.asarray(tuples)
+                    block = plan.integral_block(range_source.name, terms=len(tuples))
+                    feeds = {
+                        "density_left": state.density[:, ids[:, 0], ids[:, 2]],
+                        "density_right": state.density[:, ids[:, 1], ids[:, 3]],
+                    }
+                    key = (range_source.name, len(tuples))
+                    if key not in tensor_consumers:
+                        tensor_consumers[key] = (
+                            NativeTensorProgram(
+                                block.weights, compiler=compiler, cache=cache
+                            )
+                            if execution == "native"
+                            else block.weights
+                        )
+                    consumer = tensor_consumers[key]
+                    weights = (
+                        consumer.execute(feeds)["weights"]
+                        if execution == "native"
+                        else execute(consumer, feeds).outputs["weights"]
+                    )
+                    for indices, weight in zip(tuples, weights, strict=True):
+                        owners, values = range_native.integral(
+                            primitive, indices, weight
+                        )
+                        np.add.at(components[range_source.name], owners, values)
+        finally:
+            range_native.close()
     for a in range(natom):
         for b in range(a):
             np.add.at(components["nuclear"], [a, b], native.nuclear(a, b, charges))
@@ -640,9 +691,14 @@ def complete_rks_gradient_diagnostic(
         else plan.reduce_diagnostic(components, atoms=natom)
     )
     contract.validate(state)  # No partial publication after replay/failure/replacement.
-    if native.records != work["primitive_record_bound"]:
+    primitive_records = native.records + (
+        0 if range_native is None else range_native.records
+    )
+    if primitive_records != work["primitive_record_bound"]:
         raise RuntimeError("CPU derivative primitive work differs from admission")
-    work["primitive_records"] = native.records
+    work["primitive_records"] = primitive_records
+    if range_native is not None:
+        work["range_exchange_primitive_records"] = range_native.records
     return DiagnosticStationaryGradient(
         immutable(gradient),
         MappingProxyType({key: immutable(value) for key, value in components.items()}),

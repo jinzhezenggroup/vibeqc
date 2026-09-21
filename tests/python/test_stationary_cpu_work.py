@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from vibeqc._cpu_force_resources import CPU_FORCE_HOST_CAP, cpu_force_inventory
 from vibeqc._stationary_cpu import _admit_work
+from vibeqc_compiler.method import resolve_method
 
 
 def inputs(*, ecp: bool = True) -> tuple[typing.Any, typing.Any, tuple[int, ...]]:
@@ -87,6 +88,17 @@ def test_hybrid_admission_counts_exact_exchange_eri_derivative_pass() -> None:
     assert hybrid == semilocal + extra
     with pytest.raises(ValueError, match="primitive work budget"):
         admit(state, basis, max_primitive_records=hybrid - 1)
+
+
+def test_range_hybrid_admission_counts_each_range_eri_derivative_pass() -> None:
+    state, basis, counts = inputs(ecp=False)
+    semilocal = admit(state, basis)["primitive_record_bound"]
+    state._source.method_ir = resolve_method("CAM-B3LYP", spin="unpolarized")
+    rsh = admit(state, basis)["primitive_record_bound"]
+    extra = 2 * sum(counts) ** 4
+    assert rsh == semilocal + extra
+    with pytest.raises(ValueError, match="primitive work budget"):
+        admit(state, basis, max_primitive_records=rsh - 1)
 
 
 def test_all_electron_has_no_ecp_work_or_dense_provider_limit() -> None:
