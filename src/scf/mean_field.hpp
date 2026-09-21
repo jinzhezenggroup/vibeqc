@@ -28,6 +28,9 @@ class PreparedFockPlan;
 namespace vibeqc::dft {
 class AoBasis;
 class MolecularGrid;
+namespace nlc {
+class Vv10Plan;
+}
 }  // namespace vibeqc::dft
 
 namespace vibeqc::scf {
@@ -49,6 +52,12 @@ ScfResult run_lda_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 ScfResult run_pbe_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density = nullptr);
+
+/** PBE-family RKS with one MethodIR-owned VV10/rVV10 contribution. */
+ScfResult run_pbe_rks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                               const dft::MolecularGrid& grid, const ScfOptions& options,
+                               const std::vector<double>* initial_density,
+                               dft::nlc::Vv10Plan& nonlocal_correlation);
 
 ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
@@ -81,6 +90,12 @@ ScfResult run_lda_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 ScfResult run_pbe_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density = nullptr);
+
+/** PBE-family UKS with one MethodIR-owned VV10/rVV10 contribution. */
+ScfResult run_pbe_uks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                               const dft::MolecularGrid& grid, const ScfOptions& options,
+                               const std::vector<double>* initial_density,
+                               dft::nlc::Vv10Plan& nonlocal_correlation);
 
 ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,

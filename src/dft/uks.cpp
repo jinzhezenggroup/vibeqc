@@ -8,6 +8,8 @@
 
 #include "dft/ao_grid.hpp"
 #include "dft/grid.hpp"
+#include "dft/nonlocal_correlation/vv10_integration.hpp"
+#include "dft/nonlocal_correlation/vv10_runtime.hpp"
 #include "dft/xc.hpp"
 #include "runtime/resource_usage.hpp"
 #include "scf/fock_prepared.hpp"
@@ -79,7 +81,7 @@ dft::SpinXcIntegral evaluate_cam_b3lyp_xc_uks(const dft::AoBasis& basis,
 SpinEvaluation evaluate(const PreparedFockPlan& plan, const PreparedFockPlan* long_range_correction,
                         const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                         const Matrix& alpha, const Matrix& beta, SpinXcEvaluator evaluate_xc,
-                        const ScfOptions& options) {
+                        const ScfOptions& options, dft::nlc::Vv10Plan* nonlocal_correlation) {
   const auto& ints = plan.one_electron();
   const auto jk = plan.build(alpha, beta);
   SpinEvaluation out;
@@ -105,12 +107,29 @@ SpinEvaluation evaluate(const PreparedFockPlan& plan, const PreparedFockPlan* lo
   const auto xc =
       evaluate_xc(basis, grid, alpha, beta, options.xc_tile_points,
                   options.semilocal_exchange_scale, options.semilocal_correlation_scale);
+  dft::nlc::SpinVv10Integral nonlocal;
+  if (nonlocal_correlation)
+    nonlocal = dft::nlc::integrate_vv10_uks(basis, grid, alpha, beta, *nonlocal_correlation,
+                                            options.xc_tile_points);
+  if (xc.potential[0].size() != out.fock.alpha.size() ||
+      xc.potential[1].size() != out.fock.beta.size() ||
+      (nonlocal_correlation && (nonlocal.potential[0].size() != out.fock.alpha.size() ||
+                                nonlocal.potential[1].size() != out.fock.beta.size())))
+    throw std::runtime_error("UKS XC potential dimensions do not match the Fock matrix");
   for (std::size_t i = 0; i < alpha.size(); ++i) {
     out.fock.alpha[i] += xc.potential[0][i];
     out.fock.beta[i] += xc.potential[1][i];
+    if (nonlocal_correlation) {
+      out.fock.alpha[i] += nonlocal.potential[0][i];
+      out.fock.beta[i] += nonlocal.potential[1][i];
+    }
   }
+  if (nonlocal_correlation)
+    runtime::sample_cpu_capacity(runtime::add_capacity(
+        nonlocal.owned_numeric_bytes, runtime::vector_capacities(out.fock.alpha, out.fock.beta)));
   out.components = {ints.nuclear_repulsion, dot(alpha, ints.hcore) + dot(beta, ints.hcore),
-                    primary_energy.coulomb, xc.energy, exact_exchange};
+                    primary_energy.coulomb,
+                    xc.energy + (nonlocal_correlation ? nonlocal.energy : 0.0), exact_exchange};
   if (!std::isfinite(out.components.total())) throw std::runtime_error("nonfinite UKS energy");
   return out;
 }
@@ -131,7 +150,8 @@ EigenResult stabilized_uks_orbitals(Matrix fock, const Matrix& density, const Ma
 ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* long_range_correction,
                        const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                        const ScfOptions& options, SpinXcEvaluator evaluate_xc,
-                       const char* method_name, const std::vector<double>* initial_density) {
+                       const char* method_name, const std::vector<double>* initial_density,
+                       dft::nlc::Vv10Plan* nonlocal_correlation) {
   using namespace reference;
   const auto& strategy = plan.strategy();
   validate_resolved_fock_build(strategy);
@@ -232,7 +252,7 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
       [&](const UksState& state, unsigned) {
         const bool stabilized = stabilize_occupations;
         auto physical = evaluate(plan, long_range_correction, basis, grid, state.alpha, state.beta,
-                                 evaluate_xc, options);
+                                 evaluate_xc, options, nonlocal_correlation);
         ++result.fock_builds;
         Matrix ra = commutator_residual(physical.fock.alpha, state.alpha, ints.overlap, n);
         Matrix rb = commutator_residual(physical.fock.beta, state.beta, ints.overlap, n);
@@ -322,8 +342,8 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
   // DIIS/stabilized proposal orbitals are only a convergence device and must
   // never become the derivative-state proof. A small bounded fixed-point
   // correction mirrors the shared final-state policy without another SCF loop.
-  auto final =
-      evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc, options);
+  auto final = evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc, options,
+                        nonlocal_correlation);
   ++result.fock_builds;
   double previous_physical_energy = result.energy;
   result.converged = false;
@@ -345,8 +365,8 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
     alpha = std::move(projected_a);
     beta = std::move(projected_b);
 
-    auto next =
-        evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc, options);
+    auto next = evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc,
+                         options, nonlocal_correlation);
     ++result.fock_builds;
     const Matrix ra = commutator_residual(next.fock.alpha, alpha, ints.overlap, n);
     const Matrix rb = commutator_residual(next.fock.beta, beta, ints.overlap, n);
@@ -379,25 +399,32 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                   const std::vector<double>* initial_density) {
   return run_uks_impl(plan, nullptr, basis, grid, options,
                       pbe ? evaluate_pbe_xc_uks : evaluate_lda_xc_uks, pbe ? "PBE" : "LDA",
-                      initial_density);
+                      initial_density, nullptr);
 }
 ScfResult run_lda_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {
   return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_lda_xc_uks, "LDA",
-                      initial_density);
+                      initial_density, nullptr);
 }
 ScfResult run_pbe_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {
   return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_pbe_xc_uks, "PBE",
-                      initial_density);
+                      initial_density, nullptr);
+}
+ScfResult run_pbe_uks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                               const dft::MolecularGrid& grid, const ScfOptions& options,
+                               const std::vector<double>* initial_density,
+                               dft::nlc::Vv10Plan& nonlocal_correlation) {
+  return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_pbe_xc_uks, "PBE",
+                      initial_density, &nonlocal_correlation);
 }
 ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density) {
   return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_r2scan_xc_uks, "R2SCAN",
-                      initial_density);
+                      initial_density, nullptr);
 }
 ScfResult run_b3lyp_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                         const dft::MolecularGrid& grid, const ScfOptions& options,
@@ -408,7 +435,7 @@ ScfResult run_b3lyp_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
   if (plan.strategy() != expected)
     throw std::invalid_argument("B3LYP plan does not match the generated MethodIR composition");
   return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_b3lyp_xc_uks, "B3LYP",
-                      initial_density);
+                      initial_density, nullptr);
 }
 
 ScfResult run_cam_b3lyp_uks(const PreparedFockPlan& primary,
@@ -427,6 +454,6 @@ ScfResult run_cam_b3lyp_uks(const PreparedFockPlan& primary,
       long_range_correction.strategy() != expected_correction)
     throw std::invalid_argument("CAM-B3LYP plans do not match the generated MethodIR composition");
   return run_uks_impl(primary, &long_range_correction, basis, grid, options,
-                      evaluate_cam_b3lyp_xc_uks, "CAM-B3LYP", initial_density);
+                      evaluate_cam_b3lyp_xc_uks, "CAM-B3LYP", initial_density, nullptr);
 }
 }  // namespace vibeqc::scf

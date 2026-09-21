@@ -213,6 +213,12 @@ class KsOptionsDescriptor(ctypes.Structure):
         ("spin_channels", ctypes.c_uint32),
         ("semilocal_family", ctypes.c_uint32),
         ("reserved_v4_padding", ctypes.c_uint32),
+        ("nonlocal_correlation_version", ctypes.c_uint32),
+        ("nonlocal_variant", ctypes.c_int32),
+        ("nonlocal_b", ctypes.c_double),
+        ("nonlocal_c", ctypes.c_double),
+        ("nonlocal_coefficient", ctypes.c_double),
+        ("nonlocal_maximum_bytes", ctypes.c_uint64),
     ]
 
 
@@ -1081,6 +1087,20 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
             ctypes.c_uint32,
         ]
         library.vibeqc_d3_batch_execute.restype = ctypes.c_int
+    gcp_evaluate = getattr(library, "vibeqc_r2scan3c_gcp_evaluate", None)
+    if gcp_evaluate is not None:
+        library.vibeqc_r2scan3c_gcp_provider_identity.argtypes = []
+        library.vibeqc_r2scan3c_gcp_provider_identity.restype = ctypes.c_char_p
+        gcp_evaluate.argtypes = [
+            ctypes.POINTER(ctypes.c_int32),
+            ctypes.c_uint32,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_uint32,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_uint32,
+        ]
+        gcp_evaluate.restype = ctypes.c_int
     d4_prepare = getattr(library, "vibeqc_d4_batch_prepare", None)
     if d4_prepare is not None:
         library.vibeqc_d4_table_sha256.argtypes = []

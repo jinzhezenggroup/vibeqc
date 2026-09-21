@@ -23,10 +23,11 @@ from vibeqc_compiler.xc.spec import FunctionalSpec
 from tools.vibeqc_validation.schema import block_error
 
 ROOT = Path(__file__).resolve().parents[2]
-LIBXC_ROOT = ROOT / "external/libxc-7.0.0"
+LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
+LIBXC_MANIFEST_ROOT = ROOT / "external/libxc-7.0.0"
 PBE_X = LIBXC_ROOT / "gga_x_pbe.mpl"
 PBE_C = LIBXC_ROOT / "gga_c_pbe.mpl"
-MANIFEST = LIBXC_ROOT / "manifest.json"
+MANIFEST = LIBXC_MANIFEST_ROOT / "manifest.json"
 FEATURES = (
     "rho_a",
     "rho_b",

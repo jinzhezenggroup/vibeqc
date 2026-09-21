@@ -107,28 +107,11 @@
         "python/vibeqc_compiler/integral/rys5_data.py": "d0146bf9e4ddebc7a6a31979547d3ceacb1cf7925c816b8901b9c3d3691e13eb"
       }
     },
-    "libxc-bulk-graph-catalog": {
-      "canonical_inputs": {
-        "python/vibeqc_compiler/xc/libxc_bulk.py": "6af8dc2b3c21ec49cf003af2d842fedd060a34a5302c1e01f4f75c31928f1967",
-        "python/vibeqc_compiler/xc/libxc_maple.py": "721b2492beddf6fa5cf97671b374258c4c2771b7a5b8459900bb2f49fe65890a",
-        "tools/libxc_bulk_metadata.py": "36bef0f71da9578c836548277a735160b1120906a0caddaa362bb2beb5377a19"
-      },
-      "generator": "tools/import_libxc_bulk.py",
-      "generator_sha256": "9597eae780ad0526986190963f588c9856a35e850d8204b78c0f8be36ad1904d",
-      "input_identity_sha256": "f386c54fdf599ab325eb1ed83209e3fc90f6dfcd37a2d0ef589663e57199136f",
-      "inputs": [
-        "libxc-7.0.0-fulltree"
-      ],
-      "outputs": {
-        "docs/libxc_bulk_import.md": "7e6d090022729d18ac190e490f7cbd78195a51a7ec8c97dc082c283bf1416fdd",
-        "python/vibeqc_compiler/xc/libxc_bulk_catalog.json": "0fcce4a5372f88625882178fe7330eef2fe3b4a0d7369ebc5a73eae3eec37105"
-      }
-    },
     "libxc-xc-admission": {
       "canonical_inputs": {
         "python/vibeqc_compiler/xc/b88_vwn_maple.py": "b51c019c6f51f17b58121f20cc631099b6228f1b43f0134a9666ecb174ca076b",
-        "python/vibeqc_compiler/xc/expressions.py": "349f45b1770e725ebb1a4781dc19a41ed6ec74f39affc3702cbdc55375e7f60e",
-        "python/vibeqc_compiler/xc/p86_pz_maple.py": "a1bbdfe8bba635389861c87a99da072dce6b74dd820b0259593e6eb3a0a04f15",
+        "python/vibeqc_compiler/xc/expressions.py": "a2e02076d84f115d1b190d21e3b9b43238d22b415f8269f22fda3f3095a5d316",
+        "python/vibeqc_compiler/xc/p86_pz_maple.py": "4e5cba59e03750fbd172f738f6233c5995e60a3381d0fd4ff798fae7bf11e9d4",
         "python/vibeqc_compiler/xc/pbe_maple.py": "177ec68c70f8c0c59b1d4a01fba275cc101c959238ad3583e2294c0017647e8e",
         "python/vibeqc_compiler/xc/rsh_expressions.py": "c9f00713bdee06639d035f755975c24a65d39b28fe025b2054aafd32d4f2806a",
         "python/vibeqc_compiler/xc/rsh_maple.py": "fe2a2748861b63920be5ac10ad74d137fe30506afd5d9efce013bc98fede8bb3",
@@ -187,6 +170,23 @@
       "outputs": {
         "python/vibeqc_compiler/integral/rys_high_accuracy_data.py": "51f97cfdf2c750fff11a5f09b9435cb7d541c7153eea1826fe521ec248cae079"
       }
+    },
+    "libxc-bulk-graph-catalog": {
+      "canonical_inputs": {
+        "python/vibeqc_compiler/xc/libxc_bulk.py": "6af8dc2b3c21ec49cf003af2d842fedd060a34a5302c1e01f4f75c31928f1967",
+        "python/vibeqc_compiler/xc/libxc_maple.py": "721b2492beddf6fa5cf97671b374258c4c2771b7a5b8459900bb2f49fe65890a",
+        "tools/libxc_bulk_metadata.py": "36bef0f71da9578c836548277a735160b1120906a0caddaa362bb2beb5377a19"
+      },
+      "generator": "tools/import_libxc_bulk.py",
+      "generator_sha256": "9597eae780ad0526986190963f588c9856a35e850d8204b78c0f8be36ad1904d",
+      "input_identity_sha256": "f386c54fdf599ab325eb1ed83209e3fc90f6dfcd37a2d0ef589663e57199136f",
+      "inputs": [
+        "libxc-7.0.0-fulltree"
+      ],
+      "outputs": {
+        "docs/libxc_bulk_import.md": "7e6d090022729d18ac190e490f7cbd78195a51a7ec8c97dc082c283bf1416fdd",
+        "python/vibeqc_compiler/xc/libxc_bulk_catalog.json": "0fcce4a5372f88625882178fe7330eef2fe3b4a0d7369ebc5a73eae3eec37105"
+      }
     }
   },
   "schema": "vibeqc.scientific-source-registry",
@@ -202,7 +202,7 @@
       },
       "kind": "snapshot",
       "license": "LGPL-3.0-or-later",
-      "local_root": "tools/parameters/upstream",
+      "local_root": "upstream/dftd4/82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4",
       "repository": "https://github.com/dftd4/dftd4",
       "revision": "82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4"
     },
@@ -576,9 +576,124 @@
       },
       "kind": "file-set",
       "license": "MPL-2.0",
-      "local_root": "external/libxc-7.0.0",
+      "local_root": "upstream/libxc/7.0.0",
       "repository": "https://gitlab.com/libxc/libxc",
       "revision": "7.0.0"
+    },
+    "mctc-lib-eeq": {
+      "files": {
+        "src/mctc/data/covrad.f90": {
+          "git_blob": "b3cb9cefd702169d6be662eb438932525990a1ac",
+          "sha256": "fdbd599664a7f113633d96110531d810fdc8e54b6db26d4f584120d9c7cec314",
+          "size": 3850,
+          "upstream_path": "src/mctc/data/covrad.f90",
+          "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/data/covrad.f90"
+        },
+        "src/mctc/ncoord/erf.f90": {
+          "git_blob": "5ea3c2c4056c3eca51e76629e0e780061923f253",
+          "sha256": "6bc976e03e290bc01bccfeee3016513e6154ef6267f152d36b7c99a7d706fea9",
+          "size": 4415,
+          "upstream_path": "src/mctc/ncoord/erf.f90",
+          "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/ncoord/erf.f90"
+        },
+        "src/mctc/ncoord/type.f90": {
+          "git_blob": "38eb682efa53b55070b39d8f68d09a8465f5d76f",
+          "sha256": "b8b819f9ea1c0765632fdb4ea9046b0c79f2c1bb13d39555ac3059f498ba1bb5",
+          "size": 15169,
+          "upstream_path": "src/mctc/ncoord/type.f90",
+          "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/ncoord/type.f90"
+        }
+      },
+      "kind": "remote-file-set",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/grimme-lab/mctc-lib",
+      "revision": "e9de066d89f250d1cfb6de3a33f0c27c0e2f855d"
+    },
+    "multicharge-eeq2019": {
+      "files": {
+        "src/multicharge/param/eeq2019.f90": {
+          "git_blob": "3b95b9bafb9b30fd5c1e3e8dacc1433cb53954f2",
+          "sha256": "02b8bee49c10b4c31914caf149d9f58164e58d6dc7ae2ab21e9d12f5bc22797a",
+          "size": 12370,
+          "upstream_path": "src/multicharge/param/eeq2019.f90",
+          "url": "https://raw.githubusercontent.com/grimme-lab/multicharge/6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf/src/multicharge/param/eeq2019.f90"
+        }
+      },
+      "kind": "remote-file-set",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/grimme-lab/multicharge",
+      "revision": "6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf"
+    },
+    "simple-dftd3-gcp": {
+      "consumers": [
+        "external/r2scan3c/gcp-r2scan3c-h-ar.json",
+        "tools/parameters/generate_gcp_r2scan3c.py"
+      ],
+      "files": {
+        "src/dftd3/data/vdwrad.f90": {
+          "sha256": "3f08b5755bfd643d6dbb56fd544c117145473a4b27138978a25d0475af985575",
+          "upstream_path": "src/dftd3/data/vdwrad.f90",
+          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/data/vdwrad.f90"
+        },
+        "src/dftd3/gcp.f90": {
+          "sha256": "c1d69f640c9a7498618998a97b40a1629554ede31001ceab3060dc2f84c8be1e",
+          "upstream_path": "src/dftd3/gcp.f90",
+          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/gcp.f90"
+        },
+        "src/dftd3/gcp/param.f90": {
+          "sha256": "3edc7b569cff3cf47dffd06395de02b3d45aabb4d4be368debf87fbafd56fa4e",
+          "upstream_path": "src/dftd3/gcp/param.f90",
+          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/gcp/param.f90"
+        }
+      },
+      "kind": "remote-file-set",
+      "license": "LGPL-3.0-or-later",
+      "repository": "https://github.com/dftd3/simple-dftd3",
+      "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
+    },
+    "simple-dftd3-parameters": {
+      "files": {
+        "simple-dftd3-41d5a07.parameters.toml": {
+          "sha256": "b1d9d1b9882dcad5361a99c34745ad44f8a274d80c907d9d0187255e4323d645",
+          "upstream_path": "assets/parameters.toml",
+          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/assets/parameters.toml"
+        }
+      },
+      "kind": "snapshot",
+      "license": "LGPL-3.0-or-later",
+      "local_root": "upstream/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
+      "repository": "https://github.com/dftd3/simple-dftd3",
+      "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
+    },
+    "xtbloom-gfn1-parameters": {
+      "consumers": [
+        "python/vibeqc_compiler/geometry/_gfn1_data.py",
+        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp",
+        "tools/parameters/generate_gfn1.py",
+        "tools/parameters/generate_gfn1_geometry.py"
+      ],
+      "files": {
+        "gfn1.json": {
+          "sha256": "0ecdc3f5f12990c5a7e0f0bd7e6fe931ecf72d7630e6a6a3cc396c51766a40a0",
+          "upstream_path": "data/parameters/gfn1.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1.json"
+        },
+        "gfn1.toml": {
+          "sha256": "38572810c111e118d03a27137dfbc3363ce5247a400bb25ee83e15e712dcb389",
+          "upstream_path": "data/parameters/gfn1.toml",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1.toml"
+        },
+        "gfn1_manifest.json": {
+          "sha256": "e93710d277aa2216d24215b6c458805ae7d96e27937294cd685c710e2dd4007b",
+          "upstream_path": "data/parameters/gfn1_manifest.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_manifest.json"
+        }
+      },
+      "kind": "snapshot",
+      "license": "LGPL-3.0-or-later AND Apache-2.0",
+      "local_root": "sources/xtb/gfn1",
+      "repository": "https://github.com/jinzhezenggroup/xtbloom",
+      "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
     },
     "libxc-7.0.0-fulltree": {
       "files": {
@@ -3398,121 +3513,6 @@
       "local_root": "upstream/libxc-fulltree/7.0.0",
       "repository": "https://gitlab.com/libxc/libxc",
       "revision": "7.0.0"
-    },
-    "mctc-lib-eeq": {
-      "files": {
-        "src/mctc/data/covrad.f90": {
-          "git_blob": "b3cb9cefd702169d6be662eb438932525990a1ac",
-          "sha256": "fdbd599664a7f113633d96110531d810fdc8e54b6db26d4f584120d9c7cec314",
-          "size": 3850,
-          "upstream_path": "src/mctc/data/covrad.f90",
-          "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/data/covrad.f90"
-        },
-        "src/mctc/ncoord/erf.f90": {
-          "git_blob": "5ea3c2c4056c3eca51e76629e0e780061923f253",
-          "sha256": "6bc976e03e290bc01bccfeee3016513e6154ef6267f152d36b7c99a7d706fea9",
-          "size": 4415,
-          "upstream_path": "src/mctc/ncoord/erf.f90",
-          "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/ncoord/erf.f90"
-        },
-        "src/mctc/ncoord/type.f90": {
-          "git_blob": "38eb682efa53b55070b39d8f68d09a8465f5d76f",
-          "sha256": "b8b819f9ea1c0765632fdb4ea9046b0c79f2c1bb13d39555ac3059f498ba1bb5",
-          "size": 15169,
-          "upstream_path": "src/mctc/ncoord/type.f90",
-          "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/ncoord/type.f90"
-        }
-      },
-      "kind": "remote-file-set",
-      "license": "Apache-2.0",
-      "repository": "https://github.com/grimme-lab/mctc-lib",
-      "revision": "e9de066d89f250d1cfb6de3a33f0c27c0e2f855d"
-    },
-    "multicharge-eeq2019": {
-      "files": {
-        "src/multicharge/param/eeq2019.f90": {
-          "git_blob": "3b95b9bafb9b30fd5c1e3e8dacc1433cb53954f2",
-          "sha256": "02b8bee49c10b4c31914caf149d9f58164e58d6dc7ae2ab21e9d12f5bc22797a",
-          "size": 12370,
-          "upstream_path": "src/multicharge/param/eeq2019.f90",
-          "url": "https://raw.githubusercontent.com/grimme-lab/multicharge/6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf/src/multicharge/param/eeq2019.f90"
-        }
-      },
-      "kind": "remote-file-set",
-      "license": "Apache-2.0",
-      "repository": "https://github.com/grimme-lab/multicharge",
-      "revision": "6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf"
-    },
-    "simple-dftd3-gcp": {
-      "consumers": [
-        "external/r2scan3c/gcp-r2scan3c-h-ar.json",
-        "tools/parameters/generate_gcp_r2scan3c.py"
-      ],
-      "files": {
-        "src/dftd3/data/vdwrad.f90": {
-          "sha256": "3f08b5755bfd643d6dbb56fd544c117145473a4b27138978a25d0475af985575",
-          "upstream_path": "src/dftd3/data/vdwrad.f90",
-          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/data/vdwrad.f90"
-        },
-        "src/dftd3/gcp.f90": {
-          "sha256": "c1d69f640c9a7498618998a97b40a1629554ede31001ceab3060dc2f84c8be1e",
-          "upstream_path": "src/dftd3/gcp.f90",
-          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/gcp.f90"
-        },
-        "src/dftd3/gcp/param.f90": {
-          "sha256": "3edc7b569cff3cf47dffd06395de02b3d45aabb4d4be368debf87fbafd56fa4e",
-          "upstream_path": "src/dftd3/gcp/param.f90",
-          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/gcp/param.f90"
-        }
-      },
-      "kind": "remote-file-set",
-      "license": "LGPL-3.0-or-later",
-      "repository": "https://github.com/dftd3/simple-dftd3",
-      "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
-    },
-    "simple-dftd3-parameters": {
-      "files": {
-        "simple-dftd3-41d5a07.parameters.toml": {
-          "sha256": "b1d9d1b9882dcad5361a99c34745ad44f8a274d80c907d9d0187255e4323d645",
-          "upstream_path": "assets/parameters.toml",
-          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/assets/parameters.toml"
-        }
-      },
-      "kind": "snapshot",
-      "license": "LGPL-3.0-or-later",
-      "local_root": "tools/parameters/upstream",
-      "repository": "https://github.com/dftd3/simple-dftd3",
-      "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
-    },
-    "xtbloom-gfn1-parameters": {
-      "consumers": [
-        "python/vibeqc_compiler/geometry/_gfn1_data.py",
-        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp",
-        "tools/parameters/generate_gfn1.py",
-        "tools/parameters/generate_gfn1_geometry.py"
-      ],
-      "files": {
-        "gfn1.json": {
-          "sha256": "0ecdc3f5f12990c5a7e0f0bd7e6fe931ecf72d7630e6a6a3cc396c51766a40a0",
-          "upstream_path": "data/parameters/gfn1.json",
-          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1.json"
-        },
-        "gfn1.toml": {
-          "sha256": "38572810c111e118d03a27137dfbc3363ce5247a400bb25ee83e15e712dcb389",
-          "upstream_path": "data/parameters/gfn1.toml",
-          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1.toml"
-        },
-        "gfn1_manifest.json": {
-          "sha256": "e93710d277aa2216d24215b6c458805ae7d96e27937294cd685c710e2dd4007b",
-          "upstream_path": "data/parameters/gfn1_manifest.json",
-          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_manifest.json"
-        }
-      },
-      "kind": "snapshot",
-      "license": "LGPL-3.0-or-later AND Apache-2.0",
-      "local_root": "sources/xtb/gfn1",
-      "repository": "https://github.com/jinzhezenggroup/xtbloom",
-      "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
     }
   }
 }
