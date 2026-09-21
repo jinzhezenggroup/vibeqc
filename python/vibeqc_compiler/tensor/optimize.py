@@ -15,6 +15,7 @@ from vibeqc_compiler.common.pass_manager import PassManager, PassStage
 
 from .interpreter import execute
 from .ir import Node, _infer, constant
+from .precision import precision_execution_contracts, remap_precision_execution
 from .program import Program, hash_node
 
 PASSES = (
@@ -178,12 +179,14 @@ def rewrite(program: Program, pass_name: str) -> Program:
     if pass_name == "dead_nodes":
         live = set(program.live_nodes)
         definitions = tuple(node for node in program.definitions if node in live)
-        return Program(
-            program.outputs,
-            definitions=definitions,
-            provenance=program.provenance,
+        replacements = {node: node for node in program.live_nodes}
+        outputs = dict(program.outputs)
+        provenance = remap_precision_execution(
+            program, replacements, outputs, definitions
         )
-    replacements, interned, hashes = {}, {}, {}
+        return Program(outputs, definitions=definitions, provenance=provenance)
+    execution_contracts = precision_execution_contracts(program)
+    replacements, interned, hashes, execution_keys = {}, {}, {}, {}
     for node in program.nodes:
         inputs = tuple(replacements[n] for n in node.inputs)
         updated = node
@@ -204,13 +207,20 @@ def rewrite(program: Program, pass_name: str) -> Program:
             # symmetry declarations, parameter role, and differentiability.
             # Equal shapes alone cannot intern two different amplitude types.
             hashes[updated] = hash_node(updated, hashes)
-            updated = interned.setdefault(hashes[updated], updated)
+            key = (
+                hashes[updated],
+                execution_contracts.get(node),
+                tuple(execution_keys[child] for child in updated.inputs),
+            )
+            updated = interned.setdefault(key, updated)
+            execution_keys[updated] = key
         replacements[node] = updated
-    return Program(
-        {name: replacements[n] for name, n in program.outputs.items()},
-        tuple(replacements[n] for n in program.definitions),
-        program.provenance,
+    outputs = {name: replacements[n] for name, n in program.outputs.items()}
+    definitions = tuple(replacements[n] for n in program.definitions)
+    provenance = remap_precision_execution(
+        program, replacements, outputs, definitions
     )
+    return Program(outputs, definitions, provenance)
 
 
 def _program_fingerprint(program: Program) -> str:
@@ -269,7 +279,7 @@ def optimize(program: Program) -> Program:
     return Program(
         result.outputs,
         provenance={
-            **program.provenance,
+            **result.provenance,
             "original_logical_hash": program.logical_hash,
             # Keep the established rewrite inventory for compatibility.
             "rewrites": list(PASSES) + ["exact_cse", "dead_nodes"],
