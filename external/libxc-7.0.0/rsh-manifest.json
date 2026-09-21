@@ -10,6 +10,10 @@
       "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/attenuation.mpl",
       "sha256": "6db9179e77650028464dacf6b2bddd3578394b35880bfeed42332e61b299ded8"
     },
+    "gga_c_lyp.c": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_lyp.c",
+      "sha256": "d34fb158f6174ee2c27b4fb06a5dd203b71299a0aae7857dba85953a41cc62c6"
+    },
     "gga_c_lyp.mpl": {
       "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_lyp.mpl",
       "sha256": "8113c2d995ee6ee1463b99a7ff7f3d462cfbefae6e6e70ffca22077a9cde21ac"

@@ -103,8 +103,8 @@ from .ir_serialization import (
     integral_from_payload,
     integral_to_payload,
 )
-from .production import KernelSelection
 from .production_cost import production_compile_cost, stable_aot_shard_slot
+from .production_selection import KernelSelection
 from .rys import (
     PppsRysForceProgram,
     RysAxisProgram,
@@ -178,7 +178,7 @@ from .shell_spec import (
     shell_class_name,
     shell_pair_class,
 )
-from .specialize import specialize_integral_ir
+from .specialize import integral_specialization_diagnostics, specialize_integral_ir
 
 __all__ = [
     "CUDA_TARGETS",
@@ -310,6 +310,7 @@ __all__ = [
     "evaluate_rys_component",
     "integral_cache_key",
     "integral_from_payload",
+    "integral_specialization_diagnostics",
     "integral_to_payload",
     "normalize_cuda_architecture",
     "normalize_cuda_compile_architecture",

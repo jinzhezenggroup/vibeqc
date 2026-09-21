@@ -5,6 +5,10 @@
 
 #include "posthf/mp2_cpu_generated.hpp"
 #include "posthf/mp2_cuda_plan.hpp"
+#include "posthf/mp2_schedule_generated.hpp"
+#if VIBEQC_HAS_CUDA
+#include "posthf/ri_mp2_cuda.hpp"
+#endif
 #include "scf/cuda_density_fitting_integrals.hpp"
 #include "scf/density_fitting.hpp"
 
@@ -73,10 +77,10 @@ Energy conventional_energy(const scf::PhysicalReference& ref, const posthf::RawS
   const auto virtual_tiles = (nv + tile - 1) / tile;
   const auto total_jobs = posthf::checked_mul(posthf::checked_mul(ref.nocc, ref.nocc),
                                               posthf::checked_mul(virtual_tiles, virtual_tiles));
-  const bool shared_scan = request_capacity >= 2;
-  const auto jobs_per_batch =
-      shared_scan ? std::min(request_capacity / 2, total_jobs) : std::size_t{1};
-  const auto provider_requests = shared_scan ? 2 * jobs_per_batch : std::size_t{1};
+  const auto reuse = generated::conventional_reuse_plan(request_capacity, total_jobs);
+  const bool shared_scan = reuse.shared_scan;
+  const auto jobs_per_batch = reuse.jobs_per_batch;
+  const auto provider_requests = reuse.provider_requests;
   const auto peak = posthf::checked_add(provider.batch_bytes(block_shape, provider_requests, cuda),
                                         kernel_reserve);
   if (peak > budget) throw std::length_error("MP2 energy phase exceeds numeric memory budget");
@@ -209,6 +213,7 @@ Energy conventional_energy(const scf::PhysicalReference& ref, const posthf::RawS
 Energy density_fitted_energy(const scf::PhysicalReference& ref, const posthf::RawSource& source,
                              std::size_t budget, double threshold, double metric_relative_threshold,
                              unsigned requested_tile, bool cuda, int device) {
+  (void)device;  // Referenced only by the compiled CUDA branch below.
   validate_reference(ref, threshold, requested_tile);
   if (!(metric_relative_threshold > 0.0) || !(metric_relative_threshold < 1.0) ||
       !std::isfinite(metric_relative_threshold) || source.naux() == 0)
@@ -218,36 +223,35 @@ Energy density_fitted_energy(const scf::PhysicalReference& ref, const posthf::Ra
   const std::size_t n = ref.nbf, no = ref.nocc, nv = n - no, na = source.naux();
   const unsigned tile = resolved_tile(nv, requested_tile);
   const auto cpu = generated::cpu_plan(tile);
-  generated::CudaPlan gpu{};
+
   if (cuda) {
 #if VIBEQC_HAS_CUDA
-    gpu = generated::cuda_plan(tile, device);
+    const auto gpu =
+        density_fitted_energy_cuda(ref, source, budget, metric_relative_threshold, device);
+    Energy result;
+    result.minimum_denominator = minimum_denominator;
+    result.numeric_capacity_bytes = gpu.numeric_capacity_bytes;
+    result.equation_hash = cpu.equation_hash;
+    result.opposite_spin = gpu.opposite_spin;
+    result.same_spin = gpu.same_spin;
+    result.tiles = gpu.logical_tiles;
+    result.metrics = gpu.metrics;
+    result.mo_transfer_bytes = gpu.transfer_bytes;
+    return result;
 #else
     throw std::runtime_error("CUDA RI-MP2 kernels are not compiled");
 #endif
   }
+
   const auto transformed_elements = posthf::checked_mul(posthf::checked_mul(no, nv), na);
-  auto kernel_bytes = posthf::checked_add(cuda ? gpu.numeric_bytes : cpu.numeric_bytes,
-                                          32ULL * tile * tile + 16ULL * tile + 64);
+  const auto kernel_bytes =
+      posthf::checked_add(cpu.numeric_bytes, 32ULL * tile * tile + 16ULL * tile + 64);
   const std::size_t peak =
       posthf::ri_mp2_capacity(source.orbital(), source.auxiliary(), no, kernel_bytes);
   if (peak > budget) throw std::length_error("RI-MP2 energy phase exceeds numeric memory budget");
 
-  integrals::DensityFittingIntegralData raw;
-  if (cuda) {
-    std::string detail;
-    std::vector<integrals::DensityFittingIntegralData> outputs;
-    const auto status = scf::build_cuda_density_fitting_integrals_batch(
-        device, {source.orbital()}, {source.auxiliary()}, outputs, detail, budget, false);
-    if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
-    if (status != VIBEQC_STATUS_SUCCESS)
-      throw std::runtime_error(detail.empty() ? "CUDA RI-MP2 integral generation failed" : detail);
-    if (outputs.size() != 1) throw std::runtime_error("CUDA RI-MP2 integral output is missing");
-    raw = std::move(outputs.front());
-    raw = integrals::transform_density_fitting_integrals(raw, source.orbital(), source.auxiliary());
-  } else {
-    raw = integrals::build_density_fitting_integrals(source.orbital(), source.auxiliary(), false);
-  }
+  auto raw =
+      integrals::build_density_fitting_integrals(source.orbital(), source.auxiliary(), false);
   const auto factor = scf::factor_density_fitting_metric(raw.metric, na, metric_relative_threshold);
   auto whitened = scf::orthonormalize_density_fitting_three_center(raw.three_center, n, factor);
   std::vector<double> bia(transformed_elements, 0.0);
@@ -263,20 +267,6 @@ Energy density_fitted_energy(const scf::PhysicalReference& ref, const posthf::Ra
                                        ref.coefficients[nu * n + no + a] *
                                        whitened.values[(mu * n + nu) * na + q];
 
-  struct KernelState {
-    void* pointer{};
-    generated::CudaDestroy destroy{};
-    ~KernelState() {
-      if (pointer) destroy(pointer);
-    }
-  } kernel;
-  if (cuda) {
-    char error[2048]{};
-    kernel.destroy = gpu.destroy;
-    const auto status = gpu.create(device, &kernel.pointer, error, sizeof(error));
-    if (status == 2 || status == 3) throw std::bad_alloc();
-    if (status) throw std::runtime_error(error);
-  }
   Energy result;
   result.minimum_denominator = minimum_denominator;
   result.numeric_capacity_bytes = peak;
@@ -301,24 +291,8 @@ Energy density_fitted_energy(const scf::PhysicalReference& ref, const posthf::Ra
               }
             }
           double out[2]{};
-          if (cuda) {
-            char error[2048]{};
-            vibeqc_tensor::Metrics measured;
-            const auto status = gpu.run(kernel.pointer, g.data(), x.data(), ref.orbital_energies[i],
-                                        ref.orbital_energies[j], ea.data(), eb.data(), out,
-                                        &measured, error, sizeof(error));
-            if (status == 2 || status == 3) throw std::bad_alloc();
-            if (status) throw std::runtime_error(error);
-            result.metrics.input_ms += measured.input_ms;
-            result.metrics.output_ms += measured.output_ms;
-            result.metrics.kernel_ms += measured.kernel_ms;
-            result.metrics.library_ms += measured.library_ms;
-            result.mo_transfer_bytes =
-                posthf::checked_add(result.mo_transfer_bytes, 16ULL * tile * tile);
-          } else {
-            cpu.run(g.data(), x.data(), ref.orbital_energies[i], ref.orbital_energies[j], ea.data(),
-                    eb.data(), out);
-          }
+          cpu.run(g.data(), x.data(), ref.orbital_energies[i], ref.orbital_energies[j], ea.data(),
+                  eb.data(), out);
           for (unsigned k = 0; k < 2; ++k) {
             const double adjusted = out[k] - correction[k], next = sum[k] + adjusted;
             correction[k] = (next - sum[k]) - adjusted;
@@ -331,7 +305,7 @@ Energy density_fitted_energy(const scf::PhysicalReference& ref, const posthf::Ra
   if (!std::isfinite(result.opposite_spin) || !std::isfinite(result.same_spin))
     throw std::runtime_error("nonfinite RI-MP2 energy accumulation");
   result.metrics.provider_retained_bytes = posthf::checked_mul(bia.size(), sizeof(double));
-  if (cuda) result.metrics.owned_device_bytes = gpu.device_bytes;
   return result;
 }
+
 }  // namespace vibeqc::mp2

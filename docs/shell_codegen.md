@@ -742,21 +742,22 @@ and seven timing samples, autotuning selected a 32-thread packed schedule at
 0.539 ms versus 0.932 ms for the independent recompute oracle (`1.73x`). The
 kernel uses 208 registers, a 96-byte stack, and zero spills on `sm_120`.
 
-That kernel still does not beat the committed handwritten endpoint. On the
-real-spherical def2-SVP water tetramer after one-pass bucketing, enabling
-generated `psss` produced `0.9933x` speedup for batch one and `0.9952x` for
-batch four. Maximum energy and force differences remained below `1.0e-12 Eh`
-and `6.4e-13 Eh/bohr`, respectively. The candidate therefore remains outside
-the production manifest: synthetic improvement against a recompute oracle is
-not sufficient evidence for promotion over a tuned handwritten kernel.
+That older component-cloning kernel did not beat the then-committed handwritten
+endpoint. On the real-spherical def2-SVP water tetramer after one-pass bucketing,
+it produced `0.9933x` speedup for batch one and `0.9952x` for batch four.
+Maximum energy and force differences remained below `1.0e-12 Eh` and
+`6.4e-13 Eh/bohr`, respectively. That candidate therefore remains rejected;
+the later force-only weighted-ERI lowering is a distinct implementation and is
+qualified separately under #356.
 
 ## Production AOT policy
 
 The separate [arbitrary-weight ERI consumer](weighted_eri.md) now precontracts
-Hermite coefficients before differentiation. It supplies an opt-in native psss
-expression inside the existing primitive loops and resident/paged queues.
-The older component-cloning candidate above remains recorded as rejected;
-the production manifest and handwritten psss default are unchanged.
+Hermite coefficients before differentiation. Direct-HF psss force uses its
+force-only generated expression unconditionally inside the existing native
+primitive loops and fixed/resident/paged queues. The older component-cloning
+candidate above remains recorded as rejected; it is not the production
+force-only lowering.
 
 `production_shell_classes.json` carries explicit tuned and portable profiles.
 The current `sm_120` profile is measured; `portable_cuda` is intentionally

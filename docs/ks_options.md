@@ -68,10 +68,25 @@ native rebuild and spin-normalization path.
 The C ABI appends a nullable `ks_options` pointer to
 `vibeqc_method_descriptor`. A missing tail field or NULL preserves defaults.
 `vibeqc_ks_options_version()` reports support without creating a context.
-Explicit options require version 1, complete nonzero grid counts and a
-positive tile size. Optional element radii are a 119-entry positive finite
-array indexed by atomic number (entry zero is unused); NULL/zero selects
-unit radii. Preparation copies the descriptor and all pointees. Caller storage
-can be released or modified as soon as prepare returns. Other method families
-reject an attached KS option. Older libraries remain usable for default KS
-models; Python rejects custom options if the version query is unavailable.
+Version 1 is the original grid/tile prefix, version 2 adds explicit semilocal
+scales/full-range exchange, and version 3 adds the XC execution schedule. Version
+4 appends the compiler-resolved self-consistent execution selector: spin-channel
+count and semilocal primitive family. The complete v3 layout, including its
+trailing padding, is preserved before the v4 fields. Modern Python callers derive
+those v4 fields from `MethodIR -> KsExecutionPlan`; native CPU/CUDA execution no
+longer chooses RKS/UKS or the LDA/PBE/r2SCAN family from the public method ID. Old
+v1/v2/v3 callers retain a narrow legacy selector fallback. The PBE-D4 correction
+is retained in the snapshotted plan alongside the semilocal execution selector.
+
+Python negotiates the highest supported descriptor version. Composition and
+host-unfused scheduling still fail closed when an older library cannot represent
+them. For the append-only ABI rationale, see the
+[compatibility decision](../.agents/notes/implemented/compatibility/2026-09-21-ks-v4-append-only.md).
+
+Explicit options require complete nonzero grid counts and a positive tile size.
+Optional element radii are a 119-entry positive finite array indexed by atomic
+number (entry zero is unused); NULL/zero selects unit radii. Preparation copies
+the descriptor and all pointees. Caller storage can be released or modified as
+soon as prepare returns. Other method families reject an attached KS option.
+Older libraries remain usable for default KS models; Python rejects custom
+options if the version query is unavailable.

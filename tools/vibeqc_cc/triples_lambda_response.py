@@ -15,7 +15,7 @@ from types import MappingProxyType
 
 import numpy as np
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.tensor import PackedLayout, execute
+from vibeqc_compiler.tensor import PackedLayout
 
 from tools.vibeqc_response.implicit import (
     ImplicitSolveError,
@@ -86,6 +86,7 @@ def _triples_sources(
         *_triples_arrays(bound),
         vir_chunk_size=vir_chunk_size,
         inputs=inputs,
+        executor=bound.tensor_executor,
     )
     bound._assert_current(bound.reference_identity)
     return values
@@ -182,7 +183,7 @@ def solve_corrected_lambda(
             "baseline_lambda_identity": baseline_response.lambda_identity,
             "equation_identity": bound.equation_identity,
             "vir_chunk_size": vir_chunk_size,
-            "tensor_backend": "numpy-cpu-interpreter",
+            "tensor_backend": bound.tensor_backend,
             "orbital_response": "excluded",
         },
     )
@@ -356,16 +357,11 @@ class BoundCCSDTResponse:
         values = []
         for programs in (self.bound.programs, self.bound.independent):
             reverse = build_parameter_vjp(programs.primal, parameter)
-            out = execute(
+            outputs = self.bound._tensor_execute(
                 reverse.program,
                 {**self.bound.feeds, **extra},
-                max_bytes=self.bound.options.max_bytes,
             )
-            if out.backend != "numpy-cpu-interpreter":
-                raise ResponseCompatibilityError(
-                    "corrected response backend changed; no silent fallback"
-                )
-            values.append(np.asarray(out.outputs[f"bar_{parameter}"]))
+            values.append(np.asarray(outputs[f"bar_{parameter}"]))
         if not np.allclose(values[0], values[1], atol=1e-12, rtol=1e-10):
             raise ImplicitSolveError(
                 "independent corrected-Lambda parameter-weight check failed"

@@ -1,0 +1,178 @@
+"""Auditable GPU profitability facts shared by compiler schedule tuners.
+
+This module does not promote a candidate by itself. It normalizes compiler-visible
+static and measured resource facts, then provides deterministic ordering keys for
+finite search budgets and for candidates already inside an endpoint-noise band.
+Missing evidence is kept explicit and ranks behind comparable measured evidence.
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import asdict, dataclass
+
+
+def _optional_count(value: int | None, name: str) -> None:
+    if value is not None and (type(value) is not int or value < 0):
+        raise ValueError(f"{name} must be a non-negative integer or None")
+
+
+def _optional_float(
+    value: float | None, name: str, *, unit_interval: bool = False
+) -> None:
+    if value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(f"{name} must be a finite non-negative number or None")
+    numeric = float(value)
+    if not math.isfinite(numeric) or numeric < 0.0:
+        raise ValueError(f"{name} must be a finite non-negative number or None")
+    if unit_interval and numeric > 1.0:
+        raise ValueError(f"{name} must be in [0, 1] or None")
+
+
+@dataclass(frozen=True, slots=True)
+class GpuProfitability:
+    """One target-agnostic cost record for a legal GPU candidate."""
+
+    semantic_traffic_bytes: int | None = None
+    arithmetic_operation_count: int | None = None
+    peak_live_values: int | None = None
+    rematerialized_value_count: int | None = None
+    estimated_registers_per_thread: int | None = None
+    estimated_occupancy_upper_bound: float | None = None
+    launch_count: int | None = None
+    source_bytes: int | None = None
+    compiled_registers_per_thread: int | None = None
+    spill_store_bytes: int | None = None
+    spill_load_bytes: int | None = None
+    local_bytes: int | None = None
+    shared_bytes: int | None = None
+    compiled_occupancy_upper_bound: float | None = None
+    object_bytes: int | None = None
+    compile_seconds: float | None = None
+    endpoint_seconds: float | None = None
+
+    def __post_init__(self) -> None:
+        for name in (
+            "semantic_traffic_bytes",
+            "arithmetic_operation_count",
+            "peak_live_values",
+            "rematerialized_value_count",
+            "estimated_registers_per_thread",
+            "launch_count",
+            "source_bytes",
+            "compiled_registers_per_thread",
+            "spill_store_bytes",
+            "spill_load_bytes",
+            "local_bytes",
+            "shared_bytes",
+            "object_bytes",
+        ):
+            _optional_count(getattr(self, name), name)
+        _optional_float(
+            self.estimated_occupancy_upper_bound,
+            "estimated_occupancy_upper_bound",
+            unit_interval=True,
+        )
+        _optional_float(
+            self.compiled_occupancy_upper_bound,
+            "compiled_occupancy_upper_bound",
+            unit_interval=True,
+        )
+        _optional_float(self.compile_seconds, "compile_seconds")
+        _optional_float(self.endpoint_seconds, "endpoint_seconds")
+
+    @staticmethod
+    def _minimize(value: float | None) -> tuple[bool, float]:
+        return value is None, 0.0 if value is None else float(value)
+
+    @staticmethod
+    def _maximize(value: float | None) -> tuple[bool, float]:
+        return value is None, 0.0 if value is None else -float(value)
+
+    @property
+    def spill_bytes(self) -> int | None:
+        if self.spill_store_bytes is None or self.spill_load_bytes is None:
+            return None
+        return self.spill_store_bytes + self.spill_load_bytes
+
+    def static_compile_priority(self, generation_index: int) -> tuple[object, ...]:
+        """Order legal candidates before compilation without claiming a winner.
+
+        Traffic comes first because it captures endpoint data movement. Register
+        pressure and occupancy then guard against fusion/CSE choices that retain
+        too much live state. Launches, scalar liveness/work, and source size are
+        deterministic tie-breakers. The original generation order is final.
+        """
+
+        _optional_count(generation_index, "generation_index")
+        return (
+            self._minimize(self.semantic_traffic_bytes),
+            self._minimize(self.estimated_registers_per_thread),
+            self._maximize(self.estimated_occupancy_upper_bound),
+            self._minimize(self.launch_count),
+            self._minimize(self.peak_live_values),
+            self._minimize(self.arithmetic_operation_count),
+            self._minimize(self.source_bytes),
+            generation_index,
+        )
+
+    def compiled_resource_priority(self) -> tuple[object, ...]:
+        """Rank candidates already proven equivalent in endpoint performance.
+
+        This key is only appropriate inside a caller-defined runtime noise band.
+        Spills and occupancy lead the resource tie-break; endpoint time is last
+        because the caller has already established that those times are tied.
+        """
+
+        return (
+            self._minimize(self.spill_bytes),
+            self._maximize(self.compiled_occupancy_upper_bound),
+            self._minimize(self.compiled_registers_per_thread),
+            self._minimize(self.local_bytes),
+            self._minimize(self.shared_bytes),
+            self._minimize(self.launch_count),
+            self._minimize(self.semantic_traffic_bytes),
+            self._minimize(self.peak_live_values),
+            self._minimize(self.arithmetic_operation_count),
+            self._minimize(self.compile_seconds),
+            self._minimize(self.source_bytes),
+            self._minimize(self.object_bytes),
+            self._minimize(self.endpoint_seconds),
+        )
+
+    def to_payload(self) -> dict[str, object]:
+        """Serialize every known/unknown fact; do not erase negative evidence."""
+
+        fields = asdict(self)
+        return {
+            "schema": "vibeqc.compiler.gpu-profitability.v1",
+            "static": {
+                name: fields[name]
+                for name in (
+                    "semantic_traffic_bytes",
+                    "arithmetic_operation_count",
+                    "peak_live_values",
+                    "rematerialized_value_count",
+                    "estimated_registers_per_thread",
+                    "estimated_occupancy_upper_bound",
+                    "launch_count",
+                    "source_bytes",
+                )
+            },
+            "compiled": {
+                name: fields[name]
+                for name in (
+                    "compiled_registers_per_thread",
+                    "spill_store_bytes",
+                    "spill_load_bytes",
+                    "local_bytes",
+                    "shared_bytes",
+                    "compiled_occupancy_upper_bound",
+                    "object_bytes",
+                    "compile_seconds",
+                )
+            },
+            "endpoint_seconds": self.endpoint_seconds,
+        }

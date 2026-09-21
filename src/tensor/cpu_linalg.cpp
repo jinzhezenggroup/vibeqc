@@ -39,6 +39,18 @@ bool transpose(char value) {
   throw std::invalid_argument("CPU GEMM transpose must be N or T");
 }
 
+bool syrk_transpose(char value) {
+  if (value == 'N' || value == 'n') return false;
+  if (value == 'T' || value == 't') return true;
+  throw std::invalid_argument("CPU SYRK transpose must be N or T");
+}
+
+bool upper_triangle(char value) {
+  if (value == 'U' || value == 'u') return true;
+  if (value == 'L' || value == 'l') return false;
+  throw std::invalid_argument("CPU SYRK triangle must be U or L");
+}
+
 void validate_plan(const CpuLinalgPlan& plan) {
   if (plan.provider_threads < 1)
     throw std::invalid_argument("CPU linear algebra thread count must be positive");
@@ -64,6 +76,24 @@ void scalar_gemm(bool ta, bool tb, std::size_t m, std::size_t n, std::size_t k, 
         sum += av * bv;
       }
       c[i * n + j] = beta == 0.0 ? alpha * sum : alpha * sum + beta * c[i * n + j];
+    }
+  }
+}
+
+void scalar_syrk(bool upper, bool trans, std::size_t n, std::size_t k, const double* a, double* c,
+                 double alpha, double beta) {
+  for (std::size_t i = 0; i < n; ++i) {
+    const std::size_t first_column = upper ? i : 0;
+    const std::size_t last_column = upper ? n : i + 1;
+    for (std::size_t j = first_column; j < last_column; ++j) {
+      double sum = 0.0;
+      for (std::size_t p = 0; p < k; ++p) {
+        const double ai = trans ? a[p * n + i] : a[i * k + p];
+        const double aj = trans ? a[p * n + j] : a[j * k + p];
+        sum += ai * aj;
+      }
+      const std::size_t index = i * n + j;
+      c[index] = beta == 0.0 ? alpha * sum : alpha * sum + beta * c[index];
     }
   }
 }
@@ -268,6 +298,22 @@ void openblas_gemm(bool ta, bool tb, std::size_t m, std::size_t n, std::size_t k
 #endif
 }
 
+void openblas_syrk(bool upper, bool trans, std::size_t n, std::size_t k, const double* a, double* c,
+                   double alpha, double beta, const CpuLinalgPlan& plan) {
+  const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  if (n > limit || k > limit) throw std::length_error("OpenBLAS SYRK dimensions exceed int range");
+  OpenBlasThreadGuard guard(plan);
+  const auto triangle = upper ? CblasUpper : CblasLower;
+  const auto transpose_a = trans ? CblasTrans : CblasNoTrans;
+#if VIBEQC_OPENBLAS_SCIPY_PREFIX
+  scipy_cblas_dsyrk(CblasRowMajor, triangle, transpose_a, static_cast<int>(n), static_cast<int>(k),
+                    alpha, a, static_cast<int>(trans ? n : k), beta, c, static_cast<int>(n));
+#else
+  cblas_dsyrk(CblasRowMajor, triangle, transpose_a, static_cast<int>(n), static_cast<int>(k), alpha,
+              a, static_cast<int>(trans ? n : k), beta, c, static_cast<int>(n));
+#endif
+}
+
 int openblas_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& plan) {
 #if VIBEQC_OPENBLAS_HAS_LAPACKE
   if (n > static_cast<std::size_t>(std::numeric_limits<int>::max()))
@@ -354,6 +400,24 @@ CpuLinalgProvider resolve_cpu_linalg_provider(const CpuLinalgPlan& plan, bool re
   return usable ? CpuLinalgProvider::openblas : CpuLinalgProvider::scalar;
 }
 
+std::string_view cpu_linalg_target_name() noexcept {
+#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__AVX512F__) && defined(__FMA__)
+  return "x86_64-avx512f-fma";
+#elif defined(__AVX2__) && defined(__FMA__)
+  return "x86_64-avx2-fma";
+#elif defined(__AVX2__)
+  return "x86_64-avx2";
+#else
+  return "x86_64-generic";
+#endif
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  return "aarch64-generic";
+#else
+  return "generic";
+#endif
+}
+
 std::string_view cpu_linalg_provider_name(CpuLinalgProvider provider) noexcept {
   switch (provider) {
     case CpuLinalgProvider::automatic:
@@ -374,7 +438,8 @@ CpuLinalgDiagnostic cpu_linalg_diagnostic(const CpuLinalgPlan& plan) {
           .external_provider = provider == CpuLinalgProvider::openblas,
           .lapack_available = cpu_openblas_lapack_built(),
           .local_thread_control = cpu_openblas_local_thread_control_built(),
-          .global_thread_control = cpu_openblas_global_thread_control_built()};
+          .global_thread_control = cpu_openblas_global_thread_control_built(),
+          .cpu_target = cpu_linalg_target_name()};
 }
 
 void cpu_gemm(char a_trans, char b_trans, std::size_t m, std::size_t n, std::size_t k,
@@ -411,6 +476,47 @@ void cpu_gemm(char a_trans, char b_trans, std::size_t m, std::size_t n, std::siz
   }
 #endif
   scalar_gemm(ta, tb, m, n, k, a, b, c, alpha, beta);
+}
+
+void cpu_syrk(char uplo, char trans, std::size_t n, std::size_t k, const double* a, double* c,
+              double alpha, double beta, const CpuLinalgPlan& plan) {
+  const bool upper = upper_triangle(uplo);
+  const bool transposed = syrk_transpose(trans);
+  validate_plan(plan);
+  if (!n) return;
+  checked_matrix_elements(n, n);
+  if (!c) throw std::invalid_argument("CPU SYRK received null storage");
+  if (!k || alpha == 0.0) {
+    for (std::size_t i = 0; i < n; ++i) {
+      const std::size_t first_column = upper ? i : 0;
+      const std::size_t last_column = upper ? n : i + 1;
+      for (std::size_t j = first_column; j < last_column; ++j) {
+        const std::size_t index = i * n + j;
+        if (beta == 0.0)
+          c[index] = 0.0;
+        else if (beta != 1.0)
+          c[index] *= beta;
+      }
+    }
+    return;
+  }
+  checked_matrix_elements(transposed ? k : n, transposed ? n : k);
+  if (!a) throw std::invalid_argument("CPU SYRK received null storage");
+
+  CpuLinalgProvider provider = plan.provider;
+  if (provider == CpuLinalgProvider::automatic) {
+    provider =
+        fits_openblas(n, n, k) ? resolve_cpu_linalg_provider(plan) : CpuLinalgProvider::scalar;
+  } else {
+    provider = resolve_cpu_linalg_provider(plan);
+  }
+#if VIBEQC_HAS_OPENBLAS
+  if (provider == CpuLinalgProvider::openblas) {
+    openblas_syrk(upper, transposed, n, k, a, c, alpha, beta, plan);
+    return;
+  }
+#endif
+  scalar_syrk(upper, transposed, n, k, a, c, alpha, beta);
 }
 
 int cpu_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& plan) {

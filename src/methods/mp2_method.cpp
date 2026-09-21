@@ -127,7 +127,7 @@ class Mp2Prepared final : public PreparedCalculation {
       diagnostic.numeric_capacity_bytes =
           std::max(reference_capacity_, corr.numeric_capacity_bytes);
       diagnostic.energy_tile_count = corr.tiles;
-      diagnostic.mo_host_staging = executed_cuda ? 1 : 0;
+      diagnostic.mo_host_staging = executed_cuda && !density_fitted_ ? 1 : 0;
       last_ = diagnostic;
       last_->correlation_owned_device_bytes = corr.metrics.owned_device_bytes;
       last_->correlation_provider_retained_bytes = corr.metrics.provider_retained_bytes;
@@ -475,7 +475,12 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
         requested_density_fitting_budget == 0 ? budget
                                               : std::min(requested_density_fitting_budget, budget);
   }
-  if (density_fitted &&
+  // The CPU RI oracle materializes raw/public three-center tensors and
+  // therefore retains its established complete-tensor admission bound. CUDA
+  // RI-MP2 generates/whitens bounded device rows and plans B blocks separately;
+  // applying the CPU bound here would make that bounded production route
+  // unreachable before its own exact planner can run.
+  if (density_fitted && !fitted_cuda &&
       posthf::ri_mp2_capacity(system, *auxiliary,
                               static_cast<std::size_t>(system.electron_count / 2)) > budget)
     throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,

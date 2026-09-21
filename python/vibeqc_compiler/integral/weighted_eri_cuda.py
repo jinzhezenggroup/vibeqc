@@ -29,6 +29,8 @@ def emit_weighted_eri_function(
     include_value: bool = True,
     gradient_centers: tuple[int, ...] = (0, 1, 2, 3),
     result_type: str = "Gradient",
+    ordering: AlgebraOrdering = AlgebraOrdering.TOPOLOGICAL,
+    fusion: AlgebraFusion = AlgebraFusion.SEPARATE,
 ) -> str:
     """Emit one selected weighted result with shared scalar CSE.
 
@@ -65,9 +67,7 @@ def emit_weighted_eri_function(
     policy = RematerializationPolicy(
         name="weighted_single_use", inline_single_use=inline_single_use
     )
-    plan = graph.materialization_plan(
-        roots, policy, AlgebraOrdering.TOPOLOGICAL, AlgebraFusion.SEPARATE
-    )
+    plan = graph.materialization_plan(roots, policy, ordering, fusion)
     variables = {
         name: f"geometry.{name}"
         for name in ("inverse_two_p", "inverse_two_q", "rho", "prefactor")
@@ -191,6 +191,7 @@ def emit_low_order_weighted_header(*, inline_single_use: typing.Any = False) -> 
         include_value=False,
         gradient_centers=(0, 1, 2),
         result_type="IndependentGradient",
+        ordering=AlgebraOrdering.PRESSURE_AWARE,
     )
     ssss_force = emit_weighted_eri_function(
         ssss,

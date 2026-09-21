@@ -1,5 +1,14 @@
 # Initial repeated DF matrix after device DIIS (#206)
 
+> **Checkout retention (2026-09-21):** `evidence.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue206-device-diis-baseline/evidence.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue206-device-diis-baseline/evidence.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
 Five interleaved warm repeats per engine cover 96/192 spherical AOs, batch
 one/four, energy and complete forces. All repeat errors satisfy the declared
 1e-9 Ha / 1e-8 Ha/Bohr gates. An independent preflight records exact basis data,

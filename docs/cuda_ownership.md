@@ -29,6 +29,25 @@ python tools/report_cuda_ownership.py --build build/cuda-release \
   --output .artifacts/cuda-ownership-with-build.json
 ```
 
+For the remaining Direct-HF scientific CUDA retirement surface,
+`cuda_ownership/direct_hf_retirement.json` provides the issue-356 family overlay.
+It does not change semantic ownership roles. Instead, it groups every non-runtime
+`src/scf/cuda/direct_*` ownership entry by current disposition, generated
+alternative, scheduling/resource gap, evidence and retirement condition. Keep it
+exactly synchronized with the semantic ledger:
+
+```bash
+python tools/check_direct_hf_retirement.py
+python tools/check_direct_hf_retirement.py --json
+```
+
+The check fails when a new Direct scientific CUDA file is not classified, a file
+is classified twice, a runtime-only file is presented as retirement science, or
+evidence becomes stale. Screening/error-policy entries are deliberately marked as
+scientific policy rather than counted as duplicate formulas; similarly, a file
+named `reference` is not treated as an independent oracle unless the semantic
+ownership ledger actually establishes that role.
+
 Create the output parent directory first. The report counts nonblank,
 noncomment physical lines in native `.cu`/`.cuh` files and CUDA-bearing shared
 C++ headers. Counts include host launch/ownership code in those translation

@@ -497,6 +497,13 @@ def cuda_df_candidates(
                 accounting="runtime_allowance",
             ),
         )
+        layout_identities = sorted(
+            {
+                inventory[route]["value_layout_identity"]
+                for inventory in inventories
+                for route in ("energy_tiles", "force_tiles")
+            }
+        )
         candidates.append(
             ResourceCandidate(
                 name,
@@ -505,6 +512,7 @@ def cuda_df_candidates(
                 relative_cost=cost,
                 decisions=(
                     ("df_pair_storage", pair_storage),
+                    ("df_value_layout_identities", json.dumps(layout_identities)),
                     ("density_fitting_memory_budget_bytes", str(sub_budget)),
                     (
                         "batch_execution",

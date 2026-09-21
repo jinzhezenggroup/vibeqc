@@ -33,6 +33,7 @@ from tools.vibeqc_validation.schema import canonical_hash
 
 from .equations import amplitude_layouts
 from .lambda_equations import build_lambda_programs
+from .native_tensor_cpu import NativeCCTensorExecutor
 from .solver import CCSDResult, _ccsd_programs
 
 
@@ -141,9 +142,9 @@ class BoundCCSDLambda:
         current_reference: Callable[[], str] | None = None,
         backend: typing.Any = "cpu",
     ) -> None:
-        if backend != "cpu":
+        if backend not in {"cpu", "native-cpu"}:
             raise NotImplementedError(
-                "bound RCCSD Lambda currently supports CPU tooling only"
+                "bound RCCSD Lambda supports interpreter or native CPU tooling only"
             )
         if not isinstance(snapshot, ReferenceSnapshot) or snapshot.algorithm != "RHF":
             raise TypeError("Lambda requires a validated RHF ReferenceSnapshot")
@@ -236,6 +237,15 @@ class BoundCCSDLambda:
             ("_solver_contract", MappingProxyType(contract)),
             ("_current_reference", current_reference),
             ("_lock", threading.RLock()),
+            ("_tensor_backend", backend),
+            (
+                "tensor_executor",
+                (
+                    NativeCCTensorExecutor(max_bytes=options.max_bytes)
+                    if backend == "native-cpu"
+                    else None
+                ),
+            ),
             ("logical_reserved_host_bytes", required),
         ):
             put(name, value)
@@ -356,19 +366,33 @@ class BoundCCSDLambda:
             self.layouts[1].unpack(vector[split:]),
         )
 
-    def _run(self, program: typing.Any, extra: typing.Any = None) -> typing.Any:
+    @property
+    def tensor_backend(self) -> str:
+        return (
+            "native-cpu-tensorir"
+            if self._tensor_backend == "native-cpu"
+            else "numpy-cpu-interpreter"
+        )
+
+    def _tensor_execute(self, program: typing.Any, feeds: typing.Any) -> typing.Any:
         self._assert_current(self.reference_identity)
-        result = execute(
+        if self.tensor_executor is not None:
+            outputs = self.tensor_executor.execute(program, feeds)
+        else:
+            result = execute(program, feeds, max_bytes=self.options.max_bytes)
+            if result.backend != "numpy-cpu-interpreter":
+                raise ResponseCompatibilityError(
+                    "Lambda tensor backend changed; no fallback allowed"
+                )
+            outputs = result.outputs
+        self._assert_current(self.reference_identity)
+        return outputs
+
+    def _run(self, program: typing.Any, extra: typing.Any = None) -> typing.Any:
+        return self._tensor_execute(
             program,
             {**self.feeds, **({} if extra is None else extra)},
-            max_bytes=self.options.max_bytes,
         )
-        if result.backend != "numpy-cpu-interpreter":
-            raise ResponseCompatibilityError(
-                "Lambda tensor backend changed; no fallback allowed"
-            )
-        self._assert_current(self.reference_identity)
-        return result.outputs
 
     def _rhs(self, programs: typing.Any) -> typing.Any:
         out = self._run(
@@ -438,7 +462,7 @@ class BoundCCSDLambda:
                         "equation_identity": self.equation_identity,
                         "lagrangian": "E_corr + <lambda, R>",
                         "inner_product": "dense Frobenius; sqrt-orbit-weighted independent solver coordinates",
-                        "tensor_backend": "numpy-cpu-interpreter",
+                        "tensor_backend": self.tensor_backend,
                         "solver_backend": self._solver_contract["backend"],
                         "reference_binding": (
                             "live-reference-callback"

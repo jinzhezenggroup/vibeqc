@@ -15,6 +15,7 @@
 #include "posthf/cuda_transform.hpp"
 #include "posthf/mp2_force.hpp"
 #include "posthf/raw_source.hpp"
+#include "posthf/ri_mp2_cuda.hpp"
 #include "scf/rhf.hpp"
 #include "tensor/cuda_runtime.cuh"
 
@@ -33,6 +34,26 @@ vibeqc::core::System h2() {
   require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
           "H2 setup failed");
   return system;
+}
+
+void ri_mp2_block_planner() {
+  constexpr std::size_t fixed = 2ULL << 20;
+  const auto full = vibeqc::mp2::plan_ri_mp2_cuda_blocks(fixed, 64ULL << 20, 120, 20, 100, 180);
+  require(full.full_resident && full.virtual_block == 100 && full.peak_bytes <= (64ULL << 20),
+          "RI-MP2 planner did not select resident full B");
+
+  const auto blocked = vibeqc::mp2::plan_ri_mp2_cuda_blocks(fixed, 8ULL << 20, 120, 20, 100, 180);
+  require(!blocked.full_resident && blocked.virtual_block == 27 && blocked.j_batch == 4 &&
+              blocked.peak_bytes == 8364608 && blocked.peak_bytes <= (8ULL << 20),
+          "RI-MP2 planner did not select the expected bounded B block");
+
+  bool rejected = false;
+  try {
+    (void)vibeqc::mp2::plan_ri_mp2_cuda_blocks(fixed, fixed, 120, 20, 100, 180);
+  } catch (const std::length_error&) {
+    rejected = true;
+  }
+  require(rejected, "RI-MP2 planner accepted a budget without one B block");
 }
 
 void derivative_and_force_parity() {
@@ -90,6 +111,7 @@ void derivative_and_force_parity() {
 int main() {
   if (!std::getenv("VIBEQC_MP2_CUDA_TEST")) return 77;
   try {
+    ri_mp2_block_planner();
     derivative_and_force_parity();
     bool cuda_oom = false, blas_oom = false;
     try {

@@ -43,6 +43,7 @@ def test_source_owner_validates_spin_storage_and_packs_ao_indices(
         "stationary_nuclear",
         "stationary_geometry",
         "stationary_finish",
+        "stationary_finish_reduced",
         "stationary_metrics",
         "stationary_destroy",
     )
@@ -180,6 +181,7 @@ def test_weight_fusion_orchestration_runs_without_a_device(
     owner.finish.return_value = {
         name: np.zeros((1, 3)) for name in runtime._SOURCE_NAMES
     }
+    owner.reduced.return_value = np.zeros((1, 3))
     admitted: dict[str, int] = {}
 
     def make_owner(
@@ -268,6 +270,11 @@ def test_weight_fusion_orchestration_runs_without_a_device(
         call(5, "overlap", (0, 0)),
         call(1, "four_center_eri", (0, 0, 0, 0)),
     ]
+    owner.reduced.assert_called_once_with()
+    assert result.work["tensor_executions"] == 0
+    assert (
+        result.work["stationary_final_reduction"] == "native-seven-source-device-sum-v1"
+    )
     assert result.work["stationary_weight_tensor_executions"] == 0
     assert result.work["stationary_weight_roundtrip_bytes"] == 0
     assert result.work["stationary_state_dw_upload_bytes"] == 16

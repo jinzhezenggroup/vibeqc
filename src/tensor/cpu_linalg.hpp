@@ -25,6 +25,8 @@ struct CpuLinalgDiagnostic {
   bool lapack_available{};
   bool local_thread_control{};
   bool global_thread_control{};
+  // VibeQC host-code build target. External BLAS may dispatch internally.
+  std::string_view cpu_target{};
 };
 
 struct CpuSymmetricEigenResult {
@@ -40,10 +42,18 @@ struct CpuSymmetricEigenResult {
                                                             bool require_lapack = false);
 [[nodiscard]] CpuLinalgDiagnostic cpu_linalg_diagnostic(const CpuLinalgPlan& plan = {});
 [[nodiscard]] std::string_view cpu_linalg_provider_name(CpuLinalgProvider provider) noexcept;
+[[nodiscard]] std::string_view cpu_linalg_target_name() noexcept;
 
 void cpu_gemm(char a_trans, char b_trans, std::size_t m, std::size_t n, std::size_t k,
               const double* a, const double* b, double* c, double alpha = 1.0, double beta = 0.0,
               const CpuLinalgPlan& plan = {});
+
+/** Symmetric rank-k update of the selected triangle.
+ * `trans == 'N'` consumes an n-by-k row-major A; `trans == 'T'` consumes k-by-n.
+ * Only the triangle selected by `uplo` is read from or written to in C.
+ */
+void cpu_syrk(char uplo, char trans, std::size_t n, std::size_t k, const double* a, double* c,
+              double alpha = 1.0, double beta = 0.0, const CpuLinalgPlan& plan = {});
 
 /** In-place lower Cholesky factorization. Returns LAPACK-style info:
  * 0 on success, j>0 when the leading minor of order j is not positive definite.

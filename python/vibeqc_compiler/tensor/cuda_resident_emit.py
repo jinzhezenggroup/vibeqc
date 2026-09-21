@@ -53,6 +53,8 @@ def _validation_body(plan: typing.Any) -> typing.Any:
     for slot, i in enumerate(plan.inputs):
         step = plan.steps[i]
         node = step.node
+        if node.spec.dtype == "int64":
+            continue
         ty = scalar_type(node.spec.dtype).ctype
         atol, rtol = symmetry_tolerance(node.spec.dtype)
         comparisons = []

@@ -1,5 +1,14 @@
 # 96-atom preparation diagnostics and independent references
 
+> **Checkout retention (2026-09-21):** `qualification.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue308-large-diagnostics/qualification.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue308-large-diagnostics/qualification.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
 This slice retains completed diagnostics for 32 waters / 96 atoms / 768
 spherical AOs with def2-SVP orbital and auxiliary bases. There is still no
 converged VibeQC energy or full-force endpoint at this size. The synthetic

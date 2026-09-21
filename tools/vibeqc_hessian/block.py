@@ -25,6 +25,7 @@ from tools.vibeqc_response import (
 
 from .analytic import (
     _checked_second_hvp_options,
+    accumulate_provider_hvp_cuda,
     nuclear_hvp,
     provider_hvp_components,
 )
@@ -44,12 +45,12 @@ class RHFHVPBlockResult:
     """A bounded ordered set of complete RHF Hessian-vector products."""
 
     directions: np.ndarray
-    values: np.ndarray
-    nuclear: np.ndarray
-    core: np.ndarray
-    pulay: np.ndarray
-    two_electron: np.ndarray
-    relaxation: np.ndarray
+    values: np.ndarray | None
+    nuclear: np.ndarray | None
+    core: np.ndarray | None
+    pulay: np.ndarray | None
+    two_electron: np.ndarray | None
+    relaxation: np.ndarray | None
     response_batch: RHFNuclearBatchResponse = field(repr=False)
     identity: str
     _diagnostics: dict = field(repr=False)
@@ -59,7 +60,7 @@ class RHFHVPBlockResult:
         return deepcopy(self._diagnostics)
 
     @property
-    def components(self) -> dict[str, np.ndarray]:
+    def components(self) -> dict[str, np.ndarray | None]:
         return {
             "nuclear": self.nuclear,
             "core": self.core,
@@ -166,6 +167,10 @@ def rhf_hvp_many(
     relaxation_backend: str = "cpu",
     relaxation_compiler: object = None,
     relaxation_budget_bytes: int = 64 << 20,
+    assembly_backend: str = "host",
+    assembly_budget_bytes: int = 8 << 20,
+    _device_output_consumers: object = None,
+    _publish_host: bool = True,
 ) -> RHFHVPBlockResult:
     """Apply the complete conventional RHF Hessian to a bounded direction block.
 
@@ -192,6 +197,21 @@ def rhf_hvp_many(
     )
     if strategy not in ("sequential", "blocked", "recycled"):
         raise ValueError("strategy must be sequential, blocked or recycled")
+    if assembly_backend not in ("host", "cuda"):
+        raise ValueError("assembly_backend must be host or cuda")
+    if type(_publish_host) is not bool:
+        raise TypeError("_publish_host must be boolean")
+    consumers = (
+        None if _device_output_consumers is None else tuple(_device_output_consumers)
+    )
+    if consumers is not None and (
+        len(consumers) != len(vectors) or any(not callable(item) for item in consumers)
+    ):
+        raise ValueError("_device_output_consumers must match the direction count")
+    if not _publish_host and consumers is None:
+        raise ValueError(
+            "suppressed block publication requires device output consumers"
+        )
     if jk_backend not in ("cpu", "cuda"):
         raise ValueError("jk_backend must be cpu or cuda")
     if response_execution not in ("host", "cuda-resident"):
@@ -234,12 +254,58 @@ def rhf_hvp_many(
     elif first_compiler is not None:
         raise ValueError("first_compiler is only meaningful for CUDA first derivatives")
 
+    cuda_assembly = assembly_backend == "cuda"
+    if cuda_assembly:
+        from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+
+        if (
+            jk_backend != "cuda"
+            or response_execution != "cuda-resident"
+            or second_backend != "cuda"
+            or relaxation_backend != "cuda"
+        ):
+            raise ValueError(
+                "CUDA block assembly requires cuda J/K, resident response, "
+                "CUDA second integrals and CUDA relaxation"
+            )
+        if not isinstance(second_compiler, CudaCompilerAdapter) or not isinstance(
+            relaxation_compiler, CudaCompilerAdapter
+        ):
+            raise TypeError("CUDA block assembly requires explicit CUDA compilers")
+        assembly_budget_bytes = _checked_budget(
+            assembly_budget_bytes, "assembly_budget_bytes"
+        )
+
     resident_relaxation = (
         response_execution == "cuda-resident" and relaxation_backend == "cuda"
     )
     resident_relaxation_values: list[object | None] = [None] * len(vectors)
     resident_relaxation_diagnostics: list[object | None] = [None] * len(vectors)
     resident_relaxation_seconds = 0.0
+    assembly_owners: list[object] = []
+    assembly_device_bytes = 0
+    assembly_artifact = None
+    nuclear_seconds = 0.0
+    if cuda_assembly:
+        from .device_assembly import CudaHVPAccumulator, compile_hvp_assembly
+
+        assembly_artifact = compile_hvp_assembly(
+            second_compiler, state.cache / "final-hvp-assembly-cuda"
+        )
+        nuclear_started = time.perf_counter()
+        for vector in vectors:
+            owner = CudaHVPAccumulator(
+                assembly_artifact,
+                natoms=state.nat,
+                device_id=device_id,
+                budget_bytes=assembly_budget_bytes,
+            )
+            owner.reset_nuclear(state.coords, state.Z, vector)
+            assembly_owners.append(owner)
+        nuclear_seconds = time.perf_counter() - nuclear_started
+        assembly_device_bytes = sum(
+            owner.diagnostics["owned_device_bytes"] for owner in assembly_owners
+        )
 
     storage = _block_persistent_bound(state, len(vectors))
     if storage["total"] >= total_budget_bytes:
@@ -324,6 +390,7 @@ def rhf_hvp_many(
             - storage["total"]
             - retained_response_bytes
             - resident_relaxation_reserve
+            - assembly_device_bytes
         )
         if response_available <= 0:
             raise ValueError("retained response storage exceeds total_budget_bytes")
@@ -361,15 +428,34 @@ def rhf_hvp_many(
                 from .first_order_cuda import generated_rhf_relaxation_contraction_cuda
 
                 started = time.perf_counter()
-                value, diagnostic = generated_rhf_relaxation_contraction_cuda(
-                    state,
-                    None,
-                    None,
-                    relaxation_compiler,
-                    resident_weights=weights,
-                    device_id=device_id,
-                    budget_bytes=relaxation_budget_bytes,
-                )
+                if cuda_assembly:
+                    value, diagnostic = generated_rhf_relaxation_contraction_cuda(
+                        state,
+                        None,
+                        None,
+                        relaxation_compiler,
+                        resident_weights=weights,
+                        device_output_consumer=lambda pointer, count: (
+                            assembly_owners[index].add_device(pointer)
+                            if count == 3 * state.nat
+                            else (_ for _ in ()).throw(
+                                RuntimeError("relaxation device output size mismatch")
+                            )
+                        ),
+                        publish_host=False,
+                        device_id=device_id,
+                        budget_bytes=relaxation_budget_bytes,
+                    )
+                else:
+                    value, diagnostic = generated_rhf_relaxation_contraction_cuda(
+                        state,
+                        None,
+                        None,
+                        relaxation_compiler,
+                        resident_weights=weights,
+                        device_id=device_id,
+                        budget_bytes=relaxation_budget_bytes,
+                    )
                 resident_relaxation_values[index] = value
                 resident_relaxation_diagnostics[index] = diagnostic
                 resident_relaxation_seconds += time.perf_counter() - started
@@ -414,14 +500,19 @@ def rhf_hvp_many(
     relaxation_started = time.perf_counter()
     relaxation_diagnostics = []
     if resident_relaxation:
-        if any(value is None for value in resident_relaxation_values) or any(
-            diagnostic is None for diagnostic in resident_relaxation_diagnostics
-        ):
+        if any(diagnostic is None for diagnostic in resident_relaxation_diagnostics):
             raise RuntimeError(
-                "resident block RHF relaxation did not publish every direction"
+                "resident block RHF relaxation did not execute every direction"
             )
-        relaxation = np.stack(resident_relaxation_values)
         relaxation_diagnostics = list(resident_relaxation_diagnostics)
+        if cuda_assembly:
+            relaxation = None
+        else:
+            if any(value is None for value in resident_relaxation_values):
+                raise RuntimeError(
+                    "resident block RHF relaxation did not publish every direction"
+                )
+            relaxation = np.stack(resident_relaxation_values)
     elif relaxation_backend == "cuda":
         from .first_order_cuda import generated_rhf_relaxation_contraction_cuda
 
@@ -456,33 +547,67 @@ def rhf_hvp_many(
     )
 
     second_started = time.perf_counter()
-    second_items = [
-        provider_hvp_components(
-            state,
-            vector,
-            backend=second_backend,
-            compiler=second_compiler,
-            device_id=device_id,
-            budget_bytes=second_budget_bytes,
-            return_diagnostics=True,
-        )
-        for vector in vectors
-    ]
-    second_components = [item[0] for item in second_items]
-    second_diagnostics = [item[1] for item in second_items]
-    core = np.stack([item["core"] for item in second_components])
-    pulay = np.stack([item["pulay"] for item in second_components])
-    two_electron = np.stack([item["two_electron"] for item in second_components])
+    if cuda_assembly:
+        second_diagnostics = []
+        for vector, owner in zip(vectors, assembly_owners, strict=True):
+            second_diagnostics.append(
+                accumulate_provider_hvp_cuda(
+                    state,
+                    vector,
+                    owner,
+                    compiler=second_compiler,
+                    device_id=device_id,
+                    budget_bytes=second_budget_bytes,
+                )
+            )
+        core = pulay = two_electron = None
+    else:
+        second_items = [
+            provider_hvp_components(
+                state,
+                vector,
+                backend=second_backend,
+                compiler=second_compiler,
+                device_id=device_id,
+                budget_bytes=second_budget_bytes,
+                return_diagnostics=True,
+            )
+            for vector in vectors
+        ]
+        second_components = [item[0] for item in second_items]
+        second_diagnostics = [item[1] for item in second_items]
+        core = np.stack([item["core"] for item in second_components])
+        pulay = np.stack([item["pulay"] for item in second_components])
+        two_electron = np.stack([item["two_electron"] for item in second_components])
     second_seconds = time.perf_counter() - second_started
 
-    nuclear_started = time.perf_counter()
-    nuclear = np.stack([nuclear_hvp(state, vector) for vector in vectors])
-    nuclear_seconds = time.perf_counter() - nuclear_started
+    if cuda_assembly:
+        nuclear = None
+    else:
+        nuclear_started = time.perf_counter()
+        nuclear = np.stack([nuclear_hvp(state, vector) for vector in vectors])
+        nuclear_seconds = time.perf_counter() - nuclear_started
 
     assembly_started = time.perf_counter()
-    values = nuclear + core + pulay + two_electron + relaxation
+    if cuda_assembly:
+        if consumers is not None:
+            for owner, consumer in zip(assembly_owners, consumers, strict=True):
+                pointer, count = owner.device_output()
+                consumer(pointer, count)
+        values = (
+            np.stack([owner.finish() for owner in assembly_owners])
+            if _publish_host
+            else None
+        )
+        assembly_diagnostics = [owner.diagnostics for owner in assembly_owners]
+        for owner in assembly_owners:
+            owner.close()
+        assembly_owners.clear()
+    else:
+        values = nuclear + core + pulay + two_electron + relaxation
+        assembly_diagnostics = []
     assembly_seconds = time.perf_counter() - assembly_started
-    if not np.isfinite(values).all():
+    if values is not None and not np.isfinite(values).all():
         raise FloatingPointError("nonfinite RHF HVP block; no result published")
     state.validate()
 
@@ -491,6 +616,7 @@ def rhf_hvp_many(
         storage["total"]
         + retained_response_bytes
         + batch.solve_result.peak_workspace_bytes
+        + assembly_device_bytes
     )
     relaxation_phase_bound = storage["total"] + (
         0 if relaxation_storage is None else relaxation_storage["numeric_peak_bytes"]
@@ -511,7 +637,9 @@ def rhf_hvp_many(
     second_device_peak = max(
         (item["peak_device_bytes"] for item in second_diagnostics), default=0
     )
-    second_phase_bound = storage["total"] + second_host_peak + second_device_peak
+    second_phase_bound = (
+        storage["total"] + second_host_peak + second_device_peak + assembly_device_bytes
+    )
     if second_phase_bound > total_budget_bytes:
         raise ValueError(
             "HVP block plus second-integral provider storage exceeds total_budget_bytes"
@@ -563,6 +691,7 @@ def rhf_hvp_many(
                 )
             ),
             "relaxation_backend": relaxation_backend,
+            "assembly_backend": assembly_backend,
             "relaxation_programs": (
                 tuple(
                     sorted(
@@ -610,8 +739,25 @@ def rhf_hvp_many(
         "second_integral_provider": deepcopy(second_diagnostics),
         "relaxation_backend": relaxation_backend,
         "relaxation_provider": deepcopy(relaxation_diagnostics),
+        "assembly_backend": assembly_backend,
+        "assembly_budget_bytes": assembly_budget_bytes,
+        "assembly_device_bytes": assembly_device_bytes,
+        "final_assembly": deepcopy(assembly_diagnostics),
+        "component_publication": "suppressed" if cuda_assembly else "host",
+        "published_component_bytes": 0
+        if cuda_assembly
+        else int(
+            sum(
+                item.nbytes
+                for item in (nuclear, core, pulay, two_electron, relaxation)
+                if item is not None
+            )
+        ),
+        "published_hvp_bytes": 0 if values is None else int(values.nbytes),
         "execution_residency": (
-            "mixed-host-device-resident-response-relaxation"
+            "device-final-assembly-with-host-response-publication"
+            if cuda_assembly
+            else "mixed-host-device-resident-response-relaxation"
             if resident_relaxation
             else "mixed-host-device-resident-response"
             if response_execution == "cuda-resident"
@@ -653,7 +799,7 @@ def rhf_hvp_many(
         relaxation,
     )
     return RHFHVPBlockResult(
-        *(immutable(value) for value in arrays),
+        *(None if value is None else immutable(value) for value in arrays),
         batch,
         identity,
         diagnostics,
@@ -671,8 +817,9 @@ def rhf_hessian(
     """Assemble the raw full Cartesian RHF Hessian in bounded direction blocks.
 
     Columns are independent canonical atom/xyz unit directions. The output is
-    never symmetrized; raw symmetry is diagnostic evidence. A request whose
-    full output plus one block cannot fit the declared budget fails explicitly.
+    never symmetrized; raw symmetry is diagnostic evidence. With CUDA assembly,
+    each complete HVP column is copied device-to-device into one column-major
+    matrix owner and the full matrix is downloaded only once after every block.
     """
     if not isinstance(state, NativeRHFState):
         raise TypeError("RHF Hessian requires NativeRHFState")
@@ -683,51 +830,126 @@ def rhf_hessian(
         block_size = min(4, coordinates)
     if type(block_size) is not int or not 1 <= block_size <= coordinates:
         raise ValueError("block_size must be between 1 and 3*natoms")
+    assembly_backend = hvp_kwargs.get("assembly_backend", "host")
+    if assembly_backend not in ("host", "cuda"):
+        raise ValueError("assembly_backend must be host or cuda")
+    if "_device_output_consumers" in hvp_kwargs or "_publish_host" in hvp_kwargs:
+        raise ValueError("internal Hessian assembly controls are not public kwargs")
+
     output_bytes = coordinates * coordinates * 8
-    # Raw-symmetry checking can hold matrix, matrix-matrix.T and abs(diff)
-    # simultaneously; immutable publication needs the original plus one copy.
     output_peak_bound = 3 * output_bytes
     if output_peak_bound > total_budget_bytes:
         raise ValueError(
             "full Hessian output and publication exceed total_budget_bytes"
         )
-    # This buffer belongs to the full assembler, not rhf_hvp_many: its own
-    # validated direction copy is already included in the block inventory.
     caller_direction_bytes = block_size * coordinates * 8
-    block_budget = total_budget_bytes - output_bytes - caller_direction_bytes
-    if _block_persistent_bound(state, block_size)["total"] >= block_budget:
+    matrix_device_bytes = 0
+    matrix_diagnostics: dict[str, object] | None = None
+    matrix_owner = None
+
+    started = time.perf_counter()
+    if assembly_backend == "cuda":
+        from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+
+        from .device_assembly import CudaHessianAccumulator, compile_hvp_assembly
+
+        second_compiler = hvp_kwargs.get("second_compiler")
+        if not isinstance(second_compiler, CudaCompilerAdapter):
+            raise TypeError(
+                "CUDA full-Hessian assembly requires an explicit second_compiler"
+            )
+        device_id = hvp_kwargs.get("device_id", 0)
+        if type(device_id) is not int or not 0 <= device_id < 2**31:
+            raise ValueError("device_id must be a nonnegative int32")
+        assembly_budget_bytes = _checked_budget(
+            hvp_kwargs.get("assembly_budget_bytes", 8 << 20),
+            "assembly_budget_bytes",
+        )
+        artifact = compile_hvp_assembly(
+            second_compiler, state.cache / "final-hvp-assembly-cuda"
+        )
+        matrix_owner = CudaHessianAccumulator(
+            artifact,
+            coordinates=coordinates,
+            device_id=device_id,
+            budget_bytes=assembly_budget_bytes,
+        )
+        matrix_device_bytes = matrix_owner.diagnostics["owned_device_bytes"]
+
+    block_budget = (
+        total_budget_bytes - output_bytes - caller_direction_bytes - matrix_device_bytes
+    )
+    if (
+        block_budget <= 0
+        or _block_persistent_bound(state, block_size)["total"] >= block_budget
+    ):
+        if matrix_owner is not None:
+            matrix_owner.close()
         raise ValueError(
             "full Hessian output plus block persistent numeric storage exceeds "
             "total_budget_bytes"
         )
 
-    started = time.perf_counter()
-    matrix = np.empty((coordinates, coordinates), dtype=np.float64)
+    matrix = (
+        np.empty((coordinates, coordinates), dtype=np.float64)
+        if assembly_backend == "host"
+        else None
+    )
     block_diagnostics = []
-    for begin in range(0, coordinates, block_size):
-        end = min(coordinates, begin + block_size)
-        directions = np.zeros((end - begin, coordinates), dtype=np.float64)
-        for local, column in enumerate(range(begin, end)):
-            directions[local, column] = 1.0
-        result = rhf_hvp_many(
-            state,
-            directions.reshape(end - begin, state.nat, 3),
-            strategy=strategy,
-            total_budget_bytes=block_budget,
-            **hvp_kwargs,
-        )
-        matrix[:, begin:end] = result.values.reshape(end - begin, coordinates).T
-        block_diagnostics.append(
-            {
-                "begin": begin,
-                "end": end,
-                "identity": result.identity,
-                "diagnostics": result.diagnostics,
-            }
-        )
-        # Assignment of the next call would otherwise keep the old RHS alive
-        # throughout that call, allowing two complete blocks to overlap.
-        del result, directions
+    try:
+        for begin in range(0, coordinates, block_size):
+            end = min(coordinates, begin + block_size)
+            directions = np.zeros((end - begin, coordinates), dtype=np.float64)
+            for local, column in enumerate(range(begin, end)):
+                directions[local, column] = 1.0
+
+            call_kwargs = dict(hvp_kwargs)
+            if assembly_backend == "cuda":
+                assert matrix_owner is not None
+                consumers = tuple(
+                    (
+                        lambda pointer, count, column=column: matrix_owner.copy_column(
+                            pointer, count, column
+                        )
+                    )
+                    for column in range(begin, end)
+                )
+                call_kwargs["_device_output_consumers"] = consumers
+                call_kwargs["_publish_host"] = False
+
+            result = rhf_hvp_many(
+                state,
+                directions.reshape(end - begin, state.nat, 3),
+                strategy=strategy,
+                total_budget_bytes=block_budget,
+                **call_kwargs,
+            )
+            if assembly_backend == "host":
+                assert matrix is not None and result.values is not None
+                matrix[:, begin:end] = result.values.reshape(end - begin, coordinates).T
+            elif result.values is not None:
+                raise RuntimeError(
+                    "CUDA full-Hessian block unexpectedly published host HVPs"
+                )
+            block_diagnostics.append(
+                {
+                    "begin": begin,
+                    "end": end,
+                    "identity": result.identity,
+                    "diagnostics": result.diagnostics,
+                }
+            )
+            del result, directions
+
+        if assembly_backend == "cuda":
+            assert matrix_owner is not None
+            matrix = matrix_owner.finish()
+            matrix_diagnostics = matrix_owner.diagnostics
+    finally:
+        if matrix_owner is not None:
+            matrix_owner.close()
+
+    assert matrix is not None
     if not np.isfinite(matrix).all():
         raise FloatingPointError("nonfinite RHF Hessian; no result published")
     state.validate()
@@ -739,8 +961,13 @@ def rhf_hessian(
             "reference": state.reference.identity,
             "block_size": block_size,
             "strategy": strategy,
+            "assembly_backend": assembly_backend,
             "blocks": tuple(item["identity"] for item in block_diagnostics),
         }
+    )
+    block_peak = max(
+        item["diagnostics"]["complete_numeric_peak_bound_bytes"]
+        for item in block_diagnostics
     )
     diagnostics = {
         "source_identity": state.source.identity,
@@ -748,17 +975,15 @@ def rhf_hessian(
         "block_size": block_size,
         "block_count": len(block_diagnostics),
         "strategy": strategy,
+        "assembly_backend": assembly_backend,
+        "matrix_device_assembly": deepcopy(matrix_diagnostics),
         "output_bytes": output_bytes,
         "output_peak_bound_bytes": output_peak_bound,
         "caller_direction_bytes": caller_direction_bytes,
+        "matrix_device_bytes": matrix_device_bytes,
         "complete_numeric_peak_bound_bytes": max(
-            output_peak_bound,
-            output_bytes
-            + caller_direction_bytes
-            + max(
-                item["diagnostics"]["complete_numeric_peak_bound_bytes"]
-                for item in block_diagnostics
-            ),
+            output_peak_bound + matrix_device_bytes,
+            output_bytes + caller_direction_bytes + matrix_device_bytes + block_peak,
         ),
         "block_budget_bytes": block_budget,
         "total_budget_bytes": total_budget_bytes,
@@ -767,5 +992,7 @@ def rhf_hessian(
         "blocks": block_diagnostics,
         "seconds": time.perf_counter() - started,
         "public_calculator_endpoint": False,
+        "intermediate_hvp_host_publication": assembly_backend != "cuda",
+        "final_matrix_downloads": 1 if assembly_backend == "cuda" else 0,
     }
     return RHFHessianResult(immutable(matrix), identity, diagnostics)

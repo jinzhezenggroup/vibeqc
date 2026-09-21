@@ -19,7 +19,6 @@ from tools.vibeqc_cc import (
     SolverOptions,
     solve,
 )
-from tools.vibeqc_cc import lambda_response as response_module
 from tools.vibeqc_cc import solver as solver_module
 from tools.vibeqc_cc.lambda_equations import (
     PARAMETERS,
@@ -362,8 +361,8 @@ def test_block_budget_accounts_for_bound_state_and_rejects_before_execution(
     )
     small = BoundCCSDResponse(bound, lam, max_bytes=needed - 1)
     monkeypatch.setattr(
-        response_module,
-        "execute",
+        BoundCCSDLambda,
+        "_tensor_execute",
         lambda *a, **kw: pytest.fail("weight execution before admission"),
     )
     with pytest.raises(ImplicitSolveError, match="host budget exceeded"):
@@ -371,30 +370,30 @@ def test_block_budget_accounts_for_bound_state_and_rejects_before_execution(
 
 
 @pytest.mark.parametrize(
-    "mode", ("wrong_independent", "nonfinite", "dtype", "shape", "backend", "alias")
+    "mode", ("wrong_independent", "nonfinite", "dtype", "shape", "alias")
 )
 def test_generated_output_cannot_bypass_checks(
     monkeypatch: typing.Any, mode: typing.Any
 ) -> None:
     s, _, _, _, _, response, _ = _state()
     _, independent, _, _ = response._prepare("ovov")
-    original = response_module.execute
+    original = BoundCCSDLambda._tensor_execute
     shared_storage = None
 
-    def corrupt(program: typing.Any, *a: typing.Any, **kw: typing.Any) -> typing.Any:
+    def corrupt(
+        owner: BoundCCSDLambda, program: typing.Any, feeds: typing.Any
+    ) -> typing.Any:
         nonlocal shared_storage
-        result = original(program, *a, **kw)
-        if mode == "backend":
-            return replace(result, backend="unapproved-cuda-fallback")
-        value = result.outputs["bar_ovov"]
+        outputs = original(owner, program, feeds)
+        value = outputs["bar_ovov"]
         if mode == "alias":
             if shared_storage is None:
                 shared_storage = np.array(value)
             else:
                 shared_storage[:] += 1e-3
-            return replace(result, outputs={"bar_ovov": shared_storage})
+            return {"bar_ovov": shared_storage}
         if program.logical_hash != independent.program.logical_hash:
-            return result
+            return outputs
         if mode == "wrong_independent":
             value = value + 1e-3
         elif mode == "nonfinite":
@@ -403,9 +402,9 @@ def test_generated_output_cannot_bypass_checks(
             value = value.astype(np.float32)
         elif mode == "shape":
             value = value.reshape(-1)
-        return replace(result, outputs={"bar_ovov": value})
+        return {"bar_ovov": value}
 
-    monkeypatch.setattr(response_module, "execute", corrupt)
+    monkeypatch.setattr(BoundCCSDLambda, "_tensor_execute", corrupt)
     with pytest.raises((ResponseCompatibilityError, ImplicitSolveError, ValueError)):
         response.weight("ovov", reference_identity=s.identity)
 
@@ -417,14 +416,16 @@ def test_stale_during_weight_execution_cannot_publish(
     current = [s.identity]
     bound = BoundCCSDLambda(s, cc, current_reference=lambda: current[0])
     response = BoundCCSDResponse(bound, bound.solve(reference_identity=s.identity))
-    original = response_module.execute
+    original = BoundCCSDLambda._tensor_execute
 
-    def changed(*a: typing.Any, **kw: typing.Any) -> typing.Any:
-        result = original(*a, **kw)
+    def changed(
+        owner: BoundCCSDLambda, program: typing.Any, feeds: typing.Any
+    ) -> typing.Any:
+        outputs = original(owner, program, feeds)
         current[0] = "replaced-in-flight"
-        return result
+        return outputs
 
-    monkeypatch.setattr(response_module, "execute", changed)
+    monkeypatch.setattr(BoundCCSDLambda, "_tensor_execute", changed)
     with pytest.raises(ResponseCompatibilityError):
         response.weight("ovov", reference_identity=s.identity)
 

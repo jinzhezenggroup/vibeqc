@@ -166,6 +166,8 @@ def generated_rhf_relaxation_contraction_cuda(
     compiler: typing.Any,
     *,
     resident_weights: typing.Any = None,
+    device_output_consumer: typing.Any = None,
+    publish_host: bool = True,
     device_id: int = 0,
     budget_bytes: int = 64 << 20,
     record_capacity: int = 128,
@@ -179,6 +181,14 @@ def generated_rhf_relaxation_contraction_cuda(
     """
     if not isinstance(state, NativeRHFState):
         raise TypeError("CUDA RHF relaxation requires NativeRHFState")
+    if device_output_consumer is not None and not callable(device_output_consumer):
+        raise TypeError("device_output_consumer must be callable")
+    if type(publish_host) is not bool:
+        raise TypeError("publish_host must be boolean")
+    if not publish_host and device_output_consumer is None:
+        raise ValueError(
+            "suppressed host publication requires a device output consumer"
+        )
     state.validate()
     if not isinstance(compiler, CudaCompilerAdapter):
         raise TypeError("CUDA RHF relaxation requires an explicit CudaCompilerAdapter")
@@ -297,7 +307,10 @@ def generated_rhf_relaxation_contraction_cuda(
             atoms = tuple(shells[s].atom_index for s in slots)
             append(build_weighted_eri_ir(angular), slots, atoms, eri)
 
-        result = owner.finish()
+        if device_output_consumer is not None:
+            pointer, count = owner.device_output()
+            device_output_consumer(pointer, count)
+        result = owner.finish() if publish_host else None
         state.validate()
         diagnostics = {
             "backend": "cuda-generated-weighted-gradient",
@@ -313,6 +326,8 @@ def generated_rhf_relaxation_contraction_cuda(
             "response_weight_source": (
                 "resident-d2d" if resident_weights is not None else "host-h2d"
             ),
+            "device_output_consumed": device_output_consumer is not None,
+            "host_output_published": publish_host,
             "resident_weight_d2d_bytes": (
                 2 * state.nbf * state.nbf * 8 if resident_weights is not None else 0
             ),
