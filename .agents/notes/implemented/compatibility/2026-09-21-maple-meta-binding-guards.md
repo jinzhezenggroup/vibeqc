@@ -35,3 +35,13 @@ focused follow-up rather than an approval of its original head.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Integration with signed-index repair
+
+The later integration retains the already-merged #797 negative bounded-index
+parenthesization and constant reservations. The distinct-placeholder guard joins
+those semantics under importer v7; v5/v6 are not reused for this combined behavior.
+Both regression families remain in the final source tree.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro
