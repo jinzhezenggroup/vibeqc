@@ -71,12 +71,14 @@ def _definition_expression(
     return dict(module.assignments)[name], ()
 
 
-def _entry_blockers(module: libxc_maple.MapleModule) -> tuple[str, ...]:
+def _entry_blockers(
+    module: libxc_maple.MapleModule, *, require_entry: bool = True
+) -> tuple[str, ...]:
     """Find unsupported callable targets reachable from the public Maple f."""
     functions = dict(module.functions)
     assignments = dict(module.assignments)
     if "f" not in functions:
-        return ()
+        return ("missing callable entry f",) if require_entry else ()
 
     evaluator = libxc_maple._Evaluator(module, Graph())
     pending: list[tuple[str, str]] = [("function", "f")]
@@ -135,6 +137,7 @@ def audit(root: Path = LIBXC_ROOT) -> dict[str, typing.Any]:
     for entry in sorted(root.glob("*.mpl")):
         text = entry.read_text(encoding="utf-8")
         functional_type = _functional_type(text)
+        is_functional = functional_type is not None
         profiles: list[dict[str, typing.Any]] = []
         blockers: set[str] = set()
 
@@ -152,13 +155,12 @@ def audit(root: Path = LIBXC_ROOT) -> dict[str, typing.Any]:
             else:
                 record["functions"] = len(module.functions)
                 record["assignments"] = len(module.assignments)
-                entry_blockers = _entry_blockers(module)
+                entry_blockers = _entry_blockers(module, require_entry=is_functional)
                 record["entry_blockers"] = list(entry_blockers)
                 blockers.update(entry_blockers)
             profiles.append(record)
 
         parse_errors = [item for item in profiles if "error" in item]
-        is_functional = functional_type is not None
         sources.append(
             {
                 "file": entry.name,
@@ -232,27 +234,40 @@ def render_markdown(report: dict[str, typing.Any]) -> str:
         if item["kind"] == "support" and item["parse_failures"]
     ]
 
-    lines.extend(
-        [
-            "",
-            "## Current v10 gaps",
-            "",
-            "- No functional source has a parser-syntax failure in the audited profiles.",
-            (
-                "- lda_x.mpl reaches lda_x_spin, which is not exposed as a callable "
-                "Maple intrinsic by the evaluator."
-            ),
-            (
-                "- mgga_x_rscan.mpl reaches mgga_exchange_nsp, which is not exposed "
-                "by the evaluator."
-            ),
-        ]
-    )
-    if support_failures:
+    lines.extend(["", "## Current evaluator gaps", ""])
+    functional_failures = [
+        item
+        for item in report["sources"]
+        if item["kind"] == "functional" and item["parse_failures"]
+    ]
+    if functional_failures:
+        for item in functional_failures:
+            lines.append(
+                f"- {item['file']} fails parsing in {item['parse_failures']}/"
+                f"{item['parse_profiles']} audited profiles."
+            )
+    else:
         lines.append(
-            "- util.mpl is intentionally not a standalone import entry: it defines "
-            "reserved evaluator intrinsics such as m_min. Functional imports use "
-            "those operations through the evaluator/support boundary."
+            "- No functional source has a parser-syntax failure in the audited profiles."
+        )
+    for item in report["sources"]:
+        if item["kind"] != "functional":
+            continue
+        for blocker in item["entry_blockers"]:
+            if blocker == "missing callable entry f":
+                lines.append(
+                    f"- {item['file']} lacks a callable Maple f entry in at least one audited profile."
+                )
+            else:
+                lines.append(
+                    f"- {item['file']} reaches {blocker}, which is not exposed as a callable "
+                    "Maple target by the current Graph evaluator."
+                )
+    for item in support_failures:
+        lines.append(
+            f"- {item['file']} has {item['parse_failures']}/{item['parse_profiles']} "
+            "standalone support-import failures. Functional imports retain their "
+            "separate evaluator/include context."
         )
     lines.extend(
         [

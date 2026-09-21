@@ -38,11 +38,11 @@ A direct-import candidate means every audited conditional profile parses and the
 | util.mpl | support | 3 | 3 | — | no |
 | vwn.mpl | support | 1 | 0 | — | no |
 
-## Current v10 gaps
+## Current evaluator gaps
 
 - No functional source has a parser-syntax failure in the audited profiles.
-- lda_x.mpl reaches lda_x_spin, which is not exposed as a callable Maple intrinsic by the evaluator.
-- mgga_x_rscan.mpl reaches mgga_exchange_nsp, which is not exposed by the evaluator.
-- util.mpl is intentionally not a standalone import entry: it defines reserved evaluator intrinsics such as m_min. Functional imports use those operations through the evaluator/support boundary.
+- lda_x.mpl reaches lda_x_spin, which is not exposed as a callable Maple target by the current Graph evaluator.
+- mgga_x_rscan.mpl reaches mgga_exchange_nsp, which is not exposed as a callable Maple target by the current Graph evaluator.
+- util.mpl has 3/3 standalone support-import failures. Functional imports retain their separate evaluator/include context.
 
 These are importer/evaluator coverage findings only. They do not weaken the existing requirement for independent E/vxc/fxc, endpoint, provenance, and backend qualification before a functional is cut over to production.
