@@ -6,6 +6,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from vibeqc import Calculator, GridSpec, KsOptions, evaluate_d3_correction
+from vibeqc.resources import ResourceBudget
 from vibeqc_compiler.method import DispersionCorrectionPrimitive, resolve_method
 
 H2 = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
@@ -162,6 +163,29 @@ def test_global_resource_plan_includes_composed_d3_owner() -> None:
     assert diagnostic.device_bytes == int(planned["device_bytes"])
     assert diagnostic.table_bytes == int(planned["table_bytes"])
     assert diagnostic.workspace_bytes == int(planned["workspace_bytes"])
+
+
+def test_resource_budget_automatically_composes_ks_and_d3_requests() -> None:
+    graph = resolve_method("PBE-D3(BJ)", spin="unpolarized")
+    calculator = Calculator(
+        method=graph,
+        ks_options=KsOptions(grid=GRID),
+        resource_budget=ResourceBudget(),
+    )
+
+    with calculator.prepare_batch([H2], warm_start=False) as batch:
+        assert batch.resource_plan is not None
+        assert {request.name for request in batch.resource_plan.requests} == {
+            "ks",
+            "d3",
+        }
+        assert batch.dispersion_diagnostic is not None
+
+
+def test_global_resource_budget_does_not_admit_d4_gcp_yet() -> None:
+    graph = resolve_method("R2SCAN-3c", spin="unpolarized")
+    with pytest.raises(NotImplementedError, match="D4/gCP"):
+        Calculator(method=graph, resource_budget=ResourceBudget())
 
 
 def test_d3_local_memory_cap_participates_in_global_plan() -> None:
