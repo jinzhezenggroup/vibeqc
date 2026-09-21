@@ -61,3 +61,21 @@ Production cutover remains owned by #744 and handwritten retirement by #745.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Review hardening before v9 admission
+
+The large-a specialization now validates the whitespace-normalized definitions
+of attenuation_erf0 and all three att_erf_aux helpers against the verified
+Libxc 7.0.0 source. A same-named changed formula must not inherit a fixed series
+that belongs to different mathematics. Five mutation cases failed before the
+repair and are rejected afterward; whitespace-only edits remain accepted.
+No admitted equation, series coefficient, point threshold or tolerance changed.
+The parser also carries the bounded structured-binding type, and scalar/
+function branches retain their existing checked types without type ignores.
+
+The complete Maple selection passes 223 tests. Registry freshness is rebound
+to the reviewed importer bytes without changing upstream file identities.
+This is CPU/importer validation, not a new real-GPU or public-method promotion.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro

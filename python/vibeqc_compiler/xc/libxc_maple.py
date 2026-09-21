@@ -35,6 +35,16 @@ class MapleImportError(ValueError):
 
 
 IMPORTER_SEMANTICS = "libxc-maple-graph/v9"
+# Whitespace-normalized helper definitions from pinned Libxc 7.0.0 attenuation.mpl.
+_ERF_SMOOTHING_HELPERS = (
+    "attenuation_erf0",
+    "att_erf_aux1",
+    "att_erf_aux2",
+    "att_erf_aux3",
+)
+_ERF_SMOOTHING_SOURCE_SHA256 = (
+    "8e8cb43d75cff9793f45c0d0e38361865f3b093fc8d5977155ceddd882227da9"
+)
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _RESERVED = frozenset(
     (
@@ -378,7 +388,7 @@ def _parse_selected_source(
     include_edges: tuple[tuple[str, str], ...],
     defines: tuple[str, ...],
     initial_defines: tuple[str, ...],
-    bindings: tuple[tuple[str, str], ...],
+    bindings: tuple[tuple[str, object], ...],
     allow_redefinition: bool,
 ) -> MapleModule:
     """Parse one selected source stream into final Maple definitions."""
@@ -1099,6 +1109,25 @@ class _Evaluator:
             return self.graph.select_le(right_expr, left_expr, true_expr, false_expr)
         raise MapleImportError("unsupported Maple comparison")
 
+    def _require_erf_smoothing_source(self) -> None:
+        """Do not apply the qualified asymptotic series to a same-named formula."""
+        try:
+            definitions = [
+                (
+                    name,
+                    self.functions[name].parameters,
+                    re.sub(r"\s+", "", self.functions[name].expression),
+                )
+                for name in _ERF_SMOOTHING_HELPERS
+            ]
+        except KeyError as error:
+            raise MapleImportError("unqualified smooth-LR source closure") from error
+        digest = hashlib.sha256(
+            json.dumps(definitions, separators=(",", ":")).encode()
+        ).hexdigest()
+        if digest != _ERF_SMOOTHING_SOURCE_SHA256:
+            raise MapleImportError("unqualified smooth-LR source closure")
+
     def _scalar_binding(self, name: str) -> Fraction:
         value = self.bindings.get(name)
         if not isinstance(value, Fraction):
@@ -1326,7 +1355,7 @@ class _Evaluator:
             rs = self._as_expr(arguments[0])
             z = self._as_expr(arguments[1])
             xt = self._as_expr(arguments[2])
-            phi = self._intrinsic("mphi", (z,))
+            phi = self._as_expr(self._intrinsic("mphi", (z,)))
             two_one_third = self.graph.approximate_constant(2.0 ** (1.0 / 3.0))
             return xt / (4 * two_one_third * phi * rs.pow(0.5))
         if name == "lda_stoll_par":
@@ -1338,7 +1367,8 @@ class _Evaluator:
                 )
             # Libxc 7.0.0 b97mv.mpl passes a fourth spin marker although
             # util.mpl's arrow helper consumes only the first three arguments.
-            function, rs_raw, z_raw = arguments[:3]
+            function = arguments[0]
+            rs_raw, z_raw = arguments[1:3]
             rs = self._as_expr(rs_raw)
             z = self._as_expr(z_raw)
             opz = self._as_expr(self._intrinsic("opz_pow_n", (z, Fraction(1))))
@@ -1355,7 +1385,8 @@ class _Evaluator:
                 raise MapleImportError(
                     "lda_stoll_perp requires an LDA function, rs and zeta"
                 )
-            function, rs_raw, z_raw = arguments
+            function = arguments[0]
+            rs_raw, z_raw = arguments[1:]
             rs = self._as_expr(rs_raw)
             z = self._as_expr(z_raw)
             total = self.call(function.name, (rs, z))
@@ -1378,6 +1409,7 @@ class _Evaluator:
                     "enforce_smooth_lr is qualified only for Libxc 7.0.0 "
                     "attenuation_erf0(a), cutoff=1.35, order=16"
                 )
+            self._require_erf_smoothing_source()
             function = arguments[0]
             a = self._as_expr(arguments[1])
             cutoff = self.graph.constant(Fraction(27, 20))
