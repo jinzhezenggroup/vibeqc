@@ -10,6 +10,8 @@ from pathlib import Path
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
+from .pbe_maple import pbe_maple_provenance
+
 VERSION = "libxc-7.0.0/interior-v1"
 POLARIZED = ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b")
 UNPOLARIZED = ("rho", "sigma", "tau")
@@ -154,6 +156,7 @@ class FunctionalSpec:
         else:
             manifest = "rsh-manifest.json" if special else "manifest.json"
             expression_source = "rsh_expressions.py" if special else "expressions.py"
+        expression_provenance = pbe_maple_provenance(self.components)
         return {
             **payload,
             "ingredients": self.ingredients,
@@ -166,6 +169,11 @@ class FunctionalSpec:
             ),
             "expression_source_sha256": file_hash(
                 Path(__file__).with_name(expression_source)
+            ),
+            **(
+                {"expression_provenance": expression_provenance}
+                if expression_provenance is not None
+                else {}
             ),
             "domain": (
                 "wb97mv-interior-v1: Libxc-7.0 B97M polynomial plus direct "
