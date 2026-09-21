@@ -120,3 +120,16 @@ def test_tensor_optimizer_records_shared_pipeline_without_changing_equation() ->
         "exact_cse",
         "dead_nodes",
     ]
+    pruning = provenance["pruning_diagnostics"]
+    assert pruning["schema"] == "vibeqc.compiler.pruning.v1"
+    assert pruning["requested_outputs"] == ["value"]
+    assert pruning["retained_outputs"] == ["value"]
+    assert pruning["nodes_before"] > pruning["nodes_after"]
+    assert pruning["nodes_removed"] == (
+        pruning["nodes_before"] - pruning["nodes_after"]
+    )
+    assert pruning["definitions_before"] == 1
+    assert pruning["definitions_after"] == 0
+    assert pruning["definitions_removed"] == 1
+    assert pruning["minimal_before_lowering"] is True
+    assert optimized.nodes == optimized.live_nodes
