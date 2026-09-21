@@ -14,7 +14,6 @@
 #include "scf/cuda/direct_native_gradient_types.cuh"
 #include "scf/cuda/direct_native_order01_gradient.cuh"
 #include "scf/cuda/direct_native_order2_gradient.cuh"
-#include "scf/cuda/direct_native_order3_gradient.cuh"
 #include "scf/cuda/direct_native_order456_gradient.cuh"
 #include "scf/cuda/direct_native_source_contraction.cuh"
 #include "scf/cuda/direct_queue_index.cuh"
@@ -34,6 +33,8 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
     std::uint64_t generated_shell_class_mask, std::size_t active_subtile,
     unsigned ao_quartet_lane) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
+  static_assert(AngularOrder != 3U,
+                "order-three Direct force is owned by generated shell-task workers");
   constexpr std::size_t subtiles_per_tile = detail::direct_quartet_subtiles_per_tile(AngularOrder);
   const std::size_t active_tile = active_subtile / subtiles_per_tile;
   // Consume the identical compact tile list as direct Fock so energy and
@@ -121,7 +122,7 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
       }
     }
     double explicit_unique_gradient[4][3]{};
-    if constexpr (AngularOrder <= 6) {
+    if constexpr (AngularOrder <= 2 || (AngularOrder >= 4 && AngularOrder <= 6)) {
       CartesianQuartetGradient explicit_gradient{};
       if constexpr (AngularOrder <= 1) {
         explicit_gradient = contracted_eri_cartesian_source_order01_gradient<AngularOrder>(
@@ -129,10 +130,6 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
             static_cast<std::int32_t>(k), static_cast<std::int32_t>(l));
       } else if constexpr (AngularOrder == 2) {
         explicit_gradient = contracted_eri_cartesian_source_order2_gradient(
-            batch, system, static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
-            static_cast<std::int32_t>(k), static_cast<std::int32_t>(l));
-      } else if constexpr (AngularOrder == 3) {
-        explicit_gradient = contracted_eri_cartesian_source_order3_gradient(
             batch, system, static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
             static_cast<std::int32_t>(k), static_cast<std::int32_t>(l));
       } else if constexpr (AngularOrder == 4) {
@@ -167,7 +164,7 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
       double derivative_x = 0.0;
       double derivative_y = 0.0;
       double derivative_z = 0.0;
-      if constexpr (AngularOrder <= 6) {
+      if constexpr (AngularOrder <= 2 || (AngularOrder >= 4 && AngularOrder <= 6)) {
         derivative_x = explicit_unique_gradient[center][0];
         derivative_y = explicit_unique_gradient[center][1];
         derivative_z = explicit_unique_gradient[center][2];

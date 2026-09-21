@@ -68,7 +68,6 @@ __device__ inline __noinline__ void contract_bounded_direct_force_subtile(
     VIBEQC_BOUNDED_FORCE_CASE(0);
     VIBEQC_BOUNDED_FORCE_CASE(1);
     VIBEQC_BOUNDED_FORCE_CASE(2);
-    VIBEQC_BOUNDED_FORCE_CASE(3);
     VIBEQC_BOUNDED_FORCE_CASE(4);
     VIBEQC_BOUNDED_FORCE_CASE(5);
     VIBEQC_BOUNDED_FORCE_CASE(6);

@@ -376,6 +376,61 @@ def test_cuda_direct_jk_batch_reuses_stable_pair_tasks() -> None:
         assert np.allclose(batched.forces, standalone.forces, atol=5.0e-10)
 
 
+def test_cuda_order3_fsss_fallback_matches_cpu_and_streaming(
+    monkeypatch: typing.Any,
+) -> None:
+    """Exercise generated FSSS force math through fixed and bounded Direct queues."""
+
+    basis = (
+        Shell(0, 0, (Primitive(1.5, 1.0),)),
+        Shell(0, 3, (Primitive(0.6, 1.0),)),
+        Shell(1, 0, (Primitive(1.2, 1.0),)),
+    )
+    system = [("He", (0.13, -0.07, -0.72)), ("H", (-0.09, 0.11, 0.68))]
+    moved = np.asarray([[0.14, -0.07, -0.72], [-0.09, 0.11, 0.68]])
+    common = {
+        "method": "rhf",
+        "basis": basis,
+        "energy_tolerance": 1.0e-10,
+        "density_tolerance": 1.0e-8,
+        "screening_tolerance": 1.0e-14,
+    }
+    reference = Calculator(device="cpu", **common).singlepoint(system, charge=1)
+
+    # Narrow force AOT so total-order-three work must execute through the
+    # native queue + compiler-generated Weighted IntegralIR fallback.
+    monkeypatch.setenv("VIBEQC_AOT_SHELL_CLASSES", "ssss")
+    outputs = {}
+    for mode in ("exact", "streaming"):
+        if mode == "streaming":
+            monkeypatch.setenv("VIBEQC_BOUNDED_DIRECT_STREAMING", "force")
+        else:
+            monkeypatch.delenv("VIBEQC_BOUNDED_DIRECT_STREAMING", raising=False)
+        calculator = Calculator(device="cuda", **common)
+        try:
+            with calculator.prepare_batch(
+                [system], charges=[1], warm_start=True
+            ) as prepared:
+                outputs[mode] = (
+                    prepared.execute(strict=True).items[0],
+                    prepared.execute([moved], strict=True).items[0],
+                )
+        except RuntimeError as error:
+            pytest.skip(f"CUDA device unavailable: {error}")
+
+    exact, streaming = outputs["exact"][0], outputs["streaming"][0]
+    assert exact.energy == pytest.approx(reference.energy, abs=3.0e-10)
+    assert np.allclose(exact.forces, reference.forces, atol=3.0e-8)
+    assert streaming.iterations == exact.iterations
+    assert streaming.energy == pytest.approx(exact.energy, abs=3.0e-13)
+    assert np.allclose(streaming.forces, exact.forces, atol=1.0e-11)
+
+    exact_moved, streaming_moved = outputs["exact"][1], outputs["streaming"][1]
+    assert streaming_moved.iterations == exact_moved.iterations
+    assert streaming_moved.energy == pytest.approx(exact_moved.energy, abs=3.0e-13)
+    assert np.allclose(streaming_moved.forces, exact_moved.forces, atol=1.0e-11)
+
+
 @pytest.mark.parametrize(
     ("method", "charge", "multiplicity"),
     (("rhf", 1, 1), ("uhf", 0, 2)),

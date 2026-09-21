@@ -93,6 +93,7 @@ constexpr unsigned kDdpsShellClass = 16;
 constexpr unsigned kDdppShellClass = 17;
 constexpr unsigned kDddpShellClass = 19;
 constexpr unsigned kDdddShellClass = 20;
+constexpr unsigned kFsssShellClass = 21;
 constexpr unsigned kDdddAngularOrder = 8;
 constexpr std::uint64_t kDdddShellClassMask = std::uint64_t{1} << kDdddShellClass;
 // The production profile covers the contiguous canonical class range from
