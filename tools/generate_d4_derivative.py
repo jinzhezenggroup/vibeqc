@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Emit compiler-owned native D4 EEQ production derivative lowering."""
 
 from __future__ import annotations

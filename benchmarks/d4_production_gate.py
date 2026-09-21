@@ -5,6 +5,7 @@ import dataclasses
 import os
 import statistics
 import time
+from typing import TYPE_CHECKING
 
 import numpy as np
 from _support import (
@@ -14,6 +15,9 @@ from _support import (
     write_result,
 )
 from vibeqc import D4CorrectionBatch
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _small() -> tuple[np.ndarray, np.ndarray, float]:
@@ -51,7 +55,7 @@ def _changed(
     return changed
 
 
-def _timed(callable_) -> tuple[float, object]:
+def _timed(callable_: Callable[[], object]) -> tuple[float, object]:
     start = time.perf_counter()
     result = callable_()
     return time.perf_counter() - start, result

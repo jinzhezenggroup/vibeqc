@@ -95,7 +95,7 @@ def _correction(graph: MethodIR) -> DispersionCorrectionPrimitive:
 def _d4_correction(graph: MethodIR) -> DispersionCorrectionPrimitive:
     correction = _correction(graph)
     if not isinstance(correction.specification, D4Spec):
-        raise ValueError("D4 correction execution requires a D4Spec")
+        raise TypeError("D4 correction execution requires a D4Spec")
     return correction
 
 
