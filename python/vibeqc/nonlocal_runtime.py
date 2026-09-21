@@ -11,12 +11,14 @@ import ctypes
 import typing
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Self
 
 import numpy as np
 from vibeqc_compiler.common.nonlocal_correlation import NonlocalCorrelationSpec
 
 from . import _native
+
+if typing.TYPE_CHECKING:
+    from typing_extensions import Self
 
 
 @dataclass(frozen=True)
