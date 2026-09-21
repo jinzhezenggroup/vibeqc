@@ -19,11 +19,14 @@ tile reads.
 
 `posthf::RawSource` remains the compatibility implementation and now implements this contract.
 `posthf::NativeBlockProvider` consumes the abstract interaction source rather than the concrete
-`RawSource`. Existing RawSource call sites remain source-compatible.
+`RawSource`. Existing RawSource call sites remain source-compatible. The contract also reports
+retained numeric bytes so a generic consumer cannot undercount a resident dense/DF source.
 
-This slice intentionally does not merge numerical implementations or make the SCF
-`PreparedFockPlan` expose arbitrary AO tiles. Follow-up adapters can bind generated exact/DF
-sources to the common contract without changing MO-block consumers.
+`scf::PreparedFockInteractionSourceView` is the first mean-field adapter. It borrows an existing
+CPU `PreparedFockPlan` without copying tensors: exact owners expose resident four-center ERIs,
+while DF owners expose resident metric and three-center values. CUDA owners deliberately expose
+no host interaction tensors through this view. This slice does not rewrite numerical sources or
+make J/K assembly part of the integral contract.
 
 ## Rejected alternatives
 
@@ -48,7 +51,10 @@ sources to the common contract without changing MO-block consumers.
 
 `tests/native/test_mp2_contract.cpp` constructs a forwarding implementation of
 `ElectronInteractionSource` that is not a RawSource and verifies that NativeBlockProvider
-produces the same MO block as the existing RawSource-backed path. Existing MP2 contract tests
+produces the same MO block as the existing RawSource-backed path. It also routes a CPU exact
+`PreparedFockPlan` through the same MO-block consumer and compares against the independent raw
+source, checks resident DF metric/three-center reads, capability separation, source-residency
+accounting, and transactional rejection of unsupported ERI reads. Existing MP2 contract tests
 continue to cover AO-to-MO values, batching, memory bounds and source-work accounting.
 
 ## Consequences
@@ -68,5 +74,6 @@ operations to ElectronInteractionSource.
 
 - `src/integrals/electron_interaction_source.hpp`
 - `src/posthf/raw_source.hpp`
+- `src/scf/interaction_source_view.hpp`
 - `src/posthf/native_provider.hpp`
 - `tests/native/test_mp2_contract.cpp`
