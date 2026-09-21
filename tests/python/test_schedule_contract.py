@@ -141,19 +141,22 @@ def test_shared_resource_admission_is_fail_closed_and_consumer_neutral() -> None
         resident_workgroups=2,
         source_bytes=8192,
     )
-    assert schedule_resource_rejections(
-        resources,
-        ScheduleResourceLimits(
-            maximum_device_bytes=4096,
-            maximum_host_bytes=2048,
-            maximum_workspace_bytes=1024,
-            maximum_peak_live_values=512,
-            maximum_registers_per_thread=48,
-            maximum_shared_bytes=256,
-            minimum_resident_workgroups=2,
-            maximum_source_bytes=8192,
-        ),
-    ) == ()
+    assert (
+        schedule_resource_rejections(
+            resources,
+            ScheduleResourceLimits(
+                maximum_device_bytes=4096,
+                maximum_host_bytes=2048,
+                maximum_workspace_bytes=1024,
+                maximum_peak_live_values=512,
+                maximum_registers_per_thread=48,
+                maximum_shared_bytes=256,
+                minimum_resident_workgroups=2,
+                maximum_source_bytes=8192,
+            ),
+        )
+        == ()
+    )
 
     failures = schedule_resource_rejections(
         resources,

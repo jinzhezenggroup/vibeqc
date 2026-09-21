@@ -65,7 +65,6 @@ __all__ = [
     "density_features",
     "grid_policy_provenance",
     "grid_xc_schedule",
-    "rank_grid_xc_schedules",
     "jet_indices",
     "nonlocal_energy_density_reference",
     "nonlocal_energy_reference",
@@ -74,5 +73,6 @@ __all__ = [
     "nonlocal_kernel_matrix_reference",
     "orbital_features",
     "partition_weights",
+    "rank_grid_xc_schedules",
     "spin_densities",
 ]

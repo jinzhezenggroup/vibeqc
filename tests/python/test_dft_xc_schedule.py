@@ -159,8 +159,14 @@ def test_schedule_admission_is_deterministic_and_conservative() -> None:
     assert fallback.schedule_contract.fallback
     assert first.schedule_contract.resources.host_bytes is None
     assert fallback.schedule_contract.resources.host_bytes > 0
-    assert dict(first.schedule_contract.provenance)["lifetime_analysis"] == "common.storage"
-    assert dict(first.schedule_contract.provenance)["resource_admission"] == "common.schedule"
+    assert (
+        dict(first.schedule_contract.provenance)["lifetime_analysis"]
+        == "common.storage"
+    )
+    assert (
+        dict(first.schedule_contract.provenance)["resource_admission"]
+        == "common.schedule"
+    )
 
 
 def test_grid_xc_candidate_ordering_uses_shared_schedule_profitability() -> None:
@@ -192,15 +198,18 @@ def test_grid_xc_candidate_ordering_uses_shared_schedule_profitability() -> None
         HOST_UNFUSED.resolved(shape.tile_points).identity,
     ]
     assert ranked[0].live_values < ranked[1].live_values
-    assert rank_grid_xc_schedules(
-        (HOST_UNFUSED, DEVICE_FUSED),
-        shape,
-        limits,
-        device_xc_available=True,
-        observable="potential",
-        functional="PBE",
-        maximum=1,
-    ) == ranked[:1]
+    assert (
+        rank_grid_xc_schedules(
+            (HOST_UNFUSED, DEVICE_FUSED),
+            shape,
+            limits,
+            device_xc_available=True,
+            observable="potential",
+            functional="PBE",
+            maximum=1,
+        )
+        == ranked[:1]
+    )
 
     fallback_only = rank_grid_xc_schedules(
         (DEVICE_FUSED, HOST_UNFUSED),

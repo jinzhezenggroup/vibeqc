@@ -334,14 +334,10 @@ def _storage_pressure(
 
     points = min(shape.npoint, shape.tile_points)
     scalar_bytes = 8
-    ao_bytes = (
-        scalar_bytes * points * shape.max_active_ao * shape.jet_components
-    )
+    ao_bytes = scalar_bytes * points * shape.max_active_ao * shape.jet_components
     density_bytes = scalar_bytes * shape.spins * points * shape.max_active_ao
     feature_bytes = scalar_bytes * shape.spins * points * (1 + 3 + 3 + 1)
-    vxc_bytes = (
-        scalar_bytes * shape.spins * shape.max_active_ao * shape.max_active_ao
-    )
+    vxc_bytes = scalar_bytes * shape.spins * shape.max_active_ao * shape.max_active_ao
     seed = BufferValue("density_source", scalar_bytes, "device", compiler_owned=False)
     if schedule.name == "device_fused":
         values = (
@@ -557,8 +553,7 @@ def rank_grid_xc_schedules(
         for schedule in normalized
     )
     by_contract = {
-        assessment.schedule_contract.identity: assessment
-        for assessment in assessments
+        assessment.schedule_contract.identity: assessment for assessment in assessments
     }
     ranked = rank_schedule_contracts(
         (assessment.schedule_contract for assessment in assessments),
