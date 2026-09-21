@@ -68,6 +68,9 @@ struct ScfOptions {
   dft::XcDensityRoute xc_density_route{dft::XcDensityRoute::DensityMatrix};
   /** Bounded AO/XC tile schedule; does not alter the grid or functional. */
   std::size_t xc_tile_points{256};
+  enum class XcExecutionSchedule : std::uint32_t { DeviceFused = 0, HostUnfused = 1 };
+  /** Placement-only semilocal XC schedule; scientific identity is unchanged. */
+  XcExecutionSchedule xc_execution_schedule{XcExecutionSchedule::DeviceFused};
   /** Resolved semilocal component scales; exact exchange lives only in the
    * common FockBuildSpec. Unit defaults preserve legacy LDA/PBE callers. */
   double semilocal_exchange_scale{1.0};

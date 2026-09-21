@@ -147,6 +147,46 @@ point::Value evaluate_generated_lda_point(const double rho[2]) {
   return out;
 }
 
+point::Value evaluate_generated_pbe_point(const double rho[2], const double gradient[2][3],
+                                          double exchange_scale = 1.0,
+                                          double correlation_scale = 1.0) {
+  point::Value out;
+  if (!std::isfinite(exchange_scale) || !std::isfinite(correlation_scale) || exchange_scale < 0.0 ||
+      correlation_scale < 0.0) {
+    out.valid = false;
+    return out;
+  }
+  for (unsigned spin = 0; spin < 2; ++spin) {
+    if (!std::isfinite(rho[spin]) || rho[spin] < 0.0) {
+      out.valid = false;
+      return out;
+    }
+    for (unsigned axis = 0; axis < 3; ++axis)
+      if (!point::detail::valid_gradient_component(rho[spin], gradient[spin][axis])) {
+        out.valid = false;
+        return out;
+      }
+  }
+  const double total = rho[0] + rho[1];
+  if (!std::isfinite(total)) {
+    out.valid = false;
+    return out;
+  }
+  if (total == 0.0) return out;
+  const auto raw = generated::pbe_polarized_production(rho[0], rho[1], gradient, exchange_scale,
+                                                       correlation_scale);
+  out.energy = raw.energy_density;
+  out.rho[0] = raw.rho[0];
+  out.rho[1] = raw.rho[1];
+  for (unsigned spin = 0; spin < 2; ++spin)
+    for (unsigned axis = 0; axis < 3; ++axis) out.gradient[spin][axis] = raw.gradient[spin][axis];
+  out.valid = std::isfinite(out.energy) && std::isfinite(out.rho[0]) && std::isfinite(out.rho[1]);
+  for (unsigned spin = 0; spin < 2; ++spin)
+    for (unsigned axis = 0; axis < 3; ++axis)
+      out.valid = out.valid && std::isfinite(out.gradient[spin][axis]);
+  return out;
+}
+
 }  // namespace
 
 XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& grid,
@@ -223,8 +263,9 @@ SpinXcIntegral integrate_spin_xc(const AoBasis& basis, const MolecularGrid& grid
         rho[spin] = features[0];
         for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
       }
-      const auto xc = pbe ? point::evaluate(true, rho, gradient, exchange_scale, correlation_scale)
-                          : evaluate_generated_lda_point(rho);
+      const auto xc =
+          pbe ? evaluate_generated_pbe_point(rho, gradient, exchange_scale, correlation_scale)
+              : evaluate_generated_lda_point(rho);
       if (!xc.valid) throw std::domain_error("invalid or unrepresentable semilocal spin features");
       const double weight = grid.weights()[begin + p];
       result.energy += weight * xc.energy;
@@ -684,7 +725,7 @@ XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& gri
       const double spin_gradient[2][3]{{gradient[0] / 2.0, gradient[1] / 2.0, gradient[2] / 2.0},
                                        {gradient[0] / 2.0, gradient[1] / 2.0, gradient[2] / 2.0}};
       const auto xc =
-          point::evaluate(true, spin_rho, spin_gradient, exchange_scale, correlation_scale);
+          evaluate_generated_pbe_point(spin_rho, spin_gradient, exchange_scale, correlation_scale);
       if (!xc.valid) throw std::domain_error("invalid or unrepresentable PBE features");
       const double weight = weights[begin + point];
       result.energy += weight * xc.energy;
