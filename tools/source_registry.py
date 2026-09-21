@@ -154,6 +154,8 @@ def _validate_source_metadata(source_id: str, source: Any) -> None:
         for field in ("repository", "revision", "license")
     ):
         raise TypeError(f"source {source_id!r} identity fields must be strings")
+    if _checked_revision(source["revision"]) != source["revision"]:
+        raise SourceRegistryError("registered upstream revision must be canonical")
     if not isinstance(source["files"], dict) or not source["files"]:
         raise SourceRegistryError(f"source {source_id!r} must pin at least one file")
     for name, item in source["files"].items():
