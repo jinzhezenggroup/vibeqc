@@ -36,9 +36,7 @@ def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache() -> N
         .split("\n  python:\n", 1)[1]
         .split("\n  upload-coverage:\n", 1)[0]
     )
-    assert (
-        "shard: [core, runtime-heavy, posthf, compiler-heavy, ecp-forces]" in section
-    )
+    assert "shard: [core, runtime-heavy, posthf, compiler-heavy, ecp-forces]" in section
     assert "runtime-heavy)" in section
     assert "dist_mode=loadfile" in section
     assert "name: python (${{ matrix.shard }})" in section
