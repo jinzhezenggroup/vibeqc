@@ -6,7 +6,6 @@ remaining template preserves byte-identical generated CUDA and ABI layouts."""
 
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING
 
 from ..capabilities import CAPABILITY_MIXED_FOCK
