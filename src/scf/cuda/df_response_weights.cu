@@ -781,9 +781,11 @@ static cudaError_t contract_occupied_response(
           runtime::cuda_trace::trace_counter("response_occupied_projection_blas_calls", 2);
           runtime::cuda_trace::trace_counter("response_occupied_projection_products", 2);
         }
-      if (!buffers.final_occupied_projection)
+      if (!buffers.final_occupied_projection) {
+        runtime::cuda_trace::trace_counter("response_final_projection_reconstructed", 1);
         runtime::cuda_trace::trace_counter("response_occupied_projection_flops",
                                            2 * a * (n * n * r + n * rr));
+      }
     }
     {
       runtime::cuda_trace::TraceRegion project("exchange_response_occupied_weight_gemm", stream);

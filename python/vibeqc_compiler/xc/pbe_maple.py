@@ -25,7 +25,10 @@ from .libxc_maple import (
 def _libxc_root() -> typing.Any:
     """Resolve packaged/repository assets lazily instead of at module import."""
 
-    return asset_path("external/libxc-7.0.0")
+    try:
+        return asset_path("upstream/libxc/7.0.0")
+    except FileNotFoundError:
+        return asset_path("external/libxc-7.0.0")
 
 
 @cache

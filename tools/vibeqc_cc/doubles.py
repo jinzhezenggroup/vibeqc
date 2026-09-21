@@ -149,6 +149,7 @@ def build_ccsd_program(
     *,
     form: typing.Any = "shared",
     diagnostics: typing.Any = True,
+    external_virtual_correction: bool = False,
 ) -> typing.Any:
     """Complete energy/R1/R2; expanded oracle DAG or shared/CSE CPU DAG.
 
@@ -157,12 +158,19 @@ def build_ccsd_program(
     """
     if form not in ("expanded", "shared", "optimized"):
         raise ValueError("unknown RCCSD equation form")
-    singles = build_program(nocc, nvir)
+    singles = build_program(
+        nocc, nvir, external_virtual_correction=external_virtual_correction
+    )
     inputs = {n.attrs["name"]: n for n in singles.live_nodes if n.op == "input"}
-    for name, space in (
-        ("oooo", inputs["t1"].spec.indices[0].space),
-        ("vvvv", inputs["t1"].spec.indices[1].space),
-    ):
+    virtual_inputs = (
+        (("oooo", inputs["t1"].spec.indices[0].space),)
+        if external_virtual_correction
+        else (
+            ("oooo", inputs["t1"].spec.indices[0].space),
+            ("vvvv", inputs["t1"].spec.indices[1].space),
+        )
+    )
+    for name, space in virtual_inputs:
         inputs[name] = input_tensor(
             name,
             TensorSpec(
@@ -174,6 +182,10 @@ def build_ccsd_program(
                     Symmetry(p) for p in ((1, 0, 2, 3), (0, 1, 3, 2), (2, 3, 0, 1))
                 ),
             ),
+        )
+    if external_virtual_correction:
+        inputs["df_virtual_doubles"] = input_tensor(
+            "df_virtual_doubles", inputs["t2"].spec
         )
     nodes = dict(inputs)
     polynomials = {
@@ -187,10 +199,21 @@ def build_ccsd_program(
         for k, n in inputs.items()
     }
     for name, definition in DEFINITIONS.items():
+        if external_virtual_correction and name in ("Wvvvv", "D05_vv_ladder"):
+            continue
+        active_definition = (
+            tuple(
+                term
+                for term in definition
+                if "ovvv" not in term[2] and "vvvv" not in term[2]
+            )
+            if external_virtual_correction
+            else definition
+        )
         if form == "expanded":
             terms = [
                 t
-                for coefficient, equation, args in definition
+                for coefficient, equation, args in active_definition
                 for t in _expand(equation, [polynomials[a] for a in args], coefficient)
             ]
             polynomials[name] = terms
@@ -208,7 +231,7 @@ def build_ccsd_program(
             nodes[name] = add(
                 *(
                     einsum(e, *(nodes[a] for a in args), coefficient=c)
-                    for c, e, args in definition
+                    for c, e, args in active_definition
                 )
             )
     outputs = (
@@ -217,20 +240,21 @@ def build_ccsd_program(
         else {k: singles.outputs[k] for k in ("correlation_energy", "singles_residual")}
     )
     if diagnostics:
-        outputs.update({k: nodes[k] for k in DEFINITIONS})
-    outputs["doubles_residual"] = add(
-        *(nodes[k] for k in DEFINITIONS if k.startswith("D"))
-    )
-    program = Program(
-        outputs,
-        provenance={
-            "method": "RCCSD",
-            "slice": "B",
-            "form": form,
-            "inventory_version": 1,
-            "doubles_inventory_hash": canonical_hash(DEFINITIONS),
-            "source": "PySCF 2.14.0 rccsd/rintermediates; source_manifest.json",
-            "projector": "<Phi_i_alpha,j_beta^a_alpha,b_beta|exp(-T) H_N exp(T)|Phi>",
-        },
-    )
+        outputs.update({k: nodes[k] for k in DEFINITIONS if k in nodes})
+    doubles = [nodes[k] for k in DEFINITIONS if k.startswith("D") and k in nodes]
+    if external_virtual_correction:
+        doubles.append(inputs["df_virtual_doubles"])
+    outputs["doubles_residual"] = add(*doubles)
+    provenance = {
+        "method": "RCCSD",
+        "slice": "B",
+        "form": form,
+        "inventory_version": 1,
+        "doubles_inventory_hash": canonical_hash(DEFINITIONS),
+        "source": "PySCF 2.14.0 rccsd/rintermediates; source_manifest.json",
+        "projector": "<Phi_i_alpha,j_beta^a_alpha,b_beta|exp(-T) H_N exp(T)|Phi>",
+    }
+    if external_virtual_correction:
+        provenance["external_virtual_correction"] = "df-ovvv-vvvv-residual-v1"
+    program = Program(outputs, provenance=provenance)
     return optimize(program) if form == "optimized" else program

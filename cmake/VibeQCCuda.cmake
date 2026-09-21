@@ -34,7 +34,9 @@ macro(vibeqc_configure_cuda_backend target)
   # retained callees, including for PTX JIT. Keep this owner outside device
   # linking even when the caller enables whole-library separable compilation.
   add_library(vibeqc_direct_angular_force OBJECT
-    src/scf/cuda/direct_angular_force.cu "${VIBEQC_WEIGHTED_ERI_HEADER}")
+    src/scf/cuda/direct_angular_force.cu
+    "${VIBEQC_WEIGHTED_ERI_HEADER}"
+    "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}")
   target_include_directories(vibeqc_direct_angular_force PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -58,7 +60,8 @@ macro(vibeqc_configure_cuda_backend target)
   if(VIBEQC_CUDA_DIRECT_DEVICE_LINK AND
      CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA" AND NOT APPLE)
     add_library(vibeqc_direct_native STATIC ${VIBEQC_DIRECT_NATIVE_SOURCES}
-                "${VIBEQC_WEIGHTED_ERI_HEADER}")
+                "${VIBEQC_WEIGHTED_ERI_HEADER}"
+                "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}")
     target_include_directories(vibeqc_direct_native PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/include"
       "${CMAKE_CURRENT_SOURCE_DIR}/src"

@@ -318,21 +318,13 @@ def pbe_exchange_reciprocal_expression() -> typing.Any:
     )
 
 
-def energy_expression(
-    spec: typing.Any,
-    *,
-    production: bool = False,
-    source: str = "production",
-) -> typing.Any:
+def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.Any:
     """Return the energy DAG and ordered feature variables.
 
-    PBE canonical mathematics is lowered from the pinned Libxc Maple source.
-    ``source="handwritten"`` remains only as the #745 retirement/qualification
-    gate. Production mode independently selects versioned SCF endpoint
-    continuations for families that still require them.
+    PBE mathematics is lowered from the pinned Libxc Maple source. Production
+    mode independently selects versioned SCF endpoint continuations for
+    families that still require them.
     """
-    if source not in ("production", "handwritten"):
-        raise ValueError("XC expression source must be production or handwritten")
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
     if spec.spin == "polarized":
@@ -354,23 +346,12 @@ def energy_expression(
         up = down = graph.constant(1)
         z = graph.constant(0)
     rs = (3 / (4 * math.pi)) ** (1 / 3) * n.pow(-1 / 3)
-    beta = F("0.06672455060314922")
     gamma = (1 - math.log(2)) / math.pi**2
-    kappa = F("0.8040")
-    mu = beta * graph.constant(math.pi**2) / 3
     cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
     x2s = 1 / (2 * (6 * math.pi**2) ** (1 / 3))
     x2s2 = x2s**2
     k_factor = 3 / 10 * (6 * math.pi**2) ** (2 / 3)
     fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
-
-    def spin_two_thirds(value: typing.Any) -> typing.Any:
-        if not production:
-            return value.pow(2 / 3)
-        cutoff = F("1e-18")
-        t = value / cutoff
-        extension = F("1e-12") * t * (F(14, 9) + t * (F(-7, 9) + t * F(2, 9)))
-        return graph.select_le(value, cutoff, extension, value.pow(2 / 3))
 
     def production_channel(term: typing.Any, density: typing.Any) -> typing.Any:
         if not production:
@@ -431,34 +412,11 @@ def energy_expression(
         value = combine(values)
         return (value, combine(derivatives)) if with_rs_derivative else value
 
-    def exchange(gga: typing.Any) -> typing.Any:
-        terms = []
-        for density, sigma in ((ra, saa), (rb, sbb)):
-            enhancement = 1
-            if gga:
-                s2 = x2s2 * sigma * density.pow(-8 / 3)
-                enhancement = 1 + kappa * (1 - kappa / (kappa + mu * s2))
-            terms.append(-cx * density.pow(4 / 3) * enhancement)
-        return graph.sum(terms)
+    def lda_exchange() -> typing.Any:
+        return graph.sum(-cx * density.pow(4 / 3) for density in (ra, rb))
 
-    def correlation(gga: typing.Any, modified: typing.Any) -> typing.Any:
-        eps = pw(modified)
-        if gga:
-            phi = (spin_two_thirds(up) + spin_two_thirds(down)) / 2
-            phi3 = phi.pow(3)
-            # Use squared reduced gradient directly: derivatives remain finite
-            # at sigma=0, unlike differentiating an intermediate sqrt(sigma).
-            t2 = (
-                (saa + 2 * sab + sbb)
-                * n.pow(-8 / 3)
-                / (16 * 2 ** (2 / 3) * phi.pow(2) * rs)
-            )
-            a = beta / (gamma * graph.stable_unary("expm1", -eps / (gamma * phi3)))
-            f1 = t2 + a * t2.pow(2)
-            eps = eps + gamma * phi3 * graph.stable_unary(
-                "log1p", beta * f1 / (gamma * (1 + a * f1))
-            )
-        return n * eps
+    def lda_correlation(modified: typing.Any) -> typing.Any:
+        return n * pw(modified)
 
     def r2_switch(
         alpha: typing.Any,
@@ -706,19 +664,11 @@ def energy_expression(
         return n * (ec1 + f_alpha * (ec0 - ec1))
 
     builders = {
-        "LDA_X": lambda: exchange(False),
-        "GGA_X_PBE": lambda: (
-            pbe_exchange(graph, spec, variables)
-            if source == "production"
-            else exchange(True)
-        ),
-        "LDA_C_PW": lambda: correlation(False, False),
-        "LDA_C_PW_MOD": lambda: correlation(False, True),
-        "GGA_C_PBE": lambda: (
-            pbe_correlation(graph, spec, variables)
-            if source == "production"
-            else correlation(True, True)
-        ),
+        "LDA_X": lda_exchange,
+        "GGA_X_PBE": lambda: pbe_exchange(graph, spec, variables),
+        "LDA_C_PW": lambda: lda_correlation(False),
+        "LDA_C_PW_MOD": lambda: lda_correlation(True),
+        "GGA_C_PBE": lambda: pbe_correlation(graph, spec, variables),
         "MGGA_X_SCAN": scan_exchange,
         "MGGA_C_SCAN": scan_correlation,
         "MGGA_X_R2SCAN": r2scan_exchange,

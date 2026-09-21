@@ -11,6 +11,7 @@
 #endif
 #include "generated_df_screening.cuh"
 #include "molecule/basis.hpp"
+#include "runtime/homogeneous_task_packet.hpp"
 #include "scf/cuda/df_shell_derivatives.cuh"
 
 namespace vibeqc::scf {
@@ -285,11 +286,9 @@ struct SignatureSlice {
   std::size_t first_block{}, tasks{};
   bool triangle{};
 };
-struct SignaturePacket {
-  static constexpr unsigned capacity = DfShellDiagnostics::packet_capacity;
-  SignatureSlice slices[capacity]{};
-  unsigned count{}, blocks{};
-};
+static_assert(generated::signature_packet_capacity == DfShellDiagnostics::packet_capacity);
+using SignaturePacket =
+    runtime::HomogeneousTaskPacket<SignatureSlice, generated::signature_packet_capacity>;
 // Stay within the original CUDA 4-KiB kernel-argument limit, including views
 // and scalar arguments. Driver-copied parameters need no mutable device queue.
 static_assert(sizeof(SignaturePacket) + 2 * sizeof(DfShellBasisView) + 128 <= 4096);

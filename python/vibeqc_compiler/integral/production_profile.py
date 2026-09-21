@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -612,3 +613,14 @@ def load_production_fock_manifest(
         for selection in load_production_kernel_selections(path, architecture, profile)
         if KernelConsumer.FOCK in selection.consumers
     )
+
+
+def _profile_identifier(value: str) -> str:
+    """Return a stable C/CMake identifier for a profile or architecture."""
+
+    if re.fullmatch(r"sm_[0-9]+", value):
+        return value.replace("_", "")
+    identifier = re.sub(r"[^0-9A-Za-z]+", "_", value).strip("_").lower()
+    if not identifier:
+        raise ValueError("profile identifier cannot be empty")
+    return identifier

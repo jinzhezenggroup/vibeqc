@@ -78,9 +78,9 @@ def build_one_electron_derivative_kernel(
 
     Graph interning shares Hermite terms, Gaussian decay and prefactors among
     axes/centers/operators. Translation recovers B for S/T and C for V only
-    when all required centers are requested. The additional Boys order is at
-    most seven for public f/f. Symbolic differentiation avoids explicitly
-    raising kinetic Gaussian powers beyond the value recurrence's bound.
+    when all required centers are requested. The additional Boys order reaches
+    nine for public g/g. Symbolic differentiation avoids explicitly raising
+    kinetic Gaussian powers beyond the value recurrence's bound.
     """
     if integral.derivative is None or integral.derivative.order != 1:
         raise ValueError("one-electron lowering requires first nuclear derivatives")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import typing
 from dataclasses import replace
@@ -892,6 +893,81 @@ def test_autotune_deduplicates_batch_schedule_family_filters() -> None:
         ScheduleKind.SUBGROUP_TASKS,
     )
     assert _requested_schedule_kinds(SimpleNamespace()) == ()
+
+
+@pytest.mark.parametrize("name", ("dddp", "dddd"))
+def test_high_order_rys5_tuning_exposes_pressure_rematerialization(
+    name: str,
+) -> None:
+    """Compare the production topology with a shorter-live-state Rys peer."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    integral = build_integral_ir(spec, recurrence="rys5")
+    trials = supported_schedule_trials(
+        spec,
+        target=TEST_CUDA_TARGET,
+        integral=integral,
+    )
+    baseline = next(
+        trial
+        for trial in trials
+        if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+    )
+    pressure = next(
+        trial
+        for trial in trials
+        if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and trial.schedule.algebra_placement == AlgebraPlacement.PRESSURE_REMATERIALIZED
+        and replace(
+            trial.schedule,
+            algebra_placement=AlgebraPlacement.MATERIALIZED_CSE,
+        )
+        == baseline.schedule
+    )
+
+    baseline_source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(
+            spec,
+            integral=integral,
+            schedule=baseline.schedule,
+            target=TEST_CUDA_TARGET,
+        ),
+    )
+    pressure_source = emit_shell_class_fused_cuda(
+        spec,
+        build_fused_shell_plan(
+            spec,
+            integral=integral,
+            schedule=pressure.schedule,
+            target=TEST_CUDA_TARGET,
+        ),
+    )
+    state_pattern = re.compile(r"double rys_state_(\d+);")
+    baseline_slots = tuple(map(int, state_pattern.findall(baseline_source)))
+    pressure_slots = tuple(map(int, state_pattern.findall(pressure_source)))
+    assert baseline_slots and pressure_slots
+    assert max(pressure_slots) < max(baseline_slots)
+    assert pressure_source != baseline_source
+
+
+def test_fixed_root_subgroup_search_includes_pressure_rematerialization() -> None:
+    """Expose the same generic placement choice for smaller fixed-root shells."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
+    integral = build_integral_ir(spec, recurrence="rys3")
+    placements = {
+        trial.schedule.algebra_placement
+        for trial in supported_schedule_trials(
+            spec,
+            target=TEST_CUDA_TARGET,
+            integral=integral,
+        )
+        if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+    }
+    assert AlgebraPlacement.MATERIALIZED_CSE in placements
+    assert AlgebraPlacement.PRESSURE_REMATERIALIZED in placements
 
 
 def test_algebra_placement_schedule_payload_is_backward_compatible() -> None:

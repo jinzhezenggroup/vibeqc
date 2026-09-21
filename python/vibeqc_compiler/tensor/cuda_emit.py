@@ -80,6 +80,29 @@ def _value_precision(plan: typing.Any, i: int) -> typing.Any:
     return plan.precision_by_node[plan.steps[i].node]
 
 
+def _reduce_source_index(
+    node: typing.Any, logical: str = "z", reduction: str = "r"
+) -> tuple[str, int]:
+    """Return the flattened source index and reduction extent for reduce."""
+
+    source_shape = node.inputs[0].spec.shape
+    reduction_shape = tuple(source_shape[axis] for axis in node.attrs["axes"])
+    output_coordinates = [
+        _coordinate(logical, node.spec.shape, axis)
+        for axis in range(len(node.spec.shape))
+    ]
+    source, cursor = [], 0
+    for axis in range(len(source_shape)):
+        if axis in node.attrs["axes"]:
+            source.append(
+                _coordinate(reduction, reduction_shape, node.attrs["axes"].index(axis))
+            )
+        else:
+            source.append(output_coordinates[cursor])
+            cursor += 1
+    return _flat(source, source_shape), prod(reduction_shape)
+
+
 def _convert(value: str, source: typing.Any, target: typing.Any) -> str:
     if source.dtype == target.dtype:
         return value
@@ -255,20 +278,11 @@ const I end = reinterpret_cast<const I*>(p + {table})[{segment} + 1];
     value = {add}(value, {_read(child, _flat(source, source_shape), prefix)});
 return finite(value, error, {i});"""
     elif node.op == "reduce":
-        reduction_shape = tuple(source_shape[axis] for axis in a["axes"])
-        source, cursor = [], 0
-        for axis in range(len(source_shape)):
-            if axis in a["axes"]:
-                source.append(_coordinate("r", reduction_shape, a["axes"].index(axis)))
-            else:
-                source.append(c[cursor])
-                cursor += 1
-        contribution = _convert(
-            _read(child, _flat(source, source_shape), prefix), scalar, accumulator
-        )
+        source_index, reduction_size = _reduce_source_index(node)
+        contribution = _convert(_read(child, source_index, prefix), scalar, accumulator)
         result = _convert("value", accumulator, scalar)
         return f"""{acc_ty} value = {accumulator.zero};
-{reduction_pragma}for (I r = 0; r < {_integer(prod(reduction_shape))}; ++r)
+{reduction_pragma}for (I r = 0; r < {_integer(reduction_size)}; ++r)
     value = {acc_add}(value, {contribution});
 return finite({result}, error, {i});"""
     else:
@@ -395,6 +409,76 @@ __global__ void {_name(prefix, f"scatter_{i}")}(unsigned char* p, const {ty}* c,
 """
 
 
+def _cooperative_reduce(plan: typing.Any, i: int) -> bool:
+    """Use one persistent CUDA block per reduction output when worthwhile."""
+
+    step = plan.steps[i]
+    if (
+        not plan.schedule.stream_reductions
+        or step.virtual
+        or step.node.op != "reduce"
+        or plan.target.warp_size != 32
+    ):
+        return False
+    _, reduction_size = _reduce_source_index(step.node)
+    return reduction_size >= plan.target.warp_size
+
+
+def cooperative_reduction_shared_bytes(plan: typing.Any, i: int) -> int:
+    """Exact static shared-memory footprint of one cooperative reduction kernel."""
+
+    if not _cooperative_reduce(plan, i):
+        return 0
+    accumulator = scalar_type(_value_precision(plan, i).accumulation_dtype)
+    warps = (plan.schedule.threads + plan.target.warp_size - 1) // plan.target.warp_size
+    return warps * accumulator.itemsize
+
+
+def _cooperative_reduce_kernel(
+    plan: typing.Any, i: int, prefix: typing.Any = ""
+) -> str:
+    step = plan.steps[i]
+    node = step.node
+    scalar = scalar_type(node.spec.dtype)
+    accumulator = scalar_type(_value_precision(plan, i).accumulation_dtype)
+    acc_add = accumulator.intrinsic("add")
+    source_index, reduction_size = _reduce_source_index(node)
+    contribution = _convert(
+        _read(step.inputs[0], source_index, prefix), scalar, accumulator
+    )
+    result = _convert("value", accumulator, scalar)
+    threads = plan.schedule.threads
+    warps = (threads + 31) // 32
+    reduction_pragma = (
+        ""
+        if plan.schedule.reduction_unroll == 1
+        else f"#pragma unroll {plan.schedule.reduction_unroll}\n"
+    )
+    target = _physical_index(step.layout, "z")
+    return f"""__global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
+    __shared__ {accumulator.ctype} partial[{warps}];
+    for (I z = I(blockIdx.x); z < {node.spec.size}LL; z += I(gridDim.x)) {{
+        {accumulator.ctype} value = {accumulator.zero};
+{reduction_pragma}        for (I r = threadIdx.x; r < {_integer(reduction_size)}; r += blockDim.x)
+            value = {acc_add}(value, {contribution});
+        for (int offset = 16; offset > 0; offset >>= 1)
+            value = {acc_add}(value, __shfl_down_sync(0xffffffffu, value, offset));
+        const int lane = int(threadIdx.x) & 31;
+        const int warp = int(threadIdx.x) >> 5;
+        if (lane == 0) partial[warp] = value;
+        __syncthreads();
+        if (warp == 0) {{
+            value = lane < {warps} ? partial[lane] : {accumulator.zero};
+            for (int offset = 16; offset > 0; offset >>= 1)
+                value = {acc_add}(value, __shfl_down_sync(0xffffffffu, value, offset));
+            if (lane == 0)
+                reinterpret_cast<{scalar.ctype}*>(p + {step.offset})[{target}] = finite({result}, error, {i});
+        }}
+        __syncthreads();
+    }}
+}}"""
+
+
 def _launch(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.Any:
     step, threads = plan.steps[i], plan.schedule.threads
     node = step.node
@@ -403,6 +487,8 @@ def _launch(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.
     scalar = scalar_type(node.spec.dtype)
     ty = scalar.ctype
     pointer = f"reinterpret_cast<{ty}*>(p + {step.offset})"
+    if _cooperative_reduce(plan, i):
+        return f"ctx.section(profile, metrics.kernel_ms, [&] {{ {prefix}kernel_{i}<<<blocks({node.spec.size}LL, 1), {threads}, 0, ctx.stream>>>(p, ctx.error); cuda_check(cudaGetLastError()); }});"
     if step.gemm == "none":
         width = plan.schedule.elements_per_thread
         work_items = (node.spec.size + width - 1) // width
@@ -538,6 +624,9 @@ def emit_cuda(
         )
         if not step.virtual and node.op not in ("input", "constant"):
             if step.gemm == "none":
+                if _cooperative_reduce(plan, i):
+                    parts.append(_cooperative_reduce_kernel(plan, i, prefix))
+                    continue
                 width = plan.schedule.elements_per_thread
                 if width == 1:
                     parts.append(f"""__device__ inline {ty} {prefix}evaluate_{i}(const unsigned char* p, I z, int* error) {{ {_value(plan, i, prefix)} }}
