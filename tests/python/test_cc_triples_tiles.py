@@ -333,6 +333,46 @@ def test_runtime_indexed_graph_size_does_not_scale_with_virtual_triple_count() -
     assert sum(node.op == "runtime_indexed_select" for node in large.live_nodes) > 0
 
 
+def test_runtime_indexed_streaming_schedule_bounds_high_rank_intermediates() -> None:
+    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+
+    program = build_runtime_tile_triples_program(4, 8, capacity=120)
+    target = cuda_target_info("sm_120")
+    baseline = plan_cuda(program, target, max_bytes=2 << 30)
+    streamed = plan_cuda(
+        program,
+        target,
+        max_bytes=2 << 30,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+
+    assert streamed.identity != baseline.identity
+    assert streamed.arena_bytes * 20 < baseline.arena_bytes
+    assert sum(step.virtual for step in streamed.steps) > 150
+    assert sum(step.gemm != "none" for step in streamed.steps) < sum(
+        step.gemm != "none" for step in baseline.steps
+    )
+
+    q_domain = (
+        next(
+            node
+            for node in program.live_nodes
+            if node.op == "input" and node.attrs["name"] == "a_map"
+        )
+        .spec.indices[0]
+        .domain
+    )
+    for step in streamed.steps:
+        indices = step.node.spec.indices
+        if (
+            step.node.op not in ("input", "constant")
+            and indices
+            and all(index.domain == q_domain for index in indices)
+        ):
+            assert not step.virtual
+
+
 # ---------------------------------------------------------------------------
 # Determinism / chunk size independence
 # ---------------------------------------------------------------------------
