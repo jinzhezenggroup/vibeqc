@@ -327,6 +327,21 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_derivative_policy_cuda.py"
     ARGS --derivatives --output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}")
 
+  set(VIBEQC_GFN2_SDQ_CUDA_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_sdq_cuda.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_sdq_cuda_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_sdq_native.py"
+    OUTPUTS "${VIBEQC_GFN2_SDQ_CUDA_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/gfn2_sdq.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/gfn2_sdq_cpu.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_values.py"
+    ARGS --cuda-output "${VIBEQC_GFN2_SDQ_CUDA_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 S/D/Q CUDA primitive kernels")
+
   set(VIBEQC_DIRECT_FOCK_ACCUMULATION_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_direct_fock_accumulation.cuh")
   vibeqc_register_generated_sources(
