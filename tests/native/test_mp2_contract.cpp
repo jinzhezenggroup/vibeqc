@@ -15,6 +15,7 @@
 #include "posthf/mp2_energy.hpp"
 #include "posthf/mp2_force.hpp"
 #include "posthf/native_provider.hpp"
+#include "scf/interaction_source_view.hpp"
 #include "scf/mean_field.hpp"
 
 namespace {
@@ -100,6 +101,61 @@ void provider_and_reference() {
   vibeqc::posthf::NativeBlockProvider generic_provider(generic_source, ref, 256ULL << 20, 1);
   require(generic_provider.get(slots) == values,
           "native MO provider still depends on the concrete RawSource type");
+
+  auto exact_spec =
+      vibeqc::scf::make_hf_fock_spec(vibeqc::scf::FockSpin::Restricted,
+                                     vibeqc::scf::FockApproximation::Exact);
+  exact_spec.derivative_order = 0;
+  vibeqc::scf::PreparedFockPlan exact_plan(
+      system, nullptr,
+      vibeqc::scf::resolve_fock_build(exact_spec, vibeqc::scf::FockBackend::Cpu, 0.0));
+  vibeqc::scf::PreparedFockInteractionSourceView exact_source(exact_plan);
+  require(exact_source.supports(vibeqc::integrals::ElectronInteractionOperator::eri) &&
+              !exact_source.supports(vibeqc::integrals::ElectronInteractionOperator::metric),
+          "prepared exact source advertised incorrect capabilities");
+  require(exact_source.retained_numeric_bytes() == exact_plan.cpu_observation_capacity(),
+          "prepared source residency diverged from its owner");
+  vibeqc::posthf::NativeBlockProvider exact_provider(exact_source, ref, 256ULL << 20, 1);
+  const auto exact_values = exact_provider.get(slots);
+  require(exact_values.size() == values.size(), "prepared exact MO block shape changed");
+  for (std::size_t q = 0; q < values.size(); ++q)
+    require(std::abs(exact_values[q] - values[q]) < 1e-11,
+            "prepared exact owner changed the MO block");
+
+  auto df_spec =
+      vibeqc::scf::make_hf_fock_spec(vibeqc::scf::FockSpin::Restricted,
+                                     vibeqc::scf::FockApproximation::DensityFitted);
+  df_spec.derivative_order = 0;
+  vibeqc::scf::PreparedFockPlan df_plan(
+      system, &system,
+      vibeqc::scf::resolve_fock_build(df_spec, vibeqc::scf::FockBackend::Cpu));
+  vibeqc::scf::PreparedFockInteractionSourceView df_source(df_plan);
+  require(!df_source.supports(vibeqc::integrals::ElectronInteractionOperator::eri) &&
+              df_source.supports(vibeqc::integrals::ElectronInteractionOperator::metric) &&
+              df_source.supports(vibeqc::integrals::ElectronInteractionOperator::three_center),
+          "prepared DF source advertised incorrect capabilities");
+  const auto* fitted = df_plan.cpu_fitted_data();
+  require(fitted != nullptr, "prepared DF source lost its CPU resident owner");
+  std::vector<double> metric(fitted->raw.metric.size());
+  df_source.read(vibeqc::integrals::ElectronInteractionOperator::metric, {0, 0, 0, 0},
+                 {fitted->raw.naux, fitted->raw.naux, 1, 1}, metric.data(), metric.size());
+  require(metric == fitted->raw.metric, "prepared DF metric view changed resident values");
+  std::vector<double> three_center(fitted->raw.three_center.size());
+  df_source.read(vibeqc::integrals::ElectronInteractionOperator::three_center, {0, 0, 0, 0},
+                 {fitted->raw.nbf, fitted->raw.nbf, fitted->raw.naux, 1},
+                 three_center.data(), three_center.size());
+  require(three_center == fitted->raw.three_center,
+          "prepared DF three-center view changed resident values");
+  std::array<double, 1> sentinel{123.0};
+  bool unsupported_rejected = false;
+  try {
+    df_source.read(vibeqc::integrals::ElectronInteractionOperator::eri, {0, 0, 0, 0},
+                   {1, 1, 1, 1}, sentinel.data(), 1);
+  } catch (const std::invalid_argument&) {
+    unsupported_rejected = true;
+  }
+  require(unsupported_rejected && sentinel[0] == 123.0,
+          "unsupported prepared interaction read modified caller output");
   // The full AO tensor exists only in this deliberately tiny independent
   // eight-loop transform oracle. The native consumer never allocates it.
   const auto oracle = vibeqc::integrals::build_integrals(system);
