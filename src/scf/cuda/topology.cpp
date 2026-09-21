@@ -8,6 +8,7 @@
 
 #include "molecule/basis.hpp"
 #include "runtime/bounded_workspace.hpp"
+#include "generated_direct_resident_psss_schedule.cuh"
 #include "scf/cuda/direct_constants.hpp"
 
 namespace vibeqc::scf::cuda_execution {
