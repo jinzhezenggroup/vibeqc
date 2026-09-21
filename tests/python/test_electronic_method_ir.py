@@ -59,7 +59,7 @@ def test_rks_reuses_existing_dft_method_identity_without_copying_xc_graph() -> N
         operator for operator in hybrid.operators if operator.kind == "exact_exchange"
     ]
     assert len(exchange) == 1
-    assert exchange[0].ir_identity is None
+    assert exchange[0].ir_identity == pbe0.identity
 
 
 def test_dft_aliases_share_structural_identity_but_keep_manifest_name() -> None:

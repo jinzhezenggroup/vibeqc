@@ -28,7 +28,7 @@ def _identifier(value: typing.Any, label: str) -> str:
     return value
 
 
-def _identity(value: typing.Any, label: str) -> None:
+def _identity(value: typing.Any, label: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{label} must be a nonempty identity")
     return value
@@ -235,20 +235,24 @@ class ElectronicMethodIR:
             raise ValueError(f"unsupported electronic method family {self.family!r}")
         if self.reference not in _REFERENCES:
             raise ValueError(f"unsupported reference {self.reference!r}")
-        if self.version != VERSION:
+        if type(self.version) is not int or self.version != VERSION:
             raise ValueError("unsupported electronic MethodIR version")
         if self.composition_identity is not None:
             _identity(self.composition_identity, "composition")
 
         sources = _names(self.sources, "method source")
-        states = tuple(sorted(tuple(self.states), key=lambda item: item.name))
-        operators = tuple(sorted(tuple(self.operators), key=lambda item: item.name))
+        states = tuple(self.states)
+        operators = tuple(self.operators)
         if not states or any(not isinstance(item, StateSpec) for item in states):
             raise ValueError("electronic method requires typed persistent state")
         if not operators or any(
             not isinstance(item, OperatorSpec) for item in operators
         ):
             raise ValueError("electronic method requires typed operators")
+        states = tuple(sorted(states, key=lambda item: item.name))
+        operators = tuple(sorted(operators, key=lambda item: item.name))
+        if len({item.name for item in states}) != len(states):
+            raise ValueError("duplicate state name")
         if not isinstance(self.energy, EnergySpec):
             raise TypeError("energy must be EnergySpec")
         if self.iteration is not None and not isinstance(self.iteration, IterationSpec):
