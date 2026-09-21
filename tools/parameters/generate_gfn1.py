@@ -171,12 +171,21 @@ def validate(parameters: dict[str, Any]) -> None:
             raise ParameterError(f"element {atomic_number} has no shells")
         for local_index, shell_value in enumerate(shells):
             shell = expect_keys(shell_value, SHELL_KEYS, f"shell[{shell_index}]")
-            if shell["index"] != local_index:
+            if type(shell["index"]) is not int or shell["index"] != local_index:
                 raise ParameterError(
                     "GFN1 per-element shell indices are not contiguous"
                 )
-            if shell["angular_momentum"] not in (0, 1, 2):
+            if type(shell["angular_momentum"]) is not int or shell[
+                "angular_momentum"
+            ] not in (0, 1, 2):
                 raise ParameterError("GFN1 contains unsupported angular momentum")
+            if type(shell["is_valence"]) is not bool:
+                raise ParameterError("GFN1 shell is_valence must be boolean")
+            for key in ("principal_quantum_number", "ngauss"):
+                if type(shell[key]) is not int or not 1 <= shell[key] <= 255:
+                    raise ParameterError(
+                        f"GFN1 shell {key} must be a positive uint8 integer"
+                    )
             for key, value in shell.items():
                 if key not in {"index", "is_valence"}:
                     number(value, f"shell[{shell_index}].{key}")

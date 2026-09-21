@@ -67,6 +67,7 @@ function(vibeqc_add_posthf_cc_sources target)
     src/cc/solver.cpp
     src/methods/mp2_method.cpp
     src/methods/rccsd_method.cpp
+    src/methods/rccsdt_method.cpp
     src/posthf/bridge.cpp
     src/posthf/cuda_derivative.cpp
     src/posthf/mp2_derivative_common.cpp
@@ -82,7 +83,8 @@ function(vibeqc_add_posthf_cc_sources target)
     target_sources(${target} PRIVATE
       src/cc/cuda_solver.cu
       src/posthf/df_bridge.cu
-      src/posthf/cuda_transform.cu)
+      src/posthf/cuda_transform.cu
+      src/posthf/ri_mp2_cuda.cu)
   endif()
 endfunction()
 

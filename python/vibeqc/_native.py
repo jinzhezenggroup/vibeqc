@@ -206,6 +206,11 @@ class KsOptionsDescriptor(ctypes.Structure):
         ("semilocal_correlation_scale", ctypes.c_double),
         ("fock_exchange_coefficient", ctypes.c_double),
         ("xc_execution_schedule", ctypes.c_int32),
+        ("reserved_v3_padding", ctypes.c_uint32),
+        ("execution_plan_version", ctypes.c_uint32),
+        ("spin_channels", ctypes.c_uint32),
+        ("semilocal_family", ctypes.c_uint32),
+        ("reserved_v4_padding", ctypes.c_uint32),
     ]
 
 
@@ -295,6 +300,10 @@ class CorrelationDiagnostic(ctypes.Structure):
         ("ccsd_amplitude_d2h_bytes", ctypes.c_uint64),
         ("ccsd_synchronizations", ctypes.c_uint64),
         ("ccsd_replay_equation_hash", ctypes.c_char * 65),
+        ("ccsd_t_triples_energy", ctypes.c_double),
+        ("ccsd_t_virtual_triples", ctypes.c_uint64),
+        ("ccsd_t_workspace_bytes", ctypes.c_uint64),
+        ("ccsd_t_equation_hash", ctypes.c_char * 65),
     ]
 
 

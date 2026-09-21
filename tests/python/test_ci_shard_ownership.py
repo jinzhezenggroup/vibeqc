@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SHARDS = ("core", "posthf", "ecp-forces", "compiler-heavy")
+SHARDS = ("core", "runtime-heavy", "posthf", "ecp-forces", "compiler-heavy")
 
 
 def _selection(event: str, shard: str) -> tuple[str, list[str], list[str]]:
@@ -53,3 +53,9 @@ def test_full_qualification_is_not_deselected(event: str, shard: str) -> None:
     distribution, _, arguments = _selection(event, shard)
     assert "--deselect" not in arguments
     assert distribution == ("worksteal" if shard == "core" else "loadfile")
+
+
+def test_python_ci_preserves_per_test_timings_with_debug_artifacts() -> None:
+    source = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    assert '--junitxml=".artifacts/pytest-${{ matrix.shard }}.xml"' in source
+    assert "path: .artifacts/" in source

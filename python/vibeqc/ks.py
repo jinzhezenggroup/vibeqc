@@ -20,9 +20,9 @@ from vibeqc_compiler.dft.grid import (
 from vibeqc_compiler.method import (
     D4Spec,
     DispersionCorrectionPrimitive,
-    ExactExchangePrimitive,
     MethodIR,
     SemilocalXCPrimitive,
+    compile_ks_execution_plan,
     resolve_method,
 )
 from vibeqc_compiler.xc.spec import FunctionalSpec, functional
@@ -89,6 +89,11 @@ class KsOptions:
         return self._method_ir
 
     @property
+    def execution_plan(self) -> typing.Any:
+        """Method-name-free scientific contribution plan for this KS calculation."""
+        return compile_ks_execution_plan(self.method_ir)
+
+    @property
     def coefficients(self) -> typing.Any:
         """Resolved (semilocal X, semilocal C, raw Fock K) coefficients."""
         if _is_pbe_d4_composition(self.method_ir):
@@ -146,27 +151,33 @@ class ProfiledKsSelection:
     exact_profile_match: bool = False
 
 
-def _native_components(method_ir: typing.Any) -> typing.Any:
-    """Select supported primitive families by type, not by a method alias."""
-    semilocal = tuple(
-        primitive
-        for primitive in method_ir.primitives
-        if type(primitive) is SemilocalXCPrimitive
-    )
-    exchange = tuple(
-        primitive
-        for primitive in method_ir.primitives
-        if type(primitive) is ExactExchangePrimitive
-    )
-    if (
-        len(semilocal) != 1
-        or len(exchange) > 1
-        or len(semilocal) + len(exchange) != len(method_ir.primitives)
-    ):
+def _native_execution_plan(method_ir: typing.Any) -> typing.Any:
+    """Project the common KS plan onto primitive lowerers available in native v2."""
+    plan = compile_ks_execution_plan(method_ir)
+    if plan.post_scf:
         raise NotImplementedError(
-            "native KS requires one semilocal XC primitive plus optional full-range exchange"
+            "native KS electronic projection requires one semilocal XC primitive "
+            "and supported exchange only; geometry-only post-SCF corrections "
+            "require a separate qualified composition owner"
         )
-    return semilocal[0].functional, exchange[0] if exchange else None
+    missing = []
+    if plan.nonlocal_correlation is not None:
+        missing.append("nonlocal-correlation")
+    missing.extend(
+        f"{term.operator}-exchange"
+        for term in plan.exchange
+        if term.operator != "full-range"
+    )
+    if missing:
+        raise NotImplementedError(
+            "native KS execution plan requires unavailable lowerers: "
+            + ", ".join(missing)
+        )
+    if len(plan.exchange) > 1:
+        raise NotImplementedError(
+            "native KS v2 accepts at most one full-range exchange contribution"
+        )
+    return plan
 
 
 def _is_pbe_d4_composition(method_ir: typing.Any) -> bool:
@@ -196,14 +207,36 @@ def _native_pbe_d4_semilocal(method_ir: typing.Any) -> typing.Any:
 
 
 def _native_semilocal(method_ir: typing.Any) -> typing.Any:
-    return _native_components(method_ir)[0]
+    return _native_execution_plan(method_ir).semilocal.functional
+
+
+def _native_semilocal_family(method_ir: typing.Any) -> int:
+    """Return the primitive-family selector consumed by native KS execution."""
+    # The named PBE-D4 ABI retains its separately qualified native correction
+    # owner. Do not route that explicit composition through electronic-only
+    # admission, or generalize its exception to arbitrary post-SCF corrections.
+    if _is_pbe_d4_composition(method_ir):
+        return 1
+    plan = _native_execution_plan(method_ir)
+    components = dict(plan.semilocal.functional.components)
+    if components == {"LDA_X": Fraction(1), "LDA_C_PW": Fraction(1)}:
+        return 0
+    if set(components) <= {"GGA_X_PBE", "GGA_C_PBE"}:
+        return 1
+    if components == {
+        "MGGA_X_R2SCAN": Fraction(1),
+        "MGGA_C_R2SCAN": Fraction(1),
+    }:
+        return 2
+    raise NotImplementedError("native KS semilocal family has no qualified lowerer")
 
 
 def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     """Lower one supported MethodIR graph to explicit native X/C/K coefficients."""
     if not isinstance(method_ir, MethodIR):
         raise TypeError("KS coefficients require a resolved MethodIR")
-    spec, exact_exchange = _native_components(method_ir)
+    plan = _native_execution_plan(method_ir)
+    spec = plan.semilocal.functional
     components = dict(spec.components)
     if set(components) <= {"GGA_X_PBE", "GGA_C_PBE"}:
         exchange_scale = components.get("GGA_X_PBE", Fraction(0))
@@ -219,11 +252,7 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
         exchange_scale = correlation_scale = Fraction(1)
     else:
         raise NotImplementedError("unsupported native KS semilocal composition")
-    fock_exchange = (
-        exact_exchange.fock_coefficient(method_ir.spin)
-        if exact_exchange is not None
-        else Fraction(0)
-    )
+    fock_exchange = plan.exchange[0].fock_coefficient if plan.exchange else Fraction(0)
     values = tuple(
         float(value) for value in (exchange_scale, correlation_scale, fock_exchange)
     )
@@ -452,7 +481,7 @@ def profiled_ks_options(
     ).options
 
 
-def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
+def native_ks_options(options: typing.Any, *, version: int = 4) -> typing.Any:
     """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
     import ctypes
 
@@ -467,8 +496,8 @@ def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
         radii = (ctypes.c_double * 119)(*[fill] * 119)
         for z, radius in grid.element_radii:
             radii[z] = radius
-    if version not in (1, 2, 3):
-        raise ValueError("native KS options version must be 1, 2, or 3")
+    if version not in (1, 2, 3, 4):
+        raise ValueError("native KS options version must be 1, 2, 3, or 4")
     if version == 1 and options.requires_composition_v2:
         raise NotImplementedError(
             "native KS options v1 cannot serialize composition options v2"
@@ -482,8 +511,12 @@ def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
         if version == 1
         else _native.KsOptionsDescriptor.xc_execution_schedule.offset
         if version == 2
+        else _native.KsOptionsDescriptor.execution_plan_version.offset
+        if version == 3
         else ctypes.sizeof(_native.KsOptionsDescriptor)
     )
+    spin_channels = 1 if options.method_ir.spin == "unpolarized" else 2
+    semilocal_family = _native_semilocal_family(options.method_ir)
     return _native.KsOptionsDescriptor(
         size,
         _native.ABI_VERSION,
@@ -503,4 +536,9 @@ def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
         _native.XC_EXECUTION_DEVICE_FUSED
         if options.xc_schedule == "device_fused"
         else _native.XC_EXECUTION_HOST_UNFUSED,
+        0,
+        1 if version >= 4 else 0,
+        spin_channels if version >= 4 else 0,
+        semilocal_family if version >= 4 else 0,
+        0,
     )

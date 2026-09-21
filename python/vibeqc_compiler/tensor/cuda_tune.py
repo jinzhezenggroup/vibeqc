@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
+from vibeqc_compiler.common.gpu_profitability import GpuProfitability
 from vibeqc_compiler.common.performance import assess_comparison, measure_interleaved
 from vibeqc_compiler.common.provenance import atomic_json, canonical_hash
 from vibeqc_compiler.common.specialization import (
@@ -98,14 +99,10 @@ def _static_compile_shortlist(
         if proposal.status != "ready":
             continue
         estimate = proposal.estimates
+        profitability = GpuProfitability(**estimate["profitability"]["static"])
         ready.append(
             (
-                (
-                    estimate["estimated_endpoint_semantic_traffic_bytes"],
-                    estimate["estimated_registers_per_thread"],
-                    estimate["generated_source_bytes"],
-                    index,
-                ),
+                profitability.static_compile_priority(index),
                 index,
                 proposal,
             )
@@ -137,6 +134,26 @@ def _compile_cost_calibration(
         "compiler_seconds_per_source_kib": seconds_per_kib,
         "scope": "compiler-reported build duration calibrates the source-size proxy; cache/load wall time is retained separately",
     }
+
+
+def _compiled_profitability(
+    estimates: typing.Any,
+    resources: typing.Any,
+    compilation: typing.Any,
+    metadata: typing.Any,
+) -> dict[str, object]:
+    static = estimates["profitability"]["static"]
+    return GpuProfitability(
+        **static,
+        compiled_registers_per_thread=resources["compiled_max_registers_per_thread"],
+        spill_store_bytes=resources["compiled_max_spill_store_bytes"],
+        spill_load_bytes=resources["compiled_max_spill_load_bytes"],
+        local_bytes=resources["compiled_max_local_bytes"],
+        shared_bytes=resources["compiled_max_shared_bytes"],
+        compiled_occupancy_upper_bound=resources["compiled_occupancy_upper_bound"],
+        object_bytes=metadata.get("binary_bytes"),
+        compile_seconds=compilation["compiler_seconds"],
+    ).to_payload()
 
 
 @dataclass(frozen=True)
@@ -365,20 +382,14 @@ def tune_cuda(
             if proposal.status != "ready":
                 continue
             row["static_compile_priority"] = {
-                "endpoint_semantic_traffic_bytes": proposal.estimates[
-                    "estimated_endpoint_semantic_traffic_bytes"
-                ],
-                "estimated_registers_per_thread": proposal.estimates[
-                    "estimated_registers_per_thread"
-                ],
-                "generated_source_bytes": proposal.estimates["generated_source_bytes"],
+                **proposal.estimates["profitability"]["static"],
                 "generation_index": index,
             }
             if index not in compile_indices:
                 row.update(
                     status="skipped",
                     stage="compile-budget",
-                    reason="outside static compile shortlist; ranked by semantic traffic, register pressure, source size and generation order",
+                    reason="outside static compile shortlist; ranked by shared GPU profitability (traffic, pressure/occupancy, launches, source) and generation order",
                 )
                 continue
             row["static_compile_rank"] = compile_ranks[index]
@@ -413,6 +424,12 @@ def tune_cuda(
                 )
                 row["resource_calibration"] = compiled_resource_calibration(
                     plan, proposal.estimates, resources
+                )
+                row["profitability"] = _compiled_profitability(
+                    proposal.estimates,
+                    row["resource_calibration"],
+                    row["compile_calibration"],
+                    compiled.metadata,
                 )
                 check_deadline()
                 if not screening_active:

@@ -26,6 +26,7 @@ SPACE_KINDS = frozenset(
         "shell",
         "atom",
         "pair",
+        "triplet",
         "cartesian",
     }
 )

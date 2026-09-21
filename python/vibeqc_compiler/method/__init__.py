@@ -47,6 +47,9 @@ _EXPORTS = {
     "ImplicitVJPPlan": ".implicit",
     "HVPSource": ".stationary_hvp",
     "IntegralGradientBlock": ".stationary_gradient",
+    "KS_EXECUTION_PLAN_VERSION": ".ks_execution",
+    "KsExchangeContribution": ".ks_execution",
+    "KsExecutionPlan": ".ks_execution",
     "METHOD_CATALOG": ".spec",
     "MethodIR": ".spec",
     "MethodSpec": ".spec",
@@ -74,6 +77,7 @@ _EXPORTS = {
     "original_nonlocal_correlation": "vibeqc_compiler.common.nonlocal_correlation",
     "r2scan3c_d4_eeq": ".dispersion",
     "resolve_method": ".spec",
+    "compile_ks_execution_plan": ".ks_execution",
     "resolve_xtb_method": ".xtb",
     "verify_method_ir": ".typecheck",
 }

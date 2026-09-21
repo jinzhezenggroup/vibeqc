@@ -41,6 +41,7 @@ def test_complete_ccsdt_gradient_matches_pinned_pyscf(name: str) -> None:
     assert result.diagnostics["triples_gradient"] is True
     assert result.diagnostics["method"] == "standard-canonical-rccsd(t)"
     assert result.diagnostics["native_public_force_capability"] is False
+    assert result.diagnostics["tensor_backend"] == "native-cpu-tensorir"
     assert result.lambda_residual <= 1.0e-8
     assert result.z_residual <= 1.0e-9
     assert result.orbital_stationarity <= 1.0e-8
@@ -88,3 +89,4 @@ def test_complete_ccsdt_endpoint_records_the_single_total_response() -> None:
     assert result.diagnostics["fixed_orbital_response_identity"]
     assert result.diagnostics["triples_energy"] != 0.0
     assert result.diagnostics["derivative_backend"] == "native-cpu-dense-oracle"
+    assert result.diagnostics["tensor_backend"] == "native-cpu-tensorir"
