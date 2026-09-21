@@ -3,7 +3,7 @@
 import math
 import re
 import typing
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import ClassVar
 
 from vibeqc_compiler.common.provenance import canonical_hash
@@ -248,21 +248,19 @@ class DispersionCorrectionPrimitive:
         return self.semantic_payload()
 
 
-def pbe_d3_bj_spec() -> typing.Any:
+def pbe_d3_bj_spec() -> D3Spec:
     """Audited PBE-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
     return D3Spec(**_parameters.d3_parameters("PBE-D3(BJ)"))
 
 
-def pbe0_d3_bj_spec() -> typing.Any:
+def pbe0_d3_bj_spec() -> D3Spec:
     """Audited PBE0-D3(BJ) two-body parameters from simple-dftd3 1.4.0."""
     return D3Spec(**_parameters.d3_parameters("PBE0-D3(BJ)"))
 
 
 def pbe_d3_bj_atm_spec() -> D3Spec:
     """Explicit PBE-D3(BJ)-ATM capability using the pinned BJ pair model."""
-    parameters = dict(_parameters.d3_parameters("PBE-D3(BJ)"))
-    parameters["s9"] = 1.0
-    return D3Spec(**parameters, version="d3-bj-atm-spec-v1")
+    return replace(pbe_d3_bj_spec(), s9=1.0, version="d3-bj-atm-spec-v1")
 
 
 def _zero_spec(name: str) -> D3Spec:
