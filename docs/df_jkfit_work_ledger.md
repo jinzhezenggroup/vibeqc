@@ -11,15 +11,26 @@ The reducer reports, per angular derivative class:
 - shell triples considered/executed;
 - primitive products considered/executed;
 - public response-weight loads and nonzero fraction;
+- when `--screening-features` is enabled, the exact folded response-weight
+  magnitude distribution seen by each shell class;
+- considered-primitive distance (AB/AC/BC) and exponent (alpha/beta/gamma)
+  distributions reconstructed from the exact host shell/panel domain;
 - generated lowering and, when an Nsight-backed shell ledger is supplied,
   schedule, kernel launches, and kernel GPU time;
 - logical response-weight bytes; and
 - the fraction of the complete `force_response` GPU interval.
 
 The report deliberately does not call logical bytes measured DRAM traffic.
-Response-weight magnitude histograms, distance/exponent bins, and measured shell
-metadata bytes remain explicit Phase-A gaps until those quantities have direct
-instrumentation.
+Response-weight magnitude histograms are an explicitly intrusive diagnostic:
+the response panel is copied D2H only when `--screening-features` is requested,
+then folded on the host with the same full/symmetric/packed pair semantics as
+the shell consumer. Distance/exponent bins are reconstructed over the exact
+**considered primitive-product** domain before zero-response pruning. Both are
+descriptive evidence for deciding whether a bound is worth implementing; their
+bin edges are not force-screening thresholds.
+
+Measured shell-metadata DRAM bytes remain the explicit Phase-A observability
+gap. Production derivative kernels are unchanged by these two diagnostics.
 
 ## Collection
 
@@ -44,7 +55,7 @@ python -m benchmarks.df_policy_endpoint \
   --cpu-reference \
   --orbital-basis-file "$BASIS/cc-pvdz.json" \
   --auxiliary-basis-file "$BASIS/cc-pvdz-jkfit.json" \
-  --components-after --shell-work \
+  --components-after --shell-work --screening-features \
   --output .artifacts/issue437/practical-96.json
 ```
 

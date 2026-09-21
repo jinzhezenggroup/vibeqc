@@ -210,6 +210,11 @@ def main() -> None:
         action="store_true",
         help="Capture detailed shell work only in the separate component pass",
     )
+    parser.add_argument(
+        "--screening-features",
+        action="store_true",
+        help="Capture intrusive #437 response-weight histograms in the component pass",
+    )
     parser.add_argument("--host-trace", action="store_true")
     parser.add_argument("--journal", action="store_true")
     parser.add_argument("--reference", type=Path)
@@ -251,6 +256,8 @@ def main() -> None:
         parser.error("requires Slurm, positive repeats and a nonnegative DF budget")
     if args.shell_work and not args.components_after:
         parser.error("--shell-work requires --components-after")
+    if args.screening_features and not args.shell_work:
+        parser.error("--screening-features requires --shell-work")
     if args.cpu_reference and args.reference:
         parser.error("choose one independent reference source")
     if (
@@ -345,6 +352,11 @@ def main() -> None:
         "source_patch_sha256": hashlib.sha256(patch).hexdigest(),
         "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "controls": {k: v for k, v in os.environ.items() if k.startswith("VIBEQC_")},
+        "diagnostic_controls": {
+            "components_after": args.components_after,
+            "shell_work": args.shell_work,
+            "screening_features": args.screening_features,
+        },
         "scientific_settings": {
             "density_fitting_memory_budget_bytes": args.df_budget,
             "basis": cpu_orbital,
@@ -547,10 +559,13 @@ def main() -> None:
                     raise RuntimeError("cudaProfilerStart failed")
             previous_work = os.environ.get("VIBEQC_DF_SHELL_WORK")
             previous_counters = os.environ.get("VIBEQC_DF_SHELL_COUNTERS")
+            previous_features = os.environ.get("VIBEQC_DF_SCREENING_FEATURES")
             if diagnostic:
                 os.environ["VIBEQC_DF_SHELL_COUNTERS"] = "1"
                 if args.shell_work:
                     os.environ["VIBEQC_DF_SHELL_WORK"] = "1"
+                if args.screening_features:
+                    os.environ["VIBEQC_DF_SCREENING_FEATURES"] = "1"
             result, seconds = execute(batch)
             if diagnostic:
                 if previous_counters is None:
@@ -561,6 +576,10 @@ def main() -> None:
                 os.environ.pop("VIBEQC_DF_SHELL_WORK", None)
             else:
                 os.environ["VIBEQC_DF_SHELL_WORK"] = previous_work
+            if previous_features is None:
+                os.environ.pop("VIBEQC_DF_SCREENING_FEATURES", None)
+            else:
+                os.environ["VIBEQC_DF_SCREENING_FEATURES"] = previous_features
             if args.cuda_profile and cudart.cudaProfilerStop() != 0:
                 raise RuntimeError("cudaProfilerStop failed")
             os.environ.pop("VIBEQC_DF_PROGRESS_TRACE", None)
