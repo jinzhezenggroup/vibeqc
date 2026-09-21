@@ -24,6 +24,15 @@ must not include concrete method implementation headers from:
 The check resolves repository-relative include spellings, including `../`
 paths, before applying the rule. Commented-out examples do not create edges.
 
+Two existing reverse edges are carried as explicit debt ceilings rather than
+silently exempted:
+
+- `runtime/cuda_runtime.cu -> scf/aot_shell_registry.hpp`
+- `runtime/host_component_trace.hpp -> scf/reference/observation.hpp`
+
+They may disappear without a coordinated baseline edit; any additional
+shared-to-method edge fails the check.
+
 This cross-method gate complements, rather than replaces, the more detailed
 `tools/check_scf_structure.py` and `tools/check_compiler_structure.py`
 ownership checks.
