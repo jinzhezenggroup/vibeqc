@@ -65,21 +65,38 @@ def _check_digest(value: Any, *, label: str) -> str:
     return value.lower()
 
 
+def _inside(root: Path, relative: Path, *, label: str) -> Path:
+    candidate = root / relative
+    try:
+        candidate.resolve().relative_to(root.resolve())
+    except (OSError, ValueError) as error:
+        raise SourceRegistryError(
+            f"{label} must stay inside its selected root"
+        ) from error
+    return candidate
+
+
+def _repository_path(value: Any, *, label: str) -> Path:
+    return _inside(ROOT, _relative_path(value, label=label), label=label)
+
+
 def _source_file_destination(
     source_id: str, source: dict[str, Any], name: str, cache_root: Path
 ) -> Path:
+    identifier = _relative_path(source_id, label="source id")
+    if len(identifier.parts) != 1:
+        raise SourceRegistryError("source id must be one relative path component")
     local_root = source.get("local_root")
     if local_root is not None:
-        return (
-            ROOT
-            / _relative_path(local_root, label=f"{source_id}.local_root")
-            / _relative_path(name, label=f"{source_id}.files[{name!r}]")
-        )
+        relative = _relative_path(
+            local_root, label=f"{source_id}.local_root"
+        ) / _relative_path(name, label=f"{source_id}.files[{name!r}]")
+        return _inside(ROOT, relative, label="source destination")
     item = source["files"][name]
     upstream = _relative_path(
         item.get("upstream_path", name), label=f"{source_id}.{name}.upstream_path"
     )
-    return cache_root / source_id / upstream
+    return _inside(cache_root, identifier / upstream, label="source cache destination")
 
 
 def _normalize(data: bytes, rule: Any) -> bytes:
@@ -163,7 +180,7 @@ def _validate_source_metadata(source_id: str, source: Any) -> None:
     if admission is not None:
         if not isinstance(admission, dict):
             raise TypeError(f"source {source_id!r} admission must be an object")
-        importer = ROOT / _relative_path(
+        importer = _repository_path(
             admission.get("importer"), label=f"{source_id}.admission.importer"
         )
         semantics = admission.get("semantics")
@@ -243,7 +260,7 @@ def regenerate(registry_path: Path = REGISTRY) -> list[Path]:
     registry = _load(registry_path)
     written: list[Path] = []
     for relative, spec in registry["derived_manifests"].items():
-        path = ROOT / _relative_path(relative, label="derived manifest path")
+        path = _repository_path(relative, label="derived manifest path")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             render_derived_manifest(registry, spec), encoding="utf-8", newline="\n"
@@ -313,7 +330,7 @@ def verify(
         )
         if _product_input_identity(sources, inputs) != expected_inputs:
             raise SourceRegistryError(f"product source inputs are stale: {product_id}")
-        generator = ROOT / _relative_path(
+        generator = _repository_path(
             product.get("generator"), label=f"{product_id}.generator"
         )
         if not generator.is_file():
@@ -328,7 +345,7 @@ def verify(
             if not isinstance(values, dict):
                 raise TypeError(f"product {product_id!r} {group} must be an object")
             for relative, digest in values.items():
-                path = ROOT / _relative_path(relative, label=f"{product_id}.{group}")
+                path = _repository_path(relative, label=f"{product_id}.{group}")
                 if not path.is_file():
                     raise FileNotFoundError(path)
                 if _sha256(path) != _check_digest(
@@ -339,7 +356,7 @@ def verify(
 
     derived_count = 0
     for relative, spec in registry["derived_manifests"].items():
-        path = ROOT / _relative_path(relative, label="derived manifest path")
+        path = _repository_path(relative, label="derived manifest path")
         if not path.is_file():
             raise FileNotFoundError(path)
         if path.read_text(encoding="utf-8") != render_derived_manifest(registry, spec):

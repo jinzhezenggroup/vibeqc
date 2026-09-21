@@ -48,9 +48,7 @@ Each generated product also records an input-source identity. Changing an upstre
 
 ## Libxc ownership
 
-`libxc-7.0.0` owns one union inventory plus named `core`, `rsh`, and `wb97mv` collections. Upstream source identity is kept separate from the pinned Maple importer path/hash and importer-semantics version. The `libxc-xc-admission` product couples the current admitted source identity to the audited XC expression/spec inputs, so changing Libxc cannot become fresh merely by rewriting provenance.
-
-The historical `manifest.json`, `rsh-manifest.json`, and `wb97mv-manifest.json` files are derived compatibility views. Their bytes are regenerated from the common registry so existing compiler artifact identities do not change merely because provenance ownership moved.
+`libxc-7.0.0` owns one union inventory plus named `core`, `rsh`, and `wb97mv` collections. The historical `manifest.json`, `rsh-manifest.json`, and `wb97mv-manifest.json` files are derived compatibility views. Their bytes are regenerated from the common registry so existing compiler artifact identities do not change merely because provenance ownership moved.
 
 Issue #739 continues to own Maple syntax admission, Graph lowering, functional qualification, and retirement of handwritten XC mathematics. The source registry only owns acquisition and provenance identity.
 

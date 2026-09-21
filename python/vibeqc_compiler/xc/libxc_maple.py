@@ -34,7 +34,7 @@ class MapleImportError(ValueError):
     """The pinned Maple source uses syntax outside the qualified importer."""
 
 
-IMPORTER_SEMANTICS = "libxc-maple-graph/v6"
+IMPORTER_SEMANTICS = "libxc-maple-graph/v7"
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _RESERVED = frozenset(
     (
@@ -625,6 +625,8 @@ def _translate_eval_diff(expression: str) -> str:
             )
         return expression
     function, first, second, derivative, value0, value1 = match.groups()
+    if first == second:
+        raise MapleImportError("Maple diff placeholders must be distinct")
     if derivative == first:
         index = 0
     elif derivative == second:

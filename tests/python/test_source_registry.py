@@ -43,7 +43,9 @@ def test_libxc_importer_semantics_are_pinned_separately() -> None:
     registry = json.loads(source_registry.REGISTRY.read_text())
     admission = registry["sources"]["libxc-7.0.0"]["admission"]
     importer = source_registry.ROOT / admission["importer"]
-    assert admission["semantics"] == "libxc-maple-graph/v4"
+    from vibeqc_compiler.xc.libxc_maple import IMPORTER_SEMANTICS
+
+    assert admission["semantics"] == IMPORTER_SEMANTICS
     assert admission["importer_sha256"] == source_registry._sha256(importer)
     assert registry["products"]["libxc-xc-admission"]["inputs"] == ["libxc-7.0.0"]
 

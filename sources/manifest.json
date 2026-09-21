@@ -93,7 +93,7 @@
         "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
-      "generator_sha256": "09a9a3ea8361dbceca53e18edc89d91b861d9c96ec92b1db8646bc1f2d66ab15",
+      "generator_sha256": "35732a0e37210063306a514a36e7c6d6de33ea2145e3f4fbe8f3c1d60c64b1aa",
       "input_identity_sha256": "53d9389dcdcb033df0b14f187d2f9a98e6f5415971949655caf9aeb9cd4b6ec7",
       "inputs": [
         "libxc-7.0.0"
@@ -252,8 +252,8 @@
     "libxc-7.0.0": {
       "admission": {
         "importer": "python/vibeqc_compiler/xc/libxc_maple.py",
-        "importer_sha256": "09a9a3ea8361dbceca53e18edc89d91b861d9c96ec92b1db8646bc1f2d66ab15",
-        "semantics": "libxc-maple-graph/v4"
+        "importer_sha256": "35732a0e37210063306a514a36e7c6d6de33ea2145e3f4fbe8f3c1d60c64b1aa",
+        "semantics": "libxc-maple-graph/v7"
       },
       "collections": {
         "core": [
