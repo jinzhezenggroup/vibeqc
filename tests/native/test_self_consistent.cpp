@@ -139,8 +139,7 @@ void verify_method_neutral_diis() {
   require(diis.update({0.0, 0.0}, {1.0, 0.0}) == std::vector<double>({0.0, 0.0}),
           "first shared DIIS state changed");
   const auto extrapolated = diis.update({2.0, 4.0}, {0.0, 1.0});
-  require(std::abs(extrapolated[0] - 1.0) < 1.0e-14 &&
-              std::abs(extrapolated[1] - 2.0) < 1.0e-14,
+  require(std::abs(extrapolated[0] - 1.0) < 1.0e-14 && std::abs(extrapolated[1] - 2.0) < 1.0e-14,
           "shared DIIS Pulay extrapolation changed");
 
   vibeqc::solver::Diis dependent(2, 2);
