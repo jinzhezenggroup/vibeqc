@@ -4,6 +4,7 @@
 #include "molecule/basis.hpp"
 #include "runtime/cuda_ao_pairs.cuh"
 #include "scf/cuda/one_electron_values.cuh"
+#include "scf/cuda/one_electron_kernel_abi.cuh"
 
 namespace vibeqc::scf {
 namespace {
@@ -11,6 +12,26 @@ namespace {
 using Policy = generated_one_electron::ValuePolicy;
 namespace pairs = runtime::cuda_ao_pairs;
 constexpr std::size_t kTerms = molecule::kMaximumAoExpansionTerms;
+
+__global__ void thread_pairs_flat(
+    VIBEQC_ONE_ELECTRON_VIEW_KERNEL_PARAMETERS, const std::int32_t* pair_first,
+    const std::int32_t* pair_second, std::size_t pair_count, double* overlap, double* hcore,
+    double* kinetic, double* attraction) {
+  OneElectronDeviceView batch{};
+  VIBEQC_BIND_ONE_ELECTRON_VIEW(batch);
+  pairs::thread_pairs_body<Policy, kTerms>(
+      batch, pair_first, pair_second, pair_count,
+      pairs::Outputs<Policy::channels>{{overlap, hcore, kinetic, attraction}});
+}
+
+__global__ void shell_warp_pairs_flat(VIBEQC_ONE_ELECTRON_VIEW_KERNEL_PARAMETERS,
+                                      double* overlap, double* hcore, double* kinetic,
+                                      double* attraction) {
+  OneElectronDeviceView batch{};
+  VIBEQC_BIND_ONE_ELECTRON_VIEW(batch);
+  pairs::shell_warp_pairs_body<Policy, kTerms>(
+      batch, pairs::Outputs<Policy::channels>{{overlap, hcore, kinetic, attraction}});
+}
 
 }  // namespace
 
@@ -28,12 +49,12 @@ cudaError_t launch_generated_one_electron_values(
     return cudaErrorInvalidValue;
   const unsigned blocks = static_cast<unsigned>((tasks - 1) / tasks_per_block + 1);
   if (schedule == 1) {
-    pairs::shell_warp_pairs<Policy, kTerms><<<blocks, threads, 0, stream>>>(
-        batch, pairs::Outputs<Policy::channels>{{overlap, hcore, kinetic, attraction}});
+    shell_warp_pairs_flat<<<blocks, threads, 0, stream>>>(
+        VIBEQC_ONE_ELECTRON_VIEW_KERNEL_ARGUMENTS, overlap, hcore, kinetic, attraction);
   } else {
-    pairs::thread_pairs<Policy, kTerms><<<blocks, threads, 0, stream>>>(
-        batch, pair_first, pair_second, pair_count,
-        pairs::Outputs<Policy::channels>{{overlap, hcore, kinetic, attraction}});
+    thread_pairs_flat<<<blocks, threads, 0, stream>>>(
+        VIBEQC_ONE_ELECTRON_VIEW_KERNEL_ARGUMENTS, pair_first, pair_second, pair_count, overlap,
+        hcore, kinetic, attraction);
   }
   return cudaPeekAtLastError();
 }

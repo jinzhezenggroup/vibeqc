@@ -25,6 +25,13 @@ The policy inventory advances to version 2 and records
 `device_struct_results=caller_owned_out_parameters`, so generated-artifact
 identity cannot silently confuse the old and new internal ABIs.
 
+The same compatibility rule now applies at CUDA kernel entry points. The public
+host launchers keep typed `OneElectronDeviceView` / `OneElectronWeightView`
+arguments, but the launched value and derivative kernels receive only scalar or
+pointer parameters and reconstruct borrowed local views in-device. This avoids
+PTX `.param .b8` aggregate loads without adding allocations, transfers,
+synchronization, or global mutable state.
+
 ## Invariants
 
 - S/T/V formulas, normalization, component ordering, nuclear-charge sign, and
@@ -41,8 +48,14 @@ The failing CuMetal job for PR #704 reached the production endpoint and reported
 the typed lowering error on the generated one-electron pair kernel. Local source
 validation after the change passes the independent one-electron value suite and
 CuMetal workflow tests, Ruff, compiler dependency checks, and `git diff --check`.
-The Apple/CuMetal exact-head workflow remains the authoritative execution gate
-for this compatibility repair.
+After the entry-ABI repair, CUDA 12.9 `sm_120` PTX compilation of both
+`one_electron_values.cu` and `one_electron_derivatives.cu` emits two value and
+four derivative kernel entries whose parameters are scalar or pointer PTX
+parameters; none of those `.entry` signatures contains an aggregate `.b8`
+parameter. Focused one-electron/CuMetal workflow tests pass locally (21 passed,
+98 skipped where an installed native test library is unavailable). The
+Apple/CuMetal exact-head workflow remains the authoritative execution gate for
+translator execution.
 
 ## Rejected alternatives
 

@@ -4,6 +4,7 @@
 #include "generated_one_electron_derivatives.cuh"
 #include "molecule/basis.hpp"
 #include "scf/cuda/one_electron_derivatives.cuh"
+#include "scf/cuda/one_electron_kernel_abi.cuh"
 
 namespace vibeqc::scf {
 namespace {
@@ -223,11 +224,38 @@ __device__ void contract_pair_nucleus_cooperative(const OneElectronDeviceView& b
     }
 }
 
-__global__ void nucleus_cooperative_gradient(OneElectronDeviceView batch, const std::int32_t* first,
-                                             const std::int32_t* second, std::size_t count,
-                                             OneElectronWeightView weights,
-                                             const std::uint8_t* active, double sign,
-                                             double* gradient) {
+__device__ __forceinline__ void bind_one_electron_weights(
+    OneElectronWeightView& weights, const double* overlap, const double* kinetic,
+    const double* attraction, double overlap_scale, double kinetic_scale,
+    double attraction_scale) {
+  weights.overlap = overlap;
+  weights.kinetic = kinetic;
+  weights.attraction = attraction;
+  weights.overlap_scale = overlap_scale;
+  weights.kinetic_scale = kinetic_scale;
+  weights.attraction_scale = attraction_scale;
+}
+
+#define VIBEQC_ONE_ELECTRON_WEIGHT_KERNEL_PARAMETERS                                        \
+  const double* weight_overlap, const double* weight_kinetic, const double* weight_attraction, \
+      double weight_overlap_scale, double weight_kinetic_scale, double weight_attraction_scale
+
+#define VIBEQC_ONE_ELECTRON_WEIGHT_KERNEL_ARGUMENTS                                         \
+  weights.overlap, weights.kinetic, weights.attraction, weights.overlap_scale,               \
+      weights.kinetic_scale, weights.attraction_scale
+
+#define VIBEQC_BIND_ONE_ELECTRON_WEIGHTS(view)                                               \
+  bind_one_electron_weights(view, weight_overlap, weight_kinetic, weight_attraction,          \
+                            weight_overlap_scale, weight_kinetic_scale, weight_attraction_scale)
+
+__global__ void nucleus_cooperative_gradient(
+    VIBEQC_ONE_ELECTRON_VIEW_KERNEL_PARAMETERS, const std::int32_t* first,
+    const std::int32_t* second, std::size_t count, VIBEQC_ONE_ELECTRON_WEIGHT_KERNEL_PARAMETERS,
+    const std::uint8_t* active, double sign, double* gradient) {
+  OneElectronDeviceView batch{};
+  VIBEQC_BIND_ONE_ELECTRON_VIEW(batch);
+  OneElectronWeightView weights{};
+  VIBEQC_BIND_ONE_ELECTRON_WEIGHTS(weights);
   __shared__ generated::PairGeometry shared_pairs[kDerivativeWarpsPerBlock];
   const std::size_t warp = (std::size_t{blockIdx.x} * blockDim.x + threadIdx.x) / warpSize;
   const std::size_t tasks = static_cast<std::size_t>(batch.batch_size) * count;
@@ -239,10 +267,14 @@ __global__ void nucleus_cooperative_gradient(OneElectronDeviceView batch, const 
                                     gradient, shared_pairs + threadIdx.x / warpSize);
 }
 
-__global__ void thread_gradient(OneElectronDeviceView batch, const std::int32_t* first,
-                                const std::int32_t* second, std::size_t count,
-                                OneElectronWeightView weights, const std::uint8_t* active,
-                                double sign, double* gradient) {
+__global__ void thread_gradient(
+    VIBEQC_ONE_ELECTRON_VIEW_KERNEL_PARAMETERS, const std::int32_t* first,
+    const std::int32_t* second, std::size_t count, VIBEQC_ONE_ELECTRON_WEIGHT_KERNEL_PARAMETERS,
+    const std::uint8_t* active, double sign, double* gradient) {
+  OneElectronDeviceView batch{};
+  VIBEQC_BIND_ONE_ELECTRON_VIEW(batch);
+  OneElectronWeightView weights{};
+  VIBEQC_BIND_ONE_ELECTRON_WEIGHTS(weights);
   const std::size_t task = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
   if (task >= static_cast<std::size_t>(batch.batch_size) * count) return;
   const auto system = task / count;
@@ -251,8 +283,13 @@ __global__ void thread_gradient(OneElectronDeviceView batch, const std::int32_t*
   contract_pair(batch, base + first[pair], base + second[pair], weights, sign, gradient);
 }
 
-__global__ void shell_warp_gradient(OneElectronDeviceView batch, OneElectronWeightView weights,
-                                    const std::uint8_t* active, double sign, double* gradient) {
+__global__ void shell_warp_gradient(
+    VIBEQC_ONE_ELECTRON_VIEW_KERNEL_PARAMETERS, VIBEQC_ONE_ELECTRON_WEIGHT_KERNEL_PARAMETERS,
+    const std::uint8_t* active, double sign, double* gradient) {
+  OneElectronDeviceView batch{};
+  VIBEQC_BIND_ONE_ELECTRON_VIEW(batch);
+  OneElectronWeightView weights{};
+  VIBEQC_BIND_ONE_ELECTRON_WEIGHTS(weights);
   const std::size_t task = (std::size_t{blockIdx.x} * blockDim.x + threadIdx.x) / 32;
   if (task >= batch.shell_pair_count) return;
   const auto si = batch.shell_pair_first[task], sj = batch.shell_pair_second[task];
@@ -267,8 +304,13 @@ __global__ void shell_warp_gradient(OneElectronDeviceView batch, OneElectronWeig
   }
 }
 
-__global__ void serial_gradient(OneElectronDeviceView batch, OneElectronWeightView weights,
-                                const std::uint8_t* active, double sign, double* gradient) {
+__global__ void serial_gradient(
+    VIBEQC_ONE_ELECTRON_VIEW_KERNEL_PARAMETERS, VIBEQC_ONE_ELECTRON_WEIGHT_KERNEL_PARAMETERS,
+    const std::uint8_t* active, double sign, double* gradient) {
+  OneElectronDeviceView batch{};
+  VIBEQC_BIND_ONE_ELECTRON_VIEW(batch);
+  OneElectronWeightView weights{};
+  VIBEQC_BIND_ONE_ELECTRON_WEIGHTS(weights);
   const std::size_t system = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
   if (system >= static_cast<std::size_t>(batch.batch_size) || (active && !active[system])) return;
   const auto base = system * batch.nbf;
@@ -309,16 +351,21 @@ cudaError_t launch_generated_one_electron_gradient(
     return cudaErrorInvalidValue;
   const unsigned blocks = static_cast<unsigned>((tasks - 1) / per_block + 1);
   if (schedule == 2)
-    serial_gradient<<<blocks, threads, 0, stream>>>(batch, weights, active, output_sign, gradient);
+    serial_gradient<<<blocks, threads, 0, stream>>>(
+        VIBEQC_ONE_ELECTRON_VIEW_KERNEL_ARGUMENTS, VIBEQC_ONE_ELECTRON_WEIGHT_KERNEL_ARGUMENTS,
+        active, output_sign, gradient);
   else if (schedule == 1)
-    shell_warp_gradient<<<blocks, threads, 0, stream>>>(batch, weights, active, output_sign,
-                                                        gradient);
+    shell_warp_gradient<<<blocks, threads, 0, stream>>>(
+        VIBEQC_ONE_ELECTRON_VIEW_KERNEL_ARGUMENTS, VIBEQC_ONE_ELECTRON_WEIGHT_KERNEL_ARGUMENTS,
+        active, output_sign, gradient);
   else if (schedule == 3)
     nucleus_cooperative_gradient<<<blocks, threads, 0, stream>>>(
-        batch, pair_first, pair_second, pair_count, weights, active, output_sign, gradient);
+        VIBEQC_ONE_ELECTRON_VIEW_KERNEL_ARGUMENTS, pair_first, pair_second, pair_count,
+        VIBEQC_ONE_ELECTRON_WEIGHT_KERNEL_ARGUMENTS, active, output_sign, gradient);
   else
-    thread_gradient<<<blocks, threads, 0, stream>>>(batch, pair_first, pair_second, pair_count,
-                                                    weights, active, output_sign, gradient);
+    thread_gradient<<<blocks, threads, 0, stream>>>(
+        VIBEQC_ONE_ELECTRON_VIEW_KERNEL_ARGUMENTS, pair_first, pair_second, pair_count,
+        VIBEQC_ONE_ELECTRON_WEIGHT_KERNEL_ARGUMENTS, active, output_sign, gradient);
   return cudaPeekAtLastError();
 }
 

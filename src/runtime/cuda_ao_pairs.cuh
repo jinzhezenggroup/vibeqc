@@ -83,9 +83,9 @@ __device__ void evaluate_pair(const View& batch, std::int64_t i, std::int64_t j,
  * their construction/validation belongs to the caller's prepared topology.
  */
 template <class Policy, std::size_t TermCapacity, class View>
-__global__ void thread_pairs(View batch, const std::int32_t* pair_first,
-                             const std::int32_t* pair_second, std::size_t pair_count,
-                             Outputs<Policy::channels> outputs) {
+__device__ __forceinline__ void thread_pairs_body(
+    const View& batch, const std::int32_t* pair_first, const std::int32_t* pair_second,
+    std::size_t pair_count, Outputs<Policy::channels> outputs) {
   const std::size_t task = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
   if (task >= static_cast<std::size_t>(batch.batch_size) * pair_count) return;
   const std::int64_t base = (task / pair_count) * batch.nbf;
@@ -95,7 +95,8 @@ __global__ void thread_pairs(View batch, const std::int32_t* pair_first,
 }
 
 template <class Policy, std::size_t TermCapacity, class View>
-__global__ void shell_warp_pairs(View batch, Outputs<Policy::channels> outputs) {
+__device__ __forceinline__ void shell_warp_pairs_body(
+    const View& batch, Outputs<Policy::channels> outputs) {
   const std::size_t task = (std::size_t{blockIdx.x} * blockDim.x + threadIdx.x) / 32;
   if (task >= batch.shell_pair_count) return;
   const auto si = batch.shell_pair_first[task], sj = batch.shell_pair_second[task];
@@ -107,6 +108,18 @@ __global__ void shell_warp_pairs(View batch, Outputs<Policy::channels> outputs) 
     if (si == sj && i < j) continue;
     evaluate_pair<Policy, TermCapacity>(batch, i, j, outputs);
   }
+}
+
+template <class Policy, std::size_t TermCapacity, class View>
+__global__ void thread_pairs(View batch, const std::int32_t* pair_first,
+                             const std::int32_t* pair_second, std::size_t pair_count,
+                             Outputs<Policy::channels> outputs) {
+  thread_pairs_body<Policy, TermCapacity>(batch, pair_first, pair_second, pair_count, outputs);
+}
+
+template <class Policy, std::size_t TermCapacity, class View>
+__global__ void shell_warp_pairs(View batch, Outputs<Policy::channels> outputs) {
+  shell_warp_pairs_body<Policy, TermCapacity>(batch, outputs);
 }
 
 }  // namespace vibeqc::runtime::cuda_ao_pairs
