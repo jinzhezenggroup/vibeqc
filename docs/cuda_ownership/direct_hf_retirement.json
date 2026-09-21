@@ -16,10 +16,7 @@
         "docs/weighted_eri.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": [
-        "#832 profitability/resource planning",
-        "#833 reusable schedule vocabulary"
-      ],
+      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
       "retirement_condition": "Delete the generic scientific fallback only after every supported production angular domain has a generated/class-specific qualified consumer or a compiler-owned generic lowering; until then, keep it quarantined from already-qualified tuned s/p/d production.",
       "files": [
         "src/scf/cuda/direct_bounded_contraction.cuh",
@@ -39,10 +36,7 @@
         "docs/weighted_eri.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": [
-        "#832 profitability/resource planning",
-        "#833 reusable schedule vocabulary"
-      ],
+      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
       "retirement_condition": "Retire each class-specific native scientific body when its generated consumer preserves the qualified streaming/page schedule and passes RHF/UHF numerical, resource and endpoint gates; scheduler-only runtime may remain native.",
       "files": [
         "src/scf/cuda/direct_bounded_dddd.cu",
@@ -62,11 +56,7 @@
         "docs/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": [
-        "#830 GVN/redundancy cleanup",
-        "#832 live-range/rematerialization/fusion profitability",
-        "#833 reusable schedule vocabulary"
-      ],
+      "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
       "retirement_condition": "For each retained Fock family, demonstrate generated mathematical parity plus matched complete-endpoint non-regression; then delete the duplicate native scientific body unless an independently measured exception remains.",
       "files": [
         "src/scf/cuda/direct_cached_tensor_kernels.cu",
@@ -95,10 +85,7 @@
         "benchmarks/results/weighted-eri-144/README.md",
         "benchmarks/results/issue356-psss-retirement/README.md"
       ],
-      "required_compiler_capabilities": [
-        "#832 profitability/resource planning",
-        "#833 reusable schedule vocabulary"
-      ],
+      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
       "retirement_condition": "Promote and delete each native low-order formula only after independent derivative checks and matched RHF/UHF fixed/resident/paged endpoint gates pass for the claimed domain.",
       "files": [
         "src/scf/cuda/direct_force_density.cuh",
@@ -126,11 +113,7 @@
         "docs/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": [
-        "#830 GVN/redundancy cleanup",
-        "#832 live-range/rematerialization/fusion profitability",
-        "#833 reusable schedule vocabulary"
-      ],
+      "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
       "retirement_condition": "At least one retained order-4/5/6 family must reach generated multi-root/resource parity before deleting its native body; repeat the same measured gate per remaining family.",
       "files": [
         "src/scf/cuda/direct_native_high_order_coulomb.cuh",
@@ -153,11 +136,7 @@
         "docs/shell_codegen.md",
         "docs/cuda_ownership.md"
       ],
-      "required_compiler_capabilities": [
-        "#351 shared recurrence/spec ownership",
-        "#832 resource-aware lowering",
-        "#833 reusable schedules"
-      ],
+      "required_compiler_capabilities": ["#351 shared recurrence/spec ownership", "#832 resource-aware lowering", "#833 reusable schedules"],
       "retirement_condition": "Delete a shared native helper only after all production consumers that depend on its scientific mathematics have qualified generated replacements; runtime-only traversal may remain native.",
       "files": [
         "src/scf/cuda/direct_native_cartesian.cuh",
@@ -183,9 +162,7 @@
         "docs/cuda_ownership.md",
         "docs/accuracy.md"
       ],
-      "required_compiler_capabilities": [
-        "#173/#174/#175 numerical screening and error-policy contracts"
-      ],
+      "required_compiler_capabilities": ["#173/#174/#175 numerical screening and error-policy contracts"],
       "retirement_condition": "Retain as explicit scientific policy unless a shared policy owner replaces it with identical validated admission semantics; do not count a policy relocation as formula retirement.",
       "files": [
         "src/scf/cuda/direct_density_bounds.cu",
@@ -208,10 +185,7 @@
         "docs/cuda_ownership.md",
         "docs/weighted_eri.md"
       ],
-      "required_compiler_capabilities": [
-        "#832 profitability/resource planning",
-        "#833 reusable schedule vocabulary"
-      ],
+      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
       "retirement_condition": "Remove when generated consumers cover the same production domain with independent numerical qualification and no measured complete-endpoint disadvantage.",
       "files": [
         "src/scf/cuda/direct_reference_force.cu"
