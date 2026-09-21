@@ -364,6 +364,8 @@ def remap_precision_execution(
     replacements: Mapping[Node, Node],
     outputs: Mapping[str, Node],
     definitions: tuple[Node, ...],
+    *,
+    allow_pruned: bool = False,
 ) -> dict:
     """Transport validated mixed-accumulation bindings through a rewrite.
 
@@ -392,6 +394,10 @@ def remap_precision_execution(
         if row is None:
             continue
         target = replacements.get(node)
+        # Only explicit output projection may intentionally discard bindings.
+        # Ordinary rewrites must still account for every formerly live value.
+        if target is None and allow_pruned:
+            continue
         if target is None or target not in new_names:
             raise ValueError("optimizer dropped a precision-bound live value")
         new_name = new_names[target]

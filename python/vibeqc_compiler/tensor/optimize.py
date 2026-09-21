@@ -314,6 +314,93 @@ def _pass(
     return apply
 
 
+def _project_requested_outputs(
+    program: Program,
+    requested_outputs: typing.Any,
+) -> Program:
+    """Make explicit output demand a compiler fact before liveness/scheduling."""
+
+    if requested_outputs is None:
+        return program
+    if not isinstance(requested_outputs, (tuple, list)):
+        raise TypeError("requested outputs must be a sequence")
+    requested = tuple(requested_outputs)
+    if not requested:
+        raise ValueError("TensorIR specialization requires at least one output")
+    if any(not isinstance(name, str) for name in requested):
+        raise TypeError("requested output names must be strings")
+    if len(set(requested)) != len(requested):
+        raise ValueError("TensorIR specialization contains duplicate outputs")
+    missing = tuple(name for name in requested if name not in program.outputs)
+    if missing:
+        names = ", ".join(sorted(missing))
+        raise ValueError(f"TensorIR specialization requests unknown outputs: {names}")
+    if set(requested) == set(program.outputs):
+        return program
+    outputs = {name: program.outputs[name] for name in requested}
+    candidate = Program(outputs, definitions=program.definitions)
+    provenance = remap_precision_execution(
+        program,
+        {node: node for node in candidate.live_nodes},
+        outputs,
+        program.definitions,
+        allow_pruned=True,
+    )
+    return Program(outputs, definitions=program.definitions, provenance=provenance)
+
+
+def _input_names(program: Program) -> tuple[str, ...]:
+    return tuple(
+        sorted(node.attrs["name"] for node in program.nodes if node.op == "input")
+    )
+
+
+def _pruning_diagnostics(
+    before: Program,
+    requested: Program,
+    after: Program,
+) -> dict[str, typing.Any]:
+    """Summarize #673 output/input/DCE pruning before backend lowering."""
+
+    before_nodes = before.nodes
+    after_nodes = after.nodes
+    after_live_nodes = after.live_nodes
+    available_outputs = tuple(before.outputs)
+    requested_outputs = tuple(requested.outputs)
+    retained_outputs = tuple(after.outputs)
+    if requested_outputs != retained_outputs:
+        raise ValueError("TensorIR optimizer changed requested output names")
+    if after_nodes != after_live_nodes:
+        raise ValueError("TensorIR optimizer left dead definitions before lowering")
+    before_inputs = _input_names(before)
+    after_inputs = _input_names(after)
+    if not set(after_inputs) <= set(before_inputs):
+        raise ValueError("TensorIR optimizer introduced a new external input")
+    removed_outputs = tuple(
+        name for name in available_outputs if name not in set(requested_outputs)
+    )
+    removed_inputs = tuple(
+        name for name in before_inputs if name not in set(after_inputs)
+    )
+    return {
+        "schema": "vibeqc.compiler.pruning.v1",
+        "nodes_before": len(before_nodes),
+        "nodes_after": len(after_nodes),
+        "nodes_removed": len(before_nodes) - len(after_nodes),
+        "definitions_before": len(before.definitions),
+        "definitions_after": len(after.definitions),
+        "definitions_removed": len(before.definitions) - len(after.definitions),
+        "available_outputs": list(available_outputs),
+        "requested_outputs": list(requested_outputs),
+        "retained_outputs": list(retained_outputs),
+        "removed_outputs": list(removed_outputs),
+        "inputs_before": list(before_inputs),
+        "inputs_after": list(after_inputs),
+        "removed_inputs": list(removed_inputs),
+        "minimal_before_lowering": True,
+    }
+
+
 def _optimizer(
     diagnostics: list[ValueNumberingDiagnostics] | None = None,
 ) -> PassManager[Program]:
@@ -365,16 +452,20 @@ def _optimizer(
     )
 
 
-def optimize(program: Program) -> Program:
+def optimize(program: Program, *, requested_outputs: typing.Any = None) -> Program:
     """Run the initial TensorIR pipeline through the shared pass manager."""
+    specialized = _project_requested_outputs(program, requested_outputs)
     value_numbering_diagnostics: list[ValueNumberingDiagnostics] = []
-    run = _optimizer(value_numbering_diagnostics).run(program)
+    run = _optimizer(value_numbering_diagnostics).run(specialized)
     result = run.value
+    pruning = _pruning_diagnostics(program, specialized, result)
     return Program(
         result.outputs,
         provenance={
             **result.provenance,
             "original_logical_hash": program.logical_hash,
+            "specialized_logical_hash": specialized.logical_hash,
+            "pruning_diagnostics": pruning,
             # Keep the established rewrite inventory for compatibility.
             "rewrites": list(PASSES) + ["exact_cse", "dead_nodes"],
             "optimizer_identity": run.pipeline_identity,

@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "dft/ao_grid.hpp"
@@ -40,44 +41,53 @@ std::uint64_t next_cpu_ks_owner() {
   return value;
 }
 
-bool is_uks(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_LDA_UKS || method == VIBEQC_METHOD_PBE_UKS ||
-         method == VIBEQC_METHOD_PBE0_UKS || method == VIBEQC_METHOD_R2SCAN_UKS;
+enum : std::uint32_t {
+  kKsSemilocalLda = 0,
+  kKsSemilocalPbe = 1,
+  kKsSemilocalR2scan = 2,
+};
+
+struct NativeKsExecutionPlan {
+  std::uint32_t spin_channels{1};
+  std::uint32_t semilocal_family{kKsSemilocalLda};
+  bool compiler_resolved{};
+  bool d4_correction{};
+};
+
+std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method method) noexcept {
+  switch (method) {
+    case VIBEQC_METHOD_LDA_RKS:
+      return NativeKsExecutionPlan{1, kKsSemilocalLda, false};
+    case VIBEQC_METHOD_LDA_UKS:
+      return NativeKsExecutionPlan{2, kKsSemilocalLda, false};
+    case VIBEQC_METHOD_PBE_D4_RKS:
+      return NativeKsExecutionPlan{1, kKsSemilocalPbe, false, true};
+    case VIBEQC_METHOD_PBE_RKS:
+    case VIBEQC_METHOD_PBE0_RKS:
+      return NativeKsExecutionPlan{1, kKsSemilocalPbe, false};
+    case VIBEQC_METHOD_PBE_UKS:
+    case VIBEQC_METHOD_PBE0_UKS:
+      return NativeKsExecutionPlan{2, kKsSemilocalPbe, false};
+    case VIBEQC_METHOD_R2SCAN_RKS:
+      return NativeKsExecutionPlan{1, kKsSemilocalR2scan, false};
+    case VIBEQC_METHOD_R2SCAN_UKS:
+      return NativeKsExecutionPlan{2, kKsSemilocalR2scan, false};
+    default:
+      return std::nullopt;
+  }
 }
 
-bool is_pbe_family(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_PBE_RKS || method == VIBEQC_METHOD_PBE_UKS ||
-         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_PBE0_UKS;
-}
+bool unrestricted(const NativeKsExecutionPlan& plan) noexcept { return plan.spin_channels == 2; }
 
-bool is_pbe0(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_PBE0_UKS;
-}
-
-bool is_r2scan(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_R2SCAN_RKS || method == VIBEQC_METHOD_R2SCAN_UKS;
-}
-
-bool is_pbe_d4(vibeqc_method method) noexcept { return method == VIBEQC_METHOD_PBE_D4_RKS; }
-
-bool is_supported_dft(vibeqc_method method) noexcept {
-  return method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_PBE_RKS ||
-         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_R2SCAN_RKS ||
-         is_pbe_d4(method) || is_uks(method);
-}
-
-std::uint32_t functional_code(vibeqc_method method) {
-  if (is_r2scan(method)) return 2U;
-  if (is_pbe_family(method) || is_pbe_d4(method)) return 1U;
-  if (method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_LDA_UKS) return 0U;
-  throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unknown semilocal functional family");
-}
-
-const char* display_method_name(vibeqc_method method) noexcept {
-  if (is_pbe0(method)) return "PBE0";
-  if (is_pbe_d4(method)) return "PBE-D4";
-  if (is_r2scan(method)) return "R2SCAN";
-  return is_pbe_family(method) ? "PBE" : "LDA";
+const char* semilocal_family_name(const NativeKsExecutionPlan& plan) noexcept {
+  switch (plan.semilocal_family) {
+    case kKsSemilocalPbe:
+      return "PBE";
+    case kKsSemilocalR2scan:
+      return "R2SCAN";
+    default:
+      return "LDA";
+  }
 }
 
 bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offset,
@@ -85,7 +95,8 @@ bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offse
   return descriptor.struct_size >= offset && descriptor.struct_size - offset >= width;
 }
 
-scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_backend backend) {
+scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_backend backend,
+                            NativeKsExecutionPlan& execution_plan) {
   if (!std::isfinite(descriptor.energy_tolerance) || !std::isfinite(descriptor.density_tolerance) ||
       !std::isfinite(descriptor.screening_tolerance))
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "DFT tolerances must be finite");
@@ -98,6 +109,48 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
       descriptor.density_tolerance > 0.0 ? descriptor.density_tolerance : 1.0e-8;
   options.screening_tolerance =
       descriptor.screening_tolerance > 0.0 ? descriptor.screening_tolerance : 1.0e-12;
+
+  const auto legacy_plan = legacy_ks_execution_plan(descriptor.method);
+  bool execution_plan_seen = false;
+  const vibeqc_ks_options* ks_input = nullptr;
+  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
+                    sizeof(descriptor.ks_options)) &&
+      descriptor.ks_options) {
+    ks_input = descriptor.ks_options;
+    constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
+    constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
+    constexpr auto v3_size = offsetof(vibeqc_ks_options, execution_plan_version);
+    constexpr auto v4_size = sizeof(vibeqc_ks_options);
+    if (ks_input->struct_size < v1_size || ks_input->abi_version != VIBEQC_ABI_VERSION)
+      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
+    if (ks_input->struct_size != v1_size && ks_input->struct_size != v2_size &&
+        ks_input->struct_size != v3_size && ks_input->struct_size < v4_size)
+      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS option suffix");
+    if (ks_input->struct_size >= v4_size) {
+      if (ks_input->execution_plan_version > 1)
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS execution-plan version");
+      if (ks_input->execution_plan_version == 1) {
+        if ((ks_input->spin_channels != 1 && ks_input->spin_channels != 2) ||
+            ks_input->semilocal_family > kKsSemilocalR2scan)
+          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                            "invalid compiler-resolved KS execution plan");
+        execution_plan = {ks_input->spin_channels, ks_input->semilocal_family, true,
+                          legacy_plan && legacy_plan->d4_correction};
+        execution_plan_seen = true;
+        if (legacy_plan && (execution_plan.spin_channels != legacy_plan->spin_channels ||
+                            execution_plan.semilocal_family != legacy_plan->semilocal_family))
+          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                            "KS execution plan disagrees with the legacy selector family/spin");
+      }
+    }
+  }
+  if (!execution_plan_seen) {
+    if (!legacy_plan)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "DFT execution requires a compiler-resolved KS v4 plan");
+    execution_plan = *legacy_plan;
+  }
+
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_mode),
                     sizeof(descriptor.density_fitting_mode))) {
     const auto mode = descriptor.density_fitting_mode;
@@ -120,56 +173,50 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && backend != VIBEQC_BACKEND_CUDA)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "DFT automatic precision currently requires CUDA");
-    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && is_pbe_d4(descriptor.method))
+    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && execution_plan.d4_correction)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "PBE-D4 currently requires strict FP64");
-    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && is_r2scan(descriptor.method))
+    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO &&
+        execution_plan.semilocal_family == kKsSemilocalR2scan)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "r2SCAN currently requires strict FP64");
     options.precision_mode = descriptor.precision_mode;
   }
 
   scf::FockBuildSpec fock;
-  fock.spin = is_uks(descriptor.method) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
+  fock.spin =
+      unrestricted(execution_plan) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
   fock.derivative_order = 0;
   fock.exchange.present = false;
   bool composition_seen = false;
-  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
-                    sizeof(descriptor.ks_options)) &&
-      descriptor.ks_options) {
-    const auto& input = *descriptor.ks_options;
-    constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
+  if (ks_input) {
     constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
-    if (input.struct_size < v1_size || input.abi_version != VIBEQC_ABI_VERSION)
-      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
-    if ((input.struct_size > v1_size && input.struct_size < v2_size) ||
-        (input.struct_size > v2_size && input.struct_size < sizeof(vibeqc_ks_options)))
-      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS composition suffix");
-    if (input.struct_size >= v2_size) {
-      if (input.composition_version > 1)
+    if (ks_input->struct_size >= v2_size) {
+      if (ks_input->composition_version > 1)
         throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS composition version");
-      if (input.composition_version == 1) {
+      if (ks_input->composition_version == 1) {
         composition_seen = true;
-        const auto x = input.semilocal_exchange_scale;
-        const auto c = input.semilocal_correlation_scale;
-        const auto k = input.fock_exchange_coefficient;
-        if (!std::isfinite(x) || !std::isfinite(c) || !std::isfinite(k) || x < 0 || c < 0 || k > 0)
+        const auto x = ks_input->semilocal_exchange_scale;
+        const auto correlation = ks_input->semilocal_correlation_scale;
+        const auto exchange = ks_input->fock_exchange_coefficient;
+        if (!std::isfinite(x) || !std::isfinite(correlation) || !std::isfinite(exchange) || x < 0 ||
+            correlation < 0 || exchange > 0)
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid KS composition coefficients");
-        const bool changed = x != 1 || c != 1 || k != 0;
-        const bool pbe = is_pbe_family(descriptor.method);
-        if (changed && (!pbe || backend == VIBEQC_BACKEND_CUDA))
+        const bool changed = x != 1 || correlation != 1 || exchange != 0;
+        if (changed &&
+            (execution_plan.semilocal_family != kKsSemilocalPbe || backend == VIBEQC_BACKEND_CUDA))
           throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                             "scaled/global-hybrid KS requires CPU PBE components");
         options.semilocal_exchange_scale = x;
-        options.semilocal_correlation_scale = c;
-        fock.exchange.present = k != 0;
-        fock.exchange.coefficient = k;
+        options.semilocal_correlation_scale = correlation;
+        fock.exchange.present = exchange != 0;
+        fock.exchange.coefficient = exchange;
       }
     }
   }
-  if (is_pbe0(descriptor.method)) {
+  if (descriptor.method == VIBEQC_METHOD_PBE0_RKS || descriptor.method == VIBEQC_METHOD_PBE0_UKS) {
     if (!composition_seen)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "PBE0 requires explicit resolved KS composition v2");
-    const double expected_k = is_uks(descriptor.method) ? -0.25 : -0.125;
+    const double expected_k = unrestricted(execution_plan) ? -0.25 : -0.125;
     if (options.semilocal_exchange_scale != 0.75 || options.semilocal_correlation_scale != 1.0 ||
         !fock.exchange.present || fock.exchange.coefficient != expected_k)
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
@@ -205,7 +252,8 @@ dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor,
   options.xc_tile_points = input.tile_points;
   constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
   constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
-  if (input.struct_size >= sizeof(vibeqc_ks_options)) {
+  constexpr auto v3_size = offsetof(vibeqc_ks_options, execution_plan_version);
+  if (input.struct_size >= v3_size) {
     switch (input.xc_execution_schedule) {
       case VIBEQC_XC_EXECUTION_DEVICE_FUSED:
         options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::DeviceFused;
@@ -306,12 +354,12 @@ void add_transfers(dft::CudaKsTransfers& target, const dft::CudaKsTransfers& val
 
 class KsPreparedCalculation final : public PreparedCalculation {
  public:
-  KsPreparedCalculation(Capabilities capabilities, core::System system, vibeqc_method method,
-                        scf::ScfOptions options, dft::GridSpec grid, vibeqc_backend backend,
-                        int device)
+  KsPreparedCalculation(Capabilities capabilities, core::System system,
+                        NativeKsExecutionPlan execution_plan, scf::ScfOptions options,
+                        dft::GridSpec grid, vibeqc_backend backend, int device)
       : capabilities_(capabilities),
         system_(std::move(system)),
-        method_(method),
+        execution_plan_(execution_plan),
         options_(std::move(options)),
         backend_(backend),
         fock_(system_, nullptr, *options_.resolved_fock_build, device,
@@ -322,9 +370,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
 #if VIBEQC_HAS_CUDA
     if (backend_ == VIBEQC_BACKEND_CUDA)
       cuda_ = std::make_unique<dft::CudaKsPlan>(fock_, basis_, grid_, options_,
-                                                functional_code(method_), options_.xc_tile_points);
+                                                execution_plan_.semilocal_family,
+                                                options_.xc_tile_points);
 #endif
-    if (is_pbe_d4(method_)) prepare_d4(device);
+    if (execution_plan_.d4_correction) prepare_d4(device);
     runtime::sample_cpu_capacity(host_numeric_capacity());
   }
 
@@ -470,9 +519,9 @@ class KsPreparedCalculation final : public PreparedCalculation {
 
   Result execute(bool compute_forces) override {
     invalidate_final_state();
-    const char* method_name = display_method_name(method_);
+    const char* method_name = semilocal_family_name(execution_plan_);
     if (compute_forces) {
-      const char* issue = is_r2scan(method_) ? "#164" : "#163";
+      const char* issue = execution_plan_.semilocal_family == kKsSemilocalR2scan ? "#164" : "#163";
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         std::string(method_name) +
                             " KS nuclear gradients are tracked separately in issue " + issue);
@@ -527,20 +576,21 @@ class KsPreparedCalculation final : public PreparedCalculation {
     // last-good density, which coexists with its current/proposed densities.
     runtime::CpuRetainedCapacity retained_warm(runtime::vector_bytes(warm_));
     scf::ScfResult native;
-    if (method_ == VIBEQC_METHOD_R2SCAN_UKS)
-      native = scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed);
-    else if (method_ == VIBEQC_METHOD_R2SCAN_RKS)
-      native = scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
-    else if (is_uks(method_))
-      native = scf::run_uks(fock_, basis_, grid_, options_, is_pbe_family(method_), seed);
-    else if (is_pbe_family(method_) || is_pbe_d4(method_))
+    if (execution_plan_.semilocal_family == kKsSemilocalR2scan)
+      native = unrestricted(execution_plan_)
+                   ? scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed)
+                   : scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
+    else if (unrestricted(execution_plan_))
+      native = scf::run_uks(fock_, basis_, grid_, options_,
+                            execution_plan_.semilocal_family == kKsSemilocalPbe, seed);
+    else if (execution_plan_.semilocal_family == kKsSemilocalPbe)
       native = scf::run_pbe_rks(fock_, basis_, grid_, options_, seed);
     else
       native = scf::run_lda_rks(fock_, basis_, grid_, options_, seed);
     // This owner has immutable model/geometry/spin identity. Only successful
     // executions may replace its compatible last-good density; DIIS is fresh.
     if (native.converged && options_.retain_ks_state) {
-      const auto spins = is_uks(method_) ? 2U : 1U;
+      const auto spins = execution_plan_.spin_channels;
       const auto matrix = fock_.one_electron().nbf * fock_.one_electron().nbf;
       if (native.density.size() != spins * matrix ||
           native.ks_physical_fock.size() != spins * matrix ||
@@ -569,7 +619,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
                         1,
                         grid_.spec(),
                         options_.xc_tile_points,
-                        functional_code(method_),
+                        execution_plan_.semilocal_family,
                         spins,
                         -1,
                         cpu_owner_,
@@ -626,7 +676,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
 
   Capabilities capabilities_;
   core::System system_;
-  vibeqc_method method_{};
+  NativeKsExecutionPlan execution_plan_;
   scf::ScfOptions options_;
   vibeqc_backend backend_;
   scf::PreparedFockPlan fock_;
@@ -685,11 +735,11 @@ vibeqc_status item_exception_status() {
 class KsPreparedBatch final : public PreparedBatch {
  public:
   KsPreparedBatch(Capabilities capabilities, std::vector<core::System> systems,
-                  vibeqc_method method, scf::ScfOptions options, dft::GridSpec grid,
+                  NativeKsExecutionPlan execution_plan, scf::ScfOptions options, dft::GridSpec grid,
                   vibeqc_backend backend, int device, bool warm_enabled)
       : capabilities_(capabilities),
         systems_(std::move(systems)),
-        method_(method),
+        execution_plan_(execution_plan),
         options_(std::move(options)),
         grid_spec_(std::move(grid)),
         backend_(backend),
@@ -854,7 +904,7 @@ class KsPreparedBatch final : public PreparedBatch {
 
   std::size_t warm_density_size(std::size_t index) const override {
     const auto n = molecule::ao_count(systems_.at(index));
-    const std::size_t spins = is_uks(method_) ? 2 : 1;
+    const std::size_t spins = execution_plan_.spin_channels;
     if (!n || n > std::numeric_limits<std::size_t>::max() / n / spins / sizeof(double))
       throw std::invalid_argument("KS warm density dimensions overflow");
     return spins * n * n;
@@ -880,8 +930,9 @@ class KsPreparedBatch final : public PreparedBatch {
       set_positions(source, state.coordinates);
       // This common validation reads only source S and checks the shared
       // spin-density convention. It performs no HF Fock/energy evaluation.
-      scf::validate_hf_warm_density(source, is_uks(method_) ? VIBEQC_METHOD_UHF : VIBEQC_METHOD_RHF,
-                                    state.density);
+      scf::validate_hf_warm_density(
+          source, unrestricted(execution_plan_) ? VIBEQC_METHOD_UHF : VIBEQC_METHOD_RHF,
+          state.density);
     }
     // All source-metric validation precedes the no-throw commit. Missing
     // entries preserve neighbors, including their resident density ownership.
@@ -982,7 +1033,7 @@ class KsPreparedBatch final : public PreparedBatch {
 #endif
   };
   std::unique_ptr<KsPreparedCalculation> make_plan(const core::System& system) const {
-    return std::make_unique<KsPreparedCalculation>(capabilities_, system, method_, options_,
+    return std::make_unique<KsPreparedCalculation>(capabilities_, system, execution_plan_, options_,
                                                    grid_spec_, backend_, device_);
   }
   void materialize_warm(std::size_t i) const {
@@ -993,7 +1044,7 @@ class KsPreparedBatch final : public PreparedBatch {
 
   Capabilities capabilities_;
   std::vector<core::System> systems_;
-  vibeqc_method method_;
+  NativeKsExecutionPlan execution_plan_;
   scf::ScfOptions options_;
   dft::GridSpec grid_spec_;
   vibeqc_backend backend_;
@@ -1054,31 +1105,33 @@ vibeqc_status read_dft_derivative_state(PreparedBatch& batch, std::size_t index,
   return VIBEQC_STATUS_INVALID_ARGUMENT;
 }
 
-vibeqc_status validate_dft_system(vibeqc_method method, const core::System& system,
-                                  std::string& detail) {
-  if (!is_supported_dft(method)) {
-    detail = "requested DFT method is reserved but not implemented";
-    return VIBEQC_STATUS_NOT_IMPLEMENTED;
+void validate_ks_spin_state(const NativeKsExecutionPlan& execution_plan,
+                            const core::System& system) {
+  if (!unrestricted(execution_plan)) {
+    if (system.electron_count <= 0 || system.electron_count % 2 || system.multiplicity != 1)
+      throw std::invalid_argument(
+          "RKS requires a positive even electron count and spin multiplicity 1");
+    return;
   }
+  const int spin_excess = static_cast<int>(system.multiplicity) - 1;
+  if (system.electron_count <= 0 || spin_excess < 0 || spin_excess > system.electron_count ||
+      (system.electron_count - spin_excess) % 2 != 0)
+    throw std::invalid_argument(
+        "UKS requires electron count and multiplicity to define integer "
+        "nonnegative spin occupations");
+}
+
+vibeqc_status validate_dft_system(vibeqc_method, const core::System& system, std::string& detail) {
   if (system.shells.empty()) {
     detail = "DFT requires an explicit Gaussian orbital basis";
-    return VIBEQC_STATUS_INVALID_ARGUMENT;
-  }
-  const char* functional = display_method_name(method);
-  if (!is_uks(method)) {
-    if (system.electron_count > 0 && system.electron_count % 2 == 0 && system.multiplicity == 1)
-      return VIBEQC_STATUS_SUCCESS;
-    detail = std::string(functional) +
-             " RKS requires a positive even electron count and spin multiplicity 1";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   const int spin_excess = static_cast<int>(system.multiplicity) - 1;
   if (system.electron_count > 0 && spin_excess >= 0 && spin_excess <= system.electron_count &&
       (system.electron_count - spin_excess) % 2 == 0)
     return VIBEQC_STATUS_SUCCESS;
-  detail = std::string(functional) +
-           " UKS requires electron count and multiplicity to define integer nonnegative spin "
-           "occupations";
+  detail =
+      "DFT requires electron count and multiplicity to define integer nonnegative spin occupations";
   return VIBEQC_STATUS_INVALID_ARGUMENT;
 }
 
@@ -1089,12 +1142,11 @@ std::unique_ptr<PreparedCalculation> prepare_dft_calculation(
   if (context.requested_backend == VIBEQC_BACKEND_CUDA)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT CUDA backend is not built");
 #endif
-  if (!is_supported_dft(descriptor.method))
-    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "requested DFT method is reserved but not implemented");
-  auto options = dft_options(descriptor, context.requested_backend);
+  NativeKsExecutionPlan execution_plan;
+  auto options = dft_options(descriptor, context.requested_backend, execution_plan);
+  validate_ks_spin_state(execution_plan, system);
   auto grid = ks_grid_options(descriptor, options);
-  return std::make_unique<KsPreparedCalculation>(capabilities, system, descriptor.method,
+  return std::make_unique<KsPreparedCalculation>(capabilities, system, execution_plan,
                                                  std::move(options), std::move(grid),
                                                  context.requested_backend, context.device_id);
 }
@@ -1111,10 +1163,12 @@ std::unique_ptr<PreparedBatch> prepare_dft_batch(const Capabilities& capabilitie
   if (context.requested_backend == VIBEQC_BACKEND_CUDA)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT CUDA backend is not built");
 #endif
-  auto options = dft_options(descriptor, context.requested_backend);
+  NativeKsExecutionPlan execution_plan;
+  auto options = dft_options(descriptor, context.requested_backend, execution_plan);
+  for (const auto& system : systems) validate_ks_spin_state(execution_plan, system);
   auto grid = ks_grid_options(descriptor, options);
   return std::make_unique<KsPreparedBatch>(
-      capabilities, std::move(systems), descriptor.method, std::move(options), std::move(grid),
+      capabilities, std::move(systems), execution_plan, std::move(options), std::move(grid),
       context.requested_backend, context.device_id, (flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0);
 }
 

@@ -520,7 +520,11 @@ class PreparedBatch:
                     context=(
                         self._context
                         if calculator._method
-                        in (_native.METHOD_MP2, _native.METHOD_RCCSD)
+                        in (
+                            _native.METHOD_MP2,
+                            _native.METHOD_RCCSD,
+                            _native.METHOD_RCCSD_T,
+                        )
                         else None
                     ),
                 )
@@ -1072,7 +1076,11 @@ class PreparedBatch:
                 else output.energy
             )
             correlation = None
-            if self._calculator._method in (_native.METHOD_MP2, _native.METHOD_RCCSD):
+            if self._calculator._method in (
+                _native.METHOD_MP2,
+                _native.METHOD_RCCSD,
+                _native.METHOD_RCCSD_T,
+            ):
                 correlation = _read_correlation_result(
                     self._library,
                     self._batch,

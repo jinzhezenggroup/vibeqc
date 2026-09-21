@@ -28,6 +28,38 @@ def _needs_derivative(
     return source_has_derivative
 
 
+def integral_specialization_diagnostics(
+    original: IntegralIR,
+    specialized: IntegralIR,
+) -> dict[str, object]:
+    """Describe requested-output pruning with only compile-time scientific facts."""
+
+    if not isinstance(original, IntegralIR) or not isinstance(specialized, IntegralIR):
+        raise TypeError("integral diagnostics require IntegralIR values")
+    if original.spec != specialized.spec or original.operator != specialized.operator:
+        raise ValueError("integral diagnostics require one unchanged operator/spec")
+    before = tuple(sorted(item.value for item in original.consumers))
+    after = tuple(sorted(item.value for item in specialized.consumers))
+    if not set(after) <= set(before):
+        raise ValueError("specialized IntegralIR introduced a new kernel consumer")
+    removed = tuple(item for item in before if item not in set(after))
+    return {
+        "schema": "vibeqc.compiler.integral-pruning.v1",
+        "outputs_before": list(before),
+        "outputs_after": list(after),
+        "removed_outputs": list(removed),
+        "derivative_order_before": (
+            original.derivative.order if original.derivative is not None else None
+        ),
+        "derivative_order_after": (
+            specialized.derivative.order if specialized.derivative is not None else None
+        ),
+        "recurrence_before": original.recurrence,
+        "recurrence_after": specialized.recurrence,
+        "reason": "requested-output liveness",
+    }
+
+
 def specialize_integral_ir(
     integral: IntegralIR,
     *,
