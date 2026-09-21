@@ -12,9 +12,12 @@ triples approximations are not silently substituted.
 
 ## Execution contract
 
-`rccsd_t_method_capabilities("rccsd(t)")` reports internal `energy` and
-`forces`; `"ccsd(t)"` is an alias. `native_public=False` is explicit: this is
-not public C-ABI promotion.
+`rccsd_t_method_capabilities("rccsd(t)")` reports the internal Python
+composition's `energy` and `forces`; `"ccsd(t)"` is an alias.
+`native_public=False` still describes that internal force facade. Separately,
+the public native registry now exposes CPU `RCCSD(T)` **energy only** through
+`VIBEQC_METHOD_RCCSD_T` / `Calculator("ccsd(t)")`, including homogeneous
+prepared batches.
 
 `rccsd_t_energy(...)` remains energy-only and rejects `compute_forces=True`.
 `rccsd_t_force(source, ...)` delegates directly to the qualified #746 endpoint,
@@ -152,9 +155,10 @@ retains the item's CCSD state with no triples/total energy; exceptions produce
 settings do not accept shared raw amplitudes or warm-start state. Providers stay
 caller-owned and must remain usable for their item's CCSD solve.
 
-This `supports_batch=True` capability describes this internal homogeneous
-prepared/session API only. It is not a claim that the public native C
-`PreparedBatch` boundary executes CCSD(T).
+The internal homogeneous session remains useful for validation. The public
+native C `PreparedBatch` boundary now also executes CPU RCCSD(T) energy for
+homogeneous `(nocc,nvir)` groups; it owns each item independently and does not
+reuse amplitudes across changed geometries.
 
 `PreparedRCCSDTForceBatch` and `rccsd_t_batch_forces` provide the matching
 #155 binding for analytic forces. Force batches are homogeneous in `(nocc, nvir)`,
@@ -164,18 +168,39 @@ Krylov, or device state is shared between items.
 
 ## Public native boundary
 
-The reserved ABI identifier `VIBEQC_METHOD_RCCSD_T` remains inactive in
-`src/methods/registry.cpp`. This is intentional: the complete CCSD(T) response
-graph is still generated/executed through the Python TensorIR/JIT owner, while
-the generic native CPU TensorIR emitter does not yet cover the einsum/VJP
-programs required by Lambda/orbital response. `Calculator("ccsd(t)")` therefore
-continues to report the reserved method as unavailable rather than dispatching
-through a Python special case or a duplicated handwritten derivative stack.
+`VIBEQC_METHOD_RCCSD_T` is now active for the qualified native **CPU energy**
+path. `Calculator("rccsd(t)")` and its `"ccsd(t)"` alias execute a native owner
+that reuses the existing native RCCSD solve, retains the exact canonical orbital
+energies from that reference, and evaluates standard `(T)` with a C++ header
+generated from the audited `tools/vibeqc_cc/triples.py` inventory. The generator
+AST-reads only the literal scientific inventory and recomputes the same canonical
+inventory hash, so build-time code generation has no NumPy/PySCF runtime
+dependency and does not introduce a second handwritten triples table.
 
-Native method registration, when promoted under the remaining #155 C native slice, must reuse the same
-reference/equation/state identities and may activate the existing enum without
-renumbering it. Until that owner exists, this facade is the executable #150 C
-composition boundary and the native capability remains fail-closed.
+The native energy owner never materializes full T3. It retains the accepted
+RCCSD problem/final amplitudes and allocates only six W blocks, six Z blocks and
+one occupied-cube scratch block for one triangular virtual triple at a time.
+The combined retained-state plus triples workspace is admitted against the
+existing correlation memory budget. Diagnostics publish `E_(T)`, virtual-triple
+count, workspace bytes and the audited triples inventory hash separately from
+the RCCSD correlation diagnostics.
+
+The current public boundary is deliberately narrower than the internal gradient
+facade:
+
+```text
+CPU energy:                 yes
+CPU homogeneous batch:      yes
+native CUDA RCCSD(T):        no
+native/public forces:        no
+DF/frozen-core/open-shell:   no
+```
+
+CUDA requests fail rather than running the CPU evaluator under a CUDA label.
+Force requests also fail rather than returning RCCSD/HF derivatives. The next
+#155 C slice should attach the already-qualified #746 response/gradient graph
+through the common native TensorIR execution added by #772; it must not add a
+handwritten CCSD(T)-specific Lambda/Z implementation.
 
 ## Validation
 
