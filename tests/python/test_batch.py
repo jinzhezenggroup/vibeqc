@@ -47,7 +47,9 @@ def test_batch_precision_provenance_availability_abi_and_failed_replay() -> None
         legacy_size = _native.PrecisionProvenance.mixed_stage_fock_builds.offset
         record.struct_size, record.abi_version = legacy_size, _native.ABI_VERSION
         record.mixed_stage_fock_builds = 4242
-        assert getter(prepared._batch, 0, ctypes.byref(record)) == _native.STATUS_SUCCESS
+        assert (
+            getter(prepared._batch, 0, ctypes.byref(record)) == _native.STATUS_SUCCESS
+        )
         assert record.struct_size == legacy_size
         assert record.mixed_stage_fock_builds == 4242
 
@@ -136,7 +138,10 @@ def test_cuda_public_batch_precision_is_per_item(
     assert warm.precision["strict_refinement_applied"]
     assert warm.precision["refinement_iterations"] >= 1
     assert warm.precision["mixed_stage_fock_builds"] >= 1
-    assert warm.precision["strict_stage_fock_builds"] == warm.precision["refinement_iterations"]
+    assert (
+        warm.precision["strict_stage_fock_builds"]
+        == warm.precision["refinement_iterations"]
+    )
     assert warm.precision["mixed_admission_census"] > 0
     assert warm.precision["mixed_precision_fock_threshold"] > 0
     assert cold.energy == pytest.approx(warm.energy, abs=2e-8)

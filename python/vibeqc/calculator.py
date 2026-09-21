@@ -1146,7 +1146,9 @@ class Calculator:
             "mixed_admission_census": provenance.mixed_admission_census,
             "final_residual_audits": provenance.final_residual_audits,
             "skipped_final_fock_builds": provenance.skipped_final_fock_builds,
-            "operator_work_counters_valid": bool(provenance.operator_work_counters_valid),
+            "operator_work_counters_valid": bool(
+                provenance.operator_work_counters_valid
+            ),
         }
 
     def _shells_for_atoms(
