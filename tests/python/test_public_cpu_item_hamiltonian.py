@@ -1,6 +1,9 @@
 """Mixed ECP fleets select Hamiltonian identity per item, not per basis set."""
 
+from __future__ import annotations
+
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 import numpy as np
@@ -8,6 +11,9 @@ import pytest
 from vibeqc import _cpu_force_resources, _dft_gradient, _stationary_cpu, ecp
 from vibeqc.batch import PreparedBatch
 from vibeqc_compiler import dft
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 
 @pytest.mark.parametrize(
@@ -26,7 +32,7 @@ def test_cpu_force_checks_current_item_ecp_inventory(
     accepted: bool,
 ) -> None:
     class Basis:
-        def __enter__(self) -> "Basis":
+        def __enter__(self) -> Self:
             return self
 
         def __exit__(self, *args: object) -> None:
