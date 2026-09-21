@@ -203,8 +203,7 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
       }
     }
   }
-  if (descriptor.method == VIBEQC_METHOD_PBE0_RKS ||
-      descriptor.method == VIBEQC_METHOD_PBE0_UKS) {
+  if (descriptor.method == VIBEQC_METHOD_PBE0_RKS || descriptor.method == VIBEQC_METHOD_PBE0_UKS) {
     if (!composition_seen)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "PBE0 requires explicit resolved KS composition v2");
