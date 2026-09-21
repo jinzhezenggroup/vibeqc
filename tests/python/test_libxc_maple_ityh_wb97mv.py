@@ -15,11 +15,8 @@ from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.method import resolve_method
 from vibeqc_compiler.xc.libxc_maple import MapleModule, import_maple_file
-from vibeqc_compiler.xc.rsh_expressions import energy_expression as rsh_expression
+from vibeqc_compiler.xc.program import build_program
 from vibeqc_compiler.xc.spec import FunctionalSpec
-from vibeqc_compiler.xc.wb97mv_expressions import (
-    energy_expression as wb97mv_expression,
-)
 
 ROOT = Path(__file__).resolve().parents[2]
 LIBXC_ROOT = ROOT / "external/libxc-7.0.0"
@@ -150,11 +147,9 @@ def test_imported_ityh_matches_audited_dag_through_feature_hessian(
         spin=spin,
         range_omega=Fraction(33, 100),
     )
-    manual_graph, manual_energy, manual_variables = rsh_expression(spec)
-    manual_roots = _feature_roots(manual_graph, manual_energy, manual_variables)
     names = POLARIZED if spin == "polarized" else UNPOLARIZED
     actual = _evaluate(graph, roots, names, point)
-    expected = _evaluate(manual_graph, manual_roots, names, point)
+    expected = build_program(spec, order=2).evaluate(point[:, None])[:, 0]
     np.testing.assert_allclose(actual, expected, rtol=3e-12, atol=5e-13)
 
 
@@ -170,11 +165,9 @@ def test_imported_wb97mv_matches_audited_dag_through_feature_hessian(
 ) -> None:
     _, graph, roots, _ = _imported_wb97mv(spin)
     spec = resolve_method("WB97M-V", spin=spin).primitives[0].functional
-    manual_graph, manual_energy, manual_variables = wb97mv_expression(spec)
-    manual_roots = _feature_roots(manual_graph, manual_energy, manual_variables)
     names = POLARIZED if spin == "polarized" else UNPOLARIZED
     actual = _evaluate(graph, roots, names, point)
-    expected = _evaluate(manual_graph, manual_roots, names, point)
+    expected = build_program(spec, order=2).evaluate(point[:, None])[:, 0]
     np.testing.assert_allclose(actual, expected, rtol=3e-11, atol=3e-12)
 
 
