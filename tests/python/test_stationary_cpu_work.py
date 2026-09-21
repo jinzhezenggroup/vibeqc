@@ -219,3 +219,41 @@ def test_cpu_force_inventory_rejects_each_oversized_dimension(
         setattr(basis, field, limit + 1)
     with pytest.raises(ValueError, match="dense-export domain"):
         cpu_force_inventory(basis, **options)
+
+
+def test_cpu_force_inventory_accounts_retained_rsh_range_plans() -> None:
+    _, basis, _ = inputs(ecp=False)
+    basis.shells = (
+        SimpleNamespace(angular_momentum=0),
+        SimpleNamespace(angular_momentum=1),
+    )
+    semilocal = cpu_force_inventory(
+        basis, grid_points=11, ecp_terms=0, primitive_tile=128
+    )
+    rsh = cpu_force_inventory(
+        basis,
+        grid_points=11,
+        ecp_terms=0,
+        primitive_tile=128,
+        range_exchange_sources=2,
+    )
+    component_labels = sum(
+        (l + 1) * (l + 2) // 2
+        for l in {shell.angular_momentum for shell in basis.shells}
+    )
+    expected_plans = 2 * component_labels**4
+    per_plan = 128 * 224 + 3 * 13 * 8 + 224
+    assert rsh["range_exchange_providers"] == expected_plans * per_plan
+    assert rsh["range_exchange_providers"] > semilocal["range_exchange_providers"] == 0
+    assert sum(rsh.values()) < CPU_FORCE_HOST_CAP
+
+
+@pytest.mark.parametrize("sources", (-1, 3))
+def test_cpu_force_inventory_rejects_unqualified_range_source_count(
+    sources: int,
+) -> None:
+    _, basis, _ = inputs(ecp=False)
+    with pytest.raises(ValueError, match="range-exchange source count"):
+        cpu_force_inventory(
+            basis, grid_points=11, ecp_terms=0, range_exchange_sources=sources
+        )
