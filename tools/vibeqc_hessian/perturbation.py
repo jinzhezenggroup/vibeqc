@@ -72,8 +72,10 @@ def _matrix(value: typing.Any, n: typing.Any, name: typing.Any) -> typing.Any:
 def _validate_operator(operator: typing.Any) -> typing.Any:
     problem = getattr(operator, "problem", None)
     induced_fock = getattr(operator, "induced_fock", None)
-    if problem is None or problem.method not in ("rhf", "cpks") or not callable(
-        induced_fock
+    if (
+        problem is None
+        or problem.method not in ("rhf", "cpks")
+        or not callable(induced_fock)
     ):
         raise TypeError(
             "expected a closed-shell RHF/CPKS response operator with induced_fock"

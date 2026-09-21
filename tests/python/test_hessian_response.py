@@ -59,9 +59,7 @@ def test_nuclear_rhs_rejects_missing_or_malformed_metric_inputs() -> None:
 def test_rhf_induced_fock_preserves_j_minus_half_k_contract() -> None:
     meta, arrays = load_fixture("h2")
     reference = fixture_snapshot(meta, arrays)
-    eri = np.arange(reference.nmo**4, dtype=np.float64).reshape(
-        (reference.nmo,) * 4
-    )
+    eri = np.arange(reference.nmo**4, dtype=np.float64).reshape((reference.nmo,) * 4)
     backend = DenseAOResponseBackend(eri)
     problem = RHFResponseOperator.build_problem(reference, backend)
     operator = RHFResponseOperator(problem, backend)
