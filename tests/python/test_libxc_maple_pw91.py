@@ -20,7 +20,7 @@ from vibeqc_compiler.xc.rsh_expressions import energy_expression
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
-LIBXC_ROOT = ROOT / "external/libxc-7.0.0"
+LIBXC_ROOT = ROOT / "sources/upstream/libxc/7.0.0"
 MANIFEST = json.loads((LIBXC_ROOT / "manifest.json").read_text())
 PW91_MANIFEST = json.loads((LIBXC_ROOT / "rsh-manifest.json").read_text())
 FIXTURE = json.loads((ROOT / "tests/data/xc/pw91-hessian.json").read_text())

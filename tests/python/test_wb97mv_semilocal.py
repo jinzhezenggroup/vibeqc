@@ -258,7 +258,7 @@ def test_wb97mv_family_mixing_and_unqualified_attenuation_fail_closed() -> None:
 
 
 def test_wb97mv_libxc_source_manifest_is_pinned() -> None:
-    root = Path(__file__).resolve().parents[2] / "external/libxc-7.0.0"
+    root = Path(__file__).resolve().parents[2] / "sources/upstream/libxc/7.0.0"
     manifest = json.loads((root / "wb97mv-manifest.json").read_text())
     assert manifest["version"] == "7.0.0"
     for name, item in manifest["files"].items():

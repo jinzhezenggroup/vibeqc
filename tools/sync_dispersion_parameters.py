@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_MANIFEST = ROOT / "tools/parameters/dispersion_parameter_sources.json"
-OVERRIDES = ROOT / "tools/parameters/method_parameter_overrides.json"
+SOURCE_MANIFEST = ROOT / "sources/derived/dispersion/dispersion_parameter_sources.json"
+OVERRIDES = ROOT / "sources/canonical/dispersion/method_parameter_overrides.json"
 DEFAULT_OUTPUT = ROOT / "python/vibeqc_compiler/method/method_parameters.json"
 
 _SYMBOL = re.compile(r"k[A-Z][A-Za-z0-9]*")

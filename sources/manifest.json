@@ -1,30 +1,30 @@
 {
   "derived_manifests": {
-    "external/libxc-7.0.0/manifest.json": {
-      "collection": "core",
-      "final_newline": false,
-      "renderer": "libxc-collection",
-      "source": "libxc-7.0.0"
-    },
-    "external/libxc-7.0.0/rsh-manifest.json": {
-      "collection": "rsh",
-      "final_newline": false,
-      "renderer": "libxc-collection",
-      "source": "libxc-7.0.0"
-    },
-    "external/libxc-7.0.0/wb97mv-manifest.json": {
-      "collection": "wb97mv",
-      "final_newline": true,
-      "renderer": "libxc-collection",
-      "source": "libxc-7.0.0"
-    },
-    "tools/parameters/dispersion_parameter_sources.json": {
+    "sources/derived/dispersion/dispersion_parameter_sources.json": {
       "final_newline": true,
       "renderer": "dispersion-parameter-sources",
       "sources": {
         "dftd4": "dftd4-parameters",
         "simple_dftd3": "simple-dftd3-parameters"
       }
+    },
+    "sources/derived/libxc/7.0.0/manifest.json": {
+      "collection": "core",
+      "final_newline": false,
+      "renderer": "libxc-collection",
+      "source": "libxc-7.0.0"
+    },
+    "sources/derived/libxc/7.0.0/rsh-manifest.json": {
+      "collection": "rsh",
+      "final_newline": false,
+      "renderer": "libxc-collection",
+      "source": "libxc-7.0.0"
+    },
+    "sources/derived/libxc/7.0.0/wb97mv-manifest.json": {
+      "collection": "wb97mv",
+      "final_newline": true,
+      "renderer": "libxc-collection",
+      "source": "libxc-7.0.0"
     }
   },
   "products": {
@@ -58,11 +58,11 @@
     },
     "dispersion-method-catalog": {
       "canonical_inputs": {
-        "tools/parameters/method_parameter_overrides.json": "c3dc0b464f2fa21068f130c8caac5508fce3f66c649ed7283821f1271d211fdf"
+        "sources/canonical/dispersion/method_parameter_overrides.json": "c3dc0b464f2fa21068f130c8caac5508fce3f66c649ed7283821f1271d211fdf"
       },
       "generator": "tools/sync_dispersion_parameters.py",
-      "generator_sha256": "894b22aff7e3eb2c44245919c0a56cd0b888254753db504136682b5b400e2c8c",
-      "input_identity_sha256": "7846dbc7afc991e2c4420918d99445041d4fe92a72e2122d98d20b2ab3876703",
+      "generator_sha256": "38bed3361e40c4e9924ba33267f314f0bb9abeaee5d8d41be7fade9a0591965b",
+      "input_identity_sha256": "5b76dabe02b66774250e19f0933e734a92cca78c22a80e6eb5f0810ce322c4fd",
       "inputs": [
         "simple-dftd3-parameters",
         "dftd4-parameters"
@@ -87,14 +87,14 @@
     },
     "libxc-xc-admission": {
       "canonical_inputs": {
-        "python/vibeqc_compiler/xc/expressions.py": "0c6325d8ad23389b3c86324ac41bb1b647b1840776d84659404e3c78fbc6da89",
-        "python/vibeqc_compiler/xc/rsh_expressions.py": "71c88bf653e07d202b3f57b41e79256b3c95f03a29b0aee56ceefb2eae1dd014",
-        "python/vibeqc_compiler/xc/spec.py": "c0a738fe147dddc39564f5c747696efdec0afecb6cffd21c69139710cb28e910",
-        "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d"
+        "python/vibeqc_compiler/xc/expressions.py": "b3cf5eb2dca782f924e0972ae88aae982b61c1444d84848c05b5d2c0f225f4b8",
+        "python/vibeqc_compiler/xc/rsh_expressions.py": "20fadf592c5ca97be92b75b34cbfa986bb479ac29254ce077e1bc59f30551ef5",
+        "python/vibeqc_compiler/xc/spec.py": "e2baf9bdbad21d044faf961dc8e4f127050dd54ca840a8b97a2b0d7fb182a529",
+        "python/vibeqc_compiler/xc/wb97mv_expressions.py": "a8e28581957a512d1a8f9dfcd5822bdd341a938504d981e14a3fe40ff437259e"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
-      "generator_sha256": "c36b8227e56a7d35cfe1aea9d2d312bf8438f0c55ea7dc5b41c695d1f95adf61",
-      "input_identity_sha256": "53d9389dcdcb033df0b14f187d2f9a98e6f5415971949655caf9aeb9cd4b6ec7",
+      "generator_sha256": "6db320ebb69b48341d8d420b8dd6f13c78839788cf23cfd9dfaa1e382c1a71e3",
+      "input_identity_sha256": "2664145467e9ab5103bd6994ceb604f3127b6492d974db01768ba0e7029a5633",
       "inputs": [
         "libxc-7.0.0"
       ],
@@ -114,10 +114,10 @@
     },
     "r2scan3c-gcp": {
       "canonical_inputs": {
-        "external/r2scan3c/gcp-r2scan3c-h-ar.json": "c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2"
+        "sources/canonical/r2scan3c/gcp-r2scan3c-h-ar.json": "c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2"
       },
       "generator": "tools/parameters/generate_gcp_r2scan3c.py",
-      "generator_sha256": "162130b1b855c0c8fbf88be6765f924d2cb42e1ed54eeb0661dd7cb063a26d78",
+      "generator_sha256": "d104d0d1e0a02149f4c0d9a052062ff41f6724c9a2bae6313cb09bbcb6969c38",
       "input_identity_sha256": "78ae1b369893bf081b986bf4a0187611ec823fd046eb8594c71ba4f14779914c",
       "inputs": [
         "simple-dftd3-gcp"
@@ -150,7 +150,7 @@
   "sources": {
     "dftd4-parameters": {
       "files": {
-        "dftd4-82fbaf4.parameters.toml": {
+        "assets/parameters.toml": {
           "sha256": "8254bfc673e763f7589b9be20506438b202a59ce795dc175d6ea9ba623e23e1f",
           "upstream_path": "assets/parameters.toml",
           "url": "https://raw.githubusercontent.com/dftd4/dftd4/82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4/assets/parameters.toml"
@@ -158,7 +158,7 @@
       },
       "kind": "snapshot",
       "license": "LGPL-3.0-or-later",
-      "local_root": "tools/parameters/upstream",
+      "local_root": "sources/upstream/dftd4/82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4",
       "repository": "https://github.com/dftd4/dftd4",
       "revision": "82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4"
     },
@@ -228,8 +228,9 @@
           "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/reference.inc"
         }
       },
-      "kind": "remote-file-set",
+      "kind": "file-set",
       "license": "LGPL-3.0-or-later",
+      "local_root": "sources/upstream/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8",
       "repository": "https://github.com/dftd4/dftd4",
       "revision": "6e1f59c3f39d919a2dbef0601d2576727c8b30e8"
     },
@@ -244,15 +245,16 @@
           "url": "https://raw.githubusercontent.com/pyscf/gpu4pyscf/db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d/gpu4pyscf/lib/gvhf-rys/rys_roots_dat.cu"
         }
       },
-      "kind": "remote-file-set",
+      "kind": "file-set",
       "license": "Apache-2.0",
+      "local_root": "sources/upstream/gpu4pyscf/db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d",
       "repository": "https://github.com/pyscf/gpu4pyscf",
       "revision": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d"
     },
     "libxc-7.0.0": {
       "admission": {
         "importer": "python/vibeqc_compiler/xc/libxc_maple.py",
-        "importer_sha256": "c36b8227e56a7d35cfe1aea9d2d312bf8438f0c55ea7dc5b41c695d1f95adf61",
+        "importer_sha256": "6db320ebb69b48341d8d420b8dd6f13c78839788cf23cfd9dfaa1e382c1a71e3",
         "semantics": "libxc-maple-graph/v7"
       },
       "collections": {
@@ -281,6 +283,7 @@
         "rsh": [
           "COPYING",
           "attenuation.mpl",
+          "gga_c_lyp.c",
           "gga_c_lyp.mpl",
           "gga_c_p86.c",
           "gga_c_p86.mpl",
@@ -330,6 +333,11 @@
           "sha256": "cfaacb3b656066ab286df9120c27423985a4bc2766ee385a13b86115b6b4b8cc",
           "upstream_path": "maple/b97mv.mpl",
           "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/b97mv.mpl"
+        },
+        "gga_c_lyp.c": {
+          "sha256": "d34fb158f6174ee2c27b4fb06a5dd203b71299a0aae7857dba85953a41cc62c6",
+          "upstream_path": "src/gga_c_lyp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_lyp.c"
         },
         "gga_c_lyp.mpl": {
           "sha256": "8113c2d995ee6ee1463b99a7ff7f3d462cfbefae6e6e70ffca22077a9cde21ac",
@@ -526,7 +534,7 @@
       },
       "kind": "file-set",
       "license": "MPL-2.0",
-      "local_root": "external/libxc-7.0.0",
+      "local_root": "sources/upstream/libxc/7.0.0",
       "repository": "https://gitlab.com/libxc/libxc",
       "revision": "7.0.0"
     },
@@ -554,8 +562,9 @@
           "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/ncoord/type.f90"
         }
       },
-      "kind": "remote-file-set",
+      "kind": "file-set",
       "license": "Apache-2.0",
+      "local_root": "sources/upstream/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d",
       "repository": "https://github.com/grimme-lab/mctc-lib",
       "revision": "e9de066d89f250d1cfb6de3a33f0c27c0e2f855d"
     },
@@ -569,8 +578,9 @@
           "url": "https://raw.githubusercontent.com/grimme-lab/multicharge/6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf/src/multicharge/param/eeq2019.f90"
         }
       },
-      "kind": "remote-file-set",
+      "kind": "file-set",
       "license": "Apache-2.0",
+      "local_root": "sources/upstream/multicharge/6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf",
       "repository": "https://github.com/grimme-lab/multicharge",
       "revision": "6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf"
     },
@@ -596,14 +606,15 @@
           "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/gcp/param.f90"
         }
       },
-      "kind": "remote-file-set",
+      "kind": "file-set",
       "license": "LGPL-3.0-or-later",
+      "local_root": "sources/upstream/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
       "repository": "https://github.com/dftd3/simple-dftd3",
       "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
     },
     "simple-dftd3-parameters": {
       "files": {
-        "simple-dftd3-41d5a07.parameters.toml": {
+        "assets/parameters.toml": {
           "sha256": "b1d9d1b9882dcad5361a99c34745ad44f8a274d80c907d9d0187255e4323d645",
           "upstream_path": "assets/parameters.toml",
           "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/assets/parameters.toml"
@@ -611,7 +622,7 @@
       },
       "kind": "snapshot",
       "license": "LGPL-3.0-or-later",
-      "local_root": "tools/parameters/upstream",
+      "local_root": "sources/upstream/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
       "repository": "https://github.com/dftd3/simple-dftd3",
       "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
     }

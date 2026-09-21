@@ -48,7 +48,7 @@ runtime; independent upstream tools are used to generate its test fixtures.
 
 ## Pinned dispersion parameter catalogs
 
-The repository-only snapshots under `tools/parameters/upstream/` retain the
+The repository-only snapshots under `sources/upstream/` retain the
 upstream damping-parameter tables used to generate VibeQC's static method
 catalog. The simple-dftd3 snapshot is pinned to commit
 `41d5a07b98ce15e97bec7a1815869725f6c7b0c2`; the DFT-D4 snapshot is pinned
@@ -56,7 +56,7 @@ to commit `82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4`. Both are
 LGPL-3.0-or-later data/code distributions; the corresponding license texts
 already retained under `LICENSES/` apply. Exact source paths, revisions and
 SHA-256 digests are recorded in
-`tools/parameters/dispersion_parameter_sources.json`.
+`sources/derived/dispersion/dispersion_parameter_sources.json`.
 
 These snapshots are development-time generation inputs only. Production
 VibeQC does not import, execute, or dynamically read simple-dftd3 or DFT-D4;
@@ -71,7 +71,7 @@ The canonical H-Ar def2-mTZVPP snapshot shipped under
 `python/vibeqc/data/r2scan3c/` is generated offline from MolSSI Basis Set
 Exchange commit `4adaf1372c7101620ca1a9f3130be9ae97fb8f30`. The exact source
 export, content identity, and supported-element domain are recorded in
-`external/r2scan3c/manifest.json`; the BSE BSD-3-Clause text is retained as
+`sources/canonical/r2scan3c/manifest.json`; the BSE BSD-3-Clause text is retained as
 `LICENSES/bse-data-BSD-3-Clause.txt`.
 
 The repository-only gCP qualification data and CPU/native reference providers

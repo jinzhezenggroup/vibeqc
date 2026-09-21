@@ -155,7 +155,7 @@ family to run again.
 
 The wheel includes the integral manifests, required native templates and their
 transitive local headers, plus the audited Libxc source and license provenance
-from `external/libxc-7.0.0`. These inputs are included in the sdist too.
+from `sources/upstream/libxc/7.0.0`. These inputs are included in the sdist too.
 `pyproject.toml` configures scikit-build-core to package the CMake-installed native
 library and copy canonical JIT inputs through `wheel.force-include`, without
 importing either Python package; there is no second editable native source tree.
