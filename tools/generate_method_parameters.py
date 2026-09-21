@@ -119,8 +119,10 @@ def _validate_record(
 
 
 def load_source(path: Path) -> tuple[dict[str, Any], str]:
-    raw = path.read_bytes()
-    payload = json.loads(raw)
+    # Hash logical UTF-8 text rather than checkout-specific CRLF/LF bytes so
+    # generated provenance is reproducible across supported development hosts.
+    raw_text = path.read_text(encoding="utf-8")
+    payload = json.loads(raw_text)
     if payload.get("schema_version") != 1:
         raise ValueError("unsupported method-parameter schema")
     identity = payload.get("d3_data_identity")
@@ -202,7 +204,7 @@ def load_source(path: Path) -> tuple[dict[str, Any], str]:
             if category in {"d3_bj", "d3_zero"}:
                 params.update(identity)
             _validate_python_parameters(params, category)
-    return payload, hashlib.sha256(raw).hexdigest()
+    return payload, hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
 
 
 def _py_value(value: Any) -> str:
