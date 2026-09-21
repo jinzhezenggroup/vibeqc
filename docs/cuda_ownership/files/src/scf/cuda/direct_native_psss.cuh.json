@@ -4,4 +4,4 @@
   "subsystem": "direct_integrals",
   "reason": "Native Direct-HF psss force scheduling/geometry adapter whose derivative algebra is compiler-generated through generated_weighted_eri::psss_force; the former handwritten psss value/Fock body is retired.",
   "regions": []
-}\n
+}
