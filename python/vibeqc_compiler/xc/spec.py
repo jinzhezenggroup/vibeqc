@@ -10,6 +10,10 @@ from pathlib import Path
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
+from .p86_pz_maple import p86_pz_maple_provenance
+from .pbe_maple import pbe_maple_provenance
+from .rsh_maple import rsh_maple_provenance
+
 VERSION = "libxc-7.0.0/interior-v1"
 POLARIZED = ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b")
 UNPOLARIZED = ("rho", "sigma", "tau")
@@ -154,6 +158,32 @@ class FunctionalSpec:
         else:
             manifest = "rsh-manifest.json" if special else "manifest.json"
             expression_source = "rsh_expressions.py" if special else "expressions.py"
+        sources = tuple(
+            record
+            for record in (
+                pbe_maple_provenance(self.components),
+                p86_pz_maple_provenance(self.components),
+                rsh_maple_provenance(self.components),
+            )
+            if record is not None
+        )
+        expression_provenance = sources[0] if sources else None
+        if len(sources) > 1:
+            for record in sources[1:]:
+                for key in ("kind", "importer_semantics", "importer_sha256"):
+                    if record[key] != sources[0][key]:
+                        raise UnsupportedXC("incompatible Libxc Maple provenance")
+            expression_provenance = {
+                **sources[0],
+                "adapter_sha256": canonical_hash(
+                    sorted(record["adapter_sha256"] for record in sources)
+                ),
+                "components": {
+                    key: value
+                    for record in sources
+                    for key, value in record["components"].items()
+                },
+            }
         return {
             **payload,
             "ingredients": self.ingredients,
@@ -166,6 +196,11 @@ class FunctionalSpec:
             ),
             "expression_source_sha256": file_hash(
                 Path(__file__).with_name(expression_source)
+            ),
+            **(
+                {"expression_provenance": expression_provenance}
+                if expression_provenance is not None
+                else {}
             ),
             "domain": (
                 "wb97mv-interior-v1: Libxc-7.0 B97M polynomial plus direct "

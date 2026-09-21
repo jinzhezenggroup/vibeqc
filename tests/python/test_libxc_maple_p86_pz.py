@@ -20,7 +20,7 @@ from vibeqc_compiler.xc.libxc_maple import (
     import_maple_file,
     import_maple_source,
 )
-from vibeqc_compiler.xc.rsh_expressions import energy_expression
+from vibeqc_compiler.xc.program import build_program
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -106,16 +106,6 @@ def _imported_component(
     return module, graph, _feature_roots(graph, energy, variables), variables
 
 
-def _manual_component(name: str, spin: str) -> tuple[Graph, tuple[Expr, ...]]:
-    spec = FunctionalSpec(
-        f"{name}_MPL_REFERENCE",
-        ((name, Fraction(1)),),
-        spin=spin,
-    )
-    graph, energy, variables = energy_expression(spec)
-    return graph, _feature_roots(graph, energy, variables)
-
-
 def _evaluate(
     graph: Graph,
     roots: tuple[Expr, ...],
@@ -177,17 +167,39 @@ def test_p86_pz_import_pins_transitive_source_and_parameters() -> None:
     [case for case in FIXTURE["cases"] if case["name"] in {"LDA_C_PZ", "GGA_C_P86"}],
     ids=lambda case: case["name"] + "-" + case["spin"],
 )
-def test_imported_p86_pz_matches_audited_dag_through_feature_hessian(
+def test_production_p86_pz_matches_imported_graph_through_feature_hessian(
     case: dict,
 ) -> None:
     name, spin = case["name"], case["spin"]
     names = POLARIZED_FEATURES if spin == "polarized" else UNPOLARIZED_FEATURES
     features = np.asarray(case["features"], dtype=float)
     _, imported_graph, imported_roots, _ = _imported_component(name, spin)
-    manual_graph, manual_roots = _manual_component(name, spin)
     imported = _evaluate(imported_graph, imported_roots, names, features)
-    manual = _evaluate(manual_graph, manual_roots, names, features)
-    np.testing.assert_allclose(imported, manual, rtol=2e-10, atol=2e-10)
+    spec = FunctionalSpec(
+        f"{name}_PRODUCTION",
+        ((name, Fraction(1)),),
+        spin=spin,
+    )
+    production = build_program(spec, order=2).evaluate(features)
+    np.testing.assert_allclose(production, imported, rtol=2e-10, atol=2e-10)
+
+
+@pytest.mark.parametrize(
+    "case",
+    [case for case in FIXTURE["cases"] if case["name"] in {"LDA_C_PZ", "GGA_C_P86"}],
+    ids=lambda case: case["name"] + "-" + case["spin"],
+)
+def test_production_p86_pz_matches_independent_libxc_hessian(case: dict) -> None:
+    name, spin = case["name"], case["spin"]
+    features = np.asarray(case["features"], dtype=float)
+    expected = np.asarray(case["expected"], dtype=float)
+    spec = FunctionalSpec(
+        f"{name}_PRODUCTION",
+        ((name, Fraction(1)),),
+        spin=spin,
+    )
+    actual = build_program(spec, order=2).evaluate(features)
+    np.testing.assert_allclose(actual, expected, rtol=2e-10, atol=2e-10)
 
 
 @pytest.mark.parametrize(

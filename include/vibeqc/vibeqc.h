@@ -512,10 +512,10 @@ typedef struct vibeqc_system_descriptor {
   vibeqc_basis_representation basis_representation;
 } vibeqc_system_descriptor;
 
-/** Native KS model snapshot, copied during preparation. Method selectors choose
- * the audited semilocal component family and spin; optional suffixes supply
- * resolved composition (v2) and execution schedule (v3). Legacy prefixes retain
- * unit semilocal XC, no K, and device-fused CUDA XC. */
+/** Native KS model snapshot, copied during preparation. Suffixes supply resolved
+ * composition (v2), XC execution schedule (v3), and compiler-resolved spin/family
+ * identity (v4). Legacy v1/v2/v3 callers retain method-selector compatibility
+ * projection; v1/v2 retain device-fused CUDA XC. */
 typedef struct vibeqc_ks_options {
   uint32_t struct_size;
   uint32_t abi_version;
@@ -548,9 +548,19 @@ typedef struct vibeqc_ks_options {
   double fock_exchange_coefficient;
   /** Optional v3 suffix. Older prefixes use DEVICE_FUSED. */
   vibeqc_xc_execution_schedule xc_execution_schedule;
+  /** Preserve the complete v3 prefix, including its trailing alignment padding. */
+  uint32_t reserved_v3_padding;
+  /** Optional v4 suffix: compiler-resolved execution identity. Version 1
+   * means the fields below are authoritative for scientific dispatch.
+   * spin_channels is 1 for RKS and 2 for UKS. semilocal_family is the
+   * primitive-family selector: 0=LDA, 1=PBE, 2=r2SCAN. */
+  uint32_t execution_plan_version;
+  uint32_t spin_channels;
+  uint32_t semilocal_family;
+  uint32_t reserved_v4_padding;
 } vibeqc_ks_options;
 
-/** Pure capability query. Version 3 accepts the v1/v2 prefixes and v3 suffix. */
+/** Pure capability query. Version 4 accepts the v1/v2/v3 prefixes and v4 suffix. */
 VIBEQC_API uint32_t vibeqc_ks_options_version(void);
 
 typedef struct vibeqc_method_descriptor {
@@ -688,6 +698,14 @@ typedef struct vibeqc_correlation_diagnostic {
   uint64_t ccsd_amplitude_d2h_bytes;
   uint64_t ccsd_synchronizations;
   char ccsd_replay_equation_hash[65];
+  /** Standard canonical noniterative (T) correction; zero for non-RCCSD(T) methods. */
+  double ccsd_t_triples_energy;
+  /** Number of triangular virtual triples evaluated by the native (T) owner. */
+  uint64_t ccsd_t_virtual_triples;
+  /** Peak temporary numeric workspace owned by the native (T) evaluator. */
+  uint64_t ccsd_t_workspace_bytes;
+  /** Audited standard-(T) inventory identity; empty for non-RCCSD(T) methods. */
+  char ccsd_t_equation_hash[65];
 } vibeqc_correlation_diagnostic;
 
 /** Executable capabilities for one method identifier. */

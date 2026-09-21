@@ -11,12 +11,18 @@ import typing
 from dataclasses import replace
 from fractions import Fraction
 
+from vibeqc_compiler.common.liveness import EffectKind
 from vibeqc_compiler.common.pass_manager import PassManager, PassStage
+from vibeqc_compiler.common.value_numbering import (
+    ValueNumberingDiagnostics,
+    ValueNumberTable,
+)
 
 from .interpreter import execute
-from .ir import Node, _infer, constant
-from .precision import describe_precision
+from .ir import PRIMITIVES, Node, _infer, constant
+from .precision import precision_execution_contracts, remap_precision_execution
 from .program import Program, hash_node
+from .types import spec_to_payload
 
 PASSES = (
     "dead_nodes",
@@ -172,76 +178,79 @@ def _canonicalize_view(node: Node) -> Node:
     return node
 
 
-def _execution_contracts(program: Program) -> dict[Node, tuple[str, str, str, str]]:
-    """Return execution-relevant precision semantics keyed by current SSA values."""
-    if program.provenance.get("precision_execution") is None:
-        return {}
-    names = program.debug_names
-    values = {value.name: value for value in describe_precision(program).values}
-    return {
-        node: (
-            values[names[node]].storage_dtype,
-            values[names[node]].compute_dtype,
-            values[names[node]].accumulation_dtype,
-            values[names[node]].math_mode,
-        )
-        for node in program.live_nodes
-        if node.spec.dtype != "int64"
-    }
+def _tensor_effect(node: Node) -> EffectKind:
+    """Map validated TensorIR primitives onto the shared effect contract."""
+    return (
+        EffectKind.PURE
+        if node.op in PRIMITIVES or node.op in {"input", "constant"}
+        else EffectKind.OPAQUE
+    )
 
 
-def _remap_precision_execution(
-    program: Program,
-    replacements: dict[Node, Node],
-    outputs: dict[str, Node],
-    definitions: tuple[Node, ...],
-) -> Program:
-    """Transport mixed-accumulation bindings across content-address changes."""
-    provenance = program.provenance
-    execution = provenance.get("precision_execution")
-    if execution is None:
-        return Program(outputs, definitions, provenance)
+def _same_semantic_value(left: Node, right: Node) -> bool:
+    """Guard a value-number bucket hit with complete TensorIR semantics."""
+    return (
+        left.op == right.op
+        and spec_to_payload(left.spec, logical=True)
+        == spec_to_payload(right.spec, logical=True)
+        and left.attributes == right.attributes
+        and len(left.inputs) == len(right.inputs)
+        and all(a is b for a, b in zip(left.inputs, right.inputs, strict=True))
+    )
 
-    # Validate the source binding before moving it. This also rejects stale or
-    # tampered execution provenance before an optimizer can bless a new name.
-    describe_precision(program)
-    old_names = program.debug_names
-    nodes_by_name = {name: node for node, name in old_names.items()}
-    values = execution.get("values")
-    if not isinstance(values, dict):
-        raise TypeError("precision execution requires a value mapping")
 
-    unbound_provenance = dict(provenance)
-    unbound_provenance.pop("precision_execution", None)
-    candidate = Program(outputs, definitions, unbound_provenance)
-    new_names = candidate.debug_names
-    live = set(candidate.live_nodes)
-    remapped: dict[str, dict] = {}
-    for old_name, binding in sorted(values.items()):
-        old_node = nodes_by_name.get(old_name)
-        if old_node is None or old_node not in replacements:
-            raise ValueError(
-                "precision execution references an unknown rewritten value"
+def _propagate_identity(node: Node) -> Node:
+    """Return a proven value-preserving source, without IEEE reassociation."""
+    if node.op == "transpose" and node.attrs["axes"] == tuple(
+        range(len(node.spec.indices))
+    ):
+        return node.inputs[0]
+    return _canonicalize_algebra(_canonicalize_view(node))
+
+
+def _value_number(program: Program) -> tuple[Program, ValueNumberingDiagnostics]:
+    """Run copy propagation plus effect-aware GVN over one TensorIR program."""
+    table = ValueNumberTable[Node](equivalent=_same_semantic_value)
+    replacements: dict[Node, Node] = {}
+    hashes: dict[Node, str] = {}
+    numbers: dict[Node, int] = {}
+    execution_contracts = precision_execution_contracts(program)
+
+    for node in program.nodes:
+        inputs = tuple(replacements[child] for child in node.inputs)
+        updated = node
+        if inputs != node.inputs:
+            spec = _infer(node.op, inputs, node.attrs, node.spec)
+            updated = Node(node.op, inputs, spec, node.attributes)
+
+        updated = _propagate_identity(updated)
+        source_number = numbers.get(updated)
+        if source_number is not None:
+            decision = table.copy(source_number, updated)
+        else:
+            digest = hash_node(updated, hashes)
+            decision = table.number(
+                (digest, execution_contracts.get(node)),
+                updated,
+                effect=_tensor_effect(updated),
             )
-        new_node = replacements[old_node]
-        if new_node not in live:
-            raise ValueError("precision execution rewrite removed a live bound value")
-        new_name = new_names[new_node]
-        previous = remapped.get(new_name)
-        if previous is None:
-            remapped[new_name] = binding
-        elif (
-            previous.get("compute_dtype"),
-            previous.get("accumulation_dtype"),
-        ) != (binding.get("compute_dtype"), binding.get("accumulation_dtype")):
-            raise ValueError("rewrite merged incompatible precision execution bindings")
+            if not decision.reused:
+                hashes[decision.representative] = digest
+                numbers[decision.representative] = decision.number
 
-    provenance["precision_execution"] = {**execution, "values": remapped}
-    result = Program(outputs, definitions, provenance)
-    # The transported names must remain a valid execution contract in the new
-    # graph, including operation/dtype/source-request checks.
-    describe_precision(result)
-    return result
+        replacements[node] = decision.representative
+        numbers.setdefault(decision.representative, decision.number)
+
+    outputs = {name: replacements[node] for name, node in program.outputs.items()}
+    definitions = tuple(replacements[node] for node in program.definitions)
+    return (
+        Program(
+            outputs,
+            definitions,
+            remap_precision_execution(program, replacements, outputs, definitions),
+        ),
+        table.diagnostics,
+    )
 
 
 def rewrite(program: Program, pass_name: str) -> Program:
@@ -252,11 +261,14 @@ def rewrite(program: Program, pass_name: str) -> Program:
         live = set(program.live_nodes)
         definitions = tuple(node for node in program.definitions if node in live)
         replacements = {node: node for node in program.nodes}
-        return _remap_precision_execution(
-            program, replacements, dict(program.outputs), definitions
+        outputs = dict(program.outputs)
+        provenance = remap_precision_execution(
+            program, replacements, outputs, definitions
         )
-    replacements, interned, hashes = {}, {}, {}
-    execution_contracts = _execution_contracts(program)
+        return Program(outputs, definitions, provenance)
+    if pass_name == "exact_cse":
+        return _value_number(program)[0]
+    replacements = {}
     for node in program.nodes:
         inputs = tuple(replacements[n] for n in node.inputs)
         updated = node
@@ -272,19 +284,14 @@ def rewrite(program: Program, pass_name: str) -> Program:
             updated = _canonicalize_algebra(updated)
         elif pass_name == "scalar_constants":
             updated = _fold(updated)
-        elif pass_name == "exact_cse":
-            # Mathematical content alone is insufficient when execution
-            # provenance changes accumulation semantics. Keep the logical hash
-            # precision-independent, but intern only execution-equivalent SSA.
-            structural = hash_node(updated, hashes)
-            contract = execution_contracts.get(node)
-            digest = hashlib.sha256(f"{structural}|{contract!r}".encode()).hexdigest()
-            hashes[updated] = digest
-            updated = interned.setdefault(digest, updated)
         replacements[node] = updated
     outputs = {name: replacements[n] for name, n in program.outputs.items()}
     definitions = tuple(replacements[n] for n in program.definitions)
-    return _remap_precision_execution(program, replacements, outputs, definitions)
+    return Program(
+        outputs,
+        definitions,
+        remap_precision_execution(program, replacements, outputs, definitions),
+    )
 
 
 def _program_fingerprint(program: Program) -> str:
@@ -292,62 +299,183 @@ def _program_fingerprint(program: Program) -> str:
     return hashlib.sha256(program.dumps().encode()).hexdigest()
 
 
-def _pass(pass_name: str) -> typing.Callable[[Program], Program]:
+def _pass(
+    pass_name: str,
+    diagnostics: list[ValueNumberingDiagnostics] | None = None,
+) -> typing.Callable[[Program], Program]:
     def apply(program: Program) -> Program:
+        if pass_name == "exact_cse":
+            result, stats = _value_number(program)
+            if diagnostics is not None:
+                diagnostics.append(stats)
+            return result
         return rewrite(program, pass_name)
 
     return apply
 
 
-_OPTIMIZER = PassManager(
-    name="tensor.optimize",
-    version=2,
-    stages=(
-        PassStage("dead_nodes", 1, _pass("dead_nodes"), invalidates=("liveness",)),
-        PassStage("identity_transposes", 1, _pass("identity_transposes")),
-        PassStage(
-            "view_canonicalization",
-            2,
-            _pass("view_canonicalization"),
-            invalidates=("liveness",),
-        ),
-        PassStage(
-            "algebraic_canonicalization",
-            1,
-            _pass("algebraic_canonicalization"),
-            invalidates=("liveness",),
-        ),
-        PassStage("exact_cse", 1, _pass("exact_cse"), invalidates=("liveness",)),
-        PassStage(
-            "scalar_constants",
-            2,
-            _pass("scalar_constants"),
-            invalidates=("liveness",),
-        ),
-        # Folding may expose duplicates; final CSE/DCE remains conservative.
-        PassStage(
-            "post_fold_exact_cse", 1, _pass("exact_cse"), invalidates=("liveness",)
-        ),
-        PassStage(
-            "post_fold_dead_nodes", 1, _pass("dead_nodes"), invalidates=("liveness",)
-        ),
-    ),
-    fingerprint=_program_fingerprint,
-)
+def _project_requested_outputs(
+    program: Program,
+    requested_outputs: typing.Any,
+) -> Program:
+    """Make explicit output demand a compiler fact before liveness/scheduling."""
+
+    if requested_outputs is None:
+        return program
+    if not isinstance(requested_outputs, (tuple, list)):
+        raise TypeError("requested outputs must be a sequence")
+    requested = tuple(requested_outputs)
+    if not requested:
+        raise ValueError("TensorIR specialization requires at least one output")
+    if any(not isinstance(name, str) for name in requested):
+        raise TypeError("requested output names must be strings")
+    if len(set(requested)) != len(requested):
+        raise ValueError("TensorIR specialization contains duplicate outputs")
+    missing = tuple(name for name in requested if name not in program.outputs)
+    if missing:
+        names = ", ".join(sorted(missing))
+        raise ValueError(f"TensorIR specialization requests unknown outputs: {names}")
+    if set(requested) == set(program.outputs):
+        return program
+    outputs = {name: program.outputs[name] for name in requested}
+    candidate = Program(outputs, definitions=program.definitions)
+    provenance = remap_precision_execution(
+        program,
+        {node: node for node in candidate.live_nodes},
+        outputs,
+        program.definitions,
+        allow_pruned=True,
+    )
+    return Program(outputs, definitions=program.definitions, provenance=provenance)
 
 
-def optimize(program: Program) -> Program:
+def _input_names(program: Program) -> tuple[str, ...]:
+    return tuple(
+        sorted(node.attrs["name"] for node in program.nodes if node.op == "input")
+    )
+
+
+def _pruning_diagnostics(
+    before: Program,
+    requested: Program,
+    after: Program,
+) -> dict[str, typing.Any]:
+    """Summarize #673 output/input/DCE pruning before backend lowering."""
+
+    before_nodes = before.nodes
+    after_nodes = after.nodes
+    after_live_nodes = after.live_nodes
+    available_outputs = tuple(before.outputs)
+    requested_outputs = tuple(requested.outputs)
+    retained_outputs = tuple(after.outputs)
+    if requested_outputs != retained_outputs:
+        raise ValueError("TensorIR optimizer changed requested output names")
+    if after_nodes != after_live_nodes:
+        raise ValueError("TensorIR optimizer left dead definitions before lowering")
+    before_inputs = _input_names(before)
+    after_inputs = _input_names(after)
+    if not set(after_inputs) <= set(before_inputs):
+        raise ValueError("TensorIR optimizer introduced a new external input")
+    removed_outputs = tuple(
+        name for name in available_outputs if name not in set(requested_outputs)
+    )
+    removed_inputs = tuple(
+        name for name in before_inputs if name not in set(after_inputs)
+    )
+    return {
+        "schema": "vibeqc.compiler.pruning.v1",
+        "nodes_before": len(before_nodes),
+        "nodes_after": len(after_nodes),
+        "nodes_removed": len(before_nodes) - len(after_nodes),
+        "definitions_before": len(before.definitions),
+        "definitions_after": len(after.definitions),
+        "definitions_removed": len(before.definitions) - len(after.definitions),
+        "available_outputs": list(available_outputs),
+        "requested_outputs": list(requested_outputs),
+        "retained_outputs": list(retained_outputs),
+        "removed_outputs": list(removed_outputs),
+        "inputs_before": list(before_inputs),
+        "inputs_after": list(after_inputs),
+        "removed_inputs": list(removed_inputs),
+        "minimal_before_lowering": True,
+    }
+
+
+def _optimizer(
+    diagnostics: list[ValueNumberingDiagnostics] | None = None,
+) -> PassManager[Program]:
+    return PassManager(
+        name="tensor.optimize",
+        version=4,
+        stages=(
+            PassStage("dead_nodes", 1, _pass("dead_nodes"), invalidates=("liveness",)),
+            PassStage("identity_transposes", 1, _pass("identity_transposes")),
+            PassStage(
+                "view_canonicalization",
+                2,
+                _pass("view_canonicalization"),
+                invalidates=("liveness",),
+            ),
+            PassStage(
+                "algebraic_canonicalization",
+                1,
+                _pass("algebraic_canonicalization"),
+                invalidates=("liveness",),
+            ),
+            PassStage(
+                "exact_cse",
+                2,
+                _pass("exact_cse", diagnostics),
+                invalidates=("liveness",),
+            ),
+            PassStage(
+                "scalar_constants",
+                2,
+                _pass("scalar_constants"),
+                invalidates=("liveness",),
+            ),
+            # Folding may expose new value-number and liveness opportunities.
+            PassStage(
+                "post_fold_exact_cse",
+                2,
+                _pass("exact_cse", diagnostics),
+                invalidates=("liveness",),
+            ),
+            PassStage(
+                "post_fold_dead_nodes",
+                1,
+                _pass("dead_nodes"),
+                invalidates=("liveness",),
+            ),
+        ),
+        fingerprint=_program_fingerprint,
+    )
+
+
+def optimize(program: Program, *, requested_outputs: typing.Any = None) -> Program:
     """Run the initial TensorIR pipeline through the shared pass manager."""
-    run = _OPTIMIZER.run(program)
+    specialized = _project_requested_outputs(program, requested_outputs)
+    value_numbering_diagnostics: list[ValueNumberingDiagnostics] = []
+    run = _optimizer(value_numbering_diagnostics).run(specialized)
     result = run.value
+    pruning = _pruning_diagnostics(program, specialized, result)
     return Program(
         result.outputs,
         provenance={
             **result.provenance,
             "original_logical_hash": program.logical_hash,
+            "specialized_logical_hash": specialized.logical_hash,
+            "pruning_diagnostics": pruning,
             # Keep the established rewrite inventory for compatibility.
             "rewrites": list(PASSES) + ["exact_cse", "dead_nodes"],
             "optimizer_identity": run.pipeline_identity,
+            "optimizer_diagnostics": {
+                "nodes_before": len(program.nodes),
+                "nodes_after": len(result.nodes),
+                "value_numbering": [
+                    stats.to_payload() for stats in value_numbering_diagnostics
+                ],
+            },
             "optimizer_passes": [
                 {
                     "name": record.name,

@@ -110,14 +110,18 @@ Redistributed or derived material:
   representations of the GFN2 parameter export from revision
   `fa8a4416e8fe093d0075bc10ac875494c2a449a9`. Exact source paths and hashes
   are recorded in `data/parameters/manifest.json`.
-- `data/parameters/gfn1.toml`, `gfn1.json`, and `gfn1.hpp` are deterministic
-  representations of the GFN1 parameter export from the same tblite 0.7.0
-  revision. The JSON/header additionally retain mctc-lib v0.5.2 Pauling
-  electronegativities, Mantina atomic radii, scaled Pyykko--Atsumi covalent
-  radii, exponential coordination-number conventions, and the CODATA-derived
-  binary64 Angstrom-to-bohr factor. Exact tblite/mctc source and legal paths,
-  hashes, exporter identity, and a diagnostic dxtb semantic cross-check are
-  recorded in `gfn1_manifest.json`. The mixed-source generated header carries
+- `sources/xtb/gfn1/gfn1.toml` and `gfn1.json` are the checked-in
+  canonical GFN1 parameter snapshots from the same tblite 0.7.0 export.
+  `data/parameters/gfn1.hpp` is deterministically regenerated from that JSON
+  by `tools/parameters/generate_gfn1.py` and must reproduce the audited
+  upstream header byte-for-byte. The JSON/header additionally retain mctc-lib
+  v0.5.2 Pauling electronegativities, Mantina atomic radii, scaled
+  Pyykko--Atsumi covalent radii, exponential coordination-number conventions,
+  and the CODATA-derived binary64 Angstrom-to-bohr factor. Exact tblite/mctc
+  source and legal paths, hashes, exporter identity, and a diagnostic dxtb
+  semantic cross-check are recorded in
+  `sources/xtb/gfn1/gfn1_manifest.json`; `sources/manifest.json` records the
+  VibeQC source/product identity. The mixed-source generated header carries
   `LGPL-3.0-or-later AND Apache-2.0`.
 - The Stewart STO-nG tables in `data/parameters/tblite_sto.hpp` come from
   `src/tblite/basis/slater.f90` at that revision.

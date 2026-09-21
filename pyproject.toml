@@ -176,7 +176,7 @@ include = [
   "python/vibeqc_compiler/integral/fused_schedule.py",
   "python/vibeqc_compiler/integral/ir.py",
   "python/vibeqc_compiler/integral/ir_serialization.py",
-  "python/vibeqc_compiler/integral/production.py",
+  "python/vibeqc_compiler/integral/production_profile.py",
   "python/vibeqc_compiler/integral/range_separation.py",
   "python/vibeqc_compiler/integral/rys.py",
   "python/vibeqc_compiler/integral/second_derivatives.py",

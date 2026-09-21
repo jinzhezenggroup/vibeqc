@@ -461,7 +461,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_fock_task(
     for (std::int64_t second_primitive = second_pair_begin;
          second_primitive < second_pair_end; ++second_primitive) {{
       if (lane == 0U) {{
-        generated_dppp_make_primitive_geometry(
+        generated_dppp_make_fock_primitive_geometry(
             primitive_pairs[first_primitive],
             primitive_pairs[second_primitive],
             (shared.task.reversed_shell_pair_mask & 1U) != 0U,
@@ -823,7 +823,7 @@ __device__ __forceinline__ void generated_dppp_make_mixed_primitive_geometry(
         "GeneratedDpppPrimitiveGeometry", "GeneratedDpppMixedPrimitiveGeometry"
     )
     source = source.replace(
-        "generated_dppp_make_primitive_geometry(\n",
+        "generated_dppp_make_fock_primitive_geometry(\n",
         "generated_dppp_make_mixed_primitive_geometry(\n",
     )
 

@@ -111,7 +111,7 @@ vibeqc_method_descriptor lda_method() {
 }
 
 void ks_option_snapshot() {
-  require(vibeqc_ks_options_version() == 3, "KS option version unavailable");
+  require(vibeqc_ks_options_version() == 4, "KS option version unavailable");
   Fixture fixture;
   auto method = lda_method();
   std::array<double, 119> radii;
@@ -129,6 +129,9 @@ void ks_option_snapshot() {
                             31,
                             radii.data(),
                             radii.size()};
+  options.execution_plan_version = 1;
+  options.spin_channels = 1;
+  options.semilocal_family = 0;
   method.ks_options = &options;
   vibeqc_calculation* calculation = nullptr;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
@@ -160,6 +163,12 @@ void ks_option_snapshot() {
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_NOT_IMPLEMENTED,
           "unknown KS domain policy accepted");
+  options.scf_domain_version = 1;
+  options.semilocal_family = 1;
+  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+              VIBEQC_STATUS_INVALID_ARGUMENT,
+          "compiler-resolved KS family disagreed with the public selector but was accepted");
+  options.semilocal_family = 0;
   method.method = VIBEQC_METHOD_RHF;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_INVALID_ARGUMENT,
@@ -174,6 +183,62 @@ void ks_option_snapshot() {
               std::abs(result.energy - (-1.121017859421488)) < 2e-12,
           "legacy KS default model changed");
   vibeqc_calculation_destroy(calculation);
+}
+
+void ks_option_versioned_prefixes() {
+  Fixture fixture;
+  auto method = lda_method();
+  vibeqc_ks_options options{};
+  options.abi_version = VIBEQC_ABI_VERSION;
+  options.scf_domain_version = 1;
+  options.grid_version = 1;
+  options.radial_points = 32;
+  options.angular_polar = 10;
+  options.angular_azimuth = 20;
+  options.partition_iterations = 2;
+  options.coincident_tolerance = 1e-12;
+  options.tile_points = 31;
+  options.composition_version = 1;
+  options.semilocal_exchange_scale = 1.0;
+  options.semilocal_correlation_scale = 1.0;
+  options.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
+  options.execution_plan_version = 1;
+  options.spin_channels = 1;
+  options.semilocal_family = 0;
+  method.ks_options = &options;
+  const std::array<std::size_t, 4> sizes{offsetof(vibeqc_ks_options, composition_version),
+                                         offsetof(vibeqc_ks_options, xc_execution_schedule),
+                                         offsetof(vibeqc_ks_options, execution_plan_version),
+                                         sizeof(vibeqc_ks_options)};
+  for (const auto size : sizes) {
+    options.struct_size = static_cast<std::uint32_t>(size);
+    vibeqc_calculation* calculation = nullptr;
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+                VIBEQC_STATUS_SUCCESS,
+            "valid KS v1/v2/v3/v4 prefix was rejected");
+    vibeqc_calculation_destroy(calculation);
+  }
+  // v3 owns the schedule bytes; it must neither consume nor reinterpret v4 identity.
+  options.struct_size = static_cast<std::uint32_t>(sizes[2]);
+  options.execution_plan_version = 99;
+  options.xc_execution_schedule = VIBEQC_XC_EXECUTION_HOST_UNFUSED;
+  vibeqc_calculation* calculation = nullptr;
+  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+              VIBEQC_STATUS_SUCCESS,
+          "v3 host-unfused schedule consumed the absent v4 plan");
+  vibeqc_calculation_destroy(calculation);
+  options.xc_execution_schedule = static_cast<vibeqc_xc_execution_schedule>(99);
+  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+              VIBEQC_STATUS_INVALID_ARGUMENT,
+          "v3 schedule validation was lost when v4 was appended");
+  options.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
+  options.execution_plan_version = 1;
+  for (const auto size : sizes) {
+    options.struct_size = static_cast<std::uint32_t>(size - 1);
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+                VIBEQC_STATUS_ABI_MISMATCH,
+            "truncated KS versioned suffix was accepted");
+  }
 }
 
 void pbe0_composition_snapshot() {
@@ -195,6 +260,9 @@ void pbe0_composition_snapshot() {
   options.semilocal_exchange_scale = 0.75;
   options.semilocal_correlation_scale = 1.0;
   options.fock_exchange_coefficient = -0.125;
+  options.execution_plan_version = 1;
+  options.spin_channels = 1;
+  options.semilocal_family = 1;
   method.ks_options = &options;
 
   vibeqc_calculation* calculation = nullptr;
@@ -332,6 +400,7 @@ void warm_execution_allocation_failure() {
 int main() {
   try {
     ks_option_snapshot();
+    ks_option_versioned_prefixes();
     pbe0_composition_snapshot();
     warm_preparation_failure(false);
     warm_preparation_failure(true);

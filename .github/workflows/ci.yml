@@ -18,11 +18,13 @@ permissions:
 env:
   CCACHE_VERSION: "4.14"
 
-# Coalesce superseded PR and master-push runs separately. Scheduled/manual
-# qualification keeps its own run ID and is not cancelled by ordinary pushes.
+# Coalesce superseded PR and master-push runs separately. PR updates cancel
+# stale running work; master keeps the active run and replaces only the older
+# pending run with the newest push. Scheduled/manual qualification keeps its
+# own run ID.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   cpu:
@@ -193,9 +195,9 @@ jobs:
         run: >-
           cmake --build --preset cuda-release-sm120
           --target vibeqc_cuda_runtime_tests --parallel 3
-      # Master pushes are frequently superseded while the remaining CI jobs
-      # are still running. Persist the expensive native compile cache here,
-      # rather than waiting for the cache action's end-of-job post step.
+      # Persist the expensive native compile cache here so the next queued
+      # master run can reuse it without waiting for the cache action's
+      # end-of-job post step.
       - name: Save CUDA ccache immediately after build
         if: steps.cuda_ccache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -264,11 +266,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [core, posthf, compiler-heavy, ecp-forces]
+        shard: [core, runtime-heavy, posthf, compiler-heavy, ecp-forces]
     runs-on: ubuntu-24.04
     # Full nightly/manual qualification includes expensive Hessian and Au replay.
     # Keep routine PR/push feedback capped separately; do not truncate that tier.
-    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 20 }}
+    # The core shard can spend over 18 minutes in pytest alone; include native
+    # setup plus coverage/artifact cleanup without truncating scientific tests.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}
     env:
       CCACHE_MAXSIZE: 1G
       # PySCF and NumPy can each fan out through BLAS/OpenMP. Keep those
@@ -333,8 +337,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build --parallel
-      # The four Python shards build the same native library. One shard saves
-      # the cache immediately so a later master cancellation cannot discard it.
+      # The five Python shards build the same native library. One shard saves
+      # the cache immediately so the next queued master run can reuse it.
       - name: Save Python-build ccache immediately
         if: matrix.shard == 'core' && steps.python_ccache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -498,16 +502,63 @@ jobs:
             tests/python/test_one_electron_derivatives.py
             tests/python/test_range_separation.py
             tests/python/test_second_derivatives_inputs.py
+            # Empirically expensive routine files live in their own shard so
+            # they cannot silently expand the broad core critical path.
+            tests/python/test_response_native_rks.py
+            tests/python/test_response_native_uks.py
+            tests/python/test_mp2_public.py
+            tests/python/test_ccsd_t_orbital_response.py
+            tests/python/test_hessian_block.py
+            tests/python/test_grid_policy_convergence.py
+            tests/python/test_cc_triples_response_cuda.py
+            tests/python/test_codegen_schedules.py
+            tests/python/test_dft_batch.py
+            tests/python/test_ecp_multicenter.py
+            tests/python/test_cc_triples_lambda_response.py
+            tests/python/test_cc_lambda_response.py
+            tests/python/test_implicit_response.py
+            tests/python/test_df_rys.py
+            tests/python/test_hessian_numerical.py
+            tests/python/test_one_electron_cpu_codegen.py
+            tests/python/test_cc_solver.py
+            tests/python/test_cc_lambda_solver.py
           )
           case "${{ matrix.shard }}" in
             core)
-              # Core contains many independent long calls spread across files.
-              # Work stealing avoids a single long file pinning the job tail.
+              # Core remains the broad fast lane. Empirically expensive files
+              # are explicitly owned by runtime-heavy so routine test growth
+              # cannot silently consume the entire job budget.
               dist_mode=worksteal
               test_targets=(tests/python)
               for path in "${slow_paths[@]}"; do
                 extra_args+=(--ignore="${path}")
               done
+              ;;
+            runtime-heavy)
+              # Keep file-scoped/module-scoped expensive fixtures on one worker.
+              # worksteal can duplicate those setups across workers and inflate
+              # wall time even when the collected test count barely changes.
+              dist_mode=loadfile
+              test_targets=(
+                tests/python/test_response_native_rks.py
+                tests/python/test_response_native_uks.py
+                tests/python/test_mp2_public.py
+                tests/python/test_ccsd_t_orbital_response.py
+                tests/python/test_hessian_block.py
+                tests/python/test_grid_policy_convergence.py
+                tests/python/test_cc_triples_response_cuda.py
+                tests/python/test_codegen_schedules.py
+                tests/python/test_dft_batch.py
+                tests/python/test_ecp_multicenter.py
+                tests/python/test_cc_triples_lambda_response.py
+                tests/python/test_cc_lambda_response.py
+                tests/python/test_implicit_response.py
+                tests/python/test_df_rys.py
+                tests/python/test_hessian_numerical.py
+                tests/python/test_one_electron_cpu_codegen.py
+                tests/python/test_cc_solver.py
+                tests/python/test_cc_lambda_solver.py
+              )
               ;;
             posthf)
               test_targets=(
@@ -556,6 +607,7 @@ jobs:
           esac
           .venv/bin/python -m pytest "${test_targets[@]}" -q \
             -n 4 --dist="$dist_mode" --durations=25 \
+            --junitxml=".artifacts/pytest-${{ matrix.shard }}.xml" \
             --cov --cov-report="xml:coverage-python-${{ matrix.shard }}.xml" \
             "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
@@ -657,6 +709,10 @@ jobs:
             file: coverage/coverage-python-core.xml
             flag: python
             name: code-coverage/python-core
+          - artifact: coverage-report-python-runtime-heavy
+            file: coverage/coverage-python-runtime-heavy.xml
+            flag: python
+            name: code-coverage/python-runtime-heavy
           - artifact: coverage-report-python-posthf
             file: coverage/coverage-python-posthf.xml
             flag: python

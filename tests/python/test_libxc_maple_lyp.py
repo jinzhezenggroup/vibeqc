@@ -14,7 +14,7 @@ from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.xc.libxc_maple import MapleModule, import_maple_file
-from vibeqc_compiler.xc.rsh_expressions import energy_expression
+from vibeqc_compiler.xc.program import build_program
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -82,16 +82,6 @@ def _imported_lyp(
     return module, graph, _feature_roots(graph, energy, variables), variables
 
 
-def _manual_lyp(spin: str) -> tuple[Graph, tuple[Expr, ...]]:
-    spec = FunctionalSpec(
-        "GGA_C_LYP_MPL_REFERENCE",
-        (("GGA_C_LYP", Fraction(1)),),
-        spin=spin,
-    )
-    graph, energy, variables = energy_expression(spec)
-    return graph, _feature_roots(graph, energy, variables)
-
-
 def _evaluate(
     graph: Graph,
     roots: tuple[Expr, ...],
@@ -136,15 +126,35 @@ def test_lyp_fixture_records_independent_generator_identity() -> None:
 
 
 @pytest.mark.parametrize("case", FIXTURE["cases"], ids=lambda case: case["spin"])
-def test_imported_lyp_matches_audited_dag_through_feature_hessian(case: dict) -> None:
+def test_production_lyp_matches_imported_graph_through_feature_hessian(
+    case: dict,
+) -> None:
     spin = case["spin"]
     names = POLARIZED_FEATURES if spin == "polarized" else UNPOLARIZED_FEATURES
     features = np.asarray(case["features"], dtype=float)
     _, imported_graph, imported_roots, _ = _imported_lyp(spin)
-    manual_graph, manual_roots = _manual_lyp(spin)
     imported = _evaluate(imported_graph, imported_roots, names, features)
-    manual = _evaluate(manual_graph, manual_roots, names, features)
-    np.testing.assert_allclose(imported, manual, rtol=2e-10, atol=2e-10)
+    spec = FunctionalSpec(
+        "GGA_C_LYP_PRODUCTION",
+        (("GGA_C_LYP", Fraction(1)),),
+        spin=spin,
+    )
+    production = build_program(spec, order=2).evaluate(features)
+    np.testing.assert_allclose(production, imported, rtol=2e-10, atol=2e-10)
+
+
+@pytest.mark.parametrize("case", FIXTURE["cases"], ids=lambda case: case["spin"])
+def test_production_lyp_matches_independent_libxc_hessian(case: dict) -> None:
+    spin = case["spin"]
+    features = np.asarray(case["features"], dtype=float)
+    expected = np.asarray(case["expected"], dtype=float)
+    spec = FunctionalSpec(
+        "GGA_C_LYP_PRODUCTION",
+        (("GGA_C_LYP", Fraction(1)),),
+        spin=spin,
+    )
+    actual = build_program(spec, order=2).evaluate(features)
+    np.testing.assert_allclose(actual, expected, rtol=2e-10, atol=2e-10)
 
 
 @pytest.mark.parametrize("case", FIXTURE["cases"], ids=lambda case: case["spin"])

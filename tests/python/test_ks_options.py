@@ -368,6 +368,76 @@ def test_ks_options_v3_schedule_suffix_preserves_older_prefixes() -> None:
         KsOptions(xc_schedule="unknown")
 
 
+def test_ks_options_v4_preserves_v1_v2_v3_prefixes_and_methodir_plan() -> None:
+    import ctypes
+
+    from vibeqc import _native
+
+    pure = resolve_ks_options("pbe-rks")
+    hybrid = resolve_ks_options("pbe0-rks", KsOptions(grid=CUSTOM))
+    old = native_ks_options(pure, version=1)
+    legacy_composition = native_ks_options(hybrid, version=2)
+    new = native_ks_options(hybrid, version=4)
+    assert old.struct_size == _native.KsOptionsDescriptor.composition_version.offset
+    assert (
+        legacy_composition.struct_size
+        == _native.KsOptionsDescriptor.xc_execution_schedule.offset
+    )
+    legacy_schedule = native_ks_options(hybrid, version=3)
+    assert (
+        legacy_schedule.struct_size
+        == _native.KsOptionsDescriptor.execution_plan_version.offset
+    )
+    assert legacy_schedule.execution_plan_version == 0
+
+    class LegacyKsOptionsV3(ctypes.Structure):
+        _fields_ = _native.KsOptionsDescriptor._fields_[
+            : next(
+                i
+                for i, (name, _) in enumerate(_native.KsOptionsDescriptor._fields_)
+                if name == "reserved_v3_padding"
+            )
+        ]
+
+    assert ctypes.sizeof(LegacyKsOptionsV3) == legacy_schedule.struct_size
+    for name, _ in LegacyKsOptionsV3._fields_:
+        assert (
+            getattr(LegacyKsOptionsV3, name).offset
+            == getattr(_native.KsOptionsDescriptor, name).offset
+        )
+    assert new.struct_size == ctypes.sizeof(_native.KsOptionsDescriptor)
+    assert new.composition_version == 1
+    assert (
+        new.semilocal_exchange_scale,
+        new.semilocal_correlation_scale,
+        new.fock_exchange_coefficient,
+    ) == (0.75, 1.0, -0.125)
+    assert (
+        new.execution_plan_version,
+        new.spin_channels,
+        new.semilocal_family,
+    ) == (1, 1, 1)
+
+
+@pytest.mark.parametrize(
+    "method, options, expected",
+    (
+        ("lda-rks", None, (1, 0)),
+        ("pbe-uks", None, (2, 1)),
+        ("pbe-d4-rks", None, (1, 1)),
+        ("pbe0-uks", KsOptions(grid=CUSTOM), (2, 1)),
+        ("r2scan-rks", None, (1, 2)),
+    ),
+)
+def test_native_v4_execution_selector_is_derived_from_methodir(
+    method: str, options: KsOptions | None, expected: tuple[int, int]
+) -> None:
+    resolved = resolve_ks_options(method, options)
+    native = native_ks_options(resolved, version=4)
+    assert native.execution_plan_version == 1
+    assert (native.spin_channels, native.semilocal_family) == expected
+
+
 def test_custom_model_changes_plan_identity_without_materializing_grid(
     monkeypatch: typing.Any,
 ) -> None:
