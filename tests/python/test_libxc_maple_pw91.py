@@ -12,7 +12,11 @@ from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.xc.expressions import energy_expression
-from vibeqc_compiler.xc.libxc_maple import IMPORTER_SEMANTICS, MapleModule, import_maple_file
+from vibeqc_compiler.xc.libxc_maple import (
+    IMPORTER_SEMANTICS,
+    MapleModule,
+    import_maple_file,
+)
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -145,14 +149,16 @@ def test_pw91_importer_semantics_and_source_provenance() -> None:
     exchange, _, _, _ = _imported_component("GGA_X_PW91", "polarized")
     correlation, _, _, _ = _imported_component("GGA_C_PW91", "polarized")
 
-    assert dict(exchange.source_hashes)["gga_x_pw91.mpl"] == MANIFEST["files"][
-        "gga_x_pw91.mpl"
-    ]["sha256"]
+    assert (
+        dict(exchange.source_hashes)["gga_x_pw91.mpl"]
+        == MANIFEST["files"]["gga_x_pw91.mpl"]["sha256"]
+    )
     assert {"gga_x_pw91_params"} <= set(exchange.defines)
     for source in ("gga_c_pw91.mpl", "lda_c_pw.mpl", "util.mpl"):
-        assert dict(correlation.source_hashes)[source] == MANIFEST["files"][source][
-            "sha256"
-        ]
+        assert (
+            dict(correlation.source_hashes)[source]
+            == MANIFEST["files"][source]["sha256"]
+        )
 
 
 @pytest.mark.parametrize("name", ["GGA_X_PW91", "GGA_C_PW91"])
