@@ -77,8 +77,7 @@ def _imported_record(name: str) -> dict[str, Any]:
     if not isinstance(name, str) or not name.strip():
         raise MapleImportError("bulk capability requires a non-empty registration name")
     records = {
-        record["name"]: record
-        for record in libxc_bulk.read_catalog()["registrations"]
+        record["name"]: record for record in libxc_bulk.read_catalog()["registrations"]
     }
     key = name.upper()
     if key not in records:

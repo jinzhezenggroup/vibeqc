@@ -27,8 +27,7 @@ def test_bulk_capability_inventory_is_exact_imported_inventory() -> None:
     assert tuple(item.name for item in capabilities) == imported
     assert libxc_bulk_capabilities.claimable_functionals("graph-imported") == imported
     assert (
-        libxc_bulk_capabilities.claimable_functionals("pointwise-validated")
-        == imported
+        libxc_bulk_capabilities.claimable_functionals("pointwise-validated") == imported
     )
     assert len(capabilities) == 221
 
@@ -56,11 +55,7 @@ def test_every_pointwise_claim_has_both_spin_independent_reference_evidence() ->
         (case["name"], case["spin"])
         for payload in fixture_payloads
         for case in payload["cases"]
-    } == {
-        (name, spin)
-        for name in imported
-        for spin in ("polarized", "unpolarized")
-    }
+    } == {(name, spin) for name in imported for spin in ("polarized", "unpolarized")}
 
     for payload in fixture_payloads:
         assert payload["oracle"]["pyscf"] == "2.14.0"
