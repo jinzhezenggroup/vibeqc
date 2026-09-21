@@ -464,9 +464,7 @@ def test_cuda_runtime_domain_reuses_one_plan_artifact_and_owner(
         calls["plan"] += 1
         assert target is compiler.target
         assert max_bytes == config.max_bytes
-        assert any(
-            node.op == "runtime_indexed_select" for node in program.live_nodes
-        )
+        assert any(node.op == "runtime_indexed_select" for node in program.live_nodes)
         return plan
 
     def fake_compile(
