@@ -249,18 +249,23 @@ def _admit_work(
         )
     primitive_sum = sum(int(row[2]) * int(row[3]) for row in aos)
     pairs = natom * (natom - 1) // 2
-    exact_exchange = bool(
-        getattr(
-            getattr(state._source, "method_ir", None),
-            "full_range_exact_exchange",
-            0,
-        )
+    method_ir = getattr(state._source, "method_ir", None)
+    exact_exchange = bool(getattr(method_ir, "full_range_exact_exchange", 0))
+    range_exchange = sum(
+        getattr(primitive, "kind", None) == "range_separated_exchange"
+        for primitive in getattr(method_ir, "primitives", ())
     )
-    # Coulomb always traverses every ordered primitive quartet. A full-range
-    # exact-exchange source is a second, independently weighted ERI derivative
-    # traversal over the same quartet domain and must be charged separately.
-    quartet_passes = 1 + int(exact_exchange)
-    records = quartet_passes * primitive_sum**4 + (natom + 2) * primitive_sum**2 + pairs
+    # Coulomb, full-range K and each SR/LR K source are distinct ordered
+    # primitive-quartet traversals. Range work executes in the #249 provider;
+    # keep its admission separate from the legacy primitive executor.
+    base_quartet_passes = 1 + int(exact_exchange)
+    base_records = (
+        base_quartet_passes * primitive_sum**4
+        + (natom + 2) * primitive_sum**2
+        + pairs
+    )
+    range_records = range_exchange * primitive_sum**4
+    records = base_records + range_records
     points = len(state.grid.points)
     visits = (2 if execution == "native" else 3 * natom) * pairs * points
     validations = ((points + tile_points - 1) // tile_points) * pairs
@@ -301,6 +306,9 @@ def _admit_work(
         "ordered_pairs": n * n,
         "ordered_quartets": n**4,
         "primitive_record_bound": records,
+        "base_primitive_record_bound": base_records,
+        "range_primitive_record_bound": range_records,
+        "range_exchange_sources": range_exchange,
         "primitive_record_budget": max_primitive_records,
         "xc_points": points,
         "grid_point_budget": max_grid_points,
@@ -432,6 +440,10 @@ def complete_rks_gradient_diagnostic(
             hamiltonian=state._source.hamiltonian,
         ),
     )
+    if plan.range_exchange_primitives and max_host_bytes is not None:
+        raise NotImplementedError(
+            "range-separated CPU gradient host-byte accounting is not qualified"
+        )
     density = state.density if contract.spin == "polarized" else state.density[0]
     if compiler is None:
         compiler = CppCompilerAdapter(Path(os.environ.get("CXX", "c++")))
@@ -451,6 +463,13 @@ def complete_rks_gradient_diagnostic(
         work["component_execution"] = component_execution
     else:
         native = _PrimitiveExecutor(basis, cache, primitive_tile, compiler)
+    range_native = None
+    if plan.range_exchange_primitives:
+        from ._stationary_range_cpu import RangeExchangePrimitiveExecutor
+
+        range_native = RangeExchangePrimitiveExecutor(
+            basis, cache, primitive_tile, compiler
+        )
     natom, n = basis.natom, basis.nao
     components = {name: np.zeros((natom, 3)) for name in plan.source_names}
     charges = np.asarray([atom.atomic_number for atom in basis.atoms]) - np.asarray(
@@ -465,6 +484,10 @@ def complete_rks_gradient_diagnostic(
     # TensorIR AD supplies D, Coulomb D*D/2, exact-exchange same-spin
     # D[a,c]*D[b,d]*cK/2, and -W. Runtime only binds tuple-indexed state;
     # it never rebuilds method coefficients from a named-functional formula.
+    range_primitives = {
+        source.name: plan.range_exchange_primitive(source.name)
+        for source in plan.range_exchange_sources
+    }
     integral_sources = [
         ("one_electron", 2),
         ("overlap_pulay", 2),
@@ -472,54 +495,74 @@ def complete_rks_gradient_diagnostic(
     ]
     if plan.exchange is not None:
         integral_sources.append(("exact_exchange", 4))
-    for source, rank in integral_sources:
-        iterator = product(range(n), repeat=rank)
-        while tuples := tuple(islice(iterator, integral_terms)):
-            ids = np.asarray(tuples)
-            key = (source, len(tuples))
-            if key not in tensor_consumers:
-                block = plan.integral_block(source, terms=len(tuples))
-                tensor_consumers[key] = (
-                    NativeTensorProgram(block.weights, compiler=compiler, cache=cache)
-                    if execution == "native"
-                    else block.weights
-                )
-            if source == "overlap_pulay":
-                feeds = {
-                    "weighted_density": state.weighted_density[:, ids[:, 0], ids[:, 1]]
-                }
-            elif source == "exact_exchange":
-                # For each ordered ERI (ab|cd), K contracts same-spin
-                # D[a,c] D[b,d]. Cross-spin exchange is deliberately absent.
-                feeds = {
-                    "density_left": state.density[:, ids[:, 0], ids[:, 2]],
-                    "density_right": state.density[:, ids[:, 1], ids[:, 3]],
-                }
-            else:
-                feeds = {"density_left": state.density[:, ids[:, 0], ids[:, 1]]}
-                if rank == 4:
-                    feeds["density_right"] = state.density[:, ids[:, 2], ids[:, 3]]
-            consumer = tensor_consumers[key]
-            weights = (
-                consumer.execute(feeds)["weights"]
-                if execution == "native"
-                else execute(consumer, feeds).outputs["weights"]
-            )
-            for indices, weight in zip(tuples, weights, strict=True):
-                operator = {
-                    "one_electron": "kinetic",
-                    "overlap_pulay": "overlap",
-                    "coulomb": "four_center_eri",
-                    "exact_exchange": "four_center_eri",
-                }[source]
-                owners, values = native.integral(operator, indices, weight)
-                np.add.at(components[source], owners, values)
-                if source == "one_electron":
-                    for atom in range(natom):
-                        owners, values = native.integral(
-                            "nuclear_attraction", indices, weight * charges[atom], atom
+    integral_sources.extend((source, 4) for source in range_primitives)
+    try:
+        for source, rank in integral_sources:
+            iterator = product(range(n), repeat=rank)
+            while tuples := tuple(islice(iterator, integral_terms)):
+                ids = np.asarray(tuples)
+                key = (source, len(tuples))
+                if key not in tensor_consumers:
+                    block = plan.integral_block(source, terms=len(tuples))
+                    tensor_consumers[key] = (
+                        NativeTensorProgram(
+                            block.weights, compiler=compiler, cache=cache
                         )
-                        np.add.at(components[source], owners, values)
+                        if execution == "native"
+                        else block.weights
+                    )
+                if source == "overlap_pulay":
+                    feeds = {
+                        "weighted_density": state.weighted_density[
+                            :, ids[:, 0], ids[:, 1]
+                        ]
+                    }
+                elif source == "exact_exchange" or source in range_primitives:
+                    # Ordered exchange (ab|cd) consumes same-spin D[a,c]D[b,d].
+                    feeds = {
+                        "density_left": state.density[:, ids[:, 0], ids[:, 2]],
+                        "density_right": state.density[:, ids[:, 1], ids[:, 3]],
+                    }
+                else:
+                    feeds = {"density_left": state.density[:, ids[:, 0], ids[:, 1]]}
+                    if rank == 4:
+                        feeds["density_right"] = state.density[
+                            :, ids[:, 2], ids[:, 3]
+                        ]
+                consumer = tensor_consumers[key]
+                weights = (
+                    consumer.execute(feeds)["weights"]
+                    if execution == "native"
+                    else execute(consumer, feeds).outputs["weights"]
+                )
+                for indices, weight in zip(tuples, weights, strict=True):
+                    if source in range_primitives:
+                        owners, values = range_native.integral(
+                            range_primitives[source], indices, weight
+                        )
+                    else:
+                        operator = {
+                            "one_electron": "kinetic",
+                            "overlap_pulay": "overlap",
+                            "coulomb": "four_center_eri",
+                            "exact_exchange": "four_center_eri",
+                        }[source]
+                        owners, values = native.integral(operator, indices, weight)
+                    np.add.at(components[source], owners, values)
+                    if source == "one_electron":
+                        for atom in range(natom):
+                            owners, values = native.integral(
+                                "nuclear_attraction",
+                                indices,
+                                weight * charges[atom],
+                                atom,
+                            )
+                            np.add.at(components[source], owners, values)
+    finally:
+        if range_native is not None:
+            range_work = range_native.compilation_work
+            range_native.close()
+            work.update(range_work)
     for a in range(natom):
         for b in range(a):
             np.add.at(components["nuclear"], [a, b], native.nuclear(a, b, charges))
@@ -640,9 +683,16 @@ def complete_rks_gradient_diagnostic(
         else plan.reduce_diagnostic(components, atoms=natom)
     )
     contract.validate(state)  # No partial publication after replay/failure/replacement.
-    if native.records != work["primitive_record_bound"]:
+    range_records = work.get("range_exchange_primitive_records", 0)
+    if native.records != work["base_primitive_record_bound"]:
+        raise RuntimeError("CPU base derivative primitive work differs from admission")
+    if range_records != work["range_primitive_record_bound"]:
+        raise RuntimeError("CPU range derivative primitive work differs from admission")
+    if native.records + range_records != work["primitive_record_bound"]:
         raise RuntimeError("CPU derivative primitive work differs from admission")
-    work["primitive_records"] = native.records
+    work["base_primitive_records"] = native.records
+    work["range_primitive_records"] = range_records
+    work["primitive_records"] = native.records + range_records
     return DiagnosticStationaryGradient(
         immutable(gradient),
         MappingProxyType({key: immutable(value) for key, value in components.items()}),

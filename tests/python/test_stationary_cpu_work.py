@@ -81,12 +81,38 @@ def test_work_counts_follow_contractions_and_both_provider_grids(
 def test_hybrid_admission_counts_exact_exchange_eri_derivative_pass() -> None:
     state, basis, counts = inputs(ecp=False)
     semilocal = admit(state, basis)["primitive_record_bound"]
-    state._source.method_ir = SimpleNamespace(full_range_exact_exchange=0.25)
+    state._source.method_ir = SimpleNamespace(
+        full_range_exact_exchange=0.25, primitives=()
+    )
     hybrid = admit(state, basis)["primitive_record_bound"]
     extra = sum(counts) ** 4
     assert hybrid == semilocal + extra
     with pytest.raises(ValueError, match="primitive work budget"):
         admit(state, basis, max_primitive_records=hybrid - 1)
+
+
+def test_range_hybrid_admission_counts_each_sr_lr_derivative_pass() -> None:
+    state, basis, counts = inputs(ecp=False)
+    semilocal = admit(state, basis)["primitive_record_bound"]
+    state._source.method_ir = SimpleNamespace(
+        full_range_exact_exchange=0,
+        primitives=(
+            SimpleNamespace(kind="range_separated_exchange"),
+            SimpleNamespace(kind="range_separated_exchange"),
+        ),
+    )
+    work = admit(state, basis)
+    extra = sum(counts) ** 4
+    assert work["range_exchange_sources"] == 2
+    assert work["base_primitive_record_bound"] == semilocal
+    assert work["range_primitive_record_bound"] == 2 * extra
+    assert work["primitive_record_bound"] == semilocal + 2 * extra
+    with pytest.raises(ValueError, match="primitive work budget"):
+        admit(
+            state,
+            basis,
+            max_primitive_records=work["primitive_record_bound"] - 1,
+        )
 
 
 def test_all_electron_has_no_ecp_work_or_dense_provider_limit() -> None:
