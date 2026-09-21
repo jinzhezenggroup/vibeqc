@@ -139,11 +139,45 @@ def test_composed_ragged_replay_preserves_per_item_failure_boundary() -> None:
     assert diagnostic.system_count == 2
 
 
-def test_global_resource_plan_fails_closed_for_composed_d3_owner() -> None:
+def test_global_resource_plan_includes_composed_d3_owner() -> None:
     graph = resolve_method("PBE-D3(BJ)", spin="unpolarized")
     calculator = Calculator(method=graph, ks_options=KsOptions(grid=GRID))
-    with pytest.raises(NotImplementedError, match="D3 owner"):
-        calculator.estimate_resources([H2])
+    plan = calculator.estimate_resources([H2]).require_feasible()
+
+    assert {request.name for request in plan.requests} == {"ks", "d3"}
+    assert dict(plan.selections)["d3"] == "cpu-d3-resident"
+    d3_request = next(request for request in plan.requests if request.name == "d3")
+    d3_candidate = next(
+        candidate
+        for candidate in d3_request.candidates
+        if candidate.name == dict(plan.selections)["d3"]
+    )
+    planned = dict(d3_candidate.decisions)
+
+    with calculator.prepare_batch(
+        [H2], warm_start=False, resource_plan=plan
+    ) as batch:
+        diagnostic = batch.dispersion_diagnostic
+
+    assert diagnostic.plan_host_bytes == int(planned["plan_host_bytes"])
+    assert diagnostic.execution_host_bytes == int(planned["execution_host_bytes"])
+    assert diagnostic.device_bytes == int(planned["device_bytes"])
+    assert diagnostic.table_bytes == int(planned["table_bytes"])
+    assert diagnostic.workspace_bytes == int(planned["workspace_bytes"])
+
+
+def test_d3_local_memory_cap_participates_in_global_plan() -> None:
+    graph = resolve_method("PBE-D3(BJ)", spin="unpolarized")
+    calculator = Calculator(
+        method=graph,
+        ks_options=KsOptions(grid=GRID),
+        dispersion_memory_budget_bytes=1,
+    )
+    plan = calculator.estimate_resources([H2])
+
+    assert plan.status == "infeasible"
+    assert plan.diagnostic is not None
+    assert "dispersion maximum_bytes=1" in plan.diagnostic
 
 
 def test_d3_does_not_promote_unqualified_pbe0_forces() -> None:
