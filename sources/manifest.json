@@ -110,7 +110,7 @@
     "libxc-xc-admission": {
       "canonical_inputs": {
         "python/vibeqc_compiler/xc/b88_vwn_maple.py": "b51c019c6f51f17b58121f20cc631099b6228f1b43f0134a9666ecb174ca076b",
-        "python/vibeqc_compiler/xc/expressions.py": "349f45b1770e725ebb1a4781dc19a41ed6ec74f39affc3702cbdc55375e7f60e",
+        "python/vibeqc_compiler/xc/expressions.py": "a2e02076d84f115d1b190d21e3b9b43238d22b415f8269f22fda3f3095a5d316",
         "python/vibeqc_compiler/xc/p86_pz_maple.py": "a1bbdfe8bba635389861c87a99da072dce6b74dd820b0259593e6eb3a0a04f15",
         "python/vibeqc_compiler/xc/pbe_maple.py": "177ec68c70f8c0c59b1d4a01fba275cc101c959238ad3583e2294c0017647e8e",
         "python/vibeqc_compiler/xc/rsh_expressions.py": "c9f00713bdee06639d035f755975c24a65d39b28fe025b2054aafd32d4f2806a",
