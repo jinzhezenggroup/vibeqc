@@ -31,7 +31,8 @@ if TYPE_CHECKING:
 
 _METHODS = _method_manifest.METHOD_NAME_TO_ID
 _HF_METHODS = _method_manifest.HF_METHOD_IDS
-_CORRELATED_METHODS = frozenset((_native.METHOD_MP2, _native.METHOD_RCCSD))
+_COUPLED_CLUSTER_METHODS = frozenset((_native.METHOD_RCCSD, _native.METHOD_RCCSD_T))
+_CORRELATED_METHODS = frozenset((_native.METHOD_MP2, *_COUPLED_CLUSTER_METHODS))
 
 
 @dataclass(frozen=True)
@@ -123,6 +124,10 @@ class CorrelationResult:
     ccsd_amplitude_d2h_bytes: int
     ccsd_synchronizations: int
     ccsd_replay_equation_hash: str
+    ccsd_t_triples_energy: float
+    ccsd_t_virtual_triples: int
+    ccsd_t_workspace_bytes: int
+    ccsd_t_equation_hash: str
 
 
 def _read_correlation_result(
@@ -158,7 +163,12 @@ def _read_correlation_result(
         if name not in ("struct_size", "abi_version")
     }
     values["mo_host_staging"] = bool(values["mo_host_staging"])
-    for key in ("equation_hash", "response_operator_hash", "ccsd_replay_equation_hash"):
+    for key in (
+        "equation_hash",
+        "response_operator_hash",
+        "ccsd_replay_equation_hash",
+        "ccsd_t_equation_hash",
+    ):
         values[key] = values[key].decode("ascii")
     return CorrelationResult(**values)
 
@@ -696,7 +706,7 @@ class Calculator:
             )
         if not np.isfinite(mp2_denominator_threshold) or mp2_denominator_threshold <= 0:
             raise ValueError("mp2_denominator_threshold must be finite and positive")
-        if self._method == _native.METHOD_RCCSD:
+        if self._method in _COUPLED_CLUSTER_METHODS:
             for name, value in (
                 ("ccsd_max_iterations", ccsd_max_iterations),
                 ("ccsd_diis_history", ccsd_diis_history),
@@ -730,7 +740,7 @@ class Calculator:
                 raise ValueError("ccsd_frozen_core must be a non-negative integer")
             if ccsd_frozen_core:
                 raise NotImplementedError(
-                    "native RCCSD frozen-core references are not implemented"
+                    "native coupled-cluster frozen-core references are not implemented"
                 )
         self._correlation_memory_budget_bytes = correlation_memory_budget_bytes
         self._mp2_denominator_threshold = float(mp2_denominator_threshold)
@@ -851,14 +861,18 @@ class Calculator:
                 supported_properties=self._capabilities.supported_properties
                 | {"forces"},
             )
-        if self._method == _native.METHOD_RCCSD:
+        if self._method in _COUPLED_CLUSTER_METHODS:
+            if self._method == _native.METHOD_RCCSD_T and device != "cpu":
+                raise NotImplementedError(
+                    "native RCCSD(T) CUDA owner is not promoted yet; use device='cpu'"
+                )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError(
-                    "native RCCSD density fitting is not implemented"
+                    "native coupled-cluster density fitting is not implemented"
                 )
             if auxiliary_basis is not None:
                 raise ValueError(
-                    "conventional RCCSD does not accept an auxiliary basis"
+                    "conventional coupled-cluster methods do not accept an auxiliary basis"
                 )
         if self._capabilities.family == "density_functional":
             if (
@@ -961,7 +975,7 @@ class Calculator:
                     version=min(self._ks_options_version, 3),
                 )
             )
-        if self._method == _native.METHOD_RCCSD:
+        if self._method in _COUPLED_CLUSTER_METHODS:
             descriptor.ccsd_max_iterations = self._ccsd_max_iterations
             descriptor.ccsd_diis_history = self._ccsd_diis_history
             descriptor.ccsd_energy_tolerance = self._ccsd_energy_tolerance
@@ -1111,7 +1125,7 @@ class Calculator:
                         "ccsd_level_shift": self._ccsd_level_shift,
                         "ccsd_frozen_core": self._ccsd_frozen_core,
                     }
-                    if self._method == _native.METHOD_RCCSD
+                    if self._method in _COUPLED_CLUSTER_METHODS
                     else {}
                 ),
                 "density_fitting": self._density_fitting_mode,

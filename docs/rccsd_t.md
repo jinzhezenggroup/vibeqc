@@ -1,10 +1,12 @@
 # RCCSD(T) energy and internal analytic-gradient validation
 
 `tools.vibeqc_cc/triples.py` provides the auditable standard closed-shell
-non-iterative (T) energy definition used by RCCSD(T). Bounded CUDA triples and
-generated response paths share that definition. The reserved native/public
-`RCCSD_T` method remains inactive: public `Calculator` forces are not enabled.
-PySCF is used only by pinned validation tooling and is never a runtime dependency.
+non-iterative (T) energy definition used by RCCSD(T). Bounded CUDA triples, the
+generated native CPU energy evaluator, and generated response paths share that
+definition. `VIBEQC_METHOD_RCCSD_T` now has a native/public CPU energy owner and
+homogeneous prepared-batch support; public analytic forces and the native CUDA
+owner remain fail-closed. PySCF is used only by pinned validation tooling and is
+never a runtime dependency.
 
 ## Mathematical contract
 
@@ -205,7 +207,8 @@ projection is applied after assembly.
 Pinned PySCF 2.14.0 analytic gradients for H2O and NH3 are independent acceptance
 oracles in `tests/python/test_ccsd_t_complete_gradient.py`; complete-energy
 finite differences and omission controls remain in
-`tests/python/test_ccsd_t_gradient_validation.py`. Public/native RCCSD(T) force
-registration, bindings, prepared batches, and failure propagation remain #155 C.
-The ownership rationale is recorded in
+`tests/python/test_ccsd_t_gradient_validation.py`. The native/public CPU energy
+owner and homogeneous prepared batch are covered by
+`tests/python/test_rccsdt_public.py`; native/public force promotion remains
+#155 C. The ownership rationale is recorded in
 [the complete-gradient Agent Note](../.agents/notes/implemented/numerics/2026-09-21-ccsdt-complete-gradient-assembly.md).

@@ -688,6 +688,14 @@ typedef struct vibeqc_correlation_diagnostic {
   uint64_t ccsd_amplitude_d2h_bytes;
   uint64_t ccsd_synchronizations;
   char ccsd_replay_equation_hash[65];
+  /** Standard canonical noniterative (T) correction; zero for non-RCCSD(T) methods. */
+  double ccsd_t_triples_energy;
+  /** Number of triangular virtual triples evaluated by the native (T) owner. */
+  uint64_t ccsd_t_virtual_triples;
+  /** Peak temporary numeric workspace owned by the native (T) evaluator. */
+  uint64_t ccsd_t_workspace_bytes;
+  /** Audited standard-(T) inventory identity; empty for non-RCCSD(T) methods. */
+  char ccsd_t_equation_hash[65];
 } vibeqc_correlation_diagnostic;
 
 /** Executable capabilities for one method identifier. */

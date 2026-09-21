@@ -295,6 +295,10 @@ class CorrelationDiagnostic(ctypes.Structure):
         ("ccsd_amplitude_d2h_bytes", ctypes.c_uint64),
         ("ccsd_synchronizations", ctypes.c_uint64),
         ("ccsd_replay_equation_hash", ctypes.c_char * 65),
+        ("ccsd_t_triples_energy", ctypes.c_double),
+        ("ccsd_t_virtual_triples", ctypes.c_uint64),
+        ("ccsd_t_workspace_bytes", ctypes.c_uint64),
+        ("ccsd_t_equation_hash", ctypes.c_char * 65),
     ]
 
 

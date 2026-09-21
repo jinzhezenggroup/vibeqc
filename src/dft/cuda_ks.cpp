@@ -146,6 +146,12 @@ struct CudaKsPlan::Impl : KsStateStorage {
   std::array<std::size_t, 2> occupations{};
   std::vector<double> orthogonalizer, cold_density, host_xc_density, host_xc_alpha, host_xc_beta,
       host_xc_potential;
+  // Async H2D copies retain these controls through the existing stream drain.
+  std::array<double, 3> host_xc_totals{};
+  int host_xc_error{};
+  std::array<std::int32_t, 2> host_spin_counts{};
+  std::array<std::uint8_t, 2> host_selected{}, host_all_spins{1, 1};
+  std::uint8_t host_one{1};
   GridSpec grid_spec;
   CudaXcLayout xc_layout;
   CudaKsResources resource;
@@ -275,7 +281,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
         (orthogonalizer.capacity() + cold_density.capacity() + host_xc_density.capacity() +
          host_xc_alpha.capacity() + host_xc_beta.capacity() + host_xc_potential.capacity()) *
             sizeof(double) +
-        output.dft_diagnostic.history.capacity() * sizeof(ScfIteration);
+        output.dft_diagnostic.history.capacity() * sizeof(ScfIteration) + sizeof(host_xc_totals) +
+        sizeof(host_xc_error) + sizeof(host_spin_counts) + sizeof(host_selected) +
+        sizeof(host_all_spins) + sizeof(host_one);
     try {
       check(runtime::resource_cuda_malloc(&arena, resource.state_device_bytes));
       partition(n, spins, history, arena);
@@ -289,18 +297,16 @@ struct CudaKsPlan::Impl : KsStateStorage {
       upload(hcore, provider.one_electron().hcore.data(), matrix * sizeof(double));
       upload(overlap, provider.one_electron().overlap.data(), matrix * sizeof(double));
       upload(x, orthogonalizer.data(), matrix * sizeof(double));
-      const std::int32_t spin_counts[]{static_cast<std::int32_t>(occupations[0]),
-                                       static_cast<std::int32_t>(occupations[1])};
-      const std::uint8_t selected[]{static_cast<std::uint8_t>(occupations[0] > 0),
-                                    static_cast<std::uint8_t>(occupations[1] > 0)};
-      upload(occupied, spin_counts, spins * sizeof(std::int32_t));
-      upload(spin_enabled, selected, spins * sizeof(std::uint8_t));
-      const std::uint8_t all_spins[]{1, 1};
-      const std::uint8_t one = 1;
-      upload(final_spin_enabled, all_spins, spins * sizeof(std::uint8_t));
-      upload(final_enabled, &one, sizeof(one));
+      host_spin_counts = {static_cast<std::int32_t>(occupations[0]),
+                          static_cast<std::int32_t>(occupations[1])};
+      host_selected = {static_cast<std::uint8_t>(occupations[0] > 0),
+                       static_cast<std::uint8_t>(occupations[1] > 0)};
+      upload(occupied, host_spin_counts.data(), spins * sizeof(std::int32_t));
+      upload(spin_enabled, host_selected.data(), spins * sizeof(std::uint8_t));
+      upload(final_spin_enabled, host_all_spins.data(), spins * sizeof(std::uint8_t));
+      upload(final_enabled, &host_one, sizeof(host_one));
       if (!host_unfused) {
-        // XC setup drains this same stream, including the small stack inputs.
+        // Device-fused XC setup drains this same stream.
         xc = std::make_unique<CudaXcPlan>(basis, grid, functional, spins == 2, tile, xc_arena,
                                           resource.xc_device_bytes, stream);
       }
@@ -593,7 +599,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     ++movement.xc_host_synchronizations;
     ++movement.synchronizations;
 
-    std::array<double, 3> totals{};
+    host_xc_totals.fill(0.0);
     if (spins == 1) {
       XcIntegral value;
       if (functional == 0U)
@@ -605,7 +611,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       if (value.potential.size() != matrix)
         throw std::runtime_error("host-unfused RKS XC potential size changed");
       std::copy(value.potential.begin(), value.potential.end(), host_xc_potential.begin());
-      totals = {value.energy, 0.5 * value.electrons, 0.5 * value.electrons};
+      host_xc_totals = {value.energy, 0.5 * value.electrons, 0.5 * value.electrons};
     } else {
       std::copy_n(host_xc_density.begin(), matrix, host_xc_alpha.begin());
       std::copy_n(host_xc_density.begin() + matrix, matrix, host_xc_beta.begin());
@@ -623,15 +629,15 @@ struct CudaKsPlan::Impl : KsStateStorage {
       std::copy(value.potential[0].begin(), value.potential[0].end(), host_xc_potential.begin());
       std::copy(value.potential[1].begin(), value.potential[1].end(),
                 host_xc_potential.begin() + matrix);
-      totals = {value.energy, value.electrons[0], value.electrons[1]};
+      host_xc_totals = {value.energy, value.electrons[0], value.electrons[1]};
     }
 
-    const int error = 0;
     check(cudaMemcpyAsync(tmp1, host_xc_potential.data(), bytes, cudaMemcpyHostToDevice, stream));
-    check(cudaMemcpyAsync(staged_xc_totals, totals.data(), sizeof(totals), cudaMemcpyHostToDevice,
-                          stream));
-    check(cudaMemcpyAsync(staged_xc_error, &error, sizeof(error), cudaMemcpyHostToDevice, stream));
-    movement.xc_host_h2d_bytes += bytes + sizeof(totals) + sizeof(error);
+    check(cudaMemcpyAsync(staged_xc_totals, host_xc_totals.data(), sizeof(host_xc_totals),
+                          cudaMemcpyHostToDevice, stream));
+    check(cudaMemcpyAsync(staged_xc_error, &host_xc_error, sizeof(host_xc_error),
+                          cudaMemcpyHostToDevice, stream));
+    movement.xc_host_h2d_bytes += bytes + sizeof(host_xc_totals) + sizeof(host_xc_error);
     return {next_generation, n, spins, tmp1, staged_xc_totals, staged_xc_error, stream};
   }
 

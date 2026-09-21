@@ -111,6 +111,16 @@ macro(vibeqc_register_host_generated_sources target)
     DEPENDS ${VIBEQC_RCCSD_GENERATOR_INPUTS}
     ARGS --cpu-header "${VIBEQC_RCCSD_CPU_HEADER}")
 
+  set(VIBEQC_RCCSDT_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsdt_cpu.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_rccsdt_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsdt_native.py"
+    OUTPUTS "${VIBEQC_RCCSDT_CPU_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_cc/triples.py"
+    ARGS --output "${VIBEQC_RCCSDT_CPU_HEADER}")
+
   set(VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_hf_response_contract.hpp")
   vibeqc_register_generated_sources(
