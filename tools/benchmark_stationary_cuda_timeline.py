@@ -24,6 +24,7 @@ from vibeqc._dft_gradient import StationaryKsState
 from vibeqc._stationary_cuda import complete_rks_cuda_gradient_diagnostic
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.provenance import atomic_json
 from vibeqc_compiler.dft import NativeAO
 
 SYSTEMS = {
@@ -231,10 +232,11 @@ def benchmark_case(
     compiler: CudaCompilerAdapter,
     cache: Path,
     same_state_repeats: int,
+    records: list[dict[str, typing.Any]] | None = None,
 ) -> list[dict[str, typing.Any]]:
     charge, multiplicity = _spin(method)
     calc = _calculator(method)
-    records: list[dict[str, typing.Any]] = []
+    records = [] if records is None else records
     cache.mkdir(parents=True, exist_ok=True)
     # A cold measurement owns a fresh child, never deletes caller cache/evidence.
     cache = Path(tempfile.mkdtemp(prefix="cold-", dir=cache))
@@ -370,25 +372,12 @@ def main() -> None:
         Path(nvcc), cuda_target_info(args.target), compile_timeout=600
     )
     records: list[dict[str, typing.Any]] = []
-    for method in methods:
-        for system in systems:
-            print(f"issue662: {method} {system}", flush=True)
-            records.extend(
-                benchmark_case(
-                    system=system,
-                    atoms=SYSTEMS[system],
-                    method=method,
-                    compiler=compiler,
-                    cache=args.cache / method / system,
-                    same_state_repeats=args.same_state_repeats,
-                )
-            )
-
     library_text = os.environ.get("VIBEQC_LIBRARY")
     library = Path(library_text) if library_text else None
     payload = {
         "schema": "vibeqc.stationary-cuda-force-benchmark.v1",
         "issue": 662,
+        "completed": False,
         "records": records,
         "provenance": {
             "head": _git(["rev-parse", "HEAD"]),
@@ -411,8 +400,29 @@ def main() -> None:
         },
     }
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    try:
+        for method in methods:
+            for system in systems:
+                print(f"issue662: {method} {system}", flush=True)
+                benchmark_case(
+                    system=system,
+                    atoms=SYSTEMS[system],
+                    method=method,
+                    compiler=compiler,
+                    cache=args.cache / method / system,
+                    same_state_repeats=args.same_state_repeats,
+                    records=records,
+                )
+        payload["completed"] = True
+    except Exception as error:
+        payload["failure"] = _failed_record(
+            system=system, method=method, scenario="case", repeat=0, error=error
+        )
+        raise
+    finally:
+        # Retain completed and partial-case rows even if a later SCF/export fails.
+        # Publication does not swallow the failure or relabel the campaign complete.
+        atomic_json(args.output, payload)
     ok = sum(record["status"] == "ok" for record in records)
     unsupported = sum(record["status"] == "unsupported" for record in records)
     print(
