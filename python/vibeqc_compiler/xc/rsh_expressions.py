@@ -13,6 +13,7 @@ from fractions import Fraction as F
 from vibeqc_compiler.integral.expr import Expr, Graph
 
 from .p86_pz_maple import p86_correlation, pz_correlation
+from .rsh_maple import lyp_correlation
 
 
 def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.Any:
@@ -239,7 +240,7 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
         epsilon = aux(0) * (1 - fz) + aux(1) * fz
         return n * epsilon
 
-    def lyp_correlation() -> Expr:
+    def b3lyp_lyp_tail_continuation() -> Expr:
         a_lyp = F("0.04918")
         b_lyp = F("0.132")
         c_lyp = F("0.2533")
@@ -295,7 +296,11 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
         "GGA_C_P86": lambda: p86_correlation(graph, spec, variables),
         "LDA_C_VWN": vwn_correlation,
         "LDA_C_VWN_RPA": vwn_rpa_correlation,
-        "GGA_C_LYP": lyp_correlation,
+        "GGA_C_LYP": lambda: (
+            b3lyp_lyp_tail_continuation()
+            if production
+            else lyp_correlation(graph, spec, variables)
+        ),
     }
     energy = graph.sum(
         coefficient * builders[name]()

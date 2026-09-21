@@ -2,7 +2,17 @@
 
 import pytest
 from vibeqc_compiler.common.pass_manager import PassManager, PassStage
-from vibeqc_compiler.tensor import Program, constant, execute, multiply, optimize
+from vibeqc_compiler.tensor import (
+    Index,
+    IndexSpace,
+    Program,
+    TensorSpec,
+    constant,
+    execute,
+    input_tensor,
+    multiply,
+    optimize,
+)
 
 
 def fingerprint(value: int) -> str:
@@ -120,3 +130,85 @@ def test_tensor_optimizer_records_shared_pipeline_without_changing_equation() ->
         "exact_cse",
         "dead_nodes",
     ]
+    pruning = provenance["pruning_diagnostics"]
+    assert pruning["schema"] == "vibeqc.compiler.pruning.v1"
+    assert pruning["requested_outputs"] == ["value"]
+    assert pruning["retained_outputs"] == ["value"]
+    assert pruning["nodes_before"] > pruning["nodes_after"]
+    assert pruning["nodes_removed"] == (
+        pruning["nodes_before"] - pruning["nodes_after"]
+    )
+    assert pruning["definitions_before"] == 1
+    assert pruning["definitions_after"] == 0
+    assert pruning["definitions_removed"] == 1
+    assert pruning["minimal_before_lowering"] is True
+    assert optimized.nodes == optimized.live_nodes
+
+
+def test_tensor_optimizer_projects_optional_diagnostics_before_dce() -> None:
+    """Production roots keep final outputs; diagnostics survive only on demand."""
+
+    i = Index("i", IndexSpace("ao", "batch", 4))
+    spec = TensorSpec((i,), role="input")
+    density = input_tensor("density", spec)
+    diagnostic_source = input_tensor("stationary_weight_source", spec)
+    force = multiply(density, density)
+    diagnostic = multiply(density, diagnostic_source)
+    program = Program(
+        {
+            "force": force,
+            "stationary_weight_diagnostic": diagnostic,
+        }
+    )
+
+    production = optimize(program, requested_outputs=("force",))
+    pruning = production.provenance["pruning_diagnostics"]
+    assert tuple(production.outputs) == ("force",)
+    assert pruning["available_outputs"] == [
+        "force",
+        "stationary_weight_diagnostic",
+    ]
+    assert pruning["requested_outputs"] == ["force"]
+    assert pruning["retained_outputs"] == ["force"]
+    assert pruning["removed_outputs"] == ["stationary_weight_diagnostic"]
+    assert pruning["inputs_before"] == ["density", "stationary_weight_source"]
+    assert pruning["inputs_after"] == ["density"]
+    assert pruning["removed_inputs"] == ["stationary_weight_source"]
+    assert all(
+        not (node.op == "input" and node.attrs["name"] == "stationary_weight_source")
+        for node in production.nodes
+    )
+
+    diagnostic_build = optimize(
+        program,
+        requested_outputs=("force", "stationary_weight_diagnostic"),
+    )
+    diagnostic_pruning = diagnostic_build.provenance["pruning_diagnostics"]
+    assert tuple(diagnostic_build.outputs) == (
+        "force",
+        "stationary_weight_diagnostic",
+    )
+    assert diagnostic_pruning["removed_outputs"] == []
+    assert diagnostic_pruning["removed_inputs"] == []
+    assert (
+        diagnostic_build.provenance["optimizer_identity"]
+        == (production.provenance["optimizer_identity"])
+    )
+    assert (
+        diagnostic_build.provenance["specialized_logical_hash"]
+        != (production.provenance["specialized_logical_hash"])
+    )
+    assert diagnostic_build.logical_hash != production.logical_hash
+
+
+def test_tensor_output_specialization_fails_closed() -> None:
+    program = Program({"value": multiply(constant(2), constant(3))})
+
+    with pytest.raises(ValueError, match="at least one output"):
+        optimize(program, requested_outputs=())
+    with pytest.raises(ValueError, match="duplicate outputs"):
+        optimize(program, requested_outputs=("value", "value"))
+    with pytest.raises(ValueError, match="unknown outputs"):
+        optimize(program, requested_outputs=("missing",))
+    with pytest.raises(TypeError, match="sequence"):
+        optimize(program, requested_outputs="value")
