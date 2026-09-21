@@ -225,6 +225,56 @@ class CudaKernelIR:
 KernelIR = CudaKernelIR
 
 
+def _uses_scalar_fixed_root_force(integral: IntegralIR) -> bool:
+    """Return whether the generic one-task-per-lane fixed-root path is required."""
+
+    return (
+        isinstance(integral.spec, ShellClassSpec)
+        and KernelConsumer.FORCE in integral.consumers
+        and integral.recurrence.startswith("rys")
+        and integral.required_rys_roots == 2
+    )
+
+
+def _target_resident_block_floor(
+    target: CudaTargetInfo,
+    block_threads: int,
+) -> int:
+    """Derive a legal launch-bound floor only from target resource limits."""
+
+    thread_limit = target.maximum_threads_per_sm // block_threads
+    register_limit = target.registers_per_sm // (
+        target.maximum_registers_per_thread * block_threads
+    )
+    return max(
+        1,
+        min(
+            target.maximum_blocks_per_sm,
+            thread_limit,
+            register_limit,
+        ),
+    )
+
+
+def _default_schedule_priority(
+    integral: IntegralIR,
+    schedule: CudaScheduleIR,
+) -> tuple[int, int, int]:
+    """Rank correctness fallbacks without shell, recurrence-name, or device tables."""
+
+    if _uses_scalar_fixed_root_force(integral):
+        family_rank = 0 if schedule.kind == ScheduleKind.THREAD_TASKS else 4
+    elif integral.derivative is None:
+        family_rank = 0 if schedule.kind == ScheduleKind.PACKED_TASKS else 3
+    elif schedule.kind == ScheduleKind.COMPONENT_LANES:
+        family_rank = 1
+    elif schedule.kind == ScheduleKind.TILED_COMPONENTS:
+        family_rank = 2
+    else:
+        family_rank = 3
+    return (family_rank, schedule.block_threads, schedule.component_tile)
+
+
 def schedule_candidates(
     integral: IntegralIR,
     target: CudaTargetInfo,
@@ -239,15 +289,11 @@ def schedule_candidates(
     warp_size = target.warp_size
     candidates: list[CudaScheduleIR] = []
 
-    # Low-order fixed-root force lowering owns one complete shell task per
-    # lane. Keep this as a recurrence/capability rule rather than a
-    # shell-class production table so any mathematically compatible class can
-    # inherit the accepted scalar Rys2 execution model.
-    if (
-        isinstance(integral.spec, ShellClassSpec)
-        and integral.recurrence == "rys2"
-        and warp_size == 32
-    ):
+    # The two-root fixed-root force backend owns one complete shell task per
+    # lane.  Root count comes from IntegralIR mathematics; launch bounds come
+    # only from target resources.  No shell class, recurrence spelling, GPU
+    # model, or occupancy magic number participates in this candidate.
+    if _uses_scalar_fixed_root_force(integral):
         candidates.append(
             CudaScheduleIR(
                 kind=ScheduleKind.THREAD_TASKS,
@@ -255,10 +301,9 @@ def schedule_candidates(
                 component_tile=component_count,
                 tasks_per_warp=warp_size,
                 shared_coulomb=False,
-                minimum_blocks_per_sm=min(
-                    8,
-                    target.maximum_blocks_per_sm,
-                    target.maximum_threads_per_sm // warp_size,
+                minimum_blocks_per_sm=_target_resident_block_floor(
+                    target,
+                    warp_size,
                 ),
                 warp_size=warp_size,
             )
@@ -352,20 +397,11 @@ def default_schedule(
     """Return a conservative target-legal schedule for ``integral``."""
 
     candidates = schedule_candidates(integral, target)
-    if integral.recurrence == "rys2":
-        for candidate in candidates:
-            if candidate.kind == ScheduleKind.THREAD_TASKS:
-                return candidate
-    if integral.consumers == frozenset((KernelConsumer.FOCK,)):
-        for candidate in candidates:
-            if candidate.kind == ScheduleKind.PACKED_TASKS:
-                return candidate
-    for candidate in candidates:
-        if candidate.kind == ScheduleKind.COMPONENT_LANES:
-            return candidate
-    for candidate in candidates:
-        if candidate.kind == ScheduleKind.TILED_COMPONENTS:
-            return candidate
+    if candidates:
+        return min(
+            candidates,
+            key=lambda candidate: _default_schedule_priority(integral, candidate),
+        )
     name = (
         integral.spec.name
         if isinstance(integral.spec, ShellClassSpec)
