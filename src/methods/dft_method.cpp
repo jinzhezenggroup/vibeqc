@@ -1026,7 +1026,8 @@ void validate_ks_spin_state(const NativeKsExecutionPlan& execution_plan,
   if (system.electron_count <= 0 || spin_excess < 0 || spin_excess > system.electron_count ||
       (system.electron_count - spin_excess) % 2 != 0)
     throw std::invalid_argument(
-        "UKS requires electron count and multiplicity to define integer nonnegative spin occupations");
+        "UKS requires electron count and multiplicity to define integer "
+        "nonnegative spin occupations");
 }
 
 vibeqc_status validate_dft_system(vibeqc_method, const core::System& system,
@@ -1053,6 +1054,7 @@ std::unique_ptr<PreparedCalculation> prepare_dft_calculation(
 #endif
   NativeKsExecutionPlan execution_plan;
   auto options = dft_options(descriptor, context.requested_backend, execution_plan);
+  validate_ks_spin_state(execution_plan, system);
   auto grid = ks_grid_options(descriptor, options);
   return std::make_unique<KsPreparedCalculation>(capabilities, system, execution_plan,
                                                  std::move(options), std::move(grid),
