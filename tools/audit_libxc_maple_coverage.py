@@ -71,6 +71,38 @@ def _definition_expression(
     return dict(module.assignments)[name], ()
 
 
+def _expression_nodes(expression: str) -> tuple[ast.AST, ...]:
+    """Include deferred bounded-sum terms in the static expression graph."""
+    pending = [expression]
+    seen: set[str] = set()
+    nodes: list[ast.AST] = []
+    while pending:
+        text = pending.pop()
+        if text in seen:
+            continue
+        seen.add(text)
+        tree = libxc_maple._parse_expression(text)
+        for node in ast.walk(tree):
+            nodes.append(node)
+            if not (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "_maple_bounded_add"
+            ):
+                continue
+            if len(node.args) != 3 or not isinstance(node.args[2], ast.List):
+                raise libxc_maple.MapleImportError("invalid encoded bounded sum")
+            for term in node.args[2].elts:
+                if not isinstance(term, ast.Constant) or not isinstance(
+                    term.value, str
+                ):
+                    raise libxc_maple.MapleImportError(
+                        "invalid encoded bounded-sum term"
+                    )
+                pending.append(term.value)
+    return tuple(nodes)
+
+
 def _entry_blockers(
     module: libxc_maple.MapleModule, *, require_entry: bool = True
 ) -> tuple[str, ...]:
@@ -92,12 +124,12 @@ def _entry_blockers(
             continue
         visited.add(key)
         expression, parameters = _definition_expression(module, kind, name)
-        tree = libxc_maple._parse_expression(expression)
+        nodes = _expression_nodes(expression)
         local_names = set(parameters)
 
         references = {
             node.id
-            for node in ast.walk(tree)
+            for node in nodes
             if isinstance(node, ast.Name) and node.id not in local_names
         }
         for reference in references:
@@ -106,7 +138,7 @@ def _entry_blockers(
             elif reference in assignments:
                 pending.append(("assignment", reference))
 
-        for node in ast.walk(tree):
+        for node in nodes:
             if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
                 continue
             target = node.func.id
@@ -133,8 +165,13 @@ def _entry_blockers(
 
 def audit(root: Path = LIBXC_ROOT) -> dict[str, typing.Any]:
     """Audit every pinned .mpl source without changing production semantics."""
+    if not root.is_dir():
+        raise ValueError("Maple audit root must be an existing directory")
+    entries = sorted(path for path in root.glob("*.mpl") if path.is_file())
+    if not entries:
+        raise ValueError("Maple audit root contains no .mpl sources")
     sources: list[dict[str, typing.Any]] = []
-    for entry in sorted(root.glob("*.mpl")):
+    for entry in entries:
         text = entry.read_text(encoding="utf-8")
         functional_type = _functional_type(text)
         is_functional = functional_type is not None
@@ -150,12 +187,12 @@ def audit(root: Path = LIBXC_ROOT) -> dict[str, typing.Any]:
                     defines=defines,
                     allow_duplicate_includes=True,
                 )
+                entry_blockers = _entry_blockers(module, require_entry=is_functional)
             except libxc_maple.MapleImportError as error:
                 record["error"] = str(error)
             else:
                 record["functions"] = len(module.functions)
                 record["assignments"] = len(module.assignments)
-                entry_blockers = _entry_blockers(module, require_entry=is_functional)
                 record["entry_blockers"] = list(entry_blockers)
                 blockers.update(entry_blockers)
             profiles.append(record)
@@ -291,7 +328,10 @@ def main() -> int:
     parser.add_argument("--root", type=Path, default=LIBXC_ROOT)
     args = parser.parse_args()
 
-    report = audit(args.root)
+    try:
+        report = audit(args.root)
+    except (OSError, ValueError) as error:
+        parser.error(str(error))
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.markdown:
