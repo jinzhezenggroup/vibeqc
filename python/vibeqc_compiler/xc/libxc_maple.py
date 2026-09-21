@@ -1004,6 +1004,10 @@ class _Evaluator:
                         node.operation, arguments[0]
                     )
                 elif node.operation == "power":
+                    if not isinstance(node.payload, (Fraction, float)):
+                        raise MapleImportError(
+                            "Maple derivative power requires a numeric exponent"
+                        )
                     result = self.graph.power(arguments[0], float(node.payload))
                 else:
                     raise MapleImportError(
