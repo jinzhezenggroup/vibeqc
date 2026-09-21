@@ -165,8 +165,8 @@ def test_g_codegen_is_explicit_and_production_capability_stays_fail_closed() -> 
     from vibeqc_compiler.integral.one_electron_cuda import (
         _component_layout,
         _emit_component_index,
-        _emit_operator_helpers,
         _emit_support_cuda,
+        _shell_index_expression,
         one_electron_program_inventory,
     )
 
@@ -181,10 +181,10 @@ def test_g_codegen_is_explicit_and_production_capability_stays_fail_closed() -> 
     index_source = _emit_component_index(4)
     assert "switch (x * 25U + y * 5U + z)" in index_source
     assert "return 35U;" in index_source
-    operator_source = _emit_operator_helpers(False, 4)
-    assert "overlap_kinetic_44" in operator_source
-    assert "first >= 35 || second >= 35" in operator_source
-    assert "switch (a * 5U + b)" in operator_source
+    assert (
+        _shell_index_expression("first", limits)
+        == "first < 1 ? 0 : first < 4 ? 1 : first < 10 ? 2 : first < 20 ? 3 : 4"
+    )
     assert "static_assert(Order <= 8);" in _emit_support_cuda(8)
 
     request = build_one_electron_value_ir("kinetic", (4, 0))
