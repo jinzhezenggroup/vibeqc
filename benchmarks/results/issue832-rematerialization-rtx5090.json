@@ -97,8 +97,21 @@
         "materialized_values": 196,
         "rematerialized_values": 3
       },
-      "selected": "pressure_rematerialized",
-      "conclusion": "mixed: rematerialization removes PTXAS spills but loses endpoint time; keep as negative speed evidence, not a production speed promotion"
+      "selected": null,
+      "conclusion": "negative: rematerialization removes PTXAS spills but loses endpoint time; canonical is rejected for spills and rematerialization is rejected for endpoint regression, so there is no promotable winner",
+      "peer_gate_recheck": {
+        "materialized_cse": {
+          "endpoint_ms": 0.468571991,
+          "accepted": false,
+          "rejection": "ptxas reported local-memory spills"
+        },
+        "pressure_rematerialized": {
+          "endpoint_ms": 0.632736027,
+          "accepted": false,
+          "rejection": "endpoint speedup 0.740549x is below the required 1x"
+        },
+        "selected": null
+      }
     },
     {
       "shell_class": "dsss",
@@ -124,7 +137,19 @@
       },
       "selected": "pressure_rematerialized",
       "endpoint_speedup": 1.112731005,
-      "conclusion": "positive: measured endpoint win justifies the register trade-off because target-estimated occupancy and spills do not regress"
+      "conclusion": "positive in two independent runs: measured endpoint timing favors rematerialization while target-estimated occupancy and spills do not regress; magnitude varies, so promotion relies on measured endpoint rather than a fixed expected speedup",
+      "peer_gate_recheck": {
+        "materialized_cse": {
+          "endpoint_ms": 0.573931992,
+          "accepted": true
+        },
+        "pressure_rematerialized": {
+          "endpoint_ms": 0.557940006,
+          "accepted": true
+        },
+        "selected": "pressure_rematerialized",
+        "endpoint_speedup": 1.0286625548052204
+      }
     },
     {
       "shell_class": "psss",

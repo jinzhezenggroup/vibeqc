@@ -500,6 +500,7 @@ def _run_autotune(
             profitability_by_key[trial.key] = profitability
 
             resource_baseline_key = _algebra_resource_baseline_key(trial)
+            endpoint_regression_reasons: list[str] = []
             resource_regression_reasons: list[str] = []
             if resource_baseline_key is not None:
                 baseline_pair = compiled_trials_by_key.get(resource_baseline_key)
@@ -516,10 +517,19 @@ def _run_autotune(
                         baseline_occupancy,
                         runtime_rows.get(resource_baseline_key),
                     )
+                    endpoint_regression_reasons.extend(
+                        profitability.endpoint_regressions_against(
+                            baseline_profitability
+                        )
+                    )
                     resource_regression_reasons.extend(
                         profitability.resource_regressions_against(
                             baseline_profitability
                         )
+                    )
+                    reasons.extend(
+                        "endpoint regression vs canonical algebra peer: " + reason
+                        for reason in endpoint_regression_reasons
                     )
                     reasons.extend(
                         "resource regression vs canonical algebra peer: " + reason
@@ -542,6 +552,7 @@ def _run_autotune(
                 "occupancy": occupancy,
                 "profitability": profitability.to_payload(),
                 "resource_baseline_trial_key": resource_baseline_key,
+                "endpoint_regression_reasons": endpoint_regression_reasons,
                 "resource_regression_reasons": resource_regression_reasons,
                 "runtime": runtime,
                 "production_baseline": is_production_baseline,
