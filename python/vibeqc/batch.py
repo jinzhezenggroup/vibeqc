@@ -391,11 +391,12 @@ class PreparedBatch:
         )
         if len(self._charges) != count or len(self._multiplicities) != count:
             raise ValueError("charges and multiplicities must match the batch size")
-        self._effective_ks_options = calculator._effective_ks_options(
+        self._ks_profile_selection = calculator._effective_ks_selection(
             self._systems,
             charges=self._charges,
             multiplicities=self._multiplicities,
         )
+        self._effective_ks_options = self._ks_profile_selection.options
         for atoms in self._systems:
             calculator._preflight_hf_basis(
                 atoms,
@@ -785,6 +786,8 @@ class PreparedBatch:
         controls = _controls(self._calculator)
         count = len(self._systems)
         coordinate_storage: list[np.ndarray] = []
+        replay_systems = list(self._systems)
+        replay_profile_valid = True
         inputs_pointer = None
         input_count = 0
         if coordinates is not None:
@@ -814,6 +817,23 @@ class PreparedBatch:
                     raise ValueError("coordinates must have shape (natoms, 3)")
                 array = np.ascontiguousarray(raw, dtype=np.float64).reshape(-1)
                 coordinate_storage.append(array)
+                if raw.shape == (self._atom_counts[index], 3) and np.all(
+                    np.isfinite(raw)
+                ):
+                    replay_systems[index] = tuple(
+                        Atom(
+                            atom.atomic_number,
+                            tuple(float(value) for value in position),
+                        )
+                        for atom, position in zip(
+                            self._systems[index], raw, strict=True
+                        )
+                    )
+                else:
+                    # Preserve native per-item failure semantics for malformed or
+                    # nonfinite coordinate payloads. They cannot yield promoted
+                    # scientific evidence, so profile qualification is irrelevant.
+                    replay_profile_valid = False
                 input_descriptors.append(
                     _native.BatchInputDescriptor(
                         ctypes.sizeof(_native.BatchInputDescriptor),
@@ -825,6 +845,23 @@ class PreparedBatch:
             input_array = (_native.BatchInputDescriptor * count)(*input_descriptors)
             inputs_pointer = input_array
             input_count = count
+            if replay_profile_valid:
+                replay_selection = self._calculator._effective_ks_selection(
+                    tuple(replay_systems),
+                    charges=self._charges,
+                    multiplicities=self._multiplicities,
+                )
+                if replay_selection.options != self._effective_ks_options:
+                    raise RuntimeError(
+                        "profile-selected KS execution schedule changed for replay coordinates; prepare a new batch"
+                    )
+                if (
+                    self._ks_profile_selection.exact_profile_match
+                    and not replay_selection.exact_profile_match
+                ):
+                    raise RuntimeError(
+                        "profile-selected KS execution schedule is not qualified for replay coordinates; prepare a new batch"
+                    )
 
         force_storage = [
             (ctypes.c_double * (3 * atom_count))() if native_compute_forces else None

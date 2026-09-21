@@ -823,7 +823,7 @@ def test_profiled_xc_schedule_reaches_direct_and_resource_aware_batch_paths(
 ) -> None:
     """DFT09: one resolved profile schedule must survive every public KS path."""
     from vibeqc import Calculator, KsOptions, ResourceBudget
-    from vibeqc.ks import resolve_ks_options
+    from vibeqc.ks import ProfiledKsSelection, resolve_ks_options
 
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
     resolved = resolve_ks_options(
@@ -848,9 +848,10 @@ def test_profiled_xc_schedule_reaches_direct_and_resource_aware_batch_paths(
         assert len(systems) == 1
         assert tuple(charges) == (0,)
         assert tuple(multiplicities) == (1,)
-        return resolved
+        exact = systems[0][1].position[0] == pytest.approx(0.0)
+        return ProfiledKsSelection(resolved, exact_profile_match=exact)
 
-    monkeypatch.setattr(calculator, "_effective_ks_options", selected)
+    monkeypatch.setattr(calculator, "_effective_ks_selection", selected)
 
     direct = calculator.singlepoint(atoms, properties=("energy",))
     assert direct.converged and direct.executed_backend == "cuda"
@@ -863,6 +864,14 @@ def test_profiled_xc_schedule_reaches_direct_and_resource_aware_batch_paths(
         assert first.executed_backend == second.executed_backend == "cuda"
         assert first.ks_diagnostic.tile_points == 31
         assert second.ks_diagnostic.tile_points == 31
+        moved = np.asarray([atom[1] for atom in atoms], dtype=np.float64)
+        moved[1, 0] += 2.0e-3
+        with pytest.raises(RuntimeError, match="not qualified for replay coordinates"):
+            batch.execute(
+                coordinates=(moved,),
+                strict=True,
+                properties=("energy",),
+            )
 
 
 def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:

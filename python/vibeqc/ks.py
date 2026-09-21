@@ -133,6 +133,14 @@ class KsOptions:
         return canonical_hash(self.to_payload())
 
 
+@dataclass(frozen=True)
+class ProfiledKsSelection:
+    """Batch-local KS options plus exact-profile qualification provenance."""
+
+    options: KsOptions | None
+    exact_profile_match: bool = False
+
+
 def _native_components(method_ir: typing.Any) -> typing.Any:
     """Select supported primitive families by type, not by a method alias."""
     semilocal = tuple(
@@ -296,25 +304,25 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
     return result
 
 
-def profiled_ks_options(
+def profiled_ks_selection(
     options: KsOptions | None,
     diagnostics: dict[str, typing.Any],
     systems: typing.Any,
     *,
     charges: typing.Any,
     multiplicities: typing.Any,
-) -> KsOptions | None:
-    """Apply one exact local DFT09 winner to a batch, otherwise preserve the portable plan."""
+) -> ProfiledKsSelection:
+    """Resolve one exact local DFT09 winner and retain qualification provenance."""
 
     if (
         options is None
         or options.xc_schedule != "device_fused"
         or diagnostics.get("source") != "local"
     ):
-        return options
+        return ProfiledKsSelection(options)
     target = diagnostics.get("target")
     if not isinstance(target, dict):
-        return options
+        return ProfiledKsSelection(options)
     device = target.get("device")
     source_identity = target.get("source_identity")
     if (
@@ -324,7 +332,7 @@ def profiled_ks_options(
         or not isinstance(source_identity, str)
         or not source_identity
     ):
-        return options
+        return ProfiledKsSelection(options)
 
     from vibeqc_compiler.dft.xc_schedule import (
         grid_xc_schedule,
@@ -352,13 +360,13 @@ def profiled_ks_options(
         )
         payload = select_dft_schedule(diagnostics, workload.to_payload())
         if payload is None:
-            return options
+            return ProfiledKsSelection(options)
         schedule = grid_xc_schedule(payload)
         if schedule.point_tile is None:
             raise ValueError("local DFT schedule winner must resolve its point tile")
         selected.append(schedule)
     if not selected or any(item != selected[0] for item in selected[1:]):
-        return options
+        return ProfiledKsSelection(options)
 
     winner = selected[0]
     result = replace(
@@ -367,7 +375,26 @@ def profiled_ks_options(
         tile_points=winner.point_tile,
     )
     object.__setattr__(result, "_method_ir", options._method_ir)
-    return result
+    return ProfiledKsSelection(result, exact_profile_match=True)
+
+
+def profiled_ks_options(
+    options: KsOptions | None,
+    diagnostics: dict[str, typing.Any],
+    systems: typing.Any,
+    *,
+    charges: typing.Any,
+    multiplicities: typing.Any,
+) -> KsOptions | None:
+    """Apply one exact local DFT09 winner to a batch, otherwise preserve the portable plan."""
+
+    return profiled_ks_selection(
+        options,
+        diagnostics,
+        systems,
+        charges=charges,
+        multiplicities=multiplicities,
+    ).options
 
 
 def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
@@ -387,6 +414,14 @@ def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
             radii[z] = radius
     if version not in (1, 2, 3):
         raise ValueError("native KS options version must be 1, 2, or 3")
+    if version == 1 and options.requires_composition_v2:
+        raise NotImplementedError(
+            "native KS options v1 cannot serialize composition options v2"
+        )
+    if version < 3 and options.requires_schedule_v3:
+        raise NotImplementedError(
+            f"native KS options v{version} cannot serialize execution schedules v3"
+        )
     size = (
         _native.KsOptionsDescriptor.composition_version.offset
         if version == 1

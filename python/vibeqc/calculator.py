@@ -1401,21 +1401,23 @@ class Calculator:
                 )
         return request
 
-    def _effective_ks_options(
+    def _effective_ks_selection(
         self,
         systems: typing.Any,
         *,
         charges: typing.Any = None,
         multiplicities: typing.Any = None,
     ) -> typing.Any:
-        """Resolve an exact local DFT09 schedule for this batch without mutating the calculator."""
+        """Resolve and ABI-check one batch-local DFT09 profile selection."""
+
+        from .ks import ProfiledKsSelection
 
         if (
             self._ks_options is None
             or self._device_name != "cuda"
             or self._precision_mode != _native.PRECISION_FP64
         ):
-            return self._ks_options
+            return ProfiledKsSelection(self._ks_options)
         count = len(systems)
         charges = tuple(0 for _ in range(count)) if charges is None else tuple(charges)
         multiplicities = (
@@ -1425,15 +1427,42 @@ class Calculator:
         )
         if len(charges) != count or len(multiplicities) != count:
             raise ValueError("charges and multiplicities must match the batch size")
-        from .ks import profiled_ks_options
+        from .ks import native_ks_options, profiled_ks_selection
 
-        return profiled_ks_options(
+        selection = profiled_ks_selection(
             self._ks_options,
             self.profile_diagnostics,
             systems,
             charges=charges,
             multiplicities=multiplicities,
         )
+        if selection.options is not None:
+            if self._ks_options_version == 0:
+                if selection.options != self._ks_options:
+                    raise NotImplementedError(
+                        "native library does not support profile-selected KS model options"
+                    )
+            else:
+                native_ks_options(
+                    selection.options,
+                    version=min(self._ks_options_version, 3),
+                )
+        return selection
+
+    def _effective_ks_options(
+        self,
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        """Resolve an exact local DFT09 schedule for this batch without mutation."""
+
+        return self._effective_ks_selection(
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+        ).options
 
     def estimate_resources(
         self,

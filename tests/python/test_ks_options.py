@@ -341,6 +341,8 @@ def test_ks_options_v2_suffix_preserves_v1_prefix_and_pbe0_coefficients() -> Non
         new.semilocal_correlation_scale,
         new.fock_exchange_coefficient,
     ) == (0.75, 1.0, -0.125)
+    with pytest.raises(NotImplementedError, match="cannot serialize composition"):
+        native_ks_options(hybrid, version=1)
 
 
 def test_ks_options_v3_schedule_suffix_preserves_older_prefixes() -> None:
@@ -359,6 +361,9 @@ def test_ks_options_v3_schedule_suffix_preserves_older_prefixes() -> None:
     assert fused.identity != unfused.identity
     assert fused.to_payload()["xc_schedule"] == "device_fused"
     assert unfused.to_payload()["xc_schedule"] == "host_unfused"
+    for version in (1, 2):
+        with pytest.raises(NotImplementedError, match="cannot serialize execution"):
+            native_ks_options(unfused, version=version)
     with pytest.raises(ValueError, match="XC schedule"):
         KsOptions(xc_schedule="unknown")
 
