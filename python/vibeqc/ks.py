@@ -138,8 +138,6 @@ def _native_execution_plan(method_ir: typing.Any) -> typing.Any:
     missing = []
     if plan.nonlocal_correlation is not None:
         missing.append("nonlocal-correlation")
-    if plan.post_scf:
-        missing.extend(primitive.kind for primitive in plan.post_scf)
     missing.extend(
         f"{term.operator}-exchange"
         for term in plan.exchange
