@@ -15,7 +15,11 @@ from .numerical import (
     hessian_translation_error,
     numerical_hessian,
 )
-from .response import build_rhf_nuclear_rhs, metric_density_response_mo
+from .response import (
+    build_rhf_nuclear_rhs,
+    build_stationary_nuclear_rhs,
+    metric_density_response_mo,
+)
 from .weights import two_electron_energy, two_electron_weight, weight_energy
 
 # Loading mathematical helpers does not load the optional native library.
@@ -36,6 +40,10 @@ _LAZY = {
     "cphf_relaxation": "analytic",
     "nuclear_closed_form": "analytic",
     "provider_components": "analytic",
+    "StationaryNuclearResponse": "perturbation",
+    "StationaryNuclearBatchResponse": "perturbation",
+    "solve_stationary_nuclear_perturbation": "perturbation",
+    "solve_stationary_nuclear_perturbations": "perturbation",
 }
 
 __all__ = [
@@ -44,10 +52,13 @@ __all__ = [
     "RHFHVPBlockResult",
     "RHFHVPResult",
     "RHFHessianResult",
+    "StationaryNuclearBatchResponse",
+    "StationaryNuclearResponse",
     "analytic_hessian",
     "assemble_frozen_skeleton",
     "build_reference",
     "build_rhf_nuclear_rhs",
+    "build_stationary_nuclear_rhs",
     "cphf_relaxation",
     "directional_rhf_response",
     "forces_to_gradient",
@@ -63,6 +74,8 @@ __all__ = [
     "rhf_hessian",
     "rhf_hvp",
     "rhf_hvp_many",
+    "solve_stationary_nuclear_perturbation",
+    "solve_stationary_nuclear_perturbations",
     "two_electron_energy",
     "two_electron_weight",
     "validate_hessian_component",
