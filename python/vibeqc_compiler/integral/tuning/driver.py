@@ -580,9 +580,7 @@ def _run_autotune(
                 # noise band. Inside it, use the shared GPU resource key so
                 # rematerialization/fusion choices cannot win merely by making
                 # a smaller source artifact while retaining worse live state.
-                near_fastest = elapsed_ms <= fastest * (
-                    1.0 + ENDPOINT_NOISE_FRACTION
-                )
+                near_fastest = elapsed_ms <= fastest * (1.0 + ENDPOINT_NOISE_FRACTION)
                 if near_fastest:
                     return (
                         0,
