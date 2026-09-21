@@ -2051,9 +2051,12 @@ def test_generated_one_electron_derivatives_are_the_production_default() -> None
     assert "selection == nullptr" in selection
     assert 'std::strcmp(selection, "generated") == 0' in selection
     assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING")' in selection
-    assert "if (selection == nullptr) return 3U;" in selection
+    assert (
+        "if (selection == nullptr) return NucleusCooperativeSchedule::schedule_code;"
+        in selection
+    )
     assert 'std::strcmp(selection, "nucleus_cooperative") == 0' in selection
-    assert "return 3U;" in selection
+    assert "return NucleusCooperativeSchedule::schedule_code;" in selection
 
 
 def test_batched_finalization_reuses_each_converged_raw_fock() -> None:

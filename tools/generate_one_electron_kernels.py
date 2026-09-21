@@ -22,6 +22,10 @@ from vibeqc_compiler.integral.one_electron_cuda import (
     emit_one_electron_values_cuda,
     one_electron_program_inventory,
 )
+from vibeqc_compiler.integral.one_electron_derivative_policy_cuda import (
+    emit_one_electron_derivative_policy_cuda,
+    one_electron_derivative_policy_inventory,
+)
 from vibeqc_compiler.integral.one_electron_derivatives_cuda import (
     emit_one_electron_derivatives_cuda,
     one_electron_derivative_inventory,
@@ -41,10 +45,13 @@ def main() -> None:
     parser.add_argument("--inventory", type=Path)
     parser.add_argument("--derivatives", action="store_true")
     parser.add_argument("--policy-output", type=Path)
+    parser.add_argument("--derivative-policy-output", type=Path)
     parser.add_argument("--cpu-st-output", type=Path)
     args = parser.parse_args()
     if args.derivatives and args.policy_output:
         parser.error("--policy-output applies only to values")
+    if args.derivative_policy_output and not args.derivatives:
+        parser.error("--derivative-policy-output requires --derivatives")
     if not args.output and not args.cpu_st_output:
         parser.error("at least one generated output is required")
     if args.inventory and not args.output:
@@ -52,6 +59,13 @@ def main() -> None:
     policy_source = emit_one_electron_policy_cuda() if args.policy_output else None
     if policy_source is not None:
         write_if_changed(args.policy_output, policy_source)
+    derivative_policy_source = (
+        emit_one_electron_derivative_policy_cuda()
+        if args.derivative_policy_output
+        else None
+    )
+    if derivative_policy_source is not None:
+        write_if_changed(args.derivative_policy_output, derivative_policy_source)
     if args.cpu_st_output:
         write_if_changed(args.cpu_st_output, emit_one_electron_st_cpu())
     source = None
@@ -76,6 +90,13 @@ def main() -> None:
             payload["execution_policy"] = {
                 **one_electron_policy_inventory(),
                 "source_sha256": hashlib.sha256(policy_source.encode()).hexdigest(),
+            }
+        if derivative_policy_source is not None:
+            payload["execution_policy"] = {
+                **one_electron_derivative_policy_inventory(),
+                "source_sha256": hashlib.sha256(
+                    derivative_policy_source.encode()
+                ).hexdigest(),
             }
         write_if_changed(
             args.inventory, json.dumps(payload, sort_keys=True, indent=2) + "\n"

@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "generated_one_electron_derivative_policy.cuh"
+
 namespace vibeqc::scf::cuda_policy {
 namespace {
 
@@ -26,6 +28,8 @@ constexpr double kAutoMixedPrecisionErrorBudgetFraction = 6.25e-02;
 constexpr double kTightConvergedFockReuseDensityRms = 1.0e-12;
 constexpr double kExpandedConvergedFockReuseDensityTolerance = 1.0e-9;
 constexpr double kExpandedConvergedFockReuseDensityRms = 2.0e-9;
+using NucleusCooperativeSchedule =
+    generated_one_electron_derivative_policy::NucleusCooperativeSchedule;
 
 bool enabled(const char* variable) noexcept {
   const char* selection = std::getenv(variable);
@@ -283,11 +287,11 @@ bool generated_one_electron_derivatives_requested() noexcept {
 
 unsigned one_electron_derivative_mapping_requested() noexcept {
   const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING");
-  if (selection == nullptr) return 3U;
+  if (selection == nullptr) return NucleusCooperativeSchedule::schedule_code;
   if (std::strcmp(selection, "serial") == 0 || std::strcmp(selection, "2") == 0) return 2U;
   if (std::strcmp(selection, "nucleus_cooperative") == 0 ||
       std::strcmp(selection, "cooperative") == 0 || std::strcmp(selection, "3") == 0)
-    return 3U;
+    return NucleusCooperativeSchedule::schedule_code;
   if (std::strcmp(selection, "shell_warp") == 0 || std::strcmp(selection, "1") == 0) return 1U;
   return 0U;
 }

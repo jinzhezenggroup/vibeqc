@@ -11,6 +11,7 @@ import typing
 from dataclasses import dataclass
 from itertools import product
 
+from .cooperative_schedule import CooperativeLaneSchedule
 from .cuda import CudaEmitter
 from .df_derivatives import axis_polynomial
 
@@ -20,11 +21,18 @@ SHELL_CLASSES = tuple(product(range(4), repeat=3))
 
 @dataclass(frozen=True)
 class ShellSchedule:
-    """One bounded ownership variant; the scientific cache is unchanged."""
+    """DF-specific storage bound around the shared cooperative ownership IR."""
 
-    component_lanes: int
-    triples_per_block: int
+    cooperative: CooperativeLaneSchedule
     shared_bytes: int
+
+    @property
+    def component_lanes(self) -> int:
+        return self.cooperative.lanes_per_group
+
+    @property
+    def triples_per_block(self) -> int:
+        return self.cooperative.groups_per_workgroup
 
 
 def shell_schedule(angular: typing.Any, variant: typing.Any) -> typing.Any:
@@ -44,7 +52,14 @@ def shell_schedule(angular: typing.Any, variant: typing.Any) -> typing.Any:
     lanes = 32 if variant != 2 else min(32, max(4, 1 << (components - 1).bit_length()))
     limit = 1 if variant == 0 else min(128 // lanes, (48 * 1024 - 1024) // group_bytes)
     groups = 1 << (limit.bit_length() - 1)
-    return ShellSchedule(lanes, groups, groups * group_bytes + 1024)
+    cooperative = CooperativeLaneSchedule(
+        subgroup_size=32,
+        lanes_per_group=lanes,
+        groups_per_workgroup=groups,
+        shared_state=True,
+        group_reduction=True,
+    )
+    return ShellSchedule(cooperative, groups * group_bytes + 1024)
 
 
 def axis_cache_layout(angular: typing.Any) -> typing.Any:
@@ -282,6 +297,7 @@ struct Moments {
                 f"  static constexpr unsigned lanes={schedule.component_lanes};",
                 f"  static constexpr unsigned groups={schedule.triples_per_block};",
                 f"  static constexpr unsigned shared_bytes={schedule.shared_bytes};",
+                f'  static constexpr const char* cooperative_schedule_identity="{schedule.cooperative.identity}";',
                 "};",
             ]
     if classes is None:
