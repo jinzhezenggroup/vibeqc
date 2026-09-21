@@ -434,6 +434,7 @@ def fire_optimize(
     precision: str,
     max_steps: int,
 ) -> dict[str, Any]:
+    policy_started = time.perf_counter()
     coordinates = np.asarray([position for _, position in case.atoms], dtype=float)
     initial_centroid = coordinates.mean(axis=0)
     velocity = np.zeros_like(coordinates)
@@ -568,9 +569,10 @@ def fire_optimize(
         "steps": len(records),
         "retries": retries,
         "scf_iterations": total_iterations,
-        "production_seconds_before_cleanup": production_seconds,
+        "production_seconds_before_cleanup": cleanup_started - policy_started,
+        "successful_endpoint_seconds": production_seconds,
         "strict_cleanup_seconds": cleanup_seconds,
-        "complete_policy_seconds": production_seconds + cleanup_seconds,
+        "complete_policy_seconds": time.perf_counter() - policy_started,
         "strict_final": _jsonable(strict_final),
         "strict_final_force_max_abs": final_force_max,
         "final_coordinates": coordinates.tolist(),

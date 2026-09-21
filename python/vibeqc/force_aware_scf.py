@@ -145,10 +145,11 @@ class ScfForceErrorEstimator:
     training_data_hash: str
     safety_factor: float = 1.25
     diagnostic_floor: float = 1e-14
-    schema_version: int = 1
+    schema_version: int = 2
+    method_basis_domains: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
-        if type(self.schema_version) is not int or self.schema_version != 1:
+        if type(self.schema_version) is not int or self.schema_version != 2:
             raise ValueError("unsupported SCF force-estimator schema")
         if self.diagnostic_kind not in _DIAGNOSTIC_KINDS:
             raise ValueError("unsupported SCF force-estimator diagnostic")
@@ -159,6 +160,14 @@ class ScfForceErrorEstimator:
             raise ValueError("SCF force estimator requires method and basis coverage")
         if len(families) < 2:
             raise ValueError("SCF force calibration requires two molecular families")
+        domains = tuple(sorted({tuple(pair) for pair in self.method_basis_domains}))
+        if not domains or any(len(pair) != 2 for pair in domains):
+            raise ValueError("SCF estimator requires explicit method/basis domains")
+        if {pair[0] for pair in domains} != set(methods) or {
+            pair[1] for pair in domains
+        } != set(bases):
+            raise ValueError("SCF joint domains disagree with method/basis inventories")
+        object.__setattr__(self, "method_basis_domains", domains)
         for value in (*methods, *bases, *families):
             _identity(value, "SCF calibration identity")
         for name in ("energy_scale", "force_max_scale", "force_rms_scale"):
@@ -222,6 +231,9 @@ class ScfForceErrorEstimator:
             ),
             safety_factor=safety_factor,
             diagnostic_floor=diagnostic_floor,
+            method_basis_domains=tuple(
+                (item.method, item.basis_id) for item in samples
+            ),
         )
 
     @property
@@ -238,14 +250,19 @@ class ScfForceErrorEstimator:
     ) -> ScfForceErrorEstimate:
         if method not in self.methods:
             raise ValueError("method is outside SCF force-estimator calibration domain")
-        if basis_id not in self.basis_ids and not allow_unseen_basis:
-            raise ValueError("basis is outside SCF force-estimator calibration domain")
+        if type(allow_unseen_basis) is not bool:
+            raise TypeError("allow_unseen_basis must be boolean")
+        known_domain = (method, basis_id) in self.method_basis_domains
+        if not known_domain and not allow_unseen_basis:
+            raise ValueError(
+                "method/basis pair is outside SCF force-estimator calibration domain"
+            )
         value = _number(diagnostic_value, "SCF diagnostic value")
         effective = max(value, self.diagnostic_floor)
         basis_scope = (
-            "basis is in the recorded calibration domain"
-            if basis_id in self.basis_ids
-            else "basis is held out and this prediction is validation-only"
+            "method/basis pair is in the recorded calibration domain"
+            if known_domain
+            else "method/basis pair is held out and this prediction is validation-only"
         )
         return ScfForceErrorEstimate(
             self.energy_scale * effective,
@@ -289,6 +306,8 @@ class ScfForceErrorEstimator:
                     "sample_id": sample.sample_id,
                     "family": sample.family,
                     "basis_seen_in_training": sample.basis_id in self.basis_ids,
+                    "domain_seen_in_training": (sample.method, sample.basis_id)
+                    in self.method_basis_domains,
                     "predicted_pass": predicted_pass,
                     "actual_pass": actual_pass,
                     "false_success": predicted_pass and not actual_pass,
@@ -621,6 +640,8 @@ class ForceAwareScfPolicy:
         density_rms: typing.Any,
         force_max_abs: typing.Any,
     ) -> OptimizationFinalVerification:
+        if type(converged) is not bool:
+            raise TypeError("final converged must be boolean")
         for value, name in (
             (target_model_id, "target model identity"),
             (observed_model_id, "observed model identity"),
