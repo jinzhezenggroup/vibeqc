@@ -59,6 +59,7 @@ _RESERVED = frozenset(
         "mphi",
         "tt",
         "sqrt",
+        "arcsinh",
         "exp",
         "log",
         "log1p",
@@ -753,6 +754,7 @@ class _Evaluator:
             "mphi",
             "tt",
             "sqrt",
+            "arcsinh",
             "exp",
             "log",
             "log1p",
@@ -1193,6 +1195,8 @@ class _Evaluator:
         value = self._as_expr(arguments[0])
         if name == "sqrt":
             return value.pow(0.5)
+        if name == "arcsinh":
+            return self.graph.transcendental_unary("asinh", value)
         if name == "exp":
             return self.graph.exponential(value)
         if name in ("log", "log1p", "expm1"):
