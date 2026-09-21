@@ -27,12 +27,20 @@ _MAXIMUM_GENERATED_ANGULAR_MOMENTUM = 4
 def _validate_maximum_angular_momentum(value: typing.Any) -> int:
     """Validate the bounded generated one-electron shell family."""
 
-    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= _MAXIMUM_GENERATED_ANGULAR_MOMENTUM:
-        raise ValueError("generated one-electron shells require maximum angular momentum in [0,4]")
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not 0 <= value <= _MAXIMUM_GENERATED_ANGULAR_MOMENTUM
+    ):
+        raise ValueError(
+            "generated one-electron shells require maximum angular momentum in [0,4]"
+        )
     return value
 
 
-def _component_layout(maximum_angular_momentum: typing.Any) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], int]:
+def _component_layout(
+    maximum_angular_momentum: typing.Any,
+) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], int]:
     """Return per-shell counts, offsets, upper bounds and flattened AO count."""
 
     maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
@@ -205,7 +213,9 @@ def _emit_operator_helpers(
         f"__device__ __forceinline__ {return_type} {name}(",
         "    const PairGeometry& pair, unsigned first, unsigned second"
         + (", double c_x, double c_y, double c_z) {" if attraction else ") {"),
-        f"  if (first >= {total_components} || second >= {total_components}) return " + invalid + ";",
+        f"  if (first >= {total_components} || second >= {total_components}) return "
+        + invalid
+        + ";",
         "  const unsigned a = " + _shell_index_expression("first", limits) + ";",
         "  const unsigned b = " + _shell_index_expression("second", limits) + ";",
         "  const unsigned offsets[] = {" + ", ".join(map(str, offsets)) + "};",
@@ -215,9 +225,7 @@ def _emit_operator_helpers(
     ]
     for a, b in product(range(maximum + 1), repeat=2):
         args = "pair, component" + (", c_x, c_y, c_z" if attraction else "")
-        lines.append(
-            f"    case {a * shell_count + b}U: return {name}_{a}{b}({args});"
-        )
+        lines.append(f"    case {a * shell_count + b}U: return {name}_{a}{b}({args});")
     lines += ["  }", f"  return {invalid};", "}"]
     return "\n".join(lines)
 
