@@ -2271,7 +2271,8 @@ def test_fixed_generated_task_arena_has_a_memory_admission_limit() -> None:
     """Route large grid-addressable buckets before a multi-GiB allocation."""
 
     source = _direct_cuda_source()
-    assert "kFixedGeneratedTaskArenaMaximumBytes" in source
+    assert "direct_schedule.generated_task_arena_maximum_bytes" in source
+    assert "resolve_direct_jk_schedule_policy" in source
     assert "direct_task_layout.exact_tile_count >" in source
     assert "sizeof(GeneratedShellTask)" in source
     assert "requested_bounded_direct_streaming = true" in source

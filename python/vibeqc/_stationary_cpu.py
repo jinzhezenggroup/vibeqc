@@ -408,6 +408,13 @@ def complete_rks_gradient_diagnostic(
     if max_host_bytes is not None:
         from ._cpu_force_resources import cpu_force_inventory
 
+        if any(
+            type(p) is RangeSeparatedExchangePrimitive
+            for p in state._source.method_ir.primitives
+        ):
+            raise NotImplementedError(
+                "CPU RSH stationary gradients do not yet have a combined endpoint host budget"
+            )
         if execution != "native":
             raise ValueError("CPU host budget requires the compiled native consumer")
         if type(max_host_bytes) is not int or not 1 <= max_host_bytes <= 1 << 40:

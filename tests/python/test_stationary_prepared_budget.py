@@ -35,6 +35,8 @@ def test_retained_host_budget_is_rechecked_before_rebind(
         repr(("all-electron",)),
         0,
         repr({}),
+        None,
+        None,
         repr(spec),
         3,
         4,

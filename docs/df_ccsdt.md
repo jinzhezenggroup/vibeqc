@@ -1,7 +1,8 @@
 # DF-CCSD(T) same-Hamiltonian definition and factorized path
 
-Status: issue #157 slices A-B. The dense path remains a qualification oracle;
-Slice B adds a factorized CPU DF-RCCSD energy path but not yet production (T).
+Status: issue #157 slices A-B plus the first slice-C factorized-(T) validation
+endpoint. Public/native DF-CCSD(T) registration and performance qualification
+remain open.
 
 ## First supported method definition
 
@@ -81,8 +82,17 @@ residual, and fresh expanded-equation acceptance policy as conventional RCCSD.
 Its independent expanded recheck also uses the factorized corrections, so an
 optimized-path agreement alone cannot certify convergence.
 
-Slice C still integrates standard (T), user-facing energy-only semantics, and
-performance/memory evidence.
+The first Slice-C endpoint now evaluates standard canonical (T) directly from
+the same retained `B_ov`/`B_vv` data model. For
+`vvov[a,b,i,f] = sum_Q B_ov[Q,i,a] B_vv[Q,f,b]`, W1 reduces Q directly
+into the occupied-space W tensor. It therefore forms neither a complete
+`ovvv` tensor nor full T3. H2/H2O same-Hamiltonian tests compare the composed
+factorized energy with the dense oracle, and an independent random-factor test
+compares the factorized (T) correction with the audited dense triples equations.
+
+Remaining Slice-C work is public/native energy-only registration plus production
+performance/memory qualification (and later CUDA promotion); DF gradients remain
+#158.
 
 ## Validation rules
 

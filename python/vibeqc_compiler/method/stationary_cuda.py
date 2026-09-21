@@ -8,22 +8,30 @@ Generation is host-only and does not import the public runtime or probe CUDA.
 Rationale: .agents/notes/implemented/architecture/2026-09-20-stationary-cuda-emitted-contractions.md
 """
 
+import json
 import os
 import typing
 from fractions import Fraction
+from functools import lru_cache
 from pathlib import Path
 
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_runtime import CudaArtifact
 from vibeqc_compiler.common.native_runtime import (
     compile_cuda_object,
     link_cuda_objects,
 )
-from vibeqc_compiler.common.paths import asset_path
-from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.paths import asset_path, source_hashes
+from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from vibeqc_compiler.common.source_cache import cache_source
 from vibeqc_compiler.xc.geometry_cuda import emit_geometry_cuda
 
-from .stationary_gradient import StationaryGradientPlan
+from .spec import resolve_method
+from .stationary_gradient import (
+    SCF_POINT_MODEL,
+    StationaryGradientPlan,
+    StationaryMeanField,
+)
 
 STATIONARY_RUNTIME_SOURCE_NAMES = (
     "one_electron",
@@ -461,6 +469,246 @@ def emit_stationary_scientific_kernels(plan: typing.Any) -> str:
         emit_stationary_weight_cuda(plan)
         + _STATIONARY_SCIENTIFIC_KERNELS
         + emit_stationary_reduction_cuda(plan)
+    )
+
+
+QUALIFIED_SP_COMPONENTS = ("", "x", "y", "z")
+QUALIFIED_FUNCTIONALS = (0, 1, 2)
+QUALIFIED_SPINS = ("unpolarized", "polarized")
+QUALIFIED_PARTITION_ITERATIONS = 3
+STATIONARY_AOT_ASSETS = (
+    "src/dft/stationary_gradient_cuda.cuh",
+    "src/dft/grid_task_view.cuh",
+    "src/dft/xc_point.hpp",
+    "src/integrals/eri_geometry.hpp",
+    "src/integrals/range_moments.hpp",
+    "src/tensor/cuda_runtime.cuh",
+    "src/runtime/bounded_workspace.hpp",
+    "src/runtime/cuda_resources.cuh",
+    "src/runtime/resource_cuda.cuh",
+    "src/runtime/resource_ledger.hpp",
+    "src/tensor/cuda_error.hpp",
+    "src/tensor/metrics.hpp",
+    "src/runtime/allocation_measurement.hpp",
+)
+
+
+def qualified_sp_requests() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Return the molecule-independent stationary s/p derivative inventory."""
+    from itertools import product
+
+    domain = QUALIFIED_SP_COMPONENTS
+    return tuple(
+        [
+            (operator, components)
+            for operator in ("overlap", "kinetic", "nuclear_attraction")
+            for components in product(domain, repeat=2)
+        ]
+        + [("four_center_eri", components) for components in product(domain, repeat=4)]
+        + [("nuclear", ())]
+    )
+
+
+def _qualified_aot_plan(functional: int, spin: str) -> StationaryGradientPlan:
+    if type(functional) is not int or functional not in QUALIFIED_FUNCTIONALS:
+        raise ValueError("AOT stationary functional must be 0, 1, or 2")
+    if spin not in QUALIFIED_SPINS:
+        raise ValueError("AOT stationary spin must be unpolarized or polarized")
+    method_name = ("LDA_XC_PW", "PBE", "R2SCAN")[functional]
+    return StationaryGradientPlan(
+        resolve_method(method_name, spin=spin),
+        StationaryMeanField(SCF_POINT_MODEL),
+    )
+
+
+def _stationary_aot_name(functional: int, spin: str) -> str:
+    _qualified_aot_plan(functional, spin)
+    return f"{('lda', 'pbe', 'r2scan')[functional]}_{'rks' if spin == 'unpolarized' else 'uks'}"
+
+
+def stationary_aot_plan_identity(functional: int, *, spin: str) -> str:
+    """Return the exact generated-plan identity encoded by one AOT artifact."""
+    return _qualified_aot_plan(functional, spin).identity
+
+
+def emit_stationary_aot_cuda(
+    functional: int,
+    *,
+    primitive_source: str,
+    spin: str = "unpolarized",
+    iterations: int = QUALIFIED_PARTITION_ITERATIONS,
+) -> str:
+    """Emit one qualified all-electron stationary CUDA artifact."""
+    if type(iterations) is not int or iterations != QUALIFIED_PARTITION_ITERATIONS:
+        raise ValueError(
+            "AOT stationary CUDA currently qualifies partition_iterations=3 only"
+        )
+    if not isinstance(primitive_source, str) or not primitive_source:
+        raise ValueError("AOT stationary CUDA requires generated primitive source")
+    plan = _qualified_aot_plan(functional, spin)
+    return emit_stationary_cuda(
+        primitive_source,
+        functional=functional,
+        plan=plan,
+        iterations=iterations,
+    )
+
+
+def stationary_aot_source_identity(
+    functional: int,
+    *,
+    primitive_source: str,
+    spin: str = "unpolarized",
+    iterations: int = QUALIFIED_PARTITION_ITERATIONS,
+) -> str:
+    """Content identity shared by checkout builds and installed artifacts."""
+    return canonical_hash(
+        emit_stationary_aot_cuda(
+            functional,
+            primitive_source=primitive_source,
+            spin=spin,
+            iterations=iterations,
+        )
+    )
+
+
+@lru_cache(maxsize=6)
+def stationary_aot_contract_identity(
+    functional: int,
+    *,
+    spin: str = "unpolarized",
+    iterations: int = QUALIFIED_PARTITION_ITERATIONS,
+) -> str:
+    """Identity every non-numeric compiler input affecting a packaged artifact."""
+    if iterations != QUALIFIED_PARTITION_ITERATIONS:
+        raise ValueError(
+            "AOT stationary CUDA currently qualifies partition_iterations=3 only"
+        )
+    plan = _qualified_aot_plan(functional, spin)
+    return canonical_hash(
+        {
+            "schema": "vibeqc.stationary-cuda-aot.contract.v2",
+            "functional": functional,
+            "spin": spin,
+            "plan_identity": plan.identity,
+            "weight_programs": {
+                source: plan.integral_block(source, terms=1).weights.logical_hash
+                for source in _FUSED_WEIGHT_SOURCES
+            },
+            "partition_iterations": iterations,
+            "requests": qualified_sp_requests(),
+            "method_module": file_hash(Path(__file__)),
+            "compiler_sources": source_hashes(
+                "integral", "xc", "dft", assets=STATIONARY_AOT_ASSETS
+            ),
+        }
+    )
+
+
+def load_stationary_aot_artifact(
+    directory: typing.Any,
+    *,
+    functional: int,
+    spin: str,
+    plan: StationaryGradientPlan,
+    architecture: str,
+    iterations: int = QUALIFIED_PARTITION_ITERATIONS,
+) -> CudaArtifact:
+    """Load one packaged artifact after checking its plan and binary identity."""
+    expected_plan = _qualified_aot_plan(functional, spin)
+    if (
+        not isinstance(plan, StationaryGradientPlan)
+        or plan.identity != expected_plan.identity
+    ):
+        raise ValueError("stationary CUDA AOT plan identity mismatch")
+    if type(architecture) is not str or not architecture.startswith("sm_"):
+        raise ValueError("stationary AOT architecture must be an sm_XX identity")
+    if iterations != QUALIFIED_PARTITION_ITERATIONS:
+        raise NotImplementedError(
+            "packaged stationary CUDA currently qualifies partition_iterations=3 only"
+        )
+    name = _stationary_aot_name(functional, spin)
+    directory = Path(directory).resolve()
+    manifest_path = directory / f"vibeqc_stationary_{name}.json"
+    candidates = (
+        directory / f"libvibeqc_stationary_{name}.so",
+        directory / f"libvibeqc_stationary_{name}.dylib",
+        directory / f"vibeqc_stationary_{name}.dll",
+    )
+    library = next((path for path in candidates if path.is_file()), None)
+    if library is None or not manifest_path.is_file():
+        raise FileNotFoundError(f"missing packaged stationary CUDA artifact for {name}")
+    metadata = json.loads(manifest_path.read_text())
+    expected = {
+        "schema": "vibeqc.stationary-cuda-aot.v2",
+        "functional": functional,
+        "spin": spin,
+        "plan_identity": plan.identity,
+        "partition_iterations": iterations,
+        "contract_identity": stationary_aot_contract_identity(
+            functional, spin=spin, iterations=iterations
+        ),
+    }
+    for key, value in expected.items():
+        if metadata.get(key) != value:
+            raise ValueError(f"stationary CUDA AOT {key} identity mismatch")
+    compilation = metadata.get("compile_contract")
+    if (
+        not isinstance(compilation, dict)
+        or compilation.get("fp64") is not True
+        or compilation.get("fmad") is not False
+    ):
+        raise ValueError("stationary CUDA AOT precision contract mismatch")
+    architectures = metadata.get("architectures")
+    if (
+        not isinstance(architectures, list)
+        or any(type(value) is not str for value in architectures)
+        or architecture not in architectures
+    ):
+        raise NotImplementedError(
+            f"stationary CUDA AOT artifact does not package {architecture}"
+        )
+    code_objects = metadata.get("code_objects")
+    if not isinstance(code_objects, list) or any(
+        not isinstance(item, dict)
+        or set(item) != {"architecture", "kind"}
+        or item["kind"] not in ("cubin", "ptx")
+        for item in code_objects
+    ):
+        raise ValueError("stationary CUDA AOT code-object metadata is invalid")
+    code_kinds = sorted(
+        {item["kind"] for item in code_objects if item["architecture"] == architecture}
+    )
+    if not code_kinds:
+        raise ValueError("stationary CUDA AOT target has no code object")
+    digest = file_hash(library)
+    if (
+        metadata.get("binary_sha256") != digest
+        or metadata.get("binary_bytes") != library.stat().st_size
+    ):
+        raise ValueError("stationary CUDA AOT binary integrity mismatch")
+    identity = {
+        "schema": "vibeqc.stationary-cuda-aot.v2",
+        "source": metadata["source_identity"],
+        "contract": metadata["contract_identity"],
+        "functional": functional,
+        "spin": spin,
+        "plan": plan.identity,
+        "partition_iterations": iterations,
+        "target": {"architecture": architecture, "code_kinds": code_kinds},
+    }
+    return CudaArtifact(
+        library,
+        {
+            **metadata,
+            "identity": identity,
+            "key": canonical_hash(
+                {"identity": identity, "binary_sha256": metadata["binary_sha256"]}
+            ),
+            "artifact_kind": "packaged-aot",
+            "driver_ptx_jit_possible": "ptx" in code_kinds,
+            "driver_ptx_jit_required": "cubin" not in code_kinds,
+        },
     )
 
 
