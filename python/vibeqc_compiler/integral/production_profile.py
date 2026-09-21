@@ -314,15 +314,6 @@ def _recurrence_from_row(
             f"{name} has unsupported recurrence {recurrence!r}; "
             f"expected one of {supported}"
         )
-    if (
-        recurrence == "rys3"
-        and name == "ppps"
-        and KernelConsumer.FOCK in consumers
-        and row.get("fock_schedule") is None
-    ):
-        raise ValueError(
-            "ppps recurrence 'rys3' with a Fock consumer requires fock_schedule"
-        )
     # Construct the mathematical IR at the manifest boundary so an incorrect
     # fixed-root count or force/Fock combination fails independently of CUDA
     # scheduling and without a shell-name eligibility table.
