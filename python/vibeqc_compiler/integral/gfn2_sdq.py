@@ -117,9 +117,8 @@ def build_gfn2_sdq_primitive_kernel(
 
     angular = tuple(angular)
     components = tuple(components)
-    if (
-        len(angular) != 2
-        or any(type(order) is not int or not 0 <= order <= 2 for order in angular)
+    if len(angular) != 2 or any(
+        type(order) is not int or not 0 <= order <= 2 for order in angular
     ):
         raise ValueError("GFN2 S/D/Q requires two public s/p/d shell orders")
     if len(components) != 2 or any(
@@ -183,7 +182,11 @@ def evaluate_gfn2_sdq_primitive(
 
     exponents = tuple(float(value) for value in exponents)
     centers = tuple(tuple(float(value) for value in center) for center in centers)
-    if len(exponents) != 2 or len(centers) != 2 or any(len(center) != 3 for center in centers):
+    if (
+        len(exponents) != 2
+        or len(centers) != 2
+        or any(len(center) != 3 for center in centers)
+    ):
         raise ValueError("GFN2 S/D/Q primitive dimensions are invalid")
     if any(value <= 0.0 for value in exponents):
         raise ValueError("GFN2 S/D/Q primitive exponents must be positive")
@@ -191,10 +194,15 @@ def evaluate_gfn2_sdq_primitive(
     variables = {"alpha": exponents[0], "beta": exponents[1]}
     for center_name, position in zip(("a", "b"), centers, strict=True):
         variables.update(
-            {f"{center_name}_{axis}": value for axis, value in zip(AXES, position, strict=True)}
+            {
+                f"{center_name}_{axis}": value
+                for axis, value in zip(AXES, position, strict=True)
+            }
         )
 
-    values = tuple(float(kernel.graph.evaluate(root, variables)) for root in kernel.values)
+    values = tuple(
+        float(kernel.graph.evaluate(root, variables)) for root in kernel.values
+    )
     gradients = tuple(
         tuple(
             tuple(float(kernel.graph.evaluate(root, variables)) for root in axis_roots)
