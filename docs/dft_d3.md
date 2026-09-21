@@ -218,15 +218,6 @@ See the [generated ragged execution decision](../.agents/notes/implemented/numer
 ## Closure boundary
 
 The public correction owner remains deliberately separate from the electronic DFT
-<<<<<<< HEAD
-SCF/Fock equation, but `Calculator` now owns their exact-once energy/force
-composition at the prepared execution boundary. Remaining #492 work is the
-pair-parallel/generated CUDA production promotion and retirement evidence, plus
-production admission of the separately validated ATM and zero-damping variants.
-The standalone ATM and D3(0) references do not grant nonzero-`s9` or zero-damping
-production capability. Native DFT paths must continue to reject a correction node unless the Calculator
-composition owner has explicitly split and retained it.
-=======
 SCF/Fock equation, while `Calculator` owns their exact-once energy/force composition
 at the prepared execution boundary. The production D3 closure admits only the three
 separately qualified capabilities described above: two-body BJ, BJ+ATM and
@@ -238,7 +229,6 @@ The generated GeometryIR/PairIR CUDA route remains a non-public retirement candi
 Its existence does not expand the public D3 capability matrix and retiring the native
 owner requires its own future evidence for per-item failure isolation, energy-only
 execution, resource bounds, changed-topology replay and matched endpoint performance.
->>>>>>> f87eaccc (perf(dft): promote cooperative D3 CUDA)
 
 See [data provenance](../external/xtbloom-d3/README.md), the
 [baseline migration decision](../.agents/notes/implemented/architecture/2026-09-19-d3-xtbloom-baseline.md),
