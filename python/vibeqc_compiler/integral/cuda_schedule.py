@@ -151,10 +151,16 @@ class CudaScheduleIR:
                     "thread-task schedules require lane-local Coulomb data"
                 )
         elif self.kind == ScheduleKind.SUBGROUP_TASKS:
-            if self.tasks_per_warp not in (1, 2, 4, 8):
-                raise ValueError("subgroup-task schedules require 1, 2, 4, or 8 tasks")
             if self.warp_size % self.tasks_per_warp != 0:
                 raise ValueError("subgroup tasks must divide the target warp")
+            subgroup_lanes = self.warp_size // self.tasks_per_warp
+            if (
+                self.tasks_per_warp & (self.tasks_per_warp - 1)
+                or subgroup_lanes & (subgroup_lanes - 1)
+            ):
+                raise ValueError(
+                    "subgroup tasks and lane widths must be powers of two"
+                )
             if not self.shared_coulomb:
                 raise ValueError(
                     "subgroup tasks require task-local shared Coulomb data"
@@ -256,6 +262,46 @@ def _target_resident_block_floor(
     )
 
 
+def _power_of_two_subgroup_counts(warp_size: int) -> tuple[int, ...]:
+    """Enumerate every power-of-two task split supported by one target warp."""
+
+    counts: list[int] = []
+    tasks = 2
+    while tasks <= warp_size:
+        if warp_size % tasks == 0:
+            subgroup_lanes = warp_size // tasks
+            if subgroup_lanes & (subgroup_lanes - 1) == 0:
+                counts.append(tasks)
+        tasks *= 2
+    return tuple(counts)
+
+
+def _target_register_bounded_block_threads(target: CudaTargetInfo) -> int:
+    """Return a warp-aligned block size legal at worst-case register pressure."""
+
+    register_threads = (
+        target.registers_per_sm // target.maximum_registers_per_thread
+    )
+    threads = min(
+        target.maximum_threads_per_block,
+        target.maximum_threads_per_sm,
+        register_threads,
+    )
+    return threads - threads % target.warp_size
+
+
+def _power_of_two_tiles(target: CudaTargetInfo) -> tuple[int, ...]:
+    """Enumerate warp-multiple component tiles up to the target block limit."""
+
+    limit = min(target.maximum_threads_per_block, target.maximum_threads_per_sm)
+    tiles: list[int] = []
+    tile = target.warp_size * 2
+    while tile <= limit:
+        tiles.append(tile)
+        tile *= 2
+    return tuple(tiles)
+
+
 def _default_schedule_priority(
     integral: IntegralIR,
     schedule: CudaScheduleIR,
@@ -264,7 +310,11 @@ def _default_schedule_priority(
 
     if _uses_scalar_fixed_root_force(integral):
         family_rank = 0 if schedule.kind == ScheduleKind.THREAD_TASKS else 4
-    elif integral.derivative is None and schedule.kind == ScheduleKind.PACKED_TASKS:
+    elif (
+        integral.derivative is None
+        and schedule.kind == ScheduleKind.PACKED_TASKS
+        and integral.spec.component_count <= schedule.tasks_per_block
+    ):
         family_rank = 0
     elif schedule.kind == ScheduleKind.COMPONENT_LANES:
         family_rank = 1
@@ -309,50 +359,55 @@ def schedule_candidates(
             )
         )
 
-    if component_count <= 9:
-        candidates.append(
-            CudaScheduleIR(
-                kind=ScheduleKind.PACKED_TASKS,
-                block_threads=warp_size,
-                component_tile=component_count,
-                tasks_per_warp=warp_size,
-                shared_coulomb=False,
-                warp_size=warp_size,
-            )
+    # Packed and shell-task mappings are legal independently of shell size.
+    # Profitability/promotion decides whether the lane-local live state is
+    # worthwhile; candidate construction does not hide a component threshold.
+    candidates.append(
+        CudaScheduleIR(
+            kind=ScheduleKind.PACKED_TASKS,
+            block_threads=warp_size,
+            component_tile=component_count,
+            tasks_per_warp=warp_size,
+            shared_coulomb=False,
+            warp_size=warp_size,
         )
-        candidates.append(
-            CudaScheduleIR(
-                kind=ScheduleKind.SHELL_TASK,
-                block_threads=warp_size,
-                component_tile=component_count,
-                shared_coulomb=False,
-                warp_size=warp_size,
-            )
-        )
-
-    subgroup_block_threads = min(
-        target.maximum_threads_per_block,
-        target.maximum_threads_per_sm,
-        warp_size * 8,
     )
-    subgroup_block_threads -= subgroup_block_threads % warp_size
-    if component_count <= 64 and subgroup_block_threads >= warp_size:
-        for tasks_per_warp in (2, 4):
-            if warp_size % tasks_per_warp == 0:
-                candidates.append(
-                    CudaScheduleIR(
-                        kind=ScheduleKind.SUBGROUP_TASKS,
-                        block_threads=subgroup_block_threads,
-                        component_tile=component_count,
-                        tasks_per_warp=tasks_per_warp,
-                        shared_coulomb=True,
-                        warp_size=warp_size,
-                    )
+    candidates.append(
+        CudaScheduleIR(
+            kind=ScheduleKind.SHELL_TASK,
+            block_threads=warp_size,
+            component_tile=component_count,
+            shared_coulomb=False,
+            warp_size=warp_size,
+        )
+    )
+
+    subgroup_block_threads = _target_register_bounded_block_threads(target)
+    if subgroup_block_threads >= warp_size:
+        for tasks_per_warp in _power_of_two_subgroup_counts(warp_size):
+            candidates.append(
+                CudaScheduleIR(
+                    kind=ScheduleKind.SUBGROUP_TASKS,
+                    block_threads=subgroup_block_threads,
+                    component_tile=component_count,
+                    tasks_per_warp=tasks_per_warp,
+                    shared_coulomb=True,
+                    warp_size=warp_size,
                 )
+            )
 
     coulomb_state_count = comb(integral.maximum_coulomb_order + 3, 3)
+    derivative_output_count = (
+        len(integral.operator.centers) * 3
+        if integral.derivative is not None
+        else 1
+    )
     cooperative_threads = (
-        (max(component_count, coulomb_state_count, 12) + warp_size - 1)
+        (
+            max(component_count, coulomb_state_count, derivative_output_count)
+            + warp_size
+            - 1
+        )
         // warp_size
         * warp_size
     )
@@ -375,8 +430,8 @@ def schedule_candidates(
                 )
             )
 
-    for tile in (warp_size * 2, warp_size * 4, warp_size * 8):
-        if component_count > tile and tile <= target.maximum_threads_per_block:
+    for tile in _power_of_two_tiles(target):
+        if component_count > tile:
             candidates.append(
                 CudaScheduleIR(
                     kind=ScheduleKind.TILED_COMPONENTS,
