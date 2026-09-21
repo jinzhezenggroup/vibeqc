@@ -42,6 +42,8 @@ struct D4PlanData {
   std::size_t coordination_adjoint_offset = 0u;
   std::size_t batch_scratch_offset = 0u;
   std::size_t gradient_scratch_offset = 0u;
+  std::size_t shared_scratch_offset = 0u;
+  std::size_t shared_scratch_elements = 0u;
 };
 
 namespace {
@@ -537,6 +539,35 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
 
   namespace shared = ::vibeqc::dft::dispersion;
   const D4PlanData& data = *plan.identity();
+  const std::size_t atoms = static_cast<std::size_t>(data.total_atoms);
+  const std::size_t systems = static_cast<std::size_t>(data.batch_size);
+  const std::size_t coordinates = 3u * atoms;
+  if (!aligned(positions, alignof(double)) || !aligned(atomic_charges, alignof(double)) ||
+      (energies && !aligned(energies, alignof(double))) ||
+      (gradients && !aligned(gradients, alignof(double)))) {
+    error = "shared molecular D4 requires aligned inputs and finite gradient outputs";
+    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+  }
+  std::array<AddressRange, 6> numerical{};
+  std::array<AddressRange, 4> controls{};
+  if (!make_range(positions, coordinates * sizeof(double), numerical[0]) ||
+      !make_range(atomic_charges, atoms * sizeof(double), numerical[1]) ||
+      !make_range(cache.pair_data, static_cast<std::size_t>(cache.pair_data_elements) * sizeof(double), numerical[2]) ||
+      !make_range(cache.coordination_numbers, atoms * sizeof(double), numerical[3]) ||
+      !make_range(energies, energies ? systems * sizeof(double) : 0u, numerical[4]) ||
+      !make_range(gradients, gradients ? coordinates * sizeof(double) : 0u, numerical[5]) ||
+      !make_range(&plan, sizeof(plan), controls[0]) ||
+      !make_range(&cache, sizeof(cache), controls[1]) ||
+      !make_range(&workspace, sizeof(workspace), controls[2]) ||
+      !make_range(&error, sizeof(error), controls[3]) ||
+      !valid_call_storage(plan, workspace, numerical, controls)) {
+    error = "shared molecular D4 buffers overlap numerical, plan, workspace, or descriptors";
+    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+  }
+  if (gradients && !finite_values(gradients, coordinates)) {
+    error = "shared molecular D4 requires finite gradient outputs";
+    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+  }
   auto parameters = shared::gfn2_d4_parameters();
   if (!include_two_body) {
     parameters.s6 = 0.0;
@@ -546,8 +577,6 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
   const auto tables = shared::gfn2_d4_host_tables();
 
   std::array<double, 2> candidate_energy{};
-  std::array<double, 3 * shared::kD4MaximumAtoms> small_gradient{};
-  std::array<double, shared::kD4MaximumAtoms> small_dq{};
 
   for (std::int64_t system = 0; system < data.batch_size; ++system) {
     const std::int64_t begin = data.atom_offsets[static_cast<std::size_t>(system)];
@@ -564,26 +593,11 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
       return XTBLOOM_STATUS_INVALID_ARGUMENT;
     }
 
-    double* shared_workspace = nullptr;
-    std::size_t shared_workspace_elements = 0u;
-    double* candidate_gradient = nullptr;
-    double* candidate_dq = nullptr;
-    if (count <= shared::kD4MaximumAtoms) {
-      shared_workspace = static_cast<double*>(workspace.workspace_base);
-      shared_workspace_elements = workspace.workspace_size_bytes / sizeof(double);
-      candidate_gradient = small_gradient.data();
-      candidate_dq = small_dq.data();
-    } else {
-      if (workspace.pair_elements < 0 ||
-          static_cast<std::size_t>(workspace.pair_elements) < required_workspace) {
-        error = "GFN2 D4 pair scratch is too small for the shared large-system CPU adapter";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
-      }
-      shared_workspace = workspace.pair_scratch;
-      shared_workspace_elements = static_cast<std::size_t>(workspace.pair_elements);
-      candidate_gradient = workspace.gradient_scratch + 3 * begin;
-      candidate_dq = workspace.coordination_adjoints + begin;
-    }
+    double* shared_workspace = offset_pointer<double>(
+        workspace.workspace_base, data.shared_scratch_offset);
+    const std::size_t shared_workspace_elements = data.shared_scratch_elements;
+    double* candidate_gradient = workspace.gradient_scratch + 3 * begin;
+    double* candidate_dq = workspace.coordination_adjoints + begin;
 
     const auto shared_status = shared::evaluate_d4_fixed_charge_unbounded_cpu(
         count, data.atomic_numbers.data() + begin, positions + 3 * begin, atomic_charges + begin,
@@ -604,16 +618,25 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
           break;
       }
     }
-    if (energies != nullptr) {
-      energies[system] = (include_two_body ? candidate_energy[0] : 0.0) +
-                         (include_atm ? candidate_energy[1] : 0.0);
-    }
-    if (gradients != nullptr) {
-      for (std::int64_t coordinate = 0; coordinate < 3 * count64; ++coordinate) {
-        gradients[3 * begin + coordinate] += candidate_gradient[coordinate];
+    workspace.batch_scratch[system] =
+        (include_two_body ? candidate_energy[0] : 0.0) +
+        (include_atm ? candidate_energy[1] : 0.0);
+  }
+  // Validate every final accumulation before publishing any batch member.
+  if (gradients != nullptr) {
+    for (std::int64_t coordinate = 0; coordinate < 3 * data.total_atoms; ++coordinate) {
+      if (!std::isfinite(gradients[coordinate] + workspace.gradient_scratch[coordinate])) {
+        error = "shared molecular D4 gradient accumulation overflowed";
+        return XTBLOOM_STATUS_INTERNAL_ERROR;
       }
     }
   }
+  if (energies != nullptr)
+    std::copy_n(workspace.batch_scratch, data.batch_size, energies);
+  if (gradients != nullptr)
+    for (std::int64_t coordinate = 0; coordinate < 3 * data.total_atoms; ++coordinate)
+      gradients[coordinate] += workspace.gradient_scratch[coordinate];
+
   error.clear();
   return XTBLOOM_STATUS_SUCCESS;
 }
@@ -787,6 +810,15 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
       error = "D4 workspace element count overflows";
       return XTBLOOM_STATUS_INVALID_ARGUMENT;
     }
+    std::size_t maximum_atoms = 0u;
+    for (std::size_t system = 0; system < batch_count; ++system) {
+      maximum_atoms = std::max(maximum_atoms, static_cast<std::size_t>(
+          created->atom_offsets[system + 1] - created->atom_offsets[system]));
+    }
+    if (!checked_multiply_size(maximum_atoms, 27u, created->shared_scratch_elements)) {
+      error = "shared D4 scratch extent overflows";
+      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    }
     std::size_t cursor = 0u;
     std::size_t bytes = 0u;
     auto append_doubles = [&](std::size_t elements, std::size_t& offset) {
@@ -801,6 +833,7 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
         !append_doubles(atom_count, created->coordination_adjoint_offset) ||
         !append_doubles(batch_count, created->batch_scratch_offset) ||
         !append_doubles(gradient_elements, created->gradient_scratch_offset) ||
+        !append_doubles(created->shared_scratch_elements, created->shared_scratch_offset) ||
         !align_up(cursor, kD4WorkspaceAlignment, created->workspace_size_bytes)) {
       error = "D4 workspace byte count overflows";
       return XTBLOOM_STATUS_INVALID_ARGUMENT;
