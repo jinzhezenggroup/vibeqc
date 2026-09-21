@@ -35,6 +35,7 @@ from vibeqc_compiler.method.spec import (
 )
 from vibeqc_compiler.xc.expressions import (
     energy_expression,
+    lda_xc_pw_polarized_tail_expression,
     lda_xc_pw_unpolarized_tail_expression,
 )
 from vibeqc_compiler.xc.rsh_expressions import (
@@ -89,6 +90,27 @@ def build_roots(
         "roots": [indices[root.identifier] for root in roots],
     }
     return graph, roots, canonical_hash(payload)
+
+
+def graph_identity(label: str, graph: Any, roots: Any) -> str:
+    """Hash one explicitly constructed production graph and its ordered roots."""
+
+    reachable = graph.topological_order(roots)
+    indices = {index: i for i, index in enumerate(reachable)}
+    return canonical_hash(
+        {
+            "schema": label,
+            "nodes": [
+                (
+                    graph.nodes[i].operation,
+                    [indices[j] for j in graph.nodes[i].arguments],
+                    str(graph.nodes[i].payload),
+                )
+                for i in reachable
+            ],
+            "roots": [indices[root.identifier] for root in roots],
+        }
+    )
 
 
 def write_if_changed(path: Path, text: str) -> None:
@@ -155,6 +177,49 @@ def emit_lda_xc_pw_polarized() -> str:
     )
     lines.extend(["}", ""])
     return "\n".join(lines)
+
+
+def emit_lda_xc_pw_polarized_production() -> str:
+    """Emit the exact tail-stable polarized LDA production E/vxc."""
+
+    graph, energy, derivative_a, derivative_b, _variables = (
+        lda_xc_pw_polarized_tail_expression()
+    )
+    roots = (energy, derivative_a, derivative_b)
+    graph, roots = graph.apply_algebra_form(roots, AlgebraForm.FACTORED_NARY)
+    graph, roots = graph.lower_small_integer_powers(roots)
+    names = (
+        "normalized_rho_a",
+        "normalized_rho_b",
+        "rho_scale",
+        "rho_scale_sixth_root",
+    )
+    emitter = ScalarCEmitter(graph, dict(zip(names, names, strict=True)))
+    emitter.emit(roots)
+    references = [emitter.reference(root) for root in roots]
+    identity = graph_identity("lda-xc-pw-polarized-production-v1", graph, roots)
+    return "\n".join(
+        [
+            f'inline constexpr const char* kLdaXcPwPolarizedProductionIdentity = "{identity}";',
+            'inline constexpr const char* kLdaXcPwPolarizedProductionPolicy = "scaled-sixth-root-v1";',
+            "inline LdaXcPwPolarizedValue lda_xc_pw_polarized_production(double rho_a, double rho_b) {",
+            "  const double rho_scale = rho_a + rho_b;",
+            "  if (rho_scale == 0.0) return {};",
+            "  const double normalized_rho_a = rho_a / rho_scale;",
+            "  const double normalized_rho_b = rho_b / rho_scale;",
+            "  const double rho_scale_sixth_root = pow(rho_scale, 1.0 / 6.0);",
+            *emitter.lines,
+            "  return {"
+            + references[0]
+            + ", {"
+            + references[1]
+            + ", "
+            + references[2]
+            + ", 0.0, 0.0, 0.0, 0.0, 0.0}};",
+            "}",
+            "",
+        ]
+    )
 
 
 def emit_r2scan_polarized() -> str:
@@ -321,6 +386,7 @@ def main() -> None:
         args.output,
         emit_lda_xc_pw()
         + emit_lda_xc_pw_polarized()
+        + emit_lda_xc_pw_polarized_production()
         + emit_pbe_polarized()
         + emit_b3lyp_polarized()
         + emit_cam_b3lyp_polarized()

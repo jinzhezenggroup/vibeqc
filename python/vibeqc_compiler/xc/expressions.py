@@ -85,6 +85,82 @@ def lda_xc_pw_unpolarized_tail_expression() -> typing.Any:
     )
 
 
+def lda_xc_pw_polarized_tail_expression() -> typing.Any:
+    """Return exact polarized LDA E/vxc in stable scaled density coordinates.
+
+    The caller supplies rho_scale = rho_a + rho_b, normalized spin fractions,
+    and rho_scale_sixth_root. Keeping the tiny physical scale out of spin
+    interpolation and PW92 radial algebra prevents inverse-density overflow,
+    while the returned derivatives remain physical dE/d(rho_s).
+
+    This is a compiler-owned form of the existing production numerical policy,
+    not a density cutoff or modified functional.
+    """
+
+    graph = Graph()
+    a = graph.variable("normalized_rho_a")
+    b = graph.variable("normalized_rho_b")
+    scale = graph.variable("rho_scale")
+    scale_sixth_root = graph.variable("rho_scale_sixth_root")
+    n = a + b
+    up, down = 2 * a / n, 2 * b / n
+    z = (a - b) / n
+    x = scale_sixth_root * n.pow(1.0 / 6.0)
+
+    c = (3 / (4 * math.pi)) ** (1 / 3)
+    sqrt_c = math.sqrt(c)
+    parameters = _PW_PARAMETERS[False]
+
+    def log1p_over_x(value: typing.Any) -> typing.Any:
+        series = 1 + value * (
+            F(-1, 2)
+            + value
+            * (F(1, 3) + value * (F(-1, 4) + value * (F(1, 5) - value * F(1, 6))))
+        )
+        return graph.select_le(
+            value,
+            F("1e-4"),
+            series,
+            graph.stable_unary("log1p", value) / value,
+        )
+
+    def pw_channel(index: int) -> typing.Any:
+        aa = F(parameters["a"][index])
+        alpha = F(parameters["alpha"][index])
+        b1 = F(parameters["b1"][index])
+        b2 = F(parameters["b2"][index])
+        b3 = F(parameters["b3"][index])
+        b4 = F(parameters["b4"][index])
+        x2 = x * x
+        q = b1 * sqrt_c * x2 * x + b2 * c * x2 + b3 * c**1.5 * x + b4 * c**2
+        u = x2 * x2 / (2 * aa * q)
+        return -(x2 + alpha * c) * x2 / q * log1p_over_x(u)
+
+    e0, e1, em = (pw_channel(i) for i in range(3))
+    fz20 = F("1.709921")
+    fz = (up.pow(4.0 / 3.0) + down.pow(4.0 / 3.0) - 2) / (2 ** (4 / 3) - 2)
+    eps = e0 + z.pow(4) * fz * (e1 - e0 + em / fz20) - fz * em / fz20
+    correlation = n * eps
+    correlation_a = graph.differentiate(correlation, a)
+    correlation_b = graph.differentiate(correlation, b)
+
+    cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
+    exchange_shape = -(a.pow(4.0 / 3.0) + b.pow(4.0 / 3.0)) * cx
+    exchange_energy = scale_sixth_root.pow(8) * exchange_shape
+    exchange_factor = -F(4, 3) * cx * scale_sixth_root.pow(2)
+    exchange_a = exchange_factor * a.pow(1.0 / 3.0)
+    exchange_b = exchange_factor * b.pow(1.0 / 3.0)
+
+    energy = scale * correlation + exchange_energy
+    return (
+        graph,
+        energy,
+        correlation_a + exchange_a,
+        correlation_b + exchange_b,
+        (a, b, scale, scale_sixth_root),
+    )
+
+
 def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.Any:
     """Return the energy DAG and ordered feature variables.
 

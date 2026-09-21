@@ -206,6 +206,15 @@ extern "C" int vibeqc_first_gradient_append_v1(void* value,const double* records
     append<Program>(plan(value),records,count,*mapping,runtime_identity);
   }},detail,size);
 }}
+extern "C" int vibeqc_first_gradient_output_device_v1(void* value,const double** output,
+    std::size_t* count,char* detail,std::size_t size) {{
+  return boundary([&] {{
+    if(!output || !count) throw std::invalid_argument("null first-gradient device output");
+    auto& owner=plan(value);
+    *output=owner.output_device(runtime_identity);
+    *count=owner.output_size;
+  }},detail,size);
+}}
 extern "C" int vibeqc_first_gradient_finish_v1(void* value,double* output,std::size_t count,
     char* detail,std::size_t size) {{
   return boundary([&] {{ plan(value).finish(output,count,runtime_identity); }},detail,size);
