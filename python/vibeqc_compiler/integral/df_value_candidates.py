@@ -201,7 +201,10 @@ def emit_df_value_candidates_cuda(manifest: typing.Any = None) -> typing.Any:
     ]
     for a, b, c in VALUE_CLASSES:
         class_name = f"{a}{b}{c}"
-        lines += [f"      case {16 * a + 4 * b + c}: {{", "        if constexpr(Math==3) {"]
+        lines += [
+            f"      case {16 * a + 4 * b + c}: {{",
+            "        if constexpr(Math==3) {",
+        ]
         for index, (architecture, profile) in enumerate(sorted(profiles.items())):
             directive = "#if" if index == 0 else "#elif"
             lowering = profile["kernels"][class_name]
