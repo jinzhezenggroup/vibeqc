@@ -140,18 +140,17 @@ __global__ void pair_kernel_ordered(std::size_t begin, std::size_t count, std::s
 }  // namespace
 
 void execute_vv10_cuda(const double* points_xyz, const double* weights, const double* density,
-                            const double* density_gradient, std::size_t npoint,
-                            std::size_t tile_points, Vv10Parameters parameters, int device_id,
-                            double& energy, double* vrho, double* vsigma, double* point_derivative,
-                            double* weight_derivative) {
+                       const double* density_gradient, std::size_t npoint, std::size_t tile_points,
+                       Vv10Parameters parameters, int device_id, double& energy, double* vrho,
+                       double* vsigma, double* point_derivative, double* weight_derivative) {
   if ((point_derivative == nullptr) != (weight_derivative == nullptr))
     throw std::invalid_argument("nonlocal geometry outputs must be requested together");
   const bool geometry = point_derivative != nullptr;
   const auto effective_tile = std::min(tile_points, npoint);
   const auto arrays = geometry ? std::size_t{21} : std::size_t{17};
-  const auto doubles = runtime::size_add(
-      runtime::size_mul(arrays, npoint, "VV10 CUDA workspace extent overflow"),
-      std::size_t{1}, "VV10 CUDA failure-flag extent overflow");
+  const auto doubles =
+      runtime::size_add(runtime::size_mul(arrays, npoint, "VV10 CUDA workspace extent overflow"),
+                        std::size_t{1}, "VV10 CUDA failure-flag extent overflow");
   runtime::CudaDeviceScope device(device_id);
   runtime::OwnedCudaStream stream(device_id);
   runtime::OwnedCudaBuffer<double> arena(device_id, doubles, stream.get());
@@ -212,8 +211,8 @@ void execute_vv10_cuda(const double* points_xyz, const double* weights, const do
                                                npoint * sizeof(double), cudaMemcpyDeviceToHost,
                                                stream.get()));
   if (vrho)
-    runtime::cuda_resource_check(
-        cudaMemcpyAsync(vrho, d_vrho, npoint * sizeof(double), cudaMemcpyDeviceToHost, stream.get()));
+    runtime::cuda_resource_check(cudaMemcpyAsync(vrho, d_vrho, npoint * sizeof(double),
+                                                 cudaMemcpyDeviceToHost, stream.get()));
   if (vsigma)
     runtime::cuda_resource_check(cudaMemcpyAsync(vsigma, d_vsigma, npoint * sizeof(double),
                                                  cudaMemcpyDeviceToHost, stream.get()));

@@ -174,9 +174,7 @@ def test_native_complete_gradient_matches_rebuilt_grid_multistep_fd(
 
     assert len(set(identities)) == len(identities)
     np.testing.assert_allclose(estimates, predicted, atol=1.2e-9, rtol=0.0)
-    np.testing.assert_allclose(
-        gradient_force.sum(axis=0), 0.0, atol=4e-14, rtol=0.0
-    )
+    np.testing.assert_allclose(gradient_force.sum(axis=0), 0.0, atol=4e-14, rtol=0.0)
 
 
 def test_native_ragged_batch_is_bounded_and_atomic() -> None:
