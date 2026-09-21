@@ -55,11 +55,11 @@ from vibeqc_compiler.common.specialization import (
 
 from .cuda_dtype import compile_options, scalar_type, symmetry_tolerance
 from .cuda_emit import emit_cuda
-from .cuda_gemm import gemm_contract
 from .cuda_plan import (
     VALIDATION_CHUNK,
     TensorPlan,
     _index_table_values,
+    estimated_cuda_launches,
     static_data_slices,
 )
 from .cuda_resources import parse_resources
@@ -302,35 +302,7 @@ def tensor_capture_contract(
     resource_plan: ResourcePlan | None = None,
 ) -> CaptureContract:
     """Qualify only the fixed-topology, device-only emitted launch sequence."""
-    launches = 1  # per-run arithmetic-error reset
-    for step in plan.steps:
-        if (
-            step.virtual
-            or step.node.op in ("input", "constant")
-            or not step.node.spec.size
-        ):
-            continue
-        if step.gemm == "none":
-            launches += 1
-            continue
-        g = gemm_contract(step.node)
-        if g is None:
-            raise ValueError("GEMM capture step requires a contraction node")
-        if not g.k:
-            launches += 1
-        elif step.gemm.startswith("direct-"):
-            launches += 2
-        else:
-            from math import prod
-
-            tiles = [
-                (n + t - 1) // t
-                for n, t in zip(
-                    (g.m, g.n, g.k),
-                    (plan.schedule.tile_m, plan.schedule.tile_n, plan.schedule.tile_k),
-                )
-            ]
-            launches += g.batch * prod(tiles[:2]) * (2 * tiles[2] + 1)
+    launches = estimated_cuda_launches(plan)
     effects = (
         ()
         if resource_plan is None
