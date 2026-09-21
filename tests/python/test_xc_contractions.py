@@ -337,9 +337,7 @@ def test_mixed_xc_geometry_matches_directional_derivative_of_analytic_gradient(
     geometry = program(name, spin, "geometry")
     rng = np.random.default_rng(180236 if spin == "polarized" else 180237)
     delta_density = rng.normal(size=density.shape) * 0.002
-    delta_density = 0.5 * (
-        delta_density + np.swapaxes(delta_density, -1, -2)
-    )
+    delta_density = 0.5 * (delta_density + np.swapaxes(delta_density, -1, -2))
     left_centers = rng.normal(size=(len(args["atoms"]), 3)) * 0.03
     right_centers = rng.normal(size=left_centers.shape) * 0.025
     left_points = rng.normal(size=grid.points.shape) * 0.02
@@ -406,7 +404,9 @@ def test_mixed_xc_geometry_matches_directional_derivative_of_analytic_gradient(
                     weights=left_weights + sign * step * mixed_weights,
                 )
             )
-        errors.append(abs((directional[0] - directional[1]) / (2 * step) - actual.total))
+        errors.append(
+            abs((directional[0] - directional[1]) / (2 * step) - actual.total)
+        )
     assert np.all(np.asarray(errors) < [3e-6, 5e-7, 1e-7]), errors
     assert errors[-1] < errors[0] / 20
     assert abs(actual.feature_mixed) > 1e-8
