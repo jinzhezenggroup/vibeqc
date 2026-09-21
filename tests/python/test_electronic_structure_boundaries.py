@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import typing
+
 import pytest
 
 from tools.check_electronic_structure_boundaries import (
@@ -27,9 +28,7 @@ def test_shared_layer_cannot_depend_on_concrete_method(
     (source / owner).mkdir(parents=True)
     (source / method).mkdir(parents=True)
     (source / method / "method.hpp").write_text("// method implementation\n")
-    (source / owner / "shared.cpp").write_text(
-        f'#include "{method}/method.hpp"\n'
-    )
+    (source / owner / "shared.cpp").write_text(f'#include "{method}/method.hpp"\n')
     errors = audit_electronic_structure_boundaries(tmp_path)["errors"]
     assert len(errors) == 1
     assert f"forbidden {owner} dependency on {method}/method.hpp" in errors[0]
@@ -74,8 +73,7 @@ def test_known_reverse_edge_is_a_ceiling_not_an_exemption(
     assert audit_electronic_structure_boundaries(tmp_path)["errors"] == []
 
     runtime.write_text(
-        '#include "scf/aot_shell_registry.hpp"\n'
-        '#include "scf/rhf.hpp"\n'
+        '#include "scf/aot_shell_registry.hpp"\n#include "scf/rhf.hpp"\n'
     )
     errors = audit_electronic_structure_boundaries(tmp_path)["errors"]
     assert len(errors) == 1
@@ -87,9 +85,7 @@ def test_shared_layers_may_depend_on_other_shared_layers(tmp_path: typing.Any) -
     (source / "runtime").mkdir(parents=True)
     (source / "tensor").mkdir()
     (source / "runtime/context.hpp").write_text("// shared runtime\n")
-    (source / "tensor/runtime.cpp").write_text(
-        '#include "runtime/context.hpp"\n'
-    )
+    (source / "tensor/runtime.cpp").write_text('#include "runtime/context.hpp"\n')
     assert audit_electronic_structure_boundaries(tmp_path)["errors"] == []
 
 

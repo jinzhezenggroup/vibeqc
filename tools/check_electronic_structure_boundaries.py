@@ -74,9 +74,7 @@ def _native_files(root: Path) -> list[Path]:
     if not source.is_dir():
         return []
     return sorted(
-        path
-        for path in source.rglob("*")
-        if path.is_file() and path.suffix in SUFFIXES
+        path for path in source.rglob("*") if path.is_file() and path.suffix in SUFFIXES
     )
 
 
@@ -200,12 +198,9 @@ def main() -> int:
             print(error, file=sys.stderr)
         debt = report["duplicate_infrastructure"]
         debt_text = ", ".join(
-            f"{name}={item['count']}/{item['allowed']}"
-            for name, item in debt.items()
+            f"{name}={item['count']}/{item['allowed']}" for name, item in debt.items()
         )
-        known_edges = sum(
-            bool(edge["known_debt"]) for edge in report["method_edges"]
-        )
+        known_edges = sum(bool(edge["known_debt"]) for edge in report["method_edges"])
         print(
             f"Checked {len(report['modules'])} shared native modules; "
             f"{len(report['edges'])} local dependency edges; "
