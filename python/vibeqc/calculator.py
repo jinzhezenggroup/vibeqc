@@ -825,7 +825,13 @@ class Calculator:
             descriptor.ks_options = ctypes.pointer(
                 native_ks_options(
                     self._ks_options,
-                    version=1 if self._ks_options_version == 1 else 2,
+                    version=(
+                        1
+                        if self._ks_options_version == 1
+                        else 2
+                        if self._ks_options_version == 2
+                        else 3
+                    ),
                 )
             )
         if self._method == _native.METHOD_RCCSD:
