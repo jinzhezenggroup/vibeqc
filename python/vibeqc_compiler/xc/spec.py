@@ -157,9 +157,33 @@ class FunctionalSpec:
         else:
             manifest = "rsh-manifest.json" if special else "manifest.json"
             expression_source = "rsh_expressions.py" if special else "expressions.py"
-        expression_provenance = rsh_maple_provenance(
-            self.components
-        ) or pbe_maple_provenance(self.components)
+        rsh_provenance = rsh_maple_provenance(self.components)
+        pbe_provenance = pbe_maple_provenance(self.components)
+        expression_provenance = rsh_provenance or pbe_provenance
+        if rsh_provenance is not None and pbe_provenance is not None:
+            if (
+                rsh_provenance["importer_semantics"]
+                != pbe_provenance["importer_semantics"]
+            ):
+                raise ValueError(
+                    "mixed Maple components disagree on importer semantics"
+                )
+            expression_provenance = {
+                "kind": "libxc-maple",
+                "importer_semantics": rsh_provenance["importer_semantics"],
+                "adapter_sha256": canonical_hash(
+                    sorted(
+                        (
+                            rsh_provenance["adapter_sha256"],
+                            pbe_provenance["adapter_sha256"],
+                        )
+                    )
+                ),
+                "components": {
+                    **rsh_provenance["components"],
+                    **pbe_provenance["components"],
+                },
+            }
         return {
             **payload,
             "ingredients": self.ingredients,
