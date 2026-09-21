@@ -161,7 +161,7 @@ class CudaTriplesTiles:
                     "peak_bytes": plan.peak_bytes,
                 }
             )
-            return capacity, program, plan, tuple(attempts)
+            return capacity, plan, tuple(attempts)
 
     def run_tiles(
         self,
@@ -233,7 +233,7 @@ class CudaTriplesTiles:
         t0_total = time.perf_counter()
 
         t0 = time.perf_counter()
-        capacity, program, plan, capacity_attempts = self.plan_runtime_domain()
+        capacity, plan, capacity_attempts = self.plan_runtime_domain()
         artifact = self._compile_resident(plan, self.compiler, self.cache)
         timing["compile_s"] += time.perf_counter() - t0
         runtime_batch_count = sum(
@@ -257,8 +257,13 @@ class CudaTriplesTiles:
 
             for tile in tiles:
                 et_tile = 0.0
-                for controls in runtime_tile_control_batches(tile, capacity):
+                controls_iterator = iter(runtime_tile_control_batches(tile, capacity))
+                while True:
                     t0 = time.perf_counter()
+                    try:
+                        controls = next(controls_iterator)
+                    except StopIteration:
+                        break
                     timing["extract_s"] += time.perf_counter() - t0
 
                     t0 = time.perf_counter()
