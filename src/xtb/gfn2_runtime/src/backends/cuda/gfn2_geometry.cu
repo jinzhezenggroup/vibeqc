@@ -7,6 +7,7 @@
 #include <limits>
 
 #include "backends/cuda/gfn2_geometry.cuh"
+#include "generated_gfn2_pair_native.hpp"
 
 namespace xtbloom::detail::cuda {
 namespace {
@@ -15,9 +16,6 @@ constexpr int kThreadsPerBlock = 256;
 constexpr std::int64_t kInt64Maximum = 9223372036854775807LL;
 constexpr double kCutoffSquaredBohr = 25.0 * 25.0;
 constexpr double kMinimumDistanceSquared = 1.0e-12;
-constexpr double kFirstSteepness = 10.0;
-constexpr double kSecondSteepness = 20.0;
-constexpr double kSecondRadiusShiftBohr = 2.0;
 
 struct SystemRanges {
   std::int64_t atom_begin;
@@ -61,16 +59,6 @@ __device__ void record_system_error(std::uint32_t* system_errors, std::int64_t s
   }
 }
 
-/* Stable logistic form of 1/(1+exp(-argument)), matching the CPU reference. */
-__device__ double logistic(double argument) {
-  if (argument >= 0.0) {
-    const double exponential = exp(-argument);
-    return 1.0 / (1.0 + exponential);
-  }
-  const double exponential = exp(argument);
-  return exponential / (1.0 + exponential);
-}
-
 __device__ bool evaluate_pair(double dx, double dy, double dz, double radius, PairValues* values) {
   const double distance_squared = dx * dx + dy * dy + dz * dz;
   if (!isfinite(distance_squared) || distance_squared < kMinimumDistanceSquared) {
@@ -89,16 +77,12 @@ __device__ bool evaluate_pair(double dx, double dy, double dz, double radius, Pa
     return true;
   }
 
-  const double inverse_distance_squared = values->inverse_distance * values->inverse_distance;
-  const double shifted_radius = radius + kSecondRadiusShiftBohr;
-  const double first = logistic(kFirstSteepness * (radius * values->inverse_distance - 1.0));
-  const double second =
-      logistic(kSecondSteepness * (shifted_radius * values->inverse_distance - 1.0));
-  values->count = first * second;
-  const double derivative = -inverse_distance_squared *
-                            (kFirstSteepness * radius * first * (1.0 - first) * second +
-                             kSecondSteepness * shifted_radius * second * (1.0 - second) * first);
-  values->derivative_over_distance = derivative * values->inverse_distance;
+  vibeqc::xtb::generated::Gfn2CoordinationPairResult pair{};
+  if (!vibeqc::xtb::generated::evaluate_gfn2_coordination_pair(values->distance, radius, pair)) {
+    return false;
+  }
+  values->count = pair.value;
+  values->derivative_over_distance = pair.distance_derivative * values->inverse_distance;
   return values->count >= 0.0 && values->count <= 1.0 && isfinite(values->count) &&
          isfinite(values->derivative_over_distance);
 }
