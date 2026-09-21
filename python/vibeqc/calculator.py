@@ -424,11 +424,14 @@ class Calculator:
         successful results report ``unverified`` and numerical defaults remain
         unchanged. It never certifies an error from ``energy_tolerance``.
 
-        ``method`` may be a native selector string or a spin-explicit PBE-family
-        MethodIR containing one production D3(BJ) correction. ``ks_options``
-        snapshots the electronic composition, GridSpec and XC tile schedule.
-        ``dispersion_memory_budget_bytes`` independently bounds the retained D3
-        owner; the global ResourceBudget does not yet aggregate that owner.
+        ``method`` may be a native selector string, a spin-explicit PBE-family
+        MethodIR with one production D3(BJ) correction, or the canonical
+        r2SCAN-3c MethodIR. The latter binds its exact def2-mTZVPP basis and
+        composes r2SCAN + D4 + gCP without a named native scientific driver.
+        ``ks_options`` snapshots the electronic composition, GridSpec and XC
+        tile schedule. ``dispersion_memory_budget_bytes`` independently bounds
+        the retained external-correction owner; the global ResourceBudget does
+        not yet aggregate that owner.
         """
         if target_accuracy is not None and not isinstance(
             target_accuracy, TargetAccuracy
@@ -453,9 +456,13 @@ class Calculator:
 
         from vibeqc_compiler.method import (
             D3Spec,
+            D4Spec,
             DispersionCorrectionPrimitive,
+            GeometricCounterpoisePrimitive,
             MethodIR,
             SemilocalXCPrimitive,
+            resolve_method,
+            validate_basis_snapshot,
         )
 
         supplied_method_ir = method if isinstance(method, MethodIR) else None
@@ -465,37 +472,82 @@ class Calculator:
                 for node in supplied_method_ir.primitives
                 if isinstance(node, DispersionCorrectionPrimitive)
             )
-            if len(corrections) != 1 or not isinstance(
-                corrections[0].specification, D3Spec
-            ):
+            gcp_nodes = tuple(
+                node
+                for node in supplied_method_ir.primitives
+                if isinstance(node, GeometricCounterpoisePrimitive)
+            )
+            if len(corrections) != 1:
                 raise NotImplementedError(
-                    "Calculator MethodIR execution currently requires exactly one D3 correction"
+                    "Calculator MethodIR execution requires exactly one supported dispersion correction"
+                )
+            correction = corrections[0].specification
+            if isinstance(correction, D3Spec):
+                if gcp_nodes:
+                    raise NotImplementedError(
+                        "Calculator D3 execution does not accept a gCP primitive"
+                    )
+                electronic_family = "pbe"
+            elif isinstance(correction, D4Spec):
+                expected = resolve_method("R2SCAN-3c", spin=supplied_method_ir.spin)
+                if (
+                    len(gcp_nodes) != 1
+                    or supplied_method_ir.manifest_identity
+                    != expected.manifest_identity
+                ):
+                    raise NotImplementedError(
+                        "Calculator D4+gCP execution requires the canonical r2SCAN-3c MethodIR"
+                    )
+                electronic_family = "r2scan"
+            else:
+                raise NotImplementedError(
+                    "Calculator MethodIR execution does not support this correction family"
                 )
             electronic_primitives = tuple(
                 node
                 for node in supplied_method_ir.primitives
-                if not isinstance(node, DispersionCorrectionPrimitive)
+                if not isinstance(
+                    node,
+                    (
+                        DispersionCorrectionPrimitive,
+                        GeometricCounterpoisePrimitive,
+                    ),
+                )
             )
             electronic_ir = replace(
                 supplied_method_ir,
                 identifier=f"{supplied_method_ir.identifier}/electronic",
                 primitives=electronic_primitives,
+                basis=None,
             )
             semilocal = tuple(
                 node
                 for node in electronic_ir.primitives
                 if isinstance(node, SemilocalXCPrimitive)
             )
-            if len(semilocal) != 1 or not set(
-                dict(semilocal[0].functional.components)
-            ) <= {
-                "GGA_X_PBE",
-                "GGA_C_PBE",
-            }:
-                raise NotImplementedError(
-                    "Calculator MethodIR execution currently supports D3 on the PBE electronic family"
+            components = (
+                set(dict(semilocal[0].functional.components))
+                if len(semilocal) == 1
+                else set()
+            )
+            if electronic_family == "pbe":
+                if not components <= {"GGA_X_PBE", "GGA_C_PBE"}:
+                    raise NotImplementedError(
+                        "Calculator D3 execution currently supports the PBE electronic family"
+                    )
+                method = (
+                    "pbe-uks" if supplied_method_ir.spin == "polarized" else "pbe-rks"
                 )
-            method = "pbe-uks" if supplied_method_ir.spin == "polarized" else "pbe-rks"
+            else:
+                if components != {"MGGA_X_R2SCAN", "MGGA_C_R2SCAN"}:
+                    raise NotImplementedError(
+                        "canonical r2SCAN-3c requires the audited r2SCAN electronic graph"
+                    )
+                method = (
+                    "r2scan-uks"
+                    if supplied_method_ir.spin == "polarized"
+                    else "r2scan-rks"
+                )
             from .ks import KsOptions
 
             if ks_options is None:
@@ -536,8 +588,22 @@ class Calculator:
             basis_representation = "cartesian"
         else:
             if basis is None:
-                basis = "sto-3g"
+                if (
+                    supplied_method_ir is not None
+                    and supplied_method_ir.basis is not None
+                ):
+                    if supplied_method_ir.identifier != "R2SCAN-3c":
+                        raise NotImplementedError(
+                            "automatic composite basis loading is qualified only for canonical r2SCAN-3c"
+                        )
+                    from .r2scan3c import load_r2scan3c_basis
+
+                    basis = load_r2scan3c_basis()
+                else:
+                    basis = "sto-3g"
             basis = _snapshot_basis(basis, basis_representation)
+            if supplied_method_ir is not None and supplied_method_ir.basis is not None:
+                validate_basis_snapshot(supplied_method_ir.basis, basis)
             if basis_representation is None:
                 basis_representation = (
                     basis.representation if isinstance(basis, BasisSet) else "cartesian"
@@ -658,8 +724,8 @@ class Calculator:
             raise ValueError("ks_options requires a supported RKS/UKS method")
         if self._dispersion_method_ir is not None and resource_budget is not None:
             raise NotImplementedError(
-                "global resource_budget does not yet include the separate D3 owner; "
-                "use dispersion_memory_budget_bytes for the bounded correction"
+                "global resource_budget does not yet include the separate D3 owner or "
+                "composite correction owner; use dispersion_memory_budget_bytes for the bounded correction"
             )
         if self._method == _native.METHOD_GFN2_XTB:
             # Backend-specific admission is owned by native calculation preparation.
@@ -1301,6 +1367,10 @@ class Calculator:
         """
         if self._method == _native.METHOD_GFN2_XTB:
             return
+        if self._dispersion_method_ir is not None:
+            self._dispersion_method_ir.preflight_atomic_numbers(
+                tuple(atom.atomic_number for atom in atoms)
+            )
         derivative_orders = (0, 1) if compute_forces else (0,)
         auxiliary_backend = self._density_fitting_backend()
         orbital_operators = ["overlap", "kinetic", "nuclear_attraction", "eri"]
