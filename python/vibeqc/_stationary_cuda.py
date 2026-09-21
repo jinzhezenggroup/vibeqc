@@ -185,6 +185,12 @@ class _CudaSources:
             *tail,
         ]
         lib.stationary_finish.argtypes = [ct.c_void_p, _DOUBLE, ct.c_size_t, *tail]
+        lib.stationary_finish_reduced.argtypes = [
+            ct.c_void_p,
+            _DOUBLE,
+            ct.c_size_t,
+            *tail,
+        ]
         lib.stationary_metrics.argtypes = [
             ct.c_void_p,
             ct.POINTER(ct.c_uint64),
@@ -350,6 +356,12 @@ class _CudaSources:
         out = np.empty((7, self.natom, 3))
         self._call("stationary_finish", self.handle, _ptr(out), out.size)
         return {name: out[i] for i, name in enumerate(_SOURCE_NAMES)}
+
+    def reduced(self) -> typing.Any:
+        """Return the fixed seven-source all-electron sum reduced on CUDA."""
+        out = np.empty((self.natom, 3))
+        self._call("stationary_finish_reduced", self.handle, _ptr(out), out.size)
+        return out
 
     def metrics(self) -> typing.Any:
         values = (ct.c_uint64 * 8)()
@@ -763,11 +775,11 @@ def _complete_rks_cuda_gradient_diagnostic(
     available = max_device_bytes - grid_plan.peak_bytes - source_bytes
     if available <= 0:
         raise ValueError("stationary additional-device budget exceeded")
-    tensor_plans = {
-        "reduction": plan_cuda(
+    tensor_plans = {}
+    if ecp:
+        tensor_plans["reduction"] = plan_cuda(
             plan.reduction_program(atoms=na), compiler.target, max_bytes=available
         )
-    }
     # Conservative numeric-array bound: record/maps, D/W admission copies,
     # adapter staging, candidate/publication copies, and tile owners.
     # Compiler objects, Python headers and the caller's existing SCF snapshot
@@ -784,7 +796,7 @@ def _complete_rks_cuda_gradient_diagnostic(
             + n
             + 80
         )
-        + max(tp.host_bytes for tp in tensor_plans.values())
+        + max((tp.host_bytes for tp in tensor_plans.values()), default=0)
     )
     if host_bound > max_host_bytes:
         raise ValueError("stationary additional-host byte budget exceeded")
@@ -1013,17 +1025,22 @@ def _complete_rks_cuda_gradient_diagnostic(
                     result = contraction.execute(feeds)
                     record_tensor(result, feeds)
                     components[name] = result.outputs["gradient"].reshape(na, 3)
-        # Validate actual coverage before the pre-admitted complete reduction.
+        # Validate actual coverage before the complete reduction. All-electron
+        # seven-source work reduces inside the stationary owner; ECP retains the
+        # generated TensorIR sum because its two extra sources are separate owners.
         plan.reduction_program(atoms=na, sources=components)
-        tp = tensor_plans["reduction"]
-        if prepared is None:
-            peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
-        with _tensor_execution(
-            prepared, "reduction", tp, compiler, cache, device, artifacts
-        ) as reduction:
-            reduced = reduction.execute(components)
-            record_tensor(reduced, components)
-            gradient = reduced.outputs["gradient"]
+        if ecp:
+            tp = tensor_plans["reduction"]
+            if prepared is None:
+                peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
+            with _tensor_execution(
+                prepared, "reduction", tp, compiler, cache, device, artifacts
+            ) as reduction:
+                reduced = reduction.execute(components)
+                record_tensor(reduced, components)
+                gradient = reduced.outputs["gradient"]
+        else:
+            gradient = sources.reduced()
         source_after = sources.metrics()
         grid_after = ao.metrics()
         work = (
@@ -1069,6 +1086,9 @@ def _complete_rks_cuda_gradient_diagnostic(
         },
         stationary_weight_tensor_executions=0,
         stationary_weight_roundtrip_bytes=0,
+        stationary_final_reduction=(
+            "generated-tensorir-v1" if ecp else "native-seven-source-device-sum-v1"
+        ),
         stationary_state_dw_upload_bytes=(
             state.density.nbytes + state.weighted_density.nbytes
         ),
