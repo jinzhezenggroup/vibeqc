@@ -122,8 +122,20 @@ def ri_mp2_residency_plan(
         preferred_j,
         full_resident=True,
     )
+    resident_j = preferred_j
+    while full_peak > budget_bytes and resident_j > 1:
+        resident_j = (resident_j + 1) // 2
+        full_peak = _ri_block_capacity(
+            fixed_bytes,
+            nbf,
+            occupied,
+            auxiliaries,
+            virtuals,
+            resident_j,
+            full_resident=True,
+        )
     if full_peak <= budget_bytes:
-        return RiMp2ResidencyPlan(virtuals, preferred_j, full_peak, True)
+        return RiMp2ResidencyPlan(virtuals, resident_j, full_peak, True)
 
     best = 0
     best_j = 1
@@ -228,8 +240,13 @@ inline RiMp2ResidencyPlan ri_mp2_residency_plan(
   if (!n || !no || !nv || !na || no >= n)
     throw std::invalid_argument("invalid CUDA RI-MP2 block-planner dimensions");
   const std::size_t preferred_j = std::max<std::size_t>(1, std::min<std::size_t>(no, 8));
-  const auto full_peak = ri_block_capacity(fixed, n, no, na, nv, preferred_j, true);
-  if (full_peak <= budget) return {nv, preferred_j, full_peak, true};
+  auto resident_j = preferred_j;
+  auto full_peak = ri_block_capacity(fixed, n, no, na, nv, resident_j, true);
+  while (full_peak > budget && resident_j > 1) {
+    resident_j = (resident_j + 1) / 2;
+    full_peak = ri_block_capacity(fixed, n, no, na, nv, resident_j, true);
+  }
+  if (full_peak <= budget) return {nv, resident_j, full_peak, true};
   std::size_t best = 0, best_j = 1, lower = 1, upper = nv - 1;
   while (lower <= upper) {
     const std::size_t middle = lower + (upper - lower) / 2;
