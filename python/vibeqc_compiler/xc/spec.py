@@ -157,9 +157,9 @@ class FunctionalSpec:
         else:
             manifest = "rsh-manifest.json" if special else "manifest.json"
             expression_source = "rsh_expressions.py" if special else "expressions.py"
-        expression_provenance = rsh_maple_provenance(self.components) or pbe_maple_provenance(
+        expression_provenance = rsh_maple_provenance(
             self.components
-        )
+        ) or pbe_maple_provenance(self.components)
         return {
             **payload,
             "ingredients": self.ingredients,
