@@ -48,7 +48,8 @@ validated native CUDA consumer.
 ## Invariants
 
 - MP2 equations, denominators and OS/SS semantics are unchanged.
-- A shared AO scan never changes deterministic MO job order.- Memory remains bounded; insufficient RI residency falls back to a smaller
+- A shared AO scan never changes deterministic MO job order.
+- Memory remains bounded; insufficient RI residency falls back to a smaller
   virtual block or fails before execution when even one block cannot fit.
 - No exact molecule, basis, AO count, GPU product name, or benchmark identity
   participates in production schedule selection.
@@ -62,9 +63,15 @@ validated native CUDA consumer.
 - Generated-header reproducibility is checked with the existing MP2 generator
   contract.
 - The CPU MP2 contract and gradient native tests pass on the integrated branch.
-- Historical CUDA endpoint evidence for the resident implementation is retained
-  under `benchmarks/results/issue367-ri-mp2-gpu/`; current-source CUDA
-  qualification must still pass before promotion.
+- Current-source sm_120 CUDA correctness compilation passes with AOT disabled;
+  both `libvibeqc.so` and `vibeqc_mp2_cuda_status_tests` build successfully.
+- Slurm job 10698 on an allocated RTX 5090 completed with exit code 0: the
+  native CUDA MP2 status/OOM rollback test passed, and
+  `tests/python/test_ri_mp2_cuda_residency.py` passed (1/1).
+- Historical matched endpoint performance evidence for the resident
+  implementation remains under `benchmarks/results/issue367-ri-mp2-gpu/`;
+  the fast-compile current-source build is correctness evidence only and is not
+  used for a new performance claim.
 
 ## Consequences
 
@@ -73,7 +80,9 @@ compiler-owned scheduling boundary without replacing the native scientific
 implementation. A later shared scheduler can consume the same dimensions,
 resource facts and lifetimes without first extracting policy from C++.
 
-## Revisit whenMove the method-specific schedule onto a more generic ProgramIR/TensorIR
+## Revisit when
+
+Move the method-specific schedule onto a more generic ProgramIR/TensorIR
 resource candidate when that layer can express bounded runtime block loops and
 provider-produced tiles without duplicating MP2 equations or weakening the
 existing memory/failure contracts.
