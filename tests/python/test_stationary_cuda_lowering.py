@@ -165,6 +165,7 @@ def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit()
 def test_stationary_aot_inventory_is_fixed_full_sp_domain() -> None:
     from itertools import product
 
+    from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cuda
     from vibeqc_compiler.method.stationary_cuda import (
         QUALIFIED_SP_COMPONENTS,
         emit_stationary_aot_cuda,
@@ -174,6 +175,7 @@ def test_stationary_aot_inventory_is_fixed_full_sp_domain() -> None:
     )
 
     requests = qualified_sp_requests()
+    primitive_source = emit_first_derivative_cuda(requests)
     assert len(requests) == 3 * 4**2 + 4**4 + 1
     assert len(requests) == len(set(requests)) == 305
     assert ("overlap", ("", "")) in requests
@@ -186,14 +188,25 @@ def test_stationary_aot_inventory_is_fixed_full_sp_domain() -> None:
     for functional in (0, 1, 2):
         identities = set()
         for spin, blocks in (("unpolarized", 1), ("polarized", 2)):
-            source = emit_stationary_aot_cuda(functional, spin=spin)
-            identities.add(stationary_aot_source_identity(functional, spin=spin))
+            source = emit_stationary_aot_cuda(
+                functional, primitive_source=primitive_source, spin=spin
+            )
+            identities.add(
+                stationary_aot_source_identity(
+                    functional, primitive_source=primitive_source, spin=spin
+                )
+            )
             assert stationary_aot_plan_identity(functional, spin=spin)
             assert f"stationary_functional = {functional}" in source
             assert f"stationary_spin_blocks = {blocks}" in source
         assert len(identities) == 2
     with pytest.raises(ValueError, match="partition_iterations=3"):
-        emit_stationary_aot_cuda(0, spin="unpolarized", iterations=2)
+        emit_stationary_aot_cuda(
+            0,
+            primitive_source=primitive_source,
+            spin="unpolarized",
+            iterations=2,
+        )
 
 
 def test_stationary_aot_loader_checks_plan_target_and_binary_identity(
