@@ -2,6 +2,7 @@
 #include <atomic>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -110,6 +111,72 @@ dft::XcIntegral evaluate_pbe_xc_rks(const dft::AoBasis& basis, const dft::Molecu
                                                  correlation_scale);
 }
 
+/** Exact #237 Slice-B controller. The anchor is deliberately run-local: the
+ * enclosing RKS solve owns immutable basis/grid references, and a prepared
+ * replay constructs a fresh controller, so geometry/basis/grid changes cannot
+ * inherit stale XC state. Anchor replacement is transactional: a failed full
+ * build leaves the preceding anchor untouched. */
+struct IncrementalPbeRksState {
+  const dft::AoBasis& basis;
+  const dft::MolecularGrid& grid;
+  std::size_t tile{};
+  double exchange_scale{1.0}, correlation_scale{1.0};
+  std::size_t max_updates{};
+  double max_density_rms{};
+  dft::IncrementalXcDiagnostic& diagnostic;
+  Matrix anchor_density;
+  std::size_t updates_since_rebuild{};
+
+  double anchor_delta_rms(const Matrix& density) const {
+    if (density.size() != anchor_density.size())
+      throw std::invalid_argument("incremental XC anchor density dimensions changed");
+    double square_sum = 0.0;
+    for (std::size_t i = 0; i < density.size(); ++i) {
+      const double delta = density[i] - anchor_density[i];
+      square_sum += delta * delta;
+    }
+    return std::sqrt(square_sum / static_cast<double>(density.size()));
+  }
+
+  dft::XcIntegral rebuild(const Matrix& density, bool periodic, bool drift, bool fallback,
+                          bool strict_final) {
+    auto full = dft::integrate_pbe_rks_with_tail_scaled(basis, grid, density, tile, {},
+                                                        exchange_scale, correlation_scale);
+    // Commit only after the complete full evaluation succeeds.
+    anchor_density = density;
+    updates_since_rebuild = 0;
+    ++diagnostic.full_builds;
+    diagnostic.periodic_rebuilds += periodic ? 1U : 0U;
+    diagnostic.drift_rebuilds += drift ? 1U : 0U;
+    diagnostic.fallback_rebuilds += fallback ? 1U : 0U;
+    diagnostic.strict_final_builds += strict_final ? 1U : 0U;
+    return full;
+  }
+
+  dft::XcIntegral evaluate(const Matrix& density, bool strict_final = false) {
+    if (anchor_density.empty()) return rebuild(density, false, false, false, strict_final);
+    if (strict_final) return rebuild(density, false, false, false, true);
+    if (updates_since_rebuild >= max_updates) return rebuild(density, true, false, false, false);
+    const double drift = anchor_delta_rms(density);
+    if (!std::isfinite(drift) || drift > max_density_rms)
+      return rebuild(density, false, true, false, false);
+
+    Matrix delta(density.size());
+    for (std::size_t i = 0; i < density.size(); ++i) delta[i] = density[i] - anchor_density[i];
+    try {
+      auto incremental = dft::integrate_pbe_rks_incremental_exact(
+          basis, grid, anchor_density, delta, tile, exchange_scale, correlation_scale);
+      ++diagnostic.incremental_updates;
+      ++updates_since_rebuild;
+      return std::move(incremental.total);
+    } catch (const std::domain_error&) {
+      return rebuild(density, false, false, true, false);
+    } catch (const std::runtime_error&) {
+      return rebuild(density, false, false, true, false);
+    }
+  }
+};
+
 dft::XcIntegral evaluate_r2scan_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                        const Matrix& density, dft::XcDensitySource source,
                                        std::size_t tile, double exchange_scale,
@@ -143,7 +210,8 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
                            RksXcEvaluator evaluate_xc, const char* method_name,
                            dft::XcDensitySource source, std::size_t retained_capacity,
                            std::size_t tile, double exchange_scale, double correlation_scale,
-                           dft::nlc::Vv10Plan* nonlocal_correlation) {
+                           dft::nlc::Vv10Plan* nonlocal_correlation,
+                           std::optional<dft::XcIntegral> xc_override = std::nullopt) {
   const auto& strategy = plan.strategy();
   const auto& ints = plan.one_electron();
   const auto jk = plan.build(density);
@@ -163,8 +231,9 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
     exact_exchange +=
         contract_fock_energy_components(correction_strategy, correction_jk, density).exchange;
   }
-  const auto xc =
-      evaluate_xc(basis, grid, density, source, tile, exchange_scale, correlation_scale);
+  auto xc = xc_override.has_value() ? std::move(*xc_override)
+                                    : evaluate_xc(basis, grid, density, source, tile,
+                                                  exchange_scale, correlation_scale);
   result.density_diagnostic = xc.density_diagnostic;
   dft::nlc::Vv10Integral nonlocal;
   if (nonlocal_correlation)
@@ -277,6 +346,22 @@ ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_ran
   ks.scf_domain_version = std::string_view(method_name) == "B3LYP" ? 2U : 1U;
   auto& diagnostic = result.xc_density_diagnostic;
   diagnostic.physical_residual = std::numeric_limits<double>::infinity();
+  const bool incremental_xc = options.experimental_incremental_xc;
+  if (incremental_xc && (std::string_view(method_name) != "PBE" ||
+                         options.xc_density_route != dft::XcDensityRoute::DensityMatrix ||
+                         nonlocal_correlation || options.incremental_xc_max_updates == 0 ||
+                         !std::isfinite(options.incremental_xc_max_density_rms) ||
+                         options.incremental_xc_max_density_rms <= 0.0))
+    throw std::invalid_argument(
+        "incremental XC requires CPU semilocal PBE RKS, density-matrix XC, positive bounded "
+        "policy");
+  ks.incremental_xc.enabled = incremental_xc;
+  std::optional<IncrementalPbeRksState> incremental_state;
+  if (incremental_xc)
+    incremental_state.emplace(IncrementalPbeRksState{
+        basis, grid, options.xc_tile_points, options.semilocal_exchange_scale,
+        options.semilocal_correlation_scale, options.incremental_xc_max_updates,
+        options.incremental_xc_max_density_rms, ks.incremental_xc});
   std::shared_ptr<const OccupiedDensityFactor> factor;
   DensityFactorIdentity identity{};
   const bool use_orbitals = options.xc_density_route == dft::XcDensityRoute::OccupiedOrbitals;
@@ -288,13 +373,17 @@ ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_ran
     const auto provider_capacity = runtime::add_capacity(
         plan.cpu_observation_capacity(),
         long_range_correction ? long_range_correction->cpu_observation_capacity() : 0);
+    const auto incremental_capacity =
+        incremental_state ? runtime::vector_bytes(incremental_state->anchor_density) : 0;
     return runtime::add_capacity(
         runtime::add_capacity(provider_capacity, diis.numeric_capacity()),
         runtime::add_capacity(
             factor ? factor->numeric_capacity_bytes() : 0,
-            runtime::vector_capacities(orthogonalizer, current_density, orbitals.values,
-                                       orbitals.vectors, basis.packed, grid.points(),
-                                       grid.weights(), grid.owners(), ks.history)));
+            runtime::add_capacity(
+                incremental_capacity,
+                runtime::vector_capacities(orthogonalizer, current_density, orbitals.values,
+                                           orbitals.vectors, basis.packed, grid.points(),
+                                           grid.weights(), grid.owners(), ks.history))));
   };
   const auto make_current_factor = [&](const Matrix& current_density,
                                        std::size_t extra_live_bytes = 0) {
@@ -320,14 +409,17 @@ ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_ran
                               runtime::add_capacity(packing_bytes, extra_live_bytes)));
   };
   if (use_orbitals && !initial_density) make_current_factor(density);
-  const auto evaluate_current = [&](const Matrix& current_density,
-                                    std::size_t extra_live_bytes = 0) {
-    auto physical =
-        evaluate_rks(plan, long_range_correction, basis, grid, current_density, evaluate_xc,
-                     method_name, {options.xc_density_route, factor.get(), identity},
-                     runtime::add_capacity(retained_capacity(current_density), extra_live_bytes),
-                     options.xc_tile_points, options.semilocal_exchange_scale,
-                     options.semilocal_correlation_scale, nonlocal_correlation);
+  const auto evaluate_current = [&](const Matrix& current_density, std::size_t extra_live_bytes = 0,
+                                    bool require_full_xc = false) {
+    std::optional<dft::XcIntegral> xc_override;
+    if (incremental_state)
+      xc_override.emplace(incremental_state->evaluate(current_density, require_full_xc));
+    auto physical = evaluate_rks(
+        plan, long_range_correction, basis, grid, current_density, evaluate_xc, method_name,
+        {options.xc_density_route, factor.get(), identity},
+        runtime::add_capacity(retained_capacity(current_density), extra_live_bytes),
+        options.xc_tile_points, options.semilocal_exchange_scale,
+        options.semilocal_correlation_scale, nonlocal_correlation, std::move(xc_override));
     const auto& record = physical.density_diagnostic;
     if (record.executed == dft::XcDensityRoute::OccupiedOrbitals)
       ++diagnostic.orbital_calls;
@@ -430,12 +522,12 @@ ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_ran
   }
 
   result.fock_builds += 2;
-  auto final = evaluate_current(density);
+  auto final = evaluate_current(density, 0, true);
   orbitals = generalized_eigen(final.fock, orthogonalizer, n);
   Matrix projected = next_density_from_orbitals(density, runtime::vector_bytes(final.fock));
   result.density_rms = density_rms(projected, density);
   density = std::move(projected);
-  final = evaluate_current(density, runtime::vector_bytes(final.fock));
+  final = evaluate_current(density, runtime::vector_bytes(final.fock), true);
   const auto final_residual = commutator_residual(final.fock, density, ints.overlap, n);
   diagnostic.physical_residual = residual_rms(final_residual);
   ks.physical_residual = diagnostic.physical_residual;
