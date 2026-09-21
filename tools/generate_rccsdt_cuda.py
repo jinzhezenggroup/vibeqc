@@ -17,11 +17,11 @@ from generate_rccsdt_native import INVENTORY_HASH, OP, R3, SLOW_TABLE, VP, _LABE
 
 def _device_arrays() -> str:
     label_index = {label: i for i, label in enumerate(_LABELS)}
-    virtual = ",\\n".join(
+    virtual = ",\n".join(
         "    {" + ",".join(str(x) for x in VP[label]) + "}" for label in _LABELS
     )
     r3_coeff = ",".join(str(c) for c, _ in R3)
-    r3_perm = ",\\n".join(
+    r3_perm = ",\n".join(
         "    {" + ",".join(str(x) for x in perm) + "}" for _, perm in R3
     )
     rows = []
@@ -37,7 +37,7 @@ def _device_arrays() -> str:
                 + "}}"
             )
         rows.append("    {" + ",".join(entries) + "}")
-    contraction = ",\\n".join(rows)
+    contraction = ",\n".join(rows)
     return f"""
 __device__ __constant__ int kVirtualPermutations[6][3] = {{
 {virtual}
