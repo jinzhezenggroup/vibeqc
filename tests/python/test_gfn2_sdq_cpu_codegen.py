@@ -1,5 +1,10 @@
 """Regression gates for the native GFN2 S/D/Q primitive lowering."""
 
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
 from vibeqc_compiler.integral.gfn2_sdq_cpu import (
     emit_gfn2_sdq_cpu,
     gfn2_sdq_cpu_inventory,
@@ -25,3 +30,40 @@ def test_gfn2_sdq_cpu_emitter_is_deterministic_generated_math() -> None:
     assert "evaluate_gfn2_sdq_primitive" in source
     assert "make_axis_overlap" not in source
     assert "__device__" not in source
+
+
+def test_generated_dispatch_rejects_aliasing_and_invalid_inputs(tmp_path: Path) -> None:
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("host C++ compiler required")
+    (tmp_path / "sdq.hpp").write_text(emit_gfn2_sdq_cpu())
+    source = tmp_path / "check.cpp"
+    source.write_text(r"""
+#include <limits>
+#include "sdq.hpp"
+int main() {
+  using namespace vibeqc::xtb::generated;
+  using Fn=bool(*)(unsigned,unsigned,unsigned,unsigned,double,double,const double*,Gfn2SdqPrimitive&);
+  const Fn functions[]{evaluate_gfn2_overlap_primitive,evaluate_gfn2_overlap_gradient_primitive,evaluate_gfn2_sdq_values_primitive,evaluate_gfn2_sdq_primitive};
+  double r[]{.1,.2,.3};Gfn2SdqPrimitive out{};out.values[0]=123.;
+  for(const auto fn:functions) {
+    if(fn(0,3,0,0,1.,1.,r,out))return 1;
+    if(fn(1,1,0,3,1.,1.,r,out))return 2;
+    if(fn(0,0,0,0,std::numeric_limits<double>::quiet_NaN(),1.,r,out))return 3;
+    if(fn(0,0,0,0,1.,1.,nullptr,out))return 4;
+    if(fn(0,0,0,0,-1.,1.,r,out))return 5;
+    if(out.values[0]!=123.)return 6;
+  }
+}
+""")
+    binary = tmp_path / "check"
+    subprocess.run(
+        [compiler, "-std=c++20", "-O0", str(source), "-o", str(binary)],
+        check=True,
+        capture_output=True,
+        timeout=60,
+    )
+    result = subprocess.run(
+        [str(binary)], check=False, capture_output=True, text=True, timeout=10
+    )
+    assert result.returncode == 0, (result.returncode, result.stdout, result.stderr)

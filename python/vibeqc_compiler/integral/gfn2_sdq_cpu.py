@@ -132,6 +132,11 @@ def _emit_dispatch(tag: str) -> str:
         "    unsigned bra_angular, unsigned ket_angular, unsigned bra_component,",
         "    unsigned ket_component, double bra_alpha, double ket_alpha,",
         "    const double* vector, Gfn2SdqPrimitive& result) noexcept {",
+        "  if (bra_angular > 2U || ket_angular > 2U) return false;",
+        "  constexpr unsigned components[] = {1U, 3U, 6U};",
+        "  if (bra_component >= components[bra_angular] || ket_component >= components[ket_angular]) return false;",
+        "  if (!vector || !std::isfinite(bra_alpha) || !std::isfinite(ket_alpha) || bra_alpha <= 0.0 || ket_alpha <= 0.0) return false;",
+        "  for (unsigned axis = 0; axis < 3U; ++axis) if (!std::isfinite(vector[axis])) return false;",
         "  switch (bra_angular * 3U + ket_angular) {",
     ]
     for bra, ket in product(range(3), repeat=2):

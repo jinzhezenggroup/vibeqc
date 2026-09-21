@@ -14,6 +14,7 @@ traversal, screening, and runtime publication remain backend/runtime policy.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 from .expr import Expr, Graph
 from .ir import OperatorFamily
@@ -193,8 +194,11 @@ def evaluate_gfn2_sdq_primitive(
         (float(centers[0][0]), float(centers[0][1]), float(centers[0][2])),
         (float(centers[1][0]), float(centers[1][1]), float(centers[1][2])),
     )
-    if any(value <= 0.0 for value in exponent_values):
-        raise ValueError("GFN2 S/D/Q primitive exponents must be positive")
+    if any(not isfinite(value) or value <= 0.0 for value in exponent_values):
+        raise ValueError("GFN2 S/D/Q primitive exponents must be finite and positive")
+
+    if any(not isfinite(value) for center in center_values for value in center):
+        raise ValueError("GFN2 S/D/Q primitive centers must be finite")
 
     variables = {"alpha": exponent_values[0], "beta": exponent_values[1]}
     for center_name, position in zip(("a", "b"), center_values, strict=True):

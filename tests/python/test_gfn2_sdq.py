@@ -110,3 +110,20 @@ def test_sdq_coordinate_gradients_match_finite_difference_and_translate(
 def test_sdq_rejects_non_gfn2_public_shell_domain() -> None:
     with pytest.raises(ValueError, match="s/p/d"):
         build_gfn2_sdq_primitive_kernel((0, 3), ("", "xxx"))
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -float("inf"), 0.0, -1.0])
+def test_sdq_interpreter_rejects_nonphysical_exponents(bad: float) -> None:
+    kernel = build_gfn2_sdq_primitive_kernel((0, 0), ("", ""))
+    with pytest.raises(ValueError, match="finite and positive"):
+        evaluate_gfn2_sdq_primitive(
+            kernel, (bad, 1.0), ((0.0, 0.0, 0.0), (0.1, 0.2, 0.3))
+        )
+
+
+def test_sdq_interpreter_rejects_nonfinite_centers() -> None:
+    kernel = build_gfn2_sdq_primitive_kernel((0, 0), ("", ""))
+    with pytest.raises(ValueError, match="centers must be finite"):
+        evaluate_gfn2_sdq_primitive(
+            kernel, (1.0, 1.0), ((float("nan"), 0.0, 0.0), (0.0, 0.0, 0.0))
+        )
