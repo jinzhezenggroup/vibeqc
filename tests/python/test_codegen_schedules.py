@@ -182,10 +182,7 @@ def test_two_root_scalar_schedule_is_compiler_owned_for_untuned_class() -> None:
         TEST_CUDA_TARGET.maximum_blocks_per_sm,
         TEST_CUDA_TARGET.maximum_threads_per_sm // TEST_CUDA_TARGET.warp_size,
         TEST_CUDA_TARGET.registers_per_sm
-        // (
-            TEST_CUDA_TARGET.maximum_registers_per_thread
-            * TEST_CUDA_TARGET.warp_size
-        ),
+        // (TEST_CUDA_TARGET.maximum_registers_per_thread * TEST_CUDA_TARGET.warp_size),
     )
     assert scalar[0].minimum_blocks_per_sm == expected_resident_blocks
     assert not scalar[0].shared_coulomb
@@ -214,7 +211,6 @@ def test_two_root_scalar_schedule_is_compiler_owned_for_untuned_class() -> None:
         PSSS_SPEC, target=TEST_CUDA_TARGET, integral=integral
     )
     assert any(trial.schedule == scalar[0] for trial in trials)
-
 
     generic = build_integral_ir(
         PSSS_SPEC,

@@ -1271,10 +1271,9 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         force_begin = source.find(force_marker)
         if force_begin < 0:
             raise RuntimeError("generated force task marker changed unexpectedly")
-        if (
-            plan.kernel.integral.recurrence.startswith("rys")
-            and plan.kernel.integral.required_rys_roots in (3, 4, 5)
-        ):
+        if plan.kernel.integral.recurrence.startswith(
+            "rys"
+        ) and plan.kernel.integral.required_rys_roots in (3, 4, 5):
             force_consumer = _emit_rys_uniform_warp_force_consumer_cuda(
                 spec,
                 plan,
@@ -1296,10 +1295,11 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
                 plan,
                 schedule=fock_schedule,
             )
-        elif (
-            plan.kernel.integral.recurrence.startswith("rys")
-            and plan.schedule.kind
-            in (ScheduleKind.THREAD_TASKS, ScheduleKind.SUBGROUP_TASKS)
+        elif plan.kernel.integral.recurrence.startswith(
+            "rys"
+        ) and plan.schedule.kind in (
+            ScheduleKind.THREAD_TASKS,
+            ScheduleKind.SUBGROUP_TASKS,
         ):
             # Thread/subgroup fixed-root schedules are force mappings.  Ask
             # the ordinary scheduler for the value-only companion instead of
