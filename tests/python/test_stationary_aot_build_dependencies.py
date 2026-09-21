@@ -6,7 +6,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from vibeqc_compiler.common import paths as common_paths
 from vibeqc_compiler.common.paths import source_hashes
+from vibeqc_compiler.method import stationary_cuda
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -29,7 +31,7 @@ def test_aot_manifest_dependency_filter_matches_compatibility_hashes(
             for t in node.targets
         )
     )
-    expected = source_hashes("integral", "xc", "dft", assets=assets)
+    expected = source_hashes("common", "integral", "xc", "dft", assets=assets)
     workflow = (ROOT / "cmake/VibeQCCuda.cmake").read_text()
     selection = workflow.split("set(_vibeqc_stationary_contract_assets", 1)[1]
     selection = (
@@ -60,3 +62,31 @@ def test_aot_manifest_dependency_filter_matches_compatibility_hashes(
         'GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/write_stationary_aot_manifest.py"'
         in workflow
     )
+
+
+@pytest.mark.parametrize("functional", [0, 1, 2])
+@pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
+def test_shared_compiler_source_changes_invalidate_aot_contract(
+    functional: int, spin: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A new shared compiler source revision must reject an older artifact."""
+    original_hash = common_paths.file_hash
+    revision = {"changed": False}
+
+    def source_revision_hash(path: Path) -> str:
+        digest = original_hash(path)
+        if revision["changed"] and path.is_relative_to(common_paths.PACKAGE / "common"):
+            return "0" * 64
+        return digest
+
+    monkeypatch.setattr(common_paths, "file_hash", source_revision_hash)
+    identity = stationary_cuda.stationary_aot_contract_identity
+    identity.cache_clear()
+    try:
+        before = identity(functional, spin=spin)
+        revision["changed"] = True
+        identity.cache_clear()
+        after = identity(functional, spin=spin)
+        assert after != before
+    finally:
+        identity.cache_clear()

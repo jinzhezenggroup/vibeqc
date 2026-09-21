@@ -560,7 +560,7 @@ def stationary_aot_contract_identity(
             "requests": qualified_sp_requests(),
             "method_module": file_hash(Path(__file__)),
             "compiler_sources": source_hashes(
-                "integral", "xc", "dft", assets=STATIONARY_AOT_ASSETS
+                "common", "integral", "xc", "dft", assets=STATIONARY_AOT_ASSETS
             ),
         }
     )
