@@ -153,6 +153,45 @@ void ks_legacy_method_prefix_guard() {
             "short legacy batch preparation read an absent suffix");
     vibeqc_batch_destroy(batch);
   }
+  // The newly extended nested KS descriptor also accepts physically short
+  // v1-v4 allocations, not only a full object with a smaller size tag.
+  vibeqc_ks_options options{};
+  options.abi_version = VIBEQC_ABI_VERSION;
+  options.scf_domain_version = 1;
+  options.grid_version = 1;
+  options.radial_points = 3;
+  options.angular_polar = 2;
+  options.angular_azimuth = 4;
+  options.partition_iterations = 2;
+  options.coincident_tolerance = 1e-12;
+  options.tile_points = 16;
+  options.composition_version = 1;
+  options.semilocal_exchange_scale = 1.0;
+  options.semilocal_correlation_scale = 1.0;
+  options.execution_plan_version = 1;
+  options.spin_channels = 1;
+  for (const auto size :
+       {offsetof(vibeqc_ks_options, composition_version),
+        offsetof(vibeqc_ks_options, xc_execution_schedule),
+        offsetof(vibeqc_ks_options, execution_plan_version),
+        offsetof(vibeqc_ks_options, nonlocal_correlation_version), sizeof(vibeqc_ks_options)}) {
+    options.struct_size = static_cast<std::uint32_t>(size);
+    auto* legacy = reinterpret_cast<vibeqc_ks_options*>(boundary - size);
+    std::memcpy(legacy, &options, size);
+    auto method = lda_method();
+    method.ks_options = legacy;
+    vibeqc_calculation* calculation = nullptr;
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+                VIBEQC_STATUS_SUCCESS,
+            "KS preparation read beyond its versioned prefix");
+    vibeqc_calculation_destroy(calculation);
+    vibeqc_system* systems[]{fixture.system};
+    vibeqc_batch* batch = nullptr;
+    require(vibeqc_batch_prepare(fixture.context, systems, 1, &method, 0, &batch) ==
+                VIBEQC_STATUS_SUCCESS,
+            "KS batch preparation read beyond its versioned prefix");
+    vibeqc_batch_destroy(batch);
+  }
 #endif
 }
 
