@@ -26,3 +26,19 @@ not a new whole-molecule performance claim or default selector promotion.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Additional independent geometry verification
+
+A second review preserves the already-published artifact pin correction rather
+than replacing it. Its new test compiles both emitted geometry producers and
+the actual retained Boys table implementation on the host. Across ssss, psss,
+dppp and dddd, 640 signed-weight, pair-orientation and geometric cases preserve
+all finite live state and leave NaN canaries in omitted force state untouched.
+Independent 256-point Gauss-Legendre integration verifies the live Boys values.
+
+The 55 IR/artifact/geometry tests pass; a separate focused Fock/psss selection
+passes 48 tests with six explicit CUDA opt-in skips. These additional results
+are host/compiler validation, not another GPU or molecular performance run.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro
