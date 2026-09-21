@@ -44,7 +44,6 @@ from tools.vibeqc_cc.triples_cuda import (
     CudaTriplesTiles,
     TriplesTileConfig,
 )
-from tools.vibeqc_cc.triples_tiles import TriplesTileEnumerator
 
 ENDPOINTS_DIR = ROOT / "tests/reference_data/cc/endpoints"
 GROUND_TRUTH = {
@@ -226,9 +225,7 @@ def run(args: typing.Any) -> None:
                             runtime_tile_capacity,
                         )
 
-                        capacity = runtime_tile_capacity(
-                            nocc, nvir, vir_chunk_size
-                        )
+                        capacity = runtime_tile_capacity(nocc, nvir, vir_chunk_size)
                         tile_prog = build_runtime_tile_triples_program(
                             nocc, nvir, capacity=capacity
                         )
