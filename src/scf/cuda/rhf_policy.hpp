@@ -120,6 +120,8 @@ bool bounded_direct_count_diagnostic_requested() noexcept;
 bool bounded_direct_aot_only_diagnostic_requested() noexcept;
 bool bounded_direct_fock_only_diagnostic_requested() noexcept;
 bool bounded_fock_class_timing_requested() noexcept;
+/** True when force AOT classes are explicitly narrowed for a diagnostic replay. */
+bool aot_shell_class_selection_override_requested() noexcept;
 bool direct_tile_validation_requested() noexcept;
 double converged_fock_reuse_density_rms(double density_tolerance) noexcept;
 bool force_density_product_screening_requested() noexcept;

@@ -215,6 +215,14 @@ bool bounded_fock_class_timing_requested() noexcept {
   return selected("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE", "profile");
 }
 
+bool aot_shell_class_selection_override_requested() noexcept {
+  const char* selection = std::getenv("VIBEQC_AOT_SHELL_CLASSES");
+  // Match the generated registry: absent, empty, and "all" all mean the full
+  // compiled profile. Any other spelling intentionally narrows the force
+  // registry and may therefore exercise the generic fallback for diagnostics.
+  return selection != nullptr && *selection != '\0' && std::strcmp(selection, "all") != 0;
+}
+
 bool direct_tile_validation_requested() noexcept {
   return selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
 }

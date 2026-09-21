@@ -1746,6 +1746,41 @@ def test_production_manifest_drives_generated_registry_and_shards(
         selection.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
         for selection in selections
     )
+    canonical_spd = {
+        "ssss",
+        "psss",
+        "psps",
+        "ppss",
+        "ppps",
+        "pppp",
+        "dsss",
+        "dsps",
+        "dspp",
+        "dsds",
+        "dpss",
+        "dpps",
+        "dppp",
+        "dpds",
+        "dpdp",
+        "ddss",
+        "ddps",
+        "ddpp",
+        "ddds",
+        "dddp",
+        "dddd",
+    }
+    generated_force = {
+        selection.spec.name
+        for selection in selections
+        if KernelConsumer.FORCE in selection.consumers
+    }
+    # psss force reuses the exact bounded scheduler; every other canonical
+    # s/p/d class has a production-selected generated force consumer.
+    assert (generated_force | {"psss"}) & canonical_spd == canonical_spd
+    direct_source = _direct_cuda_source()
+    assert "unexpected_tuned_spd_fallback_mask" in direct_source
+    assert "kCanonicalSpdShellClassMask" in direct_source
+    assert "aot_shell_class_selection_override_requested()" in direct_source
     shards = _partition_production_selections(selections, shard_count=8)
     shard_by_name = {
         selection.spec.name: shard_index

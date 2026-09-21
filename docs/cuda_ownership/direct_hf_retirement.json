@@ -4,27 +4,49 @@
   "scope": "Current handwritten scientific CUDA under src/scf/cuda/direct_*; this overlay does not replace or reclassify the semantic CUDA ownership ledger.",
   "families": [
     {
-      "id": "bounded-direct-fallbacks",
+      "id": "bounded-direct-generic-fallback",
       "status": "unsupported-fallback",
-      "capability": "Bounded Direct-HF quartet contraction and exact-force execution for classes that are not yet promoted to a generated production consumer.",
-      "current_selector": "The Direct runtime selects bounded/paged fallback execution when the promoted generated class or its resource-qualified schedule is unavailable.",
-      "generated_alternative": "IntegralIR weighted/value/derivative programs and the production shell-class registry provide generated mathematics for supported classes, but not every bounded consumer is production-qualified.",
-      "schedule_requirements": "Preserve bounded page/task admission, symmetry, exact work accounting, and explicit fallback rather than silently changing the scientific domain.",
-      "resource_profile": "Bounded by the existing Direct page/task workspace and unified resource plan; no global quartet or derivative tensor may be introduced.",
+      "capability": "Generic bounded Direct-HF Fock/force contraction for shell classes whose exact consumer is not selected by the active generated/native registry.",
+      "current_selector": "Default tuned bounded production must not enter this fallback for canonical s/p/d classes. It remains reachable for unpromoted higher-l classes, portable/unmeasured profiles, and explicit AOT class-filter diagnostics.",
+      "generated_alternative": "IntegralIR value/derivative programs plus the production shell-class registry cover the tuned canonical s/p/d domain; additional higher-l classes require numerical/resource/endpoint qualification before their generic fallback can retire.",
+      "schedule_requirements": "Preserve bounded topology traversal, symmetry, screening admission and output scatter without introducing a whole-quartet tensor. Production-qualified classes must fail closed rather than silently falling back to duplicate handwritten equations.",
+      "resource_profile": "The fallback remains O(N_shell^2) in stored topology and bounded in task state. Retirement requires generated classes to preserve those memory bounds as well as endpoint performance.",
       "evidence": [
         "docs/shell_codegen.md",
         "docs/weighted_eri.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
-      "retirement_condition": "Retire each fallback scientific body only after its generated class/consumer passes independent numerical, resource, and complete-endpoint gates with an explicit replacement schedule.",
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
+      "retirement_condition": "Delete the generic scientific fallback only after every supported production angular domain has a generated/class-specific qualified consumer or a compiler-owned generic lowering; until then, keep it quarantined from already-qualified tuned s/p/d production.",
       "files": [
         "src/scf/cuda/direct_bounded_contraction.cuh",
+        "src/scf/cuda/direct_bounded_fallback.cu"
+      ]
+    },
+    {
+      "id": "bounded-direct-native-exceptions",
+      "status": "performance-exception",
+      "capability": "Exact bounded native schedules retained for the dddd production exception and low-order ssss/psss force execution.",
+      "current_selector": "The bounded runtime uses class-specific exact execution where the native schedule remains selected or where generated mathematics deliberately reuses the qualified native page scheduler. These paths are not the generic uncovered-class fallback.",
+      "generated_alternative": "Generated shell-class consumers and weighted-ERI derivative callables already overlap these classes; retirement depends on matching the exact page/stream schedule and complete endpoint behavior, not on source emission alone.",
+      "schedule_requirements": "Preserve direct pair-class enumeration, page-local screening, shared primitive work, bounded state, and single-counted force/Fock scatter while replacing only duplicate scientific algebra.",
+      "resource_profile": "Retained routes exist because queue materialization or generated class schedules can regress endpoint/resource behavior; promotion requires register/stack/shared-memory and complete-endpoint evidence.",
+      "evidence": [
+        "docs/shell_codegen.md",
+        "docs/weighted_eri.md",
+        "python/vibeqc_compiler/integral/production_shell_classes.json"
+      ],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
+      "retirement_condition": "Retire each class-specific native scientific body when its generated consumer preserves the qualified streaming/page schedule and passes RHF/UHF numerical, resource and endpoint gates; scheduler-only runtime may remain native.",
+      "files": [
         "src/scf/cuda/direct_bounded_dddd.cu",
-        "src/scf/cuda/direct_bounded_exact_force.cu",
-        "src/scf/cuda/direct_bounded_fallback.cu",
-        "src/scf/cuda/direct_bounded_pages.cu",
-        "src/scf/cuda/direct_bounded_tasks.cu"
+        "src/scf/cuda/direct_bounded_exact_force.cu"
       ]
     },
     {
@@ -40,7 +62,11 @@
         "docs/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#830 GVN/redundancy cleanup",
+        "#832 live-range/rematerialization/fusion profitability",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "For each retained Fock family, demonstrate generated mathematical parity plus matched complete-endpoint non-regression; then delete the duplicate native scientific body unless an independently measured exception remains.",
       "files": [
         "src/scf/cuda/direct_cached_tensor_kernels.cu",
@@ -69,7 +95,10 @@
         "benchmarks/results/weighted-eri-144/README.md",
         "benchmarks/results/issue356-psss-retirement/README.md"
       ],
-      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "Promote and delete each native low-order formula only after independent derivative checks and matched RHF/UHF fixed/resident/paged endpoint gates pass for the claimed domain.",
       "files": [
         "src/scf/cuda/direct_force_density.cuh",
@@ -97,7 +126,11 @@
         "docs/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#830 GVN/redundancy cleanup",
+        "#832 live-range/rematerialization/fusion profitability",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "At least one retained order-4/5/6 family must reach generated multi-root/resource parity before deleting its native body; repeat the same measured gate per remaining family.",
       "files": [
         "src/scf/cuda/direct_native_high_order_coulomb.cuh",
@@ -120,7 +153,11 @@
         "docs/shell_codegen.md",
         "docs/cuda_ownership.md"
       ],
-      "required_compiler_capabilities": ["#351 shared recurrence/spec ownership", "#832 resource-aware lowering", "#833 reusable schedules"],
+      "required_compiler_capabilities": [
+        "#351 shared recurrence/spec ownership",
+        "#832 resource-aware lowering",
+        "#833 reusable schedules"
+      ],
       "retirement_condition": "Delete a shared native helper only after all production consumers that depend on its scientific mathematics have qualified generated replacements; runtime-only traversal may remain native.",
       "files": [
         "src/scf/cuda/direct_native_cartesian.cuh",
@@ -137,8 +174,8 @@
     {
       "id": "direct-screening-policy",
       "status": "scientific-policy",
-      "capability": "Density/Schwarz/page screening and bounds that define the admitted Direct-HF scientific work domain.",
-      "current_selector": "Direct-HF applies these policies before/while forming the active quartet domain; they are scientific/controller policy rather than duplicate ERI formulas.",
+      "capability": "Density/Schwarz/page screening, exact bounded task admission, and bounds that define the admitted Direct-HF scientific work domain.",
+      "current_selector": "Direct-HF applies these policies while forming bounded/generated pages and active quartet domains; page/task enumeration is runtime structure, while its physical density/Schwarz admission remains scientific/controller policy rather than duplicate ERI algebra.",
       "generated_alternative": "Generated consumers may consume the admitted domain, but retirement is not justified merely by moving the same policy into generated source.",
       "schedule_requirements": "Preserve physical screening/error semantics independently from generic queue compaction and scheduling; coordinate changes with the numerical error-policy owners.",
       "resource_profile": "Screening must remain work- and memory-bounded and expose active-domain/work counts; looser policy cannot be used to manufacture a performance win.",
@@ -146,13 +183,17 @@
         "docs/cuda_ownership.md",
         "docs/accuracy.md"
       ],
-      "required_compiler_capabilities": ["#173/#174/#175 numerical screening and error-policy contracts"],
+      "required_compiler_capabilities": [
+        "#173/#174/#175 numerical screening and error-policy contracts"
+      ],
       "retirement_condition": "Retain as explicit scientific policy unless a shared policy owner replaces it with identical validated admission semantics; do not count a policy relocation as formula retirement.",
       "files": [
         "src/scf/cuda/direct_density_bounds.cu",
         "src/scf/cuda/direct_page_screening.cuh",
         "src/scf/cuda/direct_schwarz_kernels.cu",
-        "src/scf/cuda/direct_screening.cuh"
+        "src/scf/cuda/direct_screening.cuh",
+        "src/scf/cuda/direct_bounded_pages.cu",
+        "src/scf/cuda/direct_bounded_tasks.cu"
       ]
     },
     {
@@ -167,7 +208,10 @@
         "docs/cuda_ownership.md",
         "docs/weighted_eri.md"
       ],
-      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "Remove when generated consumers cover the same production domain with independent numerical qualification and no measured complete-endpoint disadvantage.",
       "files": [
         "src/scf/cuda/direct_reference_force.cu"
