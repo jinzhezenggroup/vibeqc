@@ -38,9 +38,8 @@ from vibeqc_compiler.tensor.scalar_cpp import emit_scalar_cpp
 
 
 def _host_device(source: str) -> str:
-    return (
-        source.replace("inline bool ", "VIBEQC_GFN2_ES2_HD inline bool ")
-        .replace("std::isfinite", "gfn2_es2_isfinite")
+    return source.replace("inline bool ", "VIBEQC_GFN2_ES2_HD inline bool ").replace(
+        "std::isfinite", "gfn2_es2_isfinite"
     )
 
 
