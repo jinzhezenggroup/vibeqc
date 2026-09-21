@@ -17,6 +17,7 @@ from vibeqc_compiler.tensor import Program, execute
 from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
 from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 
+from benchmarks._support import raw_output_path, write_result
 from tools.vibeqc_cc.triples_tiles import (
     TileSpec,
     build_runtime_tile_triples_program,
@@ -108,7 +109,7 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--max-bytes-mib", type=int, default=2048)
     parser.add_argument("--reference-max-bytes-mib", type=int, default=4096)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     args = parser.parse_args()
 
     if args.nocc < 1 or args.nvir < 1 or args.repeats < 1:
@@ -194,8 +195,7 @@ def main() -> None:
             "streaming schedule wins an endpoint performance gate"
         ),
     }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    write_result(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))
 
 
