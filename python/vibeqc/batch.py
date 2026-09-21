@@ -688,9 +688,9 @@ class PreparedBatch:
             multiplicity=self._multiplicities[index],
         ) as basis:
             grid = calculator._ks_options.grid
-            terms = ()
+            cores, terms = (), ()
             if ecp_force:
-                _, terms = resolve_ecp(calculator._basis, atoms)
+                cores, terms = resolve_ecp(calculator._basis, atoms)
             inventory = cpu_force_inventory(
                 basis,
                 grid_points=len(atoms)
@@ -710,7 +710,7 @@ class PreparedBatch:
                         "public CPU forces require a qualified CPU owner"
                     )
                 expected_hamiltonian = (
-                    "scalar-semilocal-ecp" if ecp_force else "all-electron"
+                    "scalar-semilocal-ecp" if any(cores) else "all-electron"
                 )
                 if state._source.hamiltonian != expected_hamiltonian:
                     raise ValueError("public CPU force Hamiltonian identity mismatch")
