@@ -329,6 +329,17 @@ def assess_grid_xc_schedule(
 ) -> GridXcCandidateAssessment:
     """Reject impossible/incompatible candidates before any timing comparison."""
 
+    if scientific is not None:
+        if not isinstance(scientific, GridXcScientificIdentity):
+            raise TypeError("scientific identity must be GridXcScientificIdentity")
+        if (
+            scientific.functional != functional
+            or scientific.observable != observable
+            or shape.spins != (2 if scientific.spin == "polarized" else 1)
+        ):
+            raise ValueError(
+                "scientific identity disagrees with admitted grid/XC workload"
+            )
     resolved = schedule.resolved(shape.tile_points)
     reasons: list[str] = []
     if resolved.name == "device_fused":

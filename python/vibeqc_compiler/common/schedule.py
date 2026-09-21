@@ -147,6 +147,7 @@ class ScheduleContract:
 
     def __post_init__(self) -> None:
         _text(self.consumer, "schedule consumer")
+        _text(self.schedule_hash, "schedule_hash")
         _digest(self.schedule_hash, "schedule_hash")
         for label in (
             "workload_hash",
