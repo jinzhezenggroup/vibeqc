@@ -205,10 +205,9 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
   result.diagnostic.numeric_capacity_bytes = std::max(p.provider_peak_bytes, capacity);
   result.reason = "maximum RCCSD iterations reached";
 
-  const unsigned iteration_budget =
-      options.max_iterations == std::numeric_limits<unsigned>::max()
-          ? options.max_iterations
-          : options.max_iterations + 1;
+  const unsigned iteration_budget = options.max_iterations == std::numeric_limits<unsigned>::max()
+                                        ? options.max_iterations
+                                        : options.max_iterations + 1;
   vibeqc::solver::run_bounded_iterations(iteration_budget, [&](unsigned ordinal) {
     const unsigned iteration = ordinal - 1;
     try {
