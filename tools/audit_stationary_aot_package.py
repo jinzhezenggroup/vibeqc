@@ -198,7 +198,8 @@ def main() -> None:
     parser.add_argument("--compare-native-library", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument(
-        "--require-native-cubin", action="store_true",
+        "--require-native-cubin",
+        action="store_true",
         help="fail if any qualified artifact would require driver PTX JIT",
     )
     args = parser.parse_args()
