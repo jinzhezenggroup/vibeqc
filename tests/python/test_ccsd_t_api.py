@@ -231,6 +231,27 @@ def test_force_batch_rejects_ragged_shapes_and_handles_empty_input() -> None:
     assert empty.shape is None and empty.items == ()
 
 
+@pytest.mark.parametrize(
+    "sources,kwargs,error,match",
+    [
+        ([], {"options": object()}, TypeError, "CCSDGradientOptions"),
+        ([], {"vir_chunk_size": 0}, ValueError, "vir_chunk_size"),
+        ([object()], {}, TypeError, "native-source dimensions"),
+        (
+            [SimpleNamespace(nbf=2, electron_count=3)],
+            {},
+            ValueError,
+            "closed-shell occupied/virtual",
+        ),
+    ],
+)
+def test_force_batch_preflight_rejects_invalid_global_or_source_state(
+    sources: typing.Any, kwargs: typing.Any, error: typing.Any, match: str
+) -> None:
+    with pytest.raises(error, match=match):
+        PreparedRCCSDTForceBatch(sources, **kwargs)
+
+
 def test_homogeneous_batch_isolates_one_invalid_provider_and_keeps_order() -> None:
     s0, p0, _meta0, _arrays0 = fixture_problem("h2")
     s1, _p1, _meta1, arrays1 = fixture_problem("h2")
