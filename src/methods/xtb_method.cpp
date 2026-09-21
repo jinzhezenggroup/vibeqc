@@ -9,6 +9,9 @@
 #include <vector>
 
 #include "runtime/gfn2_cpu_execution.hpp"
+#if defined(VIBEQC_HAS_GFN2_CUDA)
+#include "runtime/gfn2_cuda_execution.hpp"
+#endif
 
 namespace vibeqc::methods::detail {
 namespace {
@@ -81,11 +84,14 @@ const char* xtb_status_name(xtbloom_status_t status) noexcept {
 class Gfn2PreparedCalculation final : public PreparedCalculation {
  public:
   Gfn2PreparedCalculation(const Capabilities& capabilities, const core::System& system,
-                          const vibeqc_method_descriptor& descriptor)
+                          const vibeqc_method_descriptor& descriptor, vibeqc_backend backend,
+                          int device_id)
       : capabilities_(capabilities),
         atoms_(system.atoms),
         charge_(system.charge),
         multiplicity_(system.multiplicity),
+        backend_(backend),
+        device_id_(device_id),
         maximum_iterations_(descriptor.max_iterations),
         mixer_history_(descriptor.diis_history),
         energy_tolerance_(descriptor.energy_tolerance),
@@ -100,6 +106,10 @@ class Gfn2PreparedCalculation final : public PreparedCalculation {
         !(charge_tolerance_ > 0.0) || !std::isfinite(charge_tolerance_))
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                         "GFN2-xTB SCC tolerances must be positive finite values");
+#if defined(VIBEQC_HAS_GFN2_CUDA)
+    if (backend_ == VIBEQC_BACKEND_CUDA)
+      cuda_cache_ = std::make_unique<xtbloom::detail::Gfn2CudaExecutionCache>(device_id_, nullptr);
+#endif
   }
 
   [[nodiscard]] std::size_t atom_count() const noexcept override { return atoms_.size(); }
@@ -167,8 +177,16 @@ class Gfn2PreparedCalculation final : public PreparedCalculation {
     output.per_system_status = output_buffer(statuses);
 
     std::string execution_error;
-    const xtbloom_status_t execution_status = xtbloom::detail::execute_restricted_gfn2_cpu(
-        cache_, batch, options, output, execution_error);
+    xtbloom_status_t execution_status = XTBLOOM_STATUS_NOT_IMPLEMENTED;
+    if (backend_ == VIBEQC_BACKEND_CPU_REFERENCE) {
+      execution_status = xtbloom::detail::execute_restricted_gfn2_cpu(cpu_cache_, batch, options,
+                                                                      output, execution_error);
+#if defined(VIBEQC_HAS_GFN2_CUDA)
+    } else if (backend_ == VIBEQC_BACKEND_CUDA) {
+      execution_status = xtbloom::detail::execute_restricted_gfn2_cuda(*cuda_cache_, batch, options,
+                                                                       output, execution_error);
+#endif
+    }
     if (execution_status != XTBLOOM_STATUS_SUCCESS)
       throw_xtbloom(execution_status, "execution", execution_error);
 
@@ -185,7 +203,7 @@ class Gfn2PreparedCalculation final : public PreparedCalculation {
     result.convergence.energy_change = std::numeric_limits<double>::quiet_NaN();
     result.convergence.residual_rms = std::numeric_limits<double>::quiet_NaN();
     result.convergence.converged = statuses[0] == XTBLOOM_STATUS_SUCCESS && converged[0] != 0u;
-    result.executed_backend = VIBEQC_BACKEND_CPU_REFERENCE;
+    result.executed_backend = backend_;
     return result;
   }
 
@@ -194,11 +212,16 @@ class Gfn2PreparedCalculation final : public PreparedCalculation {
   std::vector<core::Atom> atoms_;
   int charge_{};
   unsigned multiplicity_{1u};
+  vibeqc_backend backend_{VIBEQC_BACKEND_CPU_REFERENCE};
+  int device_id_{};
   unsigned maximum_iterations_{};
   unsigned mixer_history_{};
   double energy_tolerance_{};
   double charge_tolerance_{};
-  xtbloom::detail::Gfn2CpuExecutionCache cache_{1};
+  xtbloom::detail::Gfn2CpuExecutionCache cpu_cache_{1};
+#if defined(VIBEQC_HAS_GFN2_CUDA)
+  std::unique_ptr<xtbloom::detail::Gfn2CudaExecutionCache> cuda_cache_;
+#endif
 };
 
 }  // namespace
@@ -235,16 +258,22 @@ vibeqc_status validate_xtb_system(vibeqc_method method, const core::System& syst
 std::unique_ptr<PreparedCalculation> prepare_xtb_calculation(
     const Capabilities& capabilities, core::ContextState& context, const core::System& system,
     const vibeqc_method_descriptor& descriptor) {
-  if (context.requested_backend != VIBEQC_BACKEND_CPU_REFERENCE)
+  if (context.requested_backend != VIBEQC_BACKEND_CPU_REFERENCE &&
+      context.requested_backend != VIBEQC_BACKEND_CUDA)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unsupported GFN2-xTB execution backend");
+#if !defined(VIBEQC_HAS_GFN2_CUDA)
+  if (context.requested_backend == VIBEQC_BACKEND_CUDA)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "GFN2-xTB CUDA execution is not admitted yet; use device='cpu'");
+                      "GFN2-xTB native CUDA execution is not included in this build");
+#endif
   if (descriptor.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                       "GFN2-xTB does not use Gaussian density fitting");
   if (descriptor.precision_mode != VIBEQC_PRECISION_FP64)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "GFN2-xTB currently exposes FP64 execution only");
-  return std::make_unique<Gfn2PreparedCalculation>(capabilities, system, descriptor);
+  return std::make_unique<Gfn2PreparedCalculation>(capabilities, system, descriptor,
+                                                   context.requested_backend, context.device_id);
 }
 
 }  // namespace vibeqc::methods::detail
