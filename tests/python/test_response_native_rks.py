@@ -22,7 +22,10 @@ from tools.vibeqc_response import (
 
 ATOMS = [("O", (0.1, -0.1, 0.0)), ("H", (0.1, 0.2, 1.7)), ("H", (1.6, -0.2, -0.5))]
 H2 = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
-GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
+# These are fixed-grid response/oracle tests, not quadrature convergence tests.
+# Keep a nontrivial atom-centred grid and the same strict independent SCF/fxc/FD
+# checks; production-grid convergence is covered by test_grid_policy_convergence.
+GRID = GridSpec(radial_points=12, angular_polar=4, angular_azimuth=8)
 
 
 def _calculator(method: str, **kwargs: typing.Any) -> Calculator:
@@ -81,6 +84,31 @@ def _independent_mf(response: typing.Any, basis: typing.Any) -> typing.Any:
     mf.small_rho_cutoff = 0
     mf.conv_tol, mf.conv_tol_grad, mf.max_cycle = 1e-13, 1e-11, 200
     return mf
+
+
+def _assert_independent_residual(
+    response: typing.Any, mf: typing.Any, solution: np.ndarray, rhs: np.ndarray
+) -> None:
+    ref, layout = response.problem.reference, response.problem.layout
+    c, occ = ref.coefficients, ref.occupations
+    expected_density = c @ layout.density_matrix(solution) @ c.T
+    # Independent true residual uses Libxc fxc and libcint J, never the tested
+    # operator's action or residual report.
+    mf.mo_coeff, mf.mo_occ, mf.mo_energy = c, occ, ref.orbital_energies
+    independent_action = mf.gen_response(hermi=1)
+    image = independent_action(expected_density)
+    gap = (
+        ref.orbital_energies[ref.nocc :][None, :]
+        - ref.orbital_energies[: ref.nocc, None]
+    )
+    residual = (
+        rhs
+        - (
+            gap * layout.as_ia(solution)
+            + (c.T @ image @ c)[np.ix_(layout.virtual, layout.occupied)].T
+        ).ravel()
+    )
+    assert np.linalg.norm(residual) < 2e-9
 
 
 def test_action_finite_rotations_transpose_and_independent_fxc(
@@ -142,23 +170,7 @@ def test_complete_solve_and_reconverged_density_response(native: typing.Any) -> 
     options = GMRESOptions(atol=1e-12, rtol=1e-11)
     result = solve(response, rhs, options=options, raise_on_failure=True)
     expected_density = c @ layout.density_matrix(result.solution) @ c.T
-    # Independent true residual uses Libxc fxc and libcint J, never the tested
-    # operator's action or residual report.
-    mf.mo_coeff, mf.mo_occ, mf.mo_energy = c, occ, ref.orbital_energies
-    independent_action = mf.gen_response(hermi=1)
-    image = independent_action(expected_density)
-    gap = (
-        ref.orbital_energies[ref.nocc :][None, :]
-        - ref.orbital_energies[: ref.nocc, None]
-    )
-    residual = (
-        rhs
-        - (
-            gap * layout.as_ia(result.solution)
-            + (c.T @ image @ c)[np.ix_(layout.virtual, layout.occupied)].T
-        ).ravel()
-    )
-    assert np.linalg.norm(residual) < 2e-9
+    _assert_independent_residual(response, mf, result.solution, rhs)
     for step in (3e-4, 1e-4, 3e-5):
         densities = []
         for sign in (1, -1):
@@ -173,7 +185,8 @@ def test_complete_solve_and_reconverged_density_response(native: typing.Any) -> 
         np.testing.assert_allclose(expected_density, numerical, atol=2e-6, rtol=2e-5)
 
     columns = np.column_stack([rhs, -0.4 * rhs, np.zeros_like(rhs)])
-    for strategy in ("sequential", "blocked", "recycled"):
+    # Keep full-size physical replay; the strategy matrix below uses H4.
+    for strategy in ("recycled",):
         many = solve_many(
             response, columns, strategy=strategy, options=options, raise_on_failure=True
         )
@@ -336,3 +349,44 @@ def test_native_uks_is_not_inferred_from_rks() -> None:
             pytest.raises(ResponseUnsupported, match="all-electron RKS"),
         ):
             NativeRKSResponse.from_native(batch, basis)
+
+
+@pytest.mark.parametrize("method", ("lda-rks", "pbe-rks"))
+def test_native_multirhs_strategy_matrix_on_small_molecule(method: str) -> None:
+    # Two occupied and two virtual orbitals: retain a genuine coupled response,
+    # not the scalar two-electron limit, without repeating the water endpoint.
+    atoms = [
+        ("H", (0.0, 0.0, -0.7)),
+        ("H", (0.1, 0.0, 0.7)),
+        ("H", (3.0, 0.2, -0.65)),
+        ("H", (3.2, 0.1, 0.65)),
+    ]
+    with _calculator(method).prepare_batch([atoms]) as batch, NativeAO(atoms) as basis:
+        batch.execute(strict=True)
+        with NativeRKSResponse.from_native(batch, basis, tile_points=257) as response:
+            ref, layout = response.problem.reference, response.problem.layout
+            assert ref.nocc == 2 and response.dimension == 4
+            c = ref.coefficients
+            perturbation = np.random.default_rng(180).normal(size=ref.hcore.shape)
+            perturbation = 0.1 * (perturbation + perturbation.T)
+            rhs = -(c.T @ perturbation @ c)[
+                np.ix_(layout.virtual, layout.occupied)
+            ].T.ravel()
+            options = GMRESOptions(atol=1e-12, rtol=1e-11)
+            result = solve(response, rhs, options=options, raise_on_failure=True)
+            _assert_independent_residual(
+                response, _independent_mf(response, basis), result.solution, rhs
+            )
+            columns = np.column_stack([rhs, -0.4 * rhs, np.zeros_like(rhs)])
+            for strategy in ("sequential", "blocked", "recycled"):
+                many = solve_many(
+                    response,
+                    columns,
+                    strategy=strategy,
+                    options=options,
+                    raise_on_failure=True,
+                )
+                for j, scale in enumerate((1, -0.4, 0)):
+                    np.testing.assert_allclose(
+                        many.results[j].solution, scale * result.solution, atol=2e-10
+                    )
