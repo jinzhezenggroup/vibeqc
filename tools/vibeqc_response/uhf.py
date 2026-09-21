@@ -127,12 +127,19 @@ class UHFReferenceSnapshot:
             coefficients = immutable(
                 getattr(self, f"coefficients_{spin}"), shape=(nbf, nbf)
             )
-            if (
-                np.max(
-                    np.abs(coefficients.T @ self.overlap @ coefficients - np.eye(nbf))
+            with np.errstate(over="ignore", invalid="ignore"):
+                orthogonality = float(
+                    np.max(
+                        np.abs(
+                            coefficients.T @ self.overlap @ coefficients - np.eye(nbf)
+                        )
+                    )
                 )
-                > self.validation_tolerance
-            ):
+            if not math.isfinite(orthogonality):
+                raise ValueError(
+                    f"{spin} reference validation produced a non-finite orthogonality residual"
+                )
+            if orthogonality > self.validation_tolerance:
                 raise ValueError(f"{spin} coefficients are not overlap orthonormal")
             energies = immutable(
                 getattr(self, f"orbital_energies_{spin}"), shape=(nbf,)
@@ -151,9 +158,18 @@ class UHFReferenceSnapshot:
             if np.any(np.diff(energies) < -self.validation_tolerance):
                 raise ValueError(f"{spin} canonical orbital energies must be ascending")
             fock = getattr(self, f"fock_{spin}")
-            residual = np.max(
-                np.abs(fock @ coefficients - self.overlap @ coefficients * energies)
-            )
+            with np.errstate(over="ignore", invalid="ignore"):
+                residual = float(
+                    np.max(
+                        np.abs(
+                            fock @ coefficients - self.overlap @ coefficients * energies
+                        )
+                    )
+                )
+            if not math.isfinite(residual):
+                raise ValueError(
+                    f"{spin} reference validation produced a non-finite canonical residual"
+                )
             if residual > self.validation_tolerance:
                 raise ValueError(
                     f"{spin} Fock/coefficient canonical residual is too large"

@@ -111,7 +111,7 @@ vibeqc_method_descriptor lda_method() {
 }
 
 void ks_option_snapshot() {
-  require(vibeqc_ks_options_version() == 2, "KS option version unavailable");
+  require(vibeqc_ks_options_version() == 3, "KS option version unavailable");
   Fixture fixture;
   auto method = lda_method();
   std::array<double, 119> radii;

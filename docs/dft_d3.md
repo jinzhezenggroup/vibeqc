@@ -3,9 +3,12 @@
 VibeQC represents additive geometry-only dispersion with
 `DispersionCorrectionPrimitive` and an immutable `D3Spec`. The native library
 now exposes a standalone production D3(BJ) correction owner for CPU and CUDA,
-including ragged batches and fixed-topology changed-geometry replay. This is an
-additive correction endpoint: it does not yet make `Calculator` automatically
-sum electronic DFT and D3 energies or forces, so issue #492 remains open.
+including ragged batches and fixed-topology changed-geometry replay. `Calculator`
+now composes that owner automatically when its resolved `MethodIR` contains a
+production D3(BJ) correction: the electronic subgraph remains the native KS model,
+and the correction is added exactly once at the prepared execution boundary.
+Issue #492 remains open for the still-unpromoted D3 variants and generated-runtime
+performance/retirement work.
 
 ## Supported model and MethodIR composition
 
@@ -25,6 +28,66 @@ Energy is in Hartree; coordinates are in bohr. The correction returns
 **gradient = dE/dR**, including explicit pair-distance and coordination-number
 response. Forces therefore have the opposite sign. The GFN1 halogen correction,
 Hamiltonian, SCC state and D4 terms are not part of this endpoint.
+
+## Calculator composition
+
+The preferred composite entry point is a spin-explicit `MethodIR`. The method name
+does not select D3 execution after resolution:
+
+```python
+from vibeqc import Calculator, GridSpec, KsOptions
+from vibeqc_compiler.method import resolve_method
+
+method = resolve_method("PBE-D3(BJ)", spin="unpolarized")
+calc = Calculator(
+    method=method,
+    basis="sto-3g",
+    device="cpu",
+    ks_options=KsOptions(
+        grid=GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
+    ),
+)
+result = calc.singlepoint(atoms, properties=("energy",))
+print(result.energy, result.dispersion.energy)
+```
+
+A caller that already owns a native KS selector may equivalently provide the full
+graph through `KsOptions(composition=...)`, for example `method="pbe-rks"` plus
+the same PBE-D3(BJ) graph. `Calculator.method_ir` reports the full graph.
+`Calculator.ks_options.method_ir` reports the electronic graph that is actually
+lowered into the SCF owner. Direct native KS resolution still rejects correction
+nodes, so no lower-level path can accept a D3 node and silently omit it.
+
+At execution, the prepared electronic and D3 owners receive the same fixed atom
+ordering and accepted geometry updates. For every successful item, composition is
+
+```text
+E_total = E_KS + E_D3
+F_total = F_KS - dE_D3/dR
+```
+
+The subtraction is required because the D3 owner publishes a gradient, while the
+public electronic endpoint publishes forces. `Result.dispersion` and
+`BatchItemResult.dispersion` retain the correction component and backend evidence.
+`PreparedBatch.dispersion_diagnostic` exposes the retained D3 plan identity and
+resource inventory. A D3 per-item failure converts only that item to failure; a
+malformed coordinate update already rejected by the electronic owner is not
+reinterpreted by D3. This preserves the existing ragged per-item failure boundary.
+
+The first automatic execution family is PBE-based MethodIR on RKS/UKS, including
+PBE0 compositions for energy. Analytic total forces are exposed only when the
+underlying electronic method/basis/backend already advertises an analytic force
+endpoint; D3 composition never widens that electronic capability. In particular,
+PBE0-D3(BJ) does not acquire public forces merely because the D3 gradient exists.
+
+The D3 owner remains independently bounded by
+`dispersion_memory_budget_bytes` (256 MiB by default). Whole-calculation
+`ResourceBudget` / `estimate_resources()` does not yet aggregate the separate D3
+owner and therefore fails closed for a composite calculation rather than reporting
+an electronic-only budget as complete.
+
+The architecture rationale and sign/failure invariants are recorded in the
+[Calculator D3 composition decision](../.agents/notes/implemented/architecture/2026-09-21-d3-calculator-composition.md).
 
 ## Production API and ownership
 
@@ -148,11 +211,14 @@ See the [generated ragged execution decision](../.agents/notes/implemented/numer
 
 ## Remaining boundary
 
-The public correction owner is deliberately separate from the electronic DFT
-SCF/Fock equation. Automatic `Calculator` composition of DFT + D3, the complete
-combined electronic-plus-dispersion force endpoint, pair-parallel CUDA lowering,
-ATM, and zero-damping variants remain separate work. Native DFT paths must not
-accept a correction node and then omit it silently.
+The public correction owner remains deliberately separate from the electronic DFT
+SCF/Fock equation, but `Calculator` now owns their exact-once energy/force
+composition at the prepared execution boundary. Remaining #492 work is the
+pair-parallel/generated CUDA production promotion and retirement evidence, plus
+production admission of separately validated ATM and zero-damping variants. The
+standalone ATM reference does not grant nonzero-`s9` production capability. Native
+DFT paths must continue to reject a correction node unless the Calculator
+composition owner has explicitly split and retained it.
 
 See [data provenance](../external/xtbloom-d3/README.md), the
 [baseline migration decision](../.agents/notes/implemented/architecture/2026-09-19-d3-xtbloom-baseline.md),

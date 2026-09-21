@@ -100,6 +100,10 @@ enum {
   VIBEQC_PRECISION_AUTO = 1
 };
 
+/** Semilocal grid/XC execution schedule for native CUDA KS. */
+typedef int32_t vibeqc_xc_execution_schedule;
+enum { VIBEQC_XC_EXECUTION_DEVICE_FUSED = 0, VIBEQC_XC_EXECUTION_HOST_UNFUSED = 1 };
+
 typedef int32_t vibeqc_basis_representation;
 enum {
   /** CCA-ordered Cartesian functions: 1, 3, 6, and 10 AOs for s-p-d-f. */
@@ -509,8 +513,9 @@ typedef struct vibeqc_system_descriptor {
 } vibeqc_system_descriptor;
 
 /** Native KS model snapshot, copied during preparation. Method selectors choose
- * the audited LDA/PBE component family and spin; the optional v2 suffix supplies
- * resolved composition. Legacy prefixes retain unit semilocal XC and no K. */
+ * the audited semilocal component family and spin; optional suffixes supply
+ * resolved composition (v2) and execution schedule (v3). Legacy prefixes retain
+ * unit semilocal XC, no K, and device-fused CUDA XC. */
 typedef struct vibeqc_ks_options {
   uint32_t struct_size;
   uint32_t abi_version;
@@ -541,9 +546,11 @@ typedef struct vibeqc_ks_options {
   double semilocal_exchange_scale;
   double semilocal_correlation_scale;
   double fock_exchange_coefficient;
+  /** Optional v3 suffix. Older prefixes use DEVICE_FUSED. */
+  vibeqc_xc_execution_schedule xc_execution_schedule;
 } vibeqc_ks_options;
 
-/** Pure capability query. Version 2 accepts both the v1 prefix and v2 suffix. */
+/** Pure capability query. Version 3 accepts the v1/v2 prefixes and v3 suffix. */
 VIBEQC_API uint32_t vibeqc_ks_options_version(void);
 
 typedef struct vibeqc_method_descriptor {

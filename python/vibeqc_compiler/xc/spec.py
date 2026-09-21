@@ -10,6 +10,7 @@ from pathlib import Path
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
+from .pbe_maple import pbe_maple_provenance
 from .rsh_maple import rsh_maple_provenance
 
 VERSION = "libxc-7.0.0/interior-v1"
@@ -156,7 +157,9 @@ class FunctionalSpec:
         else:
             manifest = "rsh-manifest.json" if special else "manifest.json"
             expression_source = "rsh_expressions.py" if special else "expressions.py"
-        expression_provenance = rsh_maple_provenance(self.components)
+        expression_provenance = rsh_maple_provenance(self.components) or pbe_maple_provenance(
+            self.components
+        )
         return {
             **payload,
             "ingredients": self.ingredients,
