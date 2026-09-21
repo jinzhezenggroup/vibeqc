@@ -39,7 +39,11 @@ from .dispersion import (
     D3CorrectionBatch,
     D3CorrectionResult,
     D3RuntimeDiagnostic,
+    D4CorrectionBatch,
+    D4CorrectionResult,
+    D4RuntimeDiagnostic,
     evaluate_d3_correction,
+    evaluate_d4_correction,
 )
 from .elements import ElectronState, electron_state
 from .fock import FockBuildSpec, FockEvaluation, FockPlan, FockScfResult, FockTerm
@@ -98,6 +102,9 @@ __all__ = [
     "D3CorrectionBatch",
     "D3CorrectionResult",
     "D3RuntimeDiagnostic",
+    "D4CorrectionBatch",
+    "D4CorrectionResult",
+    "D4RuntimeDiagnostic",
     "DensityFittingMetricDiagnostic",
     "EigensolverDiagnostic",
     "ElectronState",
@@ -153,6 +160,7 @@ __all__ = [
     "estimate_hf_resources",
     "estimate_ks_resources",
     "evaluate_d3_correction",
+    "evaluate_d4_correction",
     "exchange_operator_key",
     "import_bse",
     "load_basis",

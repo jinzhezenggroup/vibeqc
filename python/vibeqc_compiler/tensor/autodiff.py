@@ -444,6 +444,25 @@ def _jvp_segment_sum(
     return result
 
 
+def _jvp_runtime_indexed_select(
+    node: Node,
+    values: typing.Sequence[np.ndarray],
+    tangents: typing.Sequence[np.ndarray],
+) -> np.ndarray:
+    source_tangent = tangents[0]
+    maps = values[1:]
+    axes = tuple(node.attrs["axes"])
+    selected = dict(zip(axes, maps, strict=True))
+    result = _zeros(node.spec)
+    for domain_coordinate in range(node.spec.shape[0]):
+        source = tuple(
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
+            for axis in range(source_tangent.ndim)
+        )
+        result[domain_coordinate] = source_tangent[source]
+    return result
+
+
 def _jvp_reduce(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     return np.sum(tangents[0], axis=node.attrs["axes"], dtype=node.spec.dtype)
 
@@ -504,6 +523,7 @@ _JVP_RULES = {
     "indexed_gather": _jvp_gather,
     "scatter_add": _jvp_scatter_add,
     "segment_sum": _jvp_segment_sum,
+    "runtime_indexed_select": _jvp_runtime_indexed_select,
     "reduce": _jvp_reduce,
     "broadcast": _jvp_broadcast,
 }
@@ -657,6 +677,24 @@ def _vjp_segment_sum(
     return [np.take(bar, positions, axis=node.attrs["axis"])]
 
 
+def _vjp_runtime_indexed_select(
+    node: Node,
+    values: typing.Sequence[np.ndarray],
+    bar: np.ndarray,
+) -> list[np.ndarray]:
+    source = _zeros(node.inputs[0].spec)
+    maps = values[1:]
+    axes = tuple(node.attrs["axes"])
+    selected = dict(zip(axes, maps, strict=True))
+    for domain_coordinate in range(node.spec.shape[0]):
+        target = tuple(
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
+            for axis in range(source.ndim)
+        )
+        source[target] += bar[domain_coordinate]
+    return [source, *(_zeros(mapping.spec) for mapping in node.inputs[1:])]
+
+
 def _vjp_reduce(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     input_shape = node.inputs[0].spec.shape
     reduced = set(node.attrs["axes"])
@@ -688,6 +726,7 @@ _VJP_RULES = {
     "indexed_gather": _vjp_gather,
     "scatter_add": _vjp_scatter_add,
     "segment_sum": _vjp_segment_sum,
+    "runtime_indexed_select": _vjp_runtime_indexed_select,
     "reduce": _vjp_reduce,
     "broadcast": _vjp_broadcast,
 }

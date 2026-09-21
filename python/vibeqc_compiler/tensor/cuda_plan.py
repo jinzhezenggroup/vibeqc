@@ -182,7 +182,11 @@ class TensorPlan:
         """Resolve execution precision once for every live logical node."""
         names = self.program.debug_names
         values = {value.name: value for value in self.precision_schedule.values}
-        return {node: values[names[node]] for node in self.program.live_nodes}
+        return {
+            node: values[names[node]]
+            for node in self.program.live_nodes
+            if names[node] in values
+        }
 
     @property
     def batch_schedule(self) -> BatchScheduleIR:
@@ -461,10 +465,14 @@ def plan_cuda(
         mixed_accumulation_steps = frozenset(
             i
             for i, (node, _) in enumerate(nodes)
-            if precision_values[program_names[node]].compute_dtype
+            if node.spec.dtype != "int64"
+            and precision_values[program_names[node]].compute_dtype
             != precision_values[program_names[node]].accumulation_dtype
         )
-    if schedule.layouts and any(n.spec.dtype != "float64" for n, _ in nodes):
+    if schedule.layouts and any(
+        n.spec.dtype in ("float32", "float64") and n.spec.dtype != "float64"
+        for n, _ in nodes
+    ):
         raise ValueError("producer layout optimization is qualified only for float64")
     if any(n.op in TRANSCENDENTALS for n, _ in nodes) and len(nodes) > INT_MAX // 2:
         raise ValueError("too many steps for transcendental domain diagnostics")
@@ -473,7 +481,7 @@ def plan_cuda(
             raise ValueError(
                 "CUDA transcendental primitives are qualified only for float64"
             )
-        scalar = scalar_type(node.spec.dtype)
+        scalar = None if node.spec.dtype == "int64" else scalar_type(node.spec.dtype)
         checked_size(node.spec.size * node.spec.itemsize, "tensor bytes")
         for stride in strides(node.spec.shape):
             checked_size(stride, "tensor stride")
@@ -494,12 +502,13 @@ def plan_cuda(
                 ),
                 "einsum reduction domain",
             )
-        for pair in node.attrs.get("coefficients", node.attrs.get("values", ())):
-            scalar.coefficient(pair)
-        if "coefficient" in node.attrs:
-            scalar.coefficient(node.attrs["coefficient"])
-        if "exponent" in node.attrs:
-            scalar.coefficient(node.attrs["exponent"])
+        if scalar is not None:
+            for pair in node.attrs.get("coefficients", node.attrs.get("values", ())):
+                scalar.coefficient(pair)
+            if "coefficient" in node.attrs:
+                scalar.coefficient(node.attrs["coefficient"])
+            if "exponent" in node.attrs:
+                scalar.coefficient(node.attrs["exponent"])
     pinned = {i for _, i in outputs} | {
         i for i, (n, _) in enumerate(nodes) if n.op in ("input", "constant")
     }
@@ -602,6 +611,7 @@ def plan_cuda(
             "constant",
             "gather",
             "indexed_gather",
+            "runtime_indexed_select",
         ):
             flops += sum(child.spec.size for child in node.inputs)
         steps.append(
