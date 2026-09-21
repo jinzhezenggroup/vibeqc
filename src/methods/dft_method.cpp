@@ -90,8 +90,7 @@ bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offse
   return descriptor.struct_size >= offset && descriptor.struct_size - offset >= width;
 }
 
-scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor,
-                            vibeqc_backend backend,
+scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_backend backend,
                             NativeKsExecutionPlan& execution_plan) {
   if (!std::isfinite(descriptor.energy_tolerance) || !std::isfinite(descriptor.density_tolerance) ||
       !std::isfinite(descriptor.screening_tolerance))
@@ -123,8 +122,7 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor,
       throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS option suffix");
     if (ks_input->struct_size == v3_size) {
       if (ks_input->execution_plan_version > 1)
-        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                          "unsupported KS execution-plan version");
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS execution-plan version");
       if (ks_input->execution_plan_version == 1) {
         if ((ks_input->spin_channels != 1 && ks_input->spin_channels != 2) ||
             ks_input->semilocal_family > kKsSemilocalR2scan)
@@ -188,8 +186,7 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor,
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid KS composition coefficients");
         const bool changed = x != 1 || correlation != 1 || exchange != 0;
         if (changed &&
-            (execution_plan.semilocal_family != kKsSemilocalPbe ||
-             backend == VIBEQC_BACKEND_CUDA))
+            (execution_plan.semilocal_family != kKsSemilocalPbe || backend == VIBEQC_BACKEND_CUDA))
           throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                             "scaled/global-hybrid KS requires CPU PBE components");
         options.semilocal_exchange_scale = x;
@@ -339,9 +336,9 @@ class KsPreparedCalculation final : public PreparedCalculation {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
 #if VIBEQC_HAS_CUDA
     if (backend_ == VIBEQC_BACKEND_CUDA)
-      cuda_ = std::make_unique<dft::CudaKsPlan>(
-          fock_, basis_, grid_, options_, execution_plan_.semilocal_family,
-          options_.xc_tile_points);
+      cuda_ = std::make_unique<dft::CudaKsPlan>(fock_, basis_, grid_, options_,
+                                                execution_plan_.semilocal_family,
+                                                options_.xc_tile_points);
 #endif
     runtime::sample_cpu_capacity(host_numeric_capacity());
   }
@@ -484,8 +481,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
     invalidate_final_state();
     const char* method_name = semilocal_family_name(execution_plan_);
     if (compute_forces) {
-      const char* issue =
-          execution_plan_.semilocal_family == kKsSemilocalR2scan ? "#164" : "#163";
+      const char* issue = execution_plan_.semilocal_family == kKsSemilocalR2scan ? "#164" : "#163";
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         std::string(method_name) +
                             " KS nuclear gradients are tracked separately in issue " + issue);
@@ -641,9 +637,8 @@ vibeqc_status item_exception_status() {
 class KsPreparedBatch final : public PreparedBatch {
  public:
   KsPreparedBatch(Capabilities capabilities, std::vector<core::System> systems,
-                  NativeKsExecutionPlan execution_plan,
-                  scf::ScfOptions options, dft::GridSpec grid, vibeqc_backend backend,
-                  int device, bool warm_enabled)
+                  NativeKsExecutionPlan execution_plan, scf::ScfOptions options, dft::GridSpec grid,
+                  vibeqc_backend backend, int device, bool warm_enabled)
       : capabilities_(capabilities),
         systems_(std::move(systems)),
         execution_plan_(execution_plan),
@@ -939,8 +934,8 @@ class KsPreparedBatch final : public PreparedBatch {
 #endif
   };
   std::unique_ptr<KsPreparedCalculation> make_plan(const core::System& system) const {
-    return std::make_unique<KsPreparedCalculation>(
-        capabilities_, system, execution_plan_, options_, grid_spec_, backend_, device_);
+    return std::make_unique<KsPreparedCalculation>(capabilities_, system, execution_plan_, options_,
+                                                   grid_spec_, backend_, device_);
   }
   void materialize_warm(std::size_t i) const {
     const auto& item = items_.at(i);
@@ -1052,9 +1047,9 @@ std::unique_ptr<PreparedCalculation> prepare_dft_calculation(
   NativeKsExecutionPlan execution_plan;
   auto options = dft_options(descriptor, context.requested_backend, execution_plan);
   auto grid = ks_grid_options(descriptor, options);
-  return std::make_unique<KsPreparedCalculation>(
-      capabilities, system, execution_plan, std::move(options), std::move(grid),
-      context.requested_backend, context.device_id);
+  return std::make_unique<KsPreparedCalculation>(capabilities, system, execution_plan,
+                                                 std::move(options), std::move(grid),
+                                                 context.requested_backend, context.device_id);
 }
 
 std::unique_ptr<PreparedBatch> prepare_dft_batch(const Capabilities& capabilities,
@@ -1073,9 +1068,8 @@ std::unique_ptr<PreparedBatch> prepare_dft_batch(const Capabilities& capabilitie
   auto options = dft_options(descriptor, context.requested_backend, execution_plan);
   auto grid = ks_grid_options(descriptor, options);
   return std::make_unique<KsPreparedBatch>(
-      capabilities, std::move(systems), execution_plan, std::move(options),
-      std::move(grid), context.requested_backend, context.device_id,
-      (flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0);
+      capabilities, std::move(systems), execution_plan, std::move(options), std::move(grid),
+      context.requested_backend, context.device_id, (flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0);
 }
 
 }  // namespace vibeqc::methods::detail
