@@ -25,8 +25,12 @@ def test_installed_compiler_contains_pinned_libxc_source_closure(
     config = tomllib.loads((ROOT / "pyproject.toml").read_text())
     mappings = config["tool"]["scikit-build"]["wheel"]["force-include"]
     for source, destination in mappings.items():
-        if "libxc" in source:
-            shutil.copytree(ROOT / source, tmp_path / destination, dirs_exist_ok=True)
+        target = tmp_path / destination
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if (ROOT / source).is_dir():
+            shutil.copytree(ROOT / source, target, dirs_exist_ok=True)
+        else:
+            shutil.copyfile(ROOT / source, target)
     registry = json.loads((ROOT / "upstream/manifest.json").read_text())
     libxc = registry["sources"]["libxc-7.0.0"]
     installed = package / "assets" / libxc["local_root"]
@@ -52,12 +56,13 @@ energy = module.call(graph, 'f', graph.constant(1), graph.constant(0), graph.con
 assert -1 < graph.evaluate(energy, {}) < 0
 assert asset_path('external/libxc-7.0.0/manifest.json').is_file()
 """
-    subprocess.run(
+    completed = subprocess.run(
         [sys.executable, "-c", script],
         cwd=tmp_path,
         env={**os.environ, "PYTHONPATH": str(tmp_path)},
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
         timeout=30,
     )
+    assert completed.returncode == 0, completed.stderr or completed.stdout
