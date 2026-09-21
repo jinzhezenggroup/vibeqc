@@ -423,8 +423,11 @@ void verify_final_state_reuse(bool unrestricted, bool with_peer = false) {
   // Provenance is value-based, not pointer-based: mutating the same host
   // vector in place must revoke force-ready reuse even though the caller
   // presents the identical std::vector object and shape.
-  std::vector<double>& aliased_density = seeded[0].scf.density;
-  require(resident_density[0] == &aliased_density,
+  std::vector<const std::vector<double>*> aliased_resident_density(systems.size(), nullptr);
+  for (std::size_t index = 0; index < systems.size(); ++index)
+    aliased_resident_density[index] = &retained[index].scf.density;
+  std::vector<double>& aliased_density = retained[0].scf.density;
+  require(aliased_resident_density[0] == &aliased_density,
           "same-pointer mutation fixture lost its host object identity");
   const std::size_t spin_matrix_size = aliased_density.size() / (unrestricted ? 2U : 1U);
   const std::size_t nbf =
@@ -439,7 +442,7 @@ void verify_final_state_reuse(bool unrestricted, bool with_peer = false) {
       std::nextafter(original_01, original_01 >= 0.0 ? original_01 + 1.0 : original_01 - 1.0);
   aliased_density[offdiag_10] =
       std::nextafter(original_10, original_10 >= 0.0 ? original_10 + 1.0 : original_10 - 1.0);
-  const auto same_pointer_mutation = run_cached(resident_density);
+  const auto same_pointer_mutation = run_cached(aliased_resident_density);
   aliased_density[offdiag_01] = original_01;
   aliased_density[offdiag_10] = original_10;
   const auto same_pointer_mutation_audit = final_state_audit();
