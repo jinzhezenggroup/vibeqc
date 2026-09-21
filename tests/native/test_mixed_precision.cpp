@@ -427,8 +427,8 @@ void verify_final_state_reuse(bool unrestricted, bool with_peer = false) {
   require(resident_density[0] == &aliased_density,
           "same-pointer mutation fixture lost its host object identity");
   const std::size_t spin_matrix_size = aliased_density.size() / (unrestricted ? 2U : 1U);
-  const std::size_t nbf = static_cast<std::size_t>(
-      std::llround(std::sqrt(static_cast<double>(spin_matrix_size))));
+  const std::size_t nbf =
+      static_cast<std::size_t>(std::llround(std::sqrt(static_cast<double>(spin_matrix_size))));
   require(nbf > 1 && nbf * nbf == spin_matrix_size,
           "same-pointer mutation fixture has an invalid density shape");
   const std::size_t offdiag_01 = 1;
