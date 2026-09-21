@@ -291,7 +291,7 @@ _OPTIMIZER = PassManager(
 def optimize(program: Program) -> Program:
     """Run TensorIR cleanup and verify the backend input is output-minimal."""
     run = _OPTIMIZER.run(program)
-    result = Program(run.value.outputs)
+    result = run.value
     pruning = _pruning_diagnostics(program, result)
     return Program(
         result.outputs,
