@@ -93,8 +93,8 @@
         "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
-      "generator_sha256": "c36b8227e56a7d35cfe1aea9d2d312bf8438f0c55ea7dc5b41c695d1f95adf61",
-      "input_identity_sha256": "53d9389dcdcb033df0b14f187d2f9a98e6f5415971949655caf9aeb9cd4b6ec7",
+      "generator_sha256": "db1cf16418bf2ba8996e9ed3ba76e68da4712f90ead32635a734b44e4d8c4d13",
+      "input_identity_sha256": "2664145467e9ab5103bd6994ceb604f3127b6492d974db01768ba0e7029a5633",
       "inputs": [
         "libxc-7.0.0"
       ],
@@ -158,7 +158,7 @@
       },
       "kind": "snapshot",
       "license": "LGPL-3.0-or-later",
-      "local_root": "tools/parameters/upstream",
+      "local_root": "sources/upstream/dftd4/82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4",
       "repository": "https://github.com/dftd4/dftd4",
       "revision": "82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4"
     },
@@ -228,10 +228,11 @@
           "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/reference.inc"
         }
       },
-      "kind": "remote-file-set",
+      "kind": "file-set",
       "license": "LGPL-3.0-or-later",
       "repository": "https://github.com/dftd4/dftd4",
-      "revision": "6e1f59c3f39d919a2dbef0601d2576727c8b30e8"
+      "revision": "6e1f59c3f39d919a2dbef0601d2576727c8b30e8",
+      "local_root": "sources/upstream/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8"
     },
     "gpu4pyscf-rys": {
       "consumers": [
@@ -244,16 +245,17 @@
           "url": "https://raw.githubusercontent.com/pyscf/gpu4pyscf/db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d/gpu4pyscf/lib/gvhf-rys/rys_roots_dat.cu"
         }
       },
-      "kind": "remote-file-set",
+      "kind": "file-set",
       "license": "Apache-2.0",
       "repository": "https://github.com/pyscf/gpu4pyscf",
-      "revision": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d"
+      "revision": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d",
+      "local_root": "sources/upstream/gpu4pyscf/db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d"
     },
     "libxc-7.0.0": {
       "admission": {
         "importer": "python/vibeqc_compiler/xc/libxc_maple.py",
-        "importer_sha256": "c36b8227e56a7d35cfe1aea9d2d312bf8438f0c55ea7dc5b41c695d1f95adf61",
-        "semantics": "libxc-maple-graph/v7"
+        "importer_sha256": "db1cf16418bf2ba8996e9ed3ba76e68da4712f90ead32635a734b44e4d8c4d13",
+        "semantics": "libxc-maple-graph/v8"
       },
       "collections": {
         "core": [
@@ -281,6 +283,7 @@
         "rsh": [
           "COPYING",
           "attenuation.mpl",
+          "gga_c_lyp.c",
           "gga_c_lyp.mpl",
           "gga_c_p86.c",
           "gga_c_p86.mpl",
@@ -330,6 +333,11 @@
           "sha256": "cfaacb3b656066ab286df9120c27423985a4bc2766ee385a13b86115b6b4b8cc",
           "upstream_path": "maple/b97mv.mpl",
           "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/b97mv.mpl"
+        },
+        "gga_c_lyp.c": {
+          "sha256": "d34fb158f6174ee2c27b4fb06a5dd203b71299a0aae7857dba85953a41cc62c6",
+          "upstream_path": "src/gga_c_lyp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_lyp.c"
         },
         "gga_c_lyp.mpl": {
           "sha256": "8113c2d995ee6ee1463b99a7ff7f3d462cfbefae6e6e70ffca22077a9cde21ac",
@@ -526,7 +534,7 @@
       },
       "kind": "file-set",
       "license": "MPL-2.0",
-      "local_root": "external/libxc-7.0.0",
+      "local_root": "sources/upstream/libxc/7.0.0",
       "repository": "https://gitlab.com/libxc/libxc",
       "revision": "7.0.0"
     },
@@ -554,10 +562,11 @@
           "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/ncoord/type.f90"
         }
       },
-      "kind": "remote-file-set",
+      "kind": "file-set",
       "license": "Apache-2.0",
       "repository": "https://github.com/grimme-lab/mctc-lib",
-      "revision": "e9de066d89f250d1cfb6de3a33f0c27c0e2f855d"
+      "revision": "e9de066d89f250d1cfb6de3a33f0c27c0e2f855d",
+      "local_root": "sources/upstream/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d"
     },
     "multicharge-eeq2019": {
       "files": {
@@ -569,10 +578,11 @@
           "url": "https://raw.githubusercontent.com/grimme-lab/multicharge/6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf/src/multicharge/param/eeq2019.f90"
         }
       },
-      "kind": "remote-file-set",
+      "kind": "file-set",
       "license": "Apache-2.0",
       "repository": "https://github.com/grimme-lab/multicharge",
-      "revision": "6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf"
+      "revision": "6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf",
+      "local_root": "sources/upstream/multicharge/6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf"
     },
     "simple-dftd3-gcp": {
       "consumers": [
@@ -596,10 +606,11 @@
           "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/gcp/param.f90"
         }
       },
-      "kind": "remote-file-set",
+      "kind": "file-set",
       "license": "LGPL-3.0-or-later",
       "repository": "https://github.com/dftd3/simple-dftd3",
-      "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
+      "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
+      "local_root": "sources/upstream/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
     },
     "simple-dftd3-parameters": {
       "files": {
@@ -611,7 +622,7 @@
       },
       "kind": "snapshot",
       "license": "LGPL-3.0-or-later",
-      "local_root": "tools/parameters/upstream",
+      "local_root": "sources/upstream/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
       "repository": "https://github.com/dftd3/simple-dftd3",
       "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
     }

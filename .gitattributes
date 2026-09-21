@@ -19,6 +19,7 @@ benchmarks/results/issue399-density-seed/journals.json linguist-generated=true
 benchmarks/results/issue399-density-seed/ownership.json linguist-generated=true
 
 # These files are hashed byte-for-byte as third-party/reference provenance.
+sources/upstream/** text eol=lf
 external/libxc-7.0.0/* text eol=lf
 tools/generate_xc_references.py text eol=lf
 tools/generate_xc_integration_references.py text eol=lf

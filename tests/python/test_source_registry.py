@@ -25,6 +25,29 @@ def test_checked_in_registry_is_offline_verifiable() -> None:
     assert summary["derived_manifests"] == 4
 
 
+VENDORED_INITIAL_SOURCES = {
+    "dftd4-parameters",
+    "dftd4-reference",
+    "gpu4pyscf-rys",
+    "libxc-7.0.0",
+    "mctc-lib-eeq",
+    "multicharge-eeq2019",
+    "simple-dftd3-gcp",
+    "simple-dftd3-parameters",
+}
+
+
+def test_initial_upstream_sources_are_vendored_under_one_tree() -> None:
+    registry = json.loads(source_registry.REGISTRY.read_text())
+    for source_id in VENDORED_INITIAL_SOURCES:
+        source = registry["sources"][source_id]
+        assert source["kind"] != "remote-file-set"
+        assert source["local_root"].startswith("sources/upstream/")
+        root = source_registry.ROOT / source["local_root"]
+        for name in source["files"]:
+            assert (root / name).is_file()
+
+
 def test_libxc_registry_owns_every_pinned_source_file() -> None:
     registry = json.loads(source_registry.REGISTRY.read_text())
     source = registry["sources"]["libxc-7.0.0"]
