@@ -68,11 +68,7 @@ def directional_ao_jets(
         raise ValueError("AO directional response requires jets through order+1")
     npoint, nao = values.shape[1:]
     atoms = np.asarray(ao_atoms)
-    if (
-        atoms.shape != (nao,)
-        or atoms.dtype.kind not in "iu"
-        or np.any(atoms < 0)
-    ):
+    if atoms.shape != (nao,) or atoms.dtype.kind not in "iu" or np.any(atoms < 0):
         raise ValueError("AO directional response requires one nonnegative atom per AO")
     points = immutable(point_motion, shape=(npoint, 3))
     centers_raw = np.asarray(center_motion)
@@ -83,7 +79,9 @@ def directional_ao_jets(
         or not np.isfinite(centers_raw).all()
         or (atoms.size and np.max(atoms) >= len(centers_raw))
     ):
-        raise ValueError("AO directional response requires finite [atom,3] center motion")
+        raise ValueError(
+            "AO directional response requires finite [atom,3] center motion"
+        )
     centers = immutable(centers_raw)
     relative = points[:, None, :] - centers[atoms][None, :, :]
     lookup = {index: i for i, index in enumerate(full_domain)}
