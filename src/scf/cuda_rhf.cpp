@@ -2137,16 +2137,35 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     }
     return cudaSuccess;
   };
+  const auto launch_bounded_generic_fock = [&](bool is_unrestricted, const double* quartet_density,
+                                               double* quartet_fock) -> cudaError_t {
+    if (host_uncovered_fock_shell_class_mask == 0U || bounded_direct_aot_only_diagnostic) {
+      return cudaSuccess;
+    }
+    // Generated/native pages own every class in host_generated_fock_shell_class_mask.
+    // Visit only the remaining high-l registry gaps through the hierarchical
+    // pair-block dispatcher. This preserves bounded memory without resurrecting
+    // a topology-sized descriptor arena or double-counting qualified classes.
+    cudaError_t error = cudaMemsetAsync(
+        bounded_direct_generated_overflow, 0,
+        detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t), resources.stream_);
+    if (error == cudaSuccess) {
+      error =
+          cudaMemsetAsync(bounded_direct_cursor, 0, sizeof(unsigned long long), resources.stream_);
+    }
+    if (error != cudaSuccess) return error;
+    launch_bounded_direct_fock_shell_quartet_kernel(
+        is_unrestricted, plan.persistent_quartet_worker_blocks, kBoundedDirectThreads, 0,
+        resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
+        shell_pair_density_bounds, bounded_direct_shell_pair_order,
+        bounded_direct_shell_pair_block_bounds, bounded_direct_system_density_bounds, nullptr,
+        host_generated_fock_shell_class_mask, bounded_direct_generated_overflow, schwarz_bounds,
+        quartet_density, active, quartet_fock, bounded_direct_cursor);
+    return cudaPeekAtLastError();
+  };
   const auto launch_bounded_generated_fock =
       [&](bool is_unrestricted, const double* quartet_density, double* quartet_fock,
           bool allow_mixed_precision) -> cudaError_t {
-    // The bounded Fock path follows the same hard routing invariant as force:
-    // every present class must have a generated or native exact consumer.
-    // Missing classes are unsupported instead of silently invoking the
-    // whole-topology generic evaluator.
-    if (host_uncovered_fock_shell_class_mask != 0U && !bounded_direct_aot_only_diagnostic) {
-      return cudaErrorNotSupported;
-    }
     if (bounded_direct_fock_only_diagnostic) {
       // The fixed-density measurement uses one uniform streaming schedule.
       // Mark every generated class for that consumer so an all-FP64 page does
@@ -2155,8 +2174,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           bounded_direct_generated_overflow, 1,
           detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t), resources.stream_);
       if (diagnostic_error != cudaSuccess) return diagnostic_error;
-      return launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
-                                           allow_mixed_precision);
+      diagnostic_error = launch_bounded_streaming_fock(is_unrestricted, quartet_density,
+                                                       quartet_fock, allow_mixed_precision);
+      return diagnostic_error == cudaSuccess
+                 ? launch_bounded_generic_fock(is_unrestricted, quartet_density, quartet_fock)
+                 : diagnostic_error;
     }
     if (!bounded_direct_count_diagnostic) {
       // Normal bounded execution uses disjoint exact pages for every
@@ -2170,8 +2192,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       cudaError_t paged_error =
           launch_bounded_paged_generated_fock(is_unrestricted, quartet_density, quartet_fock);
       if (paged_error != cudaSuccess) return paged_error;
-      return launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
-                                           allow_mixed_precision);
+      cudaError_t streaming_error = launch_bounded_streaming_fock(
+          is_unrestricted, quartet_density, quartet_fock, allow_mixed_precision);
+      return streaming_error == cudaSuccess
+                 ? launch_bounded_generic_fock(is_unrestricted, quartet_density, quartet_fock)
+                 : streaming_error;
     }
     cudaError_t error = cudaMemsetAsync(
         bounded_direct_generated_task_counts, 0,
@@ -2272,8 +2297,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     error = consume_generated_wave(bounded_direct_generated_retry_task_offsets);
     if (error != cudaSuccess) return error;
 
-    return launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
-                                         allow_mixed_precision);
+    error = launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
+                                          allow_mixed_precision);
+    return error == cudaSuccess
+               ? launch_bounded_generic_fock(is_unrestricted, quartet_density, quartet_fock)
+               : error;
   };
   // The exact provider is resolved/validated by run_hf_cuda_bucket_cached.
   // Dense, packed, generated and streamed paths below are execution schedules
