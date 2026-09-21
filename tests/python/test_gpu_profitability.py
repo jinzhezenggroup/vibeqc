@@ -59,6 +59,22 @@ def test_compiled_priority_never_rewards_spills_for_a_smaller_artifact() -> None
     assert healthy.compiled_resource_priority() < spilled.compiled_resource_priority()
 
 
+def test_endpoint_profitability_rejects_a_slower_candidate() -> None:
+    baseline = GpuProfitability(endpoint_seconds=0.010)
+    slower = GpuProfitability(endpoint_seconds=0.012)
+
+    reasons = slower.endpoint_regressions_against(baseline, minimum_speedup=1.02)
+
+    assert reasons == ("endpoint speedup 0.833333x is below the required 1.02x",)
+
+
+def test_endpoint_profitability_allows_a_qualified_speedup() -> None:
+    baseline = GpuProfitability(endpoint_seconds=0.010)
+    faster = GpuProfitability(endpoint_seconds=0.009)
+
+    assert faster.endpoint_regressions_against(baseline, minimum_speedup=1.02) == ()
+
+
 def test_resource_regression_gate_rejects_pressure_growth_inside_noise_band() -> None:
     baseline = GpuProfitability(
         compiled_registers_per_thread=64,

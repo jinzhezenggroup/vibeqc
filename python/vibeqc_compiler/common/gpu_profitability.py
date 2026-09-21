@@ -144,6 +144,30 @@ class GpuProfitability:
             self._minimize(self.endpoint_seconds),
         )
 
+    def endpoint_regressions_against(
+        self,
+        baseline: GpuProfitability,
+        *,
+        minimum_speedup: float = 1.0,
+    ) -> tuple[str, ...]:
+        """Return endpoint-profitability failures from complete measured timing."""
+
+        _optional_float(minimum_speedup, "minimum_speedup")
+        if minimum_speedup < 1.0:
+            raise ValueError("minimum_speedup must be at least one")
+        if self.endpoint_seconds is None or baseline.endpoint_seconds is None:
+            return ()
+        if self.endpoint_seconds <= 0.0 or baseline.endpoint_seconds <= 0.0:
+            raise ValueError("endpoint timing must be positive")
+        speedup = baseline.endpoint_seconds / self.endpoint_seconds
+        if speedup >= minimum_speedup:
+            return ()
+        reason = (
+            f"endpoint speedup {speedup:.6g}x is below "
+            f"the required {minimum_speedup:.6g}x"
+        )
+        return (reason,)
+
     def resource_regressions_against(
         self,
         baseline: GpuProfitability,

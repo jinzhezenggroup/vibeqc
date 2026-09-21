@@ -647,6 +647,28 @@ def test_negative_evidence_keeps_baseline_without_promoting(
         assert len(fake_cuda.prepared) == 1  # reject before loading/executing candidate
 
 
+def test_slower_fusion_is_rejected_by_shared_profitability_path(
+    tmp_path: typing.Any, fake_cuda: typing.Any
+) -> None:
+    fake_cuda.timings = {(128, -1.0): 12}
+    result = run_fake_tuning(
+        tmp_path,
+        schedules=[TensorSchedule(fuse=True)],
+        screening=None,
+    )
+
+    assert result.plan.schedule == TensorSchedule()
+    row = result.evidence["candidates"][0]
+    assert row["status"] == "rejected"
+    assert row["profitability_rejections"] == [
+        "endpoint speedup 0.833333x is below the required 1.02x"
+    ]
+    (fixture,) = row["endpoint_profitability"]
+    assert fixture["baseline_endpoint_seconds"] == 10
+    assert fixture["candidate"]["endpoint_seconds"] == 12
+    assert fixture["candidate"]["compiled"]["compiled_registers_per_thread"] == 32
+
+
 def test_candidate_overflow_fails_before_any_compilation(
     tmp_path: typing.Any, fake_cuda: typing.Any
 ) -> None:
