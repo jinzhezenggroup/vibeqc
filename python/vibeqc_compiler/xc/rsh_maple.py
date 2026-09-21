@@ -26,7 +26,10 @@ _LYP_BINDINGS = {
 def _libxc_root() -> typing.Any:
     """Resolve packaged/repository Libxc assets lazily."""
 
-    return asset_path("external/libxc-7.0.0")
+    try:
+        return asset_path("upstream/libxc/7.0.0")
+    except FileNotFoundError:
+        return asset_path("external/libxc-7.0.0")
 
 
 @cache
