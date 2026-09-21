@@ -89,7 +89,7 @@ def emit_generated_shell_fock_accumulation() -> str:
         description=(
             "Scatter one canonical integral using VIBEQC's existing RHF/UHF convention."
         ),
-    )
+    ).rstrip("\n")
 
 
 def emit_direct_fock_accumulation_header() -> str:
