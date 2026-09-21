@@ -5,7 +5,6 @@
 
 #include "integrals/electron_interaction_source.hpp"
 #include "posthf/block_capacity_generated.hpp"
-#include "posthf/raw_source.hpp"
 #include "scf/types.hpp"
 #include "tensor/metrics.hpp"
 
