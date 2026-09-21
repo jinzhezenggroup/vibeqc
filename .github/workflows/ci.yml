@@ -187,6 +187,9 @@ jobs:
           -DVIBEQC_CUDA_COMPILE_JOBS=3
           -DVIBEQC_COMPILER_CACHE=ccache
       - name: Compile production CUDA and runtime CTest
+        # This target links the full vibeqc shared library. Native GFN2 CUDA is
+        # therefore compiled, device-linked, and consumed through the public
+        # method adapter as part of this existing integration gate.
         run: >-
           cmake --build --preset cuda-release-sm120
           --target vibeqc_cuda_runtime_tests --parallel 3

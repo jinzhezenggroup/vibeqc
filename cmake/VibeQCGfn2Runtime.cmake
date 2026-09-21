@@ -37,6 +37,101 @@ function(vibeqc_add_gfn2_runtime target)
     ${_gfn2_root}/src/model/gfn2/spin.cpp
     ${_gfn2_root}/src/model/gfn2/wavefunction.cpp
     ${_gfn2_root}/src/runtime/gfn2_cpu_execution.cpp)
+
+  # Native molecular GFN2 CUDA bootstrap. The CUDA owner is pinned separately
+  # from the later CPU snapshot so no GFN1 runtime is pulled into VibeQC.
+  # See CUDA_SOURCE_PROVENANCE.json for the exact source cohort and adaptations.
+  if(VIBEQC_ENABLE_CUDA AND NOT VIBEQC_PYTHON_WHEEL AND
+     NOT VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+    set(_gfn2_cuda_sources
+      ${_gfn2_root}/src/backends/cuda/cuda_runtime.cu
+      ${_gfn2_root}/src/runtime/cuda_descriptor_validation.cu
+      ${_gfn2_root}/src/runtime/gfn2_cuda_topology_staging.cu
+      ${_gfn2_root}/src/runtime/gfn2_cuda_execution.cu
+      ${_gfn2_root}/src/runtime/result_owner_cuda.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_aes2.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_classical_force.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_d4.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_density.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_electric_field.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_electronic_gradient.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_energy_force_execution.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_eigensolver.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_es2.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_es3.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_external_point_charges.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_force_composition.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_geometry.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_preprocessing.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_public_result_bridge.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_h0_force.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_hamiltonian.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_hamiltonian_force.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_inference_publication.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_integrals.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_mulliken.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_occupations.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_pairlist.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_parameters.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_plan_schema.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_periodic_embedding.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_post_scc_potential.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_repulsion.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_bridge.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_classical_energy.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_energy.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_free_energy.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_iteration.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_loop.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_iteration_arena.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_iteration_control.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_iteration_initialize.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_iteration_reports.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_mixer.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_potential.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_publication.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_setup_eigensolver.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_setup_inputs.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_scc_setup_topology.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_spin.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_terminal_classical_energy.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_total_energy.cu
+    )
+    add_library(vibeqc_gfn2_cuda STATIC ${_gfn2_cuda_sources})
+    target_include_directories(vibeqc_gfn2_cuda PRIVATE
+      ${_gfn2_root}
+      ${_gfn2_root}/include
+      ${_gfn2_root}/src
+      ${CMAKE_CURRENT_SOURCE_DIR}/include
+      ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_definitions(vibeqc_gfn2_cuda PRIVATE XTBLOOM_HAS_CUDA=1)
+    set_target_properties(vibeqc_gfn2_cuda PROPERTIES
+      POSITION_INDEPENDENT_CODE ON
+      CUDA_STANDARD 20
+      CUDA_STANDARD_REQUIRED ON
+      CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}"
+      CUDA_SEPARABLE_COMPILATION ON
+      CUDA_RESOLVE_DEVICE_SYMBOLS ON
+      JOB_POOL_COMPILE vibeqc_cuda_compile)
+    set_source_files_properties(
+      ${_gfn2_root}/src/backends/cuda/gfn2_pairlist.cu
+      ${_gfn2_root}/src/backends/cuda/gfn2_geometry.cu
+      PROPERTIES COMPILE_OPTIONS "-fmad=false")
+    target_compile_definitions(${target} PRIVATE VIBEQC_HAS_GFN2_CUDA=1)
+
+    # The CUDA archive resolves its own device symbols. Consume the complete
+    # archive so CUDA registration/device-link objects cannot be discarded,
+    # without propagating separable compilation to unrelated VibeQC CUDA TUs.
+    target_link_libraries(${target} PRIVATE
+      "$<LINK_LIBRARY:WHOLE_ARCHIVE,vibeqc_gfn2_cuda>")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+      vibeqc_attach_cuda_driver_implib(${target})
+    else()
+      target_link_libraries(${target} PRIVATE CUDA::cuda_driver)
+    endif()
+  endif()
+
   target_include_directories(${target} PRIVATE
     ${_gfn2_root}
     ${_gfn2_root}/include

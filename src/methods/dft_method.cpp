@@ -136,12 +136,14 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
                     sizeof(descriptor.ks_options)) &&
       descriptor.ks_options) {
     const auto& input = *descriptor.ks_options;
-    constexpr auto prefix = offsetof(vibeqc_ks_options, composition_version);
-    if (input.struct_size < prefix || input.abi_version != VIBEQC_ABI_VERSION)
+    constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
+    constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
+    if (input.struct_size < v1_size || input.abi_version != VIBEQC_ABI_VERSION)
       throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
-    if (input.struct_size > prefix && input.struct_size < sizeof(vibeqc_ks_options))
+    if ((input.struct_size > v1_size && input.struct_size < v2_size) ||
+        (input.struct_size > v2_size && input.struct_size < sizeof(vibeqc_ks_options)))
       throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS composition suffix");
-    if (input.struct_size >= sizeof(vibeqc_ks_options)) {
+    if (input.struct_size >= v2_size) {
       if (input.composition_version > 1)
         throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS composition version");
       if (input.composition_version == 1) {
@@ -201,6 +203,22 @@ dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor,
   if (!input.tile_points || input.tile_points > static_cast<std::uint64_t>(INT_MAX))
     throw std::invalid_argument("invalid KS XC tile points");
   options.xc_tile_points = input.tile_points;
+  constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
+  constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
+  if (input.struct_size >= sizeof(vibeqc_ks_options)) {
+    switch (input.xc_execution_schedule) {
+      case VIBEQC_XC_EXECUTION_DEVICE_FUSED:
+        options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::DeviceFused;
+        break;
+      case VIBEQC_XC_EXECUTION_HOST_UNFUSED:
+        options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::HostUnfused;
+        break;
+      default:
+        throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown KS XC execution schedule");
+    }
+  } else if (input.struct_size != v1_size && input.struct_size != v2_size) {
+    throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS execution suffix");
+  }
   grid.version = input.grid_version;
   grid.radial_points = input.radial_points;
   grid.angular_polar = input.angular_polar;

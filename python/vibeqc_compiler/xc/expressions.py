@@ -17,6 +17,8 @@ from fractions import Fraction as F
 
 from vibeqc_compiler.integral.expr import Graph
 
+from .pbe_maple import pbe_correlation, pbe_exchange
+
 _PW_PARAMETERS = {
     False: {
         "a": ("0.031091", "0.015545", "0.016887"),
@@ -316,12 +318,21 @@ def pbe_exchange_reciprocal_expression() -> typing.Any:
     )
 
 
-def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.Any:
+def energy_expression(
+    spec: typing.Any,
+    *,
+    production: bool = False,
+    source: str = "production",
+) -> typing.Any:
     """Return the energy DAG and ordered feature variables.
 
-    Production mode adds only versioned endpoint continuations used by native
-    SCF; the canonical audited expression remains the default.
+    PBE canonical mathematics is lowered from the pinned Libxc Maple source.
+    ``source="handwritten"`` remains only as the #745 retirement/qualification
+    gate. Production mode independently selects versioned SCF endpoint
+    continuations for families that still require them.
     """
+    if source not in ("production", "handwritten"):
+        raise ValueError("XC expression source must be production or handwritten")
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
     if spec.spin == "polarized":
@@ -696,10 +707,18 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
 
     builders = {
         "LDA_X": lambda: exchange(False),
-        "GGA_X_PBE": lambda: exchange(True),
+        "GGA_X_PBE": lambda: (
+            pbe_exchange(graph, spec, variables)
+            if source == "production"
+            else exchange(True)
+        ),
         "LDA_C_PW": lambda: correlation(False, False),
         "LDA_C_PW_MOD": lambda: correlation(False, True),
-        "GGA_C_PBE": lambda: correlation(True, True),
+        "GGA_C_PBE": lambda: (
+            pbe_correlation(graph, spec, variables)
+            if source == "production"
+            else correlation(True, True)
+        ),
         "MGGA_X_SCAN": scan_exchange,
         "MGGA_C_SCAN": scan_correlation,
         "MGGA_X_R2SCAN": r2scan_exchange,

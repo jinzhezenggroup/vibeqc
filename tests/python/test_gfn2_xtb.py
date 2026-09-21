@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pytest
 from vibeqc import Calculator, method_capabilities
@@ -40,8 +42,6 @@ def test_gfn2_capability_and_intrinsic_basis_contract() -> None:
 
     with pytest.raises(ValueError, match="intrinsic minimal basis"):
         Calculator(method="gfn2-xtb", basis="sto-3g", device="cpu")
-    with pytest.raises(NotImplementedError, match="CUDA"):
-        Calculator(method="gfn2-xtb", device="cuda")
 
 
 def test_gfn2_h3_plus_matches_independent_tblite_golden() -> None:
@@ -107,3 +107,62 @@ def test_gfn2_oh_analytic_force_matches_energy_finite_difference() -> None:
     step = 1.0e-4
     finite_difference_force = -(energy(step) - energy(-step)) / (2.0 * step)
     assert result.forces[1, 2] == pytest.approx(finite_difference_force, abs=2.0e-8)
+
+
+def _cuda_gfn2_singlepoint_or_skip(
+    atoms: list[tuple[str, tuple[float, float, float]]],
+    *,
+    charge: int = 0,
+    multiplicity: int = 1,
+) -> object:
+    if os.environ.get("VIBEQC_TEST_GFN2_CUDA") != "1":
+        pytest.skip("set VIBEQC_TEST_GFN2_CUDA=1 in a qualified GPU allocation")
+    if not os.environ.get("SLURM_JOB_ID"):
+        pytest.fail("GFN2 CUDA qualification requires a Slurm allocation")
+    calculator = Calculator(
+        method="gfn2-xtb",
+        device="cuda",
+        energy_tolerance=1.0e-12,
+        density_tolerance=1.0e-10,
+    )
+
+    # Explicit device qualification must fail, not skip, when the requested
+    # runtime capability is absent or its numerical execution fails.
+    return calculator.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
+
+
+def test_gfn2_cuda_h3_plus_matches_independent_tblite_golden() -> None:
+    result = _cuda_gfn2_singlepoint_or_skip(H3_PLUS, charge=1)
+    assert result.converged
+    assert result.executed_backend == "cuda"
+    assert result.energy == pytest.approx(H3_PLUS_ENERGY, abs=5.0e-7)
+    assert np.allclose(result.forces, H3_PLUS_FORCES, atol=5.0e-7, rtol=0.0)
+    assert np.max(np.abs(result.forces.sum(axis=0))) < 1.0e-12
+
+
+def test_gfn2_cuda_oh_radical_matches_independent_xtb_golden() -> None:
+    result = _cuda_gfn2_singlepoint_or_skip(OH_RADICAL, multiplicity=2)
+    assert result.converged
+    assert result.executed_backend == "cuda"
+    assert result.energy == pytest.approx(OH_ENERGY, abs=5.0e-7)
+    assert np.allclose(result.forces, OH_FORCES, atol=5.0e-7, rtol=0.0)
+
+
+def test_explicit_cuda_qualification_does_not_skip_missing_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sys
+    from typing import Any
+
+    class Unavailable:
+        def __init__(self, **kwargs: Any) -> None:
+            pass
+
+        def singlepoint(self, *args: Any, **kwargs: Any) -> Any:
+            raise NotImplementedError("library was built without CUDA support")
+
+    monkeypatch.setenv("VIBEQC_TEST_GFN2_CUDA", "1")
+    monkeypatch.setenv("SLURM_JOB_ID", "host-admission-fixture")
+    monkeypatch.setattr(sys.modules[__name__], "Calculator", Unavailable)
+    with pytest.raises(NotImplementedError, match="without CUDA support"):
+        _cuda_gfn2_singlepoint_or_skip([("H", (0.0, 0.0, 0.0))])
