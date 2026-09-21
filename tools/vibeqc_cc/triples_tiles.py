@@ -489,16 +489,21 @@ def runtime_tile_capacity(
     return max(tile.ntriples for tile in tiles)
 
 
-def runtime_tile_controls(tile: TileSpec, capacity: int) -> dict[str, np.ndarray]:
-    """Build bounded runtime maps/masks without changing program identity."""
-    if type(capacity) is not int or capacity < tile.ntriples:
-        raise ValueError("runtime triples capacity is smaller than the tile domain")
+def _runtime_controls(
+    coordinates: typing.Iterable[tuple[int, int, int]], capacity: int
+) -> dict[str, np.ndarray]:
+    """Pack at most capacity triangular coordinates into runtime controls."""
+    if type(capacity) is not int or capacity < 1:
+        raise ValueError("runtime triples capacity must be a positive integer")
+    coordinates = tuple(coordinates)
+    if len(coordinates) > capacity:
+        raise ValueError("runtime triples batch exceeds its domain capacity")
     a_map = np.zeros(capacity, dtype=np.int64)
     b_map = np.zeros(capacity, dtype=np.int64)
     c_map = np.zeros(capacity, dtype=np.int64)
     active = np.zeros(capacity, dtype=np.float64)
     degeneracy = np.ones(capacity, dtype=np.float64)
-    for lane, (a, b, c) in enumerate(tile):
+    for lane, (a, b, c) in enumerate(coordinates):
         a_map[lane], b_map[lane], c_map[lane] = a, b, c
         active[lane] = 1.0
         degeneracy[lane] = float(_degeneracy(a, b, c))
@@ -509,6 +514,29 @@ def runtime_tile_controls(tile: TileSpec, capacity: int) -> dict[str, np.ndarray
         "active": active,
         "degeneracy": degeneracy,
     }
+
+
+def runtime_tile_controls(tile: TileSpec, capacity: int) -> dict[str, np.ndarray]:
+    """Pack one complete logical tile when it fits the runtime domain."""
+    if capacity < tile.ntriples:
+        raise ValueError("runtime triples capacity is smaller than the tile domain")
+    return _runtime_controls(tile, capacity)
+
+
+def runtime_tile_control_batches(
+    tile: TileSpec, capacity: int
+) -> typing.Iterator[dict[str, np.ndarray]]:
+    """Yield bounded runtime controls without materializing a large q-domain."""
+    if type(capacity) is not int or capacity < 1:
+        raise ValueError("runtime triples capacity must be a positive integer")
+    batch: list[tuple[int, int, int]] = []
+    for coordinates in tile:
+        batch.append(coordinates)
+        if len(batch) == capacity:
+            yield _runtime_controls(batch, capacity)
+            batch.clear()
+    if batch:
+        yield _runtime_controls(batch, capacity)
 
 
 def runtime_tile_static_feeds(arrays: typing.Any) -> dict[str, np.ndarray]:
