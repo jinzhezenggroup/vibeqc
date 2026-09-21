@@ -403,15 +403,11 @@ def emit_pbe_polarized_production() -> str:
             gradient_correction=gradient_correction
         )
         graph, roots = graph.lower_small_integer_powers(roots)
-        emitter = ScalarCEmitter(
-            graph, {name: name for name in correlation_names}
-        )
+        emitter = ScalarCEmitter(graph, {name: name for name in correlation_names})
         emitter.emit(roots)
         references = [emitter.reference(root) for root in roots]
         correlation_identities.append(
-            graph_identity(
-                f"pbe-correlation-scaled-{suffix}-v1", graph, roots
-            )
+            graph_identity(f"pbe-correlation-scaled-{suffix}-v1", graph, roots)
         )
         correlation_functions.extend(
             [
@@ -459,14 +455,10 @@ def emit_pbe_polarized_production() -> str:
         "gradient_direction_1",
         "gradient_direction_2",
     )
-    reciprocal = ScalarCEmitter(
-        graph, {name: name for name in reciprocal_names}
-    )
+    reciprocal = ScalarCEmitter(graph, {name: name for name in reciprocal_names})
     reciprocal.emit(roots)
     reciprocal_refs = [reciprocal.reference(root) for root in roots]
-    reciprocal_identity = graph_identity(
-        "pbe-exchange-reciprocal-v1", graph, roots
-    )
+    reciprocal_identity = graph_identity("pbe-exchange-reciprocal-v1", graph, roots)
 
     return "\n".join(
         [

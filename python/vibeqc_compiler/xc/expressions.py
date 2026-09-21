@@ -161,9 +161,7 @@ def lda_xc_pw_polarized_tail_expression() -> typing.Any:
     )
 
 
-def pbe_correlation_scaled_expression(
-    *, gradient_correction: bool
-) -> typing.Any:
+def pbe_correlation_scaled_expression(*, gradient_correction: bool) -> typing.Any:
     """Return tail-stable polarized PBE correlation E/vxc in scaled coordinates.
 
     rho_scale and gradient_ratio are fixed numerical scales selected by the
@@ -189,10 +187,7 @@ def pbe_correlation_scaled_expression(
         series = 1 + value * (
             F(-1, 2)
             + value
-            * (
-                F(1, 3)
-                + value * (F(-1, 4) + value * (F(1, 5) - value * F(1, 6)))
-            )
+            * (F(1, 3) + value * (F(-1, 4) + value * (F(1, 5) - value * F(1, 6))))
         )
         return graph.select_le(
             value,
@@ -211,20 +206,13 @@ def pbe_correlation_scaled_expression(
         b4 = F(parameters["b4"][index])
         c = (3 / (4 * math.pi)) ** (1 / 3)
         x2 = x * x
-        q = (
-            b1 * math.sqrt(c) * x2 * x
-            + b2 * c * x2
-            + b3 * c**1.5 * x
-            + b4 * c**2
-        )
+        q = b1 * math.sqrt(c) * x2 * x + b2 * c * x2 + b3 * c**1.5 * x + b4 * c**2
         u = x2 * x2 / (2 * aa * q)
         return -(x2 + alpha * c) * x2 / q * log1p_over_x(u)
 
     e0, e1, em = (pw_channel(index) for index in range(3))
     fz20 = F("1.709920934161365617563962776245")
-    fz = (up.pow(4.0 / 3.0) + down.pow(4.0 / 3.0) - 2) / (
-        2 ** (4 / 3) - 2
-    )
+    fz = (up.pow(4.0 / 3.0) + down.pow(4.0 / 3.0) - 2) / (2 ** (4 / 3) - 2)
     eps = e0 + z.pow(4) * fz * (e1 - e0 + em / fz20) - fz * em / fz20
 
     if gradient_correction:
@@ -232,12 +220,8 @@ def pbe_correlation_scaled_expression(
 
         def spin_two_thirds(value: typing.Any) -> typing.Any:
             t = value / cutoff
-            extension = F("1e-12") * t * (
-                F(14, 9) + t * (F(-7, 9) + t * F(2, 9))
-            )
-            return graph.select_le(
-                value, cutoff, extension, value.pow(2.0 / 3.0)
-            )
+            extension = F("1e-12") * t * (F(14, 9) + t * (F(-7, 9) + t * F(2, 9)))
+            return graph.select_le(value, cutoff, extension, value.pow(2.0 / 3.0))
 
         beta = F("0.06672455060314922")
         gamma = (1 - math.log(2)) / math.pi**2
@@ -254,9 +238,7 @@ def pbe_correlation_scaled_expression(
             * phi
             * phi
         )
-        aa = beta / (
-            gamma * graph.stable_unary("expm1", -eps / (gamma * phi3))
-        )
+        aa = beta / (gamma * graph.stable_unary("expm1", -eps / (gamma * phi3)))
         denominator = d + aa * g2
         v = d / denominator
         shape = 1 - v + v * v
@@ -264,9 +246,7 @@ def pbe_correlation_scaled_expression(
             "log1p", (beta / gamma) * g2 / (denominator * shape)
         )
         q = -graph.stable_unary("expm1", eps / (gamma * phi3))
-        tail = gamma * phi3 * graph.stable_unary(
-            "log1p", -q * v * v / shape
-        )
+        tail = gamma * phi3 * graph.stable_unary("log1p", -q * v * v / shape)
         eps = graph.select_le(F(1, 2), v, ordinary, tail)
 
     correlation = n * eps
@@ -300,9 +280,7 @@ def pbe_exchange_direct_expression() -> typing.Any:
     enhancement = 1 + kappa * mu * u2 / denominator
     radial_response = response * u2
     energy = -cx * rho_four_thirds * enhancement
-    rho = -cx * F(4, 3) * rho_cuberoot * (
-        enhancement - 2 * radial_response
-    )
+    rho = -cx * F(4, 3) * rho_cuberoot * (enhancement - 2 * radial_response)
     gradient = tuple(-2 * cx * response * component for component in u)
     return graph, (energy, rho, *gradient), (rho_cuberoot, rho_four_thirds, *u)
 
@@ -326,16 +304,9 @@ def pbe_exchange_reciprocal_expression() -> typing.Any:
     enhancement = 1 + kappa - kappa * kappa * t2 / denominator
     radial_response = response * t2
     energy = -cx * rho_four_thirds * enhancement
-    rho = -cx * F(4, 3) * rho_cuberoot * (
-        enhancement - 2 * radial_response
-    )
+    rho = -cx * F(4, 3) * rho_cuberoot * (enhancement - 2 * radial_response)
     gradient = tuple(
-        -2
-        * cx
-        * response
-        * t2
-        * reciprocal_reduced
-        * component
+        -2 * cx * response * t2 * reciprocal_reduced * component
         for component in direction
     )
     return (
