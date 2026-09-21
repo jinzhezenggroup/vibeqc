@@ -104,7 +104,9 @@ class ObservableDelta:
     def force_array(self) -> np.ndarray:
         return np.asarray(self.force_components, dtype=float)
 
-    def scaled(self, energy_factor: typing.Any, force_factor: typing.Any) -> ObservableDelta:
+    def scaled(
+        self, energy_factor: typing.Any, force_factor: typing.Any
+    ) -> ObservableDelta:
         energy_factor = _number(energy_factor, "energy scale")
         force_factor = _number(force_factor, "force scale")
         return ObservableDelta(
@@ -115,7 +117,9 @@ class ObservableDelta:
     def absolute_sum(self, other: ObservableDelta) -> ObservableDelta:
         """Compose estimates by componentwise absolute sum."""
         if self.force_array.shape != other.force_array.shape:
-            raise ValueError("cannot compose force estimates with different atom counts")
+            raise ValueError(
+                "cannot compose force estimates with different atom counts"
+            )
         return ObservableDelta(
             self.energy_abs + other.energy_abs,
             tuple(map(tuple, self.force_array + other.force_array)),
@@ -178,8 +182,13 @@ class NumericalTargetModel:
         if type(self.schema_version) is not int or self.schema_version != 1:
             raise ValueError("unsupported numerical-target-model schema")
         for name in (
-            "method", "geometry_id", "basis_id", "functional_id", "grid_id",
-            "derivative_semantics", "approximation",
+            "method",
+            "geometry_id",
+            "basis_id",
+            "functional_id",
+            "grid_id",
+            "derivative_semantics",
+            "approximation",
         ):
             _identity(getattr(self, name), name)
         if self.derivative_semantics not in (
@@ -188,12 +197,17 @@ class NumericalTargetModel:
         ):
             raise ValueError("unsupported derivative semantics")
         if self.approximation == "conventional":
-            if self.auxiliary_basis_id is not None or self.metric_relative_threshold is not None:
+            if (
+                self.auxiliary_basis_id is not None
+                or self.metric_relative_threshold is not None
+            ):
                 raise ValueError("conventional target cannot carry fitting metadata")
         elif self.approximation == "density_fitting":
             _identity(self.auxiliary_basis_id, "auxiliary basis identity")
             threshold = _number(
-                self.metric_relative_threshold, "metric relative threshold", positive=True
+                self.metric_relative_threshold,
+                "metric relative threshold",
+                positive=True,
             )
             if threshold >= 1:
                 raise ValueError("metric relative threshold must be below one")
@@ -231,7 +245,9 @@ class NumericalContribution:
         for name in ("source", "block_id", "estimator_kind"):
             _identity(getattr(self, name), name)
         if self.scope not in ("fixed_density", "relaxed_target"):
-            raise ValueError("contribution scope must be fixed_density or relaxed_target")
+            raise ValueError(
+                "contribution scope must be fixed_density or relaxed_target"
+            )
         if self.estimator_kind not in ("observed", "empirical", "asymptotic"):
             raise ValueError("unsupported contribution estimator kind")
         if self.block_kind not in (
@@ -312,7 +328,10 @@ class ContributionLedger:
     def block_coverage(self) -> dict[str, int]:
         """Return auditable counts for shell/grid/auxiliary contribution classes."""
         kinds = ("shell_block", "grid_region", "auxiliary_rank", "aggregate")
-        return {kind: sum(item.block_kind == kind for item in self.entries) for kind in kinds}
+        return {
+            kind: sum(item.block_kind == kind for item in self.entries)
+            for kind in kinds
+        }
 
     @property
     def estimator_seconds(self) -> float:
@@ -384,7 +403,9 @@ class PairedDifferenceEstimator:
         if not methods:
             raise ValueError("paired estimator requires at least one method")
         if len(families) < 2:
-            raise ValueError("paired estimator calibration requires two molecular families")
+            raise ValueError(
+                "paired estimator calibration requires two molecular families"
+            )
         for value in (*methods, *families):
             _identity(value, "paired-estimator identity")
         for name in (
@@ -415,7 +436,9 @@ class PairedDifferenceEstimator:
         force_floor: typing.Any = 1e-10,
     ) -> PairedDifferenceEstimator:
         samples = tuple(samples)
-        if not samples or any(not isinstance(x, PairedCalibrationSample) for x in samples):
+        if not samples or any(
+            not isinstance(x, PairedCalibrationSample) for x in samples
+        ):
             raise ValueError("fit requires paired calibration samples")
         if len({x.sample_id for x in samples}) != len(samples):
             raise ValueError("duplicate paired calibration sample identity")
@@ -429,7 +452,8 @@ class PairedDifferenceEstimator:
             for x in samples
         )
         force_scale = safety_factor * max(
-            x.strict_error.force_max_abs / max(x.paired_delta.force_max_abs, force_floor)
+            x.strict_error.force_max_abs
+            / max(x.paired_delta.force_max_abs, force_floor)
             for x in samples
         )
         return cls(
@@ -437,7 +461,9 @@ class PairedDifferenceEstimator:
             max(energy_scale, 1.0),
             max(force_scale, 1.0),
             tuple(x.family for x in samples),
-            canonical_hash([asdict(x) for x in sorted(samples, key=lambda x: x.sample_id)]),
+            canonical_hash(
+                [asdict(x) for x in sorted(samples, key=lambda x: x.sample_id)]
+            ),
             safety_factor=safety_factor,
             energy_floor=energy_floor,
             force_floor=force_floor,
@@ -483,7 +509,9 @@ class PairedDifferenceEstimator:
         rows = []
         for sample in samples:
             if sample.family in self.training_families:
-                raise ValueError("molecular-family leakage between calibration and holdout")
+                raise ValueError(
+                    "molecular-family leakage between calibration and holdout"
+                )
             estimate = self.predict(sample.method, sample.paired_delta)
             predicted_pass = budget.accepts(estimate.delta)
             actual_pass = budget.accepts(sample.strict_error)
@@ -528,7 +556,9 @@ class PairedDifferenceEstimator:
     ) -> tuple[ErrorEvidence, ErrorEvidence]:
         """Project a supported-model estimate into the existing empirical contract."""
         if not isinstance(model, ResolvedModel):
-            raise TypeError("ErrorEvidence projection requires a supported ResolvedModel")
+            raise TypeError(
+                "ErrorEvidence projection requires a supported ResolvedModel"
+            )
         if estimate.calibration_id != self.identity:
             raise ValueError("estimate/calibration identity mismatch")
         common = {
@@ -735,7 +765,9 @@ class AdaptiveNumericsPolicy:
                 geometry_id=geometry_id,
                 mask_identity=mask_identity,
             )
-            action = "strict_fallback" if self.levels[target].strict else "tighten_retry"
+            action = (
+                "strict_fallback" if self.levels[target].strict else "tighten_retry"
+            )
             return NumericalDecision(action, moved, reason, None)
         if not isinstance(estimate, NumericalEstimate):
             raise TypeError("estimate must be NumericalEstimate or None")
@@ -756,7 +788,9 @@ class AdaptiveNumericsPolicy:
                 geometry_id=geometry_id,
                 mask_identity=mask_identity,
             )
-            return NumericalDecision("tighten_retry", moved, "estimated target miss", worst)
+            return NumericalDecision(
+                "tighten_retry", moved, "estimated target miss", worst
+            )
         if switching_observed:
             held = self._move(
                 state,
@@ -781,7 +815,9 @@ class AdaptiveNumericsPolicy:
                     geometry_id=geometry_id,
                     mask_identity=mask_identity,
                 )
-                return NumericalDecision("relax", moved, "sustained conservative margin", worst)
+                return NumericalDecision(
+                    "relax", moved, "sustained conservative margin", worst
+                )
             return NumericalDecision(
                 "hold",
                 replace(state, safe_streak=streak),
@@ -804,7 +840,9 @@ class AdaptiveNumericsPolicy:
     ) -> str:
         """Require an actual comparison against the declared strict target level."""
         if reference_level != self.levels[-1] or not reference_level.strict:
-            raise ValueError("final verification requires the policy's strict target level")
+            raise ValueError(
+                "final verification requires the policy's strict target level"
+            )
         if uncertainty_reason is not None:
             return "unverified"
         return "observed_met" if self.budget.accepts(actual_error) else "observed_unmet"

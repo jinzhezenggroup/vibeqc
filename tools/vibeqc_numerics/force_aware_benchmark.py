@@ -135,7 +135,9 @@ def _gpu_resident_mib() -> float | None:
 
 def _diffuse_oh_basis() -> tuple[Shell, ...]:
     payload = json.loads(
-        (ROOT / "benchmarks/results/density-candidates/inputs/oh_diffuse.json").read_text()
+        (
+            ROOT / "benchmarks/results/density-candidates/inputs/oh_diffuse.json"
+        ).read_text()
     )
     return tuple(
         Shell(
@@ -226,14 +228,25 @@ def level_contracts(method: str) -> tuple[tuple[NumericalLevel, Any], ...]:
         angular_azimuth=24,
     )
     values = (
-        (NumericalLevel("coarse", 0, 1e-7, canonical_hash(dataclasses.asdict(coarse))), coarse),
         (
-            NumericalLevel("standard", 1, 1e-10, canonical_hash(dataclasses.asdict(standard))),
+            NumericalLevel(
+                "coarse", 0, 1e-7, canonical_hash(dataclasses.asdict(coarse))
+            ),
+            coarse,
+        ),
+        (
+            NumericalLevel(
+                "standard", 1, 1e-10, canonical_hash(dataclasses.asdict(standard))
+            ),
             standard,
         ),
         (
             NumericalLevel(
-                "strict", 2, 1e-14, canonical_hash(dataclasses.asdict(tight)), strict=True
+                "strict",
+                2,
+                1e-14,
+                canonical_hash(dataclasses.asdict(tight)),
+                strict=True,
             ),
             tight,
         ),
@@ -243,7 +256,9 @@ def level_contracts(method: str) -> tuple[tuple[NumericalLevel, Any], ...]:
     return values
 
 
-def _target_model(case: Case, calculator: Calculator, grid_spec: Any) -> NumericalTargetModel:
+def _target_model(
+    case: Case, calculator: Calculator, grid_spec: Any
+) -> NumericalTargetModel:
     metadata = calculator.basis_metadata(
         case.atoms, charge=case.charge, multiplicity=case.multiplicity
     )
@@ -545,7 +560,9 @@ def fixed_density_xc_audit(
     rows: dict[str, Any] = {}
     for level, grid_spec in levels:
         started = time.perf_counter()
-        energy = _fixed_density_xc_energy(case, case.atoms, density, functional, grid_spec)
+        energy = _fixed_density_xc_energy(
+            case, case.atoms, density, functional, grid_spec
+        )
         gradient = np.zeros((len(case.atoms), 3))
         for atom_index in range(len(case.atoms)):
             for axis in range(3):
@@ -681,9 +698,7 @@ def spatial_screening_audit(
 def strict_smooth_branch_fd(case: Case, device: str) -> dict[str, Any]:
     """Reconverged total-energy FD against one strict analytic force direction."""
     level, grid_spec = level_contracts(case.method)[-1]
-    base = run_endpoint(
-        case, level, grid_spec, device, target_grid_spec=grid_spec
-    )
+    base = run_endpoint(case, level, grid_spec, device, target_grid_spec=grid_spec)
     direction = np.arange(1, 3 * len(case.atoms) + 1, dtype=float).reshape(-1, 3)
     direction /= np.linalg.norm(direction)
     analytic = float(np.sum(np.asarray(base.forces) * direction))
@@ -739,9 +754,7 @@ def evaluate_case(
 ) -> dict[str, Any]:
     strict = endpoints[-1]
     actual = [
-        ObservableDelta.between(
-            row.energy, row.forces, strict.energy, strict.forces
-        )
+        ObservableDelta.between(row.energy, row.forces, strict.energy, strict.forces)
         for row in endpoints
     ]
     paired = [
@@ -930,9 +943,7 @@ def main() -> None:
         if case.name not in requested_axes or case.name not in raw:
             continue
         try:
-            axis_results[case.name] = axis_sweeps(
-                case, raw[case.name][-1], args.device
-            )
+            axis_results[case.name] = axis_sweeps(case, raw[case.name][-1], args.device)
         except Exception as error:  # noqa: BLE001 - retain axis failures
             axis_results[case.name] = {
                 "status": "error",
@@ -1047,7 +1058,9 @@ def main() -> None:
     )
     switching = {
         "parent_selected": None if parent is None else parent["selected_level"],
-        "changed_geometry_selected": None if changed is None else changed["selected_level"],
+        "changed_geometry_selected": None
+        if changed is None
+        else changed["selected_level"],
         "selection_switched": (
             None
             if parent is None or changed is None
@@ -1095,7 +1108,9 @@ def main() -> None:
         },
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(_jsonable(output), indent=2, sort_keys=True) + "\n")
+    args.output.write_text(
+        json.dumps(_jsonable(output), indent=2, sort_keys=True) + "\n"
+    )
     print(json.dumps({"output": str(args.output), "errors": errors}, sort_keys=True))
 
 

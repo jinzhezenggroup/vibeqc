@@ -60,10 +60,13 @@ def test_numerical_target_model_separates_grid_physics_from_execution_policy() -
         "pbe-rks", "geom-a", "def2-svp-hash", "pbe-functional-hash", "tight-grid-hash"
     )
     assert target.identity != replace(target, grid_id="standard-grid-hash").identity
-    assert target.identity != replace(
-        target,
-        derivative_semantics="fixed-density-moving-grid-with-partition-response",
-    ).identity
+    assert (
+        target.identity
+        != replace(
+            target,
+            derivative_semantics="fixed-density-moving-grid-with-partition-response",
+        ).identity
+    )
     assert not hasattr(target, "screening_tolerance")
     fitted = replace(
         target,
@@ -93,7 +96,9 @@ def test_force_error_norms_retain_atom_and_component_semantics() -> None:
         ObservableDelta.between(0, [[0, 0, 0]], 0, [[0, 0, 0], [0, 0, 0]])
 
 
-def test_contribution_ledger_separates_estimator_from_actual_and_motion_semantics() -> None:
+def test_contribution_ledger_separates_estimator_from_actual_and_motion_semantics() -> (
+    None
+):
     first = NumericalContribution(
         "quadrature",
         "atom:0/grid:coarse",
@@ -139,9 +144,12 @@ def test_contribution_ledger_separates_estimator_from_actual_and_motion_semantic
         delta(1e-9, 1e-7),
         block_kind="auxiliary_rank",
     )
-    assert ContributionLedger(
-        "df-target", "geom-a", (auxiliary,)
-    ).block_coverage()["auxiliary_rank"] == 1
+    assert (
+        ContributionLedger("df-target", "geom-a", (auxiliary,)).block_coverage()[
+            "auxiliary_rank"
+        ]
+        == 1
+    )
     with pytest.raises(ValueError, match="block kind"):
         replace(first, block_kind="mystery")
 
@@ -189,7 +197,9 @@ def test_paired_estimator_holdout_reports_false_success_and_conservatism() -> No
         fit.evaluate_holdout((sample("h2"),), budget)
 
 
-def test_uncertainty_hysteresis_switching_and_strict_reproducibility_fail_closed() -> None:
+def test_uncertainty_hysteresis_switching_and_strict_reproducibility_fail_closed() -> (
+    None
+):
     policy = AdaptiveNumericsPolicy(
         levels(),
         TargetErrorBudget(energy_abs=1e-5, force_max_abs=1e-3),
@@ -234,11 +244,15 @@ def test_final_verification_requires_strict_reference_and_actual_error() -> None
         levels(), TargetErrorBudget(energy_abs=1e-6, force_max_abs=1e-5)
     )
     assert (
-        policy.verify_final(reference_level=levels()[-1], actual_error=delta(1e-7, 1e-6))
+        policy.verify_final(
+            reference_level=levels()[-1], actual_error=delta(1e-7, 1e-6)
+        )
         == "observed_met"
     )
     assert (
-        policy.verify_final(reference_level=levels()[-1], actual_error=delta(1e-4, 1e-3))
+        policy.verify_final(
+            reference_level=levels()[-1], actual_error=delta(1e-4, 1e-3)
+        )
         == "observed_unmet"
     )
     assert (
@@ -253,7 +267,9 @@ def test_final_verification_requires_strict_reference_and_actual_error() -> None
         policy.verify_final(reference_level=levels()[1], actual_error=delta(0, 0))
 
 
-def test_empirical_estimate_projects_to_accuracy_contract_without_certification() -> None:
+def test_empirical_estimate_projects_to_accuracy_contract_without_certification() -> (
+    None
+):
     fit = estimator()
     estimate = fit.predict("pbe-rks", delta(1e-8, 1e-6))
     model = ResolvedModel("rhf", "geometry", "basis", 2)
