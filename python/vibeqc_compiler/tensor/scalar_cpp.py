@@ -13,7 +13,7 @@ import typing
 from fractions import Fraction
 from math import isfinite
 
-from .ir import TRANSCENDENTALS
+from .ir import TRANSCENDENTALS, Node
 from .program import Program
 
 SCALAR_CPP_PRIMITIVES = frozenset(
@@ -105,7 +105,7 @@ def emit_scalar_cpp(
     if unsupported:
         raise ValueError(f"unsupported scalar C++ primitives: {unsupported}")
 
-    inputs: dict[str, object] = {}
+    inputs: dict[str, Node] = {}
     for node in nodes:
         if node.op == "input":
             name = _identifier(node.attrs["name"], "input name")
@@ -126,11 +126,18 @@ def emit_scalar_cpp(
 
     index = {node: position for position, node in enumerate(nodes)}
 
-    def ref(node: object) -> str:
+    def ref(node: Node) -> str:
         return f"v{index[node]}"
 
-    parameters = [f"double {name}" for name in ordered_inputs]
-    parameters += [f"double& out_{name}" for name in ordered_outputs]
+    # Keep user-visible TensorIR labels out of the generated local namespace.
+    input_parameters = {
+        name: f"tensor_input_{i}" for i, name in enumerate(ordered_inputs)
+    }
+    output_parameters = {
+        name: f"tensor_output_{i}" for i, name in enumerate(ordered_outputs)
+    }
+    parameters = [f"double {input_parameters[name]}" for name in ordered_inputs]
+    parameters += [f"double& {output_parameters[name]}" for name in ordered_outputs]
     lines: list[str] = []
     if not direct_scaled_bilinear and any(
         node.op == "scaled_bilinear" for node in nodes
@@ -138,14 +145,16 @@ def emit_scalar_cpp(
         lines.append(_scaled_bilinear_helper(function_name))
     lines.append(f"inline bool {function_name}({', '.join(parameters)}) noexcept {{")
     if ordered_inputs:
-        condition = " || ".join(f"!std::isfinite({name})" for name in ordered_inputs)
+        condition = " || ".join(
+            f"!std::isfinite({input_parameters[name]})" for name in ordered_inputs
+        )
         lines.append(f"  if ({condition}) return false;")
 
     for node in nodes:
         name = ref(node)
         attrs = node.attrs
         if node.op == "input":
-            lines.append(f"  const double {name} = {attrs['name']};")
+            lines.append(f"  const double {name} = {input_parameters[attrs['name']]};")
             continue
         if node.op == "constant":
             values = attrs["values"]
@@ -236,7 +245,10 @@ def emit_scalar_cpp(
     for output_name in ordered_outputs:
         value = ref(program.outputs[output_name])
         lines.append(f"  if (!std::isfinite({value})) return false;")
-        lines.append(f"  out_{output_name} = {value};")
+    # Validate the complete result before modifying any caller-owned reference.
+    for output_name in ordered_outputs:
+        value = ref(program.outputs[output_name])
+        lines.append(f"  {output_parameters[output_name]} = {value};")
     lines.append("  return true;")
     lines.append("}")
     return "\n".join(lines) + "\n"
