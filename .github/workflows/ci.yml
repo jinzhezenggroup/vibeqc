@@ -264,7 +264,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [core, posthf, compiler-heavy, ecp-forces]
+        shard: [core, runtime-heavy, posthf, compiler-heavy, ecp-forces]
     runs-on: ubuntu-24.04
     # Full nightly/manual qualification includes expensive Hessian and Au replay.
     # Keep routine PR/push feedback capped separately; do not truncate that tier.
@@ -498,16 +498,63 @@ jobs:
             tests/python/test_one_electron_derivatives.py
             tests/python/test_range_separation.py
             tests/python/test_second_derivatives_inputs.py
+            # Empirically expensive routine files live in their own shard so
+            # they cannot silently expand the broad core critical path.
+            tests/python/test_response_native_rks.py
+            tests/python/test_response_native_uks.py
+            tests/python/test_mp2_public.py
+            tests/python/test_ccsd_t_orbital_response.py
+            tests/python/test_hessian_block.py
+            tests/python/test_grid_policy_convergence.py
+            tests/python/test_cc_triples_response_cuda.py
+            tests/python/test_codegen_schedules.py
+            tests/python/test_dft_batch.py
+            tests/python/test_ecp_multicenter.py
+            tests/python/test_cc_triples_lambda_response.py
+            tests/python/test_cc_lambda_response.py
+            tests/python/test_implicit_response.py
+            tests/python/test_df_rys.py
+            tests/python/test_hessian_numerical.py
+            tests/python/test_one_electron_cpu_codegen.py
+            tests/python/test_cc_solver.py
+            tests/python/test_cc_lambda_solver.py
           )
           case "${{ matrix.shard }}" in
             core)
-              # Core contains many independent long calls spread across files.
-              # Work stealing avoids a single long file pinning the job tail.
+              # Core remains the broad fast lane. Empirically expensive files
+              # are explicitly owned by runtime-heavy so routine test growth
+              # cannot silently consume the entire job budget.
               dist_mode=worksteal
               test_targets=(tests/python)
               for path in "${slow_paths[@]}"; do
                 extra_args+=(--ignore="${path}")
               done
+              ;;
+            runtime-heavy)
+              # Keep file-scoped/module-scoped expensive fixtures on one worker.
+              # worksteal can duplicate those setups across workers and inflate
+              # wall time even when the collected test count barely changes.
+              dist_mode=loadfile
+              test_targets=(
+                tests/python/test_response_native_rks.py
+                tests/python/test_response_native_uks.py
+                tests/python/test_mp2_public.py
+                tests/python/test_ccsd_t_orbital_response.py
+                tests/python/test_hessian_block.py
+                tests/python/test_grid_policy_convergence.py
+                tests/python/test_cc_triples_response_cuda.py
+                tests/python/test_codegen_schedules.py
+                tests/python/test_dft_batch.py
+                tests/python/test_ecp_multicenter.py
+                tests/python/test_cc_triples_lambda_response.py
+                tests/python/test_cc_lambda_response.py
+                tests/python/test_implicit_response.py
+                tests/python/test_df_rys.py
+                tests/python/test_hessian_numerical.py
+                tests/python/test_one_electron_cpu_codegen.py
+                tests/python/test_cc_solver.py
+                tests/python/test_cc_lambda_solver.py
+              )
               ;;
             posthf)
               test_targets=(
