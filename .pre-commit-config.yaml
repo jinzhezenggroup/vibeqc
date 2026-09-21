@@ -50,6 +50,12 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: electronic-structure-boundaries
+        name: Check cross-method electronic-structure boundaries
+        entry: python3 tools/check_electronic_structure_boundaries.py
+        language: system
+        pass_filenames: false
+        always_run: true
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.7
     hooks:
