@@ -4,6 +4,7 @@ project(VibeQC VERSION 0.1.0 LANGUAGES CXX)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 find_package(Threads REQUIRED)
+include(GNUInstallDirs)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGenerated.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGeneratedSources.cmake")
@@ -18,6 +19,8 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSourceIdentity.cmake")
 option(VIBEQC_ENABLE_CUDA "Build the CUDA runtime backend" ON)
 option(VIBEQC_ENABLE_AOT_SHELLS
        "Build generated shell kernels in addition to the generic CUDA path" ON)
+option(VIBEQC_ENABLE_STATIONARY_FORCE_AOT
+       "Build packaged stationary CUDA force artifacts" ON)
 option(VIBEQC_BUILD_TESTS "Build native tests" ON)
 option(VIBEQC_PYTHON_WHEEL
        "Install one unversioned shared library for a Python wheel" OFF)
@@ -279,7 +282,6 @@ endif()
 
 vibeqc_add_codegen_pilot()
 
-include(GNUInstallDirs)
 install(TARGETS vibeqc
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

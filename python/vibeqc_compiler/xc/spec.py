@@ -13,6 +13,7 @@ from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from .b88_vwn_maple import b88_vwn_maple_provenance
 from .p86_pz_maple import p86_pz_maple_provenance
 from .pbe_maple import pbe_maple_provenance
+from .pw91_maple import pw91_maple_provenance
 from .rsh_maple import rsh_maple_provenance
 from .scan_maple import scan_maple_provenance
 
@@ -164,6 +165,7 @@ class FunctionalSpec:
             record
             for record in (
                 pbe_maple_provenance(self.components),
+                pw91_maple_provenance(self.components),
                 p86_pz_maple_provenance(self.components),
                 b88_vwn_maple_provenance(self.components),
                 rsh_maple_provenance(self.components),

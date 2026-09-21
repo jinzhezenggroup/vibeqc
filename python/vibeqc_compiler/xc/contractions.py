@@ -178,6 +178,17 @@ class ContractionProgram:
         return dict(zip(self.program.outputs, raw, strict=True))
 
     def _gradient(self, rows: typing.Any, npoint: typing.Any) -> typing.Any:
+        propagated = getattr(rows, "feature_gradient", None)
+        if propagated is not None:
+            if (
+                not isinstance(propagated, np.ndarray)
+                or propagated.dtype != np.float64
+                or propagated.shape != (len(self.spec.features), npoint)
+                or not propagated.flags.c_contiguous
+                or not np.isfinite(propagated).all()
+            ):
+                raise ValueError("invalid propagated XC feature-gradient layout")
+            return propagated
         result = np.zeros((len(self.spec.features), npoint))
         for index in self.contract.ingredients.feature_indices:
             result[index] = rows[(index,)]
