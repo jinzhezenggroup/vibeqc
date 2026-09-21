@@ -3024,6 +3024,44 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs(
     assert "${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}" not in production_dependencies
 
 
+def test_cuda_target_request_is_resolved_before_language_enablement() -> None:
+    """Do not let CMake/NVCC invent a compiler-default CUDA target."""
+
+    cmake = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    cuda_block = cmake.split("if(VIBEQC_ENABLE_CUDA)", 1)[1].split(
+        "# Scoped VibeQC-owned GFN2 CPU runtime", 1
+    )[0]
+    target_error = cuda_block.index("CUDA target architecture is required")
+    target_assignment = cuda_block.index(
+        "set(CMAKE_CUDA_ARCHITECTURES ${_vibeqc_cuda_requested_architectures})"
+    )
+    language_enable = cuda_block.index("enable_language(CUDA)")
+    assert target_error < target_assignment < language_enable
+    assert "VIBEQC_CUDA_COMPILE_ARCHITECTURES" in cuda_block[:language_enable]
+    assert "VIBEQC_CUDA_ARCHITECTURES" in cuda_block[:language_enable]
+    assert "DEFINED CMAKE_CUDA_ARCHITECTURES" in cuda_block[:language_enable]
+    assert "DEFINED ENV{CUDAARCHS}" in cuda_block[:language_enable]
+    assert "set(CMAKE_CUDA_ARCHITECTURES 120)" not in cuda_block
+
+
+def test_virtual_cuda_target_keeps_host_profile_portable() -> None:
+    """Do not apply a measured host schedule to PTX that may JIT on a future GPU."""
+
+    cmake = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    profile_block = cmake.split("# A single real architecture may use", 1)[1].split(
+        "vibeqc_register_cuda_generated_sources", 1
+    )[0]
+    virtual_guard = profile_block.index(
+        'if(NOT _vibeqc_cuda_profile_architecture MATCHES "-virtual$")'
+    )
+    real_normalization = profile_block.index(
+        'string(REGEX REPLACE "-real$" "" _vibeqc_cuda_profile_architecture'
+    )
+    profile_define = profile_block.index("VIBEQC_CUDA_PROFILE_ARCHITECTURE=")
+    assert virtual_guard < real_normalization < profile_define
+    assert 'REGEX REPLACE "-.*$"' not in profile_block
+
+
 def test_batch_screening_ranks_real_profile_and_emits_one_process_driver() -> None:
     with pytest.raises(ValueError, match="requires --profile"):
         candidate_specs()
@@ -3217,7 +3255,7 @@ def test_standalone_benchmark_command_has_finite_slurm_allocation() -> None:
     ) == [
         "srun",
         "--partition=main",
-        "--gres=gpu:5090:1",
+        "--gres=gpu:1",
         "--nodes=1",
         "--ntasks=1",
         "--time=00:05:00",
@@ -5173,6 +5211,7 @@ def test_autotune_keeps_benchmark_executor_distinct_from_compile_pool(
     monkeypatch.setattr(driver.CudaBenchmarkExecutor, "run", run_benchmark)
     arguments = argument_parser().parse_args(
         [
+            "--architecture=sm_90",
             "--shell-class=psps",
             "--gres=gpu:explicit:1",
             "--compile-jobs=2",

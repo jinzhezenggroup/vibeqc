@@ -18,6 +18,7 @@ METHOD_RCCSD = 12
 METHOD_PBE0_RKS = 13
 METHOD_PBE0_UKS = 14
 METHOD_GFN2_XTB = 15
+METHOD_PBE_D4_RKS = 18
 
 METHOD_CONSTANTS = MappingProxyType({
     "METHOD_RHF": METHOD_RHF,
@@ -35,6 +36,7 @@ METHOD_CONSTANTS = MappingProxyType({
     "METHOD_PBE0_RKS": METHOD_PBE0_RKS,
     "METHOD_PBE0_UKS": METHOD_PBE0_UKS,
     "METHOD_GFN2_XTB": METHOD_GFN2_XTB,
+    "METHOD_PBE_D4_RKS": METHOD_PBE_D4_RKS,
 })
 
 METHOD_METADATA = MappingProxyType({
@@ -53,6 +55,7 @@ METHOD_METADATA = MappingProxyType({
     'pbe0-rks': MappingProxyType({"abi_id": 13, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
     'pbe0-uks': MappingProxyType({"abi_id": 14, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
     'gfn2-xtb': MappingProxyType({"abi_id": 15, "family": 'semiempirical', "provider": 'xtb', "properties": ('energy', 'forces'), "supports_batch": False, "aliases": ('gfn2',)}),
+    'pbe-d4-rks': MappingProxyType({"abi_id": 18, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
 })
 
 METHOD_NAME_TO_ID = MappingProxyType({
@@ -73,6 +76,7 @@ METHOD_NAME_TO_ID = MappingProxyType({
     'pbe0-uks': METHOD_PBE0_UKS,
     'gfn2-xtb': METHOD_GFN2_XTB,
     'gfn2': METHOD_GFN2_XTB,
+    'pbe-d4-rks': METHOD_PBE_D4_RKS,
 })
 METHOD_ID_TO_NAME = MappingProxyType({
     METHOD_RHF: 'rhf',
@@ -90,8 +94,9 @@ METHOD_ID_TO_NAME = MappingProxyType({
     METHOD_PBE0_RKS: 'pbe0-rks',
     METHOD_PBE0_UKS: 'pbe0-uks',
     METHOD_GFN2_XTB: 'gfn2-xtb',
+    METHOD_PBE_D4_RKS: 'pbe-d4-rks',
 })
 
 HF_METHOD_IDS = frozenset((METHOD_RHF, METHOD_UHF,))
-NATIVE_DFT_METHOD_IDS = frozenset((METHOD_LDA_RKS, METHOD_PBE_RKS, METHOD_LDA_UKS, METHOD_PBE_UKS, METHOD_R2SCAN_RKS, METHOD_R2SCAN_UKS, METHOD_PBE0_RKS, METHOD_PBE0_UKS,))
+NATIVE_DFT_METHOD_IDS = frozenset((METHOD_LDA_RKS, METHOD_PBE_RKS, METHOD_LDA_UKS, METHOD_PBE_UKS, METHOD_R2SCAN_RKS, METHOD_R2SCAN_UKS, METHOD_PBE0_RKS, METHOD_PBE0_UKS, METHOD_PBE_D4_RKS,))
 # fmt: on

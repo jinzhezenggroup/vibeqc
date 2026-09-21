@@ -391,6 +391,12 @@ class PreparedBatch:
         )
         if len(self._charges) != count or len(self._multiplicities) != count:
             raise ValueError("charges and multiplicities must match the batch size")
+        self._ks_profile_selection = calculator._effective_ks_selection(
+            self._systems,
+            charges=self._charges,
+            multiplicities=self._multiplicities,
+        )
+        self._effective_ks_options = self._ks_profile_selection.options
         for atoms in self._systems:
             calculator._preflight_hf_basis(
                 atoms,
@@ -405,6 +411,7 @@ class PreparedBatch:
                 self._systems,
                 charges=self._charges,
                 multiplicities=self._multiplicities,
+                ks_options=self._effective_ks_options,
             )
             if resource_plan is None:
                 from .resources import plan_resources
@@ -486,6 +493,7 @@ class PreparedBatch:
             method = calculator._method_descriptor(
                 auxiliary_handle if auxiliary_handle.value else None,
                 resource_plan=self.resource_plan,
+                ks_options=self._effective_ks_options,
             )
             flags = _native.BATCH_ENABLE_WARM_STARTS if warm_start else 0
             if shell_class_profiling:
@@ -778,6 +786,7 @@ class PreparedBatch:
         controls = _controls(self._calculator)
         count = len(self._systems)
         coordinate_storage: list[np.ndarray] = []
+        replay_systems = list(self._systems)
         inputs_pointer = None
         input_count = 0
         if coordinates is not None:
@@ -807,6 +816,24 @@ class PreparedBatch:
                     raise ValueError("coordinates must have shape (natoms, 3)")
                 array = np.ascontiguousarray(raw, dtype=np.float64).reshape(-1)
                 coordinate_storage.append(array)
+                if raw.shape == (self._atom_counts[index], 3) and np.all(
+                    np.isfinite(raw)
+                ):
+                    replay_systems[index] = tuple(
+                        Atom(
+                            atom.atomic_number,
+                            tuple(float(value) for value in position),
+                        )
+                        for atom, position in zip(
+                            self._systems[index], raw, strict=True
+                        )
+                    )
+                else:
+                    # Preserve native per-item failure semantics for malformed or
+                    # nonfinite payloads. Keep the prepared geometry only as the
+                    # profile-selection placeholder for this invalid row; every
+                    # other executable row must still be requalified.
+                    replay_systems[index] = self._systems[index]
                 input_descriptors.append(
                     _native.BatchInputDescriptor(
                         ctypes.sizeof(_native.BatchInputDescriptor),
@@ -818,6 +845,22 @@ class PreparedBatch:
             input_array = (_native.BatchInputDescriptor * count)(*input_descriptors)
             inputs_pointer = input_array
             input_count = count
+            replay_selection = self._calculator._effective_ks_selection(
+                tuple(replay_systems),
+                charges=self._charges,
+                multiplicities=self._multiplicities,
+            )
+            if replay_selection.options != self._effective_ks_options:
+                raise RuntimeError(
+                    "profile-selected KS execution schedule changed for replay coordinates; prepare a new batch"
+                )
+            if (
+                self._ks_profile_selection.exact_profile_match
+                and not replay_selection.exact_profile_match
+            ):
+                raise RuntimeError(
+                    "profile-selected KS execution schedule is not qualified for replay coordinates; prepare a new batch"
+                )
 
         force_storage = [
             (ctypes.c_double * (3 * atom_count))() if native_compute_forces else None
@@ -859,6 +902,7 @@ class PreparedBatch:
                 self._systems,
                 charges=self._charges,
                 multiplicities=self._multiplicities,
+                ks_options=self._effective_ks_options,
             )
             if current != next(
                 r for r in self.resource_plan.requests if r.name == current.name

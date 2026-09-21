@@ -107,12 +107,21 @@ interleaved, matched complete energy-plus-analytic-force endpoint samples must
 all pass. Schedule JSON alone is not acceptance evidence. A slower/noisy DFT
 candidate simply leaves no winner and keeps the unfused or current path usable.
 
-The prepared grid/XC layer currently exposes two real lowerings: supported
-LDA/PBE potential work can remain device-fused, while `host_unfused` keeps CUDA
-AO/features but downloads them for the generated CPU XC/Vxc contraction. The
-public CUDA KS/force endpoint is still native C++ and does not yet switch these
-prepared schedules, so fixed-density E/V measurements cannot activate a DFT
-schedule for complete SCF calculations.
+The prepared grid/XC layer and the native CUDA KS owner expose the same two
+execution choices. `device_fused` keeps supported semilocal XC/Vxc resident on
+CUDA; `host_unfused` downloads the current density for the audited CPU
+semilocal integrator and uploads Vxc back into the unchanged CUDA SCF loop. The
+native KS options ABI carries this execution policy as a v3 suffix, so v1/v2
+callers retain the historical device-fused default.
+
+Runtime DFT profile selection is batch-local and fail-closed. The calculator
+derives the exact scientific workload from the actual geometry, GridSpec,
+functional, spin, source and target architecture without materializing another
+quadrature. A validated local bundle may replace the portable schedule only
+when every batch item has an exact workload match and all matched items select
+the same resolved schedule, including its point tile. A changed geometry or
+mixed batch with any miss keeps the portable default. `VIBEQC_PROFILE=off`
+continues to provide the tuning/A-B bypass.
 
 Real-device component qualification has exercised this boundary on an NVIDIA
 GeForce RTX 4090 with CUDA 12.9.86. At revision `cc3fc40d`, a complete native
@@ -123,8 +132,22 @@ points). The device-fused median wall time was 1.84x, 1.23x, and 1.58x faster
 than the host-unfused path respectively, with every execution still passing the
 independent stored energy/potential gate. These measurements establish that
 both lowerings really execute and that fusion can remove this prepared-boundary
-cost; they are explicitly **not** an accepted local profile or a substitute for
-the complete SCF energy-plus-analytic-force promotion evidence above.
+cost.
+
+A follow-up native-KS qualification at source
+`39c31ff8bfd9e532aee7ac02638b4ea64089d31a` used the public
+`energy+forces` endpoint on an RTX 4090. After independent compile-cold
+records, seven synchronized alternating-order warm pairs were retained for H2,
+water, and a two-system H2 batch. Taking `host_unfused` as the baseline,
+`device_fused` passed the complete DFT endpoint gate in all three cases:
+median speedups were 1.116x, 1.141x, and 1.146x, with 95% bootstrap lower
+bounds 1.085x, 1.134x, and 1.140x respectively. SCF iteration branches matched;
+the maximum measured energy/force discrepancies remained below
+`2e-13`/`2e-14`, and changed-geometry replay preserved the same numerical
+agreement. The raw evidence remains a benchmark record rather than an
+installable local profile bundle; profile installation still requires the
+bundle validator's matching legality/resource/independent-numerical/source
+records and resolved schedule identity.
 
 ## Reuse and diagnostics
 
