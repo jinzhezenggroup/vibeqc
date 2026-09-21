@@ -61,14 +61,14 @@
         "tools/parameters/method_parameter_overrides.json": "c3dc0b464f2fa21068f130c8caac5508fce3f66c649ed7283821f1271d211fdf"
       },
       "generator": "tools/sync_dispersion_parameters.py",
-      "generator_sha256": "894b22aff7e3eb2c44245919c0a56cd0b888254753db504136682b5b400e2c8c",
+      "generator_sha256": "76cb60dc4bd0ef7f4d02f084bf634f18627090efbf3b02852c2b3e6faedf2346",
       "input_identity_sha256": "7846dbc7afc991e2c4420918d99445041d4fe92a72e2122d98d20b2ab3876703",
       "inputs": [
         "simple-dftd3-parameters",
         "dftd4-parameters"
       ],
       "outputs": {
-        "python/vibeqc_compiler/method/method_parameters.json": "3403bdc5fecce8889aceef071d46f9e6fff1ff8ff74e3f212cf6013b9dbcea19"
+        "python/vibeqc_compiler/method/method_parameters.json": "223d99cc859e3a1fc4b2d92809ed376a8a101eb28e49c53f457b78896e65753d"
       }
     },
     "gfn1-geometry-python-data": {
@@ -147,14 +147,14 @@
     },
     "method-parameter-python": {
       "canonical_inputs": {
-        "python/vibeqc_compiler/method/method_parameters.json": "3403bdc5fecce8889aceef071d46f9e6fff1ff8ff74e3f212cf6013b9dbcea19"
+        "python/vibeqc_compiler/method/method_parameters.json": "223d99cc859e3a1fc4b2d92809ed376a8a101eb28e49c53f457b78896e65753d"
       },
       "generator": "tools/generate_method_parameters.py",
-      "generator_sha256": "23d0701c33cb1f0de0614af90a0e1c750e8d65db3028cf8d6578c62415236592",
+      "generator_sha256": "38c48fec2fd42b26e5158c03a7fa0ab9822488a94fb6c43d472a48d706a8befa",
       "input_identity_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
       "inputs": [],
       "outputs": {
-        "python/vibeqc_compiler/method/_generated_parameters.py": "213b27a70e0acd115118aef836ec009157211eb647c9f22fa7e13f4b642e1a94"
+        "python/vibeqc_compiler/method/_generated_parameters.py": "8838da5668c81f9c2f1cc93f89c49c71830157f4f1dcadd4b5d932dde4e5f6bd"
       }
     },
     "r2scan3c-gcp": {
