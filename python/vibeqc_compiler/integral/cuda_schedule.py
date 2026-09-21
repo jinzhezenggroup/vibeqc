@@ -255,7 +255,11 @@ def schedule_candidates(
                 component_tile=component_count,
                 tasks_per_warp=warp_size,
                 shared_coulomb=False,
-                minimum_blocks_per_sm=min(8, target.maximum_blocks_per_sm),
+                minimum_blocks_per_sm=min(
+                    8,
+                    target.maximum_blocks_per_sm,
+                    target.maximum_threads_per_sm // warp_size,
+                ),
                 warp_size=warp_size,
             )
         )

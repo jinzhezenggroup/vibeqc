@@ -207,6 +207,34 @@ def test_scalar_rys2_schedule_is_compiler_owned_for_untuned_class() -> None:
     assert any(trial.schedule == scalar[0] for trial in trials)
 
 
+@pytest.mark.parametrize(
+    "sm_threads,block_limit,expected",
+    [(32, 16, 1), (64, 16, 2), (128, 16, 4), (1536, 4, 4), (1536, 24, 8)],
+)
+def test_scalar_rys2_launch_bounds_fit_resident_threads(
+    sm_threads: int, block_limit: int, expected: int
+) -> None:
+    """Runtime-enriched targets must fit both resident blocks and threads."""
+    target = replace(
+        TEST_CUDA_TARGET,
+        maximum_threads_per_block=min(
+            TEST_CUDA_TARGET.maximum_threads_per_block, sm_threads
+        ),
+        maximum_threads_per_sm=sm_threads,
+        maximum_blocks_per_sm=block_limit,
+    )
+    integral = build_integral_ir(
+        PSSS_SPEC, consumers=(KernelConsumer.FORCE,), recurrence="rys2"
+    )
+    scalar = next(
+        candidate
+        for candidate in schedule_candidates(integral, target)
+        if candidate.kind == ScheduleKind.THREAD_TASKS
+    )
+    assert scalar.minimum_blocks_per_sm == expected
+    assert scalar.minimum_blocks_per_sm * scalar.block_threads <= sm_threads
+
+
 def test_subgroup_schedule_advances_independent_ppps_tasks_per_block() -> None:
     """Keep task-local barriers and reductions inside each lane subgroup."""
 
