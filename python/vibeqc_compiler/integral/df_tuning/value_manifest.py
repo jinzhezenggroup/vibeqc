@@ -17,7 +17,11 @@ def _validate_profile(profile: typing.Any) -> None:
     """Validate one measured/candidate architecture profile."""
     if not isinstance(profile, dict) or type(profile.get("qualified")) is not bool:
         raise ValueError("explicit value production qualification status required")
-    if profile.get("raw_lanes") not in (1, 4, 32):
+    if type(profile.get("raw_lanes")) is not int or profile["raw_lanes"] not in (
+        1,
+        4,
+        32,
+    ):
         raise ValueError("invalid value production schedule")
     keys = {"".join(map(str, angular)) for angular in VALUE_CLASSES}
     kernels = profile.get("kernels", {})

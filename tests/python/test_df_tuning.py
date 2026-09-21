@@ -3,6 +3,7 @@
 import copy
 import math
 import typing
+from pathlib import Path
 
 import pytest
 from vibeqc_compiler.integral.df_tuning.emission import emit_candidate
@@ -390,3 +391,22 @@ def test_value_identity_and_profile_disagreements() -> None:
     baseline = "raw_cartesian:000:generic:lanes1"
     missing = [r for r in rows if r["candidate"] != baseline]
     assert not rank_values(groups, missing, compiled)["proposed_mapping"]
+
+
+@pytest.mark.parametrize("lanes", [True, 1.0, 4.0])
+def test_value_profile_rejects_noninteger_lane_counts(
+    tmp_path: Path, lanes: object
+) -> None:
+    import json
+
+    from vibeqc_compiler.integral.df_tuning.value_manifest import (
+        VALUE_MANIFEST,
+        load_value_manifest,
+    )
+
+    payload = json.loads(VALUE_MANIFEST.read_text())
+    payload["architectures"]["sm_120"]["raw_lanes"] = lanes
+    path = tmp_path / "profile.json"
+    path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="schedule"):
+        load_value_manifest(path)
