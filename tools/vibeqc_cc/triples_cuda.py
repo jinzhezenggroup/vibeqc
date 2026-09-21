@@ -190,9 +190,7 @@ class CudaTriplesTiles:
         t0_total = time.perf_counter()
 
         t0 = time.perf_counter()
-        program = build_runtime_tile_triples_program(
-            nocc, nvir, capacity=capacity
-        )
+        program = build_runtime_tile_triples_program(nocc, nvir, capacity=capacity)
         plan = self._plan_cuda(
             program,
             self.compiler.target,

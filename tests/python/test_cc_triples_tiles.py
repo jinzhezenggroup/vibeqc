@@ -268,7 +268,9 @@ def test_tile_tensorir_is_differentiable(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("o,v,seed,chunk", [(2, 3, 220, 1), (2, 3, 221, 2), (3, 4, 222, 2)])
+@pytest.mark.parametrize(
+    "o,v,seed,chunk", [(2, 3, 220, 1), (2, 3, 221, 2), (3, 4, 222, 2)]
+)
 def test_runtime_indexed_tile_program_reuses_one_graph_and_matches_reference(
     o: typing.Any, v: typing.Any, seed: typing.Any, chunk: typing.Any
 ) -> None:
@@ -298,9 +300,7 @@ def test_runtime_indexed_complete_tiled_reference(
     o: typing.Any, v: typing.Any, seed: typing.Any, chunk: typing.Any
 ) -> None:
     arrays = dict(zip(INPUT_NAMES, _random_case(o, v, seed), strict=True))
-    got = runtime_tile_triples_energy_tensorir(
-        o, v, arrays, vir_chunk_size=chunk
-    )
+    got = runtime_tile_triples_energy_tensorir(o, v, arrays, vir_chunk_size=chunk)
     expected = triples_energy(o, v, *arrays.values())
     np.testing.assert_allclose(got, expected, atol=1e-11, rtol=1e-10)
 
@@ -310,9 +310,7 @@ def test_runtime_indexed_graph_size_does_not_scale_with_virtual_triple_count() -
     large = build_runtime_tile_triples_program(3, 8, capacity=64)
     assert len(small.live_nodes) == len(large.live_nodes)
     assert not any(node.op == "gather" for node in large.live_nodes)
-    assert sum(
-        node.op == "runtime_indexed_select" for node in large.live_nodes
-    ) > 0
+    assert sum(node.op == "runtime_indexed_select" for node in large.live_nodes) > 0
 
 
 # ---------------------------------------------------------------------------
