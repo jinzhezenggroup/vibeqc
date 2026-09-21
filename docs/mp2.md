@@ -168,6 +168,16 @@ uses explicit virtual blocks and two resident B block buffers; this may repeat
 source rows and reports that work amplification through the CUDA component
 trace.
 
+The performance schedule for these paths is compiler-owned.
+`vibeqc_compiler.method.mp2_schedule` maps the conventional provider request
+capacity to paired direct/exchange jobs that share one AO source traversal and
+selects full-resident versus bounded-B CUDA RI-MP2 execution from dimensions and
+the declared numeric budget. `tools/generate_mp2_native.py` emits those choices
+into `src/posthf/mp2_schedule_generated.hpp`; native post-HF code retains exact
+provider resource accounting, allocations, library calls and scientific
+execution. The ownership rationale is recorded in
+`.agents/notes/implemented/performance/2026-09-21-mp2-compiler-residency-schedule.md`.
+
 Each entire tile equation executes natively on the selected correlation
 backend. The molecular loop and scalar fold are native C++, not Python
 callbacks. Conventional CUDA MP2 still discloses its bounded MO host staging;

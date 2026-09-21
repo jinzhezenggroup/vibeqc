@@ -5,6 +5,7 @@
 
 #include "posthf/mp2_cpu_generated.hpp"
 #include "posthf/mp2_cuda_plan.hpp"
+#include "posthf/mp2_schedule_generated.hpp"
 #if VIBEQC_HAS_CUDA
 #include "posthf/ri_mp2_cuda.hpp"
 #endif
@@ -76,10 +77,10 @@ Energy conventional_energy(const scf::PhysicalReference& ref, const posthf::RawS
   const auto virtual_tiles = (nv + tile - 1) / tile;
   const auto total_jobs = posthf::checked_mul(posthf::checked_mul(ref.nocc, ref.nocc),
                                               posthf::checked_mul(virtual_tiles, virtual_tiles));
-  const bool shared_scan = request_capacity >= 2;
-  const auto jobs_per_batch =
-      shared_scan ? std::min(request_capacity / 2, total_jobs) : std::size_t{1};
-  const auto provider_requests = shared_scan ? 2 * jobs_per_batch : std::size_t{1};
+  const auto reuse = generated::conventional_reuse_plan(request_capacity, total_jobs);
+  const bool shared_scan = reuse.shared_scan;
+  const auto jobs_per_batch = reuse.jobs_per_batch;
+  const auto provider_requests = reuse.provider_requests;
   const auto peak = posthf::checked_add(provider.batch_bytes(block_shape, provider_requests, cuda),
                                         kernel_reserve);
   if (peak > budget) throw std::length_error("MP2 energy phase exceeds numeric memory budget");

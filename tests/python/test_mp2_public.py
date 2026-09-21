@@ -584,6 +584,8 @@ def test_c_api_conventional_force_is_transactional_across_repeated_execution() -
 
 
 def test_generated_cpu_and_capacity_sources_are_reproducible() -> None:
+    from vibeqc_compiler.method.mp2_schedule import native_header as mp2_schedule_header
+
     from tools.generate_mp2_native import cpu_header
     from tools.vibeqc_posthf.plan_spec import native_header
 
@@ -591,6 +593,7 @@ def test_generated_cpu_and_capacity_sources_are_reproducible() -> None:
     for name, expected in (
         ("mp2_cpu_generated.hpp", cpu_header()),
         ("block_capacity_generated.hpp", native_header()),
+        ("mp2_schedule_generated.hpp", mp2_schedule_header()),
     ):
         actual = (root / "src/posthf" / name).read_text()
         import re

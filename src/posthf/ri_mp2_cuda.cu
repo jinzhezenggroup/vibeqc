@@ -13,6 +13,7 @@
 
 #include "posthf/capacity.hpp"
 #include "posthf/ri_mp2_cuda.hpp"
+#include "posthf/mp2_schedule_generated.hpp"
 #include "runtime/cuda_component_trace.hpp"
 #include "runtime/cuda_resources.cuh"
 #include "scf/cuda/df_plan_internal.hpp"
@@ -191,50 +192,13 @@ std::size_t fixed_capacity(const posthf::RawSource& source, std::size_t n, std::
   return total;
 }
 
-std::size_t block_capacity(std::size_t fixed, std::size_t n, std::size_t no, std::size_t na,
-                           std::size_t virtual_block, std::size_t j_batch, bool full_resident) {
-  auto total = fixed;
-  total = posthf::checked_add(total, bytes(elements3(n, na, virtual_block)));
-  const auto b_elements = elements3(na, no, virtual_block);
-  total = posthf::checked_add(total, bytes(b_elements));
-  if (!full_resident) total = posthf::checked_add(total, bytes(b_elements));
-  const auto integral_batch = elements3(j_batch, virtual_block, virtual_block);
-  total = posthf::checked_add(total, bytes(integral_batch));
-  if (!full_resident) total = posthf::checked_add(total, bytes(integral_batch));
-  return total;
-}
 
 }  // namespace
 
 RiMp2CudaBlockPlan plan_ri_mp2_cuda_blocks(std::size_t fixed, std::size_t budget, std::size_t n,
                                            std::size_t no, std::size_t nv, std::size_t na) {
-  if (!n || !no || !nv || !na || no >= n)
-    throw std::invalid_argument("invalid CUDA RI-MP2 block-planner dimensions");
-  const std::size_t preferred_j = std::max<std::size_t>(1, std::min<std::size_t>(no, 8));
-  const auto full_peak = block_capacity(fixed, n, no, na, nv, preferred_j, true);
-  if (full_peak <= budget) return {nv, preferred_j, full_peak, true};
-  std::size_t best = 0;
-  std::size_t best_j = 1;
-  std::size_t lower = 1, upper = nv - 1;
-  while (lower <= upper) {
-    const std::size_t middle = lower + (upper - lower) / 2;
-    std::size_t j_batch = preferred_j;
-    while (j_batch > 1 && block_capacity(fixed, n, no, na, middle, j_batch, false) > budget)
-      j_batch = (j_batch + 1) / 2;
-    const auto peak = block_capacity(fixed, n, no, na, middle, j_batch, false);
-    if (peak <= budget) {
-      best = middle;
-      best_j = j_batch;
-      lower = middle + 1;
-    } else {
-      upper = middle - 1;
-    }
-  }
-  if (!best)
-    throw std::length_error(
-        "CUDA RI-MP2 resident/blocked B transform exceeds numeric memory budget");
-  const auto peak = block_capacity(fixed, n, no, na, best, best_j, false);
-  return {best, best_j, peak, false};
+  const auto plan = generated::ri_mp2_residency_plan(fixed, budget, n, no, nv, na);
+  return {plan.virtual_block, plan.j_batch, plan.peak_bytes, plan.full_resident};
 }
 
 RiMp2CudaEnergy density_fitted_energy_cuda(const scf::PhysicalReference& ref,
