@@ -21,16 +21,19 @@ the generated value policy, and the shared AO-pair contraction all follow this
 rule. Scalar attraction helpers remain scalar-returning because they do not
 exercise the aggregate ABI.
 
-The policy inventory advances to version 2 and records
-`device_struct_results=caller_owned_out_parameters`, so generated-artifact
+The policy inventory advances to version 3 and records both caller-owned
+device struct results and scalar/pointer view transport, so generated-artifact
 identity cannot silently confuse the old and new internal ABIs.
 
-The same compatibility rule now applies at CUDA kernel entry points. The public
-host launchers keep typed `OneElectronDeviceView` / `OneElectronWeightView`
-arguments, but the launched value and derivative kernels receive only scalar or
-pointer parameters and reconstruct borrowed local views in-device. This avoids
-PTX `.param .b8` aggregate loads without adding allocations, transfers,
-synchronization, or global mutable state.
+The same compatibility rule now applies at CUDA kernel entry points and across
+the one-electron device call graph. The public host launchers keep typed
+OneElectronDeviceView / OneElectronWeightView arguments, but value and
+derivative kernels receive scalar/pointer parameters and forward only the fields
+actually consumed by each device helper. Device code no longer reconstructs or
+passes either heterogeneous view aggregate. Output pointers are likewise passed
+individually instead of through an Outputs pointer array. This avoids both PTX
+aggregate parameter loads and local heterogeneous-record spill/reload without
+adding allocations, transfers, synchronization, or global mutable state.
 
 ## Invariants
 
@@ -109,6 +112,15 @@ These results do not establish Apple's Clang/PTX/CuMetal execution or speed.
 The earlier Apple job 106162926229 failed all three endpoints at an indirect
 parameter load. New exact-head Apple endpoint CI must pass before overall LGTM
 or auto-merge. No scientific tolerance, IEEE64 policy, or backend was weakened.
+
+A later exact-head Apple failure in job 106232040555 reached thread_pairs_flat
+but CuMetal typed lowering then reported ptr<device, i8> versus i64 mismatches
+inside the entry's device call graph. The follow-up removes device-side
+OneElectronDeviceView, OneElectronWeightView, and output-pointer aggregates
+rather than weakening the verifier. Focused one-electron source/codegen coverage
+after this change passes 26 tests with 148 environment-dependent CUDA tests
+skipped on the validation host; Ruff, clang-format, and git diff --check also
+pass. Apple/CuMetal execution remains the authoritative acceptance gate.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
