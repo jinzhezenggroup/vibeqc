@@ -281,17 +281,21 @@ def test_fusion_profitability_exposes_launch_traffic_pressure_tradeoff() -> None
     )
 
     assert fused["estimated_kernel_launches"] < separate["estimated_kernel_launches"]
-    assert fused["estimated_endpoint_semantic_traffic_bytes"] < (
-        separate["estimated_endpoint_semantic_traffic_bytes"]
-    )
-    assert fused["estimated_registers_per_thread"] > (
-        separate["estimated_registers_per_thread"]
-    )
-    assert fused["profitability"]["static"]["launch_count"] == (
-        fused["estimated_kernel_launches"]
-    )
-    assert fused["profitability"]["static"]["semantic_traffic_bytes"] == (
+    assert (
         fused["estimated_endpoint_semantic_traffic_bytes"]
+        < (separate["estimated_endpoint_semantic_traffic_bytes"])
+    )
+    assert (
+        fused["estimated_registers_per_thread"]
+        > (separate["estimated_registers_per_thread"])
+    )
+    assert (
+        fused["profitability"]["static"]["launch_count"]
+        == (fused["estimated_kernel_launches"])
+    )
+    assert (
+        fused["profitability"]["static"]["semantic_traffic_bytes"]
+        == (fused["estimated_endpoint_semantic_traffic_bytes"])
     )
 
 

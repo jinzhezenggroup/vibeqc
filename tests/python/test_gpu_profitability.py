@@ -82,6 +82,8 @@ def test_payload_preserves_unknown_evidence_instead_of_guessing() -> None:
         {"spill_store_bytes": True},
     ],
 )
-def test_invalid_profitability_evidence_fails_closed(options: dict[str, object]) -> None:
+def test_invalid_profitability_evidence_fails_closed(
+    options: dict[str, object],
+) -> None:
     with pytest.raises((TypeError, ValueError)):
         GpuProfitability(**options)

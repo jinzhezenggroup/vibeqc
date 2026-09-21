@@ -76,13 +76,9 @@ def _candidate_profitability(
 
     endpoint_ms = None if runtime is None else float(runtime["fused_ms"])
     return GpuProfitability(
-        arithmetic_operation_count=getattr(
-            model, "arithmetic_operation_count", None
-        ),
+        arithmetic_operation_count=getattr(model, "arithmetic_operation_count", None),
         peak_live_values=getattr(model, "peak_live_values", None),
-        rematerialized_value_count=getattr(
-            model, "rematerialized_value_count", None
-        ),
+        rematerialized_value_count=getattr(model, "rematerialized_value_count", None),
         compiled_registers_per_thread=maximum("registers"),
         spill_store_bytes=maximum("spill_store_bytes"),
         spill_load_bytes=maximum("spill_load_bytes"),

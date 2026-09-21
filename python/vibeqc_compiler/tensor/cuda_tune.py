@@ -145,16 +145,12 @@ def _compiled_profitability(
     static = estimates["profitability"]["static"]
     return GpuProfitability(
         **static,
-        compiled_registers_per_thread=resources[
-            "compiled_max_registers_per_thread"
-        ],
+        compiled_registers_per_thread=resources["compiled_max_registers_per_thread"],
         spill_store_bytes=resources["compiled_max_spill_store_bytes"],
         spill_load_bytes=resources["compiled_max_spill_load_bytes"],
         local_bytes=resources["compiled_max_local_bytes"],
         shared_bytes=resources["compiled_max_shared_bytes"],
-        compiled_occupancy_upper_bound=resources[
-            "compiled_occupancy_upper_bound"
-        ],
+        compiled_occupancy_upper_bound=resources["compiled_occupancy_upper_bound"],
         object_bytes=metadata.get("binary_bytes"),
         compile_seconds=compilation["compiler_seconds"],
     ).to_payload()

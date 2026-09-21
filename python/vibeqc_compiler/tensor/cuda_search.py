@@ -261,9 +261,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     source_bytes = len(emit_cuda(plan, embed_static_data=False).encode("utf-8"))
     resident = _resident_blocks(plan, registers, 0)
     traffic = plan.semantic_traffic
-    occupancy = (
-        resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
-    )
+    occupancy = resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
     launches = estimated_cuda_launches(plan)
     profitability = GpuProfitability(
         semantic_traffic_bytes=traffic["total_bytes"],

@@ -17,7 +17,9 @@ def _optional_count(value: int | None, name: str) -> None:
         raise ValueError(f"{name} must be a non-negative integer or None")
 
 
-def _optional_float(value: float | None, name: str, *, unit_interval: bool = False) -> None:
+def _optional_float(
+    value: float | None, name: str, *, unit_interval: bool = False
+) -> None:
     if value is None:
         return
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -94,7 +96,6 @@ class GpuProfitability:
         if self.spill_store_bytes is None or self.spill_load_bytes is None:
             return None
         return self.spill_store_bytes + self.spill_load_bytes
-
 
     def static_compile_priority(self, generation_index: int) -> tuple[object, ...]:
         """Order legal candidates before compilation without claiming a winner.
