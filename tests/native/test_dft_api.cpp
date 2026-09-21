@@ -111,7 +111,7 @@ vibeqc_method_descriptor lda_method() {
 }
 
 void ks_option_snapshot() {
-  require(vibeqc_ks_options_version() == 2, "KS option version unavailable");
+  require(vibeqc_ks_options_version() == 3, "KS option version unavailable");
   Fixture fixture;
   auto method = lda_method();
   std::array<double, 119> radii;
@@ -129,6 +129,9 @@ void ks_option_snapshot() {
                             31,
                             radii.data(),
                             radii.size()};
+  options.execution_plan_version = 1;
+  options.spin_channels = 1;
+  options.semilocal_family = 0;
   method.ks_options = &options;
   vibeqc_calculation* calculation = nullptr;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
@@ -160,6 +163,12 @@ void ks_option_snapshot() {
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_NOT_IMPLEMENTED,
           "unknown KS domain policy accepted");
+  options.scf_domain_version = 1;
+  options.semilocal_family = 1;
+  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+              VIBEQC_STATUS_INVALID_ARGUMENT,
+          "compiler-resolved KS family disagreed with the public selector but was accepted");
+  options.semilocal_family = 0;
   method.method = VIBEQC_METHOD_RHF;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_INVALID_ARGUMENT,
@@ -195,6 +204,9 @@ void pbe0_composition_snapshot() {
   options.semilocal_exchange_scale = 0.75;
   options.semilocal_correlation_scale = 1.0;
   options.fock_exchange_coefficient = -0.125;
+  options.execution_plan_version = 1;
+  options.spin_channels = 1;
+  options.semilocal_family = 1;
   method.ks_options = &options;
 
   vibeqc_calculation* calculation = nullptr;
