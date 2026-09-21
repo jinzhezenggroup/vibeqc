@@ -14,6 +14,7 @@ function(vibeqc_add_api_sources target)
     src/api/c_api_d3.cpp
     src/api/c_api_d4.cpp
     src/api/c_api_nonlocal.cpp
+    src/api/c_api_gcp.cpp
     src/api/c_api_common.cpp
     src/api/c_api_context.cpp
     src/api/c_api_resources.cpp

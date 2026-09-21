@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import typing
+from pathlib import Path
 
 import pytest
 from vibeqc_compiler.integral import (
@@ -99,3 +100,17 @@ def test_probed_sm_count_is_a_finite_integer(count: typing.Any) -> None:
     target = cuda_target_info("sm_120")
     with pytest.raises(ValueError, match="SM count must be positive"):
         target.with_runtime_probe(sm_count=count)
+
+
+def test_runtime_and_tuning_api_share_cuda_target_info() -> None:
+    """Compiler-facing tuning identity and runtime policy consume one resource record."""
+
+    root = Path(__file__).resolve().parents[2]
+    runtime = (root / "src/runtime/cuda_runtime.cu").read_text(encoding="utf-8")
+    tuning = (root / "src/api/c_api_tuning.cpp").read_text(encoding="utf-8")
+    direct = (root / "src/scf/cuda_rhf.cpp").read_text(encoding="utf-8")
+
+    needle = "cuda_target_info_from_properties"
+    assert needle in runtime
+    assert needle in tuning
+    assert needle in direct

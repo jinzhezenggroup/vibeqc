@@ -449,6 +449,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   plan.last_ppps_queue_profile.reset();
   plan.last_inactive_eigensolver_profile.reset();
 
+  cudaDeviceProp direct_device_properties{};
+  const cudaError_t direct_target_error =
+      cudaGetDeviceProperties(&direct_device_properties, device_id);
+  if (direct_target_error != cudaSuccess) {
+    fill_global_failure(outputs, cuda_status(direct_target_error));
+    return outputs;
+  }
+  const runtime::CudaTargetInfo direct_target =
+      runtime::cuda_target_info_from_properties(direct_device_properties);
+  const cuda_policy::DirectJkSchedulePolicy direct_schedule =
+      cuda_policy::resolve_direct_jk_schedule_policy(direct_target);
+
   const std::size_t nbf = host.nbf;
   const std::size_t direct_nbf = host.direct_nbf;
   const std::size_t spin_count = host.spin_count;
@@ -593,7 +605,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       direct_task_layout = {};
       total_shell_quartet_tiles = 0;
     } else if (direct_task_layout.exact_tile_count >
-               kFixedGeneratedTaskArenaMaximumBytes / sizeof(GeneratedShellTask)) {
+               direct_schedule.generated_task_arena_maximum_bytes / sizeof(GeneratedShellTask)) {
       // The uint32 grid limit is much larger than a practical descriptor
       // arena on a 32 GiB device.  Route large-but-grid-addressable buckets
       // through bounded streaming before make_layout() reserves the complete
@@ -730,8 +742,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       fill_global_failure(outputs, VIBEQC_STATUS_OUT_OF_MEMORY);
       return outputs;
     }
-    bounded_generated_task_capacity =
-        std::min(bounded_generated_task_capacity, kBoundedGeneratedMaximumTaskCapacity);
+    bounded_generated_task_capacity = std::min(bounded_generated_task_capacity,
+                                               cuda_policy::direct_jk_generated_task_capacity_limit(
+                                                   direct_schedule, sizeof(GeneratedShellTask)));
   }
   if (requested_quartet_direct && first_setup && !requested_bounded_direct_streaming) {
     // The shared generated-task arena serves both exact Fock and force
@@ -1058,8 +1071,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // once per device; low-order kernels do not consume it.
     std::size_t stack_limit = 0;
     cuda_error = cudaDeviceGetLimit(&stack_limit, cudaLimitStackSize);
-    if (cuda_error == cudaSuccess && stack_limit < kDirectCudaStackLimitBytes) {
-      cuda_error = cudaDeviceSetLimit(cudaLimitStackSize, kDirectCudaStackLimitBytes);
+    if (cuda_error == cudaSuccess && stack_limit < direct_schedule.cuda_stack_limit_bytes) {
+      cuda_error = cudaDeviceSetLimit(cudaLimitStackSize, direct_schedule.cuda_stack_limit_bytes);
     }
     if (cuda_error != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
@@ -1067,18 +1080,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     }
   }
   if (first_setup && quartet_direct) {
-    int multiprocessor_count = 0;
-    cuda_error =
-        cudaDeviceGetAttribute(&multiprocessor_count, cudaDevAttrMultiProcessorCount, device_id);
-    if (cuda_error != cudaSuccess || multiprocessor_count <= 0 ||
-        static_cast<unsigned>(multiprocessor_count) >
-            std::numeric_limits<unsigned>::max() / kPersistentQuartetWarpsPerMultiprocessor) {
-      fill_global_failure(outputs, cuda_error == cudaSuccess ? VIBEQC_STATUS_INVALID_ARGUMENT
-                                                             : cuda_status(cuda_error));
+    if (direct_target.multiprocessor_count == 0U ||
+        direct_target.multiprocessor_count > std::numeric_limits<unsigned>::max() /
+                                                 direct_schedule.persistent_quartet_warps_per_sm) {
+      fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
       return outputs;
     }
+    plan.persistent_quartet_warps_per_multiprocessor =
+        direct_schedule.persistent_quartet_warps_per_sm;
     plan.persistent_quartet_worker_blocks =
-        static_cast<unsigned>(multiprocessor_count) * kPersistentQuartetWarpsPerMultiprocessor;
+        direct_target.multiprocessor_count * direct_schedule.persistent_quartet_warps_per_sm;
   }
   cublasStatus_t blas_error = CUBLAS_STATUS_SUCCESS;
   cusolverStatus_t solver_error = CUSOLVER_STATUS_SUCCESS;
@@ -4506,8 +4517,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     plan.last_inactive_eigensolver_profile = std::move(profile);
   }
   if (collect_ppps_queue_profile) {
-    const unsigned multiprocessor_count = std::max(
-        1U, plan.persistent_quartet_worker_blocks / kPersistentQuartetWarpsPerMultiprocessor);
+    const unsigned multiprocessor_count =
+        std::max(1U, plan.persistent_quartet_worker_blocks /
+                         std::max(1U, plan.persistent_quartet_warps_per_multiprocessor));
     CudaPppsQueueProfile ppps_profile = build_ppps_queue_profile(
         host, host_ppps_descriptor_counts, host_ppps_signatures, multiprocessor_count);
     if (ppps_profile.descriptor_slots != 0U) {

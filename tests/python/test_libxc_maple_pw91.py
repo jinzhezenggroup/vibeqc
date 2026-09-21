@@ -11,11 +11,14 @@ from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
+from vibeqc_compiler.xc import rsh_expressions
 from vibeqc_compiler.xc.libxc_maple import (
     IMPORTER_SEMANTICS,
     MapleModule,
     import_maple_file,
 )
+from vibeqc_compiler.xc.program import build_program
+from vibeqc_compiler.xc.pw91_maple import pw91_component, pw91_maple_provenance
 from vibeqc_compiler.xc.rsh_expressions import energy_expression
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
@@ -214,3 +217,83 @@ def test_imported_pw91_emits_scalar_c_and_cuda(name: str) -> None:
             graph.nodes[index].operation for index in graph.topological_order(roots)
         }
         assert "asinh" in operations
+
+
+def _production_adapter_component(
+    name: str, spin: str
+) -> tuple[Graph, tuple[Expr, ...], tuple[Expr, ...]]:
+    graph = Graph()
+    feature_names = POLARIZED_FEATURES if spin == "polarized" else UNPOLARIZED_FEATURES
+    variables = tuple(graph.variable(item) for item in feature_names)
+    spec = FunctionalSpec(
+        f"{name}_PRODUCTION_MAPLE",
+        ((name, Fraction(1)),),
+        spin=spin,
+    )
+    energy = pw91_component(graph, spec, variables, name)
+    return graph, _feature_roots(graph, energy, variables), variables
+
+
+@pytest.mark.parametrize("name", ["GGA_X_PW91", "GGA_C_PW91"])
+@pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
+def test_production_pw91_matches_dedicated_maple_adapter(name: str, spin: str) -> None:
+    case = _fixture_case(name, spin)
+    features = np.asarray(case["features"], dtype=float)
+    feature_names = POLARIZED_FEATURES if spin == "polarized" else UNPOLARIZED_FEATURES
+    spec = FunctionalSpec(
+        f"{name}_PRODUCTION",
+        ((name, Fraction(1)),),
+        spin=spin,
+    )
+    production = build_program(spec, order=2).evaluate(features)
+    graph, roots, _ = _production_adapter_component(name, spin)
+    adapter = _evaluate_fixture(graph, roots, feature_names, features)
+    np.testing.assert_allclose(production, adapter, rtol=2e-13, atol=2e-13)
+
+
+@pytest.mark.parametrize(
+    ("name", "attribute"),
+    [
+        ("GGA_X_PW91", "imported_pw91_exchange"),
+        ("GGA_C_PW91", "imported_pw91_correlation"),
+    ],
+)
+def test_rsh_production_dispatch_calls_pw91_maple_adapter(
+    name: str, attribute: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    called = False
+
+    def replacement(
+        graph: Graph, spec: FunctionalSpec, variables: tuple[Expr, ...]
+    ) -> Expr:
+        nonlocal called
+        called = True
+        return graph.constant(0)
+
+    monkeypatch.setattr(rsh_expressions, attribute, replacement)
+    spec = FunctionalSpec(
+        f"{name}_DISPATCH",
+        ((name, Fraction(1)),),
+        spin="unpolarized",
+    )
+    graph, energy, _ = rsh_expressions.energy_expression(spec)
+    assert called
+    assert graph.node(energy).operation == "constant"
+
+
+@pytest.mark.parametrize("name", ["GGA_X_PW91", "GGA_C_PW91"])
+def test_pw91_functional_identity_records_maple_provenance(name: str) -> None:
+    spec = FunctionalSpec(
+        f"{name}_PROVENANCE",
+        ((name, Fraction(1)),),
+        spin="polarized",
+    )
+    provenance = spec.to_payload()["expression_provenance"]
+    direct = pw91_maple_provenance(spec.components)
+    assert direct is not None
+    assert provenance["kind"] == "libxc-maple"
+    assert provenance["importer_semantics"] == IMPORTER_SEMANTICS
+    assert set(provenance["components"]) == {name}
+    assert provenance["components"][name] == direct["components"][name]
+    assert len(provenance["adapter_sha256"]) == 64
+    assert len(provenance["importer_sha256"]) == 64

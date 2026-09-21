@@ -1,5 +1,6 @@
 """Regression tests for the #745 handwritten-XC retirement boundary."""
 
+import ast
 from pathlib import Path
 
 from tools.vibeqc_validation.xc_retirement import (
@@ -28,6 +29,26 @@ def test_xc_retirement_inventory_is_explicit_and_monotone() -> None:
     assert {row["module"] for row in report["legacy_sources"]} <= set(
         LEGACY_MODULE_FILES
     )
+
+
+def test_retired_scan_handwritten_builders_stay_deleted() -> None:
+    source = ROOT / "python/vibeqc_compiler/xc/expressions.py"
+    tree = ast.parse(source.read_text(), filename=str(source.relative_to(ROOT)))
+    function_names = {
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    retired = {
+        "production_channel",
+        "r2_switch",
+        "scan_switch",
+        "scan_exchange",
+        "scan_correlation",
+        "r2scan_exchange",
+        "r2scan_correlation",
+    }
+    assert function_names.isdisjoint(retired)
 
 
 def test_xc_retirement_gate_detects_new_consumer(tmp_path: Path) -> None:

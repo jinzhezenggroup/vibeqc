@@ -1323,6 +1323,20 @@ VIBEQC_API vibeqc_status vibeqc_d3_batch_execute(vibeqc_d3_batch* batch,
                                                  vibeqc_d3_batch_item_result_descriptor* results,
                                                  uint32_t result_count);
 
+/**
+ * Evaluate the canonical r2SCAN-3c gCP correction on CPU.
+ *
+ * Coordinates are Bohr and gradient, when supplied, is dE/dR. Passing
+ * gradient=NULL,gradient_count=0 requests energy only. The supported element
+ * domain is the canonical H-Ar r2SCAN-3c profile.
+ */
+VIBEQC_API const char* vibeqc_r2scan3c_gcp_provider_identity(void);
+VIBEQC_API vibeqc_status vibeqc_r2scan3c_gcp_evaluate(const int32_t* atomic_numbers,
+                                                      uint32_t atom_count,
+                                                      const double* coordinates,
+                                                      uint32_t coordinate_count, double* energy,
+                                                      double* gradient, uint32_t gradient_count);
+
 /** Audited identities compiled into the production D4(BJ)-EEQ provider. */
 VIBEQC_API const char* vibeqc_d4_table_sha256(void);
 VIBEQC_API const char* vibeqc_d4_charge_parameter_sha256(void);
