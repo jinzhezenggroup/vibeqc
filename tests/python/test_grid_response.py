@@ -203,16 +203,16 @@ def test_mixed_program_uses_generated_second_chain_rule() -> None:
         a=a, b=b, la=la, lb=lb, ra=ra, rb=rb, lra=lra, lrb=lrb
     )
     for h in (2e-4, 5e-5):
-        displaced_a = a + h * ra + 0.5 * h * h * lra
-        displaced_b = b + h * rb + 0.5 * h * h * lrb
+        displaced_a = a + h * ra
+        displaced_b = b + h * rb
         displaced_la = la + h * lra
         displaced_lb = lb + h * lrb
         plus_left = (
             displaced_la * displaced_b - displaced_a * displaced_lb
         ) / displaced_b**2
 
-        displaced_a = a - h * ra + 0.5 * h * h * lra
-        displaced_b = b - h * rb + 0.5 * h * h * lrb
+        displaced_a = a - h * ra
+        displaced_b = b - h * rb
         displaced_la = la - h * lra
         displaced_lb = lb - h * lrb
         minus_left = (
