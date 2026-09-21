@@ -485,9 +485,7 @@ def runtime_tile_capacity(
     nocc: typing.Any, nvir: typing.Any, vir_chunk_size: typing.Any
 ) -> int:
     """Maximum triangular-domain lanes needed by one runtime a-chunk."""
-    tiles = tuple(
-        TriplesTileEnumerator(nocc, nvir, vir_chunk_size=vir_chunk_size)
-    )
+    tiles = tuple(TriplesTileEnumerator(nocc, nvir, vir_chunk_size=vir_chunk_size))
     return max(tile.ntriples for tile in tiles)
 
 
@@ -575,7 +573,9 @@ def build_runtime_tile_triples_program(
     is vectorized over that domain and reduced only after the scientific body.
     """
     if any(type(n) is not int or n < 1 for n in (nocc, nvir, capacity)):
-        raise ValueError("runtime triples require positive occupied/virtual/domain sizes")
+        raise ValueError(
+            "runtime triples require positive occupied/virtual/domain sizes"
+        )
     occ = IndexSpace("runtime_occupied", "occupied", nocc)
     vir = IndexSpace("runtime_virtual", "virtual", nvir)
     lanes = IndexSpace("runtime_triples", "batch", capacity)
@@ -609,15 +609,9 @@ def build_runtime_tile_triples_program(
         ),
         "eps_o": input_tensor("eps_o", TensorSpec((O("i6"),), **common)),
         "eps_v": input_tensor("eps_v", TensorSpec((V("a7"),), **common)),
-        "a_map": input_tensor(
-            "a_map", TensorSpec((q,), dtype="int64", role="input")
-        ),
-        "b_map": input_tensor(
-            "b_map", TensorSpec((q,), dtype="int64", role="input")
-        ),
-        "c_map": input_tensor(
-            "c_map", TensorSpec((q,), dtype="int64", role="input")
-        ),
+        "a_map": input_tensor("a_map", TensorSpec((q,), dtype="int64", role="input")),
+        "b_map": input_tensor("b_map", TensorSpec((q,), dtype="int64", role="input")),
+        "c_map": input_tensor("c_map", TensorSpec((q,), dtype="int64", role="input")),
         "active": input_tensor(
             "active",
             TensorSpec((q,), role="input", representation="restricted_spatial"),
@@ -630,15 +624,10 @@ def build_runtime_tile_triples_program(
     views = _t_views_tile(nodes)
     base_maps = (nodes["a_map"], nodes["b_map"], nodes["c_map"])
     coordinates = {
-        label: tuple(base_maps[position] for position in VP[label])
-        for label in _LABELS
+        label: tuple(base_maps[position] for position in VP[label]) for label in _LABELS
     }
-    ws = {
-        label: _runtime_w_node(views, q, coordinates[label]) for label in _LABELS
-    }
-    vs = {
-        label: _runtime_v_node(views, q, coordinates[label]) for label in _LABELS
-    }
+    ws = {label: _runtime_w_node(views, q, coordinates[label]) for label in _LABELS}
+    vs = {label: _runtime_v_node(views, q, coordinates[label]) for label in _LABELS}
 
     ijk = (O("io"), O("jo"), O("ko"))
     qijk = (q, *ijk)
@@ -713,9 +702,7 @@ def runtime_tile_triples_energy_tensorir(
         arrays["eps_v"],
     )
     _check_denominators(arrays["eps_o"], arrays["eps_v"], denominator_threshold)
-    tiles = tuple(
-        TriplesTileEnumerator(nocc, nvir, vir_chunk_size=vir_chunk_size)
-    )
+    tiles = tuple(TriplesTileEnumerator(nocc, nvir, vir_chunk_size=vir_chunk_size))
     capacity = max(tile.ntriples for tile in tiles)
     program = build_runtime_tile_triples_program(nocc, nvir, capacity=capacity)
     static = runtime_tile_static_feeds(arrays)

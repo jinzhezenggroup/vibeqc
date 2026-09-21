@@ -217,7 +217,9 @@ def _infer(
         if dtype not in ("float32", "float64"):
             raise ValueError("cast target must be float32 or float64")
         if inputs[0].spec.dtype == "int64":
-            raise ValueError("int64 TensorIR controls cannot be cast into scientific arithmetic")
+            raise ValueError(
+                "int64 TensorIR controls cannot be cast into scientific arithmetic"
+            )
         return replace(inputs[0].spec, dtype=dtype, role="intermediate")
     if op == "runtime_indexed_select":
         if len(inputs) < 2:
@@ -230,11 +232,18 @@ def _infer(
             len(axes) != len(maps)
             or tuple(sorted(axes)) != axes
             or len(set(axes)) != len(axes)
-            or any(type(axis) is not int or not 0 <= axis < len(source.spec.indices) for axis in axes)
+            or any(
+                type(axis) is not int or not 0 <= axis < len(source.spec.indices)
+                for axis in axes
+            )
         ):
-            raise ValueError("runtime_indexed_select axes must be unique, sorted source axes")
+            raise ValueError(
+                "runtime_indexed_select axes must be unique, sorted source axes"
+            )
         if len(declared.indices) != 1 + len(source.spec.indices) - len(axes):
-            raise ValueError("runtime_indexed_select output rank is inconsistent with selected axes")
+            raise ValueError(
+                "runtime_indexed_select output rank is inconsistent with selected axes"
+            )
         domain = declared.indices[0]
         if any(
             mapping.spec.dtype != "int64"
@@ -251,7 +260,9 @@ def _infer(
         if tuple(index.domain for index in declared.indices[1:]) != tuple(
             index.domain for index in remaining
         ):
-            raise ValueError("runtime_indexed_select must preserve unselected source axes")
+            raise ValueError(
+                "runtime_indexed_select must preserve unselected source axes"
+            )
         return TensorSpec(
             declared.indices,
             dtype=source.spec.dtype,
