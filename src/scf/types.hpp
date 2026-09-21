@@ -43,7 +43,9 @@ struct PrecisionProvenance {
   uint64_t final_residual_audits{0};
   /** Final-Fock operator applications skipped by retained-state reuse. */
   uint64_t skipped_final_fock_builds{0};
-  /** Nonzero only when the operator-work counters above are fully instrumented. */
+  /** Nonzero only when the operator-work counters above are fully instrumented.
+   * Numerical failures can leave partially executed stages uncounted; their
+   * counters are not certified by this flag. */
   uint32_t operator_work_counters_valid{0};
 };
 

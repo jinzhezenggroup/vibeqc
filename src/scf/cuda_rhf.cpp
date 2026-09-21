@@ -4626,7 +4626,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     result.converged = host_converged[system] != 0 && host_failed[system] == 0;
     result.initial_density_used = host.warm_mask[system] != 0;
     result.precision.requested_mode = requested_precision_mode;
-    result.precision.operator_work_counters_valid = 1U;
+    // A numerical failure can occur after an operator application but before
+    // the iteration/final-audit counters advance. Do not certify that partial
+    // history as complete. Ordinary exhaustion/audit rejection remains counted.
+    result.precision.operator_work_counters_valid = host_failed[system] == 0 ? 1U : 0U;
     result.precision.effective_bits = precision_item_mixed ? 32U : 64U;
     result.precision.mixed_precision_fock_threshold =
         precision_item_mixed ? host_mixed_item_threshold[system] : 0.0;
