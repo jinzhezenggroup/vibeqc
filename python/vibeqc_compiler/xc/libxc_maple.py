@@ -34,7 +34,7 @@ class MapleImportError(ValueError):
     """The pinned Maple source uses syntax outside the qualified importer."""
 
 
-IMPORTER_SEMANTICS = "libxc-maple-graph/v2"
+IMPORTER_SEMANTICS = "libxc-maple-graph/v3"
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _RESERVED = frozenset(
     (
@@ -83,6 +83,7 @@ class MapleModule:
     source_hashes: tuple[tuple[str, str], ...] = ()
     include_edges: tuple[tuple[str, str], ...] = ()
     defines: tuple[str, ...] = ()
+    initial_defines: tuple[str, ...] = ()
 
     @property
     def transitive_sha256(self) -> str:
@@ -92,6 +93,7 @@ class MapleModule:
             {
                 "entry_sha256": self.source_sha256,
                 "defines": self.defines,
+                "initial_defines": self.initial_defines,
                 "importer_semantics": IMPORTER_SEMANTICS,
                 "include_edges": self.include_edges,
                 "sources": self.source_hashes,
@@ -250,6 +252,44 @@ def _preprocess(
     return "\n".join(output)
 
 
+def _reject_captured_redefinition(
+    name: str,
+    assignments: Mapping[str, str],
+    functions: Mapping[str, MapleFunction],
+) -> None:
+    """Reject overrides that require unsupported assignment-time value capture."""
+
+    def references(expression: str) -> set[str]:
+        return {
+            node.id
+            for node in ast.walk(_parse_expression(expression))
+            if isinstance(node, ast.Name)
+        }
+
+    for captured, expression in assignments.items():
+        if captured == name:
+            continue
+        pending = references(expression)
+        visited: set[str] = set()
+        while pending:
+            dependency = pending.pop()
+            if dependency == name:
+                raise MapleImportError(
+                    f"redefinition of {name!r} would change captured assignment "
+                    f"{captured!r}; assignment-time rebinding is not supported"
+                )
+            if dependency in visited:
+                continue
+            visited.add(dependency)
+            if dependency in assignments:
+                pending.update(references(assignments[dependency]))
+            elif dependency in functions:
+                function = functions[dependency]
+                pending.update(
+                    references(function.expression) - set(function.parameters)
+                )
+
+
 def _parse_selected_source(
     selected: str,
     *,
@@ -257,6 +297,7 @@ def _parse_selected_source(
     source_hashes: tuple[tuple[str, str], ...],
     include_edges: tuple[tuple[str, str], ...],
     defines: tuple[str, ...],
+    initial_defines: tuple[str, ...],
     allow_redefinition: bool,
 ) -> MapleModule:
     """Parse one selected source stream into final Maple definitions."""
@@ -284,6 +325,7 @@ def _parse_selected_source(
             )
             if not allow_redefinition or not same_kind:
                 raise MapleImportError(f"duplicate Maple definition {name!r}")
+            _reject_captured_redefinition(name, assignments, functions)
         if not is_function:
             _parse_expression(right)
             assignments[name] = right
@@ -307,13 +349,15 @@ def _parse_selected_source(
         source_hashes=source_hashes,
         include_edges=include_edges,
         defines=defines,
+        initial_defines=initial_defines,
     )
 
 
 def import_maple_source(source: str, *, defines: Iterable[str] = ()) -> MapleModule:
     """Parse one in-memory source without permitting includes or redefinition."""
 
-    selected_defines = set(defines)
+    initial_defines = tuple(sorted(set(defines)))
+    selected_defines = set(initial_defines)
     selected = _preprocess(source, selected_defines)
     sha256 = hashlib.sha256(source.encode()).hexdigest()
     return _parse_selected_source(
@@ -322,6 +366,7 @@ def import_maple_source(source: str, *, defines: Iterable[str] = ()) -> MapleMod
         source_hashes=(("<memory>", sha256),),
         include_edges=(),
         defines=tuple(sorted(selected_defines)),
+        initial_defines=initial_defines,
         allow_redefinition=False,
     )
 
@@ -336,7 +381,8 @@ def import_maple_file(
     """Load one bounded include graph rooted inside a pinned source directory."""
 
     source_root = Path(root).resolve()
-    selected_defines = set(defines)
+    initial_defines = tuple(sorted(set(defines)))
+    selected_defines = set(initial_defines)
     visiting: list[Path] = []
     loaded: set[Path] = set()
     hashes: dict[str, str] = {}
@@ -402,6 +448,7 @@ def import_maple_file(
         source_hashes=source_hashes,
         include_edges=tuple(include_edges),
         defines=tuple(sorted(selected_defines)),
+        initial_defines=initial_defines,
         allow_redefinition=True,
     )
 
@@ -614,7 +661,7 @@ class _Evaluator:
                 and self._literal_one(node.right)
                 and isinstance(node.left, ast.Call)
                 and isinstance(node.left.func, ast.Name)
-                and node.left.func.id == "exp"
+                and self._eval(node.left.func, environment) == _IntrinsicRef("exp")
                 and len(node.left.args) == 1
                 and not node.left.keywords
             ):
@@ -660,9 +707,9 @@ class _Evaluator:
                 return left_expr / right_expr
             raise MapleImportError("unsupported binary operator")
         if isinstance(node, ast.Call):
+            target = self._eval(node.func, environment)
             if (
-                isinstance(node.func, ast.Name)
-                and node.func.id == "log"
+                target == _IntrinsicRef("log")
                 and len(node.args) == 1
                 and not node.keywords
             ):
@@ -670,7 +717,6 @@ class _Evaluator:
                 if operand is not None:
                     value = self._as_expr(self._eval(operand, environment))
                     return self.graph.stable_unary("log1p", value)
-            target = self._eval(node.func, environment)
             arguments = tuple(self._eval(item, environment) for item in node.args)
             if isinstance(target, _FunctionRef):
                 return self.call(target.name, arguments)
