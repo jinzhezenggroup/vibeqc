@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "response/native_gmres.hpp"
+#include "response/solve.hpp"
 
 namespace {
 using vibeqc::response::GmresOptions;
@@ -67,6 +68,49 @@ void exact_solve_and_true_residual() {
           "reported residual is not the recomputed true residual");
   require(result.relative_residual < 1e-12 && result.operator_actions == matrix.actions,
           "2x2 diagnostics are inconsistent");
+}
+
+void linear_response_problem_contract() {
+  DenseOperator matrix{2, {4.0, 1.0, 2.0, 3.0}};
+  const std::array<double, 2> rhs{1.0, 2.0};
+  vibeqc::response::LinearResponseProblem problem(
+      2, [&](auto input, auto output) { matrix(input, output); });
+  auto options = GmresOptions{};
+  options.relative_tolerance = 1e-13;
+  options.restart = 2;
+  options.max_iterations = 4;
+  const auto plan = vibeqc::response::prepare_response(problem, options);
+  const auto result = vibeqc::response::solve_response(plan, problem, rhs);
+  require(result.converged(), "generic response problem did not converge");
+  require(std::abs(result.solution[0] - 0.1) < 1e-12 && std::abs(result.solution[1] - 0.6) < 1e-12,
+          "generic response problem returned the wrong solution");
+
+  bool rejected = false;
+  try {
+    vibeqc::response::LinearResponseProblem invalid(0, [](auto, auto) {});
+    (void)invalid;
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "zero-dimensional response problem was accepted");
+
+  rejected = false;
+  try {
+    vibeqc::response::LinearResponseProblem invalid(2, {});
+    (void)invalid;
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "response problem accepted an empty operator");
+
+  rejected = false;
+  try {
+    const auto wrong_plan = vibeqc::response::prepare_gmres(1, options);
+    (void)vibeqc::response::solve_response(wrong_plan, problem, rhs);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "response solve accepted a plan from another problem dimension");
 }
 
 void zero_rhs_is_transactional() {
@@ -305,6 +349,7 @@ int main() {
   try {
     modified_plans_are_rejected_before_execution();
     exact_solve_and_true_residual();
+    linear_response_problem_contract();
     zero_rhs_is_transactional();
     restarted_and_exhausted_paths();
     breakdown_and_nonfinite_paths();
