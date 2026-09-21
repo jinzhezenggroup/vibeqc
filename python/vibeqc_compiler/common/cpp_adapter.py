@@ -51,7 +51,28 @@ class CppCompilerAdapter:
         libraries: typing.Any = (),
         options: typing.Any = (),
     ) -> CompileResult:
-        """Compile explicit argv options and terminate the whole process tree on timeout."""
+        """Compile one translation unit into a shared library."""
+        return self.compile_shared_many(
+            (source,),
+            output,
+            includes=includes,
+            libraries=libraries,
+            options=options,
+        )
+
+    def compile_shared_many(
+        self,
+        sources: typing.Iterable[Path],
+        output: Path,
+        *,
+        includes: typing.Any = (),
+        libraries: typing.Any = (),
+        options: typing.Any = (),
+    ) -> CompileResult:
+        """Compile explicit translation units into one shared library."""
+        sources = tuple(Path(source) for source in sources)
+        if not sources:
+            raise ValueError("shared-library compilation requires at least one source")
         return run_compiler(
             [
                 str(self.cxx),
@@ -61,7 +82,7 @@ class CppCompilerAdapter:
                 "-fPIC",
                 *(f"-I{path}" for path in includes),
                 *options,
-                str(source),
+                *(str(source) for source in sources),
                 *(f"-l{name}" for name in libraries),
                 "-o",
                 str(output),

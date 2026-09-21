@@ -84,3 +84,28 @@ def test_cpu_only_cmake_owns_derivative_policy_target(tmp_path: Path) -> None:
     )
     header = build / "generated/generated_one_electron_derivative_policy.cuh"
     assert "schedule_code=3U" in header.read_text()
+
+
+@pytest.mark.parametrize("maximum", (0, 4))
+def test_derivative_policy_rejects_unqualified_angular_family(
+    tmp_path: Path, maximum: int
+) -> None:
+    header = tmp_path / "policy.cuh"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "tools/generate_one_electron_kernels.py"),
+            "--derivatives",
+            "--max-angular-momentum",
+            str(maximum),
+            "--derivative-policy-output",
+            str(header),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=60,
+    )
+    assert result.returncode == 2
+    assert "production-qualified through f" in result.stderr
+    assert not header.exists()

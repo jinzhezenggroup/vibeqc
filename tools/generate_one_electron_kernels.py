@@ -47,15 +47,34 @@ def main() -> None:
     parser.add_argument("--policy-output", type=Path)
     parser.add_argument("--derivative-policy-output", type=Path)
     parser.add_argument("--cpu-st-output", type=Path)
+    parser.add_argument(
+        "--max-angular-momentum",
+        type=int,
+        choices=range(5),
+        default=3,
+        metavar="{0,1,2,3,4}",
+        help=(
+            "largest shell emitted into the generated CUDA value/derivative artifact; "
+            "production defaults to f (3), while g (4) is qualification-only"
+        ),
+    )
     args = parser.parse_args()
     if args.derivatives and args.policy_output:
         parser.error("--policy-output applies only to values")
     if args.derivative_policy_output and not args.derivatives:
         parser.error("--derivative-policy-output requires --derivatives")
+    if (
+        args.policy_output or args.derivative_policy_output
+    ) and args.max_angular_momentum != 3:
+        parser.error(
+            "execution policy remains production-qualified through f; "
+            "g-shell generation is structural/qualification-only"
+        )
     if not args.output and not args.cpu_st_output and not args.derivative_policy_output:
         parser.error("at least one generated output is required")
     if args.inventory and not args.output:
         parser.error("--inventory requires --output")
+    maximum = args.max_angular_momentum
     policy_source = emit_one_electron_policy_cuda() if args.policy_output else None
     if policy_source is not None:
         write_if_changed(args.policy_output, policy_source)
@@ -71,18 +90,18 @@ def main() -> None:
     source = None
     if args.output:
         source = (
-            emit_one_electron_derivatives_cuda()
+            emit_one_electron_derivatives_cuda(maximum)
             if args.derivatives
-            else emit_one_electron_values_cuda()
+            else emit_one_electron_values_cuda(maximum)
         )
         write_if_changed(args.output, source)
     if args.inventory:
         assert source is not None
         payload = {
             **(
-                one_electron_derivative_inventory()
+                one_electron_derivative_inventory(maximum)
                 if args.derivatives
-                else one_electron_program_inventory()
+                else one_electron_program_inventory(maximum)
             ),
             "source_sha256": hashlib.sha256(source.encode()).hexdigest(),
         }

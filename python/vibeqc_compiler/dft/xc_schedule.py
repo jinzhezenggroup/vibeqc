@@ -10,7 +10,13 @@ from __future__ import annotations
 import typing
 from dataclasses import asdict, dataclass, replace
 
+from vibeqc_compiler.common.gpu_profitability import GpuProfitability
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.schedule import (
+    ScheduleContract,
+    ScheduleResources,
+    ScheduleTopology,
+)
 
 
 @dataclass(frozen=True)
@@ -281,9 +287,18 @@ class GridXcCandidateAssessment:
     live_values: int
     device_workspace_bytes: int
     generated_source_bytes: int
+    schedule_contract: ScheduleContract
 
     def to_payload(self) -> dict[str, typing.Any]:
-        return asdict(self)
+        return {
+            "schedule_hash": self.schedule_hash,
+            "legal": self.legal,
+            "reasons": list(self.reasons),
+            "live_values": self.live_values,
+            "device_workspace_bytes": self.device_workspace_bytes,
+            "generated_source_bytes": self.generated_source_bytes,
+            "schedule_contract": self.schedule_contract.to_payload(),
+        }
 
 
 def _live_values(schedule: GridXcExecutionSchedule, shape: GridXcCandidateShape) -> int:
@@ -310,9 +325,21 @@ def assess_grid_xc_schedule(
     device_xc_available: bool,
     observable: str,
     functional: str,
+    scientific: GridXcScientificIdentity | None = None,
 ) -> GridXcCandidateAssessment:
     """Reject impossible/incompatible candidates before any timing comparison."""
 
+    if scientific is not None:
+        if not isinstance(scientific, GridXcScientificIdentity):
+            raise TypeError("scientific identity must be GridXcScientificIdentity")
+        if (
+            scientific.functional != functional
+            or scientific.observable != observable
+            or shape.spins != (2 if scientific.spin == "polarized" else 1)
+        ):
+            raise ValueError(
+                "scientific identity disagrees with admitted grid/XC workload"
+            )
     resolved = schedule.resolved(shape.tile_points)
     reasons: list[str] = []
     if resolved.name == "device_fused":
@@ -329,6 +356,53 @@ def assess_grid_xc_schedule(
         reasons.append("planned device workspace exceeds target limit")
     if shape.generated_source_bytes > limits.source_bytes:
         reasons.append("generated source/compile-size bound exceeds target limit")
+    contract = ScheduleContract(
+        consumer="dft.grid_xc",
+        schedule_hash=resolved.identity,
+        workload_hash=scientific.identity if scientific is not None else None,
+        profile_key=(
+            schedule_profile_key(scientific) if scientific is not None else None
+        ),
+        target_hash=(
+            canonical_hash({"backend": "cuda", "architecture": scientific.architecture})
+            if scientific is not None
+            else None
+        ),
+        precision_schedule_hash=(
+            canonical_hash({"kind": "fixed", "precision": scientific.precision})
+            if scientific is not None
+            else None
+        ),
+        fallback=resolved.name == "host_unfused",
+        legal=not reasons,
+        reasons=tuple(reasons),
+        topology=ScheduleTopology(
+            tiles=(shape.tile_points,),
+            fusion=resolved.fusion,
+            materialization=(
+                "fused-vxc" if resolved.name == "device_fused" else "materialized-vxc"
+            ),
+            residency=(
+                "device-resident-jets" if resolved.resident_jets else "host-staged-jets"
+            ),
+            reduction=resolved.matrix_accumulation,
+            bucket="grid-points",
+        ),
+        resources=ScheduleResources(
+            device_bytes=shape.device_workspace_bytes,
+            workspace_bytes=shape.device_workspace_bytes,
+            peak_live_values=live,
+            source_bytes=shape.generated_source_bytes,
+        ),
+        profitability=GpuProfitability(
+            peak_live_values=live,
+            source_bytes=shape.generated_source_bytes,
+        ),
+        provenance=(
+            ("domain_schedule", resolved.name),
+            ("resource_scope", "grid-xc-admission"),
+        ),
+    )
     return GridXcCandidateAssessment(
         schedule_hash=resolved.identity,
         legal=not reasons,
@@ -336,6 +410,7 @@ def assess_grid_xc_schedule(
         live_values=live,
         device_workspace_bytes=shape.device_workspace_bytes,
         generated_source_bytes=shape.generated_source_bytes,
+        schedule_contract=contract,
     )
 
 

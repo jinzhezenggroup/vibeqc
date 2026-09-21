@@ -46,12 +46,27 @@ def amplitude_layouts(nocc: typing.Any, nvir: typing.Any) -> typing.Any:
     return tuple(PackedLayout.from_spec(s) for s in amplitude_specs(nocc, nvir))
 
 
-def build_program(nocc: typing.Any, nvir: typing.Any) -> typing.Any:
-    """Unfactorized reference DAG with every term and homogeneous group exposed."""
+def build_program(
+    nocc: typing.Any,
+    nvir: typing.Any,
+    *,
+    external_virtual_correction: bool = False,
+) -> typing.Any:
+    """Reference DAG, optionally externalizing every ovvv contribution.
+
+    The default is the conventional equation inventory. The external mode is
+    used only by the DF factorized evaluator: it removes ovvv from TensorIR
+    inputs and adds one precontracted singles correction with the exact omitted
+    terms.
+    """
     s1, s2 = amplitude_specs(nocc, nvir)
     spaces = {"o": s1.indices[0].space, "v": s1.indices[1].space}
     nodes = {"t1": input_tensor("t1", s1), "t2": input_tensor("t2", s2)}
+    if external_virtual_correction:
+        nodes["df_virtual_singles"] = input_tensor("df_virtual_singles", s1)
     for name in ("foo", "fov", "fvv", *BLOCKS):
+        if external_virtual_correction and name == "ovvv":
+            continue
         axes = name.removeprefix("f")
         permutations = {
             "foo": ((1, 0),),
@@ -75,6 +90,8 @@ def build_program(nocc: typing.Any, nvir: typing.Any) -> typing.Any:
     groups = defaultdict(list)
     outputs = {}
     for term_id, group, coefficient, equation, operands in TERMS:
+        if external_virtual_correction and "ovvv" in operands:
+            continue
         term = einsum(equation, *(nodes[x] for x in operands), coefficient=coefficient)
         outputs[term_id] = term
         groups[group].append(term)
@@ -82,17 +99,18 @@ def build_program(nocc: typing.Any, nvir: typing.Any) -> typing.Any:
     outputs["correlation_energy"] = add(
         *(outputs[k] for k in groups if k.startswith("energy_"))
     )
-    outputs["singles_residual"] = add(
-        *(outputs[k] for k in groups if k.startswith("singles_"))
-    )
-    return Program(
-        outputs,
-        provenance={
-            "method": "real all-electron conventional RCCSD",
-            "slice": "A",
-            "inventory_version": VERSION,
-            "inventory_hash": canonical_hash(TERMS),
-            "source": "PySCF 2.14.0 rccsd + rintermediates; see source_manifest.json",
-            "residual": "<Phi_i_alpha^a_alpha|exp(-T) H_N exp(T)|Phi>",
-        },
-    )
+    singles = [outputs[k] for k in groups if k.startswith("singles_")]
+    if external_virtual_correction:
+        singles.append(nodes["df_virtual_singles"])
+    outputs["singles_residual"] = add(*singles)
+    provenance = {
+        "method": "real all-electron conventional RCCSD",
+        "slice": "A",
+        "inventory_version": VERSION,
+        "inventory_hash": canonical_hash(TERMS),
+        "source": "PySCF 2.14.0 rccsd + rintermediates; see source_manifest.json",
+        "residual": "<Phi_i_alpha^a_alpha|exp(-T) H_N exp(T)|Phi>",
+    }
+    if external_virtual_correction:
+        provenance["external_virtual_correction"] = "df-ovvv-singles-v1"
+    return Program(outputs, provenance=provenance)
