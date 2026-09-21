@@ -35,7 +35,7 @@ def test_screening_force_budget(
     spin = int(method == "uhf")
     mol = gto.M(
         atom=atoms,
-        basis="sto-3g",
+        basis="def2-svp",
         unit="Bohr",
         spin=spin,
         cart=representation == "cartesian",
@@ -106,7 +106,7 @@ def test_screened_force_matches_energy_finite_differences(
 ) -> None:
     """Screening changes force work only; compare two independent energy steps."""
     assert os.environ.get("SLURM_JOB_ID")
-    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    atoms = [("O", (0, 0, 0)), ("H", (0, 0, 1.8)), ("H", (1.7, 0, -0.6))]
     monkeypatch.setenv("VIBEQC_DF_FORCE_SCREEN_ABS", "1e-6")
     monkeypatch.setenv("VIBEQC_DF_WEIGHTED_EXECUTION", "shell")
     calc = Calculator(
@@ -156,7 +156,7 @@ def test_screening_feature_histogram_matches_device_work(
 ) -> None:
     """Intrusive host histogram must conserve the device shell-work ledger."""
     assert os.environ.get("SLURM_JOB_ID")
-    atoms = [("O", (0, 0, 0)), ("H", (0, 0, 1.8)), ("H", (1.7, 0, -0.6))]
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     for key, value in {
         "VIBEQC_DF_WEIGHTED_EXECUTION": "shell",
         "VIBEQC_DF_PRIMITIVE_BUCKETS": "packet",
@@ -170,7 +170,7 @@ def test_screening_feature_histogram_matches_device_work(
     trace = tmp_path / "screening-features.jsonl"
     monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
     result = Calculator(
-        basis="def2-svp",
+        basis="sto-3g",
         device="cuda",
         density_fitting="cuda",
         energy_tolerance=1e-12,
