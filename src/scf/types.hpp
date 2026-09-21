@@ -5,6 +5,7 @@
 #include <optional>
 #include <vector>
 
+#include "core/electronic_reference.hpp"
 #include "dft/density_source.hpp"
 #include "dft/scf_diagnostic.hpp"
 #include "scf/fock_build.hpp"
@@ -95,6 +96,18 @@ struct PhysicalReference {
   double canonical_density_drift{};
   double eigen_residual{};
   std::size_t numeric_capacity_bytes{};
+
+  /** Borrow this owned RHF state through the method-neutral core contract. */
+  [[nodiscard]] core::ElectronicReferenceView electronic_reference() const noexcept {
+    core::ElectronicReferenceView view;
+    view.basis_functions = nbf;
+    view.spin_channels = 1;
+    view.overlap = overlap;
+    view.hcore = hcore;
+    view.energy = energy;
+    view.channels[0] = {nocc, coefficients, orbital_energies, density, fock, weighted_density};
+    return view;
+  }
 };
 
 struct ScfResult {

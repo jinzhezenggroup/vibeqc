@@ -59,6 +59,36 @@ bool finite_components(const EnergyComponents& components) {
 
 }  // namespace
 
+core::ElectronicReferenceView electronic_reference(const VerifiedKsFinalState& state,
+                                                   const scf::reference::Matrix& overlap,
+                                                   const scf::reference::Matrix& hcore) {
+  const auto spins = state.orbitals.size();
+  if (!spins || spins > 2 || state.identity.determinant.occupied.size() != spins ||
+      state.density.size() != spins || state.fock.size() != spins ||
+      (!state.weighted_density.empty() && state.weighted_density.size() != spins))
+    throw std::invalid_argument("invalid verified KS reference shape");
+
+  core::ElectronicReferenceView view;
+  view.basis_functions = state.orbitals.front().values.size();
+  view.spin_channels = spins;
+  view.overlap = overlap;
+  view.hcore = hcore;
+  view.energy = state.diagnostic.component_energy;
+  for (std::size_t spin = 0; spin < spins; ++spin) {
+    const auto& orbital = state.orbitals[spin];
+    view.channels[spin] = {state.identity.determinant.occupied[spin],
+                           orbital.vectors,
+                           orbital.values,
+                           state.density[spin],
+                           state.fock[spin],
+                           state.weighted_density.empty()
+                               ? std::span<const double>{}
+                               : std::span<const double>{state.weighted_density[spin]}};
+  }
+  core::validate_electronic_reference_shape(view);
+  return view;
+}
+
 bool validate_ks_final_state(const KsFinalStateIdentity& current,
                              const scf::reference::Matrix& overlap,
                              const scf::reference::Matrix& hcore, const KsPhysicalState& physical,

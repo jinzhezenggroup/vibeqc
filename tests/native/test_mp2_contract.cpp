@@ -73,6 +73,13 @@ void provider_and_reference() {
   auto hf = vibeqc::scf::run_rhf(system, options);
   require(hf.converged && hf.reference && hf.forces.empty(), "bounded reference owns no HF forces");
   const auto& ref = *hf.reference;
+  const auto common = ref.electronic_reference();
+  require(vibeqc::core::electronic_reference_shape_valid(common),
+          "RHF common electronic reference shape");
+  require(common.restricted() && common.basis_functions == ref.nbf &&
+              common.channels[0].occupied == ref.nocc &&
+              common.channels[0].coefficients.data() == ref.coefficients.data(),
+          "RHF common electronic reference copied or changed orbital ownership");
   vibeqc::posthf::RawSource source(system);
   vibeqc::posthf::NativeBlockProvider provider(source, ref, 256ULL << 20, 1);
   const vibeqc::posthf::MOSlots slots{{{1, 0}, {0, 1}, {1, 0}, {0, 1}}};
