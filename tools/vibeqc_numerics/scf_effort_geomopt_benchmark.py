@@ -390,9 +390,16 @@ class PreparedLevels:
                     )
                 )
                 self._batches[level.name] = batch
-        except BaseException:
-            self._stack.close()
-            self._batches.clear()
+        except BaseException as preparation_error:
+            cleanup_error: BaseException | None = None
+            try:
+                self._stack.close()
+            except BaseException as error:  # noqa: BLE001 - preserve preparation error
+                cleanup_error = error
+            finally:
+                self._batches.clear()
+            if cleanup_error is not None:
+                raise preparation_error from cleanup_error
             raise
         return self
 
