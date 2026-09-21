@@ -389,7 +389,13 @@ def rhf_electronic_method_ir() -> ElectronicMethodIR:
         identifier="RHF",
         family="hf",
         reference="restricted",
-        sources=(\n            "core_hamiltonian",\n            "eri_provider",\n            "nuclear_repulsion",\n            "nuclear_repulsion",\n            "occupations",\n            "overlap",\n        ),
+        sources=(
+            "core_hamiltonian",
+            "eri_provider",
+            "nuclear_repulsion",
+            "occupations",
+            "overlap",
+        ),
         states=(StateSpec("density", "density", "restricted-ao-density-v1"),),
         operators=(
             OperatorSpec(
@@ -451,7 +457,13 @@ def rks_electronic_method_ir(method: typing.Any) -> ElectronicMethodIR:
         )
     has_exchange = "full-range-exchange" in operators
     fock_inputs = ["core_hamiltonian", "hartree", "xc_potential"]
-    energy_inputs = [\n        "core_hamiltonian",\n        "density",\n        "hartree_energy",\n        "nuclear_repulsion",\n        "xc_energy",\n    ]
+    energy_inputs = [
+        "core_hamiltonian",
+        "density",
+        "hartree_energy",
+        "nuclear_repulsion",
+        "xc_energy",
+    ]
     nodes: list[OperatorSpec] = [
         OperatorSpec(
             "build_hartree",
