@@ -7,7 +7,6 @@ allocation and the existing accuracy/performance acceptance boundaries."""
 from __future__ import annotations
 
 import json
-import math
 import sys
 import tempfile
 import time
@@ -15,6 +14,8 @@ import typing
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
+
+from vibeqc_compiler.common.gpu_profitability import GpuProfitability
 
 from ..cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
 from ..cuda_schedule import (
@@ -52,6 +53,45 @@ from .resources import _resource_rejections, estimate_occupancy
 
 if typing.TYPE_CHECKING:
     import argparse
+
+
+def _candidate_profitability(
+    trial: ScheduleTrial,
+    compile_row: dict[str, typing.Any],
+    resources: typing.Any,
+    occupancy: dict[str, object],
+    runtime: dict[str, object] | None,
+) -> GpuProfitability:
+    """Normalize symbolic, PTXAS, artifact, and endpoint facts for one trial."""
+
+    model = trial.static_model
+
+    def maximum(name: str) -> int | None:
+        values = [
+            getattr(resource, name)
+            for resource in resources
+            if getattr(resource, name, None) is not None
+        ]
+        return max(values) if values else None
+
+    endpoint_ms = None if runtime is None else float(runtime["fused_ms"])
+    return GpuProfitability(
+        arithmetic_operation_count=getattr(model, "arithmetic_operation_count", None),
+        peak_live_values=getattr(model, "peak_live_values", None),
+        rematerialized_value_count=getattr(model, "rematerialized_value_count", None),
+        compiled_registers_per_thread=maximum("registers"),
+        spill_store_bytes=maximum("spill_store_bytes"),
+        spill_load_bytes=maximum("spill_load_bytes"),
+        local_bytes=maximum("local_bytes"),
+        shared_bytes=maximum("shared_bytes"),
+        compiled_occupancy_upper_bound=typing.cast(
+            "float | None", occupancy.get("minimum_estimated_occupancy")
+        ),
+        source_bytes=compile_row.get("source_bytes"),
+        object_bytes=compile_row.get("object_bytes"),
+        compile_seconds=compile_row.get("duration_seconds"),
+        endpoint_seconds=None if endpoint_ms is None else endpoint_ms / 1000.0,
+    )
 
 
 def _run_autotune(
@@ -303,6 +343,7 @@ def _run_autotune(
             runtime_probe = None
 
         candidates = []
+        profitability_by_key: dict[str, GpuProfitability] = {}
         passing_by_class: dict[
             str,
             list[tuple[ScheduleTrial, dict[str, object], dict[str, object]]],
@@ -419,6 +460,11 @@ def _run_autotune(
                 else:
                     speedup_vs_baseline = 1.0 if is_production_baseline else None
             accepted = not reasons
+            occupancy = estimate_occupancy(resources, trial, target)
+            profitability = _candidate_profitability(
+                trial, compile_row, resources, occupancy, runtime
+            )
+            profitability_by_key[trial.key] = profitability
             row = {
                 "shell_class": trial.spec.name,
                 "consumer": trial.consumer.value,
@@ -432,7 +478,8 @@ def _run_autotune(
                 "source_bytes": compile_row.get("source_bytes"),
                 "object_bytes": compile_row.get("object_bytes"),
                 "resources": [asdict(item) for item in resources],
-                "occupancy": estimate_occupancy(resources, trial, target),
+                "occupancy": occupancy,
+                "profitability": profitability.to_payload(),
                 "runtime": runtime,
                 "production_baseline": is_production_baseline,
                 "speedup_vs_production_baseline": speedup_vs_baseline,
@@ -462,41 +509,25 @@ def _run_autotune(
                 *,
                 fastest: float = fastest_ms,
             ) -> typing.Any:
-                trial, runtime, candidate = item
+                trial, runtime, _candidate = item
                 elapsed_ms = float(runtime["fused_ms"])
+                profitability = profitability_by_key[trial.key]
 
-                def metric_or_inf(name: str) -> float:
-                    value = candidate.get(name)
-                    if (
-                        isinstance(value, (int, float))
-                        and not isinstance(value, bool)
-                        and math.isfinite(float(value))
-                        and value >= 0
-                    ):
-                        return float(value)
-                    return math.inf
-
-                # Within one percent of the fastest endpoint, compile time and
-                # binary footprint decide the winner. Once a candidate falls
-                # outside that noise band, endpoint runtime is the primary
-                # key again; otherwise a much slower but tiny artifact could
-                # displace a scientifically faster schedule.
+                # Full endpoint time remains primary outside the one-percent
+                # noise band. Inside it, use the shared GPU resource key so
+                # rematerialization/fusion choices cannot win merely by making
+                # a smaller source artifact while retaining worse live state.
                 near_fastest = elapsed_ms <= fastest * 1.01
                 if near_fastest:
                     return (
                         0,
-                        metric_or_inf("compile_seconds"),
-                        metric_or_inf("source_bytes"),
-                        metric_or_inf("object_bytes"),
-                        elapsed_ms,
+                        profitability.compiled_resource_priority(),
                         trial.schedule_id,
                     )
                 return (
                     1,
                     elapsed_ms,
-                    metric_or_inf("compile_seconds"),
-                    metric_or_inf("source_bytes"),
-                    metric_or_inf("object_bytes"),
+                    profitability.compiled_resource_priority(),
                     trial.schedule_id,
                 )
 

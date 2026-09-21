@@ -43,7 +43,7 @@ METHOD_METADATA = MappingProxyType({
     'rhf': MappingProxyType({"abi_id": 1, "family": 'hartree_fock', "provider": 'hf', "properties": ('energy', 'forces'), "supports_batch": True, "aliases": ()}),
     'uhf': MappingProxyType({"abi_id": 2, "family": 'hartree_fock', "provider": 'hf', "properties": ('energy', 'forces'), "supports_batch": True, "aliases": ()}),
     'wb97m-v': MappingProxyType({"abi_id": 3, "family": 'density_functional', "provider": 'reserved', "properties": (), "supports_batch": False, "aliases": ()}),
-    'rccsd(t)': MappingProxyType({"abi_id": 4, "family": 'coupled_cluster', "provider": 'reserved', "properties": (), "supports_batch": False, "aliases": ('ccsd(t)',)}),
+    'rccsd(t)': MappingProxyType({"abi_id": 4, "family": 'coupled_cluster', "provider": 'rccsdt', "properties": ('energy',), "supports_batch": True, "aliases": ('ccsd(t)',)}),
     'mp2': MappingProxyType({"abi_id": 5, "family": 'perturbation', "provider": 'mp2', "properties": ('energy', 'forces'), "supports_batch": True, "aliases": ()}),
     'lda-rks': MappingProxyType({"abi_id": 6, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),
     'pbe-rks': MappingProxyType({"abi_id": 7, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": ()}),

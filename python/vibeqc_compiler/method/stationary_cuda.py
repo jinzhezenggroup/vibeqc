@@ -14,7 +14,10 @@ from fractions import Fraction
 from pathlib import Path
 
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.common.native_runtime import compile_runtime
+from vibeqc_compiler.common.native_runtime import (
+    compile_cuda_object,
+    link_cuda_objects,
+)
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.source_cache import cache_source
@@ -408,13 +411,89 @@ __global__ void geometry_reduce(const double* partial, size_t na, double* output
   for (size_t lane = 0; lane < workers; ++lane) sum += partial[lane * 9 * na + i];
   output[i] = finite(output[i] + sum, error, 0);
 }
+
 }  // namespace vibeqc_stationary_cuda
 """
 
 
+def emit_stationary_reduction_cuda(plan: StationaryGradientPlan) -> str:
+    """Specialize the authoritative ordered TensorIR sum for native source storage."""
+    lines = [
+        "namespace vibeqc_stationary_cuda {",
+        "__global__ void source_reduce(const double* input, size_t na, double* output, int* error) {",
+        "  if (*error) return;",
+    ]
+    if plan.source_names != STATIONARY_RUNTIME_SOURCE_NAMES:
+        # ECP/hybrid/nonlocal sources are not all owned by this seven-source arena.
+        lines += ["  atomicExch(error, 1);", "}", "}", ""]
+        return "\n".join(lines)
+    program = plan.reduction_program(atoms=1)
+    result = program.outputs["gradient"]
+    if (
+        result.op != "add"
+        or result.spec.shape != (1, 3)
+        or result.spec.dtype != "float64"
+        or tuple(node.attrs.get("name") for node in result.inputs)
+        != STATIONARY_RUNTIME_SOURCE_NAMES
+        or any(
+            node.op != "input" or node.spec.shape != (1, 3) for node in result.inputs
+        )
+    ):
+        raise ValueError("unsupported stationary native reduction program")
+    lines += [
+        f"  // stationary-reduction-program: {program.logical_hash}",
+        "  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;",
+        "  if (i >= 3 * na) return;",
+        "  double sum = 0;",
+    ]
+    for node, coefficient in zip(
+        result.inputs, result.attrs["coefficients"], strict=True
+    ):
+        slot = STATIONARY_RUNTIME_SOURCE_NAMES.index(node.attrs["name"])
+        lines.append(f"  sum += {_literal(coefficient)} * input[{slot} * 3 * na + i];")
+    lines += ["  output[i] = finite(sum, error, 0);", "}", "}", ""]
+    return "\n".join(lines)
+
+
 def emit_stationary_scientific_kernels(plan: typing.Any) -> str:
     """Emit bounded task/primitive and XC geometry contractions for the runtime owner."""
-    return emit_stationary_weight_cuda(plan) + _STATIONARY_SCIENTIFIC_KERNELS
+    return (
+        emit_stationary_weight_cuda(plan)
+        + _STATIONARY_SCIENTIFIC_KERNELS
+        + emit_stationary_reduction_cuda(plan)
+    )
+
+
+_FIRST_DERIVATIVE_DECLARATION = """#include <cuda_runtime.h>
+extern __device__ bool first_derivative(
+    unsigned kind, const double* e, const double* c, double* out);
+"""
+
+
+def emit_stationary_wrapper_cuda(
+    *,
+    functional: typing.Any = None,
+    pbe: typing.Any = None,
+    plan: typing.Any,
+    iterations: typing.Any = 3,
+    declare_primitive: bool = True,
+) -> typing.Any:
+    """Emit the small method-specific TU linked against cached primitive code."""
+
+    if not isinstance(plan, StationaryGradientPlan):
+        raise TypeError("stationary CUDA requires StationaryGradientPlan")
+    return (
+        (_FIRST_DERIVATIVE_DECLARATION if declare_primitive else "")
+        + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
+        + "namespace vibeqc_stationary_cuda {\n"
+        + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
+        + "constexpr bool stationary_native_reduction_supported = "
+        + str(plan.source_names == STATIONARY_RUNTIME_SOURCE_NAMES).lower()
+        + ";\n"
+        + "}\n"
+        + '#include "dft/stationary_gradient_cuda.cuh"\n'
+        + emit_stationary_scientific_kernels(plan)
+    )
 
 
 def emit_stationary_cuda(
@@ -425,21 +504,18 @@ def emit_stationary_cuda(
     plan: typing.Any,
     iterations: typing.Any = 3,
 ) -> typing.Any:
-    """Compose explicit primitive lowering and shared XC geometric lowering.
+    """Compose the legacy single-TU source for inspection and provenance tests.
 
-    ``pbe`` remains a compatibility spelling for historical LDA/PBE callers.
-    New method-owned lowering passes 0=LDA, 1=PBE, or 2=r2SCAN explicitly.
+    Runtime compilation uses separable CUDA objects so the large primitive
+    lowering is cached independently of functional and spin specialization.
     """
-    if not isinstance(plan, StationaryGradientPlan):
-        raise TypeError("stationary CUDA requires StationaryGradientPlan")
-    return (
-        primitive_source
-        + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
-        + "namespace vibeqc_stationary_cuda {\n"
-        + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
-        + "}\n"
-        + '#include "dft/stationary_gradient_cuda.cuh"\n'
-        + emit_stationary_scientific_kernels(plan)
+
+    return primitive_source + emit_stationary_wrapper_cuda(
+        functional=functional,
+        pbe=pbe,
+        plan=plan,
+        iterations=iterations,
+        declare_primitive=False,
     )
 
 
@@ -453,13 +529,14 @@ def compile_stationary_cuda(
     compiler: typing.Any,
     cache: typing.Any,
 ) -> typing.Any:
-    """Compile a finite strict-FP64 artifact with transitive header identities."""
+    """Compile strict-FP64 primitive and wrapper objects, then device-link them."""
+
     if not isinstance(compiler, CudaCompilerAdapter):
         raise TypeError("stationary CUDA requires an explicit CUDA compiler adapter")
     if os.environ.get("NVCC_PREPEND_FLAGS") or os.environ.get("NVCC_APPEND_FLAGS"):
         raise ValueError("stationary strict CUDA rejects NVCC flag overrides")
-    source = emit_stationary_cuda(
-        primitive_source,
+
+    wrapper_source = emit_stationary_wrapper_cuda(
         functional=functional,
         pbe=pbe,
         plan=plan,
@@ -467,36 +544,58 @@ def compile_stationary_cuda(
     )
     cache = Path(cache)
     cache.mkdir(parents=True, exist_ok=True)
-    path = cache / (canonical_hash(source) + ".cu")
-    cache_source(path, source)
+    primitive_path = cache / (canonical_hash(primitive_source) + ".primitive.cu")
+    wrapper_path = cache / (canonical_hash(wrapper_source) + ".stationary.cu")
+    cache_source(primitive_path, primitive_source)
+    cache_source(wrapper_path, wrapper_source)
+
     header = asset_path("src/dft/stationary_gradient_cuda.cuh")
-    return compile_runtime(
+    include = f"-I{header.parents[1]}"
+    primitive_headers = tuple(
+        asset_path(name)
+        for name in (
+            "src/integrals/eri_geometry.hpp",
+            "src/integrals/range_moments.hpp",
+        )
+    )
+    wrapper_headers = tuple(
+        asset_path(name)
+        for name in (
+            "src/dft/stationary_gradient_cuda.cuh",
+            "src/dft/grid_task_view.cuh",
+            "src/dft/xc_point.hpp",
+            "src/tensor/cuda_runtime.cuh",
+            "src/runtime/bounded_workspace.hpp",
+            "src/runtime/cuda_resources.cuh",
+            "src/runtime/resource_cuda.cuh",
+            "src/runtime/resource_ledger.hpp",
+            "src/tensor/cuda_error.hpp",
+            "src/tensor/metrics.hpp",
+            "src/runtime/allocation_measurement.hpp",
+        )
+    )
+    primitive = compile_cuda_object(
         compiler,
         cache,
-        path,
-        headers=tuple(
-            asset_path(name)
-            for name in (
-                "src/dft/stationary_gradient_cuda.cuh",
-                "src/dft/grid_task_view.cuh",
-                "src/dft/xc_point.hpp",
-                "src/integrals/eri_geometry.hpp",
-                "src/integrals/range_moments.hpp",
-                "src/tensor/cuda_runtime.cuh",
-                "src/runtime/bounded_workspace.hpp",
-                "src/runtime/cuda_resources.cuh",
-                "src/runtime/resource_cuda.cuh",
-                "src/runtime/resource_ledger.hpp",
-                "src/tensor/cuda_error.hpp",
-                "src/tensor/metrics.hpp",
-                "src/runtime/allocation_measurement.hpp",
-            )
-        ),
-        libraries=("cublas",),
+        primitive_path,
+        headers=primitive_headers,
         options=(
             "--fmad=false",
             "--expt-relaxed-constexpr",
-            f"-I{header.parents[1]}",
+            include,
             *_split_compile_options(),
         ),
+    )
+    wrapper = compile_cuda_object(
+        compiler,
+        cache,
+        wrapper_path,
+        headers=wrapper_headers,
+        options=("--fmad=false", "--expt-relaxed-constexpr", include),
+    )
+    return link_cuda_objects(
+        compiler,
+        cache,
+        (primitive, wrapper),
+        libraries=("cublas",),
     )

@@ -5363,6 +5363,14 @@ def test_autotune_candidate_artifact_includes_static_model(
     assert report["winners"] == []
     assert len(report["candidates"]) == 1
     assert report["candidates"][0]["static_model"] == (trial.static_model.to_payload())
+    profitability = report["candidates"][0]["profitability"]
+    assert profitability["static"]["arithmetic_operation_count"] == (
+        trial.static_model.arithmetic_operation_count
+    )
+    assert profitability["static"]["peak_live_values"] == (
+        trial.static_model.peak_live_values
+    )
+    assert profitability["compiled"]["compiled_registers_per_thread"] is None
     assert report["candidates"][0]["source_bytes"] is None
     assert report["candidates"][0]["object_bytes"] is None
     assert report["candidates"][0]["occupancy"]["available"] is False

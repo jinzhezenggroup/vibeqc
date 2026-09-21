@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SHARDS = ("core", "posthf", "ecp-forces", "compiler-heavy")
+SHARDS = ("core", "runtime-heavy", "posthf", "ecp-forces", "compiler-heavy")
 
 
 def _selection(event: str, shard: str) -> tuple[str, list[str], list[str]]:

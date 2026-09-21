@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 import numpy as np
-from vibeqc_compiler.tensor import TensorSpec, execute
 
 from tools.vibeqc_response.implicit import (
     ImplicitSolveError,
@@ -26,6 +25,9 @@ from tools.vibeqc_validation.schema import canonical_hash
 
 from .lambda_equations import PARAMETERS, build_parameter_vjp
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, _feed_hash, _graph_bytes
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.tensor import TensorSpec
 
 _WEIGHT_ATOL = 1e-12
 _WEIGHT_RTOL = 1e-10
@@ -142,6 +144,7 @@ class BoundCCSDResponse:
                 or result.provenance.get("tensor_backend")
                 not in {
                     "numpy-cpu-interpreter",
+                    "native-cpu-tensorir",
                     "cuda-fp64-ordinary-stream",
                     "cuda-fp64-resident-actions",
                 }
@@ -261,19 +264,13 @@ class BoundCCSDResponse:
             values = []
             for program in (shared.program, independent.program):
                 bound._assert_current(reference_identity)
-                out = execute(
-                    program, {**bound.feeds, **extra}, max_bytes=self.max_bytes
-                )
-                if out.backend != "numpy-cpu-interpreter":
-                    raise ResponseCompatibilityError(
-                        "CC response backend changed; no silent fallback"
-                    )
+                outputs = bound._tensor_execute(program, {**bound.feeds, **extra})
                 # Retain independent immutable evidence before executing the
                 # other graph; shared executor buffers must not alias this check.
                 values.append(
                     _immutable(
                         _tensor(
-                            out.outputs[f"bar_{parameter}"], spec, "CC parameter weight"
+                            outputs[f"bar_{parameter}"], spec, "CC parameter weight"
                         )
                     )
                 )
@@ -296,7 +293,7 @@ class BoundCCSDResponse:
                 {
                     "parameter_vjp": shared.program.logical_hash,
                     "independent_parameter_vjp": independent.program.logical_hash,
-                    "tensor_backend": "numpy-cpu-interpreter",
+                    "tensor_backend": bound.tensor_backend,
                     "inner_product": "dense Frobenius; declared input symmetry projector",
                     "scope": "amplitude-relaxed correlation-only fixed-orbital mathematical input weight",
                     "hf_reference_energy": "excluded",

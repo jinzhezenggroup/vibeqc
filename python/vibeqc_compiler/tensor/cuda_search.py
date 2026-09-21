@@ -13,11 +13,17 @@ from dataclasses import asdict, dataclass, fields
 from itertools import combinations, islice, product
 from math import prod
 
+from vibeqc_compiler.common.gpu_profitability import GpuProfitability
 from vibeqc_compiler.common.provenance import canonical_hash
 
 from .cuda_emit import emit_cuda
 from .cuda_gemm import gemm_contract
-from .cuda_plan import TensorPlan, TensorSchedule, plan_cuda
+from .cuda_plan import (
+    TensorPlan,
+    TensorSchedule,
+    estimated_cuda_launches,
+    plan_cuda,
+)
 from .precision import describe_precision
 from .program import Program
 
@@ -255,8 +261,17 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     source_bytes = len(emit_cuda(plan, embed_static_data=False).encode("utf-8"))
     resident = _resident_blocks(plan, registers, 0)
     traffic = plan.semantic_traffic
+    occupancy = resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
+    launches = estimated_cuda_launches(plan)
+    profitability = GpuProfitability(
+        semantic_traffic_bytes=traffic["total_bytes"],
+        estimated_registers_per_thread=registers,
+        estimated_occupancy_upper_bound=occupancy,
+        launch_count=launches,
+        source_bytes=source_bytes,
+    )
     return {
-        "schema": "vibeqc.tensor.cuda.static-cost.v3",
+        "schema": "vibeqc.tensor.cuda.static-cost.v4",
         "peak_numeric_bytes": plan.peak_bytes,
         "device_bytes": plan.device_bytes,
         "host_bytes": plan.host_bytes,
@@ -281,11 +296,11 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "estimated_local_bytes": None,
         "register_scope": "scalar-liveness/work-per-thread heuristic for generated kernels; excludes cuBLAS",
         "resident_blocks_upper_bound": resident,
-        "occupancy_upper_bound": resident
-        * plan.schedule.threads
-        / plan.target.maximum_threads_per_sm,
+        "occupancy_upper_bound": occupancy,
+        "estimated_kernel_launches": launches,
         "generated_source_bytes": source_bytes,
         "generated_static_data_bytes": plan.static_data_bytes,
+        "profitability": profitability.to_payload(),
         "compile_cost_proxy": "generated_source_bytes calibrated against compiler-reported seconds; immutable static payload is external and is not parsed by NVCC",
     }
 
@@ -510,6 +525,9 @@ def compiled_resource_calibration(
         "compiled_max_shared_bytes": max(row["shared_bytes"] for row in resources),
         "compiled_max_local_bytes": max(local) if local else None,
         "compiled_resident_blocks_upper_bound": resident,
+        "compiled_occupancy_upper_bound": (
+            resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
+        ),
         "local_memory_scope": "PTXAS lmem when reported; stack/spill bytes are retained separately and never inferred as lmem",
     }
 
