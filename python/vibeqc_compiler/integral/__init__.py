@@ -82,6 +82,13 @@ from .fused_schedule import (
     evaluate_fused_shell_observables,
     evaluate_fused_shell_value,
 )
+from .gfn2_sdq import (
+    GFN2_SDQ_COMPONENTS,
+    Gfn2SdqPrimitiveEvaluation,
+    Gfn2SdqPrimitiveKernel,
+    build_gfn2_sdq_primitive_kernel,
+    evaluate_gfn2_sdq_primitive,
+)
 from .ir import (
     FOUR_CENTER_ERI_OPERATOR,
     ContractionConsumer,
@@ -192,6 +199,7 @@ __all__ = [
     "FOUR_CENTER_ERI_OPERATOR",
     "FUSED_SHELL_SPECS",
     "FUSED_SHELL_SPEC_BY_NAME",
+    "GFN2_SDQ_COMPONENTS",
     "INTEGRAL_SCHEMA_VERSION",
     "PPSS_SPEC",
     "PSPS_SPEC",
@@ -224,6 +232,8 @@ __all__ = [
     "DpppFusedPlan",
     "FusedShellPlan",
     "FusedShellResult",
+    "Gfn2SdqPrimitiveEvaluation",
+    "Gfn2SdqPrimitiveKernel",
     "IntegralIR",
     "KernelConsumer",
     "KernelIR",
@@ -275,6 +285,7 @@ __all__ = [
     "build_dppp_contraction_kernel",
     "build_dppp_fused_plan",
     "build_fused_shell_plan",
+    "build_gfn2_sdq_primitive_kernel",
     "build_integral_ir",
     "build_packed_force_geometry_algebra",
     "build_ppps_rys_force_program",
@@ -306,6 +317,7 @@ __all__ = [
     "evaluate_fused_shell_component",
     "evaluate_fused_shell_observables",
     "evaluate_fused_shell_value",
+    "evaluate_gfn2_sdq_primitive",
     "evaluate_ppps_rys_component",
     "evaluate_rys_component",
     "integral_cache_key",

@@ -50,6 +50,11 @@ from .df_factorized import (
     virtual_correction_workspace_bytes,
     virtual_corrections,
 )
+from .df_gradient import (
+    DFThreeIndexCotangent,
+    DFThreeIndexPullback,
+    pullback_df_three_index,
+)
 from .df_triples import (
     DFCCSDTResult,
     factorized_triples_energy,
@@ -142,6 +147,8 @@ __all__ = [
     "CudaTriplesTiles",
     "DFCCSDResult",
     "DFCCSDTResult",
+    "DFThreeIndexCotangent",
+    "DFThreeIndexPullback",
     "FactorizedDFIntegralState",
     "LambdaOptions",
     "PreparedCCSD",
@@ -180,6 +187,7 @@ __all__ = [
     "full_triples_vjp",
     "gradient_capabilities",
     "method_capabilities",
+    "pullback_df_three_index",
     "rccsd_t_batch_energy",
     "rccsd_t_batch_forces",
     "rccsd_t_energy",

@@ -408,6 +408,7 @@ class PreparedBatch:
         self.resource_plan = resource_plan
         self.resource_diagnostics = None
         self._resource_ledger = None
+        dispersion_request = None
         if resource_plan is not None or calculator._resource_budget is not None:
             request = calculator._resource_request(
                 self._systems,
@@ -415,18 +416,25 @@ class PreparedBatch:
                 multiplicities=self._multiplicities,
                 ks_options=self._effective_ks_options,
             )
+            dispersion_request = calculator._dispersion_resource_request(self._systems)
+            requests = (
+                (request,)
+                if dispersion_request is None
+                else (request, dispersion_request)
+            )
             if resource_plan is None:
                 from .resources import plan_resources
 
                 self.resource_plan = plan_resources(
-                    (request,), calculator._resource_budget
+                    requests, calculator._resource_budget
                 )
             else:
                 owned = {r.name: r for r in resource_plan.requests}
-                if owned.get(request.name) != request:
-                    raise ValueError(
-                        f"prepared {request.name.upper()} inputs differ from the global resource plan"
-                    )
+                for expected in requests:
+                    if owned.get(expected.name) != expected:
+                        raise ValueError(
+                            f"prepared {expected.name.upper()} inputs differ from the global resource plan"
+                        )
                 if (
                     calculator._resource_budget is not None
                     and resource_plan.budget != calculator._resource_budget
@@ -594,6 +602,32 @@ class PreparedBatch:
                         device_id=calculator._device_id,
                         maximum_bytes=calculator._dispersion_memory_budget_bytes,
                     )
+                    if (
+                        self.resource_plan is not None
+                        and dispersion_request is not None
+                    ):
+                        selected = dict(self.resource_plan.selections)[
+                            dispersion_request.name
+                        ]
+                        candidate = next(
+                            candidate
+                            for candidate in dispersion_request.candidates
+                            if candidate.name == selected
+                        )
+                        planned = dict(candidate.decisions)
+                        diagnostic = self._dispersion_batch.diagnostic()
+                        actual = {
+                            "plan_host_bytes": diagnostic.plan_host_bytes,
+                            "execution_host_bytes": diagnostic.execution_host_bytes,
+                            "device_bytes": diagnostic.device_bytes,
+                            "table_bytes": diagnostic.table_bytes,
+                            "workspace_bytes": diagnostic.workspace_bytes,
+                        }
+                        expected = {key: int(planned[key]) for key in actual}
+                        if actual != expected:
+                            raise RuntimeError(
+                                "prepared D3 resource inventory differs from the global ResourcePlan"
+                            )
         except Exception:
             # Construction owns native handles before resource-status conversion,
             # which can raise MemoryError as well as ordinary validation errors.

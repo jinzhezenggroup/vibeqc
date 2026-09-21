@@ -430,8 +430,9 @@ class Calculator:
         composes r2SCAN + D4 + gCP without a named native scientific driver.
         ``ks_options`` snapshots the electronic composition, GridSpec and XC
         tile schedule. ``dispersion_memory_budget_bytes`` independently bounds
-        the retained external-correction owner; the global ResourceBudget does
-        not yet aggregate that owner.
+        the retained external-correction owner. Production two-body D3(BJ)
+        also contributes its retained host/device capacity to the global
+        ResourceBudget; composite D4/gCP planning remains fail-closed.
         """
         if target_accuracy is not None and not isinstance(
             target_accuracy, TargetAccuracy
@@ -743,10 +744,18 @@ class Calculator:
         elif ks_options is not None:
             raise ValueError("ks_options requires a supported RKS/UKS method")
         if self._dispersion_method_ir is not None and resource_budget is not None:
-            raise NotImplementedError(
-                "global resource_budget does not yet include the separate D3 owner or "
-                "composite correction owner; use dispersion_memory_budget_bytes for the bounded correction"
+            correction_nodes = tuple(
+                node
+                for node in self._dispersion_method_ir.primitives
+                if isinstance(node, DispersionCorrectionPrimitive)
             )
+            if len(correction_nodes) != 1 or not isinstance(
+                correction_nodes[0].specification, D3Spec
+            ):
+                raise NotImplementedError(
+                    "global resource_budget currently supports composed D3(BJ) only; "
+                    "composite D4/gCP planning remains unavailable"
+                )
         if self._method == _native.METHOD_GFN2_XTB:
             # Backend-specific admission is owned by native calculation preparation.
             # Native SDK builds may include GFN2 CUDA while CUDA wheels currently do not.
@@ -1657,6 +1666,35 @@ class Calculator:
                 )
         return request
 
+    def _dispersion_resource_request(self, systems: typing.Any) -> typing.Any:
+        """Return the bounded D3 owner request for global planning, when present."""
+        if self._dispersion_method_ir is None:
+            return None
+
+        from vibeqc_compiler.method import D3Spec, DispersionCorrectionPrimitive
+
+        corrections = tuple(
+            node
+            for node in self._dispersion_method_ir.primitives
+            if isinstance(node, DispersionCorrectionPrimitive)
+        )
+        if len(corrections) != 1 or not isinstance(
+            corrections[0].specification, D3Spec
+        ):
+            raise NotImplementedError(
+                "global ResourcePlan currently supports composed D3(BJ) only"
+            )
+
+        from .resources_d3 import d3_resource_request
+
+        return d3_resource_request(
+            tuple(tuple(atom.atomic_number for atom in system) for system in systems),
+            method=self._dispersion_method_ir,
+            backend=self._device_name,
+            device_id=self._device_id,
+            maximum_bytes=self._dispersion_memory_budget_bytes,
+        )
+
     def _effective_ks_selection(
         self,
         systems: typing.Any,
@@ -1729,10 +1767,6 @@ class Calculator:
         budget: typing.Any = None,
     ) -> typing.Any:
         """Dry-run the active scientific inputs; no solve or warm-state mutation."""
-        if self._dispersion_method_ir is not None:
-            raise NotImplementedError(
-                "composed resource estimation does not yet include the bounded D3 owner"
-            )
         from .resources import ResourceBudget, plan_resources
 
         systems = tuple(
@@ -1753,15 +1787,19 @@ class Calculator:
             multiplicities=multiplicities,
         )
         budget = self._resource_budget if budget is None else budget
+        requests = [
+            self._resource_request(
+                systems,
+                charges=charges,
+                multiplicities=multiplicities,
+                ks_options=effective_ks_options,
+            )
+        ]
+        dispersion_request = self._dispersion_resource_request(systems)
+        if dispersion_request is not None:
+            requests.append(dispersion_request)
         return plan_resources(
-            (
-                self._resource_request(
-                    systems,
-                    charges=charges,
-                    multiplicities=multiplicities,
-                    ks_options=effective_ks_options,
-                ),
-            ),
+            tuple(requests),
             ResourceBudget() if budget is None else budget,
         )
 
@@ -1782,10 +1820,6 @@ class Calculator:
         remain disabled during normal endpoint timing.
         """
 
-        if self._dispersion_method_ir is not None and resource_plan is not None:
-            raise NotImplementedError(
-                "a global ResourcePlan does not yet account for the separate D3 owner"
-            )
         if not self._capabilities.supports_batch:
             raise NotImplementedError(
                 f"method {self._method_name!r} does not support prepared batches"

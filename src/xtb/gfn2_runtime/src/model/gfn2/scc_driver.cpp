@@ -14,6 +14,8 @@
 #include <utility>
 #include <vector>
 
+#include "generated_gfn2_electronic_native.hpp"
+
 namespace xtbloom::detail::gfn2 {
 
 struct SccDriverPlanData {
@@ -2370,13 +2372,12 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
   const std::int64_t density_base = layout.density.system_offsets[system];
   for (std::int32_t spin = 0; spin < layout.spin_channels[system]; ++spin) {
     for (std::int64_t matrix = 0; matrix < matrix_elements; ++matrix) {
-      core_energy =
-          std::fma(geometry.h0[static_cast<std::size_t>(matrix_begin + matrix)],
-                   workspace.staged_wavefunction.density[static_cast<std::size_t>(
-                       density_base + static_cast<std::int64_t>(spin) * matrix_elements + matrix)],
-                   core_energy);
-      if (!std::isfinite(core_energy)) {
-        error = "SCC driver H0 density contraction overflowed";
+      const double h0_value = geometry.h0[static_cast<std::size_t>(matrix_begin + matrix)];
+      const double density_value = workspace.staged_wavefunction.density[static_cast<std::size_t>(
+          density_base + static_cast<std::int64_t>(spin) * matrix_elements + matrix)];
+      if (!::vibeqc::xtb::generated::gfn2_core_energy_update_tensor(
+              density_value, h0_value, core_energy, core_energy)) {
+        error = "generated SCC driver H0 density contraction overflowed";
         return XTBLOOM_STATUS_INTERNAL_ERROR;
       }
     }

@@ -131,5 +131,6 @@ CPU-only and internal; it does not register a Calculator method.
 
 - no production full-`NMO^4` DF integral storage;
 - no native/public DF-CCSD(T) method registration;
-- no DF-CCSD(T) force or gradient claim (tracked separately by #158);
+- no complete DF-CCSD(T) force or gradient claim (tracked by #158; the
+  reusable B-to-A/M reverse edge is documented in [df_ccsdt_gradient.md](df_ccsdt_gradient.md));
 - no frozen-core, open-shell, ECP, local, or DLPNO variant.
