@@ -33,11 +33,13 @@ def sample(
     actual_energy: float = 2e-7,
     actual_force: float = 2e-5,
     method: str = "pbe-rks",
+    numerical_family_id: str = "coarse-to-standard-v1",
 ) -> PairedCalibrationSample:
     return PairedCalibrationSample(
         family,
         family,
         method,
+        numerical_family_id,
         delta(paired_energy, paired_force),
         delta(actual_energy, actual_force),
     )
@@ -158,7 +160,11 @@ def test_small_energy_but_large_force_error_is_a_deliberate_tightening_case() ->
     policy = AdaptiveNumericsPolicy(
         levels(), TargetErrorBudget(energy_abs=1e-6, force_max_abs=1e-5)
     )
-    estimate = estimator().predict("pbe-rks", delta(1e-9, 1e-4))
+    estimate = estimator().predict(
+        "pbe-rks",
+        delta(1e-9, 1e-4),
+        numerical_family_id="coarse-to-standard-v1",
+    )
     decision = policy.decide(
         policy.initial_state(),
         estimate,
@@ -195,6 +201,19 @@ def test_paired_estimator_holdout_reports_false_success_and_conservatism() -> No
     assert report["certified"] is False
     with pytest.raises(ValueError, match="leakage"):
         fit.evaluate_holdout((sample("h2"),), budget)
+    with pytest.raises(ValueError, match="numerical-level family"):
+        fit.predict(
+            "pbe-rks",
+            delta(1e-9, 1e-8),
+            numerical_family_id="standard-to-strict-v1",
+        )
+    with pytest.raises(ValueError, match="mix numerical-level families"):
+        PairedDifferenceEstimator.fit(
+            (
+                sample("h2"),
+                sample("water", numerical_family_id="standard-to-strict-v1"),
+            )
+        )
 
 
 def test_uncertainty_hysteresis_switching_and_strict_reproducibility_fail_closed() -> (
@@ -218,7 +237,11 @@ def test_uncertainty_hysteresis_switching_and_strict_reproducibility_fail_closed
     assert uncertain.state.transitions[-1].from_mask == "mask-a"
     assert uncertain.state.transitions[-1].to_mask == "mask-b"
 
-    tiny = estimator().predict("pbe-rks", delta(1e-12, 1e-9))
+    tiny = estimator().predict(
+        "pbe-rks",
+        delta(1e-12, 1e-9),
+        numerical_family_id="coarse-to-standard-v1",
+    )
     state = policy.initial_state(start_index=1)
     first = policy.decide(state, tiny, geometry_id="g1")
     assert first.action == "hold"
@@ -271,7 +294,11 @@ def test_empirical_estimate_projects_to_accuracy_contract_without_certification(
     None
 ):
     fit = estimator()
-    estimate = fit.predict("pbe-rks", delta(1e-8, 1e-6))
+    estimate = fit.predict(
+        "pbe-rks",
+        delta(1e-8, 1e-6),
+        numerical_family_id="coarse-to-standard-v1",
+    )
     model = ResolvedModel("rhf", "geometry", "basis", 2)
     evidence = fit.as_error_evidence(
         model, estimate, energy_reference_norm=1.0, force_reference_norm=1.0

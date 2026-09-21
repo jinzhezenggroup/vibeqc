@@ -345,11 +345,12 @@ class PairedCalibrationSample:
     family: str
     sample_id: str
     method: str
+    numerical_family_id: str
     paired_delta: ObservableDelta
     strict_error: ObservableDelta
 
     def __post_init__(self) -> None:
-        for name in ("family", "sample_id", "method"):
+        for name in ("family", "sample_id", "method", "numerical_family_id"):
             _identity(getattr(self, name), name)
         if self.paired_delta.force_array.shape != self.strict_error.force_array.shape:
             raise ValueError("paired and strict errors require the same force shape")
@@ -386,6 +387,7 @@ class PairedDifferenceEstimator:
     """Limited-domain empirical envelope for paired grid/screening differences."""
 
     methods: tuple[str, ...]
+    numerical_family_id: str
     energy_scale: float
     force_scale: float
     training_families: tuple[str, ...]
@@ -400,6 +402,7 @@ class PairedDifferenceEstimator:
             raise ValueError("unsupported paired-estimator schema")
         methods = tuple(sorted(set(self.methods)))
         families = tuple(sorted(set(self.training_families)))
+        _identity(self.numerical_family_id, "numerical family identity")
         if not methods:
             raise ValueError("paired estimator requires at least one method")
         if len(families) < 2:
@@ -444,6 +447,9 @@ class PairedDifferenceEstimator:
             raise ValueError("duplicate paired calibration sample identity")
         if len({x.family for x in samples}) < 2:
             raise ValueError("paired calibration requires two molecular families")
+        numerical_families = {x.numerical_family_id for x in samples}
+        if len(numerical_families) != 1:
+            raise ValueError("paired calibration cannot mix numerical-level families")
         safety_factor = _number(safety_factor, "safety factor", positive=True)
         energy_floor = _number(energy_floor, "energy floor", positive=True)
         force_floor = _number(force_floor, "force floor", positive=True)
@@ -458,6 +464,7 @@ class PairedDifferenceEstimator:
         )
         return cls(
             tuple(x.method for x in samples),
+            next(iter(numerical_families)),
             max(energy_scale, 1.0),
             max(force_scale, 1.0),
             tuple(x.family for x in samples),
@@ -478,10 +485,13 @@ class PairedDifferenceEstimator:
         method: str,
         paired_delta: ObservableDelta,
         *,
+        numerical_family_id: str,
         estimator_seconds: typing.Any = 0.0,
     ) -> NumericalEstimate:
         if method not in self.methods:
             raise ValueError("method is outside paired-estimator calibration domain")
+        if numerical_family_id != self.numerical_family_id:
+            raise ValueError("numerical-level family is outside paired-estimator calibration")
         floored = ObservableDelta(
             max(paired_delta.energy_abs, self.energy_floor),
             tuple(
@@ -495,7 +505,7 @@ class PairedDifferenceEstimator:
             (
                 "paired grid/screening differences are empirical, not rigorous bounds",
                 "same electronic branch and derivative semantics, including moving-grid response",
-                "calibration covers only recorded methods/families and numerical-level family",
+                f"calibration covers only numerical-level family {self.numerical_family_id}",
             ),
             estimator_seconds=_number(estimator_seconds, "estimator seconds"),
         )
@@ -512,7 +522,11 @@ class PairedDifferenceEstimator:
                 raise ValueError(
                     "molecular-family leakage between calibration and holdout"
                 )
-            estimate = self.predict(sample.method, sample.paired_delta)
+            estimate = self.predict(
+                sample.method,
+                sample.paired_delta,
+                numerical_family_id=sample.numerical_family_id,
+            )
             predicted_pass = budget.accepts(estimate.delta)
             actual_pass = budget.accepts(sample.strict_error)
             rows.append(
@@ -570,6 +584,7 @@ class PairedDifferenceEstimator:
             "scope": scope,
             "provenance": (
                 ("paired_estimator", self.identity),
+                ("numerical_family", self.numerical_family_id),
                 ("training_data", self.training_data_hash),
             ),
             "assumptions": estimate.assumptions,

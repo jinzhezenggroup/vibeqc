@@ -31,6 +31,11 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "python"))
 
+TRANSITION_FAMILIES = (
+    "coarse-to-standard-v1",
+    "standard-to-strict-v1",
+)
+
 from vibeqc import (
     AdaptiveNumericsPolicy,
     Calculator,
@@ -754,7 +759,7 @@ def strict_smooth_branch_fd(case: Case, device: str) -> dict[str, Any]:
 def evaluate_case(
     case: Case,
     endpoints: list[Endpoint],
-    estimator: PairedDifferenceEstimator,
+    estimators: tuple[PairedDifferenceEstimator, PairedDifferenceEstimator],
     budget: TargetErrorBudget,
 ) -> dict[str, Any]:
     strict = endpoints[-1]
@@ -788,7 +793,11 @@ def evaluate_case(
     for index in range(2):
         charge_level(index)
         estimator_started = time.perf_counter()
-        estimate = estimator.predict(case.method, paired[index])
+        estimate = estimators[index].predict(
+            case.method,
+            paired[index],
+            numerical_family_id=TRANSITION_FAMILIES[index],
+        )
         estimator_model_seconds = time.perf_counter() - estimator_started
         policy_seconds += estimator_model_seconds
         # The next level is the paired observation required by the estimator;
@@ -803,6 +812,7 @@ def evaluate_case(
         decisions.append(
             {
                 "at_level": levels[index].name,
+                "numerical_family_id": TRANSITION_FAMILIES[index],
                 "action": decision.action,
                 "worst_ratio": decision.worst_ratio,
                 "estimate": _jsonable(estimate.delta),
@@ -895,16 +905,20 @@ def main() -> None:
             continue
         raw[case.name] = rows
 
-    training = []
+    training: tuple[list[PairedCalibrationSample], list[PairedCalibrationSample]] = (
+        [],
+        [],
+    )
     for case in selected_cases:
         if case.role != "train" or case.name not in raw:
             continue
         rows = raw[case.name]
-        training.append(
+        training[0].append(
             PairedCalibrationSample(
                 case.family,
-                case.name,
+                case.name + ":coarse",
                 case.method,
+                TRANSITION_FAMILIES[0],
                 ObservableDelta.between(
                     rows[0].energy, rows[0].forces, rows[1].energy, rows[1].forces
                 ),
@@ -913,20 +927,38 @@ def main() -> None:
                 ),
             )
         )
-    if len({sample.family for sample in training}) < 2:
+        training[1].append(
+            PairedCalibrationSample(
+                case.family,
+                case.name + ":standard",
+                case.method,
+                TRANSITION_FAMILIES[1],
+                ObservableDelta.between(
+                    rows[1].energy, rows[1].forces, rows[2].energy, rows[2].forces
+                ),
+                ObservableDelta.between(
+                    rows[1].energy, rows[1].forces, rows[2].energy, rows[2].forces
+                ),
+            )
+        )
+    if any(len({sample.family for sample in group}) < 2 for group in training):
         raise RuntimeError("insufficient successful molecular families for calibration")
-    estimator = PairedDifferenceEstimator.fit(training)
+    estimators = tuple(PairedDifferenceEstimator.fit(group) for group in training)
 
-    holdout_samples = []
+    holdout_samples: tuple[list[PairedCalibrationSample], list[PairedCalibrationSample]] = (
+        [],
+        [],
+    )
     for case in selected_cases:
         if case.role != "holdout" or case.name not in raw:
             continue
         rows = raw[case.name]
-        holdout_samples.append(
+        holdout_samples[0].append(
             PairedCalibrationSample(
                 case.family,
-                case.name,
+                case.name + ":coarse",
                 case.method,
+                TRANSITION_FAMILIES[0],
                 ObservableDelta.between(
                     rows[0].energy, rows[0].forces, rows[1].energy, rows[1].forces
                 ),
@@ -935,12 +967,31 @@ def main() -> None:
                 ),
             )
         )
-    holdout = estimator.evaluate_holdout(holdout_samples, budget)
+        holdout_samples[1].append(
+            PairedCalibrationSample(
+                case.family,
+                case.name + ":standard",
+                case.method,
+                TRANSITION_FAMILIES[1],
+                ObservableDelta.between(
+                    rows[1].energy, rows[1].forces, rows[2].energy, rows[2].forces
+                ),
+                ObservableDelta.between(
+                    rows[1].energy, rows[1].forces, rows[2].energy, rows[2].forces
+                ),
+            )
+        )
+    holdout = {
+        family: estimator.evaluate_holdout(samples, budget)
+        for family, estimator, samples in zip(
+            TRANSITION_FAMILIES, estimators, holdout_samples, strict=True
+        )
+    }
 
     evaluations = []
     for case in selected_cases:
         if case.name in raw:
-            evaluations.append(evaluate_case(case, raw[case.name], estimator, budget))
+            evaluations.append(evaluate_case(case, raw[case.name], estimators, budget))
 
     axis_results: dict[str, Any] = {}
     requested_axes = set(filter(None, args.axis_cases.split(",")))
@@ -1084,13 +1135,16 @@ def main() -> None:
         ).stdout.strip(),
         "device": args.device,
         "budget": _jsonable(budget),
-        "empirical_estimator": {
-            "identity": estimator.identity,
-            "training_families": estimator.training_families,
-            "training_data_hash": estimator.training_data_hash,
-            "energy_scale": estimator.energy_scale,
-            "force_scale": estimator.force_scale,
-            "certified": False,
+        "empirical_estimators": {
+            family: {
+                "identity": estimator.identity,
+                "training_families": estimator.training_families,
+                "training_data_hash": estimator.training_data_hash,
+                "energy_scale": estimator.energy_scale,
+                "force_scale": estimator.force_scale,
+                "certified": False,
+            }
+            for family, estimator in zip(TRANSITION_FAMILIES, estimators, strict=True)
         },
         "holdout": holdout,
         "evaluations": evaluations,
