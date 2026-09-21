@@ -15,7 +15,7 @@ source emission alone does not select a production route.
 | Consumer/class | Existing execution | Selection and this change |
 | --- | --- | --- |
 | HF, at most 16 public AOs | Persistent ERI values and their native force path | AO cutoff; does not exercise the direct psss migration |
-| Direct HF psss Fock | Fixed queues use handwritten three-component `contracted_eri_cartesian_source_psss`; bounded streaming can use the existing generated Fock row | `kFixedTopologyGeneratedFockExclusionMask` retains the fixed low-order workers; streaming capabilities select generated psss for bounded Fock |
+| Direct HF psss Fock | Compiler-generated multi-output value lowering for both fixed-topology and bounded streaming execution | The production psss row is enabled for fixed and bounded Fock; the former psss-specific native value body is retired, while a shared generic order-one fallback remains available when generated exact-class execution is unavailable |
 | Direct HF psss force | Generated force-only weighted-ERI expression over the existing native primitive-pair scheduler | Compiler-generated mathematics is unconditional; resident/fixed/paged scheduling remains native, while the superseded handwritten weighted derivative formula and route selector are retired |
 | Direct HF psss resident force | Resident bra pairs and primitive-length descriptors | `VIBEQC_PSSS_RESIDENT_BRA`; the generated expression uses the same resident pairs and canonical-orientation scales |
 | Bounded direct psss force | Lossless paged exact-class consumer | `VIBEQC_BOUNDED_DIRECT_STREAMING=force` or topology limits; uses the same weighted expression, retains page traversal |

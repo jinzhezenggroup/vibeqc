@@ -16,7 +16,10 @@
         "docs/weighted_eri.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "Retire each fallback scientific body only after its generated class/consumer passes independent numerical, resource, and complete-endpoint gates with an explicit replacement schedule.",
       "files": [
         "src/scf/cuda/direct_bounded_contraction.cuh",
@@ -30,9 +33,9 @@
     {
       "id": "native-fock-and-jk",
       "status": "performance-exception",
-      "capability": "Native Direct J/K and Fock contraction families, including the retained psss Fock fast path and higher-angular ERI helpers used by Fock consumers.",
-      "current_selector": "Generated shell classes are used where promoted; retained native Fock families remain selected for unpromoted or measured faster domains. psss force is already generated, but psss Fock is a separate retained target.",
-      "generated_alternative": "The existing IntegralIR/AOT class registry already represents the underlying ERI mathematics; psss Fock still needs generated shared-work execution that matches the historical fused primitive/Boys traversal.",
+      "capability": "Retained native Direct J/K and Fock contraction families after retirement of the psss-specific Fock/value fast path.",
+      "current_selector": "Generated shell classes are used where promoted; psss Fock is generated for fixed and bounded production execution, while remaining native Fock families cover unpromoted or measured faster domains.",
+      "generated_alternative": "The existing IntegralIR/AOT class registry represents the ERI mathematics; remaining native Fock/J-K families require class-by-class generated qualification rather than a psss-specific lowering.",
       "schedule_requirements": "Share primitive/Boys work across Fock outputs, preserve symmetry/scatter semantics, and choose materialization/rematerialization from measured register and occupancy evidence rather than Direct-only shape tests.",
       "resource_profile": "Register/shared-memory pressure and repeated primitive work are the primary retirement constraints; endpoint selection must consume generic target/resource evidence.",
       "evidence": [
@@ -40,20 +43,44 @@
         "docs/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#830 GVN/redundancy cleanup",
+        "#832 live-range/rematerialization/fusion profitability",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "For each retained Fock family, demonstrate generated mathematical parity plus matched complete-endpoint non-regression; then delete the duplicate native scientific body unless an independently measured exception remains.",
       "files": [
         "src/scf/cuda/direct_cached_tensor_kernels.cu",
         "src/scf/cuda/direct_fock_accumulation.cuh",
         "src/scf/cuda/direct_fock_order2.cuh",
-        "src/scf/cuda/direct_fock_psss.cuh",
         "src/scf/cuda/direct_fock_quartet.cuh",
         "src/scf/cuda/direct_jk_kernels.cu",
         "src/scf/cuda/direct_native_eri_order2.cuh",
         "src/scf/cuda/direct_native_eri_order3.cuh",
         "src/scf/cuda/direct_native_eri_order4.cuh",
-        "src/scf/cuda/direct_native_psss.cuh",
         "src/scf/cuda/direct_packed_fock_kernels.cu"
+      ]
+    },
+    {
+      "id": "generated-psss-force-adapter",
+      "status": "generated-default",
+      "capability": "Native psss primitive/schedule adapter around compiler-generated weighted first-derivative mathematics.",
+      "current_selector": "All production psss force schedules call generated_weighted_eri::psss_force; no parallel handwritten psss derivative or Fock/value formula remains in this file.",
+      "generated_alternative": "The compiler-owned weighted IntegralIR expression is already the production mathematical source.",
+      "schedule_requirements": "Preserve resident/fixed/paged primitive reuse, canonical orientation, density weights, and translation recovery without reintroducing a second scientific formula.",
+      "resource_profile": "Native adapter retains bounded primitive traversal and production scheduler resources; generated force arithmetic remains the only derivative equation owner.",
+      "evidence": [
+        "docs/weighted_eri.md",
+        "benchmarks/results/issue356-psss-retirement/README.md",
+        "python/vibeqc_compiler/integral/production_shell_classes.json"
+      ],
+      "required_compiler_capabilities": [
+        "Generated weighted-ERI first derivatives (complete)",
+        "Existing resident/fixed/paged Direct scheduling"
+      ],
+      "retirement_condition": "Remove the adapter only if its resident/fixed/paged scheduling and geometry construction become reusable generated/runtime primitives without endpoint regression.",
+      "files": [
+        "src/scf/cuda/direct_native_psss.cuh"
       ]
     },
     {
@@ -69,7 +96,10 @@
         "benchmarks/results/weighted-eri-144/README.md",
         "benchmarks/results/issue356-psss-retirement/README.md"
       ],
-      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "Promote and delete each native low-order formula only after independent derivative checks and matched RHF/UHF fixed/resident/paged endpoint gates pass for the claimed domain.",
       "files": [
         "src/scf/cuda/direct_force_density.cuh",
@@ -97,7 +127,11 @@
         "docs/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#830 GVN/redundancy cleanup",
+        "#832 live-range/rematerialization/fusion profitability",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "At least one retained order-4/5/6 family must reach generated multi-root/resource parity before deleting its native body; repeat the same measured gate per remaining family.",
       "files": [
         "src/scf/cuda/direct_native_high_order_coulomb.cuh",
@@ -120,7 +154,11 @@
         "docs/shell_codegen.md",
         "docs/cuda_ownership.md"
       ],
-      "required_compiler_capabilities": ["#351 shared recurrence/spec ownership", "#832 resource-aware lowering", "#833 reusable schedules"],
+      "required_compiler_capabilities": [
+        "#351 shared recurrence/spec ownership",
+        "#832 resource-aware lowering",
+        "#833 reusable schedules"
+      ],
       "retirement_condition": "Delete a shared native helper only after all production consumers that depend on its scientific mathematics have qualified generated replacements; runtime-only traversal may remain native.",
       "files": [
         "src/scf/cuda/direct_native_cartesian.cuh",
@@ -146,7 +184,9 @@
         "docs/cuda_ownership.md",
         "docs/accuracy.md"
       ],
-      "required_compiler_capabilities": ["#173/#174/#175 numerical screening and error-policy contracts"],
+      "required_compiler_capabilities": [
+        "#173/#174/#175 numerical screening and error-policy contracts"
+      ],
       "retirement_condition": "Retain as explicit scientific policy unless a shared policy owner replaces it with identical validated admission semantics; do not count a policy relocation as formula retirement.",
       "files": [
         "src/scf/cuda/direct_density_bounds.cu",
@@ -167,11 +207,14 @@
         "docs/cuda_ownership.md",
         "docs/weighted_eri.md"
       ],
-      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "Remove when generated consumers cover the same production domain with independent numerical qualification and no measured complete-endpoint disadvantage.",
       "files": [
         "src/scf/cuda/direct_reference_force.cu"
       ]
     }
   ]
-}
+}\n
