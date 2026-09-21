@@ -31,7 +31,9 @@ class CudaObjectArtifact:
     metadata: dict[str, typing.Any]
 
 
-def _cuda_host_identity(compiler: CudaCompilerAdapter) -> tuple[Path, dict[str, typing.Any]]:
+def _cuda_host_identity(
+    compiler: CudaCompilerAdapter,
+) -> tuple[Path, dict[str, typing.Any]]:
     host_compiler = os.environ.get("NVCC_CCBIN") or shutil.which("gcc")
     if host_compiler is None:
         raise RuntimeError("CUDA host compiler not found")
@@ -151,9 +153,8 @@ def link_cuda_objects(
     if not objects:
         raise ValueError("CUDA runtime link requires at least one object")
     for item in objects:
-        if (
-            not item.path.is_file()
-            or item.metadata.get("binary_sha256") != file_hash(item.path)
+        if not item.path.is_file() or item.metadata.get("binary_sha256") != file_hash(
+            item.path
         ):
             raise ValueError("CUDA object artifact integrity failure")
     libraries = tuple(libraries)
@@ -189,9 +190,7 @@ def link_cuda_objects(
     cache.mkdir(parents=True, exist_ok=True)
     destination = cache / key
     if not destination.exists():
-        with tempfile.TemporaryDirectory(
-            prefix=".cuda-link-", dir=cache
-        ) as temporary:
+        with tempfile.TemporaryDirectory(prefix=".cuda-link-", dir=cache) as temporary:
             folder = Path(temporary)
             library = folder / "runtime.so"
             result = compiler.link_shared_objects(
