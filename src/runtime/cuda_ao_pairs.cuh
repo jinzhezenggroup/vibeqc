@@ -83,9 +83,10 @@ __device__ void evaluate_pair(const View& batch, std::int64_t i, std::int64_t j,
  * their construction/validation belongs to the caller's prepared topology.
  */
 template <class Policy, std::size_t TermCapacity, class View>
-__device__ __forceinline__ void thread_pairs_body(
-    const View& batch, const std::int32_t* pair_first, const std::int32_t* pair_second,
-    std::size_t pair_count, Outputs<Policy::channels> outputs) {
+__device__ __forceinline__ void thread_pairs_body(const View& batch, const std::int32_t* pair_first,
+                                                  const std::int32_t* pair_second,
+                                                  std::size_t pair_count,
+                                                  Outputs<Policy::channels> outputs) {
   const std::size_t task = std::size_t{blockIdx.x} * blockDim.x + threadIdx.x;
   if (task >= static_cast<std::size_t>(batch.batch_size) * pair_count) return;
   const std::int64_t base = (task / pair_count) * batch.nbf;
@@ -95,8 +96,8 @@ __device__ __forceinline__ void thread_pairs_body(
 }
 
 template <class Policy, std::size_t TermCapacity, class View>
-__device__ __forceinline__ void shell_warp_pairs_body(
-    const View& batch, Outputs<Policy::channels> outputs) {
+__device__ __forceinline__ void shell_warp_pairs_body(const View& batch,
+                                                      Outputs<Policy::channels> outputs) {
   const std::size_t task = (std::size_t{blockIdx.x} * blockDim.x + threadIdx.x) / 32;
   if (task >= batch.shell_pair_count) return;
   const auto si = batch.shell_pair_first[task], sj = batch.shell_pair_second[task];

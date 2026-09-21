@@ -96,7 +96,9 @@ def test_real_endpoint_benchmark_environment_does_not_build_native_wheel() -> No
 
 def test_one_electron_cuda_entrypoints_flatten_typed_device_views() -> None:
     values = (ROOT / "src/scf/cuda/one_electron_values.cu").read_text(encoding="utf-8")
-    derivatives = (ROOT / "src/scf/cuda/one_electron_derivatives.cu").read_text(encoding="utf-8")
+    derivatives = (ROOT / "src/scf/cuda/one_electron_derivatives.cu").read_text(
+        encoding="utf-8"
+    )
 
     assert "thread_pairs_flat<<<" in values
     assert "shell_warp_pairs_flat<<<" in values
@@ -108,7 +110,9 @@ def test_one_electron_cuda_entrypoints_flatten_typed_device_views() -> None:
         "shell_warp_gradient",
         "serial_gradient",
     ):
-        signature = derivatives.split(f"__global__ void {kernel}(", 1)[1].split(") {", 1)[0]
+        signature = derivatives.split(f"__global__ void {kernel}(", 1)[1].split(
+            ") {", 1
+        )[0]
         assert "VIBEQC_ONE_ELECTRON_VIEW_KERNEL_PARAMETERS" in signature
         assert "OneElectronDeviceView" not in signature
         assert "OneElectronWeightView" not in signature

@@ -15,13 +15,12 @@ namespace vibeqc::scf::cuda_kernel_abi {
 __device__ __forceinline__ void bind_one_electron_view(
     OneElectronDeviceView& view, std::int32_t batch_size, std::int32_t nbf,
     std::size_t shell_pair_count, const std::int64_t* atom_offsets,
-    const std::int32_t* atomic_numbers, const double* positions,
-    const std::int32_t* shell_atoms, const std::int64_t* shell_ao_offsets,
-    const std::int64_t* shell_primitive_offsets, const std::int32_t* shell_pair_first,
-    const std::int32_t* shell_pair_second, const std::int32_t* ao_shells,
-    const std::uint8_t* ao_term_counts, const std::uint8_t* ao_term_angular,
-    const double* ao_term_coefficients, const double* primitive_exponents,
-    const double* primitive_coefficients) {
+    const std::int32_t* atomic_numbers, const double* positions, const std::int32_t* shell_atoms,
+    const std::int64_t* shell_ao_offsets, const std::int64_t* shell_primitive_offsets,
+    const std::int32_t* shell_pair_first, const std::int32_t* shell_pair_second,
+    const std::int32_t* ao_shells, const std::uint8_t* ao_term_counts,
+    const std::uint8_t* ao_term_angular, const double* ao_term_coefficients,
+    const double* primitive_exponents, const double* primitive_coefficients) {
   view.batch_size = batch_size;
   view.nbf = nbf;
   view.shell_pair_count = shell_pair_count;
@@ -43,28 +42,28 @@ __device__ __forceinline__ void bind_one_electron_view(
 
 }  // namespace vibeqc::scf::cuda_kernel_abi
 
-#define VIBEQC_ONE_ELECTRON_VIEW_KERNEL_PARAMETERS                                           \
-  std::int32_t batch_size, std::int32_t nbf, std::size_t shell_pair_count,                  \
-      const std::int64_t* atom_offsets, const std::int32_t* atomic_numbers,                  \
-      const double* positions, const std::int32_t* shell_atoms,                              \
-      const std::int64_t* shell_ao_offsets, const std::int64_t* shell_primitive_offsets,     \
-      const std::int32_t* shell_pair_first, const std::int32_t* shell_pair_second,           \
-      const std::int32_t* ao_shells, const std::uint8_t* ao_term_counts,                     \
-      const std::uint8_t* ao_term_angular, const double* ao_term_coefficients,               \
-      const double* primitive_exponents, const double* primitive_coefficients
+#define VIBEQC_ONE_ELECTRON_VIEW_KERNEL_PARAMETERS                                       \
+  std::int32_t batch_size, std::int32_t nbf, std::size_t shell_pair_count,               \
+      const std::int64_t *atom_offsets, const std::int32_t *atomic_numbers,              \
+      const double *positions, const std::int32_t *shell_atoms,                          \
+      const std::int64_t *shell_ao_offsets, const std::int64_t *shell_primitive_offsets, \
+      const std::int32_t *shell_pair_first, const std::int32_t *shell_pair_second,       \
+      const std::int32_t *ao_shells, const std::uint8_t *ao_term_counts,                 \
+      const std::uint8_t *ao_term_angular, const double *ao_term_coefficients,           \
+      const double *primitive_exponents, const double *primitive_coefficients
 
-#define VIBEQC_ONE_ELECTRON_VIEW_KERNEL_ARGUMENTS                                            \
-  batch.batch_size, batch.nbf, batch.shell_pair_count, batch.atom_offsets,                   \
-      batch.atomic_numbers, batch.positions, batch.shell_atoms, batch.shell_ao_offsets,      \
-      batch.shell_primitive_offsets, batch.shell_pair_first, batch.shell_pair_second,         \
-      batch.ao_shells, batch.ao_term_counts, batch.ao_term_angular,                           \
-      batch.ao_term_coefficients, batch.primitive_exponents, batch.primitive_coefficients
+#define VIBEQC_ONE_ELECTRON_VIEW_KERNEL_ARGUMENTS                                                \
+  batch.batch_size, batch.nbf, batch.shell_pair_count, batch.atom_offsets, batch.atomic_numbers, \
+      batch.positions, batch.shell_atoms, batch.shell_ao_offsets, batch.shell_primitive_offsets, \
+      batch.shell_pair_first, batch.shell_pair_second, batch.ao_shells, batch.ao_term_counts,    \
+      batch.ao_term_angular, batch.ao_term_coefficients, batch.primitive_exponents,              \
+      batch.primitive_coefficients
 
-#define VIBEQC_BIND_ONE_ELECTRON_VIEW(view)                                                  \
-  ::vibeqc::scf::cuda_kernel_abi::bind_one_electron_view(                                    \
-      view, batch_size, nbf, shell_pair_count, atom_offsets, atomic_numbers, positions,       \
-      shell_atoms, shell_ao_offsets, shell_primitive_offsets, shell_pair_first,               \
-      shell_pair_second, ao_shells, ao_term_counts, ao_term_angular, ao_term_coefficients,    \
-      primitive_exponents, primitive_coefficients)
+#define VIBEQC_BIND_ONE_ELECTRON_VIEW(view)                                                        \
+  ::vibeqc::scf::cuda_kernel_abi::bind_one_electron_view(                                          \
+      view, batch_size, nbf, shell_pair_count, atom_offsets, atomic_numbers, positions,            \
+      shell_atoms, shell_ao_offsets, shell_primitive_offsets, shell_pair_first, shell_pair_second, \
+      ao_shells, ao_term_counts, ao_term_angular, ao_term_coefficients, primitive_exponents,       \
+      primitive_coefficients)
 
 #endif
