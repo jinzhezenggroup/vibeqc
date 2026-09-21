@@ -212,14 +212,14 @@ def _emit_operator_helpers(
         f"__device__ __forceinline__ {return_type} {name}(",
         "    const PairGeometry& pair, unsigned first, unsigned second"
         + (", double c_x, double c_y, double c_z) {" if attraction else ") {"),
-        f"  if (first >= {total_components} || second >= {total_components}) return "
-        + invalid
-        + ";",
         "  const unsigned a = " + _shell_index_expression("first", limits) + ";",
         "  const unsigned b = " + _shell_index_expression("second", limits) + ";",
         "  const unsigned offsets[] = {" + ", ".join(map(str, offsets)) + "};",
         "  const unsigned counts[] = {" + ", ".join(map(str, counts)) + "};",
         "  const unsigned component = (first - offsets[a]) * counts[b] + second - offsets[b];",
+        f"  if (first >= {total_components} || second >= {total_components}) return "
+        + invalid
+        + ";",
         f"  switch (a * {shell_count}U + b) {{",
     ]
     for a, b in product(range(maximum + 1), repeat=2):
@@ -275,9 +275,10 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
             "static_assert(Order <= 6);",
             f"static_assert(Order <= {maximum_boys_order});",
         )
+        maximum_name = "seven" if maximum_boys_order == 7 else str(maximum_boys_order)
         prefix = prefix.replace(
             "upward recurrence through order six is well conditioned.",
-            f"upward recurrence through order {maximum_boys_order} is well conditioned.",
+            f"upward recurrence through order {maximum_name} is well conditioned.",
         )
     return prefix
 
