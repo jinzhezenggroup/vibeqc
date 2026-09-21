@@ -94,6 +94,7 @@ __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* wo
                                 const double* centers, size_t na, const double* weights,
                                 const double* raw, double* partial, double* scratch, int* error);
 __global__ void geometry_reduce(const double* partial, size_t na, double* output, int* error);
+__global__ void source_reduce(const double* input, size_t na, double* output, int* error);
 }  // namespace vibeqc_stationary_cuda
 
 extern "C" {
@@ -300,6 +301,29 @@ int stationary_finish(void* pointer, double* output, size_t count, char* error, 
     p->downloads += count * 8;
     for (double v : candidate)
       if (!std::isfinite(v)) throw std::runtime_error("nonfinite gradient");
+    std::copy(candidate.begin(), candidate.end(), output);
+  });
+}
+int stationary_finish_reduced(void* pointer, double* output, size_t count, char* error,
+                              size_t size) {
+  using namespace vibeqc_stationary_cuda;
+  auto* p = static_cast<Owner*>(pointer);
+  return guarded(p, error, size, [&] {
+    if (!p || !output || count != 3 * p->atoms)
+      throw std::invalid_argument("invalid reduced output");
+    if (!stationary_native_reduction_supported)
+      throw std::invalid_argument("stationary source inventory requires external reduction");
+    check(*p);
+    auto stream = p->context.stream;
+    source_reduce<<<blocks(3 * p->atoms, 64), 64, 0, stream>>>(p->sources, p->atoms, p->partial,
+                                                               p->context.error);
+    ++p->launches;
+    finished(*p, stream);
+    std::vector<double> candidate(count);
+    cuda_check(cudaMemcpy(candidate.data(), p->partial, count * 8, cudaMemcpyDeviceToHost));
+    p->downloads += count * 8;
+    for (double v : candidate)
+      if (!std::isfinite(v)) throw std::runtime_error("nonfinite reduced gradient");
     std::copy(candidate.begin(), candidate.end(), output);
   });
 }

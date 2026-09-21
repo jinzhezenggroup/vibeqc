@@ -14,6 +14,7 @@ from vibeqc_compiler.integral.expr import Expr, Graph
 
 from .b88_vwn_maple import b88_exchange, vwn_correlation
 from .p86_pz_maple import p86_correlation, pz_correlation
+from .rsh_maple import lyp_correlation
 
 
 def energy_expression(spec: typing.Any) -> typing.Any:
@@ -157,40 +158,6 @@ def energy_expression(spec: typing.Any) -> typing.Any:
             terms.append(-cx * density.pow(4 / 3) * enhancement * attenuation)
         return graph.sum(terms)
 
-    def lyp_correlation() -> Expr:
-        a_lyp = F("0.04918")
-        b_lyp = F("0.132")
-        c_lyp = F("0.2533")
-        d_lyp = F("0.349")
-        cf = F(3, 10) * (3 * math.pi**2) ** (2 / 3)
-        rr = n.pow(-1 / 3)
-        omega_lyp = b_lyp * graph.exponential(-c_lyp * rr) / (1 + d_lyp * rr)
-        delta = (c_lyp + d_lyp / (1 + d_lyp * rr)) * rr
-        one_minus_z2 = 1 - z.pow(2)
-        xt2 = (saa + 2 * sab + sbb) * n.pow(-8 / 3)
-        xs02 = saa * ra.pow(-8 / 3)
-        xs12 = sbb * rb.pow(-8 / 3)
-        up8 = up.pow(8 / 3)
-        down8 = down.pow(8 / 3)
-        t1 = -one_minus_z2 / (1 + d_lyp * rr)
-        t2 = -xt2 * (one_minus_z2 * (47 - 7 * delta) / 72 - F(2, 3))
-        t3 = -cf / 2 * one_minus_z2 * (up8 + down8)
-        aux6 = 1 / 2 ** (8 / 3)
-        aux4 = aux6 / 4
-        aux5 = aux4 / 18
-        t4 = aux4 * one_minus_z2 * (F(5, 2) - delta / 18) * (xs02 * up8 + xs12 * down8)
-        t5 = (
-            aux5
-            * one_minus_z2
-            * (delta - 11)
-            * (xs02 * up.pow(11 / 3) + xs12 * down.pow(11 / 3))
-        )
-        t6 = -aux6 * (
-            F(2, 3) * (xs02 * up8 + xs12 * down8)
-            - up.pow(2) * xs12 * down8 / 4
-            - down.pow(2) * xs02 * up8 / 4
-        )
-        return n * a_lyp * (t1 + omega_lyp * (t2 + t3 + t4 + t5 + t6))
 
     builders = {
         "LDA_X": lda_exchange,
@@ -205,7 +172,7 @@ def energy_expression(spec: typing.Any) -> typing.Any:
         "LDA_C_VWN_RPA": lambda: vwn_correlation(
             graph, spec, variables, "LDA_C_VWN_RPA"
         ),
-        "GGA_C_LYP": lyp_correlation,
+        "GGA_C_LYP": lambda: lyp_correlation(graph, spec, variables),
     }
     return (
         graph,

@@ -49,6 +49,7 @@ for functional in (0,1,2):
     assert 'stationary-weight-program-overlap_pulay:' in s
     assert 'stationary-weight-program-coulomb:' in s
     assert '__device__ inline bool stationary_source_weight' in s
+    assert '__global__ void source_reduce' in s
     include = s.index('#include "dft/stationary_gradient_cuda.cuh"')
     for scientific in ('__global__ void task_kernel', '__global__ void geometry_kernel'):
         assert scientific in s

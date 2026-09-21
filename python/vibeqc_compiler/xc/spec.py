@@ -13,6 +13,7 @@ from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from .b88_vwn_maple import b88_vwn_maple_provenance
 from .p86_pz_maple import p86_pz_maple_provenance
 from .pbe_maple import pbe_maple_provenance
+from .rsh_maple import rsh_maple_provenance
 
 VERSION = "libxc-7.0.0/interior-v1"
 POLARIZED = ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b")
@@ -164,6 +165,7 @@ class FunctionalSpec:
                 pbe_maple_provenance(self.components),
                 p86_pz_maple_provenance(self.components),
                 b88_vwn_maple_provenance(self.components),
+                rsh_maple_provenance(self.components),
             )
             if record is not None
         )

@@ -179,7 +179,11 @@ def test_complete_cuda_independent_analytic(
         np.testing.assert_allclose(result.gradient, ref_gradient, atol=1e-7, rtol=0)
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=2e-10, rtol=0)
         assert result.work["launches"] > 0
-        assert result.work["tensor_executions"] == 1
+        assert result.work["tensor_executions"] == 0
+        assert (
+            result.work["stationary_final_reduction"]
+            == "native-seven-source-device-sum-v1"
+        )
         assert result.work["stationary_weight_tensor_executions"] == 0
         assert result.work["stationary_weight_roundtrip_bytes"] == 0
         assert result.work["stationary_state_dw_upload_bytes"] == (
@@ -265,7 +269,11 @@ def test_complete_cuda_open_shell_uks_independent_analytic(
         np.testing.assert_allclose(result.gradient, reference, atol=1e-7, rtol=0)
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=3e-10, rtol=0)
         assert result.work["xc_points"] == len(state.grid.points)
-        assert result.work["tensor_executions"] == 1
+        assert result.work["tensor_executions"] == 0
+        assert (
+            result.work["stationary_final_reduction"]
+            == "native-seven-source-device-sum-v1"
+        )
         assert result.work["stationary_weight_tensor_executions"] == 0
         assert result.work["stationary_weight_roundtrip_bytes"] == 0
         assert result.work["stationary_state_dw_upload_bytes"] == (

@@ -464,6 +464,40 @@ class TensorPlan:
         }
 
 
+def estimated_cuda_launches(plan: TensorPlan) -> int:
+    """Count the emitted endpoint launch sequence without executing CUDA."""
+
+    launches = 1  # per-run arithmetic-error reset
+    for step in plan.steps:
+        if (
+            step.virtual
+            or step.node.op in ("input", "constant")
+            or not step.node.spec.size
+        ):
+            continue
+        if step.gemm == "none":
+            launches += 1
+            continue
+        contraction = gemm_contract(step.node)
+        if contraction is None:
+            raise ValueError("GEMM launch estimate requires a contraction node")
+        if not contraction.k:
+            launches += 1
+        elif step.gemm.startswith("direct-"):
+            launches += 2
+        else:
+            tiles = [
+                (size + tile - 1) // tile
+                for size, tile in zip(
+                    (contraction.m, contraction.n, contraction.k),
+                    (plan.schedule.tile_m, plan.schedule.tile_n, plan.schedule.tile_k),
+                    strict=True,
+                )
+            ]
+            launches += contraction.batch * prod(tiles[:2]) * (2 * tiles[2] + 1)
+    return launches
+
+
 def static_data_slices(
     plan: TensorPlan,
 ) -> tuple[tuple[int, str, int, int, int], ...]:

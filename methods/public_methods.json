@@ -40,10 +40,11 @@
       "symbol": "RCCSD_T",
       "abi_id": 4,
       "family": "coupled_cluster",
-      "provider": "reserved",
-      "properties": [],
-      "supports_batch": false,
-      "unavailable_reason": "method has no executable provider registration",
+      "provider": "rccsdt",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
       "aliases": [
         "ccsd(t)"
       ]

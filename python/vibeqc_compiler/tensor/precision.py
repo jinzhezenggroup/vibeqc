@@ -331,6 +331,105 @@ def _execution_bindings(
     return result, tuple(scope)
 
 
+def precision_execution_contracts(
+    program: Program,
+) -> dict[Node, tuple[str, str, str, str]]:
+    """Return rewrite-equivalence keys for explicit execution precision.
+
+    Mathematical node identity intentionally excludes execution precision. Optimizer
+    CSE therefore needs this separate key whenever a qualified accumulation contract
+    is attached through provenance. Qualification labels do not change arithmetic and
+    are deliberately excluded so equivalent qualified programs may still CSE.
+    """
+    execution, _ = _execution_bindings(program)
+    if not execution:
+        return {}
+    names = program.debug_names
+    result = {}
+    for node in program.live_nodes:
+        directive = execution.get(names[node])
+        if directive is None:
+            continue
+        result[node] = (
+            node.spec.dtype,
+            directive.compute_dtype,
+            directive.accumulation_dtype,
+            directive.math_mode,
+        )
+    return result
+
+
+def remap_precision_execution(
+    program: Program,
+    replacements: Mapping[Node, Node],
+    outputs: Mapping[str, Node],
+    definitions: tuple[Node, ...],
+    *,
+    allow_pruned: bool = False,
+) -> dict:
+    """Transport validated mixed-accumulation bindings through a rewrite.
+
+    Precision execution is keyed by content-addressed debug names while optimizer
+    rewrites may change those names without changing the requested arithmetic.
+    Equivalent qualified nodes may merge, but incompatible contracts must never do so.
+    """
+    provenance = program.provenance
+    execution = provenance.get("precision_execution")
+    if execution is None:
+        return provenance
+
+    _execution_bindings(program)
+    old_names = program.debug_names
+    values = execution["values"]
+
+    base = dict(provenance)
+    base.pop("precision_execution", None)
+    interim = Program(outputs, definitions, provenance=base)
+    new_names = interim.debug_names
+    remapped: dict[str, dict] = {}
+    contracts: dict[str, tuple[str, str, str]] = {}
+
+    for node in program.live_nodes:
+        row = values.get(old_names[node])
+        if row is None:
+            continue
+        target = replacements.get(node)
+        # Only explicit output projection may intentionally discard bindings.
+        # Ordinary rewrites must still account for every formerly live value.
+        if target is None and allow_pruned:
+            continue
+        if target is None or target not in new_names:
+            raise ValueError("optimizer dropped a precision-bound live value")
+        new_name = new_names[target]
+        contract = (
+            target.spec.dtype,
+            row["compute_dtype"],
+            row["accumulation_dtype"],
+        )
+        previous_contract = contracts.get(new_name)
+        if previous_contract is not None and previous_contract != contract:
+            raise ValueError(
+                "optimizer merged incompatible precision execution contracts"
+            )
+        contracts[new_name] = contract
+
+        candidate = dict(row)
+        previous = remapped.get(new_name)
+        if previous is None or (
+            candidate["source_value"],
+            candidate.get("qualification") or "",
+        ) < (previous["source_value"], previous.get("qualification") or ""):
+            remapped[new_name] = candidate
+
+    if remapped:
+        base["precision_execution"] = {
+            "schema": MIXED_ACCUMULATION_SCHEMA,
+            "precision_request_identity": execution["precision_request_identity"],
+            "values": remapped,
+        }
+    return base
+
+
 def lower_precision(
     program: Program,
     directives: Mapping[str, PrecisionDirective],
