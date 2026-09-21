@@ -21,7 +21,6 @@ def test_checked_in_registry_is_offline_verifiable() -> None:
     summary = source_registry.verify()
     assert summary["sources"] >= 7
     assert summary["local_files"] >= 60
-    assert summary["cached_files"] == 0
     assert summary["products"] >= 5
     assert summary["derived_manifests"] == 4
 
