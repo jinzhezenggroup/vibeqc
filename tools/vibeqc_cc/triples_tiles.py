@@ -13,6 +13,7 @@ import typing
 from fractions import Fraction
 
 import numpy as np
+from vibeqc_compiler.common.runtime_domain import RuntimeTaskDomain
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -95,19 +96,23 @@ class TileSpec:
         return self.a_end
 
     @property
+    def runtime_domain(self) -> RuntimeTaskDomain:
+        """Shared compiler-owned monotone domain for this virtual tile."""
+        return RuntimeTaskDomain.nonincreasing(
+            self.nvir,
+            3,
+            outer_start=self.a_start,
+            outer_stop=self.a_end,
+        )
+
+    @property
     def ntriples(self) -> typing.Any:
         """Count of ``a>=b>=c`` triples processed in this tile."""
-        n = 0
-        for a in range(self.a_start, self.a_end):
-            n += (a + 1) * (a + 2) // 2
-        return n
+        return self.runtime_domain.logical_size
 
     def __iter__(self) -> typing.Any:
         """Yield each ``(a,b,c)`` triple with ``a>=b>=c`` in this tile."""
-        for a in range(self.a_start, self.a_end):
-            for b in range(a + 1):
-                for c in range(b + 1):
-                    yield a, b, c
+        yield from self.runtime_domain
 
 
 class TriplesTileEnumerator:
@@ -520,23 +525,16 @@ def runtime_tile_controls(tile: TileSpec, capacity: int) -> dict[str, np.ndarray
     """Pack one complete logical tile when it fits the runtime domain."""
     if capacity < tile.ntriples:
         raise ValueError("runtime triples capacity is smaller than the tile domain")
-    return _runtime_controls(tile, capacity)
+    page = next(tile.runtime_domain.pages(capacity))
+    return _runtime_controls(page.coordinates, capacity)
 
 
 def runtime_tile_control_batches(
     tile: TileSpec, capacity: int
 ) -> typing.Iterator[dict[str, np.ndarray]]:
-    """Yield bounded runtime controls without materializing a large q-domain."""
-    if type(capacity) is not int or capacity < 1:
-        raise ValueError("runtime triples capacity must be a positive integer")
-    batch: list[tuple[int, int, int]] = []
-    for coordinates in tile:
-        batch.append(coordinates)
-        if len(batch) == capacity:
-            yield _runtime_controls(batch, capacity)
-            batch.clear()
-    if batch:
-        yield _runtime_controls(batch, capacity)
+    """Yield controls from shared bounded runtime-domain pages."""
+    for page in tile.runtime_domain.pages(capacity):
+        yield _runtime_controls(page.coordinates, capacity)
 
 
 def runtime_tile_static_feeds(arrays: typing.Any) -> dict[str, np.ndarray]:
