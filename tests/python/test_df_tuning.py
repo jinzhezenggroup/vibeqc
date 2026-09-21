@@ -188,13 +188,52 @@ def test_manifests_require_complete_independent_qualification(
     ):
         original = json.loads(source.read_text())
         payload = copy.deepcopy(original)
-        profile = payload["architectures"]["sm_120"] if derivative else payload
+        profile = payload["architectures"]["sm_120"]
         profile["qualified"] = True
         profile["provenance"] = {"candidate_report": "partial.json"}
         path = tmp_path / "partial.json"
         path.write_text(json.dumps(payload))
         with pytest.raises(ValueError, match="provenance|evidence"):
             load(path)
+
+
+def test_value_manifest_is_target_driven_and_unknown_targets_are_generic(
+    tmp_path: typing.Any,
+) -> None:
+    import json
+
+    from vibeqc_compiler.integral.df_tuning.value_manifest import (
+        load_value_manifest,
+        resolve_value_profile,
+    )
+
+    kernels = {"".join(map(str, angular)): "generic" for angular in __import__(
+        "vibeqc_compiler.integral.df_value_candidates",
+        fromlist=["VALUE_CLASSES"],
+    ).VALUE_CLASSES}
+    payload = {
+        "schema_version": 2,
+        "architectures": {
+            "sm_90": {
+                "qualified": False,
+                "raw_lanes": 1,
+                "kernels": kernels,
+                "provenance": {"candidate_report": "unit-test.json"},
+            }
+        },
+    }
+    path = tmp_path / "value-manifest.json"
+    path.write_text(json.dumps(payload))
+    loaded = load_value_manifest(path)
+
+    sm90 = resolve_value_profile(loaded, "90")
+    assert sm90["raw_lanes"] == 1
+    assert set(sm90["kernels"].values()) == {"generic"}
+
+    future = resolve_value_profile(loaded, "sm_130")
+    assert future["qualified"] is False
+    assert future["raw_lanes"] == 1
+    assert set(future["kernels"].values()) == {"generic"}
 
 
 def campaign_manifest() -> typing.Any:
