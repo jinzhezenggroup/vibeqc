@@ -12,8 +12,8 @@
 #include <vector>
 
 #include "posthf/capacity.hpp"
-#include "posthf/ri_mp2_cuda.hpp"
 #include "posthf/mp2_schedule_generated.hpp"
+#include "posthf/ri_mp2_cuda.hpp"
 #include "runtime/cuda_component_trace.hpp"
 #include "runtime/cuda_resources.cuh"
 #include "scf/cuda/df_plan_internal.hpp"
@@ -191,7 +191,6 @@ std::size_t fixed_capacity(const posthf::RawSource& source, std::size_t n, std::
   total = posthf::checked_add(total, 2 * sizeof(double));
   return total;
 }
-
 
 }  // namespace
 
