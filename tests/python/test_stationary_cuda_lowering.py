@@ -196,7 +196,7 @@ def test_stationary_split_compile_options_are_explicit(
 def test_stationary_split_compile_options_fail_closed(value: str) -> None:
     from vibeqc_compiler.method.stationary_cuda import _split_compile_options
 
-    with pytest.raises(ValueError, match="VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS"):
-        _split_compile_options(
-            {"VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS": value}
-        )
+    with pytest.raises(
+        ValueError, match="VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS"
+    ):
+        _split_compile_options({"VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS": value})
