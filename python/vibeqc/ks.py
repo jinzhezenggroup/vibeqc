@@ -125,6 +125,13 @@ class KsOptions:
         return self.execution_plan.nonlocal_correlation is not None
 
     @property
+    def requires_range_exchange_v6(self) -> bool:
+        return any(
+            term.operator in ("short-range", "long-range")
+            for term in self.execution_plan.exchange
+        )
+
+    @property
     def ao_order(self) -> typing.Any:
         """SCF needs the potential; GGA/meta-GGA compositions need first AO jets."""
         if self.functional is None:
@@ -180,21 +187,39 @@ def _native_execution_plan(method_ir: typing.Any) -> typing.Any:
             "and supported exchange only; geometry-only post-SCF corrections "
             "require a separate qualified composition owner"
         )
-    missing = []
-    missing.extend(
-        f"{term.operator}-exchange"
-        for term in plan.exchange
-        if term.operator != "full-range"
+    full_range = tuple(term for term in plan.exchange if term.operator == "full-range")
+    range_terms = tuple(
+        term for term in plan.exchange if term.operator in ("short-range", "long-range")
     )
-    if missing:
+    unsupported = tuple(
+        term
+        for term in plan.exchange
+        if term.operator not in ("full-range", "short-range", "long-range")
+    )
+    if unsupported:
         raise NotImplementedError(
             "native KS execution plan requires unavailable lowerers: "
-            + ", ".join(missing)
+            + ", ".join(f"{term.operator}-exchange" for term in unsupported)
         )
-    if len(plan.exchange) > 1:
+    if full_range and range_terms:
         raise NotImplementedError(
-            "native KS v2 accepts at most one full-range exchange contribution"
+            "native KS execution cannot mix full-range and range-separated exchange"
         )
+    if len(full_range) > 1:
+        raise NotImplementedError(
+            "native KS accepts at most one full-range exchange contribution"
+        )
+    if range_terms:
+        operators = {term.operator for term in range_terms}
+        omegas = {term.omega for term in range_terms}
+        if len(range_terms) != 2 or operators != {"short-range", "long-range"}:
+            raise NotImplementedError(
+                "native KS range separation requires one short- and one long-range exchange contribution"
+            )
+        if len(omegas) != 1:
+            raise NotImplementedError(
+                "native KS range-separated exchange requires one shared omega"
+            )
     return plan
 
 
@@ -283,9 +308,23 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
         # The generated B3LYP semilocal primitive already owns its internal
         # component coefficients; native X/C scales stay unity.
         exchange_scale = correlation_scale = Fraction(1)
+    elif components == {
+        "MGGA_X_WB97M_V": Fraction(1),
+        "MGGA_C_WB97M_V": Fraction(1),
+    }:
+        exchange_scale = correlation_scale = Fraction(1)
     else:
         raise NotImplementedError("unsupported native KS semilocal composition")
-    fock_exchange = plan.exchange[0].fock_coefficient if plan.exchange else Fraction(0)
+    if not plan.exchange:
+        fock_exchange = Fraction(0)
+    elif len(plan.exchange) == 1:
+        fock_exchange = plan.exchange[0].fock_coefficient
+    else:
+        fock_exchange = next(
+            term.fock_coefficient
+            for term in plan.exchange
+            if term.operator == "short-range"
+        )
     values = tuple(
         float(value) for value in (exchange_scale, correlation_scale, fock_exchange)
     )
@@ -296,6 +335,31 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     ):
         raise NotImplementedError("native KS composition coefficients are invalid")
     return values
+
+
+def ks_range_exchange_parameters(method_ir: typing.Any) -> typing.Any:
+    """Return MethodIR-owned (short, long, omega) RSH parameters, if present."""
+    if not isinstance(method_ir, MethodIR):
+        raise TypeError("KS range exchange requires a resolved MethodIR")
+    plan = compile_ks_execution_plan(method_ir)
+    range_terms = tuple(
+        term for term in plan.exchange if term.operator in ("short-range", "long-range")
+    )
+    if not range_terms:
+        return None
+    operators = {term.operator for term in range_terms}
+    omegas = {term.omega for term in range_terms}
+    if len(range_terms) != 2 or operators != {"short-range", "long-range"}:
+        raise NotImplementedError(
+            "native KS range separation requires one short- and one long-range exchange contribution"
+        )
+    if len(omegas) != 1:
+        raise NotImplementedError(
+            "native KS range-separated exchange requires one shared omega"
+        )
+    short = next(term for term in range_terms if term.operator == "short-range")
+    long = next(term for term in range_terms if term.operator == "long-range")
+    return float(short.coefficient), float(long.coefficient), float(short.omega)
 
 
 def resolve_ks_method(method: typing.Any) -> typing.Any:
@@ -545,7 +609,7 @@ def profiled_ks_options(
     ).options
 
 
-def native_ks_options(options: typing.Any, *, version: int = 5) -> typing.Any:
+def native_ks_options(options: typing.Any, *, version: int = 6) -> typing.Any:
     """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
     import ctypes
 
@@ -560,8 +624,8 @@ def native_ks_options(options: typing.Any, *, version: int = 5) -> typing.Any:
         radii = (ctypes.c_double * 119)(*[fill] * 119)
         for z, radius in grid.element_radii:
             radii[z] = radius
-    if version not in (1, 2, 3, 4, 5):
-        raise ValueError("native KS options version must be 1, 2, 3, 4, or 5")
+    if version not in (1, 2, 3, 4, 5, 6):
+        raise ValueError("native KS options version must be 1, 2, 3, 4, 5, or 6")
     if version == 1 and options.requires_composition_v2:
         raise NotImplementedError(
             "native KS options v1 cannot serialize composition options v2"
@@ -574,6 +638,10 @@ def native_ks_options(options: typing.Any, *, version: int = 5) -> typing.Any:
         raise NotImplementedError(
             f"native KS options v{version} cannot serialize nonlocal correlation v5"
         )
+    if version < 6 and options.requires_range_exchange_v6:
+        raise NotImplementedError(
+            f"native KS options v{version} cannot serialize range-separated exchange v6"
+        )
     size = (
         _native.KsOptionsDescriptor.composition_version.offset
         if version == 1
@@ -583,6 +651,8 @@ def native_ks_options(options: typing.Any, *, version: int = 5) -> typing.Any:
         if version == 3
         else _native.KsOptionsDescriptor.nonlocal_correlation_version.offset
         if version == 4
+        else _native.KsOptionsDescriptor.range_exchange_version.offset
+        if version == 5
         else ctypes.sizeof(_native.KsOptionsDescriptor)
     )
     spin_channels = 1 if options.method_ir.spin == "unpolarized" else 2
@@ -603,6 +673,12 @@ def native_ks_options(options: typing.Any, *, version: int = 5) -> typing.Any:
     else:
         nonlocal_variant = 0
         nonlocal_b = nonlocal_c = nonlocal_coefficient = 0.0
+    range_exchange = ks_range_exchange_parameters(options.method_ir)
+    range_exchange_version = 1 if version >= 6 and range_exchange is not None else 0
+    if range_exchange is None:
+        short_range_exchange = long_range_exchange = range_omega = 0.0
+    else:
+        short_range_exchange, long_range_exchange, range_omega = range_exchange
     return _native.KsOptionsDescriptor(
         size,
         _native.ABI_VERSION,
@@ -633,4 +709,9 @@ def native_ks_options(options: typing.Any, *, version: int = 5) -> typing.Any:
         nonlocal_c if nonlocal_version else 0.0,
         nonlocal_coefficient if nonlocal_version else 0.0,
         options.nonlocal_memory_budget_bytes if nonlocal_version else 0,
+        range_exchange_version,
+        0,
+        short_range_exchange if range_exchange_version else 0.0,
+        long_range_exchange if range_exchange_version else 0.0,
+        range_omega if range_exchange_version else 0.0,
     )

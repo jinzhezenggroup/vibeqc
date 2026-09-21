@@ -220,6 +220,11 @@ class KsOptionsDescriptor(ctypes.Structure):
         ("nonlocal_c", ctypes.c_double),
         ("nonlocal_coefficient", ctypes.c_double),
         ("nonlocal_maximum_bytes", ctypes.c_uint64),
+        ("range_exchange_version", ctypes.c_uint32),
+        ("reserved_v6_padding", ctypes.c_uint32),
+        ("short_range_exchange", ctypes.c_double),
+        ("long_range_exchange", ctypes.c_double),
+        ("range_omega", ctypes.c_double),
     ]
 
 

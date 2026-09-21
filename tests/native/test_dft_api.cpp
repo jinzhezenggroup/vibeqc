@@ -174,7 +174,8 @@ void ks_legacy_method_prefix_guard() {
        {offsetof(vibeqc_ks_options, composition_version),
         offsetof(vibeqc_ks_options, xc_execution_schedule),
         offsetof(vibeqc_ks_options, execution_plan_version),
-        offsetof(vibeqc_ks_options, nonlocal_correlation_version), sizeof(vibeqc_ks_options)}) {
+        offsetof(vibeqc_ks_options, nonlocal_correlation_version),
+        offsetof(vibeqc_ks_options, range_exchange_version), sizeof(vibeqc_ks_options)}) {
     options.struct_size = static_cast<std::uint32_t>(size);
     auto* legacy = reinterpret_cast<vibeqc_ks_options*>(boundary - size);
     std::memcpy(legacy, &options, size);
@@ -196,7 +197,7 @@ void ks_legacy_method_prefix_guard() {
 }
 
 void ks_option_snapshot() {
-  require(vibeqc_ks_options_version() == 5, "KS option version unavailable");
+  require(vibeqc_ks_options_version() == 6, "KS option version unavailable");
   Fixture fixture;
   auto method = lda_method();
   std::array<double, 119> radii;
@@ -291,17 +292,18 @@ void ks_option_versioned_prefixes() {
   options.spin_channels = 1;
   options.semilocal_family = 0;
   method.ks_options = &options;
-  const std::array<std::size_t, 5> sizes{offsetof(vibeqc_ks_options, composition_version),
+  const std::array<std::size_t, 6> sizes{offsetof(vibeqc_ks_options, composition_version),
                                          offsetof(vibeqc_ks_options, xc_execution_schedule),
                                          offsetof(vibeqc_ks_options, execution_plan_version),
                                          offsetof(vibeqc_ks_options, nonlocal_correlation_version),
+                                         offsetof(vibeqc_ks_options, range_exchange_version),
                                          sizeof(vibeqc_ks_options)};
   for (const auto size : sizes) {
     options.struct_size = static_cast<std::uint32_t>(size);
     vibeqc_calculation* calculation = nullptr;
     require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
                 VIBEQC_STATUS_SUCCESS,
-            "valid KS v1/v2/v3/v4/v5 prefix was rejected");
+            "valid KS v1/v2/v3/v4/v5/v6 prefix was rejected");
     vibeqc_calculation_destroy(calculation);
   }
   // v3 owns the schedule bytes; it must neither consume nor reinterpret v4 identity.
@@ -325,6 +327,17 @@ void ks_option_versioned_prefixes() {
                 VIBEQC_STATUS_ABI_MISMATCH,
             "truncated KS versioned suffix was accepted");
   }
+
+  method.method = VIBEQC_METHOD_PBE_RKS;
+  options.struct_size = sizeof(options);
+  options.semilocal_family = 1;
+  options.range_exchange_version = 1;
+  options.short_range_exchange = 0.2;
+  options.long_range_exchange = 0.8;
+  options.range_omega = 0.3;
+  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+              VIBEQC_STATUS_NOT_IMPLEMENTED,
+          "v6 range exchange was silently ignored before its native consumer was attached");
 }
 
 void pbe0_composition_snapshot() {

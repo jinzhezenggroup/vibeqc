@@ -932,6 +932,13 @@ class Calculator:
                 raise NotImplementedError(
                     "native library does not support KS nonlocal correlation v5"
                 )
+            elif (
+                self._ks_options_version < 6
+                and self._ks_options.requires_range_exchange_v6
+            ):
+                raise NotImplementedError(
+                    "native library does not support KS range-separated exchange v6"
+                )
 
         available = ctypes.c_int32()
         _native.check(
@@ -1113,7 +1120,7 @@ class Calculator:
             descriptor.ks_options = ctypes.pointer(
                 native_ks_options(
                     active_ks_options,
-                    version=min(self._ks_options_version, 5),
+                    version=min(self._ks_options_version, 6),
                 )
             )
         if self._method in _COUPLED_CLUSTER_METHODS:
@@ -1777,7 +1784,7 @@ class Calculator:
             else:
                 native_ks_options(
                     selection.options,
-                    version=min(self._ks_options_version, 5),
+                    version=min(self._ks_options_version, 6),
                 )
         return selection
 

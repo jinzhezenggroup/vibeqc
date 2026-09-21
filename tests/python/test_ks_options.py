@@ -414,9 +414,15 @@ def test_ks_options_v4_preserves_v1_v2_v3_prefixes_and_methodir_plan() -> None:
         new.struct_size
         == _native.KsOptionsDescriptor.nonlocal_correlation_version.offset
     )
-    current = native_ks_options(hybrid, version=5)
+    legacy_nonlocal = native_ks_options(hybrid, version=5)
+    assert (
+        legacy_nonlocal.struct_size
+        == _native.KsOptionsDescriptor.range_exchange_version.offset
+    )
+    assert legacy_nonlocal.nonlocal_correlation_version == 0
+    current = native_ks_options(hybrid, version=6)
     assert current.struct_size == ctypes.sizeof(_native.KsOptionsDescriptor)
-    assert current.nonlocal_correlation_version == 0
+    assert current.range_exchange_version == 0
     assert new.composition_version == 1
     assert (
         new.semilocal_exchange_scale,
@@ -687,3 +693,32 @@ def test_native_v5_serializes_nonlocal_primitive_without_named_method_branch() -
     assert native.nonlocal_c == pytest.approx(0.0093)
     assert native.nonlocal_coefficient == pytest.approx(1.0)
     assert native.nonlocal_maximum_bytes == 1 << 20
+
+
+def test_native_v6_serializes_range_exchange_without_named_method_branch() -> None:
+    graph = resolve_method(
+        MethodSpec(
+            "PBE-RSH-v6",
+            (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+            short_range_exchange=Fraction(1, 5),
+            long_range_exchange=Fraction(4, 5),
+            range_omega=Fraction(3, 10),
+        ),
+        spin="unpolarized",
+    )
+    options = resolve_ks_options(
+        "pbe-rks",
+        KsOptions(
+            composition=graph,
+            grid=GridSpec(radial_points=3, angular_polar=2, angular_azimuth=4),
+            tile_points=16,
+        ),
+    )
+    assert options.requires_range_exchange_v6
+    with pytest.raises(NotImplementedError, match="range-separated exchange v6"):
+        native_ks_options(options, version=5)
+    native = native_ks_options(options, version=6)
+    assert native.range_exchange_version == 1
+    assert native.short_range_exchange == pytest.approx(0.2)
+    assert native.long_range_exchange == pytest.approx(0.8)
+    assert native.range_omega == pytest.approx(0.3)

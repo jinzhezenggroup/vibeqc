@@ -656,9 +656,17 @@ typedef struct vibeqc_ks_options {
   double nonlocal_c;
   double nonlocal_coefficient;
   uint64_t nonlocal_maximum_bytes;
+  /** Optional v6 suffix: one MethodIR-owned short/long-range exact-exchange pair.
+   * Version 0 means absent; version 1 makes all three doubles authoritative.
+   * Coefficients are physical exact-exchange fractions and omega is in bohr^-1. */
+  uint32_t range_exchange_version;
+  uint32_t reserved_v6_padding;
+  double short_range_exchange;
+  double long_range_exchange;
+  double range_omega;
 } vibeqc_ks_options;
 
-/** Pure capability query. Version 5 accepts the v1/v2/v3/v4 prefixes and v5 suffix. */
+/** Pure capability query. Version 6 accepts the v1-v5 prefixes and v6 suffix. */
 VIBEQC_API uint32_t vibeqc_ks_options_version(void);
 
 typedef struct vibeqc_method_descriptor {

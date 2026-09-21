@@ -57,6 +57,10 @@ struct NativeKsExecutionPlan {
   bool nonlocal_correlation{};
   dft::nlc::Vv10Parameters nonlocal_parameters{};
   std::uint64_t nonlocal_maximum_bytes{};
+  bool range_exchange{};
+  double short_range_exchange{};
+  double long_range_exchange{};
+  double range_omega{};
 };
 
 std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method method) noexcept {
@@ -136,12 +140,13 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
     constexpr auto v3_size = offsetof(vibeqc_ks_options, execution_plan_version);
     constexpr auto v4_size = offsetof(vibeqc_ks_options, nonlocal_correlation_version);
-    constexpr auto v5_size = sizeof(vibeqc_ks_options);
+    constexpr auto v5_size = offsetof(vibeqc_ks_options, range_exchange_version);
+    constexpr auto v6_size = sizeof(vibeqc_ks_options);
     if (ks_input->struct_size < v1_size || ks_input->abi_version != VIBEQC_ABI_VERSION)
       throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
     if (ks_input->struct_size != v1_size && ks_input->struct_size != v2_size &&
         ks_input->struct_size != v3_size && ks_input->struct_size != v4_size &&
-        ks_input->struct_size < v5_size)
+        ks_input->struct_size != v5_size && ks_input->struct_size < v6_size)
       throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS option suffix");
     if (ks_input->struct_size >= v4_size) {
       if (ks_input->execution_plan_version > 1)
@@ -186,6 +191,27 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
         execution_plan.nonlocal_parameters = {variant, ks_input->nonlocal_b, ks_input->nonlocal_c,
                                               ks_input->nonlocal_coefficient};
         execution_plan.nonlocal_maximum_bytes = ks_input->nonlocal_maximum_bytes;
+      }
+    }
+    if (ks_input->struct_size >= v6_size) {
+      if (ks_input->range_exchange_version > 1)
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                          "unsupported KS range-exchange plan version");
+      if (ks_input->range_exchange_version == 1) {
+        if (!execution_plan_seen)
+          throw MethodError(
+              VIBEQC_STATUS_INVALID_ARGUMENT,
+              "range-separated exchange requires a compiler-resolved KS execution plan");
+        if (!std::isfinite(ks_input->short_range_exchange) ||
+            !std::isfinite(ks_input->long_range_exchange) ||
+            !std::isfinite(ks_input->range_omega) || ks_input->short_range_exchange <= 0.0 ||
+            ks_input->long_range_exchange <= 0.0 || ks_input->range_omega <= 0.0)
+          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                            "invalid KS range-separated exchange parameters");
+        execution_plan.range_exchange = true;
+        execution_plan.short_range_exchange = ks_input->short_range_exchange;
+        execution_plan.long_range_exchange = ks_input->long_range_exchange;
+        execution_plan.range_omega = ks_input->range_omega;
       }
     }
   }
@@ -235,6 +261,9 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   if (options.precision_mode == VIBEQC_PRECISION_AUTO && execution_plan.nonlocal_correlation)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "self-consistent nonlocal correlation currently requires strict FP64");
+  if (execution_plan.range_exchange)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                      "native KS range-separated exchange consumer is not attached yet");
   if (backend == VIBEQC_BACKEND_CUDA && execution_plan.semilocal_family == kKsSemilocalB3lyp)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "B3LYP CPU execution only");
 
