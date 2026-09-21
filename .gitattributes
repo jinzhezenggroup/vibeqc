@@ -26,3 +26,13 @@ tools/generate_validation_references.py text eol=lf
 
 # Generated per-file hashes; review the migration summary and restoration code.
 benchmarks/results/retention-checkout/snapshot.manifest.json linguist-generated=true
+
+# Scientific source-of-truth lives in sources/manifest.json; these are derived
+# compatibility views or deterministic numerical products.
+external/libxc-7.0.0/manifest.json linguist-generated=true
+external/libxc-7.0.0/*-manifest.json linguist-generated=true
+tools/parameters/dispersion_parameter_sources.json linguist-generated=true
+src/dft/dispersion/*_data.hpp linguist-generated=true
+python/vibeqc_compiler/integral/rys*_data.py linguist-generated=true
+src/dft/dispersion/d4_eeq_r2scan3c_c6.hpp linguist-generated=true
+python/vibeqc_compiler/method/_generated_parameters.py linguist-generated=true
