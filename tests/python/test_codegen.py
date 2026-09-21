@@ -3746,7 +3746,7 @@ def test_standalone_benchmark_command_has_finite_slurm_allocation() -> None:
     ) == [
         "srun",
         "--partition=main",
-        "--gres=gpu:5090:1",
+        "--gres=gpu:1",
         "--nodes=1",
         "--ntasks=1",
         "--time=00:05:00",
