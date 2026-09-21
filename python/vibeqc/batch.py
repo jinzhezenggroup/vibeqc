@@ -793,7 +793,11 @@ class PreparedBatch:
                 * grid.angular_azimuth,
                 ecp_terms=len(terms),
                 nonlocal_correlation=(
-                    calculator._ks_options.execution_plan.nonlocal_correlation
+                    getattr(
+                        getattr(calculator._ks_options, "execution_plan", None),
+                        "nonlocal_correlation",
+                        None,
+                    )
                     is not None
                 ),
             )
