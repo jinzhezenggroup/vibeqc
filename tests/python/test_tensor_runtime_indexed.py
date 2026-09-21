@@ -138,7 +138,6 @@ def test_runtime_indexed_generated_ad_fails_closed_until_transpose_rule_lands() 
         linearize(program, ["source"])
 
 
-
 @pytest.mark.skipif(
     os.environ.get("VIBEQC_TENSOR_CUDA_TEST") != "1",
     reason="requires explicit allocated-GPU opt-in",
