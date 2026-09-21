@@ -207,7 +207,8 @@ def resolve_cuda_execution_profile(
 
     Empty optional scheduler strings in the environment disable that flag.
     The default requests one generic GPU without naming a model. Development
-    clusters can select a concrete resource through explicit arguments or\n    environment.
+    clusters can select a concrete resource through explicit arguments or
+    environment.
     """
 
     env = os.environ if environment is None else environment
