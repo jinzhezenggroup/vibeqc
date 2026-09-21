@@ -99,6 +99,20 @@ macro(vibeqc_register_host_generated_sources target)
     ARGS --output "${VIBEQC_SCF_ARRAY_CPU_HEADER}"
     COMMENT "Generating Array frontend SCF CPU tensor helpers")
 
+  set(VIBEQC_GFN2_PAIR_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_pair_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_pair_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_pair_native.py"
+    OUTPUTS "${VIBEQC_GFN2_PAIR_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/geometry/gfn2_pair.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_PAIR_CPU_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 CPU pair kernels")
+
   file(GLOB VIBEQC_RCCSD_GENERATOR_INPUTS CONFIGURE_DEPENDS
        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_cc/*.py")
   set(VIBEQC_RCCSD_CPU_HEADER

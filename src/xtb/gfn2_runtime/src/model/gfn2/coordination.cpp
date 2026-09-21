@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "data/parameters/gfn2.hpp"
+#include "generated_gfn2_pair_native.hpp"
 #include "model/gfn2/periodic_topology.hpp"
 
 namespace xtbloom::detail::gfn2 {
@@ -19,9 +20,6 @@ namespace {
 
 constexpr double kCutoffBohr = 25.0;
 constexpr double kMinimumDistanceSquared = 1.0e-12;
-constexpr double kFirstSteepness = 10.0;
-constexpr double kSecondSteepness = 20.0;
-constexpr double kSecondRadiusShiftBohr = 2.0;
 
 /*
  * mctc-lib v0.5.2 derives this conversion from its CODATA-2018 constants.
@@ -107,36 +105,6 @@ xtbloom_status_t validate_positions(const CoordinationPlan& plan, const double* 
     }
   }
   return XTBLOOM_STATUS_SUCCESS;
-}
-
-/* Stable logistic form of 1 / (1 + exp(-argument)). */
-double logistic(double argument) {
-  if (argument >= 0.0) {
-    const double exponential = std::exp(-argument);
-    return 1.0 / (1.0 + exponential);
-  }
-  const double exponential = std::exp(argument);
-  return exponential / (1.0 + exponential);
-}
-
-struct PairCount {
-  double value;
-  double derivative;
-};
-
-PairCount double_exponential_count(double distance, double radius) {
-  const double inverse_distance = 1.0 / distance;
-  const double inverse_distance_squared = inverse_distance * inverse_distance;
-  const double shifted_radius = radius + kSecondRadiusShiftBohr;
-  const double first = logistic(kFirstSteepness * (radius * inverse_distance - 1.0));
-  const double second = logistic(kSecondSteepness * (shifted_radius * inverse_distance - 1.0));
-
-  PairCount result{};
-  result.value = first * second;
-  result.derivative = -inverse_distance_squared *
-                      (kFirstSteepness * radius * first * (1.0 - first) * second +
-                       kSecondSteepness * shifted_radius * second * (1.0 - second) * first);
-  return result;
 }
 
 }  // namespace
@@ -245,9 +213,14 @@ xtbloom_status_t evaluate_coordination_cpu(const CoordinationPlan& plan, const d
 
         const double radius =
             plan.covalent_radius[first_index] + plan.covalent_radius[second_index];
-        const double count = double_exponential_count(std::sqrt(distance_squared), radius).value;
-        coordination_numbers[first_index] += count;
-        coordination_numbers[second_index] += count;
+        vibeqc::xtb::generated::Gfn2CoordinationPairResult pair{};
+        if (!vibeqc::xtb::generated::evaluate_gfn2_coordination_pair(
+                std::sqrt(distance_squared), radius, pair)) {
+          error = "compiler-generated GFN2 coordination pair evaluation failed";
+          return XTBLOOM_STATUS_INTERNAL_ERROR;
+        }
+        coordination_numbers[first_index] += pair.value;
+        coordination_numbers[second_index] += pair.value;
       }
     }
   }
@@ -302,9 +275,14 @@ xtbloom_status_t add_coordination_gradient_cpu(const CoordinationPlan& plan,
         const double distance = std::sqrt(distance_squared);
         const double radius =
             plan.covalent_radius[first_index] + plan.covalent_radius[second_index];
-        const double pair_derivative = double_exponential_count(distance, radius).derivative;
+        vibeqc::xtb::generated::Gfn2CoordinationPairResult pair{};
+        if (!vibeqc::xtb::generated::evaluate_gfn2_coordination_pair(
+                distance, radius, pair)) {
+          error = "compiler-generated GFN2 coordination derivative failed";
+          return XTBLOOM_STATUS_INTERNAL_ERROR;
+        }
         const double weight = dE_dcn[first_index] + dE_dcn[second_index];
-        const double scale = weight * pair_derivative / distance;
+        const double scale = weight * pair.distance_derivative / distance;
         const double gx = scale * dx;
         const double gy = scale * dy;
         const double gz = scale * dz;
@@ -405,7 +383,12 @@ xtbloom_status_t for_each_periodic_coordination_pair(const CoordinationPlan& pla
             error = "periodic coordination is undefined for coincident or near-coincident images";
             return XTBLOOM_STATUS_INVALID_ARGUMENT;
           }
-          operation(system, first, second, displacement, distance_squared);
+          if (!operation(system, first, second, displacement, distance_squared)) {
+            if (error.empty()) {
+              error = "periodic coordination pair operation failed";
+            }
+            return XTBLOOM_STATUS_INTERNAL_ERROR;
+          }
         }
       }
     }
@@ -437,9 +420,15 @@ xtbloom_status_t evaluate_periodic_coordination_cpu(const CoordinationPlan& plan
           double distance_squared) {
         const double radius = plan.covalent_radius[static_cast<std::size_t>(first)] +
                               plan.covalent_radius[static_cast<std::size_t>(second)];
-        const double count = double_exponential_count(std::sqrt(distance_squared), radius).value;
-        workspace.atom_scratch[first] += count;
-        if (first != second) workspace.atom_scratch[second] += count;
+        vibeqc::xtb::generated::Gfn2CoordinationPairResult pair{};
+        if (!vibeqc::xtb::generated::evaluate_gfn2_coordination_pair(
+                std::sqrt(distance_squared), radius, pair)) {
+          error = "compiler-generated periodic GFN2 coordination pair evaluation failed";
+          return false;
+        }
+        workspace.atom_scratch[first] += pair.value;
+        if (first != second) workspace.atom_scratch[second] += pair.value;
+        return true;
       },
       error);
   if (status != XTBLOOM_STATUS_SUCCESS) return status;
@@ -477,9 +466,14 @@ xtbloom_status_t add_periodic_coordination_gradient_cpu(
         const double distance = std::sqrt(distance_squared);
         const double radius = plan.covalent_radius[static_cast<std::size_t>(first)] +
                               plan.covalent_radius[static_cast<std::size_t>(second)];
-        const double derivative = double_exponential_count(distance, radius).derivative;
+        vibeqc::xtb::generated::Gfn2CoordinationPairResult pair{};
+        if (!vibeqc::xtb::generated::evaluate_gfn2_coordination_pair(
+                distance, radius, pair)) {
+          error = "compiler-generated periodic GFN2 coordination derivative failed";
+          return false;
+        }
         const double adjoint = dE_dcn[first] + (first == second ? 0.0 : dE_dcn[second]);
-        const double scale = -adjoint * derivative / distance;
+        const double scale = -adjoint * pair.distance_derivative / distance;
         std::array<double, 3> first_gradient{};
         for (std::size_t axis = 0; axis < 3u; ++axis) {
           first_gradient[axis] = scale * displacement[axis];
@@ -496,6 +490,7 @@ xtbloom_status_t add_periodic_coordination_gradient_cpu(
             strain[row * 3u + column] += first_gradient[row] * (-displacement[column]);
           }
         }
+        return true;
       },
       error);
   if (status != XTBLOOM_STATUS_SUCCESS) return status;
