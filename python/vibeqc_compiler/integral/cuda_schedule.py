@@ -316,9 +316,21 @@ def _power_of_two_tiles(target: CudaTargetInfo) -> tuple[int, ...]:
     return tuple(tiles)
 
 
+def _packed_default_fits_target(
+    integral: IntegralIR,
+    target: CudaTargetInfo,
+) -> bool:
+    """Admit packed fallback only when its static value-state envelope is bounded."""
+
+    value_state_count = comb(integral.value_coulomb_order + len(AXES), len(AXES))
+    live_state_units = integral.spec.component_count * value_state_count
+    return live_state_units <= target.tuning_maximum_registers
+
+
 def _default_schedule_priority(
     integral: IntegralIR,
     schedule: CudaScheduleIR,
+    target: CudaTargetInfo,
 ) -> int:
     """Rank correctness fallbacks without shell, recurrence-name, or device tables."""
 
@@ -327,7 +339,7 @@ def _default_schedule_priority(
     elif (
         integral.derivative is None
         and schedule.kind == ScheduleKind.PACKED_TASKS
-        and integral.spec.component_count <= schedule.tasks_per_block
+        and _packed_default_fits_target(integral, target)
     ):
         family_rank = 0
     elif schedule.kind == ScheduleKind.COMPONENT_LANES:
@@ -471,12 +483,16 @@ def default_schedule(
     conservative = tuple(
         candidate
         for candidate in candidates
-        if _default_schedule_priority(integral, candidate) < 3
+        if _default_schedule_priority(integral, candidate, target) < 3
     )
     if conservative:
         return min(
             conservative,
-            key=lambda candidate: _default_schedule_priority(integral, candidate),
+            key=lambda candidate: _default_schedule_priority(
+                integral,
+                candidate,
+                target,
+            ),
         )
     name = (
         integral.spec.name
