@@ -456,9 +456,7 @@ def _jvp_runtime_indexed_select(
     result = _zeros(node.spec)
     for domain_coordinate in range(node.spec.shape[0]):
         source = tuple(
-            int(selected[axis][domain_coordinate])
-            if axis in selected
-            else slice(None)
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
             for axis in range(source_tangent.ndim)
         )
         result[domain_coordinate] = source_tangent[source]
@@ -690,9 +688,7 @@ def _vjp_runtime_indexed_select(
     selected = dict(zip(axes, maps, strict=True))
     for domain_coordinate in range(node.spec.shape[0]):
         target = tuple(
-            int(selected[axis][domain_coordinate])
-            if axis in selected
-            else slice(None)
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
             for axis in range(source.ndim)
         )
         source[target] += bar[domain_coordinate]
