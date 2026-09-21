@@ -199,7 +199,6 @@ class PreparedD3CudaBatch:
             max_bytes=self.max_bytes,
         )
         artifact = compile_cuda(plan, self.compiler, self.cache)
-        prepared = PreparedCuda(plan, artifact, device=self.device)
         request = PreparedExecutionRequest(
             "d3-generated-cuda",
             compiled.identity,
@@ -216,16 +215,14 @@ class PreparedD3CudaBatch:
             device=self.device,
         )
         lease = PreparedExecutionLease()
-        try:
-            lease.install(
-                request,
-                (PreparedArtifactBinding.from_artifact(artifact),),
-                host_bytes=plan.host_bytes,
-                device_bytes=plan.device_bytes,
-            )
-        except BaseException:
-            prepared.close()
-            raise
+        # Validate the metadata-only contract before creating device resources.
+        lease.install(
+            request,
+            (PreparedArtifactBinding.from_artifact(artifact),),
+            host_bytes=plan.host_bytes,
+            device_bytes=plan.device_bytes,
+        )
+        prepared = PreparedCuda(plan, artifact, device=self.device)
 
         old, old_lease = self._prepared, self._lease
         self._compiled = compiled
@@ -314,28 +311,29 @@ class PreparedD3CudaBatch:
                 },
                 profile=profile,
             )
+            energies = np.asarray(result.outputs["energy"], dtype=np.float64).copy()
+            gradient = np.asarray(result.outputs["gradient"], dtype=np.float64)
+            split = None
+            if gradients:
+                split = tuple(
+                    gradient[begin:end].copy()
+                    for begin, end in zip(
+                        self._offsets[:-1], self._offsets[1:], strict=True
+                    )
+                )
+            execution = D3GeneratedCudaExecution(
+                energies=energies,
+                gradients=split,
+                rebuilt=rebuilt,
+                program_identity=compiled.identity,
+                plan_identity=plan.identity,
+                metrics=dict(result.metrics),
+            )
         except BaseException:
             self._lease.mark_failure()
             raise
         self._lease.mark_success()
-        energies = np.asarray(result.outputs["energy"], dtype=np.float64).copy()
-        gradient = np.asarray(result.outputs["gradient"], dtype=np.float64)
-        split = None
-        if gradients:
-            split = tuple(
-                gradient[begin:end].copy()
-                for begin, end in zip(
-                    self._offsets[:-1], self._offsets[1:], strict=True
-                )
-            )
-        return D3GeneratedCudaExecution(
-            energies=energies,
-            gradients=split,
-            rebuilt=rebuilt,
-            program_identity=compiled.identity,
-            plan_identity=plan.identity,
-            metrics=dict(result.metrics),
-        )
+        return execution
 
     def diagnostic(self) -> D3GeneratedCudaDiagnostic:
         compiled, _, plan = self._require_open()

@@ -8,6 +8,7 @@ request. Dynamic geometry/state refresh remains the consumer's responsibility.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 
 from .provenance import canonical_hash
@@ -47,7 +48,9 @@ class PreparedArtifactBinding:
     @classmethod
     def from_artifact(cls, artifact: object) -> PreparedArtifactBinding:
         try:
-            metadata = artifact.metadata
+            metadata = getattr(artifact, "metadata", None)
+            if not isinstance(metadata, Mapping):
+                raise TypeError("artifact metadata must be a mapping")
             return cls(metadata["key"], metadata["binary_sha256"])
         except (AttributeError, KeyError, TypeError) as error:
             raise TypeError("prepared artifact requires key/binary metadata") from error
