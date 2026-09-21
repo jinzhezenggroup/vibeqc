@@ -225,6 +225,32 @@ def _pass(pass_name: str) -> typing.Callable[[Program], Program]:
     return apply
 
 
+def _pruning_diagnostics(before: Program, after: Program) -> dict[str, typing.Any]:
+    """Summarize #673 DCE without turning diagnostics into optimizer policy."""
+
+    before_nodes = before.nodes
+    after_nodes = after.nodes
+    after_live_nodes = after.live_nodes
+    requested_outputs = tuple(before.outputs)
+    retained_outputs = tuple(after.outputs)
+    if requested_outputs != retained_outputs:
+        raise ValueError("TensorIR optimizer changed requested output names")
+    if after_nodes != after_live_nodes:
+        raise ValueError("TensorIR optimizer left dead definitions before lowering")
+    return {
+        "schema": "vibeqc.compiler.pruning.v1",
+        "nodes_before": len(before_nodes),
+        "nodes_after": len(after_nodes),
+        "nodes_removed": len(before_nodes) - len(after_nodes),
+        "definitions_before": len(before.definitions),
+        "definitions_after": len(after.definitions),
+        "definitions_removed": len(before.definitions) - len(after.definitions),
+        "requested_outputs": list(requested_outputs),
+        "retained_outputs": list(retained_outputs),
+        "minimal_before_lowering": True,
+    }
+
+
 _OPTIMIZER = PassManager(
     name="tensor.optimize",
     version=2,
@@ -263,9 +289,10 @@ _OPTIMIZER = PassManager(
 
 
 def optimize(program: Program) -> Program:
-    """Run the initial TensorIR pipeline through the shared pass manager."""
+    """Run TensorIR cleanup and verify the backend input is output-minimal."""
     run = _OPTIMIZER.run(program)
-    result = run.value
+    result = Program(run.value.outputs)
+    pruning = _pruning_diagnostics(program, result)
     return Program(
         result.outputs,
         provenance={
@@ -282,5 +309,6 @@ def optimize(program: Program) -> Program:
                 }
                 for record in run.records
             ],
+            "pruning_diagnostics": pruning,
         },
     )
