@@ -30,6 +30,30 @@ a mixed host/device HVP, not an all-device HVP. There is still no public
 Calculator Hessian/HVP API or production-size global-memory claim. See
 [the matrix-free RHF HVP decision note](../.agents/notes/implemented/numerics/2026-09-19-rhf-matrix-free-hvp.md).
 
+## Generic DFT HVP planning
+
+DFT Hessian support is derived from resolved `MethodIR` primitive capabilities,
+not from functional-name branches. `StationaryHVPPlan` is the first compiler
+boundary for this rule. Its initial admitted topology is direct all-electron
+FP64 LDA/GGA RKS/UKS with the native SCF point model: LDA and GGA share the
+same one-electron, Coulomb, XC AO/grid/partition, overlap/Pulay and nuclear
+directional source inventory, while their active `rho`/`sigma` features come
+from the method graph.
+
+The planner binds the shared #179 CPKS contract, #161/#236 XC feature-Hessian
+action and #178 weighted second-integral HVP contract without executing any of
+them. It fails closed when an active primitive adds physics whose second-order
+rule is not registered. Therefore full/range-separated exchange, `tau`,
+nonlocal correlation, DF and ECP do not inherit Hessian support merely from
+energy or gradient support. Adding another functional inside an already
+qualified LDA/GGA primitive family must not add Hessian-specific scientific
+source code.
+
+This is compiler/source-completeness progress only. Public Calculator DFT
+Hessian/HVP capability remains off until the native geometric directional
+consumers and complete molecular HVP pass independent finite-difference,
+raw-symmetry and failure-path gates.
+
 ## Scope of this slice
 
 Slice A targets a **tiny dense analytic RHF Hessian** with component checks, on
@@ -38,8 +62,9 @@ CPU-only.
 
 Explicitly outside this slice, and left fail-closed rather than approximated:
 
-- **DFT** (slice C) — needs the complete LDA/GGA nuclear gradients from #163 and
-  #161's derivative kernels;
+- **DFT native execution** (slice C) — the generic MethodIR-derived HVP planner
+  exists, but complete AO/grid/partition directional consumers and molecular
+  LDA/GGA HVP assembly remain separately qualified;
 - **bounded full-Hessian execution** (slice B4) remains a small-system tools
   capability rather than a public production endpoint; B2 device-resident
   response and B3 matrix-free HVP are implemented under the same bounded tools boundary;
