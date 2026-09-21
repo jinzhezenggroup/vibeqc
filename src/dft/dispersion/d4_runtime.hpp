@@ -13,7 +13,7 @@
 namespace vibeqc::dft::dispersion {
 
 inline constexpr char kD4EEQTableSha256[] =
-    "d1691a6cf08748e7c35a340f78824a4a8da1813b0ca32d1074c346bfb3874871";
+    "f0caaa42a0604d2d0c429e34eb84f5078769058ab02cccc55ae492746c6bc34c";
 inline constexpr char kD4EEQChargeParameterSha256[] =
     "02b8bee49c10b4c31914caf149d9f58164e58d6dc7ae2ab21e9d12f5bc22797a";
 inline constexpr char kD4ProductionProviderIdentity[] = "vibeqc-native-d4-bj-eeq-v1";
