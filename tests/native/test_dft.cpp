@@ -75,8 +75,7 @@ int main() {
       for (double& component : expected) row >> component;
       require(static_cast<bool>(row), "malformed XC SCF-domain fixture");
       if (pbe != 0) continue;
-      const auto value =
-          vibeqc::dft::generated::lda_xc_pw_polarized_production(rho[0], rho[1]);
+      const auto value = vibeqc::dft::generated::lda_xc_pw_polarized_production(rho[0], rho[1]);
       const double actual[]{value.energy_density, value.feature_derivative[0],
                             value.feature_derivative[1]};
       for (unsigned i = 0; i < 3; ++i) {
@@ -89,10 +88,8 @@ int main() {
       ++lda_rows;
     }
     require(lda_rows == 36, "incomplete independent polarized LDA reference coverage");
-    const auto lda_vacuum =
-        vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
-    require(lda_vacuum.energy_density == 0.0 &&
-                lda_vacuum.feature_derivative[0] == 0.0 &&
+    const auto lda_vacuum = vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
+    require(lda_vacuum.energy_density == 0.0 && lda_vacuum.feature_derivative[0] == 0.0 &&
                 lda_vacuum.feature_derivative[1] == 0.0,
             "compiler-owned polarized LDA vacuum limit is wrong");
 
