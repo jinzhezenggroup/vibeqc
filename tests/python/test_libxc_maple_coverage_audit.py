@@ -35,3 +35,9 @@ def test_checked_in_coverage_snapshot_is_current() -> None:
         encoding="utf-8"
     )
     assert actual == expected
+
+
+def test_default_audit_uses_canonical_vendored_sources() -> None:
+    """The normal audit must not depend on the retired external source tree."""
+    assert coverage.LIBXC_ROOT == coverage.ROOT / "upstream/libxc/7.0.0"
+    assert (coverage.LIBXC_ROOT / "lda_x.mpl").is_file()

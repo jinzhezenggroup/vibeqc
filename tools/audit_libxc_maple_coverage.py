@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT / "python"))
 from vibeqc_compiler.integral.expr import Graph
 from vibeqc_compiler.xc import libxc_maple
 
-LIBXC_ROOT = ROOT / "external/libxc-7.0.0"
+LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
 
 _INCLUDE = re.compile(r'^\s*\$include\s+"([^"]+)"\s*$', re.MULTILINE)
 _CONDITIONAL = re.compile(r"^\s*\$(?:ifdef|elif)\s+([A-Za-z_]\w*)\s*$", re.MULTILINE)
