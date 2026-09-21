@@ -11,6 +11,7 @@
 #include <weighted_eri.cuh>
 
 #include "scf/cuda/boys_table.cuh"
+#include "scf/cuda/cartesian_angular.cuh"
 #include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_force_density.cuh"
 #include "scf/cuda/direct_metadata.hpp"
