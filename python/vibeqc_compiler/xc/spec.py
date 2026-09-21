@@ -11,6 +11,7 @@ from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
 from .b88_vwn_maple import b88_vwn_maple_provenance
+from .p86_pz_maple import p86_pz_maple_provenance
 from .pbe_maple import pbe_maple_provenance
 
 VERSION = "libxc-7.0.0/interior-v1"
@@ -157,28 +158,30 @@ class FunctionalSpec:
         else:
             manifest = "rsh-manifest.json" if special else "manifest.json"
             expression_source = "rsh_expressions.py" if special else "expressions.py"
-        pbe_provenance = pbe_maple_provenance(self.components)
-        b88_vwn_provenance = b88_vwn_maple_provenance(self.components)
-        expression_provenance = pbe_provenance or b88_vwn_provenance
-        if pbe_provenance is not None and b88_vwn_provenance is not None:
-            for key in ("kind", "importer_semantics", "importer_sha256"):
-                if pbe_provenance[key] != b88_vwn_provenance[key]:
-                    raise UnsupportedXC("incompatible Libxc Maple provenance")
+        sources = tuple(
+            record
+            for record in (
+                pbe_maple_provenance(self.components),
+                p86_pz_maple_provenance(self.components),
+                b88_vwn_maple_provenance(self.components),
+            )
+            if record is not None
+        )
+        expression_provenance = sources[0] if sources else None
+        if len(sources) > 1:
+            for record in sources[1:]:
+                for key in ("kind", "importer_semantics", "importer_sha256"):
+                    if record[key] != sources[0][key]:
+                        raise UnsupportedXC("incompatible Libxc Maple provenance")
             expression_provenance = {
-                "kind": pbe_provenance["kind"],
-                "importer_semantics": pbe_provenance["importer_semantics"],
+                **sources[0],
                 "adapter_sha256": canonical_hash(
-                    sorted(
-                        (
-                            pbe_provenance["adapter_sha256"],
-                            b88_vwn_provenance["adapter_sha256"],
-                        )
-                    )
+                    sorted(record["adapter_sha256"] for record in sources)
                 ),
-                "importer_sha256": pbe_provenance["importer_sha256"],
                 "components": {
-                    **pbe_provenance["components"],
-                    **b88_vwn_provenance["components"],
+                    key: value
+                    for record in sources
+                    for key, value in record["components"].items()
                 },
             }
         return {
