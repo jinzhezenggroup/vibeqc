@@ -650,10 +650,8 @@ class Calculator:
                 "use dispersion_memory_budget_bytes for the bounded correction"
             )
         if self._method == _native.METHOD_GFN2_XTB:
-            if device != "cpu":
-                raise NotImplementedError(
-                    "GFN2-xTB CUDA execution is not admitted yet; use device='cpu'"
-                )
+            # Backend-specific admission is owned by native calculation preparation.
+            # Native SDK builds may include GFN2 CUDA while CUDA wheels currently do not.
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise ValueError("GFN2-xTB does not use Gaussian density fitting")
             if target_accuracy is not None:

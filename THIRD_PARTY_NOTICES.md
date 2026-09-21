@@ -92,11 +92,21 @@ VibeQC issue #560 embeds a reviewed source snapshot of xTBloom commit
 `src/xtb/gfn2_runtime/` to provide the first production GFN2-xTB runtime:
 intrinsic-basis integrals, H0, ES2/ES3/AES2, generalized eigensolution,
 occupations, Mulliken/multipole state, SCC mixing, repulsion, self-consistent
-D4, spin terms, total energy, and analytic nuclear forces. VibeQC compiles only the required common/GFN2/CPU-runtime sources into
-`libvibeqc`; the former broad xTBloom subproject is not restored, and an
-installed xTBloom library or executable is not a runtime dependency. Its GPL-3.0-or-later terms, additional CUDA/MKL
-permission, full third-party notices, and retained license texts ship with the
-source/wheel legal material.
+D4, spin terms, total energy, and analytic nuclear forces. VibeQC compiles the required common/GFN2/CPU-runtime sources from that
+snapshot into `libvibeqc`. Native non-wheel CUDA builds additionally use the
+GFN2-only CUDA cohort from xTBloom commit
+`3c21f50195389b093941eb5ed6f1143b8802f96e`, selected from the repository
+state immediately before production GFN1 CUDA execution was integrated. The
+cohort reuses VibeQC's canonical packed D4 tables and carries the narrow
+correctness backport from xTBloom #487 that passes CUDA kernel descriptors by
+value rather than launcher-stack reference.
+`src/xtb/gfn2_runtime/CUDA_SOURCE_PROVENANCE.json` records the exact source
+set and per-file upstream/vendored hashes. No GFN1 runtime is compiled or
+admitted, and CUDA wheel admission remains a separate gate. The former broad
+xTBloom subproject is not restored, and an installed xTBloom library or
+executable is not a runtime dependency. Its GPL-3.0-or-later terms, additional
+CUDA/MKL permission, full third-party notices, and retained license texts ship
+with the source/wheel legal material.
 
 Linux wheels use xTBloom's reviewed private `scipy-openblas32==0.3.34.0.0`
 LP64 LAPACKE/CBLAS provider boundary. A tiny sibling shim gives auditwheel one
