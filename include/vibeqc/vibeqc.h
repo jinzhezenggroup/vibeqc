@@ -459,9 +459,17 @@ typedef struct vibeqc_ks_options {
   double semilocal_exchange_scale;
   double semilocal_correlation_scale;
   double fock_exchange_coefficient;
+  /** Optional v3 suffix: compiler-resolved execution identity. Version 1
+   * means the fields below are authoritative for scientific dispatch.
+   * spin_channels is 1 for RKS and 2 for UKS. semilocal_family is the
+   * primitive-family selector: 0=LDA, 1=PBE, 2=r2SCAN. */
+  uint32_t execution_plan_version;
+  uint32_t spin_channels;
+  uint32_t semilocal_family;
+  uint32_t reserved_v3_padding;
 } vibeqc_ks_options;
 
-/** Pure capability query. Version 2 accepts both the v1 prefix and v2 suffix. */
+/** Pure capability query. Version 3 accepts the v1 prefix and v2/v3 suffixes. */
 VIBEQC_API uint32_t vibeqc_ks_options_version(void);
 
 typedef struct vibeqc_method_descriptor {
