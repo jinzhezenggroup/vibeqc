@@ -105,6 +105,11 @@ function(vibeqc_add_gfn2_runtime target)
       ${CMAKE_CURRENT_SOURCE_DIR}/include
       ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_definitions(vibeqc_gfn2_cuda PRIVATE XTBLOOM_HAS_CUDA=1)
+    if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+      target_compile_definitions(vibeqc_gfn2_cuda PRIVATE VIBEQC_CUDA_PROVIDER_CUMETAL=1)
+    else()
+      target_compile_definitions(vibeqc_gfn2_cuda PRIVATE VIBEQC_CUDA_PROVIDER_CUMETAL=0)
+    endif()
     set_target_properties(vibeqc_gfn2_cuda PROPERTIES
       POSITION_INDEPENDENT_CODE ON
       CUDA_STANDARD 20
