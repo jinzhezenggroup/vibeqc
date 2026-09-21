@@ -299,8 +299,12 @@ def analyze_storage(
         key=lambda item: (item.first_phase, order[item.owner]),
     )
     for item in allocation_order:
-        layout = by_key[item.owner].layout
-        alignment = 1 if layout is None else layout.alignment
+        # Views share a physical base and may impose stricter alignment,
+        # including through a chain of aliases.
+        alignment = max(
+            1 if by_key[member].layout is None else by_key[member].layout.alignment
+            for member in item.members
+        )
         candidates = []
         if item.reusable:
             for index, slot in enumerate(slot_state):
