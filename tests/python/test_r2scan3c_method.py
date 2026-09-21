@@ -143,7 +143,9 @@ def test_r2scan3c_backend_must_acknowledge_both_corrections() -> None:
 
 def test_r2scan3c_audit_manifest_hashes_match_catalog() -> None:
     root = _root()
-    manifest = json.loads((root / "sources/canonical/r2scan3c/manifest.json").read_text())
+    manifest = json.loads(
+        (root / "sources/canonical/r2scan3c/manifest.json").read_text()
+    )
     spec = METHOD_CATALOG["R2SCAN-3c"]
     assert manifest["basis"]["basis_identity"] == spec.basis.basis_identity
     assert manifest["basis"]["source_export_sha256"] == spec.basis.source_sha256

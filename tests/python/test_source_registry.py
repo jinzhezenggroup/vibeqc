@@ -68,7 +68,9 @@ def test_gcp_canonical_input_matches_registered_upstream_provenance() -> None:
     registry = json.loads(source_registry.REGISTRY.read_text())
     source = registry["sources"]["simple-dftd3-gcp"]
     data = json.loads(
-        (source_registry.ROOT / "sources/canonical/r2scan3c/gcp-r2scan3c-h-ar.json").read_text()
+        (
+            source_registry.ROOT / "sources/canonical/r2scan3c/gcp-r2scan3c-h-ar.json"
+        ).read_text()
     )
     upstream = data["upstream"]
     assert upstream["commit"] == source["revision"]
