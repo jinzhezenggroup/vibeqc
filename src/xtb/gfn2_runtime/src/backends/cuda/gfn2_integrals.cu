@@ -333,8 +333,9 @@ __global__ void integral_shell_pair_kernel(Gfn2IntegralDeviceBatch batch, const 
            ++bra_primitive) {
         const double bra_alpha = batch.primitive_exponents[bra_primitive];
         const double alpha_sum = ket_alpha + bra_alpha;
+        const double inverse_sum = 1.0 / alpha_sum;
         const double product_exponent =
-            ket_alpha * bra_alpha * distance_squared / alpha_sum;
+            ket_alpha * bra_alpha * distance_squared * inverse_sum;
         if (product_exponent > batch.integral_cutoff) {
           continue;
         }
@@ -1317,8 +1318,9 @@ __global__ void integral_force_shell_pair_kernel(
            ++bra_primitive) {
         const double bra_alpha = batch.primitive_exponents[bra_primitive];
         const double alpha_sum = ket_alpha + bra_alpha;
+        const double inverse_sum = 1.0 / alpha_sum;
         const double product_exponent =
-            ket_alpha * bra_alpha * distance_squared / alpha_sum;
+            ket_alpha * bra_alpha * distance_squared * inverse_sum;
         if (product_exponent > batch.integral_cutoff) {
           continue;
         }
