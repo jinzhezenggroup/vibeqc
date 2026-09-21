@@ -3557,9 +3557,9 @@ def test_virtual_cuda_target_keeps_host_profile_portable() -> None:
     """Do not apply a measured host schedule to PTX that may JIT on a future GPU."""
 
     cmake = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
-    profile_block = cmake.split(
-        "# A single real architecture may use", 1
-    )[1].split("vibeqc_register_cuda_generated_sources", 1)[0]
+    profile_block = cmake.split("# A single real architecture may use", 1)[1].split(
+        "vibeqc_register_cuda_generated_sources", 1
+    )[0]
     virtual_guard = profile_block.index(
         'if(NOT _vibeqc_cuda_profile_architecture MATCHES "-virtual$")'
     )
