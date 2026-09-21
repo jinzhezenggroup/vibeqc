@@ -130,9 +130,8 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
                             "invalid compiler-resolved KS execution plan");
         execution_plan = {ks_input->spin_channels, ks_input->semilocal_family, true};
         execution_plan_seen = true;
-        if (legacy_plan &&
-            (execution_plan.spin_channels != legacy_plan->spin_channels ||
-             execution_plan.semilocal_family != legacy_plan->semilocal_family))
+        if (legacy_plan && (execution_plan.spin_channels != legacy_plan->spin_channels ||
+                            execution_plan.semilocal_family != legacy_plan->semilocal_family))
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                             "KS execution plan disagrees with the legacy selector family/spin");
       }
@@ -1030,8 +1029,7 @@ void validate_ks_spin_state(const NativeKsExecutionPlan& execution_plan,
         "nonnegative spin occupations");
 }
 
-vibeqc_status validate_dft_system(vibeqc_method, const core::System& system,
-                                  std::string& detail) {
+vibeqc_status validate_dft_system(vibeqc_method, const core::System& system, std::string& detail) {
   if (system.shells.empty()) {
     detail = "DFT requires an explicit Gaussian orbital basis";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
