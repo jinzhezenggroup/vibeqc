@@ -130,6 +130,20 @@ macro(vibeqc_register_host_generated_sources target)
 
   file(GLOB VIBEQC_RCCSD_GENERATOR_INPUTS CONFIGURE_DEPENDS
        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_cc/*.py")
+  set(VIBEQC_GFN2_SDQ_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_sdq_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_sdq_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_sdq_native.py"
+    OUTPUTS "${VIBEQC_GFN2_SDQ_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/gfn2_sdq.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/gfn2_sdq_cpu.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_values.py"
+    ARGS --output "${VIBEQC_GFN2_SDQ_CPU_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 S/D/Q CPU primitive kernels")
+
   set(VIBEQC_RCCSD_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsd_cpu.hpp")
   vibeqc_register_generated_sources(
