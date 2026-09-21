@@ -10,6 +10,7 @@ from pathlib import Path
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
+from .p86_pz_maple import p86_pz_maple_provenance
 from .pbe_maple import pbe_maple_provenance
 from .rsh_maple import rsh_maple_provenance
 
@@ -157,31 +158,30 @@ class FunctionalSpec:
         else:
             manifest = "rsh-manifest.json" if special else "manifest.json"
             expression_source = "rsh_expressions.py" if special else "expressions.py"
-        rsh_provenance = rsh_maple_provenance(self.components)
-        pbe_provenance = pbe_maple_provenance(self.components)
-        expression_provenance = rsh_provenance or pbe_provenance
-        if rsh_provenance is not None and pbe_provenance is not None:
-            if (
-                rsh_provenance["importer_semantics"]
-                != pbe_provenance["importer_semantics"]
-            ):
-                raise ValueError(
-                    "mixed Maple components disagree on importer semantics"
-                )
+        sources = tuple(
+            record
+            for record in (
+                pbe_maple_provenance(self.components),
+                p86_pz_maple_provenance(self.components),
+                rsh_maple_provenance(self.components),
+            )
+            if record is not None
+        )
+        expression_provenance = sources[0] if sources else None
+        if len(sources) > 1:
+            for record in sources[1:]:
+                for key in ("kind", "importer_semantics", "importer_sha256"):
+                    if record[key] != sources[0][key]:
+                        raise UnsupportedXC("incompatible Libxc Maple provenance")
             expression_provenance = {
-                "kind": "libxc-maple",
-                "importer_semantics": rsh_provenance["importer_semantics"],
+                **sources[0],
                 "adapter_sha256": canonical_hash(
-                    sorted(
-                        (
-                            rsh_provenance["adapter_sha256"],
-                            pbe_provenance["adapter_sha256"],
-                        )
-                    )
+                    sorted(record["adapter_sha256"] for record in sources)
                 ),
                 "components": {
-                    **rsh_provenance["components"],
-                    **pbe_provenance["components"],
+                    key: value
+                    for record in sources
+                    for key, value in record["components"].items()
                 },
             }
         return {

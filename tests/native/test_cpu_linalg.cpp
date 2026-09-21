@@ -67,6 +67,31 @@ bool check_gemm(CpuLinalgProvider provider,
   return close(zero_inner[0], 6.0) && check_zero_scaling(provider, ownership, threads);
 }
 
+bool check_syrk(CpuLinalgProvider provider,
+                CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
+                int threads = 1) {
+  const CpuLinalgPlan plan{provider, ownership, threads};
+  const std::array<double, 6> a{1, 2, 3, 4, 5, 6};
+  std::array<double, 4> lower{1, 2, 3, 4};
+  vibeqc::tensor::cpu_syrk('L', 'N', 2, 3, a.data(), lower.data(), 2.0, 3.0, plan);
+  const std::array<double, 4> lower_expected{31, 2, 73, 166};
+  for (std::size_t i = 0; i < lower.size(); ++i)
+    if (!close(lower[i], lower_expected[i])) return false;
+
+  const std::array<double, 6> transposed_a{1, 4, 2, 5, 3, 6};
+  std::array<double, 4> upper{1, 2, 3, 4};
+  vibeqc::tensor::cpu_syrk('U', 'T', 2, 3, transposed_a.data(), upper.data(), 2.0, 3.0, plan);
+  const std::array<double, 4> upper_expected{31, 70, 3, 166};
+  for (std::size_t i = 0; i < upper.size(); ++i)
+    if (!close(upper[i], upper_expected[i])) return false;
+
+  const double poison = std::numeric_limits<double>::quiet_NaN();
+  std::array<double, 4> zero_inner{poison, 9.0, poison, poison};
+  vibeqc::tensor::cpu_syrk('L', 'N', 2, 0, nullptr, zero_inner.data(), 1.0, 0.0, plan);
+  return zero_inner[0] == 0.0 && zero_inner[1] == 9.0 && zero_inner[2] == 0.0 &&
+         zero_inner[3] == 0.0;
+}
+
 bool check_cholesky(CpuLinalgProvider provider,
                     CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
                     int threads = 1) {
@@ -103,8 +128,8 @@ bool check_eigen(CpuLinalgProvider provider,
 }  // namespace
 
 int main() {
-  if (!check_gemm(CpuLinalgProvider::scalar) || !check_cholesky(CpuLinalgProvider::scalar) ||
-      !check_eigen(CpuLinalgProvider::scalar)) {
+  if (!check_gemm(CpuLinalgProvider::scalar) || !check_syrk(CpuLinalgProvider::scalar) ||
+      !check_cholesky(CpuLinalgProvider::scalar) || !check_eigen(CpuLinalgProvider::scalar)) {
     std::cerr << "scalar CPU linear algebra failed\n";
     return 1;
   }
@@ -131,8 +156,9 @@ int main() {
 
     const auto ownership = local ? CpuLinalgThreadOwnership::task_parallel
                                  : CpuLinalgThreadOwnership::provider_parallel;
-    if ((local || global) && !check_gemm(CpuLinalgProvider::openblas, ownership)) {
-      std::cerr << "OpenBLAS GEMM failed\n";
+    if ((local || global) && (!check_gemm(CpuLinalgProvider::openblas, ownership) ||
+                              !check_syrk(CpuLinalgProvider::openblas, ownership))) {
+      std::cerr << "OpenBLAS BLAS provider failed\n";
       return 4;
     }
     if ((local || global) && vibeqc::tensor::cpu_openblas_lapack_built() &&
