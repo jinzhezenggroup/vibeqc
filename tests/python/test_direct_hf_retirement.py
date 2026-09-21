@@ -68,3 +68,11 @@ def test_runtime_only_file_cannot_be_counted_as_retirement_science() -> None:
     retirement["families"][0]["files"].append(runtime_path)
     with pytest.raises(ValueError, match="runtime-only"):
         validate_retirement_ledger(ROOT, retirement, ownership)
+
+
+def test_scientific_family_cannot_claim_independent_oracle_status() -> None:
+    retirement, ownership = _inputs()
+    retirement = copy.deepcopy(retirement)
+    retirement["families"][0]["status"] = "oracle"
+    with pytest.raises(ValueError, match="oracle.*semantic"):
+        validate_retirement_ledger(ROOT, retirement, ownership)

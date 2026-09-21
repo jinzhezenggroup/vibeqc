@@ -113,6 +113,10 @@ def validate_retirement_ledger(
                 raise ValueError(
                     f"family {family_id} must not classify runtime-only ownership: {path}"
                 )
+            if status == "oracle" and row["role"] != "oracle":
+                raise ValueError(
+                    f"family {family_id} claims oracle status without semantic oracle ownership: {path}"
+                )
             seen_files[path] = family_id
 
     actual = set(seen_files)
