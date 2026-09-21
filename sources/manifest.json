@@ -87,14 +87,15 @@
     },
     "libxc-xc-admission": {
       "canonical_inputs": {
-        "python/vibeqc_compiler/xc/expressions.py": "0c6325d8ad23389b3c86324ac41bb1b647b1840776d84659404e3c78fbc6da89",
+        "python/vibeqc_compiler/xc/expressions.py": "4d10ca12b5db6b46269c6e6ddac1e51f1713a86aa71b0613d58b65b6821ccca2",
+        "python/vibeqc_compiler/xc/pbe_maple.py": "90f401a766d7c0799ddc14087209ffd6e5cdb7413ed7b3c7c0613f25dd4034f2",
         "python/vibeqc_compiler/xc/rsh_expressions.py": "71c88bf653e07d202b3f57b41e79256b3c95f03a29b0aee56ceefb2eae1dd014",
-        "python/vibeqc_compiler/xc/spec.py": "c0a738fe147dddc39564f5c747696efdec0afecb6cffd21c69139710cb28e910",
+        "python/vibeqc_compiler/xc/spec.py": "23aaebfd18ad7853fb55475ac93160ef20f5a009e6eca8f20f5726f686c654de",
         "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
-      "generator_sha256": "c36b8227e56a7d35cfe1aea9d2d312bf8438f0c55ea7dc5b41c695d1f95adf61",
-      "input_identity_sha256": "53d9389dcdcb033df0b14f187d2f9a98e6f5415971949655caf9aeb9cd4b6ec7",
+      "generator_sha256": "db1cf16418bf2ba8996e9ed3ba76e68da4712f90ead32635a734b44e4d8c4d13",
+      "input_identity_sha256": "2664145467e9ab5103bd6994ceb604f3127b6492d974db01768ba0e7029a5633",
       "inputs": [
         "libxc-7.0.0"
       ],
@@ -252,8 +253,8 @@
     "libxc-7.0.0": {
       "admission": {
         "importer": "python/vibeqc_compiler/xc/libxc_maple.py",
-        "importer_sha256": "c36b8227e56a7d35cfe1aea9d2d312bf8438f0c55ea7dc5b41c695d1f95adf61",
-        "semantics": "libxc-maple-graph/v7"
+        "importer_sha256": "db1cf16418bf2ba8996e9ed3ba76e68da4712f90ead32635a734b44e4d8c4d13",
+        "semantics": "libxc-maple-graph/v8"
       },
       "collections": {
         "core": [
@@ -281,6 +282,7 @@
         "rsh": [
           "COPYING",
           "attenuation.mpl",
+          "gga_c_lyp.c",
           "gga_c_lyp.mpl",
           "gga_c_p86.c",
           "gga_c_p86.mpl",
@@ -330,6 +332,11 @@
           "sha256": "cfaacb3b656066ab286df9120c27423985a4bc2766ee385a13b86115b6b4b8cc",
           "upstream_path": "maple/b97mv.mpl",
           "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/b97mv.mpl"
+        },
+        "gga_c_lyp.c": {
+          "sha256": "d34fb158f6174ee2c27b4fb06a5dd203b71299a0aae7857dba85953a41cc62c6",
+          "upstream_path": "src/gga_c_lyp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_lyp.c"
         },
         "gga_c_lyp.mpl": {
           "sha256": "8113c2d995ee6ee1463b99a7ff7f3d462cfbefae6e6e70ffca22077a9cde21ac",
