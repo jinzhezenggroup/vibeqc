@@ -157,6 +157,22 @@ def _native_semilocal(method_ir: typing.Any) -> typing.Any:
     return _native_execution_plan(method_ir).semilocal.functional
 
 
+def _native_semilocal_family(method_ir: typing.Any) -> int:
+    """Return the primitive-family selector consumed by native KS execution."""
+    plan = _native_execution_plan(method_ir)
+    components = dict(plan.semilocal.functional.components)
+    if components == {"LDA_X": Fraction(1), "LDA_C_PW": Fraction(1)}:
+        return 0
+    if set(components) <= {"GGA_X_PBE", "GGA_C_PBE"}:
+        return 1
+    if components == {
+        "MGGA_X_R2SCAN": Fraction(1),
+        "MGGA_C_R2SCAN": Fraction(1),
+    }:
+        return 2
+    raise NotImplementedError("native KS semilocal family has no qualified lowerer")
+
+
 def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     """Lower one supported MethodIR graph to explicit native X/C/K coefficients."""
     if not isinstance(method_ir, MethodIR):
@@ -290,7 +306,7 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
     return result
 
 
-def native_ks_options(options: typing.Any, *, version: int = 2) -> typing.Any:
+def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
     """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
     import ctypes
 
@@ -305,13 +321,16 @@ def native_ks_options(options: typing.Any, *, version: int = 2) -> typing.Any:
         radii = (ctypes.c_double * 119)(*[fill] * 119)
         for z, radius in grid.element_radii:
             radii[z] = radius
-    if version not in (1, 2):
-        raise ValueError("native KS options version must be 1 or 2")
-    size = (
-        _native.KsOptionsDescriptor.composition_version.offset
-        if version == 1
-        else ctypes.sizeof(_native.KsOptionsDescriptor)
-    )
+    if version not in (1, 2, 3):
+        raise ValueError("native KS options version must be 1, 2, or 3")
+    if version == 1:
+        size = _native.KsOptionsDescriptor.composition_version.offset
+    elif version == 2:
+        size = _native.KsOptionsDescriptor.execution_plan_version.offset
+    else:
+        size = ctypes.sizeof(_native.KsOptionsDescriptor)
+    spin_channels = 1 if options.method_ir.spin == "unpolarized" else 2
+    semilocal_family = _native_semilocal_family(options.method_ir)
     return _native.KsOptionsDescriptor(
         size,
         _native.ABI_VERSION,
@@ -328,4 +347,8 @@ def native_ks_options(options: typing.Any, *, version: int = 2) -> typing.Any:
         0,
         1,
         *options.coefficients,
+        1 if version >= 3 else 0,
+        spin_channels if version >= 3 else 0,
+        semilocal_family if version >= 3 else 0,
+        0,
     )
