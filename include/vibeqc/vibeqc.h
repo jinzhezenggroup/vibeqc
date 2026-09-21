@@ -426,9 +426,10 @@ typedef struct vibeqc_system_descriptor {
   vibeqc_basis_representation basis_representation;
 } vibeqc_system_descriptor;
 
-/** Native KS model snapshot, copied during preparation. Method selectors choose
- * the audited LDA/PBE component family and spin; the optional v2 suffix supplies
- * resolved composition. Legacy prefixes retain unit semilocal XC and no K. */
+/** Native KS model snapshot, copied during preparation. Modern v3 callers
+ * supply compiler-resolved spin/family execution identity; the v2 suffix
+ * supplies explicit semilocal/full-range-exchange composition. Legacy v1/v2
+ * callers retain method-selector compatibility projection. */
 typedef struct vibeqc_ks_options {
   uint32_t struct_size;
   uint32_t abi_version;
