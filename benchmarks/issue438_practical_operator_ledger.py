@@ -89,6 +89,7 @@ def _component_operations(records: list[dict[str, Any]]) -> dict[str, dict[str, 
                 "gpu_ms": 0.0,
                 "shapes": set(),
                 "counter_sums": defaultdict(int),
+                "graph_capture_counter_sums": defaultdict(int),
             },
         )
         execution = record["execution"]
@@ -104,8 +105,11 @@ def _component_operations(records: list[dict[str, Any]]) -> dict[str, dict[str, 
                 record["streamed"],
             )
         )
+        counter_key = (
+            "counter_sums" if execution == "stream" else "graph_capture_counter_sums"
+        )
         for name, value in record["counters"].items():
-            group["counter_sums"][name] += value
+            group[counter_key][name] += value
     return {
         op: {
             **row,
@@ -120,6 +124,7 @@ def _component_operations(records: list[dict[str, Any]]) -> dict[str, dict[str, 
                 for shape in sorted(row["shapes"])
             ],
             "counter_sums": dict(row["counter_sums"]),
+            "graph_capture_counter_sums": dict(row["graph_capture_counter_sums"]),
         }
         for op, row in sorted(groups.items())
     }

@@ -6,6 +6,7 @@
 #include <new>
 
 #include "runtime/cuda_component_trace.hpp"
+#include "runtime/df_progress_trace.hpp"
 #include "scf/cuda/df_jk_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
 #include "scf/cuda/df_scf_factor.hpp"
