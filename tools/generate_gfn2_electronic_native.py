@@ -66,36 +66,42 @@ def native_header() -> str:
     bodies = (
         emit_scalar_cpp(
             population,
+            fused_accumulation=True,
             function_name="gfn2_population_update_tensor",
             input_order=POPULATION_INPUTS,
             output_order=("updated",),
         ),
         emit_scalar_cpp(
             core_energy,
+            fused_accumulation=True,
             function_name="gfn2_core_energy_update_tensor",
             input_order=CORE_ENERGY_INPUTS,
             output_order=("updated",),
         ),
         emit_scalar_cpp(
             scalar_h,
+            fused_accumulation=True,
             function_name="gfn2_scalar_hamiltonian_update_tensor",
             input_order=SCALAR_HAMILTONIAN_INPUTS,
             output_order=("updated",),
         ),
         emit_scalar_cpp(
             multipole_h,
+            fused_accumulation=True,
             function_name="gfn2_multipole_hamiltonian_update_tensor",
             input_order=MULTIPOLE_HAMILTONIAN_INPUTS,
             output_order=("updated",),
         ),
         emit_scalar_cpp(
             scalar_vjp.program,
+            fused_accumulation=True,
             function_name="gfn2_scalar_integral_vjp_tensor",
             input_order=SCALAR_VJP_INPUTS,
             output_order=("bar_overlap",),
         ),
         emit_scalar_cpp(
             multipole_vjp.program,
+            fused_accumulation=True,
             function_name="gfn2_multipole_integral_vjp_tensor",
             input_order=MULTIPOLE_VJP_INPUTS,
             output_order=("bar_forward_integral", "bar_reverse_integral"),

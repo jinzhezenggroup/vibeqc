@@ -12,7 +12,7 @@ from vibeqc_compiler.tensor.ir import Node, add, input_tensor, multiply
 from vibeqc_compiler.tensor.program import Program
 from vibeqc_compiler.tensor.types import TensorSpec
 
-GFN2_ELECTRONIC_RUNTIME_VERSION = "gfn2-electronic-runtime-ir-v1"
+GFN2_ELECTRONIC_RUNTIME_VERSION = "gfn2-electronic-runtime-ir-v2"
 
 
 def _input(name: str, *, differentiable: bool = False) -> Node:
@@ -70,12 +70,12 @@ def build_gfn2_scalar_hamiltonian_update_program() -> Program:
     column_vsh = _input("column_vsh")
     accumulator = _input("accumulator")
 
-    potential_sum = add(row_vat, row_vsh, column_vat, column_vsh)
-    contribution = add(
-        multiply(overlap, potential_sum),
-        coefficients=("-1/2",),
-    )
-    updated = add(accumulator, contribution)
+    # Preserve the established half-overlap and sequential FMA accumulation.
+    # Summing potentials first changes overflow/cancellation behavior.
+    half_overlap = add(overlap, coefficients=("-1/2",))
+    updated = accumulator
+    for potential in (row_vat, row_vsh, column_vat, column_vsh):
+        updated = add(updated, multiply(half_overlap, potential))
     return Program(
         {"updated": updated},
         provenance={
@@ -95,12 +95,10 @@ def build_gfn2_multipole_hamiltonian_update_program() -> Program:
     column_potential = _input("column_potential")
     accumulator = _input("accumulator")
 
-    contribution = add(
-        multiply(forward_integral, column_potential),
-        multiply(reverse_integral, row_potential),
-        coefficients=("-1/2", "-1/2"),
-    )
-    updated = add(accumulator, contribution)
+    half_forward = add(forward_integral, coefficients=("-1/2",))
+    half_reverse = add(reverse_integral, coefficients=("-1/2",))
+    updated = add(accumulator, multiply(half_forward, column_potential))
+    updated = add(updated, multiply(half_reverse, row_potential))
     return Program(
         {"updated": updated},
         provenance={
