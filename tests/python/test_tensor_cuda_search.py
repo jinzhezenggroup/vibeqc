@@ -200,6 +200,17 @@ def test_new_schedule_dimensions_change_generated_execution_without_changing_def
     )
     assert "#pragma unroll 4\nfor (I r = 0;" in reduction_source
 
+    cooperative = plan_cuda(
+        reduction_program(),
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+    cooperative_source = emit_cuda(cooperative)
+    assert "__shfl_down_sync" in cooperative_source
+    assert "__shared__ double partial[4]" in cooperative_source
+    assert "<<<blocks(65LL, 1), 128" in cooperative_source
+    assert estimate_schedule(cooperative)["estimated_shared_bytes"] == 32
+
     packed = plan_cuda(
         gemm_program(packed=True),
         TARGET,
