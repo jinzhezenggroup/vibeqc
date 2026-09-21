@@ -158,16 +158,17 @@ class KernelSelection:
                 "production two-root Rys lowering requires one complete scalar "
                 "task per lane in a single target warp"
             )
+        if (
+            scalar_thread_tasks
+            and selected_integral.recurrence.startswith("rys")
+            and KernelConsumer.FOCK in self.consumers
+            and self.fock_schedule is None
+        ):
+            raise ValueError(
+                "production scalar Rys force with a Fock consumer requires an "
+                "independent fock_schedule"
+            )
         if self.recurrence == "rys3":
-            if (
-                self.spec.name == "ppps"
-                and KernelConsumer.FOCK in self.consumers
-                and self.fock_schedule is None
-            ):
-                raise ValueError(
-                    "production ppps rys3 with a Fock consumer requires an "
-                    "independent fock_schedule"
-                )
             component_lanes = _supports_component_lane_rys(self.spec, self.schedule)
             uniform_warps = _supports_uniform_warp_rys(self.spec, self.schedule)
             if not (scalar_thread_tasks or component_lanes or uniform_warps):
