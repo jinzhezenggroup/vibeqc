@@ -189,6 +189,15 @@ def test_scalar_rys2_schedule_is_compiler_owned_for_untuned_class() -> None:
     )
     assert constrained.minimum_blocks_per_sm == 4
 
+    fock_integral = build_integral_ir(PSSS_SPEC, consumers=(KernelConsumer.FOCK,))
+    fock_plan = build_fused_shell_plan(
+        PSSS_SPEC, integral=fock_integral, target=TEST_CUDA_TARGET
+    )
+    assert fock_plan.schedule.kind == ScheduleKind.PACKED_TASKS
+    assert fock_plan.schedule.block_threads == 32
+    assert fock_plan.schedule.tasks_per_warp == 32
+    assert not fock_plan.schedule.shared_coulomb
+
     plan = build_fused_shell_plan(PSSS_SPEC, integral=integral, target=TEST_CUDA_TARGET)
     assert plan.schedule == scalar[0]
 
@@ -334,7 +343,7 @@ def test_packed_schedule_models_low_order_fock_workers(spec: typing.Any) -> None
     rows = payload["architectures"]["sm_120"]["kernels"]
     row = next(item for item in rows if item["shell_class"] == spec.name)
     assert "schedule" not in row
-    assert "fock_schedule" in row
+    assert "fock_schedule" not in row
 
     selection = next(
         selection

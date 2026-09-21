@@ -14,7 +14,7 @@ from .expr import (
     AlgebraOrdering,
     RematerializationPolicy,
 )
-from .ir import IntegralIR, OperatorFamily
+from .ir import IntegralIR, KernelConsumer, OperatorFamily
 from .shell_spec import ShellClassSpec
 
 if TYPE_CHECKING:
@@ -351,6 +351,10 @@ def default_schedule(
     if integral.recurrence == "rys2":
         for candidate in candidates:
             if candidate.kind == ScheduleKind.THREAD_TASKS:
+                return candidate
+    if integral.consumers == frozenset((KernelConsumer.FOCK,)):
+        for candidate in candidates:
+            if candidate.kind == ScheduleKind.PACKED_TASKS:
                 return candidate
     for candidate in candidates:
         if candidate.kind == ScheduleKind.COMPONENT_LANES:
