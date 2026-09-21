@@ -615,7 +615,11 @@ class Calculator:
                         for node in full_graph.primitives
                         if isinstance(node, DispersionCorrectionPrimitive)
                     )
-                    if corrections:
+                    # Leave non-D3 recipes to the existing native resolver;
+                    # explicit/resolved PBE-D4 options already have an owner.
+                    if any(
+                        isinstance(node.specification, D3Spec) for node in corrections
+                    ):
                         if len(corrections) != 1 or not isinstance(
                             corrections[0].specification, D3Spec
                         ):
