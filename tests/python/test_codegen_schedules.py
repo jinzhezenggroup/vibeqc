@@ -126,13 +126,17 @@ def test_integral_and_schedule_irs_separate_math_from_cuda_mapping() -> None:
     assert integral.independent_force_centers == (0, 1, 2)
     assert integral.recovered_derivative_centers == (3,)
     candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
-    assert [item.kind for item in candidates] == [
-        ScheduleKind.COMPONENT_LANES,
-        ScheduleKind.TILED_COMPONENTS,
-        ScheduleKind.TILED_COMPONENTS,
-    ]
-    assert candidates[0].block_threads == 192
-    assert [item.component_tile for item in candidates[1:]] == [64, 128]
+    component = next(
+        item for item in candidates if item.kind == ScheduleKind.COMPONENT_LANES
+    )
+    assert component.block_threads == 192
+    assert [
+        item.component_tile
+        for item in candidates
+        if item.kind == ScheduleKind.TILED_COMPONENTS
+    ] == [64, 128]
+    assert any(item.kind == ScheduleKind.PACKED_TASKS for item in candidates)
+    assert any(item.kind == ScheduleKind.SHELL_TASK for item in candidates)
 
 
 def test_default_value_schedule_preserves_component_lane_fallback_order() -> None:
@@ -171,18 +175,62 @@ def test_small_shell_schedule_space_includes_packed_and_cooperative_variants() -
     candidates = schedule_candidates(
         build_integral_ir(PSPS_SPEC), target=TEST_CUDA_TARGET
     )
-    assert [item.kind for item in candidates[:5]] == [
-        ScheduleKind.PACKED_TASKS,
-        ScheduleKind.SHELL_TASK,
-        ScheduleKind.SUBGROUP_TASKS,
-        ScheduleKind.SUBGROUP_TASKS,
-        ScheduleKind.COMPONENT_LANES,
+    assert candidates[0].kind == ScheduleKind.PACKED_TASKS
+    assert candidates[1].kind == ScheduleKind.SHELL_TASK
+    assert candidates[0].tasks_per_warp == TEST_CUDA_TARGET.warp_size
+    subgroup = [
+        item for item in candidates if item.kind == ScheduleKind.SUBGROUP_TASKS
     ]
-    assert candidates[0].tasks_per_warp == 32
-    assert candidates[2].subgroup_lanes == 16
-    assert candidates[2].tasks_per_block == 16
-    assert candidates[3].subgroup_lanes == 8
-    assert candidates[3].tasks_per_block == 32
+    assert [item.tasks_per_warp for item in subgroup] == [2, 4, 8, 16, 32]
+    assert [item.subgroup_lanes for item in subgroup] == [16, 8, 4, 2, 1]
+    assert subgroup[0].block_threads == 256
+    assert subgroup[0].tasks_per_block == 16
+    assert subgroup[-1].tasks_per_block == 256
+
+
+def test_candidate_search_has_no_small_shell_component_cutoffs() -> None:
+    """Legal task/subgroup candidates are not hidden behind 9/64 component gates."""
+
+    integral = build_integral_ir(DPPP_SPEC)
+    candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
+
+    assert any(item.kind == ScheduleKind.PACKED_TASKS for item in candidates)
+    assert any(item.kind == ScheduleKind.SHELL_TASK for item in candidates)
+    assert {
+        item.tasks_per_warp
+        for item in candidates
+        if item.kind == ScheduleKind.SUBGROUP_TASKS
+    } == {2, 4, 8, 16, 32}
+
+
+def test_schedule_search_scales_block_and_tiles_from_target_limits() -> None:
+    """Derive search geometry from target resources rather than fixed warp multiples."""
+
+    target = replace(
+        TEST_CUDA_TARGET,
+        maximum_threads_per_block=512,
+        maximum_threads_per_sm=1024,
+        registers_per_sm=32768,
+        maximum_registers_per_thread=255,
+    )
+    integral = build_integral_ir(DPPP_SPEC)
+    candidates = schedule_candidates(integral, target=target)
+
+    subgroup = next(
+        item for item in candidates if item.kind == ScheduleKind.SUBGROUP_TASKS
+    )
+    expected_threads = min(
+        target.maximum_threads_per_block,
+        target.maximum_threads_per_sm,
+        target.registers_per_sm // target.maximum_registers_per_thread,
+    )
+    expected_threads -= expected_threads % target.warp_size
+    assert subgroup.block_threads == expected_threads
+    assert [
+        item.component_tile
+        for item in candidates
+        if item.kind == ScheduleKind.TILED_COMPONENTS
+    ] == [64, 128]
 
 
 def test_two_root_scalar_schedule_is_compiler_owned_for_untuned_class() -> None:
