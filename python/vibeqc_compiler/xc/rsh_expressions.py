@@ -196,14 +196,10 @@ def energy_expression(spec: typing.Any) -> typing.Any:
         omega = spec.range_omega
         for density, sigma in ((ra, saa), (rb, sbb)):
             enhancement = ityh_b88_enhancement(density, sigma)
-            k_gga = (9 * math.pi / (2 * cx * enhancement)).pow(0.5) * density.pow(
-                1 / 3
-            )
+            k_gga = (9 * math.pi / (2 * cx * enhancement)).pow(0.5) * density.pow(1 / 3)
             a = omega / (2 * k_gga)
             inverse_2a = 1 / (2 * a)
-            aux1 = math.sqrt(math.pi) * graph.transcendental_unary(
-                "erf", inverse_2a
-            )
+            aux1 = math.sqrt(math.pi) * graph.transcendental_unary("erf", inverse_2a)
             aux2 = graph.stable_unary("expm1", -1 / (4 * a.pow(2)))
             aux3 = 2 * a.pow(2) * aux2 + F(1, 2)
             attenuation = 1 - F(8, 3) * a * (aux1 + 2 * a * (aux2 - aux3))

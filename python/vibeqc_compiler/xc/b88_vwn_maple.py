@@ -70,9 +70,7 @@ def b88_exchange(
 ) -> typing.Any:
     """Lower canonical full-range GGA_X_B88 into the caller Graph."""
 
-    rho_a, rho_b, sigma_aa, _, sigma_bb, _, _ = _spin_channels(
-        graph, spec, variables
-    )
+    rho_a, rho_b, sigma_aa, _, sigma_bb, _, _ = _spin_channels(graph, spec, variables)
     module = _b88_module()
     cx = graph.approximate_constant(
         3.0 / 8.0 * (3.0 / math.pi) ** (1.0 / 3.0) * 4.0 ** (2.0 / 3.0)
