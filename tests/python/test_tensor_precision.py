@@ -502,11 +502,14 @@ def test_optimizer_remaps_mixed_accumulation_after_view_rewrites(
         assert execute(candidate, feeds).outputs["out"] == 2.0
         schedule = describe_precision(candidate)
         assert len(schedule.execution_scope) == 1
-        assert next(
-            value.accumulation_dtype
-            for value in schedule.values
-            if value.op == "reduce"
-        ) == "float64"
+        assert (
+            next(
+                value.accumulation_dtype
+                for value in schedule.values
+                if value.op == "reduce"
+            )
+            == "float64"
+        )
 
     optimized = optimize(lowered)
     assert execute(optimized, feeds).outputs["out"] == 2.0

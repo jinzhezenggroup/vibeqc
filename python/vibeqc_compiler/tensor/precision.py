@@ -402,13 +402,16 @@ def remap_precision_execution(
         )
         previous_contract = contracts.get(new_name)
         if previous_contract is not None and previous_contract != contract:
-            raise ValueError("optimizer merged incompatible precision execution contracts")
+            raise ValueError(
+                "optimizer merged incompatible precision execution contracts"
+            )
         contracts[new_name] = contract
 
         candidate = dict(row)
         previous = remapped.get(new_name)
         if previous is None or (
-            candidate["source_value"], candidate.get("qualification") or ""
+            candidate["source_value"],
+            candidate.get("qualification") or "",
         ) < (previous["source_value"], previous.get("qualification") or ""):
             remapped[new_name] = candidate
 

@@ -217,9 +217,7 @@ def rewrite(program: Program, pass_name: str) -> Program:
         replacements[node] = updated
     outputs = {name: replacements[n] for name, n in program.outputs.items()}
     definitions = tuple(replacements[n] for n in program.definitions)
-    provenance = remap_precision_execution(
-        program, replacements, outputs, definitions
-    )
+    provenance = remap_precision_execution(program, replacements, outputs, definitions)
     return Program(outputs, definitions, provenance)
 
 
