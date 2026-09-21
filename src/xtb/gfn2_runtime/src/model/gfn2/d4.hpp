@@ -166,8 +166,9 @@ xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4Geo
  * charges, geometry cache, workspace, plan storage, or descriptors.
  */
 xtbloom_status_t add_d4_two_body_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
-                                              const double* atomic_charges, double* gradients,
-                                              const D4Workspace& workspace, std::string& error);
+                                              const double* positions, const double* atomic_charges,
+                                              double* gradients, const D4Workspace& workspace,
+                                              std::string& error);
 
 /*
  * Overwrite the non-self-consistent q=0 reference-weighted ATM energy. The
@@ -178,6 +179,7 @@ xtbloom_status_t add_d4_two_body_gradient_cpu(const D4Plan& plan, const D4Geomet
  * descriptors.
  */
 xtbloom_status_t evaluate_d4_atm_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+                                     const double* positions, const double* atomic_charges,
                                      double* energies, const D4Workspace& workspace,
                                      std::string& error);
 
@@ -187,6 +189,7 @@ xtbloom_status_t evaluate_d4_atm_cpu(const D4Plan& plan, const D4GeometryCache& 
  * gradient operation.
  */
 xtbloom_status_t add_d4_atm_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+                                         const double* positions, const double* atomic_charges,
                                          double* gradients, const D4Workspace& workspace,
                                          std::string& error);
 
