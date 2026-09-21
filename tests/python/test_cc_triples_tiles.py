@@ -16,7 +16,12 @@ from tools.vibeqc_cc.triples import (
 from tools.vibeqc_cc.triples_tiles import (
     TileSpec,
     TriplesTileEnumerator,
+    build_runtime_tile_triples_program,
     build_tile_triples_program,
+    runtime_tile_capacity,
+    runtime_tile_controls,
+    runtime_tile_static_feeds,
+    runtime_tile_triples_energy_tensorir,
     tile_triples_energy,
     tile_triples_energy_masked,
     tile_triples_energy_tensorir,
@@ -256,6 +261,58 @@ def test_tile_tensorir_is_differentiable(
     tangents = {k: rng.normal(size=x.shape) for k, x in feeds.items()}
     result = dot_test(prog, feeds, tangents, {"triples_energy": np.array(1.0)})
     assert result.passed, "tile TensorIR (T) adjoint dot test failed"
+
+
+# ---------------------------------------------------------------------------
+# Runtime-indexed TensorIR triples (#783)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("o,v,seed,chunk", [(2, 3, 220, 1), (2, 3, 221, 2), (3, 4, 222, 2)])
+def test_runtime_indexed_tile_program_reuses_one_graph_and_matches_reference(
+    o: typing.Any, v: typing.Any, seed: typing.Any, chunk: typing.Any
+) -> None:
+    from vibeqc_compiler.tensor import execute as tensor_execute
+
+    arrays = dict(zip(INPUT_NAMES, _random_case(o, v, seed), strict=True))
+    tiles = tuple(TriplesTileEnumerator(o, v, vir_chunk_size=chunk))
+    capacity = runtime_tile_capacity(o, v, chunk)
+    program = build_runtime_tile_triples_program(o, v, capacity=capacity)
+    static = runtime_tile_static_feeds(arrays)
+    total = 0.0
+    for tile in tiles:
+        controls = runtime_tile_controls(tile, capacity)
+        got = float(
+            tensor_execute(program, {**static, **controls}).outputs["triples_energy"]
+        )
+        expected = tile_triples_energy(tile, o, *arrays.values())
+        np.testing.assert_allclose(got, expected, atol=1e-11, rtol=1e-10)
+        total += got
+    np.testing.assert_allclose(
+        total, triples_energy(o, v, *arrays.values()), atol=1e-11, rtol=1e-10
+    )
+
+
+@pytest.mark.parametrize("o,v,seed,chunk", [(2, 3, 223, 1), (3, 5, 224, 2)])
+def test_runtime_indexed_complete_tiled_reference(
+    o: typing.Any, v: typing.Any, seed: typing.Any, chunk: typing.Any
+) -> None:
+    arrays = dict(zip(INPUT_NAMES, _random_case(o, v, seed), strict=True))
+    got = runtime_tile_triples_energy_tensorir(
+        o, v, arrays, vir_chunk_size=chunk
+    )
+    expected = triples_energy(o, v, *arrays.values())
+    np.testing.assert_allclose(got, expected, atol=1e-11, rtol=1e-10)
+
+
+def test_runtime_indexed_graph_size_does_not_scale_with_virtual_triple_count() -> None:
+    small = build_runtime_tile_triples_program(2, 3, capacity=4)
+    large = build_runtime_tile_triples_program(3, 8, capacity=64)
+    assert len(small.live_nodes) == len(large.live_nodes)
+    assert not any(node.op == "gather" for node in large.live_nodes)
+    assert sum(
+        node.op == "runtime_indexed_select" for node in large.live_nodes
+    ) > 0
 
 
 # ---------------------------------------------------------------------------
