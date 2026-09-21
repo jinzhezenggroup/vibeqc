@@ -2,6 +2,7 @@
 
 import json
 import os
+from pathlib import Path
 
 import pytest
 from vibeqc import Calculator
@@ -12,7 +13,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_cuda_ri_mp2_keeps_transformed_b_on_device(tmp_path, monkeypatch):
+def test_cuda_ri_mp2_keeps_transformed_b_on_device(\n    tmp_path: Path, monkeypatch: pytest.MonkeyPatch\n) -> None:
     trace = tmp_path / "ri-mp2.jsonl"
     monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
     atoms = [
