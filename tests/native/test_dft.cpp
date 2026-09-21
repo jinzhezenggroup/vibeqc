@@ -2,8 +2,10 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
@@ -58,33 +60,39 @@ int main() {
     require(std::abs(vibeqc::dft::generated::kB3lypExactExchange - 0.2) < 1e-16,
             "B3LYP generated exact-exchange fraction disagrees with MethodIR");
 
-    struct LdaTailCase {
-      double alpha;
-      double beta;
-      double energy;
-      double v_alpha;
-      double v_beta;
-    };
-    // Independent 450-digit references from tests/data/xc/scf_domain.tsv.
-    const LdaTailCase lda_tail_cases[] = {
-        {0.0, 1.0e-300, -0.0, -1.4616087206710597e-100, -1.9471373254307811e-100},
-        {3.0e-301, 7.0e-301, -0.0, -1.9289615002530123e-100, -1.9064009290496817e-100},
-        {1.0e-300, 0.0, -0.0, -1.9471373254307811e-100, -1.4616087206710597e-100},
-    };
-    for (const auto& reference : lda_tail_cases) {
+    std::ifstream lda_fixture(VIBEQC_SOURCE_DIR "/tests/data/xc/scf_domain.tsv");
+    require(static_cast<bool>(lda_fixture), "missing independent XC SCF-domain fixture");
+    std::string lda_line;
+    std::size_t lda_rows = 0;
+    while (std::getline(lda_fixture, lda_line)) {
+      if (lda_line.empty() || lda_line[0] == '#') continue;
+      std::istringstream row(lda_line);
+      int pbe = 0, oracle = 0;
+      double rho[2]{}, gradient[2][3]{}, expected[9]{};
+      row >> pbe >> oracle >> rho[0] >> rho[1];
+      for (auto& spin : gradient)
+        for (double& component : spin) row >> component;
+      for (double& component : expected) row >> component;
+      require(static_cast<bool>(row), "malformed XC SCF-domain fixture");
+      if (pbe != 0) continue;
       const auto value =
-          vibeqc::dft::generated::lda_xc_pw_polarized_production(reference.alpha, reference.beta);
-      const auto close = [](double actual, double expected) {
-        return std::isfinite(actual) &&
-               std::abs(actual - expected) <= 5.0e-10 * std::abs(expected) + 1.0e-322;
-      };
-      require(close(value.energy_density, reference.energy) &&
-                  close(value.feature_derivative[0], reference.v_alpha) &&
-                  close(value.feature_derivative[1], reference.v_beta),
-              "compiler-owned polarized LDA tail differs from independent reference");
+          vibeqc::dft::generated::lda_xc_pw_polarized_production(rho[0], rho[1]);
+      const double actual[]{value.energy_density, value.feature_derivative[0],
+                            value.feature_derivative[1]};
+      for (unsigned i = 0; i < 3; ++i) {
+        const double tolerance = 5.0e-10 * std::abs(expected[i]) + 1.0e-322;
+        require(std::isfinite(actual[i]) && std::abs(actual[i] - expected[i]) <= tolerance,
+                "compiler-owned polarized LDA differs from independent SCF-domain reference");
+      }
+      for (unsigned i = 3; i < 9; ++i)
+        require(expected[i] == 0.0, "independent LDA fixture has a gradient coefficient");
+      ++lda_rows;
     }
-    const auto lda_vacuum = vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
-    require(lda_vacuum.energy_density == 0.0 && lda_vacuum.feature_derivative[0] == 0.0 &&
+    require(lda_rows == 36, "incomplete independent polarized LDA reference coverage");
+    const auto lda_vacuum =
+        vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
+    require(lda_vacuum.energy_density == 0.0 &&
+                lda_vacuum.feature_derivative[0] == 0.0 &&
                 lda_vacuum.feature_derivative[1] == 0.0,
             "compiler-owned polarized LDA vacuum limit is wrong");
 
