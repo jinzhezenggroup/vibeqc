@@ -1,21 +1,20 @@
 # 2026-09-21 benchmark checkout trim
 
-This retention pass removes 12 bulky historical benchmark records from the normal
+This retention pass removes 9 bulky historical benchmark records from the normal
 checkout while preserving their exact bytes in existing Git history. It does not
 rewrite history, change numerical/performance acceptance criteria, remove test
 reference inputs, create a Release, or upload artifacts elsewhere.
 
-The removed records total **5,621,295 bytes**. They were selected only from
-campaigns with retained human-readable summaries and no repository test consumer
-of the removed path. Current CUDA-ownership and density-candidate publication
-fixtures, permanent test/reference data, and #418 root audits remain in the
-checkout.
+The removed records total **3,395,480 bytes**. The final set excludes any member
+still bound by a checked-in publication manifest. Permanent test/reference data,
+CUDA-ownership and density-source/candidate publication fixtures, incremental
+low-rank publication fixtures, and #418 root audits remain in the checkout.
 
 Restore one original file into ignored local storage:
 
 ```bash
 python tools/restore_retained_evidence.py \
-  benchmarks/results/density-sources-gpu/evidence.json \
+  benchmarks/results/f-shell-135/fpps.json \
   --manifest benchmarks/results/retention-2026-09-21/migration.json
 ```
 

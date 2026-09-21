@@ -1,11 +1,5 @@
 # Incremental Coulomb factors and exact-target RHF cleanup
 
-> **Retention note (2026-09-21):** selected bulky historical records from this
-> campaign were moved out of the current checkout. Pinned historical links below
-> still open the original bytes at `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5`; exact byte restoration is available
-> through `benchmarks/results/retention-2026-09-21/migration.json`. Scientific
-> acceptance thresholds and retained summaries are unchanged.
-
 Both bundles measure clean source `dfc9e55f13bc55b4961d7ab5255064a66e38df7b`.
 They accept the experimental numerical implementation, without promoting a
 production selector or claiming a general speedup. CPU and CUDA each retain

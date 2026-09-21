@@ -540,6 +540,14 @@
       "sha256": "ab6f3595c9c053d173404bf2725fa14d08ea288a1042c1f870a8e722d37c4c7c"
     },
     {
+      "bytes": 1016476,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-sources-gpu",
+      "path": "benchmarks/results/density-sources-gpu/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "b6bdb078bf5506a501435b056d892941eeae82d28efe2a50fb169de737a862e8"
+    },
+    {
       "bytes": 134373,
       "classification": "required-compact-accepted-evidence",
       "family": "df-derivatives-rtx5090",
@@ -642,6 +650,22 @@
       "path": "benchmarks/results/generated-df-values-142/promotion.json",
       "role": "decision-or-audit-record",
       "sha256": "5b9d20f364e6a02d3eb80b6aef4fd2f04b16a95754b9f3463b5155074acc1745"
+    },
+    {
+      "bytes": 571420,
+      "classification": "required-compact-accepted-evidence",
+      "family": "incremental-low-rank",
+      "path": "benchmarks/results/incremental-low-rank/cpu/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "f0f02f2b3ac0f15c2562609571ee60dfa658e650a91779f98a6771245ce38303"
+    },
+    {
+      "bytes": 637919,
+      "classification": "required-compact-accepted-evidence",
+      "family": "incremental-low-rank",
+      "path": "benchmarks/results/incremental-low-rank/cuda/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "97df4d81c12e157396725d981dcc6a2be193a18b2df81b1514b54032b4af2524"
     },
     {
       "bytes": 759957,

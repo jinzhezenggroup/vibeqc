@@ -2,18 +2,11 @@
   "schema": "vibeqc.git-snapshot.v1",
   "source_revision": "d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5",
   "history_rewritten": false,
-  "file_count": 12,
-  "total_bytes": 5621295,
-  "moved_files": 12,
-  "moved_bytes": 5621295,
+  "file_count": 9,
+  "total_bytes": 3395480,
+  "moved_files": 9,
+  "moved_bytes": 3395480,
   "files": [
-    {
-      "path": "benchmarks/results/density-sources-gpu/evidence.json",
-      "bytes": 1016476,
-      "sha256": "b6bdb078bf5506a501435b056d892941eeae82d28efe2a50fb169de737a862e8",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
     {
       "path": "benchmarks/results/f-shell-135/f-dimer-b4.json",
       "bytes": 220872,
@@ -53,20 +46,6 @@
       "path": "benchmarks/results/f-shell-135/fsss.json",
       "bytes": 455535,
       "sha256": "60f742e3ce1eefaefd1a3faec49906a53a7aed55d7b7c1aba8f38820eabac0d5",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
-    {
-      "path": "benchmarks/results/incremental-low-rank/cpu/samples.json",
-      "bytes": 571420,
-      "sha256": "f0f02f2b3ac0f15c2562609571ee60dfa658e650a91779f98a6771245ce38303",
-      "checkout": "git-history",
-      "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
-    },
-    {
-      "path": "benchmarks/results/incremental-low-rank/cuda/samples.json",
-      "bytes": 637919,
-      "sha256": "97df4d81c12e157396725d981dcc6a2be193a18b2df81b1514b54032b4af2524",
       "checkout": "git-history",
       "reason": "Historical benchmark record removed from the normal checkout; retained byte-for-byte in the recorded ancestor Git object."
     },
