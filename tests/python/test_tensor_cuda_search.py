@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.schedule import ScheduleContract
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -269,6 +270,10 @@ def test_static_accounting_reuses_combined_numeric_budget_and_labels_unknowns() 
     assert estimate["generated_static_data_bytes"] == baseline.static_data_bytes
     assert "excludes" in estimate["traffic_scope"]
     assert "calibrated" in estimate["compile_cost_proxy"]
+    contract = ScheduleContract.from_payload(estimate["schedule_contract"])
+    assert contract.consumer == "tensor.cuda"
+    assert contract.resources.device_bytes == baseline.device_bytes
+    assert contract.precision_schedule_hash == baseline.precision_schedule.identity
 
 
 def test_fusion_profitability_exposes_launch_traffic_pressure_tradeoff() -> None:
