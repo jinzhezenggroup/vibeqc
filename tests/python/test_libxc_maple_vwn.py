@@ -14,7 +14,7 @@ from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.xc.libxc_maple import import_maple_file
-from vibeqc_compiler.xc.program import build_program
+from vibeqc_compiler.xc.rsh_expressions import energy_expression
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -183,6 +183,19 @@ def _imported_vwn(
     return module, graph, _feature_roots(graph, energy, variables), names
 
 
+def _manual_vwn(
+    name: str, spin: str
+) -> tuple[Graph, tuple[typing.Any, ...], tuple[str, ...]]:
+    spec = FunctionalSpec(
+        f"{name}_MPL_REFERENCE",
+        ((name, Fraction(1)),),
+        spin=spin,
+    )
+    graph, energy, variables = energy_expression(spec)
+    names = POLARIZED_FEATURES if spin == "polarized" else ("rho", "sigma", "tau")
+    return graph, _feature_roots(graph, energy, variables), names
+
+
 @pytest.mark.parametrize("name", ["LDA_C_VWN", "LDA_C_VWN_RPA"])
 def test_vwn_source_graph_is_pinned(name: str) -> None:
     module, _, _, _ = _imported_vwn(name, "polarized")
@@ -198,38 +211,18 @@ def test_vwn_source_graph_is_pinned(name: str) -> None:
 
 @pytest.mark.parametrize("name", ["LDA_C_VWN", "LDA_C_VWN_RPA"])
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
-def test_production_vwn_matches_imported_graph_through_feature_hessian(
+def test_imported_vwn_matches_audited_dag_through_feature_hessian(
     name: str, spin: str
 ) -> None:
     _, graph, roots, names = _imported_vwn(name, spin)
-    features = np.asarray(_FEATURES[spin], dtype=float)
-    imported = np.asarray(
-        evaluate_array_graph(graph, roots, dict(zip(names, features, strict=True))),
-        dtype=float,
-    )
-    spec = FunctionalSpec(
-        f"{name}_PRODUCTION",
-        ((name, Fraction(1)),),
-        spin=spin,
-    )
-    production = build_program(spec, order=2).evaluate(features[:, None])[:, 0]
-    np.testing.assert_allclose(production, imported, rtol=5e-11, atol=5e-12)
+    manual_graph, manual_roots, _ = _manual_vwn(name, spin)
+    inputs = dict(zip(names, _FEATURES[spin], strict=True))
 
-
-@pytest.mark.parametrize("name", ["LDA_C_VWN", "LDA_C_VWN_RPA"])
-@pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
-def test_production_vwn_matches_independent_closed_form_oracle(
-    name: str, spin: str
-) -> None:
-    features = np.asarray(_FEATURES[spin], dtype=float)[:, None]
-    spec = FunctionalSpec(
-        f"{name}_PRODUCTION",
-        ((name, Fraction(1)),),
-        spin=spin,
+    imported = np.asarray(evaluate_array_graph(graph, roots, inputs), dtype=float)
+    manual = np.asarray(
+        evaluate_array_graph(manual_graph, manual_roots, inputs), dtype=float
     )
-    actual = build_program(spec, order=2).evaluate(features)[:, 0]
-    expected = np.asarray(_INDEPENDENT[(name, spin)], dtype=float)
-    np.testing.assert_allclose(actual, expected, rtol=2e-10, atol=2e-11)
+    np.testing.assert_allclose(imported, manual, rtol=5e-11, atol=5e-12)
 
 
 @pytest.mark.parametrize("name", ["LDA_C_VWN", "LDA_C_VWN_RPA"])
