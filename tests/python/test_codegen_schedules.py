@@ -178,9 +178,7 @@ def test_small_shell_schedule_space_includes_packed_and_cooperative_variants() -
     assert candidates[0].kind == ScheduleKind.PACKED_TASKS
     assert candidates[1].kind == ScheduleKind.SHELL_TASK
     assert candidates[0].tasks_per_warp == TEST_CUDA_TARGET.warp_size
-    subgroup = [
-        item for item in candidates if item.kind == ScheduleKind.SUBGROUP_TASKS
-    ]
+    subgroup = [item for item in candidates if item.kind == ScheduleKind.SUBGROUP_TASKS]
     assert [item.tasks_per_warp for item in subgroup] == [2, 4, 8, 16, 32]
     assert [item.subgroup_lanes for item in subgroup] == [16, 8, 4, 2, 1]
     assert subgroup[0].block_threads == 256

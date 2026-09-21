@@ -506,9 +506,7 @@ def _emit_scalar_thread_force_consumer_cuda(
     primitive_call_code = "\n".join(primitive_calls)
     independent_atomic_code = "\n".join(independent_atomics)
     fourth_atomic_code = "\n".join(recovered_atomics)
-    kernel_qualifier = (
-        f"__launch_bounds__({worker_count}, {minimum_blocks_per_sm})"
-    )
+    kernel_qualifier = f"__launch_bounds__({worker_count}, {minimum_blocks_per_sm})"
     return f"""struct GeneratedDpppScalarThreadStorage {{
   GeneratedDpppVec3 positions[4];
   GeneratedDpppPrimitiveGeometry primitive;
