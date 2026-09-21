@@ -194,6 +194,31 @@ def test_dense_symmetry_is_validated_not_rejected(tmp_path: typing.Any) -> None:
         executor.execute({"x": np.array([[1.0, 2.0], [3.0, 4.0]])})
 
 
+def test_scaled_bilinear_extreme_products_match_stable_interpreter(
+    tmp_path: typing.Any,
+) -> None:
+    axis = Index("i", IndexSpace("case", "batch", 3))
+    nodes = [
+        input_tensor(name, TensorSpec((axis,), role="input"))
+        for name in ("a", "b", "c", "d", "e", "f")
+    ]
+    program = Program({"out": scaled_bilinear(*nodes)})
+    high = 1.0e300
+    low = 1.0e-300
+    feeds = {
+        "a": np.array([high, low, high]),
+        "b": np.array([high, low, low]),
+        "c": np.array([high, low, 0.5]),
+        "d": np.array([np.nextafter(high, 0.0), np.nextafter(low, 0.0), 1.0]),
+        "e": np.array([high, low, 1.0e200]),
+        "f": np.array([high, low, 1.0e-200]),
+    }
+    expected = execute(program, feeds).outputs["out"]
+    actual = native(program, tmp_path).execute(feeds)["out"]
+    assert np.isfinite(expected).all()
+    np.testing.assert_allclose(actual, expected, rtol=2e-15, atol=0)
+
+
 def test_preallocation_and_semantic_rejection(tmp_path: typing.Any) -> None:
     a = tensor("a", (3,))
     for program, message in (
