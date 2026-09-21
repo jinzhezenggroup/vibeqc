@@ -350,9 +350,7 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
     cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
     fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
 
-    def pw(
-        modified: typing.Any, *, with_rs_derivative: typing.Any = False
-    ) -> typing.Any:
+    def pw(modified: typing.Any) -> typing.Any:
         parameters = _PW_PARAMETERS[modified]
         a = parameters["a"]
         alpha = parameters["alpha"]
@@ -361,7 +359,6 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
         b3 = parameters["b3"]
         b4 = parameters["b4"]
         values = []
-        derivatives = []
         for i in range(3):
             aux = (
                 F(b1[i]) * rs.pow(0.5)
@@ -372,21 +369,6 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
             u = 1 / (2 * F(a[i]) * aux)
             log_term = graph.stable_unary("log1p", u)
             values.append(-2 * F(a[i]) * (1 + F(alpha[i]) * rs) * log_term)
-            if with_rs_derivative:
-                aux_prime = (
-                    F(b1[i]) / 2 * rs.pow(-0.5)
-                    + F(b2[i])
-                    + F(3, 2) * F(b3[i]) * rs.pow(0.5)
-                    + 2 * F(b4[i]) * rs
-                )
-                derivatives.append(
-                    -2
-                    * F(a[i])
-                    * (
-                        F(alpha[i]) * log_term
-                        - (1 + F(alpha[i]) * rs) * (u / (1 + u)) * aux_prime / aux
-                    )
-                )
         fz20 = F("1.709920934161365617563962776245" if modified else "1.709921")
 
         def combine(items: typing.Any) -> typing.Any:
@@ -394,7 +376,7 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
             return g0 + z.pow(4) * fz * (g1 - g0 + gm / fz20) - fz * gm / fz20
 
         value = combine(values)
-        return (value, combine(derivatives)) if with_rs_derivative else value
+        return value
 
     def lda_exchange() -> typing.Any:
         return graph.sum(-cx * density.pow(4 / 3) for density in (ra, rb))
