@@ -789,6 +789,35 @@ def test_public_cuda_prepared_force_replay_retains_execution(
             assert not owner._failed
 
 
+def test_public_cuda_grid_xc_schedules_preserve_complete_endpoint() -> None:
+    """DFT09: both executable XC schedules preserve the public E+F endpoint."""
+    from vibeqc import Calculator, KsOptions
+
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    results = []
+    for schedule in ("device_fused", "host_unfused"):
+        result = Calculator(
+            method="pbe-rks",
+            basis="sto-3g",
+            device="cuda",
+            ks_options=KsOptions(xc_schedule=schedule),
+            max_iterations=200,
+            energy_tolerance=1e-12,
+            density_tolerance=1e-10,
+        ).singlepoint(atoms, properties=("energy", "forces"))
+        assert result.executed_backend == "cuda"
+        assert result.converged
+        assert result.forces is not None
+        results.append(result)
+
+    fused, unfused = results
+    assert fused.iterations == unfused.iterations
+    assert fused.energy == pytest.approx(unfused.energy, abs=1e-9)
+    np.testing.assert_allclose(fused.forces, unfused.forces, atol=1e-7, rtol=0)
+    np.testing.assert_allclose(fused.forces.sum(axis=0), 0, atol=1e-7, rtol=0)
+    np.testing.assert_allclose(unfused.forces.sum(axis=0), 0, atol=1e-7, rtol=0)
+
+
 def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
     """C2: rebuilt owners get fresh forces and a bad neighbor cannot poison them."""
     from test_dft_complete_cpu import ATOMS

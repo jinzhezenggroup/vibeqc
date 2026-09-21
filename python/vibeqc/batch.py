@@ -391,6 +391,11 @@ class PreparedBatch:
         )
         if len(self._charges) != count or len(self._multiplicities) != count:
             raise ValueError("charges and multiplicities must match the batch size")
+        self._effective_ks_options = calculator._effective_ks_options(
+            self._systems,
+            charges=self._charges,
+            multiplicities=self._multiplicities,
+        )
         for atoms in self._systems:
             calculator._preflight_hf_basis(
                 atoms,
@@ -405,6 +410,7 @@ class PreparedBatch:
                 self._systems,
                 charges=self._charges,
                 multiplicities=self._multiplicities,
+                ks_options=self._effective_ks_options,
             )
             if resource_plan is None:
                 from .resources import plan_resources
@@ -486,6 +492,7 @@ class PreparedBatch:
             method = calculator._method_descriptor(
                 auxiliary_handle if auxiliary_handle.value else None,
                 resource_plan=self.resource_plan,
+                ks_options=self._effective_ks_options,
             )
             flags = _native.BATCH_ENABLE_WARM_STARTS if warm_start else 0
             if shell_class_profiling:

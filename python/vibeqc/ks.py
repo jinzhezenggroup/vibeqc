@@ -296,6 +296,80 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
     return result
 
 
+def profiled_ks_options(
+    options: KsOptions | None,
+    diagnostics: dict[str, typing.Any],
+    systems: typing.Any,
+    *,
+    charges: typing.Any,
+    multiplicities: typing.Any,
+) -> KsOptions | None:
+    """Apply one exact local DFT09 winner to a batch, otherwise preserve the portable plan."""
+
+    if (
+        options is None
+        or options.xc_schedule != "device_fused"
+        or diagnostics.get("source") != "local"
+    ):
+        return options
+    target = diagnostics.get("target")
+    if not isinstance(target, dict):
+        return options
+    device = target.get("device")
+    source_identity = target.get("source_identity")
+    if (
+        not isinstance(device, dict)
+        or type(device.get("major")) is not int
+        or type(device.get("minor")) is not int
+        or not isinstance(source_identity, str)
+        or not source_identity
+    ):
+        return options
+
+    from vibeqc_compiler.dft.xc_schedule import (
+        grid_xc_schedule,
+        molecular_grid_xc_workload,
+    )
+
+    from .profiles import select_dft_schedule
+
+    selected = []
+    architecture = f"sm_{device['major']}{device['minor']}"
+    for atoms, charge, multiplicity in zip(
+        systems, charges, multiplicities, strict=True
+    ):
+        workload = molecular_grid_xc_workload(
+            architecture=architecture,
+            functional=options.functional,
+            atoms=atoms,
+            grid_spec=options.grid,
+            charge=charge,
+            multiplicity=multiplicity,
+            source_identity=source_identity,
+            screening_identity=None,
+            observable="potential",
+            density_route="density_matrix",
+        )
+        payload = select_dft_schedule(diagnostics, workload.to_payload())
+        if payload is None:
+            return options
+        schedule = grid_xc_schedule(payload)
+        if schedule.point_tile is None:
+            raise ValueError("local DFT schedule winner must resolve its point tile")
+        selected.append(schedule)
+    if not selected or any(item != selected[0] for item in selected[1:]):
+        return options
+
+    winner = selected[0]
+    result = replace(
+        options,
+        xc_schedule=winner.name,
+        tile_points=winner.point_tile,
+    )
+    object.__setattr__(result, "_method_ir", options._method_ir)
+    return result
+
+
 def native_ks_options(options: typing.Any, *, version: int = 3) -> typing.Any:
     """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
     import ctypes
