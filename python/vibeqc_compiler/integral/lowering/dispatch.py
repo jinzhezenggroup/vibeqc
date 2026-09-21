@@ -1288,6 +1288,7 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
             )
         source = source[:force_begin] + force_consumer
     if KernelConsumer.FOCK in plan.kernel.integral.consumers:
+        explicit_fock_schedule = fock_schedule is not None
         if fock_schedule is not None:
             # Force and Fock need not share an execution geometry.  The
             # specialization contract owns value recurrence policy.
@@ -1316,7 +1317,8 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         rys_support_integral = (
             plan.kernel.integral
             if (
-                plan.kernel.integral.recurrence.startswith("rys")
+                not explicit_fock_schedule
+                and plan.kernel.integral.recurrence.startswith("rys")
                 and plan.kernel.integral.required_rys_roots in (3, 4)
                 and fock_plan.schedule.kind == ScheduleKind.COMPONENT_LANES
             )
