@@ -499,6 +499,13 @@ def load_stationary_aot_artifact(
     for key, value in expected.items():
         if metadata.get(key) != value:
             raise ValueError(f"stationary CUDA AOT {key} identity mismatch")
+    compilation = metadata.get("compile_contract")
+    if (
+        not isinstance(compilation, dict)
+        or compilation.get("fp64") is not True
+        or compilation.get("fmad") is not False
+    ):
+        raise ValueError("stationary CUDA AOT precision contract mismatch")
     architectures = metadata.get("architectures")
     if (
         not isinstance(architectures, list)
