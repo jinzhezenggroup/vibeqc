@@ -406,9 +406,7 @@ def test_stationary_state_requires_finite_scalar_physical_residual(
 def test_stationary_contract_rejects_unsupported_method_domain(
     method: typing.Any,
 ) -> None:
-    with pytest.raises(
-        ValueError, match="LDA/PBE/r2SCAN/global-hybrid RKS/UKS"
-    ):
+    with pytest.raises(ValueError, match="LDA/PBE/r2SCAN/global-hybrid RKS/UKS"):
         replace(identity(), method=method)
 
 
