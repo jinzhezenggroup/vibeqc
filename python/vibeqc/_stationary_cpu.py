@@ -47,6 +47,7 @@ from ._dft_gradient import (
     _native_ao_atoms,
     native_ao_geometry_identity,
 )
+from .ks import native_xc_functional_code
 
 
 @dataclass(frozen=True)
@@ -567,7 +568,7 @@ def complete_rks_gradient_diagnostic(
         else None
     )
     ao_atoms = _native_ao_atoms(basis)
-    functional_code = {"lda": 0, "gga": 1, "mgga": 2}[contract.family]
+    functional_code = native_xc_functional_code(state.identity.method)
     for begin in range(0, len(grid.points), tile_points):
         end = min(begin + tile_points, len(grid.points))
         points, weights, atoms = (

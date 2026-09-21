@@ -522,6 +522,8 @@ class Calculator:
             "pbe0-uks",
             "r2scan-rks",
             "r2scan-uks",
+            "b3lyp-rks",
+            "b3lyp-uks",
         ):
             from .ks import resolve_ks_options
 
@@ -697,24 +699,36 @@ class Calculator:
         self._capabilities = method_capabilities(self._method_name)
         from ._cpu_force_resources import qualified_basis
 
-        if (
-            self._capabilities.family == "density_functional"
+        basis_has_ecp = isinstance(self._basis, BasisSet) and any(
+            element.ecp_core_electrons for element in self._basis.elements
+        )
+        named_cpu_hybrid_force = (
+            self._device_name == "cpu"
+            and self._method_name in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks")
+            and not basis_has_ecp
+            and self._ks_options is not None
+            and self._ks_options.coefficients[2] < 0.0
+        )
+        semilocal_force = (
+            self._ks_options is not None
+            and self._ks_options.coefficients == (1.0, 1.0, 0.0)
             and (
                 self._device_name == "cuda"
                 or (self._device_name == "cpu" and qualified_basis(self._basis))
             )
+        )
+        if (
+            self._capabilities.family == "density_functional"
+            and (semilocal_force or named_cpu_hybrid_force)
             and not (
                 self._device_name == "cuda"
-                and isinstance(self._basis, BasisSet)
-                and any(element.ecp_core_electrons for element in self._basis.elements)
+                and basis_has_ecp
                 and any(
                     shell.angular_momentum > 1
                     for element in self._basis.elements
                     for shell in element.shells
                 )
             )
-            and self._ks_options is not None
-            and self._ks_options.coefficients == (1.0, 1.0, 0.0)
             and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):
             # Python public capability layered on the native KS prepared owner

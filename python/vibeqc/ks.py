@@ -26,6 +26,8 @@ from vibeqc_compiler.method import (
 from vibeqc_compiler.xc.spec import FunctionalSpec, functional
 
 SCF_DOMAIN = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
+B3LYP_SCF_DOMAIN = "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18"
+_NATIVE_SCF_DOMAINS = frozenset((SCF_DOMAIN, B3LYP_SCF_DOMAIN))
 
 _NATIVE_KS_METHODS = {
     "lda-rks": ("LDA_XC_PW", "unpolarized"),
@@ -36,6 +38,8 @@ _NATIVE_KS_METHODS = {
     "pbe0-uks": ("PBE0", "polarized"),
     "r2scan-rks": ("R2SCAN", "unpolarized"),
     "r2scan-uks": ("R2SCAN", "polarized"),
+    "b3lyp-rks": ("B3LYP", "unpolarized"),
+    "b3lyp-uks": ("B3LYP", "polarized"),
 }
 
 
@@ -44,8 +48,8 @@ class KsOptions:
     """A snapshotted native KS composition, quadrature, and bounded XC tile.
 
     RKS requires unpolarized MethodIR semantics; UKS requires polarized. Native
-    execution accepts audited LDA/PBE/r2SCAN semilocal families. CPU PBE-family
-    compositions also accept explicit MethodIR-owned full-range exact exchange.
+    execution accepts audited LDA/PBE/r2SCAN plus canonical B3LYP. CPU global
+    hybrids consume MethodIR-owned full-range exact exchange through common J/K.
     CUDA hybrids and unsupported primitive families fail closed. A different
     model requires a new prepared owner.
     """
@@ -72,7 +76,7 @@ class KsOptions:
         if self.grid_accuracy not in ("standard", "tight"):
             raise ValueError("KS grid_accuracy must be 'standard' or 'tight'")
         checked_int(self.tile_points, "KS XC tile points")
-        if self.scf_domain != SCF_DOMAIN:
+        if self.scf_domain not in _NATIVE_SCF_DOMAINS:
             raise NotImplementedError("unsupported native KS tail/spin domain policy")
 
     @property
@@ -170,6 +174,15 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
         and len(method_ir.primitives) == 1
     ):
         exchange_scale = correlation_scale = Fraction(1)
+    elif components == {
+        "LDA_X": Fraction(2, 25),
+        "GGA_X_B88": Fraction(18, 25),
+        "LDA_C_VWN_RPA": Fraction(19, 100),
+        "GGA_C_LYP": Fraction(81, 100),
+    }:
+        # The generated B3LYP semilocal primitive already owns its internal
+        # component coefficients; native X/C scales stay unity.
+        exchange_scale = correlation_scale = Fraction(1)
     else:
         raise NotImplementedError("unsupported native KS semilocal composition")
     fock_exchange = (
@@ -197,8 +210,9 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
     method_ir = resolve_method(identifier, spin=spin)
     semilocal = _native_semilocal(method_ir)
 
-    # Pure LDA/PBE selectors retain the independent catalog projection gate.
-    if identifier != "PBE0":
+    # Pure catalog selectors retain the independent projection gate. Global
+    # hybrids resolve their composed semilocal primitive directly from MethodIR.
+    if identifier not in ("PBE0", "B3LYP"):
         if len(method_ir.primitives) != 1:
             raise RuntimeError("MethodIR composition disagrees with native KS selector")
         runtime_functional = functional(identifier, spin=spin)
@@ -210,15 +224,38 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
             )
         return method_ir, runtime_functional
 
-    # PBE0 is an audited manifest whose semilocal/exchange coefficients are
-    # checked structurally, not by a PBE0-specific arithmetic path.
-    if ks_coefficients(method_ir) != (
-        0.75,
-        1.0,
-        -0.125 if spin == "unpolarized" else -0.25,
-    ):
-        raise RuntimeError("PBE0 MethodIR disagrees with its native composition")
+    # Global hybrids are audited manifests whose semilocal/exchange
+    # coefficients are checked structurally, not by named-method arithmetic.
+    expected = (
+        (0.75, 1.0, -0.125 if spin == "unpolarized" else -0.25)
+        if identifier == "PBE0"
+        else (1.0, 1.0, -0.1 if spin == "unpolarized" else -0.2)
+    )
+    if ks_coefficients(method_ir) != expected:
+        raise RuntimeError(
+            f"{identifier} MethodIR disagrees with its native composition"
+        )
     return method_ir, semilocal
+
+
+def scf_domain_for_method(method: typing.Any) -> str:
+    """Return the exact native point-domain identity for one public KS method."""
+    if method not in _NATIVE_KS_METHODS:
+        raise ValueError("KS domain requires a supported native RKS/UKS method")
+    return B3LYP_SCF_DOMAIN if method.startswith("b3lyp-") else SCF_DOMAIN
+
+
+def native_xc_functional_code(method: typing.Any) -> int:
+    """Map one resolved public KS method to the native point-model ABI code."""
+    if method not in _NATIVE_KS_METHODS:
+        raise ValueError("XC point code requires a supported native RKS/UKS method")
+    if method.startswith("b3lyp-"):
+        return 3
+    if method.startswith("r2scan-"):
+        return 2
+    if method.startswith(("pbe-", "pbe0-")):
+        return 1
+    return 0
 
 
 def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing.Any:
@@ -283,7 +320,14 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
             )
         else:
             grid = GridPolicy(options.grid_accuracy).resolve(method, derivative_order=0)
-    result = replace(options, functional=resolved, composition=None, grid=grid)
+    domain = scf_domain_for_method(method)
+    if options.scf_domain not in (SCF_DOMAIN, domain):
+        raise NotImplementedError(
+            "KS tail/spin domain does not match the selected method"
+        )
+    result = replace(
+        options, functional=resolved, composition=None, grid=grid, scf_domain=domain
+    )
     object.__setattr__(result, "_method_ir", method_ir)
     return result
 
@@ -313,7 +357,7 @@ def native_ks_options(options: typing.Any, *, version: int = 2) -> typing.Any:
     return _native.KsOptionsDescriptor(
         size,
         _native.ABI_VERSION,
-        1,
+        2 if options.scf_domain == B3LYP_SCF_DOMAIN else 1,
         grid.version,
         grid.radial_points,
         grid.angular_polar,

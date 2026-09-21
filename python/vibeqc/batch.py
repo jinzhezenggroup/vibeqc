@@ -655,7 +655,7 @@ class PreparedBatch:
                 state._source.close()
 
     def _public_dft_cpu_force(self, index: typing.Any, atoms: typing.Any) -> typing.Any:
-        """Bounded CPU ECP force; checked native CPU ECP is an explicit provider."""
+        """Bounded CPU stationary force for qualified ECP or named direct hybrids."""
         from vibeqc_compiler.dft import NativeAO
 
         from ._cpu_force_resources import (
@@ -668,9 +668,15 @@ class PreparedBatch:
         from .ecp import resolve_ecp
 
         calculator = self._calculator
-        if calculator._device_name != "cpu" or not qualified_basis(calculator._basis):
+        ecp_force = qualified_basis(calculator._basis)
+        direct_hybrid = (
+            calculator._method_name
+            in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks")
+            and not ecp_force
+        )
+        if calculator._device_name != "cpu" or not (ecp_force or direct_hybrid):
             raise NotImplementedError(
-                "public CPU ECP forces require a qualified CPU owner"
+                "public CPU forces require a qualified ECP or named direct-hybrid owner"
             )
         if len(atoms) > 8:
             raise ValueError("CPU public force dense-export domain exceeded")
@@ -682,7 +688,9 @@ class PreparedBatch:
             multiplicity=self._multiplicities[index],
         ) as basis:
             grid = calculator._ks_options.grid
-            _, terms = resolve_ecp(calculator._basis, atoms)
+            terms = ()
+            if ecp_force:
+                _, terms = resolve_ecp(calculator._basis, atoms)
             inventory = cpu_force_inventory(
                 basis,
                 grid_points=len(atoms)
@@ -694,13 +702,18 @@ class PreparedBatch:
             if sum(inventory.values()) > CPU_FORCE_HOST_CAP:
                 raise ValueError("CPU force additional-host byte budget exceeded")
             # Reject before exporting the live SCF/grid snapshot. The consumer
-            # repeats admission using the actual exported shape and term count.
+            # repeats admission using the actual exported shape and provider.
             state = StationaryKsState.from_native(self, basis, index=index)
             try:
                 if state._source.backend != "cpu":
                     raise NotImplementedError(
-                        "public CPU ECP forces require a qualified CPU owner"
+                        "public CPU forces require a qualified CPU owner"
                     )
+                expected_hamiltonian = (
+                    "scalar-semilocal-ecp" if ecp_force else "all-electron"
+                )
+                if state._source.hamiltonian != expected_hamiltonian:
+                    raise ValueError("public CPU force Hamiltonian identity mismatch")
                 result = complete_rks_gradient_diagnostic(
                     state,
                     basis,
@@ -713,7 +726,10 @@ class PreparedBatch:
                     ),
                 )
                 work = dict(result.work)
-                work["ecp_provider"] = "checked-native-cpu-two-grid-v1"
+                if ecp_force:
+                    work["ecp_provider"] = "checked-native-cpu-two-grid-v1"
+                else:
+                    work["hamiltonian_provider"] = "checked-native-cpu-all-electron-v1"
                 work["host_inventory"] = inventory
                 return -np.asarray(result.gradient).copy(), work
             finally:

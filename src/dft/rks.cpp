@@ -261,6 +261,7 @@ ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_ran
   ks.grid_points = grid.point_count();
   ks.tile_points = std::min(options.xc_tile_points, grid.point_count());
   ks.ao_order = std::string_view(method_name) == "LDA" ? 0 : 1;
+  ks.scf_domain_version = std::string_view(method_name) == "B3LYP" ? 2U : 1U;
   auto& diagnostic = result.xc_density_diagnostic;
   diagnostic.physical_residual = std::numeric_limits<double>::infinity();
   std::shared_ptr<const OccupiedDensityFactor> factor;

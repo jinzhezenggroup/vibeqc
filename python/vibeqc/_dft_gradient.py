@@ -19,7 +19,7 @@ from vibeqc_compiler.xc.contractions import ContractionProgram, GeometryPartials
 from vibeqc_compiler.xc.grid_response import grid_response_tiles
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
-from .ks import SCF_DOMAIN, resolve_ks_method
+from .ks import native_xc_functional_code, resolve_ks_method, scf_domain_for_method
 
 _METHODS = (
     "lda-rks",
@@ -30,6 +30,8 @@ _METHODS = (
     "r2scan-uks",
     "pbe0-rks",
     "pbe0-uks",
+    "b3lyp-rks",
+    "b3lyp-uks",
 )
 _ARRAY_TOLERANCE = 1e-8  # Match the absolute canonicality cap of the #162 handoff.
 _RESIDUAL_TOLERANCE = 1e-8
@@ -58,7 +60,7 @@ class StationaryKsIdentity:
     def __post_init__(self) -> None:
         if self.method not in _METHODS:
             raise ValueError(
-                "stationary derivatives support LDA/PBE/r2SCAN/PBE0 RKS/UKS only"
+                "stationary derivatives support LDA/PBE/r2SCAN/global-hybrid RKS/UKS only"
             )
         for name in (
             "model_identity",
@@ -427,7 +429,9 @@ class GeneratedXcGeometry(FixedDensityXcGeometry):
         super().__post_init__()
         contract = StationaryDerivativeContract(self.state_identity)
         contract.validate(self.state)
-        if self.regularization_identity != scf_regularization_identity():
+        if self.regularization_identity != scf_regularization_identity(
+            self.state_identity.method
+        ):
             raise ValueError("stationary regularization identity mismatch")
 
     def directional(self, motion: typing.Any) -> typing.Any:
@@ -570,9 +574,14 @@ def bind_generated_xc_geometry(
     )
 
 
-def scf_regularization_identity() -> typing.Any:
+def scf_regularization_identity(method: str | None = None) -> typing.Any:
     """Identify the exact native semilocal SCF energy/first-derivative domain."""
-    return canonical_hash({"scf_domain": SCF_DOMAIN})
+    domain = (
+        scf_domain_for_method(method)
+        if method is not None
+        else scf_domain_for_method("pbe-rks")
+    )
+    return canonical_hash({"scf_domain": domain})
 
 
 def _scf_domain_xc_geometry(
@@ -607,7 +616,7 @@ def _scf_domain_xc_geometry(
             "stationary "
             f"{contract.family.upper()} requires canonical {expected_functional.identifier}"
         )
-    regularization_identity = scf_regularization_identity()
+    regularization_identity = scf_regularization_identity(state.identity.method)
     if state.identity.regularization_identity != regularization_identity:
         raise ValueError("stationary regularization identity mismatch")
     for name, actual in (
@@ -627,7 +636,7 @@ def _scf_domain_xc_geometry(
     point_gradient = (
         np.zeros((2, len(grid.points), 3)) if gradient is None else gradient
     )
-    functional_code = {"lda": 0, "gga": 1, "mgga": 2}[contract.family]
+    functional_code = native_xc_functional_code(state.identity.method)
     point_values = state._source.evaluate_xc_points(
         functional_code,
         features["rho"],
@@ -651,7 +660,7 @@ def _scf_domain_xc_geometry(
             {
                 "schema": "vibeqc.stationary-scf-xc-geometry/v1",
                 "functional": functional.identity,
-                "scf_domain": SCF_DOMAIN,
+                "scf_domain": scf_domain_for_method(state.identity.method),
                 "point_coefficients": (
                     "rho-gradient-kinetic-cartesian-v1"
                     if contract.family == "mgga"

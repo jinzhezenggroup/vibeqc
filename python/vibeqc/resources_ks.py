@@ -34,7 +34,16 @@ from .resources import (
 )
 from .resources_hf import _basis_record, _cuda_library_identity, _ecp_workspace
 
-_METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks", "pbe0-rks", "pbe0-uks")
+_METHODS = (
+    "lda-rks",
+    "pbe-rks",
+    "lda-uks",
+    "pbe-uks",
+    "pbe0-rks",
+    "pbe0-uks",
+    "b3lyp-rks",
+    "b3lyp-uks",
+)
 
 
 def _item_host_inventory(

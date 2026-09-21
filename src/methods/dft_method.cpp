@@ -40,7 +40,8 @@ std::uint64_t next_cpu_ks_owner() {
 
 bool is_uks(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_LDA_UKS || method == VIBEQC_METHOD_PBE_UKS ||
-         method == VIBEQC_METHOD_PBE0_UKS || method == VIBEQC_METHOD_R2SCAN_UKS;
+         method == VIBEQC_METHOD_PBE0_UKS || method == VIBEQC_METHOD_R2SCAN_UKS ||
+         method == VIBEQC_METHOD_B3LYP_UKS;
 }
 
 bool is_pbe_family(vibeqc_method method) noexcept {
@@ -56,20 +57,31 @@ bool is_r2scan(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_R2SCAN_RKS || method == VIBEQC_METHOD_R2SCAN_UKS;
 }
 
+bool is_b3lyp(vibeqc_method method) noexcept {
+  return method == VIBEQC_METHOD_B3LYP_RKS || method == VIBEQC_METHOD_B3LYP_UKS;
+}
+
 bool is_supported_dft(vibeqc_method method) noexcept {
   return method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_PBE_RKS ||
-         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_R2SCAN_RKS || is_uks(method);
+         method == VIBEQC_METHOD_PBE0_RKS || method == VIBEQC_METHOD_R2SCAN_RKS ||
+         method == VIBEQC_METHOD_B3LYP_RKS || is_uks(method);
 }
 
 std::uint32_t functional_code(vibeqc_method method) {
+  if (is_b3lyp(method)) return 3U;
   if (is_r2scan(method)) return 2U;
   if (is_pbe_family(method)) return 1U;
   if (method == VIBEQC_METHOD_LDA_RKS || method == VIBEQC_METHOD_LDA_UKS) return 0U;
   throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unknown semilocal functional family");
 }
 
+std::uint32_t scf_domain_version(vibeqc_method method) noexcept {
+  return is_b3lyp(method) ? 2U : 1U;
+}
+
 const char* display_method_name(vibeqc_method method) noexcept {
   if (is_pbe0(method)) return "PBE0";
+  if (is_b3lyp(method)) return "B3LYP";
   if (is_r2scan(method)) return "R2SCAN";
   return is_pbe_family(method) ? "PBE" : "LDA";
 }
@@ -144,10 +156,10 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
         if (!std::isfinite(x) || !std::isfinite(c) || !std::isfinite(k) || x < 0 || c < 0 || k > 0)
           throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid KS composition coefficients");
         const bool changed = x != 1 || c != 1 || k != 0;
-        const bool pbe = is_pbe_family(descriptor.method);
-        if (changed && (!pbe || backend == VIBEQC_BACKEND_CUDA))
+        const bool composable = is_pbe_family(descriptor.method) || is_b3lyp(descriptor.method);
+        if (changed && (!composable || backend == VIBEQC_BACKEND_CUDA))
           throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                            "scaled/global-hybrid KS requires CPU PBE components");
+                            "scaled/global-hybrid KS requires a qualified CPU composition");
         options.semilocal_exchange_scale = x;
         options.semilocal_correlation_scale = c;
         fock.exchange.present = k != 0;
@@ -164,6 +176,16 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
         !fock.exchange.present || fock.exchange.coefficient != expected_k)
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                         "PBE0 resolved composition does not match its audited manifest");
+  }
+  if (is_b3lyp(descriptor.method)) {
+    if (!composition_seen)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "B3LYP requires explicit resolved KS composition v2");
+    const double expected_k = is_uks(descriptor.method) ? -0.2 : -0.1;
+    if (options.semilocal_exchange_scale != 1.0 || options.semilocal_correlation_scale != 1.0 ||
+        !fock.exchange.present || fock.exchange.coefficient != expected_k)
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "B3LYP resolved composition does not match its audited manifest");
   }
   options.resolved_fock_build = scf::resolve_fock_build(
       fock, backend == VIBEQC_BACKEND_CUDA ? scf::FockBackend::Cuda : scf::FockBackend::Cpu,
@@ -188,7 +210,7 @@ dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor,
   if (input.struct_size < offsetof(vibeqc_ks_options, composition_version) ||
       input.abi_version != VIBEQC_ABI_VERSION)
     throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
-  if (input.scf_domain_version != 1)
+  if (input.scf_domain_version != scf_domain_version(descriptor.method))
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS tail/spin domain policy");
   if (!input.tile_points || input.tile_points > static_cast<std::uint64_t>(INT_MAX))
     throw std::invalid_argument("invalid KS XC tile points");
@@ -475,6 +497,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
       native = scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed);
     else if (method_ == VIBEQC_METHOD_R2SCAN_RKS)
       native = scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
+    else if (method_ == VIBEQC_METHOD_B3LYP_UKS)
+      native = scf::run_b3lyp_uks(fock_, basis_, grid_, options_, seed);
+    else if (method_ == VIBEQC_METHOD_B3LYP_RKS)
+      native = scf::run_b3lyp_rks(fock_, basis_, grid_, options_, seed);
     else if (is_uks(method_))
       native = scf::run_uks(fock_, basis_, grid_, options_, is_pbe_family(method_), seed);
     else if (is_pbe_family(method_))
@@ -510,7 +536,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
       identity.determinant = {
           {cpu_owner_, 1, 1, 1}, cpu_epoch_, fock_.strategy(), std::move(occupied)};
       identity.model = {1,
-                        1,
+                        scf_domain_version(method_),
                         grid_.spec(),
                         options_.xc_tile_points,
                         functional_code(method_),

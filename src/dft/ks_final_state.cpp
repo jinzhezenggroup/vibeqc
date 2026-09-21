@@ -17,8 +17,10 @@ bool finite(const auto& values) {
 bool valid_model(const KsFinalStateIdentity& identity) {
   const auto& model = identity.model;
   const auto& fock = identity.determinant.model;
-  if (model.version != 1 || model.scf_domain_version != 1 || model.functional > 2U ||
-      !model.tile_points || !model.owner || (model.spins != 1 && model.spins != 2) ||
+  const bool b3lyp = model.functional == 3U;
+  if (model.version != 1 || model.functional > 3U ||
+      model.scf_domain_version != (b3lyp ? 2U : 1U) || !model.tile_points || !model.owner ||
+      (model.spins != 1 && model.spins != 2) ||
       !((fock.backend == scf::FockBackend::Cpu && model.device == -1) ||
         (fock.backend == scf::FockBackend::Cuda && model.device >= 0)) ||
       identity.determinant.occupied.size() != model.spins ||
@@ -33,9 +35,12 @@ bool valid_model(const KsFinalStateIdentity& identity) {
        (fock.spec.exchange.op != scf::FockOperator::FullRange ||
         fock.spec.exchange.approximation != scf::FockApproximation::Exact ||
         fock.spec.exchange.coefficient >= 0)) ||
-      ((model.functional != 1 || fock.backend == scf::FockBackend::Cuda) &&
+      (!b3lyp && (model.functional != 1 || fock.backend == scf::FockBackend::Cuda) &&
        (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
-        fock.spec.exchange.present)))
+        fock.spec.exchange.present)) ||
+      (b3lyp && (fock.backend != scf::FockBackend::Cpu || model.semilocal_exchange_scale != 1 ||
+                 model.semilocal_correlation_scale != 1 || !fock.spec.exchange.present ||
+                 fock.spec.exchange.coefficient != (model.spins == 1 ? -0.1 : -0.2))))
     return false;
   try {
     validate_grid_spec(model.grid);

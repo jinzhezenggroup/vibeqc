@@ -84,9 +84,12 @@ SpinXcIntegral integrate_pbe_uks_scaled(const AoBasis& basis, const MolecularGri
                                         const std::vector<double>& beta_density,
                                         std::size_t tile_points, double exchange_scale,
                                         double correlation_scale);
-/** Generated B3-family GGA point result on the audited interior-v1 domain.
- * Full-/range-separated exact exchange remains owned by common Fock providers.
+/** Generated B3-family GGA point result.  B3LYP uses the production-tail-v1
+ * analytic endpoint continuation; CAM-B3LYP remains on the audited interior-v1
+ * domain. Full-/range-separated exact exchange stays with common Fock providers.
  */
+inline constexpr const char* kB3lypProductionTailPolicy =
+    "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18";
 struct B3GgaPointValue {
   double energy{};
   double rho[2]{};
