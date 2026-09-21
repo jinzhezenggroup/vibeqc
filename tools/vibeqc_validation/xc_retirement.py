@@ -16,7 +16,7 @@ from pathlib import Path
 
 LEGACY_MODULE_FILES = {
     "vibeqc_compiler.xc.expressions": "python/vibeqc_compiler/xc/expressions.py",
-    "vibeqc_compiler.xc.rsh_expressions": "python/vibeqc_compiler/xc/rsh_expressions.py",
+    "vibeqc_compiler.xc.rsh_expressions": (\n        "python/vibeqc_compiler/xc/rsh_expressions.py"\n    ),
     "vibeqc_compiler.xc.wb97mv_expressions": (
         "python/vibeqc_compiler/xc/wb97mv_expressions.py"
     ),
