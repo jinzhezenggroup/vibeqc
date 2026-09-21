@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from tools.vibeqc_validation.xc_retirement import (
+    LEGACY_MODULE_FILES,
     errors,
     inventory,
     scan_legacy_consumers,
@@ -23,13 +24,10 @@ def test_xc_retirement_inventory_is_explicit_and_monotone() -> None:
     report = inventory(ROOT)
     assert report["schema"] == "vibeqc.xc-retirement-inventory.v1"
     consumers = scan_legacy_consumers(ROOT)
-    assert report["consumers"]
     assert len(report["consumers"]) == len(consumers)
-    assert {row["module"] for row in report["legacy_sources"]} == {
-        "vibeqc_compiler.xc.expressions",
-        "vibeqc_compiler.xc.rsh_expressions",
-        "vibeqc_compiler.xc.wb97mv_expressions",
-    }
+    assert {row["module"] for row in report["legacy_sources"]} <= set(
+        LEGACY_MODULE_FILES
+    )
 
 
 def test_xc_retirement_gate_detects_new_consumer(tmp_path: Path) -> None:
@@ -55,7 +53,12 @@ def test_xc_retirement_gate_detects_new_expression_module(tmp_path: Path) -> Non
     assert failures == [expected]
 
 
-def test_xc_retirement_final_gate_fails_while_consumers_remain() -> None:
-    failures = errors(ROOT, require_no_consumers=True)
-    assert failures
-    assert all("legacy XC consumer remains" in failure for failure in failures)
+def test_xc_retirement_final_gate_detects_remaining_consumer(tmp_path: Path) -> None:
+    source = tmp_path / "python/vibeqc_compiler/xc/program.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("from .expressions import energy_expression\n")
+    failures = errors(tmp_path, require_no_consumers=True)
+    assert failures == [
+        "python/vibeqc_compiler/xc/program.py:1: legacy XC consumer remains "
+        "vibeqc_compiler.xc.expressions"
+    ]
