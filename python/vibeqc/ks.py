@@ -123,8 +123,6 @@ class KsOptions:
         if self._method_ir is not None:
             payload["method_ir"] = self._method_ir.to_payload()
             payload["method_ir_identity"] = self._method_ir.identity
-            payload["ks_execution_plan"] = self.execution_plan.to_payload()
-            payload["ks_execution_plan_identity"] = self.execution_plan.identity
         return payload
 
     @property
