@@ -96,6 +96,15 @@ def test_force_error_norms_retain_atom_and_component_semantics() -> None:
     assert measured.per_atom_l2 == pytest.approx((np.sqrt(6), np.sqrt(2)))
     with pytest.raises(ValueError, match="identical shape"):
         ObservableDelta.between(0, [[0, 0, 0]], 0, [[0, 0, 0], [0, 0, 0]])
+    with pytest.raises(ValueError, match="real values"):
+        ObservableDelta(0.0, ((1.0 + 1.0j, 0.0, 0.0),))
+
+    tiny = ObservableDelta(0.0, ((1e-300, 0.0, 0.0),))
+    assert tiny.force_rms > 0.0
+    assert tiny.force_rms / (1e-300 / np.sqrt(3.0)) == pytest.approx(1.0)
+    huge = ObservableDelta(0.0, ((1e300, 0.0, 0.0),))
+    assert np.isfinite(huge.force_rms)
+    assert huge.force_rms / (1e300 / np.sqrt(3.0)) == pytest.approx(1.0)
 
 
 def test_contribution_ledger_separates_estimator_from_actual_and_motion_semantics() -> (

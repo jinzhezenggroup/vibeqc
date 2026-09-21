@@ -33,7 +33,10 @@ def _finite_real(value: typing.Any, name: str) -> float:
 
 
 def _forces(value: typing.Any, name: str) -> np.ndarray:
-    array = np.asarray(value, dtype=float)
+    raw = np.asarray(value)
+    if np.iscomplexobj(raw):
+        raise ValueError(f"{name} must contain real values")
+    array = np.asarray(raw, dtype=float)
     if array.ndim != 2 or array.shape[1] != 3 or not array.shape[0]:
         raise ValueError(f"{name} must have shape (natom, 3)")
     if not np.isfinite(array).all():
@@ -90,7 +93,13 @@ class ObservableDelta:
 
     @property
     def force_rms(self) -> float:
-        return float(np.sqrt(np.mean(self.force_array**2)))
+        values = self.force_array
+        scale = float(np.max(values))
+        if scale == 0.0:
+            return 0.0
+        # Scale before squaring so finite subnormal/very-large force errors do
+        # not underflow to a false zero or overflow during RMS aggregation.
+        return float(scale * np.sqrt(np.mean((values / scale) ** 2)))
 
     @property
     def per_atom_max_abs(self) -> tuple[float, ...]:
