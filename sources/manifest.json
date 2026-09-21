@@ -85,6 +85,21 @@
         "python/vibeqc_compiler/integral/rys5_data.py": "d0146bf9e4ddebc7a6a31979547d3ceacb1cf7925c816b8901b9c3d3691e13eb"
       }
     },
+    "libxc-xc-admission": {
+      "canonical_inputs": {
+        "python/vibeqc_compiler/xc/expressions.py": "7fb27bbde91170d1117f719402ed110490aa419553b5cc8c2dd39078ac4c23f2",
+        "python/vibeqc_compiler/xc/rsh_expressions.py": "71c88bf653e07d202b3f57b41e79256b3c95f03a29b0aee56ceefb2eae1dd014",
+        "python/vibeqc_compiler/xc/spec.py": "c0a738fe147dddc39564f5c747696efdec0afecb6cffd21c69139710cb28e910",
+        "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d"
+      },
+      "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
+      "generator_sha256": "09a9a3ea8361dbceca53e18edc89d91b861d9c96ec92b1db8646bc1f2d66ab15",
+      "input_identity_sha256": "53d9389dcdcb033df0b14f187d2f9a98e6f5415971949655caf9aeb9cd4b6ec7",
+      "inputs": [
+        "libxc-7.0.0"
+      ],
+      "outputs": {}
+    },
     "method-parameter-python": {
       "canonical_inputs": {
         "python/vibeqc_compiler/method/method_parameters.json": "3403bdc5fecce8889aceef071d46f9e6fff1ff8ff74e3f212cf6013b9dbcea19"
@@ -235,6 +250,11 @@
       "revision": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d"
     },
     "libxc-7.0.0": {
+      "admission": {
+        "importer": "python/vibeqc_compiler/xc/libxc_maple.py",
+        "importer_sha256": "09a9a3ea8361dbceca53e18edc89d91b861d9c96ec92b1db8646bc1f2d66ab15",
+        "semantics": "libxc-maple-graph/v4"
+      },
       "collections": {
         "core": [
           "COPYING",

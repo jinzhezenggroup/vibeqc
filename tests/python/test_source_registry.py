@@ -39,6 +39,15 @@ def test_libxc_registry_owns_every_pinned_source_file() -> None:
     assert set(source["collections"]) == {"core", "rsh", "wb97mv"}
 
 
+def test_libxc_importer_semantics_are_pinned_separately() -> None:
+    registry = json.loads(source_registry.REGISTRY.read_text())
+    admission = registry["sources"]["libxc-7.0.0"]["admission"]
+    importer = source_registry.ROOT / admission["importer"]
+    assert admission["semantics"] == "libxc-maple-graph/v4"
+    assert admission["importer_sha256"] == source_registry._sha256(importer)
+    assert registry["products"]["libxc-xc-admission"]["inputs"] == ["libxc-7.0.0"]
+
+
 def test_gcp_canonical_input_matches_registered_upstream_provenance() -> None:
     registry = json.loads(source_registry.REGISTRY.read_text())
     source = registry["sources"]["simple-dftd3-gcp"]

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -157,6 +158,27 @@ def _validate_source_metadata(source_id: str, source: Any) -> None:
                 item["upstream_sha256"], label=f"{source_id}.{name}.upstream_sha256"
             )
         _normalize(b"", item.get("normalization"))
+
+    admission = source.get("admission")
+    if admission is not None:
+        if not isinstance(admission, dict):
+            raise TypeError(f"source {source_id!r} admission must be an object")
+        importer = ROOT / _relative_path(
+            admission.get("importer"), label=f"{source_id}.admission.importer"
+        )
+        semantics = admission.get("semantics")
+        if not isinstance(semantics, str) or not semantics:
+            raise SourceRegistryError(
+                f"source {source_id!r} admission requires importer semantics"
+            )
+        if not importer.is_file():
+            raise FileNotFoundError(importer)
+        expected = _check_digest(
+            admission.get("importer_sha256"),
+            label=f"{source_id}.admission.importer_sha256",
+        )
+        if _sha256(importer) != expected:
+            raise SourceRegistryError(f"source importer digest mismatch: {importer}")
 
 
 def _render_libxc_collection(
@@ -367,7 +389,7 @@ def _checked_revision(revision: Any) -> str:
         raise SourceRegistryError(
             "source updates require an explicit immutable commit or release tag"
         )
-    if any(char.isspace() for char in revision) or "/" in revision or "\\" in revision:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]*", revision):
         raise SourceRegistryError("unsafe upstream revision")
     return revision
 
@@ -438,6 +460,13 @@ def update_source(
             item["upstream_sha256"] = _sha256_bytes(upstream)
         else:
             item.pop("upstream_sha256", None)
+        if "size" in item:
+            item["size"] = len(upstream)
+        if "git_blob" in item:
+            header = f"blob {len(upstream)}\0".encode()
+            item["git_blob"] = hashlib.sha1(
+                header + upstream, usedforsecurity=False
+            ).hexdigest()
         destination = _source_file_destination(source_id, source, name, cache_root)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(data)
