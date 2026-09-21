@@ -9,6 +9,7 @@ Higher classes always retain the existing exact generic evaluator.
 import typing
 from itertools import product
 
+from ..common.cuda_target import compute_capability_from_architecture
 from .cuda import CudaEmitter
 from .df_derivatives_cuda import emit_df_geometry_cuda
 from .df_values import (
@@ -64,7 +65,14 @@ def emit_df_value_candidates_cuda(manifest: typing.Any = None) -> typing.Any:
     """Emit candidates against shared geometry, Boys, Rys and normalization ABIs."""
     from .df_tuning.value_manifest import VALUE_MANIFEST, load_value_manifest
 
-    policy = load_value_manifest(manifest or VALUE_MANIFEST)
+    manifest_payload = load_value_manifest(manifest or VALUE_MANIFEST)
+    profiles = manifest_payload["architectures"]
+
+    def architecture_condition(architecture: str) -> str:
+        major, minor = compute_capability_from_architecture(architecture)
+        macro = major * 100 + minor * 10
+        return f"defined(__CUDA_ARCH__) && __CUDA_ARCH__ == {macro}"
+
     geometry = emit_df_geometry_cuda(
         "prepare_value_rys_geometry",
         moments="""(void)total; (void)work;
@@ -81,9 +89,25 @@ def emit_df_value_candidates_cuda(manifest: typing.Any = None) -> typing.Any:
         geometry,
         "}",
         "namespace vibeqc::scf::generated_df_value_candidates {",
-        f"inline constexpr unsigned candidate_raw_lanes={policy['raw_lanes']};",
         "namespace scalar=generated_df_derivatives;",
         "using Vec3=generated_df::Vec3; using Angular=generated_df::Angular;",
+    ]
+    for index, (architecture, profile) in enumerate(sorted(profiles.items())):
+        directive = "#if" if index == 0 else "#elif"
+        numeric = int(architecture.removeprefix("sm_"))
+        condition = (
+            f"{directive} defined(VIBEQC_CUDA_PROFILE_ARCHITECTURE)"
+            f" && VIBEQC_CUDA_PROFILE_ARCHITECTURE == {numeric}"
+        )
+        lines += [
+            condition,
+            f"inline constexpr unsigned candidate_raw_lanes={profile['raw_lanes']};",
+        ]
+    if profiles:
+        lines += ["#else", "inline constexpr unsigned candidate_raw_lanes=1;", "#endif"]
+    else:
+        lines += ["inline constexpr unsigned candidate_raw_lanes=1;"]
+    lines += [
         "template<unsigned A,unsigned B,unsigned C,bool Rys> struct Value;",
     ]
     for angular in VALUE_CLASSES:
@@ -179,16 +203,39 @@ def emit_df_value_candidates_cuda(manifest: typing.Any = None) -> typing.Any:
         "    switch(generated_df::order(a)*16+generated_df::order(b)*4+generated_df::order(c)) {",
     ]
     for a, b, c in VALUE_CLASSES:
-        lines.append(
-            f"      case {16 * a + 4 * b + c}: "
-            + (
-                "if constexpr(Math==3) return generated_df::three_center(alpha,A,a,beta,B,b,gamma,C,c); "
-                if policy["kernels"][f"{a}{b}{c}"] == "generic"
-                else ""
+        class_name = f"{a}{b}{c}"
+        lines += [
+            f"      case {16 * a + 4 * b + c}: {{",
+            "        if constexpr(Math==3) {",
+        ]
+        for index, (architecture, profile) in enumerate(sorted(profiles.items())):
+            directive = "#if" if index == 0 else "#elif"
+            lowering = profile["kernels"][class_name]
+            lines.append(f"{directive} {architecture_condition(architecture)}")
+            if lowering == "generic":
+                lines.append(
+                    "          return generated_df::three_center(alpha,A,a,beta,B,b,gamma,C,c);"
+                )
+            else:
+                rys = str(lowering == "rys").lower()
+                lines.append(
+                    f"          return Value<{a},{b},{c},{rys}>::evaluate(alpha,A,a,beta,B,b,gamma,C,c);"
+                )
+        if profiles:
+            lines += [
+                "#else",
+                "          return generated_df::three_center(alpha,A,a,beta,B,b,gamma,C,c);",
+                "#endif",
+            ]
+        else:
+            lines.append(
+                "          return generated_df::three_center(alpha,A,a,beta,B,b,gamma,C,c);"
             )
-            + f"return Value<{a},{b},{c},Math==2 || (Math==3 && "
-            f"{str(policy['kernels'][f'{a}{b}{c}'] == 'rys').lower()})>::evaluate(alpha,A,a,beta,B,b,gamma,C,c);"
-        )
+        lines += [
+            "        }",
+            f"        return Value<{a},{b},{c},Math==2>::evaluate(alpha,A,a,beta,B,b,gamma,C,c);",
+            "      }",
+        ]
     lines += [
         "    }",
         "  }",

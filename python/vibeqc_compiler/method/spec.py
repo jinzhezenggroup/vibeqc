@@ -25,6 +25,7 @@ from .dispersion import (
     DispersionCorrectionPrimitive,
     pbe0_d3_bj_spec,
     pbe_d3_bj_spec,
+    pbe_d4_eeq_spec,
     r2scan3c_d4_eeq,
 )
 from .gcp import GCPSpec, GeometricCounterpoisePrimitive, r2scan3c_gcp
@@ -727,6 +728,11 @@ METHOD_CATALOG = MappingProxyType(
             "PBE-D3(BJ)",
             (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
             dispersion=pbe_d3_bj_spec(),
+        ),
+        "PBE-D4(BJ-EEQ-ATM)": MethodSpec(
+            "PBE-D4(BJ-EEQ-ATM)",
+            (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+            dispersion=pbe_d4_eeq_spec(),
         ),
         "PBE0-D3(BJ)": MethodSpec(
             "PBE0-D3(BJ)",

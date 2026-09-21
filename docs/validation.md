@@ -19,10 +19,10 @@ CUDA toolchain.
 ## CUDA benchmark execution profiles
 
 CUDA validation and benchmark tools share one scheduler-resource profile rather
-than embedding a cluster/GPU selector in each script. The current development
-default remains `partition=main`, `gres=gpu:5090:1`, one node and one task,
-with a finite per-tool time limit. These values are defaults for this checkout,
-not hardware requirements.
+than embedding a cluster/GPU selector in each script. The portable development
+default is `partition=main`, `gres=gpu:1`, one node and one task, with a finite
+per-tool time limit. A concrete GPU model such as `gpu:5090:1` is an explicit
+cluster/reproduction choice, not the implicit meaning of CUDA.
 
 Set `VIBEQC_BENCHMARK_PARTITION`, `VIBEQC_BENCHMARK_GRES`,
 `VIBEQC_BENCHMARK_NODES`, `VIBEQC_BENCHMARK_NTASKS`,

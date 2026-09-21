@@ -173,6 +173,17 @@
       "aliases": [
         "gfn2"
       ]
+    },
+    {
+      "name": "pbe-d4-rks",
+      "symbol": "PBE_D4_RKS",
+      "abi_id": 18,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
     }
   ]
 }
