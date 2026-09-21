@@ -20,17 +20,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def _run(program, feeds: dict[str, float]) -> dict[str, float]:
-    live = {
-        node.attrs["name"]
-        for node in program.live_nodes
-        if node.op == "input"
-    }
+    live = {node.attrs["name"] for node in program.live_nodes if node.op == "input"}
     outputs = execute(
         program,
-        {
-            name: np.asarray(feeds[name], dtype=np.float64)
-            for name in live
-        },
+        {name: np.asarray(feeds[name], dtype=np.float64) for name in live},
     ).outputs
     return {name: float(np.asarray(value)) for name, value in outputs.items()}
 
@@ -55,7 +48,8 @@ def _pair_inputs() -> dict[str, float]:
 def test_h0_onsite_factor_and_cn_vjp() -> None:
     feeds = _pair_inputs()
     expected = 0.5 * (
-        feeds["first_shell_level"] - feeds["first_cn_scale"] * feeds["first_cn"]
+        feeds["first_shell_level"]
+        - feeds["first_cn_scale"] * feeds["first_cn"]
         + feeds["second_shell_level"]
         - feeds["second_cn_scale"] * feeds["second_cn"]
     )
@@ -84,7 +78,8 @@ def test_h0_onsite_factor_and_cn_vjp() -> None:
 def test_h0_offsite_factor_and_generated_radial_vjp() -> None:
     feeds = _pair_inputs()
     average = 0.5 * (
-        feeds["first_shell_level"] - feeds["first_cn_scale"] * feeds["first_cn"]
+        feeds["first_shell_level"]
+        - feeds["first_cn_scale"] * feeds["first_cn"]
         + feeds["second_shell_level"]
         - feeds["second_cn_scale"] * feeds["second_cn"]
     )

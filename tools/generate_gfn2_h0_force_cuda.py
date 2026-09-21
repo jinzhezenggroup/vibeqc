@@ -59,11 +59,7 @@ def _device(source: str, function_name: str) -> str:
 
 
 def _inputs(program, canonical: tuple[str, ...]) -> tuple[str, ...]:
-    live = {
-        node.attrs["name"]
-        for node in program.live_nodes
-        if node.op == "input"
-    }
+    live = {node.attrs["name"] for node in program.live_nodes if node.op == "input"}
     ordered = tuple(name for name in canonical if name in live)
     if set(ordered) != live:
         missing = sorted(live - set(ordered))
