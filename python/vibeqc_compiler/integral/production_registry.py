@@ -21,14 +21,27 @@ from .production_profile import (
 )
 from .production_selection import (
     KernelSelection,
+    _as_selection,
     _selection_integral,
-    _stable_selection_order,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from .shell_spec import ShellClassSpec
+
+
+def _stable_selection_order(
+    specifications: Iterable[ShellClassSpec | KernelSelection],
+) -> tuple[KernelSelection, ...]:
+    """Materialize selections in canonical class order for registry sources."""
+
+    return tuple(
+        sorted(
+            map(_as_selection, specifications),
+            key=lambda item: (shell_class_index(item.spec), item.spec.name),
+        )
+    )
 
 
 def emit_registry_header(

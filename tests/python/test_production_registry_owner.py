@@ -31,5 +31,17 @@ def test_shared_registry_naming_and_ordering_live_below_orchestration() -> None:
     assert production._as_selection is production_selection._as_selection
     assert (
         production._stable_selection_order
-        is production_selection._stable_selection_order
+        is production_registry._stable_selection_order
     )
+
+
+def test_legacy_launch_signature_helpers_keep_canonical_identity() -> None:
+    for name in (
+        "_launch_parameter_declaration",
+        "_resident_launch_parameter_declaration",
+        "_streaming_fock_launch_parameter_declaration",
+        "_launch_argument_list",
+        "_resident_launch_argument_list",
+        "_streaming_fock_launch_argument_list",
+    ):
+        assert getattr(production, name) is getattr(production_registry, name)

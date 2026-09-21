@@ -49,11 +49,24 @@ load_production_manifest = _production_profile.load_production_manifest
 resolve_production_profile = _production_profile.resolve_production_profile
 _profile_identifier = _production_profile._profile_identifier
 _as_selection = _production_selection._as_selection
-_stable_selection_order = _production_selection._stable_selection_order
+_stable_selection_order = _production_registry._stable_selection_order
 emit_registry_header = _production_registry.emit_registry_header
 emit_registry_source = _production_registry.emit_registry_source
 emit_multi_registry_header = _production_registry.emit_multi_registry_header
 emit_multi_registry_source = _production_registry.emit_multi_registry_source
+
+_launch_parameter_declaration = _production_registry._launch_parameter_declaration
+_resident_launch_parameter_declaration = (
+    _production_registry._resident_launch_parameter_declaration
+)
+_streaming_fock_launch_parameter_declaration = (
+    _production_registry._streaming_fock_launch_parameter_declaration
+)
+_launch_argument_list = _production_registry._launch_argument_list
+_resident_launch_argument_list = _production_registry._resident_launch_argument_list
+_streaming_fock_launch_argument_list = (
+    _production_registry._streaming_fock_launch_argument_list
+)
 
 
 _PRODUCTION_PRELUDE = r"""#include "scf/generated_shell_task.hpp"

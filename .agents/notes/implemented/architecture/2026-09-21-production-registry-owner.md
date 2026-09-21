@@ -29,3 +29,16 @@ Remaining #487 work is source-emission and filesystem/bundle-orchestration owner
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Review correction: retain the leaf boundary and compatibility surface
+
+Canonical ordering consumes shell-class indexing from `production_cost`, so its
+owner is `production_registry`, not the lower-level `production_selection`.
+The latter retains compatibility normalization without acquiring a cost-policy
+dependency. This supersedes the ordering edge in the initial diagram above.
+All six moved launch-signature/argument helpers are identity-preserving
+re-exports from `production`, including the existing streaming-Fock caller.
+The pre-existing leaf-dependency and generated-signature tests stay enabled.
+
+Agent: ChatGPT
+Model: GPT-6 Astra Pro
