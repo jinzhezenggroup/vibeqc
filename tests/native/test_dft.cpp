@@ -72,8 +72,8 @@ int main() {
         {1.0e-300, 0.0, -0.0, -1.9471373254307811e-100, -1.4616087206710597e-100},
     };
     for (const auto& reference : lda_tail_cases) {
-      const auto value = vibeqc::dft::generated::lda_xc_pw_polarized_production(
-          reference.alpha, reference.beta);
+      const auto value =
+          vibeqc::dft::generated::lda_xc_pw_polarized_production(reference.alpha, reference.beta);
       const auto close = [](double actual, double expected) {
         return std::isfinite(actual) &&
                std::abs(actual - expected) <= 5.0e-10 * std::abs(expected) + 1.0e-322;
@@ -83,10 +83,8 @@ int main() {
                   close(value.feature_derivative[1], reference.v_beta),
               "compiler-owned polarized LDA tail differs from independent reference");
     }
-    const auto lda_vacuum =
-        vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
-    require(lda_vacuum.energy_density == 0.0 &&
-                lda_vacuum.feature_derivative[0] == 0.0 &&
+    const auto lda_vacuum = vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
+    require(lda_vacuum.energy_density == 0.0 && lda_vacuum.feature_derivative[0] == 0.0 &&
                 lda_vacuum.feature_derivative[1] == 0.0,
             "compiler-owned polarized LDA vacuum limit is wrong");
 

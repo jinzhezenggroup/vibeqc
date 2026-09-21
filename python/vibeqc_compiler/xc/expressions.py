@@ -115,10 +115,7 @@ def lda_xc_pw_polarized_tail_expression() -> typing.Any:
         series = 1 + value * (
             F(-1, 2)
             + value
-            * (
-                F(1, 3)
-                + value * (F(-1, 4) + value * (F(1, 5) - value * F(1, 6)))
-            )
+            * (F(1, 3) + value * (F(-1, 4) + value * (F(1, 5) - value * F(1, 6))))
         )
         return graph.select_le(
             value,
@@ -135,20 +132,13 @@ def lda_xc_pw_polarized_tail_expression() -> typing.Any:
         b3 = F(parameters["b3"][index])
         b4 = F(parameters["b4"][index])
         x2 = x * x
-        q = (
-            b1 * sqrt_c * x2 * x
-            + b2 * c * x2
-            + b3 * c**1.5 * x
-            + b4 * c**2
-        )
+        q = b1 * sqrt_c * x2 * x + b2 * c * x2 + b3 * c**1.5 * x + b4 * c**2
         u = x2 * x2 / (2 * aa * q)
         return -(x2 + alpha * c) * x2 / q * log1p_over_x(u)
 
     e0, e1, em = (pw_channel(i) for i in range(3))
     fz20 = F("1.709921")
-    fz = (up.pow(F(4, 3)) + down.pow(F(4, 3)) - 2) / (
-        2 ** (4 / 3) - 2
-    )
+    fz = (up.pow(F(4, 3)) + down.pow(F(4, 3)) - 2) / (2 ** (4 / 3) - 2)
     eps = e0 + z.pow(4) * fz * (e1 - e0 + em / fz20) - fz * em / fz20
     correlation = n * eps
     correlation_a = graph.differentiate(correlation, a)

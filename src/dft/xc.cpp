@@ -143,8 +143,7 @@ point::Value evaluate_generated_lda_point(const double rho[2]) {
   out.energy = raw.energy_density;
   out.rho[0] = raw.feature_derivative[0];
   out.rho[1] = raw.feature_derivative[1];
-  out.valid =
-      std::isfinite(out.energy) && std::isfinite(out.rho[0]) && std::isfinite(out.rho[1]);
+  out.valid = std::isfinite(out.energy) && std::isfinite(out.rho[0]) && std::isfinite(out.rho[1]);
   return out;
 }
 
@@ -224,9 +223,8 @@ SpinXcIntegral integrate_spin_xc(const AoBasis& basis, const MolecularGrid& grid
         rho[spin] = features[0];
         for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
       }
-      const auto xc =
-          pbe ? point::evaluate(true, rho, gradient, exchange_scale, correlation_scale)
-              : evaluate_generated_lda_point(rho);
+      const auto xc = pbe ? point::evaluate(true, rho, gradient, exchange_scale, correlation_scale)
+                          : evaluate_generated_lda_point(rho);
       if (!xc.valid) throw std::domain_error("invalid or unrepresentable semilocal spin features");
       const double weight = grid.weights()[begin + p];
       result.energy += weight * xc.energy;
