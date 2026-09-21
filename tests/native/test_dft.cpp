@@ -58,6 +58,38 @@ int main() {
     require(std::abs(vibeqc::dft::generated::kB3lypExactExchange - 0.2) < 1e-16,
             "B3LYP generated exact-exchange fraction disagrees with MethodIR");
 
+    struct LdaTailCase {
+      double alpha;
+      double beta;
+      double energy;
+      double v_alpha;
+      double v_beta;
+    };
+    // Independent 450-digit references from tests/data/xc/scf_domain.tsv.
+    const LdaTailCase lda_tail_cases[] = {
+        {0.0, 1.0e-300, -0.0, -1.4616087206710597e-100, -1.9471373254307811e-100},
+        {3.0e-301, 7.0e-301, -0.0, -1.9289615002530123e-100, -1.9064009290496817e-100},
+        {1.0e-300, 0.0, -0.0, -1.9471373254307811e-100, -1.4616087206710597e-100},
+    };
+    for (const auto& reference : lda_tail_cases) {
+      const auto value = vibeqc::dft::generated::lda_xc_pw_polarized_production(
+          reference.alpha, reference.beta);
+      const auto close = [](double actual, double expected) {
+        return std::isfinite(actual) &&
+               std::abs(actual - expected) <= 5.0e-10 * std::abs(expected) + 1.0e-322;
+      };
+      require(close(value.energy_density, reference.energy) &&
+                  close(value.feature_derivative[0], reference.v_alpha) &&
+                  close(value.feature_derivative[1], reference.v_beta),
+              "compiler-owned polarized LDA tail differs from independent reference");
+    }
+    const auto lda_vacuum =
+        vibeqc::dft::generated::lda_xc_pw_polarized_production(0.0, 0.0);
+    require(lda_vacuum.energy_density == 0.0 &&
+                lda_vacuum.feature_derivative[0] == 0.0 &&
+                lda_vacuum.feature_derivative[1] == 0.0,
+            "compiler-owned polarized LDA vacuum limit is wrong");
+
     const auto cam_point =
         vibeqc::dft::generated::cam_b3lyp_polarized(0.3, 0.2, 0.015, 0.003, 0.01);
     const std::array<double, 6> cam_oracle{-0.22534883092171914, -0.6376091098611569,
