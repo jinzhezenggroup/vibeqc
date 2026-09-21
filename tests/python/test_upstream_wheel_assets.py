@@ -57,7 +57,7 @@ assert -1 < graph.evaluate(energy, {}) < 0
 assert asset_path('external/libxc-7.0.0/manifest.json').is_file()
 """
     completed = subprocess.run(
-        [sys.executable, "-c", script],
+        [sys.executable, "-S", "-c", script],
         cwd=tmp_path,
         env={**os.environ, "PYTHONPATH": str(tmp_path)},
         check=False,
