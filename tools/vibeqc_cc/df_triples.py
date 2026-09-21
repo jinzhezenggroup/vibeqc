@@ -36,6 +36,8 @@ from .triples import (
 def factorized_triples_workspace_bytes(nocc: int) -> int:
     """Conservative scratch budget for one virtual triple.
 
+    The bound includes all six W/V/Z cubes, projection temporaries and
+    bounded input-validation scratch. Previous triples are released explicitly.
     B factors, accepted amplitudes and retained smaller MO blocks are owned and
     budgeted by :class:`PreparedDFCCSD`; this function budgets only temporary
     (T) work.  No term scales with nvir**3 or nvir**4.
@@ -43,7 +45,7 @@ def factorized_triples_workspace_bytes(nocc: int) -> int:
 
     if type(nocc) is not int or nocc < 1:
         raise ValueError("factorized DF triples require a nonempty occupied space")
-    return 8 * (20 * nocc**3 + 4 * nocc**2 + nocc)
+    return 8 * (32 * nocc**3 + 10 * nocc**2 + nocc)
 
 
 def _validate_inputs(
@@ -57,15 +59,20 @@ def _validate_inputs(
     eps_o: typing.Any,
     eps_v: typing.Any,
 ) -> tuple[np.ndarray, ...]:
-    values = tuple(
-        np.asarray(x) for x in (bov, bvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
-    )
+    inputs = (bov, bvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
+    if any(not isinstance(value, np.ndarray) for value in inputs):
+        raise ValueError("factorized DF triples require FP64 numpy arrays")
+    values = tuple(np.asarray(value) for value in inputs)
     if any(x.dtype != np.float64 for x in values):
         raise ValueError("factorized DF triples require FP64 inputs")
     bov, bvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v = values
     if bov.ndim != 3 or bvv.ndim != 3:
         raise ValueError("DF triples factors must have rank three")
     q, o, v = bov.shape
+    if min(q, o, v) < 1:
+        raise ValueError(
+            "factorized DF triples require nonempty factor/orbital domains"
+        )
     shapes = (
         (bvv.shape, (q, v, v)),
         (ovoo.shape, (o, v, o, o)),
@@ -78,14 +85,22 @@ def _validate_inputs(
     )
     if q < 1 or any(actual != expected for actual, expected in shapes):
         raise ValueError("incompatible factorized DF triples shapes")
-    if not all(np.isfinite(x).all() for x in (ovoo, ovov, fov, t1, t2, eps_o, eps_v)):
-        raise ValueError("factorized DF triples require finite FP64 inputs")
-    for ov, vv in zip(bov, bvv, strict=True):
-        if not np.isfinite(ov).all() or not np.isfinite(vv).all():
-            raise ValueError("factorized DF triples require finite FP64 inputs")
-        if np.max(np.abs(vv - vv.T)) > 1e-10:
-            raise ValueError("B_vv must preserve the symmetric spatial-MO pair")
     return values
+
+
+def _validate_values(values: tuple[np.ndarray, ...], chunk: int) -> None:
+    """Bound even strided validation temporaries by occupied-space scratch."""
+    for value in values:
+        for start in range(0, value.size, chunk):
+            if not np.isfinite(value.flat[start : start + chunk]).all():
+                raise ValueError("factorized DF triples require finite FP64 inputs")
+    for vv in values[1]:
+        for row in range(vv.shape[0]):
+            for start in range(0, row + 1, chunk):
+                stop = min(row + 1, start + chunk)
+                difference = vv[row, start:stop] - vv[start:stop, row]
+                if np.max(np.abs(difference)) > 1e-10:
+                    raise ValueError("B_vv must preserve the symmetric spatial-MO pair")
 
 
 def _w_factorized(
@@ -157,35 +172,48 @@ def factorized_triples_energy(
         raise MemoryError(
             f"factorized DF triples require {required} temporary numeric bytes"
         )
-    _check_denominators(eps_o, eps_v, denominator_threshold)
+    _validate_values(
+        (bov, bvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v),
+        min(4096, required // (3 * np.dtype(np.float64).itemsize)),
+    )
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        _check_denominators(eps_o, eps_v, denominator_threshold)
 
-    t1_t = t1.T
-    t2_t = t2.transpose(2, 3, 0, 1)
-    vooo = ovoo.transpose(1, 0, 2, 3)
-    vvoo = ovov.transpose(1, 3, 0, 2)
-    fvo = fov.T
-    eijk = eps_o[:, None, None] + eps_o[None, :, None] + eps_o[None, None, :]
+        t1_t = t1.T
+        t2_t = t2.transpose(2, 3, 0, 1)
+        vooo = ovoo.transpose(1, 0, 2, 3)
+        vvoo = ovov.transpose(1, 3, 0, 2)
+        fvo = fov.T
+        eijk = eps_o[:, None, None] + eps_o[None, :, None] + eps_o[None, None, :]
 
-    et = 0.0
-    for a in range(len(eps_v)):
-        for b in range(a + 1):
-            for c in range(b + 1):
-                d3 = (eijk - eps_v[a] - eps_v[b] - eps_v[c]) * _degeneracy(a, b, c)
-                ws: dict[str, np.ndarray] = {}
-                vs: dict[str, np.ndarray] = {}
-                for label in _LABELS:
-                    pa, pb, pc = _permuted((a, b, c), VP[label])
-                    ws[label] = _w_factorized(bov, bvv, vooo, t2_t, pa, pb, pc)
-                    vs[label] = _v_dense(vvoo, fvo, t1_t, t2_t, pa, pb, pc)
-                zs = {label: r3(ws[label] + 0.5 * vs[label]) / d3 for label in _LABELS}
-                for zlabel, row in SLOW_TABLE.items():
-                    for wlabel, occupied_order in row:
-                        et += np.einsum(
-                            "ijk,ijk",
-                            ws[wlabel].transpose(OP[occupied_order]),
-                            zs[zlabel],
-                        )
-    return float(2.0 * et)
+        et = 0.0
+        for a in range(len(eps_v)):
+            for b in range(a + 1):
+                for c in range(b + 1):
+                    d3 = (eijk - eps_v[a] - eps_v[b] - eps_v[c]) * _degeneracy(a, b, c)
+                    ws: dict[str, np.ndarray] = {}
+                    vs: dict[str, np.ndarray] = {}
+                    for label in _LABELS:
+                        pa, pb, pc = _permuted((a, b, c), VP[label])
+                        ws[label] = _w_factorized(bov, bvv, vooo, t2_t, pa, pb, pc)
+                        vs[label] = _v_dense(vvoo, fvo, t1_t, t2_t, pa, pb, pc)
+                    zs = {
+                        label: r3(ws[label] + 0.5 * vs[label]) / d3 for label in _LABELS
+                    }
+                    for zlabel, row in SLOW_TABLE.items():
+                        for wlabel, occupied_order in row:
+                            et += np.einsum(
+                                "ijk,ijk",
+                                ws[wlabel].transpose(OP[occupied_order]),
+                                zs[zlabel],
+                            )
+                    # Do not retain the prior Z dictionary while constructing the
+                    # next virtual triple's intermediates.
+                    del ws, vs, zs, d3
+        result = float(2.0 * et)
+        if not np.isfinite(result):
+            raise FloatingPointError("factorized DF triples energy became nonfinite")
+        return result
 
 
 @dataclass(frozen=True)
@@ -261,6 +289,10 @@ def solve_df_ccsdt(
         ecc = float(ccsd.correlation_energy)
         correlation = ecc + et
         total = snapshot.reference_energy + correlation
+        if not np.isfinite((et, ecc, correlation, total)).all():
+            raise FloatingPointError(
+                "factorized DF-RCCSD(T) total energy became nonfinite"
+            )
         provenance = {
             "schema": "vibeqc.df-rccsd-t.result/1",
             "method": "df-rccsd(t)-correlation-only",
