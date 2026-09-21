@@ -180,6 +180,157 @@ def test_native_gradient_grid_helpers_do_not_duplicate_the_ao_translation_unit()
     assert "grid_response_adjoint.hpp" not in gradient
 
 
+def test_stationary_aot_inventory_is_fixed_full_sp_domain() -> None:
+    from itertools import product
+
+    from vibeqc_compiler.integral.first_derivative_native import (
+        emit_first_derivative_cuda,
+    )
+    from vibeqc_compiler.method.stationary_cuda import (
+        QUALIFIED_SP_COMPONENTS,
+        emit_stationary_aot_cuda,
+        qualified_sp_requests,
+        stationary_aot_plan_identity,
+        stationary_aot_source_identity,
+    )
+
+    requests = qualified_sp_requests()
+    primitive_source = emit_first_derivative_cuda(requests)
+    assert len(requests) == 3 * 4**2 + 4**4 + 1
+    assert len(requests) == len(set(requests)) == 305
+    assert ("overlap", ("", "")) in requests
+    assert ("four_center_eri", ("z", "x", "", "y")) in requests
+    assert requests[-1] == ("nuclear", ())
+    assert QUALIFIED_SP_COMPONENTS == ("", "x", "y", "z")
+    assert {
+        components for operator, components in requests if operator == "four_center_eri"
+    } == set(product(QUALIFIED_SP_COMPONENTS, repeat=4))
+    for functional in (0, 1, 2):
+        identities = set()
+        for spin, blocks in (("unpolarized", 1), ("polarized", 2)):
+            source = emit_stationary_aot_cuda(
+                functional, primitive_source=primitive_source, spin=spin
+            )
+            identities.add(
+                stationary_aot_source_identity(
+                    functional, primitive_source=primitive_source, spin=spin
+                )
+            )
+            assert stationary_aot_plan_identity(functional, spin=spin)
+            assert f"stationary_functional = {functional}" in source
+            assert f"stationary_spin_blocks = {blocks}" in source
+            assert "__global__ void source_reduce" in source
+        assert len(identities) == 2
+    with pytest.raises(ValueError, match="partition_iterations=3"):
+        emit_stationary_aot_cuda(
+            0, primitive_source=primitive_source, spin="unpolarized", iterations=2
+        )
+
+
+def test_stationary_aot_loader_checks_plan_target_and_binary_identity(
+    tmp_path: typing.Any,
+) -> None:
+    import json
+
+    from vibeqc_compiler.common.provenance import file_hash
+    from vibeqc_compiler.method import resolve_method
+    from vibeqc_compiler.method.stationary_cuda import (
+        load_stationary_aot_artifact,
+        stationary_aot_contract_identity,
+        stationary_aot_plan_identity,
+    )
+    from vibeqc_compiler.method.stationary_gradient import (
+        SCF_POINT_MODEL,
+        StationaryGradientPlan,
+        StationaryMeanField,
+    )
+
+    spin = "unpolarized"
+    plan = StationaryGradientPlan(
+        resolve_method("PBE", spin=spin), StationaryMeanField(SCF_POINT_MODEL)
+    )
+    library = tmp_path / "libvibeqc_stationary_pbe_rks.so"
+    library.write_bytes(b"aot-binary")
+    manifest = tmp_path / "vibeqc_stationary_pbe_rks.json"
+    payload = {
+        "schema": "vibeqc.stationary-cuda-aot.v2",
+        "functional": 1,
+        "spin": spin,
+        "plan_identity": stationary_aot_plan_identity(1, spin=spin),
+        "partition_iterations": 3,
+        "architectures": ["sm_90", "sm_120"],
+        "compile_architectures": ["90-real", "120"],
+        "code_objects": [
+            {"architecture": "sm_90", "kind": "cubin"},
+            {"architecture": "sm_120", "kind": "cubin"},
+            {"architecture": "sm_120", "kind": "ptx"},
+        ],
+        "source_identity": "build-recorded-source",
+        "contract_identity": stationary_aot_contract_identity(1, spin=spin),
+        "source_sha256": "unused-by-loader",
+        "binary_sha256": file_hash(library),
+        "binary_bytes": library.stat().st_size,
+        "compile_contract": {"fp64": True, "fmad": False},
+    }
+    manifest.write_text(json.dumps(payload))
+
+    artifact = load_stationary_aot_artifact(
+        tmp_path,
+        functional=1,
+        spin=spin,
+        plan=plan,
+        architecture="sm_120",
+    )
+    assert artifact.library == library
+    assert artifact.metadata["identity"]["plan"] == plan.identity
+    assert artifact.metadata["identity"]["target"] == {
+        "architecture": "sm_120",
+        "code_kinds": ["cubin", "ptx"],
+    }
+    assert artifact.metadata["driver_ptx_jit_possible"] is True
+    assert artifact.metadata["driver_ptx_jit_required"] is False
+
+    with pytest.raises(NotImplementedError, match="sm_80"):
+        load_stationary_aot_artifact(
+            tmp_path,
+            functional=1,
+            spin=spin,
+            plan=plan,
+            architecture="sm_80",
+        )
+    polarized = StationaryGradientPlan(
+        resolve_method("PBE", spin="polarized"), StationaryMeanField(SCF_POINT_MODEL)
+    )
+    with pytest.raises(ValueError, match="plan identity"):
+        load_stationary_aot_artifact(
+            tmp_path,
+            functional=1,
+            spin=spin,
+            plan=polarized,
+            architecture="sm_120",
+        )
+    bad = {**payload, "contract_identity": "0" * 64}
+    manifest.write_text(json.dumps(bad))
+    with pytest.raises(ValueError, match="contract_identity"):
+        load_stationary_aot_artifact(
+            tmp_path,
+            functional=1,
+            spin=spin,
+            plan=plan,
+            architecture="sm_120",
+        )
+    manifest.write_text(json.dumps(payload))
+    library.write_bytes(b"corrupt")
+    with pytest.raises(ValueError, match="binary integrity"):
+        load_stationary_aot_artifact(
+            tmp_path,
+            functional=1,
+            spin=spin,
+            plan=plan,
+            architecture="sm_120",
+        )
+
+
 @pytest.mark.parametrize(
     ("environment", "expected"),
     [

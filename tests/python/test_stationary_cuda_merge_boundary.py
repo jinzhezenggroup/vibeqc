@@ -99,8 +99,9 @@ def test_source_owner_validates_spin_storage_and_packs_ao_indices(
     np.testing.assert_array_equal(owner.tasks[0, :9], [0, 0, 4, -1, 0, 1, 0, 1, 1])
 
 
+@pytest.mark.parametrize("aot", (False, True))
 def test_weight_fusion_orchestration_runs_without_a_device(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, aot: bool
 ) -> None:
     from vibeqc import _stationary_cuda as runtime
 
@@ -113,7 +114,9 @@ def test_weight_fusion_orchestration_runs_without_a_device(
 
     class FakeCompiler:
         def __init__(self) -> None:
-            self.target = SimpleNamespace(compute_capability=(12, 0))
+            from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+            self.target = cuda_target_info("sm_120")
 
     class FakePlan:
         source_names = runtime._SOURCE_NAMES
@@ -167,6 +170,20 @@ def test_weight_fusion_orchestration_runs_without_a_device(
     monkeypatch.setattr(runtime, "compile_grid", lambda *_a, **_k: artifact("grid"))
     monkeypatch.setattr(runtime, "compile_cuda", lambda *_a, **_k: artifact("tensor"))
 
+    if aot:
+        for name in ("compile_stationary_cuda", "compile_grid", "compile_cuda"):
+            monkeypatch.setattr(
+                runtime, name, lambda *a, **k: pytest.fail("compiler used by AOT")
+            )
+        monkeypatch.setattr(
+            runtime,
+            "load_stationary_aot_artifact",
+            lambda *a, **k: artifact("stationary"),
+        )
+        monkeypatch.setattr(
+            runtime, "_native_grid_artifact", lambda *a, **k: artifact("grid")
+        )
+
     reduction = MagicMock()
     reduction.__enter__.return_value = reduction
     reduction.execute.return_value = SimpleNamespace(
@@ -194,6 +211,7 @@ def test_weight_fusion_orchestration_runs_without_a_device(
         budget: int,
         *,
         spin_blocks: int = 1,
+        target: object = None,
         work_budget: int = 2_000_000,
     ) -> MagicMock:
         admitted["budget"] = budget
@@ -255,7 +273,10 @@ def test_weight_fusion_orchestration_runs_without_a_device(
     result = runtime.complete_rks_cuda_gradient_diagnostic(
         state,
         basis,
-        compiler=FakeCompiler(),
+        compiler=None if aot else FakeCompiler(),
+        target=FakeCompiler().target if aot else None,
+        aot_directory=tmp_path if aot else None,
+        native_grid_library=tmp_path / "native.so" if aot else None,
         cache=tmp_path / "cache",
         tile_points=4,
         integral_terms=2,

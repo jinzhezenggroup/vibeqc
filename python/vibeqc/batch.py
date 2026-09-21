@@ -616,6 +616,15 @@ class PreparedBatch:
         if not self._batch.value:
             raise RuntimeError("prepared batch is closed")
 
+    def _stationary_cuda_target(self) -> typing.Any:
+        """Resolve the native execution target without discovering a compiler."""
+        from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+        from .profiles import probe_device
+
+        device = probe_device(self._library, self._calculator._device_id)["device"]
+        return cuda_target_info(f"sm_{device['major']}{device['minor']}")
+
     def _stationary_cuda_compiler(self) -> typing.Any:
         """Lazily bind the generated-force compiler to this native device."""
         compiler = getattr(self, "_c2_stationary_compiler", None)
@@ -670,13 +679,20 @@ class PreparedBatch:
                     raise NotImplementedError(
                         "public CUDA DFT forces require a qualified CUDA owner"
                     )
+                native_library = Path(str(self._library._name)).resolve()
+                all_electron = state._source.hamiltonian == "all-electron"
                 kwargs = {
-                    "compiler": self._stationary_cuda_compiler(),
+                    "compiler": None
+                    if all_electron
+                    else self._stationary_cuda_compiler(),
+                    "target": self._stationary_cuda_target(),
                     "cache": Path(
                         os.environ.get(
                             "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cuda"
                         )
                     ),
+                    "aot_directory": native_library.parent,
+                    "native_grid_library": native_library,
                 }
                 try:
                     result = complete_rks_cuda_gradient_diagnostic(
