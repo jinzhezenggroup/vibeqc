@@ -131,3 +131,33 @@ def test_halogen_budgeted_replay_and_recovery(
         representation,
         record_property,
     )
+
+
+@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
+def test_halogen_recovery_energy_certifies_exportable_physical_projector(
+    representation: str,
+) -> None:
+    """A recovered energy success must certify the same state used by forces."""
+    from vibeqc._ks_snapshot import NativeKsSnapshot
+
+    atoms, basis, mol = heavy_fixture("I", spin=1)
+    basis = replace(basis, representation=representation)
+    xyz = mol.atom_coords()
+    moved = xyz.copy()
+    moved[1] += [0.03, -0.02, 0.09]
+    calc = cpu_gates.calculator(basis, "pbe-uks")
+    with calc.prepare_batch(
+        [atoms, [("H", (0.0, 0.0, 0.0))]],
+        charges=[1, 0],
+        multiplicities=[2, 2],
+    ) as batch:
+        for coordinates in (None, None, [moved, None]):
+            batch.execute(coordinates=coordinates, properties=("energy",), strict=True)
+        failed = batch.execute(coordinates=[[0.0], None], properties=("energy",))
+        assert not failed.items[0].succeeded and failed.items[1].succeeded
+        recovered = batch.execute(
+            coordinates=[xyz, None], properties=("energy",), strict=True
+        )
+        assert recovered.items[0].converged
+        snapshot = NativeKsSnapshot(batch, 0)
+        snapshot.close()
