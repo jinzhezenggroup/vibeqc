@@ -118,7 +118,9 @@ def cooperative_schedule_contract(
             workgroup_threads=schedule.workgroup_threads,
             subgroup_size=schedule.subgroup_size,
             fusion="domain-owned",
-            materialization="shared-state" if schedule.shared_state else "private-state",
+            materialization="shared-state"
+            if schedule.shared_state
+            else "private-state",
             residency="device",
             reduction="lane-group" if schedule.group_reduction else "none",
             cooperative=True,

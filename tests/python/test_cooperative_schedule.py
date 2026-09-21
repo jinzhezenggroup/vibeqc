@@ -69,9 +69,12 @@ def test_one_electron_policy_emits_shared_schedule_identity_and_geometry() -> No
     for architecture, payload in policy["schedule_contracts"].items():
         contract = ScheduleContract.from_payload(payload)
         assert contract.consumer == "integral.one_electron_derivative"
-        assert contract.schedule_hash == nucleus_cooperative_schedule(
-            CUDA_TARGETS[architecture].target_info
-        ).identity
+        assert (
+            contract.schedule_hash
+            == nucleus_cooperative_schedule(
+                CUDA_TARGETS[architecture].target_info
+            ).identity
+        )
         assert contract.profile_key == policy["workload_profile_key"]
         assert contract.topology.cooperative
         assert contract.topology.reduction == "lane-group"

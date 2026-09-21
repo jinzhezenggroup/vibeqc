@@ -106,7 +106,9 @@ def one_electron_derivative_policy_inventory() -> dict[str, object]:
     schedule = production_nucleus_cooperative_schedule()
     workload = one_electron_derivative_workload()
     contracts = {
-        architecture: one_electron_derivative_schedule_contract(target.target_info).to_payload()
+        architecture: one_electron_derivative_schedule_contract(
+            target.target_info
+        ).to_payload()
         for architecture, target in sorted(CUDA_TARGETS.items())
     }
     return {
