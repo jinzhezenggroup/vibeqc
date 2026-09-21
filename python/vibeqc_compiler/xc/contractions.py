@@ -126,9 +126,7 @@ def _geometry_feature_direction(
     for spin in range(2):
         ds, dds = d[spin], dd[spin]
         rho[spin] = (
-            _ao_bilinear(dp, ds, p)
-            + _ao_bilinear(p, ds, dp)
-            + _ao_bilinear(p, dds, p)
+            _ao_bilinear(dp, ds, p) + _ao_bilinear(p, ds, dp) + _ao_bilinear(p, dds, p)
         )
         if family == "lda":
             continue
@@ -152,8 +150,7 @@ def _geometry_feature_direction(
             np.stack(
                 [
                     np.sum(
-                        gradient[a] * base_gradient[b]
-                        + base_gradient[a] * gradient[b],
+                        gradient[a] * base_gradient[b] + base_gradient[a] * gradient[b],
                         axis=1,
                     )
                     for a, b in pairs
@@ -442,14 +439,18 @@ class ContractionProgram:
             or raw_jets.shape[0] not in (4, 10, 20)
             or raw_jets.shape[0] < required
         ):
-            raise ValueError("XC potential geometry JVP requires AO jets through order+1")
+            raise ValueError(
+                "XC potential geometry JVP requires AO jets through order+1"
+            )
         npoint, nao = raw_jets.shape[1:]
         weights = immutable(weights, shape=(npoint,))
         points = immutable(point_motion, shape=(npoint, 3))
         dweights = immutable(weight_motion, shape=(npoint,))
         centers = immutable(center_motion)
         if centers.ndim != 2 or centers.shape[1:] != (3,):
-            raise ValueError("XC potential geometry JVP requires [atom,3] center motion")
+            raise ValueError(
+                "XC potential geometry JVP requires [atom,3] center motion"
+            )
         atoms = np.asarray(ao_atoms)
         if (
             atoms.shape != (nao,)
