@@ -86,6 +86,7 @@ hashed in the standard ZIP manifest, restored and compared byte for byte.
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue310-final-eigen \
+  --archive .artifacts/issue310-final-eigen/raw-evidence.zip \
   --output /tmp/issue310-final-evidence
 ```
 

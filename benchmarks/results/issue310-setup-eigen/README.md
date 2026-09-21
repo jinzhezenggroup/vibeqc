@@ -75,6 +75,7 @@ hashed, compressed and restored byte for byte before publication.
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue310-setup-eigen \
+  --archive .artifacts/issue310-setup-eigen/raw-evidence.zip \
   --output /tmp/issue310-setup-evidence
 ```
 

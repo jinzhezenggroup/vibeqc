@@ -78,6 +78,7 @@ members were restored and compared byte for byte before publication.
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue309-overlap-cache \
+  --archive .artifacts/issue309-overlap-cache/raw-evidence.zip \
   --output /tmp/issue309-cache-evidence
 ```
 

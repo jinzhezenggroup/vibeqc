@@ -80,6 +80,7 @@ Every member was restored and compared byte for byte:
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue282-generated-resident \
+  --archive .artifacts/issue282-generated-resident/raw-evidence.zip \
   --output build/issue282-generated-resident-restored
 ```
 

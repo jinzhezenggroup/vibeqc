@@ -108,6 +108,7 @@ standard verifier (the README and compact summary stay directly reviewable):
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue309-lazy-core \
+  --archive .artifacts/issue309-lazy-core/raw-evidence.zip \
   --output /tmp/issue309-lazy-core-evidence
 ```
 

@@ -77,6 +77,7 @@ Restore all 11 original files (including the paths cited above) from the reposit
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue283-component-baseline \
+  --archive .artifacts/issue283-component-baseline/raw-evidence.zip \
   --output build/issue283-component-baseline-restored
 ```
 

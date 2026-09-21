@@ -113,7 +113,8 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
 srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
   compute-sanitizer --tool initcheck --error-exitcode=1 \
   build/df-batch/run/benchmark --qualify-only
-python -m tools.unpack_evidence benchmarks/results/issue394-batch-rys
+python -m tools.unpack_evidence benchmarks/results/issue394-batch-rys \
+  --archive .artifacts/issue394-batch-rys/raw-evidence.zip
 ```
 
 The batch helper itself allocates one finite Slurm job after compilation. Preserve

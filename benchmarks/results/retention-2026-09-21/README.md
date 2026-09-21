@@ -22,9 +22,9 @@ python tools/restore_retained_evidence.py \
 ```
 
 For an archive that has an adjacent scientific member manifest, restore the ZIP
-to a fresh ignored directory and then use `tools.unpack_evidence` against that
-restored directory. Do not copy the restored archive back into the tracked
-checkout.
+under ignored `.artifacts/`, then run `tools.unpack_evidence` against the retained
+family directory with `--archive PATH_TO_RESTORED_ZIP`. Do not copy the restored
+archive back into the tracked checkout.
 
 Restore the complete removed set:
 
