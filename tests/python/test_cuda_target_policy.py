@@ -101,6 +101,7 @@ def test_probed_sm_count_is_a_finite_integer(count: typing.Any) -> None:
     with pytest.raises(ValueError, match="SM count must be positive"):
         target.with_runtime_probe(sm_count=count)
 
+
 def test_runtime_and_tuning_api_share_cuda_target_info() -> None:
     """Compiler-facing tuning identity and runtime policy consume one resource record."""
 
