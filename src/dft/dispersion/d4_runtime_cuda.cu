@@ -342,6 +342,15 @@ vibeqc_status execute_d4_cuda(D4CudaOwner* owner, const D4Parameters& parameters
   if (scope.error() != cudaSuccess)
     return cuda_failure(scope.error(), "select D4 CUDA replay device", detail);
 
+  // Queued copies borrow caller storage until the stream completes.
+  struct FailureDrain {
+    cudaStream_t stream;
+    bool armed{true};
+    ~FailureDrain() {
+      if (armed) (void)cudaStreamSynchronize(stream);
+    }
+  } failure_drain{owner->stream};
+
   auto copy_h2d = [&](void* destination, const void* source, std::size_t bytes,
                       const char* action) -> vibeqc_status {
     if (!bytes) return VIBEQC_STATUS_SUCCESS;
@@ -358,9 +367,6 @@ vibeqc_status execute_d4_cuda(D4CudaOwner* owner, const D4Parameters& parameters
 #if defined(VIBEQC_TEST_HOOKS)
     if (fail_next_d4_after_coordinate_upload) {
       fail_next_d4_after_coordinate_upload = false;
-      const auto sync_error = cudaStreamSynchronize(owner->stream);
-      if (sync_error != cudaSuccess)
-        return cuda_failure(sync_error, "synchronize injected D4 coordinate upload", detail);
       detail = "injected D4 CUDA failure after coordinate upload";
       return VIBEQC_STATUS_CUDA_ERROR;
     }
@@ -453,6 +459,7 @@ vibeqc_status execute_d4_cuda(D4CudaOwner* owner, const D4Parameters& parameters
   }
   error = cudaStreamSynchronize(owner->stream);
   if (error != cudaSuccess) return cuda_failure(error, "synchronize D4 CUDA replay", detail);
+  failure_drain.armed = false;
   detail.clear();
   return VIBEQC_STATUS_SUCCESS;
 }
