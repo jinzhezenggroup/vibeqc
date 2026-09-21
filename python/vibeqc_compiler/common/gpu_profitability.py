@@ -190,6 +190,8 @@ class GpuProfitability:
         )
         if self.endpoint_seconds is None or baseline.endpoint_seconds is None:
             return ()
+        if self.endpoint_seconds <= 0.0 or baseline.endpoint_seconds <= 0.0:
+            raise ValueError("endpoint timing must be positive")
         if self.endpoint_seconds < baseline.endpoint_seconds * (
             1.0 - float(endpoint_noise_fraction)
         ):
