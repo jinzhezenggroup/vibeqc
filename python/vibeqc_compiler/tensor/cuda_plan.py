@@ -14,7 +14,7 @@ the plan's numeric-buffer peak.
 from __future__ import annotations
 
 import typing
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from functools import cached_property
 from math import prod
 
@@ -91,7 +91,7 @@ class TensorSchedule:
     views: bool = False
     fuse: bool = False
     recompute: bool = False
-    stream_reductions: bool = False
+    stream_reductions: bool = field(default=False, kw_only=True)
     direct_gemm: bool = True
     layouts: bool = False
     elements_per_thread: int = 1

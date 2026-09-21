@@ -9,7 +9,7 @@ resource measurements or grounds for performance promotion.
 from __future__ import annotations
 
 import typing
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from itertools import combinations, islice, product
 from math import prod
 
@@ -36,7 +36,7 @@ class TensorScheduleSpace:
     recompute: tuple[bool, ...] = (False, True)
     # Qualification-only by default: #783 evidence shows a memory win but a
     # runtime/compile regression before cooperative reduction lowering lands.
-    stream_reductions: tuple[bool, ...] = (False,)
+    stream_reductions: tuple[bool, ...] = field(default=(False,), kw_only=True)
     direct_gemm: tuple[bool, ...] = (True, False)
     layouts: tuple[bool, ...] = (False, True)
     threads: tuple[int, ...] = (128, 64, 256)
@@ -48,19 +48,19 @@ class TensorScheduleSpace:
     staging_width: tuple[int, ...] = (1, 2, 4)
 
     def __post_init__(self) -> None:
-        for field in fields(self):
-            values = tuple(getattr(self, field.name))
+        for axis_field in fields(self):
+            values = tuple(getattr(self, axis_field.name))
             if not 1 <= len(values) <= 16:
                 raise ValueError("schedule axes require 1..16 values")
             for value in values:
-                TensorSchedule(**{field.name: value})
+                TensorSchedule(**{axis_field.name: value})
             if len(set(values)) != len(values):
                 raise ValueError("schedule axes must not contain duplicates")
-            object.__setattr__(self, field.name, values)
+            object.__setattr__(self, axis_field.name, values)
 
     @property
     def cardinality(self) -> int:
-        return prod(len(getattr(self, field.name)) for field in fields(self))
+        return prod(len(getattr(self, axis_field.name)) for axis_field in fields(self))
 
     def generate(self, maximum: int = 128) -> tuple[TensorSchedule, ...]:
         """Return a deterministic prefix without enumerating the full space."""
