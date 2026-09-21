@@ -123,6 +123,24 @@ performance or authorize any public DFT force capability.
 
 Rationale: [generated Becke response note](../.agents/notes/implemented/numerics/2026-09-19-generated-becke-grid-response.md).
 
+### Mixed moving-grid response (#180)
+
+The Hessian slice reuses the same scalar graph rather than differentiating the
+first-response implementation numerically. `grid_mixed_response_program`
+generates the primal, two independent JVPs and their mixed derivative for norm,
+ratio, Becke switch and log primitives. `partition_mixed_response` composes
+those roots through the normalized Becke product and keeps exact-zero factors
+explicit: zero-, one- and two-zero product branches each use their correct mixed
+limit. Left/right interchange is checked directly.
+
+`grid_mixed_response_tiles` streams the corresponding first and mixed
+partition-weight motions. Raw atom-centred grid points are affine in their owner
+center, so point mixed motion is identically zero; no dense
+coordinate-by-grid-by-coordinate tensor is formed. Independent tests compare
+the mixed result with the finite difference of the existing analytic first
+response on rebuilt molecular grids. This supplies the grid/partition geometric
+primitive required by #180; it does not by itself publish a molecular DFT HVP.
+
 ## AO derivative conventions
 
 `NativeAO` owns normalized shell state after the original system handle is
@@ -145,10 +163,13 @@ There is no factorial scaling. Mixed derivatives occur once; contractions
 with a full symmetric Hessian must supply off-diagonal multiplicities.
 Spatial differentiation holds centers fixed. Moving a basis center at a fixed
 point gives minus its spatial derivative. Moving a grid owner translates its
-points. Physical-atom motion can affect both and the partition; complete
-nuclear derivatives need that separate chain rule. The directional grid building
-block above supplies point/partition motion, not the remaining complete-gradient
-assembly.
+points. Physical-atom motion can affect both and the partition.
+`directional_ao_jets` applies the exact relative-coordinate chain rule to
+existing jets without materializing an AO Jacobian. It consumes one additional
+spatial derivative order, so LDA/GGA Hessian geometry can use the existing
+through-order-3 native jet domain. The grid building blocks above supply
+point/partition first and mixed motion; complete stationary HVP assembly remains
+a method-level responsibility.
 
 The CPU differentiates polynomial coefficients recursively. CUDA independently
 uses the Leibniz rule with closed Gaussian derivatives. Temporary powers can
