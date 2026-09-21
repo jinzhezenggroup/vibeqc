@@ -334,9 +334,11 @@ def test_final_verification_requires_strict_reference_and_actual_error() -> None
 def test_empirical_estimate_projects_to_accuracy_contract_without_certification() -> (
     None
 ):
-    fit = estimator()
+    fit = PairedDifferenceEstimator.fit(
+        (sample("h2", method="rhf"), sample("water", method="rhf"))
+    )
     estimate = fit.predict(
-        "pbe-rks",
+        "rhf",
         delta(1e-8, 1e-6),
         numerical_family_id="coarse-to-standard-v1",
     )

@@ -375,8 +375,11 @@ class NumericalEstimate:
     calibration_id: str
     assumptions: tuple[str, ...]
     estimator_seconds: float = 0.0
+    method: str | None = None
 
     def __post_init__(self) -> None:
+        if self.method is not None:
+            _identity(self.method, "estimate method")
         if not isinstance(self.delta, ObservableDelta):
             raise TypeError("numerical estimate requires an ObservableDelta")
         _identity(self.calibration_id, "calibration identity")
@@ -521,6 +524,7 @@ class PairedDifferenceEstimator:
                 f"calibration covers only numerical-level family {self.numerical_family_id}",
             ),
             estimator_seconds=_number(estimator_seconds, "estimator seconds"),
+            method=method,
         )
 
     def evaluate_holdout(
@@ -588,6 +592,8 @@ class PairedDifferenceEstimator:
             )
         if estimate.calibration_id != self.identity:
             raise ValueError("estimate/calibration identity mismatch")
+        if model.method not in self.methods or estimate.method != model.method:
+            raise ValueError("estimate method does not match the target model method")
         common = {
             "kind": EvidenceKind.EMPIRICAL,
             "model_id": model.identity,
