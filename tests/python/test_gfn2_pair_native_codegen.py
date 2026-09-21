@@ -40,12 +40,8 @@ def test_gfn2_runtime_pair_kernel_matches_primal_and_centered_difference(
     }
     values = execute(kernel, kernel_inputs).outputs
     direct = execute(primal, inputs).outputs
-    plus = execute(
-        primal, _primal_inputs(distance + step, light_pair)
-    ).outputs
-    minus = execute(
-        primal, _primal_inputs(distance - step, light_pair)
-    ).outputs
+    plus = execute(primal, _primal_inputs(distance + step, light_pair)).outputs
+    minus = execute(primal, _primal_inputs(distance - step, light_pair)).outputs
 
     assert values["coordination"] == direct["coordination"]
     assert values["repulsion_energy"] == direct["repulsion_energy"]
@@ -58,6 +54,7 @@ def test_gfn2_runtime_pair_kernel_matches_primal_and_centered_difference(
             finite_difference, rel=2.0e-8, abs=2.0e-10
         )
 
+
 def test_gfn2_runtime_pair_primal_matches_documented_scalar_equations() -> None:
     distance = 2.3
     radius = 2.55
@@ -67,13 +64,9 @@ def test_gfn2_runtime_pair_primal_matches_documented_scalar_equations() -> None:
     values = execute(build_gfn2_runtime_pair_primal(), inputs).outputs
 
     first = 1.0 / (1.0 + math.exp(-10.0 * (radius / distance - 1.0)))
-    second = 1.0 / (
-        1.0 + math.exp(-20.0 * ((radius + 2.0) / distance - 1.0))
-    )
+    second = 1.0 / (1.0 + math.exp(-20.0 * ((radius + 2.0) / distance - 1.0)))
     repulsion = (
-        pair_charge
-        * math.exp(-pair_alpha * distance * math.sqrt(distance))
-        / distance
+        pair_charge * math.exp(-pair_alpha * distance * math.sqrt(distance)) / distance
     )
     assert values["coordination"] == pytest.approx(first * second, rel=1.0e-15)
     assert values["repulsion_energy"] == pytest.approx(repulsion, rel=1.0e-15)

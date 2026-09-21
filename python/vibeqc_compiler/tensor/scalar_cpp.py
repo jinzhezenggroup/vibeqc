@@ -132,14 +132,11 @@ def emit_scalar_cpp(
     parameters = [f"double {name}" for name in ordered_inputs]
     parameters += [f"double& out_{name}" for name in ordered_outputs]
     lines: list[str] = []
-    if (
-        not direct_scaled_bilinear
-        and any(node.op == "scaled_bilinear" for node in nodes)
+    if not direct_scaled_bilinear and any(
+        node.op == "scaled_bilinear" for node in nodes
     ):
         lines.append(_scaled_bilinear_helper(function_name))
-    lines.append(
-        f"inline bool {function_name}({', '.join(parameters)}) noexcept {{"
-    )
+    lines.append(f"inline bool {function_name}({', '.join(parameters)}) noexcept {{")
     if ordered_inputs:
         condition = " || ".join(f"!std::isfinite({name})" for name in ordered_inputs)
         lines.append(f"  if ({condition}) return false;")
@@ -162,8 +159,7 @@ def emit_scalar_cpp(
                 terms = [
                     (child, coefficient)
                     for child, coefficient in terms
-                    if Fraction(*coefficient) != 0
-                    and _scalar_constant(child) != 0
+                    if Fraction(*coefficient) != 0 and _scalar_constant(child) != 0
                 ]
             lines.append(f"  double {name} = 0.0;")
             for child, coefficient in terms:
@@ -179,9 +175,7 @@ def emit_scalar_cpp(
             elif not check_intermediates and _scalar_constant(right) == 1:
                 lines.append(f"  const double {name} = {ref(left)};")
             else:
-                lines.append(
-                    f"  const double {name} = {ref(left)} * {ref(right)};"
-                )
+                lines.append(f"  const double {name} = {ref(left)} * {ref(right)};")
         elif node.op == "divide":
             numerator, denominator_node = node.inputs
             denominator = ref(denominator_node)

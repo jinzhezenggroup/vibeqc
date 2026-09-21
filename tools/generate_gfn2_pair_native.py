@@ -58,6 +58,7 @@ def _subprogram(kernel: Program, names: tuple[str, ...], kind: str) -> Program:
         provenance={"kind": kind, "parent_logical_hash": kernel.logical_hash},
     )
 
+
 def native_header() -> str:
     primal = build_gfn2_runtime_pair_primal()
     jvp = linearize(

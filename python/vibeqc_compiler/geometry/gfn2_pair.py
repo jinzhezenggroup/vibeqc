@@ -54,12 +54,8 @@ def gfn2_pair_equations(
     first_argument = multiply(first_steepness, first_delta)
     second_argument = multiply(second_steepness, second_delta)
 
-    first_logistic = divide(
-        one, add(one, exp(multiply(minus_one, first_argument)))
-    )
-    second_logistic = divide(
-        one, add(one, exp(multiply(minus_one, second_argument)))
-    )
+    first_logistic = divide(one, add(one, exp(multiply(minus_one, first_argument))))
+    second_logistic = divide(one, add(one, exp(multiply(minus_one, second_argument))))
     pair_coordination = multiply(first_logistic, second_logistic)
 
     heavy_distance = multiply(distance, sqrt(distance))
@@ -67,9 +63,7 @@ def gfn2_pair_equations(
         multiply(light_pair, distance),
         multiply(heavy_pair, heavy_distance),
     )
-    decay_argument = multiply(
-        minus_one, multiply(pair_alpha, distance_power)
-    )
+    decay_argument = multiply(minus_one, multiply(pair_alpha, distance_power))
     pair_repulsion = multiply(
         multiply(pair_charge, exp(decay_argument)),
         inverse_distance,
@@ -91,9 +85,7 @@ def build_gfn2_runtime_pair_primal() -> Program:
     one = constant(1)
     minus_one = constant(-1)
     inverse_distance = divide(one, distance)
-    shifted_radius = add(
-        radius, constant(repr(GFN2_CN_SECOND_RADIUS_SHIFT_BOHR))
-    )
+    shifted_radius = add(radius, constant(repr(GFN2_CN_SECOND_RADIUS_SHIFT_BOHR)))
     heavy_pair = add(one, light_pair, coefficients=(1, -1))
     coordination, repulsion = gfn2_pair_equations(
         distance=distance,
@@ -131,19 +123,13 @@ def build_gfn2_runtime_pair_kernel() -> Program:
         ("distance",),
         outputs=("coordination", "repulsion_energy"),
     )
-    definitions = tuple(
-        dict.fromkeys([*primal.nodes, *jvp.program.nodes])
-    )
+    definitions = tuple(dict.fromkeys([*primal.nodes, *jvp.program.nodes]))
     return Program(
         {
             "coordination": primal.outputs["coordination"],
             "repulsion_energy": primal.outputs["repulsion_energy"],
-            "coordination_distance_derivative": jvp.program.outputs[
-                "d_coordination"
-            ],
-            "repulsion_distance_derivative": jvp.program.outputs[
-                "d_repulsion_energy"
-            ],
+            "coordination_distance_derivative": jvp.program.outputs["d_coordination"],
+            "repulsion_distance_derivative": jvp.program.outputs["d_repulsion_energy"],
         },
         definitions,
         provenance={
