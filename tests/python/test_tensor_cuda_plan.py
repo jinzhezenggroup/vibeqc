@@ -69,7 +69,6 @@ def test_reuse_keeps_inputs_and_outputs_and_releases_dead_work() -> None:
     assert plan.peak_bytes == plan.device_bytes + plan.host_bytes
 
 
-
 def test_opt_in_inplace_donation_reuses_final_elementwise_owner() -> None:
     x = vector()
     transient = add(x, x)
@@ -105,6 +104,7 @@ def test_inplace_donation_fails_closed_with_layout_optimization() -> None:
             TARGET,
             schedule=TensorSchedule(inplace_donation=True, layouts=True),
         )
+
 
 def test_alias_lifetime_follows_materialized_ancestors() -> None:
     x = vector()

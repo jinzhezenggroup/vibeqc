@@ -42,7 +42,6 @@ def _energy(pair_program: typing.Any, coordinates: typing.Any) -> typing.Any:
     )
 
 
-
 def test_inplace_donation_reduces_real_pairir_peak_storage() -> None:
     from vibeqc_compiler.integral.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
@@ -70,6 +69,7 @@ def test_inplace_donation_reduces_real_pairir_peak_storage() -> None:
     assert donated.arena_bytes < baseline.arena_bytes
     assert baseline.arena_bytes - donated.arena_bytes == 48_384
     assert donated.storage_analysis().peak_by_space["device"] <= donated.arena_bytes
+
 
 def test_pair_topology_is_canonical_explicit_and_deterministic() -> None:
     cutoff = PairCutoff(8.0, 6.0)

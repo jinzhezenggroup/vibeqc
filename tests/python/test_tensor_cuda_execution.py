@@ -246,7 +246,6 @@ def check(
         return result
 
 
-
 def test_inplace_donation_executes_alias_safe_elementwise_chain(
     compiler: typing.Any, cache: typing.Any
 ) -> None:
@@ -268,6 +267,7 @@ def test_inplace_donation_executes_alias_safe_elementwise_chain(
         cache,
         schedule=schedule,
     )
+
 
 @pytest.mark.parametrize("case", ["diagonal", "named_inputs", "inactive_operand"])
 def test_generated_vjp_review_regressions_on_cuda(

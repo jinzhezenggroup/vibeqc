@@ -83,9 +83,7 @@ class BufferOp:
     reads: tuple[Hashable, ...]
     writes: tuple[Hashable, ...]
     effect: MemoryEffect = MemoryEffect.OPAQUE
-    donations: tuple[tuple[Hashable, Hashable], ...] = field(
-        default=(), kw_only=True
-    )
+    donations: tuple[tuple[Hashable, Hashable], ...] = field(default=(), kw_only=True)
 
     def __post_init__(self) -> None:
         if not isinstance(self.key, Hashable):
@@ -110,7 +108,9 @@ class BufferOp:
             if donor == recipient:
                 raise ValueError("buffer donation requires distinct values")
             if donor not in self.reads or recipient not in self.writes:
-                raise ValueError("buffer donation must map an operation read to a write")
+                raise ValueError(
+                    "buffer donation must map an operation read to a write"
+                )
             donations.append((donor, recipient))
         if len({item[0] for item in donations}) != len(donations):
             raise ValueError("buffer operation contains duplicate donation donors")
