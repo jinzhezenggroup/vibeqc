@@ -105,9 +105,9 @@ __global__ void d3_ragged_kernel(std::uint32_t systems, const std::uint32_t* off
   if (atoms < kD3CooperativeMinimumAtoms) {
     if (threadIdx.x == 0) {
       double energy = 0.0;
-      const auto status = evaluate_d3_model(
-          atoms, atomic_numbers + begin, coordinates + 3 * begin, parameters, tables,
-          workspace + 16 * begin, 16 * atoms, &energy, gradient);
+      const auto status =
+          evaluate_d3_model(atoms, atomic_numbers + begin, coordinates + 3 * begin, parameters,
+                            tables, workspace + 16 * begin, 16 * atoms, &energy, gradient);
       statuses[system] = status;
       energies[system] = status == D3Status::success ? energy : 0.0;
     }
@@ -162,8 +162,8 @@ __global__ void d3_ragged_kernel(std::uint32_t systems, const std::uint32_t* off
         continue;
       }
       if (cn_cutoff > 0.0 && r2 > cn_cutoff * cn_cutoff) continue;
-      const double radius =
-          tables.elements[z[atom] - 1].covalent_radius + tables.elements[z[other] - 1].covalent_radius;
+      const double radius = tables.elements[z[atom] - 1].covalent_radius +
+                            tables.elements[z[other] - 1].covalent_radius;
       value += d3_detail::logistic(16.0 * (radius / sqrt(r2) - 1.0));
     }
     cn[atom] = value;
@@ -257,8 +257,8 @@ __global__ void d3_ragged_kernel(std::uint32_t systems, const std::uint32_t* off
         const double r2 = dx * dx + dy * dy + dz * dz;
         if (cn_cutoff > 0.0 && r2 > cn_cutoff * cn_cutoff) continue;
         const double r = sqrt(r2);
-        const double radius =
-            tables.elements[z[atom] - 1].covalent_radius + tables.elements[z[other] - 1].covalent_radius;
+        const double radius = tables.elements[z[atom] - 1].covalent_radius +
+                              tables.elements[z[other] - 1].covalent_radius;
         const double argument = 16.0 * (radius / r - 1.0);
         const double e = exp(-fabs(argument));
         const double logistic_derivative = e / ((1.0 + e) * (1.0 + e));
@@ -289,9 +289,9 @@ __global__ void d3_ragged_kernel(std::uint32_t systems, const std::uint32_t* off
   // into the same publication buffers and preserves per-system failure isolation.
   if (parameters.atm_enabled) {
     if (threadIdx.x == 0) {
-      const auto status = evaluate_d3_bj_atm(
-          atoms, z, xyz, parameters.atm, tables, system_workspace, 16 * atoms, energies + system,
-          gradient, true);
+      const auto status =
+          evaluate_d3_bj_atm(atoms, z, xyz, parameters.atm, tables, system_workspace, 16 * atoms,
+                             energies + system, gradient, true);
       statuses[system] = status;
       if (status != D3Status::success) energies[system] = 0.0;
     }

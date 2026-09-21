@@ -14,8 +14,8 @@ namespace {
 struct Context {
   vibeqc_context* value{};
   explicit Context(vibeqc_backend backend) {
-    vibeqc_context_descriptor descriptor{
-        sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0, backend};
+    vibeqc_context_descriptor descriptor{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
+                                         backend};
     const auto status = vibeqc_context_create(&descriptor, &value);
     if (status != VIBEQC_STATUS_SUCCESS)
       throw std::runtime_error("failed to create D3 parity context");
@@ -51,11 +51,8 @@ Fleet make_fleet() {
   }
   for (std::size_t i = 0; i < fleet.numbers.size(); ++i) {
     fleet.descriptors.push_back(vibeqc_d3_system_descriptor{
-        sizeof(vibeqc_d3_system_descriptor),
-        VIBEQC_ABI_VERSION,
-        fleet.numbers[i].data(),
-        fleet.coordinates[i].data(),
-        static_cast<std::uint32_t>(fleet.numbers[i].size())});
+        sizeof(vibeqc_d3_system_descriptor), VIBEQC_ABI_VERSION, fleet.numbers[i].data(),
+        fleet.coordinates[i].data(), static_cast<std::uint32_t>(fleet.numbers[i].size())});
   }
   return fleet;
 }
@@ -107,15 +104,14 @@ struct Outputs {
   std::vector<vibeqc_backend> backend;
 };
 
-Outputs execute(vibeqc_backend backend, const Fleet& fleet,
-                const vibeqc_d3_bj_descriptor& model,
+Outputs execute(vibeqc_backend backend, const Fleet& fleet, const vibeqc_d3_bj_descriptor& model,
                 const std::vector<std::vector<double>>* changed = nullptr,
                 bool want_gradient = true) {
   Context context(backend);
   vibeqc_d3_batch* batch{};
-  auto status = vibeqc_d3_batch_prepare(context.value, fleet.descriptors.data(),
-                                        static_cast<std::uint32_t>(fleet.descriptors.size()),
-                                        &model, &batch);
+  auto status =
+      vibeqc_d3_batch_prepare(context.value, fleet.descriptors.data(),
+                              static_cast<std::uint32_t>(fleet.descriptors.size()), &model, &batch);
   if (status != VIBEQC_STATUS_SUCCESS) {
     const auto* detail = vibeqc_context_get_last_detail(context.value);
     throw std::runtime_error(detail ? detail : "D3 parity prepare failed");
@@ -143,20 +139,16 @@ Outputs execute(vibeqc_backend backend, const Fleet& fleet,
         backend};
     if (changed) {
       inputs[i] = vibeqc_d3_batch_input_descriptor{
-          sizeof(vibeqc_d3_batch_input_descriptor),
-          VIBEQC_ABI_VERSION,
-          (*changed)[i].data(),
+          sizeof(vibeqc_d3_batch_input_descriptor), VIBEQC_ABI_VERSION, (*changed)[i].data(),
           static_cast<std::uint32_t>((*changed)[i].size())};
     }
   }
 
-  status = vibeqc_d3_batch_execute(batch,
-                                   changed ? inputs.data() : nullptr,
+  status = vibeqc_d3_batch_execute(batch, changed ? inputs.data() : nullptr,
                                    changed ? static_cast<std::uint32_t>(inputs.size()) : 0u,
                                    results.data(), static_cast<std::uint32_t>(results.size()));
   vibeqc_d3_batch_destroy(batch);
-  if (status != VIBEQC_STATUS_SUCCESS)
-    throw std::runtime_error("D3 parity batch execution failed");
+  if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error("D3 parity batch execution failed");
 
   for (std::size_t i = 0; i < systems; ++i) {
     outputs.energy[i] = results[i].energy;
@@ -166,12 +158,11 @@ Outputs execute(vibeqc_backend backend, const Fleet& fleet,
   return outputs;
 }
 
-void require_close(double actual, double expected, double atol, double rtol,
-                   const char* message) {
+void require_close(double actual, double expected, double atol, double rtol, const char* message) {
   const double tolerance = atol + rtol * std::abs(expected);
   if (std::abs(actual - expected) > tolerance) {
-    std::cerr << message << ": expected " << expected << ", got " << actual
-              << ", tolerance " << tolerance << '\n';
+    std::cerr << message << ": expected " << expected << ", got " << actual << ", tolerance "
+              << tolerance << '\n';
     throw std::runtime_error(message);
   }
 }
@@ -181,11 +172,9 @@ void compare(const Outputs& cpu, const Outputs& gpu, bool gradient) {
   for (std::size_t i = 0; i < cpu.energy.size(); ++i) {
     if (cpu.status[i] != VIBEQC_STATUS_SUCCESS || gpu.status[i] != VIBEQC_STATUS_SUCCESS)
       throw std::runtime_error("D3 CPU/CUDA item failed");
-    if (cpu.backend[i] != VIBEQC_BACKEND_CPU_REFERENCE ||
-        gpu.backend[i] != VIBEQC_BACKEND_CUDA)
+    if (cpu.backend[i] != VIBEQC_BACKEND_CPU_REFERENCE || gpu.backend[i] != VIBEQC_BACKEND_CUDA)
       throw std::runtime_error("D3 CPU/CUDA backend publication mismatch");
-    require_close(gpu.energy[i], cpu.energy[i], 5.0e-12, 5.0e-11,
-                  "D3 CPU/CUDA energy mismatch");
+    require_close(gpu.energy[i], cpu.energy[i], 5.0e-12, 5.0e-11, "D3 CPU/CUDA energy mismatch");
     if (!gradient) continue;
     if (cpu.gradient[i].size() != gpu.gradient[i].size())
       throw std::runtime_error("D3 CPU/CUDA gradient size mismatch");

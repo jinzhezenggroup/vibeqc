@@ -14,18 +14,18 @@
 namespace {
 
 constexpr std::array<std::int32_t, 4> kZeroNumbers{6, 8, 1, 17};
-constexpr std::array<double, 12> kZeroCoordinates{
-    0.1, 0.3, -0.2, 2.4, -0.6, 0.8, -1.7, 0.8, 0.0, 3.7, 2.1, 1.3};
+constexpr std::array<double, 12> kZeroCoordinates{0.1,  0.3, -0.2, 2.4, -0.6, 0.8,
+                                                  -1.7, 0.8, 0.0,  3.7, 2.1,  1.3};
 constexpr double kZeroOracleEnergy = -4.742941049083972e-04;
 constexpr std::array<double, 12> kZeroOracleGradient{
     7.264892589154373e-05,   3.3364010522326386e-05,  3.071926911995039e-05,
-    -1.1415410870098772e-04, 4.7324964067888234e-05, -2.2581043945442164e-05,
+    -1.1415410870098772e-04, 4.7324964067888234e-05,  -2.2581043945442164e-05,
     3.1066772795464696e-05,  -5.9017428411558095e-05, 2.0461347070702326e-06,
-    1.0438410013979293e-05,  -2.167154617865652e-05, -1.0184359881578459e-05};
+    1.0438410013979293e-05,  -2.167154617865652e-05,  -1.0184359881578459e-05};
 
 constexpr std::array<std::int32_t, 4> kAtmNumbers{6, 8, 7, 1};
-constexpr std::array<double, 12> kAtmCoordinates{
-    0.0, 0.0, 0.0, 2.5, 0.1, 0.0, 0.6, 2.7, 0.2, -1.2, 0.8, 2.4};
+constexpr std::array<double, 12> kAtmCoordinates{0.0, 0.0, 0.0, 2.5,  0.1, 0.0,
+                                                 0.6, 2.7, 0.2, -1.2, 0.8, 2.4};
 constexpr double kAtmOracleEnergy = 3.3280853885481534e-08;
 constexpr std::array<double, 12> kAtmOracleGradient{
     3.72472344498586336e-09,  -1.85479558309227088e-08, -3.61045307549533526e-08,
@@ -36,8 +36,8 @@ constexpr std::array<double, 12> kAtmOracleGradient{
 struct Context {
   vibeqc_context* value{};
   Context() {
-    vibeqc_context_descriptor descriptor{
-        sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0, VIBEQC_BACKEND_CPU_REFERENCE};
+    vibeqc_context_descriptor descriptor{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
+                                         VIBEQC_BACKEND_CPU_REFERENCE};
     if (vibeqc_context_create(&descriptor, &value) != VIBEQC_STATUS_SUCCESS)
       throw std::runtime_error("D3 public-test context creation failed");
   }
@@ -90,10 +90,10 @@ PublicResult execute_public(Context& context, const std::array<std::int32_t, N>&
       want_gradient ? gradient.data() : nullptr,
       want_gradient ? static_cast<std::uint32_t>(gradient.size()) : 0u,
       VIBEQC_BACKEND_CPU_REFERENCE};
-  vibeqc_d3_batch_input_descriptor input{sizeof(vibeqc_d3_batch_input_descriptor),
-                                         VIBEQC_ABI_VERSION,
-                                         changed ? changed->data() : nullptr,
-                                         changed ? static_cast<std::uint32_t>(changed->size()) : 0u};
+  vibeqc_d3_batch_input_descriptor input{
+      sizeof(vibeqc_d3_batch_input_descriptor), VIBEQC_ABI_VERSION,
+      changed ? changed->data() : nullptr,
+      changed ? static_cast<std::uint32_t>(changed->size()) : 0u};
   const auto status =
       vibeqc_d3_batch_execute(batch, changed ? &input : nullptr, changed ? 1u : 0u, &result, 1u);
   std::string variant(raw_variant);
@@ -153,8 +153,7 @@ vibeqc_d3_bj_descriptor bj_model(double s9) {
 void test_identities() {
   require(std::strcmp(vibeqc_d3_provider_identity(), "vibeqc-native-d3-v2") == 0,
           "unexpected D3 provider identity");
-  require(std::strcmp(vibeqc_d3_scheduler_identity(),
-                      "ragged-system-cooperative-pair-v1") == 0,
+  require(std::strcmp(vibeqc_d3_scheduler_identity(), "ragged-system-cooperative-pair-v1") == 0,
           "unexpected D3 scheduler identity");
   require(std::strlen(vibeqc_d3_table_sha256()) == 64, "missing D3 table identity");
   require(std::strlen(vibeqc_d3_radii_sha256()) == 64, "missing D3 radii identity");
@@ -215,27 +214,27 @@ void test_fail_closed_and_resources(Context& context) {
   auto unsupported = zero_model();
   unsupported.s9 = 1.0;
   require(vibeqc_d3_batch_prepare(context.value, &system, 1, &unsupported, &batch) ==
-              VIBEQC_STATUS_NOT_IMPLEMENTED &&
+                  VIBEQC_STATUS_NOT_IMPLEMENTED &&
               batch == nullptr,
           "zero+ATM must fail closed");
 
   unsupported = zero_model();
   unsupported.damping = 99;
   require(vibeqc_d3_batch_prepare(context.value, &system, 1, &unsupported, &batch) ==
-              VIBEQC_STATUS_NOT_IMPLEMENTED &&
+                  VIBEQC_STATUS_NOT_IMPLEMENTED &&
               batch == nullptr,
           "unknown D3 damping must fail closed");
 
   auto tiny = zero_model(1);
   require(vibeqc_d3_batch_prepare(context.value, &system, 1, &tiny, &batch) ==
-              VIBEQC_STATUS_OUT_OF_MEMORY &&
+                  VIBEQC_STATUS_OUT_OF_MEMORY &&
               batch == nullptr,
           "D3 maximum_bytes must fail closed");
 
   auto legacy = bj_model(0.0);
   legacy.struct_size = static_cast<std::uint32_t>(offsetof(vibeqc_d3_bj_descriptor, rs6));
   require(vibeqc_d3_batch_prepare(context.value, &system, 1, &legacy, &batch) ==
-              VIBEQC_STATUS_SUCCESS &&
+                  VIBEQC_STATUS_SUCCESS &&
               batch != nullptr,
           "legacy BJ descriptor prefix stopped working");
   require(std::strcmp(vibeqc_d3_batch_variant_identity(batch), "d3.bj-two-body") == 0,

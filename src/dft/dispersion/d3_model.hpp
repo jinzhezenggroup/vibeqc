@@ -52,8 +52,7 @@ VIBEQC_D3_MODEL_HD inline bool d3_pair_term(std::size_t first, std::size_t secon
   using namespace d3_detail;
   out = {};
   const double r = sqrt(r2);
-  const double rr =
-      3.0 * tables.elements[z[first] - 1].r4r2 * tables.elements[z[second] - 1].r4r2;
+  const double rr = 3.0 * tables.elements[z[first] - 1].r4r2 * tables.elements[z[second] - 1].r4r2;
   if (!(rr > 0.0) || !finite(rr)) return false;
 
   double phi = 0.0;
@@ -71,8 +70,7 @@ VIBEQC_D3_MODEL_HD inline bool d3_pair_term(std::size_t first, std::size_t secon
     const double rd2 = rd * rd, rd4 = rd2 * rd2, rd6 = rd4 * rd2, rd8 = rd4 * rd4;
     const double t6 = 1.0 / (r6 + rd6), t8 = 1.0 / (r8 + rd8);
     phi = p.s6 * t6 + p.s8 * rr * t8;
-    derivative_over_distance =
-        p.s6 * (-6.0 * r4 * t6 * t6) + p.s8 * rr * (-8.0 * r6 * t8 * t8);
+    derivative_over_distance = p.s6 * (-6.0 * r4 * t6 * t6) + p.s8 * rr * (-8.0 * r6 * t8 * t8);
   } else if (model.damping == D3Damping::zero) {
     const auto& p = model.zero;
     pair_cutoff = p.pair_cutoff;
@@ -86,8 +84,7 @@ VIBEQC_D3_MODEL_HD inline bool d3_pair_term(std::size_t first, std::size_t secon
     const double f6 = 1.0 / (1.0 + 6.0 * t6);
     const double f8 = 1.0 / (1.0 + 6.0 * t8);
     const double d6 = -6.0 * f6 / r2 + 6.0 * p.alpha6 * t6 * f6 * f6 / r2;
-    const double d8 =
-        -8.0 * f8 / r2 + 6.0 * (p.alpha6 + 2.0) * t8 * f8 * f8 / r2;
+    const double d8 = -8.0 * f8 / r2 + 6.0 * (p.alpha6 + 2.0) * t8 * f8 * f8 / r2;
     phi = p.s6 * f6 / r6 + p.s8 * rr * f8 / r8;
     derivative_over_distance = p.s6 * d6 / r6 + p.s8 * rr * d8 / r8;
   } else {
@@ -103,10 +100,12 @@ VIBEQC_D3_MODEL_HD inline bool d3_pair_term(std::size_t first, std::size_t secon
   return finite(out.damping) && finite(out.radial_derivative_over_distance);
 }
 
-VIBEQC_D3_MODEL_HD inline D3Status evaluate_d3_model(
-    std::size_t n, const std::int32_t* z, const double* xyz, const D3ModelParameters& model,
-    D3Tables tables, double* workspace, std::size_t workspace_elements, double* energy,
-    double* gradient) {
+VIBEQC_D3_MODEL_HD inline D3Status evaluate_d3_model(std::size_t n, const std::int32_t* z,
+                                                     const double* xyz,
+                                                     const D3ModelParameters& model,
+                                                     D3Tables tables, double* workspace,
+                                                     std::size_t workspace_elements, double* energy,
+                                                     double* gradient) {
   if (!valid_d3_model(model)) return D3Status::invalid_argument;
   D3Status status = D3Status::unsupported;
   if (model.damping == D3Damping::bj) {
@@ -122,8 +121,7 @@ VIBEQC_D3_MODEL_HD inline D3Status evaluate_d3_model(
 }
 
 VIBEQC_D3_MODEL_HD inline const char* d3_variant_identity(const D3ModelParameters& model) {
-  if (model.damping == D3Damping::bj)
-    return model.atm_enabled ? "d3.bj-atm" : "d3.bj-two-body";
+  if (model.damping == D3Damping::bj) return model.atm_enabled ? "d3.bj-atm" : "d3.bj-two-body";
   if (model.damping == D3Damping::zero && !model.atm_enabled) return "d3.zero-two-body";
   return "d3.unsupported";
 }

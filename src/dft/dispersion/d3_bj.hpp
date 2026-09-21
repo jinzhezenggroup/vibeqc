@@ -95,8 +95,8 @@ struct Coefficient {
 };
 
 VIBEQC_D3_HD inline bool prepare_atom_weights(std::size_t atom, const std::int32_t* z,
-                                              const double* cn, D3Tables tables,
-                                              double* weights, double* derivatives) {
+                                              const double* cn, D3Tables tables, double* weights,
+                                              double* derivatives) {
   const auto element = tables.elements[z[atom] - 1];
   if (element.reference_count == 0 || element.reference_count > 7 || !finite(cn[atom]))
     return false;

@@ -107,16 +107,15 @@ vibeqc_status vibeqc_d3_batch_prepare(vibeqc_context* context,
     D3ModelParameters parameters{};
     if (model->damping == VIBEQC_D3_DAMPING_BJ) {
       parameters.damping = D3Damping::bj;
-      parameters.bj = {model->s6, model->s8, model->a1, model->a2, 0.0,
-                       model->cn_cutoff, model->pair_cutoff, model->pair_switch_width};
+      parameters.bj = {model->s6, model->s8,        model->a1,          model->a2,
+                       0.0,       model->cn_cutoff, model->pair_cutoff, model->pair_switch_width};
       if (model->s9 != 0.0) {
         if (!has_extended_d3_model(model)) {
           context->last_detail = "D3(BJ)-ATM requires the extended D3 descriptor";
           return VIBEQC_STATUS_NOT_IMPLEMENTED;
         }
         parameters.atm_enabled = true;
-        parameters.atm = {model->s9, model->cn_cutoff, model->atm_cutoff,
-                          model->atm_switch_width};
+        parameters.atm = {model->s9, model->cn_cutoff, model->atm_cutoff, model->atm_switch_width};
       } else {
         parameters.atm = {0.0, model->cn_cutoff, 0.0, 0.0};
       }
@@ -126,13 +125,13 @@ vibeqc_status vibeqc_d3_batch_prepare(vibeqc_context* context,
         return VIBEQC_STATUS_NOT_IMPLEMENTED;
       }
       if (model->s9 != 0.0) {
-        context->last_detail =
-            "zero-damping D3 plus ATM is not a separately qualified capability";
+        context->last_detail = "zero-damping D3 plus ATM is not a separately qualified capability";
         return VIBEQC_STATUS_NOT_IMPLEMENTED;
       }
       parameters.damping = D3Damping::zero;
-      parameters.zero = {model->s6, model->s8, model->rs6, model->rs8, model->alp,
-                         model->cn_cutoff, model->pair_cutoff, model->pair_switch_width};
+      parameters.zero = {
+          model->s6,  model->s8,        model->rs6,         model->rs8,
+          model->alp, model->cn_cutoff, model->pair_cutoff, model->pair_switch_width};
       parameters.atm = {0.0, model->cn_cutoff, 0.0, 0.0};
     } else {
       context->last_detail = "unsupported D3 damping variant";

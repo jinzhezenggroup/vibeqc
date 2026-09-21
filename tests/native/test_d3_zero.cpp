@@ -40,10 +40,10 @@ constexpr Oracle kPbeOracle{
 constexpr Oracle kPbe0Oracle{
     {1.0, 0.928, 1.287, 1.0, 14.0, 0.0, 0.0, 0.0},
     -3.0546188757657987e-4,
-    {-1.0134734075343157e-04, 7.555506460862482e-05,  2.1322571013266314e-04,
-     -1.5939358235838346e-04, 8.332486543062817e-05,  7.578382712325813e-05,
-     1.3211801614035793e-05,  -1.0067348683521795e-04, 3.357846633457028e-05,
-     2.4752912149777925e-04,  -5.8206443204035034e-05, -3.225880035904916e-04}};
+    {-1.0134734075343157e-04, 7.555506460862482e-05, 2.1322571013266314e-04,
+     -1.5939358235838346e-04, 8.332486543062817e-05, 7.578382712325813e-05, 1.3211801614035793e-05,
+     -1.0067348683521795e-04, 3.357846633457028e-05, 2.4752912149777925e-04,
+     -5.8206443204035034e-05, -3.225880035904916e-04}};
 
 constexpr Oracle kSlaterDiracOracle{
     {1.0, -1.957, 0.999, 0.697, 14.0, 0.0, 0.0, 0.0},
@@ -131,8 +131,7 @@ void test_translation_invariance() {
   }
   const auto reference = evaluate(kCoordinates, kPbeOracle.parameters, true);
   const auto translated = evaluate(shifted, kPbeOracle.parameters, true);
-  require_close(translated.energy, reference.energy, 3.0e-15,
-                "D3(0) translation energy mismatch");
+  require_close(translated.energy, reference.energy, 3.0e-15, "D3(0) translation energy mismatch");
   std::array<double, 3> total{};
   for (std::size_t q = 0; q < reference.gradient.size(); ++q) {
     require_close(translated.gradient[q], reference.gradient[q], 3.0e-13,
@@ -196,7 +195,8 @@ int main() {
     test_cutoff_product_rule();
     test_parameter_validation();
     test_overflowing_damping_keeps_representable_weighted_results();
-    std::cout << "D3(0) independent-oracle, analytic-gradient, multistep-FD and invariance tests passed\n";
+    std::cout << "D3(0) independent-oracle, analytic-gradient, multistep-FD and invariance tests "
+                 "passed\n";
     return 0;
   } catch (const std::exception& error) {
     std::cerr << error.what() << "\n";

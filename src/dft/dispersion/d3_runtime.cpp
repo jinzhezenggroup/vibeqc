@@ -57,14 +57,13 @@ std::unique_ptr<D3Plan> D3Plan::prepare(vibeqc_backend backend, int device_id,
                                         std::vector<std::uint32_t> offsets,
                                         std::vector<std::int32_t> atomic_numbers,
                                         std::vector<double> default_coordinates,
-                                         D3ModelParameters parameters, std::uint64_t maximum_bytes,
+                                        D3ModelParameters parameters, std::uint64_t maximum_bytes,
                                         std::string& detail, vibeqc_status& status) {
   status = VIBEQC_STATUS_INVALID_ARGUMENT;
   if ((backend != VIBEQC_BACKEND_CPU_REFERENCE && backend != VIBEQC_BACKEND_CUDA) ||
       maximum_bytes == 0 || offsets.size() < 2 || offsets.front() != 0 ||
       offsets.back() != atomic_numbers.size() ||
-      default_coordinates.size() != 3 * atomic_numbers.size() ||
-      !valid_d3_model(parameters)) {
+      default_coordinates.size() != 3 * atomic_numbers.size() || !valid_d3_model(parameters)) {
     detail = "invalid or unsupported D3 production model descriptor";
     return nullptr;
   }

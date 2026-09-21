@@ -15,8 +15,7 @@
 namespace vibeqc::dft::dispersion {
 
 inline constexpr const char* kD3ProductionProviderIdentity = "vibeqc-native-d3-v2";
-inline constexpr const char* kD3ProductionSchedulerIdentity =
-    "ragged-system-cooperative-pair-v1";
+inline constexpr const char* kD3ProductionSchedulerIdentity = "ragged-system-cooperative-pair-v1";
 
 // Aggregate ragged storage is not subject to the per-system physics cap.
 inline std::size_t d3_ragged_workspace_elements(std::size_t atoms) {
@@ -46,8 +45,7 @@ class D3Plan {
                                          std::vector<std::uint32_t> offsets,
                                          std::vector<std::int32_t> atomic_numbers,
                                          std::vector<double> default_coordinates,
-                                         D3ModelParameters parameters,
-                                         std::uint64_t maximum_bytes,
+                                         D3ModelParameters parameters, std::uint64_t maximum_bytes,
                                          std::string& detail, vibeqc_status& status);
   static std::unique_ptr<D3Plan> prepare(vibeqc_backend backend, int device_id,
                                          std::vector<std::uint32_t> offsets,
@@ -92,7 +90,7 @@ class D3Plan {
  private:
   D3Plan(vibeqc_backend backend, int device_id, std::vector<std::uint32_t> offsets,
          std::vector<std::int32_t> atomic_numbers, std::vector<double> default_coordinates,
-          D3ModelParameters parameters, D3ResourceUsage resources)
+         D3ModelParameters parameters, D3ResourceUsage resources)
       : backend_(backend),
         device_id_(device_id),
         offsets_(std::move(offsets)),

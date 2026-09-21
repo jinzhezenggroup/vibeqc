@@ -16,8 +16,8 @@ namespace {
 struct Context {
   vibeqc_context* value{};
   Context() {
-    vibeqc_context_descriptor descriptor{
-        sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0, VIBEQC_BACKEND_CUDA};
+    vibeqc_context_descriptor descriptor{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
+                                         VIBEQC_BACKEND_CUDA};
     if (vibeqc_context_create(&descriptor, &value) != VIBEQC_STATUS_SUCCESS)
       throw std::runtime_error("failed to create CUDA context");
   }
@@ -53,11 +53,8 @@ Fleet make_fleet(std::size_t systems, std::size_t atoms) {
   }
   for (std::size_t system = 0; system < systems; ++system) {
     fleet.descriptors.push_back(vibeqc_d3_system_descriptor{
-        sizeof(vibeqc_d3_system_descriptor),
-        VIBEQC_ABI_VERSION,
-        fleet.numbers[system].data(),
-        fleet.coordinates[system].data(),
-        static_cast<std::uint32_t>(atoms)});
+        sizeof(vibeqc_d3_system_descriptor), VIBEQC_ABI_VERSION, fleet.numbers[system].data(),
+        fleet.coordinates[system].data(), static_cast<std::uint32_t>(atoms)});
   }
   return fleet;
 }
@@ -89,8 +86,8 @@ double percentile(std::vector<double> values, double fraction) {
   return values[index];
 }
 
-void run_mode(vibeqc_d3_batch* batch, const Fleet& fleet, bool gradient,
-              int warmups, int iterations) {
+void run_mode(vibeqc_d3_batch* batch, const Fleet& fleet, bool gradient, int warmups,
+              int iterations) {
   const std::size_t systems = fleet.descriptors.size();
   const std::size_t atoms = fleet.numbers.front().size();
   std::vector<std::vector<double>> gradients(systems);
@@ -108,13 +105,11 @@ void run_mode(vibeqc_d3_batch* batch, const Fleet& fleet, bool gradient,
   }
 
   auto execute = [&] {
-    const auto status =
-        vibeqc_d3_batch_execute(batch, nullptr, 0, results.data(),
-                               static_cast<std::uint32_t>(results.size()));
+    const auto status = vibeqc_d3_batch_execute(batch, nullptr, 0, results.data(),
+                                                static_cast<std::uint32_t>(results.size()));
     if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error("benchmark batch failed");
     for (const auto& result : results)
-      if (result.status != VIBEQC_STATUS_SUCCESS ||
-          result.executed_backend != VIBEQC_BACKEND_CUDA)
+      if (result.status != VIBEQC_STATUS_SUCCESS || result.executed_backend != VIBEQC_BACKEND_CUDA)
         throw std::runtime_error("benchmark item failed");
   };
 
@@ -126,20 +121,17 @@ void run_mode(vibeqc_d3_batch* batch, const Fleet& fleet, bool gradient,
     const auto start = std::chrono::steady_clock::now();
     execute();
     const auto stop = std::chrono::steady_clock::now();
-    milliseconds.push_back(
-        std::chrono::duration<double, std::milli>(stop - start).count());
+    milliseconds.push_back(std::chrono::duration<double, std::milli>(stop - start).count());
     for (std::size_t system = 0; system < systems; ++system) {
       checksum += results[system].energy;
       if (gradient) checksum += gradients[system][(i + system) % gradients[system].size()];
     }
   }
 
-  std::cout << std::setprecision(12)
-            << "mode=" << (gradient ? "gradient" : "energy")
+  std::cout << std::setprecision(12) << "mode=" << (gradient ? "gradient" : "energy")
             << " systems=" << systems << " atoms=" << atoms
             << " median_ms=" << percentile(milliseconds, 0.5)
-            << " p95_ms=" << percentile(milliseconds, 0.95)
-            << " checksum=" << checksum << '\n';
+            << " p95_ms=" << percentile(milliseconds, 0.95) << " checksum=" << checksum << '\n';
 }
 
 }  // namespace
