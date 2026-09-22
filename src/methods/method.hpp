@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "core/types.hpp"
+#include "runtime/execution_context.hpp"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/types.hpp"
 #include "scf/warm_state.hpp"
@@ -177,6 +178,11 @@ class PreparedCalculation {
   virtual ~PreparedCalculation() = default;
   [[nodiscard]] virtual std::size_t atom_count() const noexcept = 0;
   [[nodiscard]] virtual const Capabilities& capabilities() const noexcept = 0;
+  /** Method-neutral execution-resource high waters. Zero means the owner has
+   * not supplied a measurement for that category; it must not be guessed. */
+  [[nodiscard]] virtual runtime::ExecutionResourceSnapshot execution_resources() const noexcept {
+    return {};
+  }
   /** Execute only the requested output work. Energy and convergence
    * diagnostics are always produced; forces are opt-in per execution. */
   virtual Result execute(bool compute_forces) = 0;
@@ -210,6 +216,11 @@ class PreparedBatch {
       std::size_t index) const = 0;
   virtual void restore_warm_states(std::vector<std::optional<scf::HfWarmState>> states) = 0;
   virtual void set_warm_start_updates(bool enabled) = 0;
+  [[nodiscard]] virtual runtime::ExecutionResourceSnapshot execution_resources(
+      std::size_t index) const noexcept {
+    (void)index;
+    return {};
+  }
   [[nodiscard]] virtual std::optional<KsTransportDiagnostic> ks_transport_diagnostic(
       std::size_t index) const {
     (void)index;

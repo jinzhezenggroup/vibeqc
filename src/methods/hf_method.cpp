@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "api/handles.hpp"
+#include "runtime/execution_context.hpp"
 #include "scf/fleet.hpp"
 #include "scf/fock_prepared.hpp"
 #include "scf/initial_guess/overlap.hpp"
@@ -108,12 +109,11 @@ scf::ScfOptions scf_options(const vibeqc_method_descriptor& descriptor) {
 // Translate the legacy public selection exactly once. AUTO selects a backend
 // within the explicitly requested DF approximation; it never switches exact/DF.
 void resolve_hf_options(scf::ScfOptions& options, vibeqc_method method,
-                        const core::ContextState& context) {
+                        const runtime::ExecutionContext& execution) {
   const bool fitted = options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE;
   const bool cpu_df = options.density_fitting_mode == VIBEQC_DENSITY_FITTING_CPU_REFERENCE;
-  const scf::FockBackend backend = context.requested_backend == VIBEQC_BACKEND_CUDA && !cpu_df
-                                       ? scf::FockBackend::Cuda
-                                       : scf::FockBackend::Cpu;
+  const scf::FockBackend backend =
+      execution.cuda_requested() && !cpu_df ? scf::FockBackend::Cuda : scf::FockBackend::Cpu;
   options.resolved_fock_build = scf::resolve_fock_build(
       scf::make_hf_fock_spec(
           method == VIBEQC_METHOD_UHF ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted,
@@ -278,10 +278,11 @@ InactiveEigensolverProfileEntry adapt_inactive_eigensolver_profile_entry(
 
 class HfPreparedCalculation final : public PreparedCalculation {
  public:
-  HfPreparedCalculation(Capabilities capabilities, core::ContextState& context, core::System system,
-                        scf::ScfOptions options, std::optional<core::System> auxiliary_template)
+  HfPreparedCalculation(Capabilities capabilities, runtime::ExecutionContext execution,
+                        core::System system, scf::ScfOptions options,
+                        std::optional<core::System> auxiliary_template)
       : capabilities_(capabilities),
-        context_(&context),
+        execution_(std::move(execution)),
         system_(std::move(system)),
         options_(options),
         auxiliary_template_(std::move(auxiliary_template)) {}
@@ -289,6 +290,9 @@ class HfPreparedCalculation final : public PreparedCalculation {
   [[nodiscard]] std::size_t atom_count() const noexcept override { return system_.atoms.size(); }
 
   [[nodiscard]] const Capabilities& capabilities() const noexcept override { return capabilities_; }
+  [[nodiscard]] runtime::ExecutionResourceSnapshot execution_resources() const noexcept override {
+    return execution_.resources();
+  }
 
   Result execute(bool compute_forces) override {
     // Keep the prepared scientific controls immutable. Output selection is an
@@ -301,14 +305,14 @@ class HfPreparedCalculation final : public PreparedCalculation {
     // cache replacement and the entire solve on its non-reentrant workspace.
     auto native = scf::run_fock_strategy_cached(
         fock_cache_, system_, auxiliary_template_ ? &*auxiliary_template_ : nullptr,
-        execution_options, context_->device_id, nullptr, &overlap_cache_);
+        execution_options, execution_.device_id(), nullptr, &overlap_cache_);
     return adapt_result(std::move(native),
                         use_cuda ? VIBEQC_BACKEND_CUDA : VIBEQC_BACKEND_CPU_REFERENCE);
   }
 
  private:
   Capabilities capabilities_;
-  core::ContextState* context_{};
+  runtime::ExecutionContext execution_;
   core::System system_;
   scf::ScfOptions options_;
   std::optional<core::System> auxiliary_template_;
@@ -320,7 +324,7 @@ class HfPreparedCalculation final : public PreparedCalculation {
 
 class HfPreparedBatch final : public PreparedBatch {
  public:
-  HfPreparedBatch(Capabilities capabilities, core::ContextState& context,
+  HfPreparedBatch(Capabilities capabilities, const runtime::ExecutionContext& execution,
                   std::vector<core::System> systems, scf::ScfOptions options,
                   vibeqc_batch_flags flags, std::optional<core::System> auxiliary_template)
       : plan_(std::move(systems), capabilities.method, options,
@@ -328,8 +332,8 @@ class HfPreparedBatch final : public PreparedBatch {
               options.resolved_fock_build->backend == scf::FockBackend::Cuda &&
                   !options.resolved_fock_build->legacy_density_fitting,
               (flags & VIBEQC_BATCH_ENABLE_SHELL_CLASS_PROFILING) != 0,
-              (flags & VIBEQC_BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING) != 0, context.device_id,
-              std::move(auxiliary_template),
+              (flags & VIBEQC_BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING) != 0,
+              execution.device_id(), std::move(auxiliary_template),
               options.resolved_fock_build->backend == scf::FockBackend::Cuda &&
                   options.resolved_fock_build->legacy_density_fitting) {}
 
@@ -441,21 +445,22 @@ vibeqc_status validate_hf_system(vibeqc_method method, const core::System& syste
 std::unique_ptr<PreparedCalculation> prepare_hf_calculation(
     const Capabilities& capabilities, core::ContextState& context, const core::System& system,
     const vibeqc_method_descriptor& descriptor) {
+  runtime::ExecutionContext execution(context);
   scf::ScfOptions options = scf_options(descriptor);
   const auto auxiliary = density_fitting_auxiliary_template(descriptor);
-  if (options.density_fitting_mode == VIBEQC_DENSITY_FITTING_CUDA &&
-      context.requested_backend != VIBEQC_BACKEND_CUDA) {
+  if (options.density_fitting_mode == VIBEQC_DENSITY_FITTING_CUDA && !execution.cuda_requested()) {
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                       "CUDA density-fitting mode requires a CUDA execution context");
   }
-  resolve_hf_options(options, capabilities.method, context);
+  resolve_hf_options(options, capabilities.method, execution);
   if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE) {
     if (!system.ecp_terms.empty())
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "ECP density-fitting execution is not yet validated");
     validate_density_fitting_auxiliary(system, auxiliary);
   }
-  return std::make_unique<HfPreparedCalculation>(capabilities, context, system, options,
+  return std::make_unique<HfPreparedCalculation>(capabilities, std::move(execution), system,
+                                                 options,
                                                  normalized_auxiliary_template(system, auxiliary));
 }
 
@@ -470,14 +475,14 @@ std::unique_ptr<PreparedBatch> prepare_hf_batch(const Capabilities& capabilities
   if ((flags & ~supported_flags) != 0) {
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unsupported Hartree-Fock batch flag");
   }
+  runtime::ExecutionContext execution(context);
   scf::ScfOptions options = scf_options(descriptor);
   const auto auxiliary = density_fitting_auxiliary_template(descriptor);
-  if (options.density_fitting_mode == VIBEQC_DENSITY_FITTING_CUDA &&
-      context.requested_backend != VIBEQC_BACKEND_CUDA) {
+  if (options.density_fitting_mode == VIBEQC_DENSITY_FITTING_CUDA && !execution.cuda_requested()) {
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                       "CUDA density-fitting mode requires a CUDA execution context");
   }
-  resolve_hf_options(options, capabilities.method, context);
+  resolve_hf_options(options, capabilities.method, execution);
   if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE)
     for (const auto& system : systems)
       if (!system.ecp_terms.empty())
@@ -508,7 +513,7 @@ std::unique_ptr<PreparedBatch> prepare_hf_batch(const Capabilities& capabilities
       }
     }
   }
-  return std::make_unique<HfPreparedBatch>(capabilities, context, std::move(systems), options,
+  return std::make_unique<HfPreparedBatch>(capabilities, execution, std::move(systems), options,
                                            flags, auxiliary);
 }
 

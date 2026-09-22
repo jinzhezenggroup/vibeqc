@@ -12,7 +12,7 @@ struct RccsdNativeState {
   std::size_t budget{};
 };
 
-RccsdNativeState run_rccsd_native_state(core::ContextState&, const core::System&,
+RccsdNativeState run_rccsd_native_state(runtime::ExecutionContext&, const core::System&,
                                         const vibeqc_method_descriptor&);
 vibeqc_status validate_rccsd_system(vibeqc_method, const core::System&, std::string&);
 std::unique_ptr<PreparedCalculation> prepare_rccsd_calculation(const Capabilities&,
