@@ -62,6 +62,7 @@ def test_main_persists_completed_rows_when_later_case_fails(
 def test_partial_case_retains_completed_scenarios(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prepared_aot: bool
 ) -> None:
+    from collections.abc import Iterator
     from contextlib import contextmanager, nullcontext
     from types import SimpleNamespace
 
@@ -76,7 +77,7 @@ def test_partial_case_retains_completed_scenarios(
     lifecycle: list[str] = []
 
     @contextmanager
-    def prepared_owner():
+    def prepared_owner() -> Iterator[object]:
         lifecycle.append("enter")
         try:
             yield owner
