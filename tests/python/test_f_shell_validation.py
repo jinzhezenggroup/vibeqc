@@ -81,10 +81,9 @@ def test_catalog_separates_manifest_selection_from_unmeasured_acceptance() -> No
     report = f_shell.catalog(names=f_shell.SMOKE_CLASSES)
     assert tuple(row["shell_class"] for row in report["rows"]) == f_shell.SMOKE_CLASSES
     assert len(report["rows"]) == len(f_shell.SMOKE_CLASSES)
-    assert (
-        len({row["source"]["registry_class_index"] for row in report["rows"]})
-        == len(f_shell.SMOKE_CLASSES)
-    )
+    assert len(
+        {row["source"]["registry_class_index"] for row in report["rows"]}
+    ) == len(f_shell.SMOKE_CLASSES)
     for row in report["rows"]:
         assert row["source"]["status"] == "pass"
         assert row["consumers"] == ["fock", "force"]
