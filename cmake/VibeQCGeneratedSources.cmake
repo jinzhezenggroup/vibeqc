@@ -14,7 +14,7 @@ macro(vibeqc_register_host_generated_sources target)
     OUTPUTS "${VIBEQC_QUADRATURE_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/quadrature_cuda.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/grid_response.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/grid_response_ir.py"
     ARGS --output "${VIBEQC_QUADRATURE_HEADER}"
     COMMENT "Generating bounded CUDA molecular quadrature")
   # The native host policy is built even when CUDA execution is disabled.

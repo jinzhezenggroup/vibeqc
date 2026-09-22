@@ -81,3 +81,12 @@ v1 one-Bohr radii, 54×16×32 points/atom) took 0.118630423 / 0.150758124 /
 931,332 / 1,721,604 / 3,309,060 / 6,511,620 bytes. These are component diagnostics,
 with different geometry/radii from the historical water baseline; no matched
 speedup or complete SCF performance is inferred.
+
+The CMake-only CI environment exposed an import dependency in the existing
+response consumer: importing its scalar IR also imported NumPy. Scalar program
+construction now lives in `grid_response_ir.py`, with lazy array evaluation and
+canonical re-exports from the existing consumer. Bare `python -S` generation is
+byte-identical (SHA-256 `7ea4e4803d62918553f556b4c96db8014947ac3debccc27b0c9b6b4f2c9a08e5`).
+39 host IR/response/native-contraction tests pass. The endpoint harness now arms
+its existing independent-process watchdog around `native/prepare` as well as
+SCF solves, retaining a preparation-stage journal on timeout.

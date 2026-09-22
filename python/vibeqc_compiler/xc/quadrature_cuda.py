@@ -8,7 +8,7 @@ Native code owns allocations, quadrature rule inputs, launches and downloads.
 
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
-from .grid_response import grid_response_program
+from .grid_response_ir import grid_response_program
 
 _LAYOUT = r"""#pragma once
 #include <algorithm>

@@ -2,10 +2,36 @@
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 from vibeqc_compiler.xc.quadrature_cuda import emit_quadrature_cuda
+
+
+def test_codegen_has_no_runtime_or_numpy_dependency(tmp_path: Path) -> None:
+    """Match CMake's bare Python environment and preserve exact scalar bytes."""
+    root = Path(__file__).resolve().parents[2]
+    output = tmp_path / "quadrature.cuh"
+    subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            str(root / "tools/generate_quadrature_cuda.py"),
+            "--output",
+            str(output),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    assert output.read_text() == emit_quadrature_cuda()
+    from vibeqc_compiler.xc import grid_response, grid_response_ir
+
+    assert grid_response.grid_response_program is grid_response_ir.grid_response_program
+    assert (
+        grid_response.grid_mixed_response_program
+        is grid_response_ir.grid_mixed_response_program
+    )
 
 
 def test_emitted_layout_counts_actual_buffer_shapes_without_cuda(
