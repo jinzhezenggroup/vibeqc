@@ -516,9 +516,17 @@
     "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "59fd0e269d945084657a2db77fdd3231f147dd65063b571ae374130227cc8c16",
     "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "15de768b835687674add560f032bf73cdabdadf44e0e67d5e3e9903679a90245",
     "vibeqc_generated_shell_registry.hpp": "51ed327a1aef3d85580bd178474bdf80fa5eaac5ed2762eb0702abf8a47bd428",
-    "vibeqc_generated_shell_registry.cu": "207c71f8077aa7817d155f9de76f2370e5a6f1eebb01106944464b0e50bd70e9"
+    "vibeqc_generated_shell_registry.cu": "f17aaa673a1637345ab1d8d4c548fe470b38683b6e0ed0824f8b6f8d1a2fdd1b"
   },
   "artifact_corrections": [
+    {
+      "issue": 888,
+      "source_revision": "2cf3dec31100b0cda0b5267dc4364f75ccad9682",
+      "reason": "Expose the selected packed Fock queue-claim width as registry metadata so runtime grids count claims rather than individual tasks. Only the registry source fingerprint changes; all eight sm_120/sm_90 CUDA shards, the registry header, manifest and shell catalog remain byte-identical. Both single- and multiple-profile metadata paths and explicit Fock schedule overrides have dedicated tests.",
+      "paths": [
+        "vibeqc_generated_shell_registry.cu"
+      ]
+    },
     {
       "issue": 136,
       "reason": "Value-only Coulomb tables use their pruned IR stride; common geometry scratch retains the force-order extent. Verified exact PPPS/PSPS native objects against independent RHF/UHF direct/persistent fixtures.",

@@ -1,0 +1,337 @@
+[
+  {
+    "file": "ragged-final-sto3g-b1-0.json",
+    "config": {
+      "method": "rhf",
+      "basis": "sto-3g",
+      "batch": 1,
+      "repeats": 7,
+      "schedule": "fixed",
+      "resident_bra": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 0.9874261700795517,
+      "warm": 0.9837736341209352,
+      "changed_geometry": 0.9807853381508144,
+      "changed_warm": 0.9890163609460088
+    }
+  },
+  {
+    "file": "ragged-final-sto3g-b1-1.json",
+    "config": {
+      "method": "rhf",
+      "basis": "sto-3g",
+      "batch": 1,
+      "repeats": 7,
+      "schedule": "resident",
+      "resident_bra": true
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 1.001335631380081,
+      "warm": 0.9856175479022637,
+      "changed_geometry": 0.9802030535159432,
+      "changed_warm": 0.9851420645270498
+    }
+  },
+  {
+    "file": "ragged-final-sto3g-b1-2.json",
+    "config": {
+      "method": "rhf",
+      "basis": "sto-3g",
+      "batch": 1,
+      "repeats": 7,
+      "schedule": "paged",
+      "resident_bra": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 0.9865811490077618,
+      "warm": 0.9939223363927958,
+      "changed_geometry": 1.0087380285993326,
+      "changed_warm": 0.9871316736482566
+    }
+  },
+  {
+    "file": "ragged-final-sto3g-b3-0.json",
+    "config": {
+      "method": "rhf",
+      "basis": "sto-3g",
+      "batch": 3,
+      "repeats": 7,
+      "schedule": "fixed",
+      "resident_bra": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 0.9993690358695831,
+      "warm": 0.9749591767537042,
+      "changed_geometry": 0.9723812743904129,
+      "changed_warm": 0.987425747222
+    }
+  },
+  {
+    "file": "ragged-final-sto3g-b3-1.json",
+    "config": {
+      "method": "rhf",
+      "basis": "sto-3g",
+      "batch": 3,
+      "repeats": 7,
+      "schedule": "resident",
+      "resident_bra": true
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 0.9891711771320416,
+      "warm": 0.9803285729981511,
+      "changed_geometry": 0.9697326439903172,
+      "changed_warm": 0.9819705149877006
+    }
+  },
+  {
+    "file": "ragged-final-sto3g-b3-2.json",
+    "config": {
+      "method": "rhf",
+      "basis": "sto-3g",
+      "batch": 3,
+      "repeats": 7,
+      "schedule": "paged",
+      "resident_bra": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 0.9969019544787844,
+      "warm": 0.9971755270475945,
+      "changed_geometry": 1.003282946373722,
+      "changed_warm": 1.0034658062336899
+    }
+  },
+  {
+    "file": "ragged-final-svp-b1-0.json",
+    "config": {
+      "method": "rhf",
+      "basis": "def2-svp",
+      "batch": 1,
+      "repeats": 7,
+      "schedule": "fixed",
+      "resident_bra": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 0.9923914720721857,
+      "warm": 0.9977358100320387,
+      "changed_geometry": 0.9993036419620921,
+      "changed_warm": 1.004405390652231
+    }
+  },
+  {
+    "file": "ragged-final-svp-b1-1.json",
+    "config": {
+      "method": "rhf",
+      "basis": "def2-svp",
+      "batch": 1,
+      "repeats": 7,
+      "schedule": "resident",
+      "resident_bra": true
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 0.9972885000276905,
+      "warm": 0.9962175896702545,
+      "changed_geometry": 0.9939379925547691,
+      "changed_warm": 0.9973251823968043
+    }
+  },
+  {
+    "file": "ragged-final-svp-b1-2.json",
+    "config": {
+      "method": "rhf",
+      "basis": "def2-svp",
+      "batch": 1,
+      "repeats": 7,
+      "schedule": "paged",
+      "resident_bra": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 1.0021524648392288,
+      "warm": 0.9990935919007038,
+      "changed_geometry": 1.00038224824532,
+      "changed_warm": 0.9990047299986539
+    }
+  },
+  {
+    "file": "ragged-final-svp-b3-0.json",
+    "config": {
+      "method": "rhf",
+      "basis": "def2-svp",
+      "batch": 3,
+      "repeats": 7,
+      "schedule": "fixed",
+      "resident_bra": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 0.9934751517527711,
+      "warm": 1.0041127470669637,
+      "changed_geometry": 0.9963353368183445,
+      "changed_warm": 1.0011632689543126
+    }
+  },
+  {
+    "file": "ragged-final-svp-b3-1.json",
+    "config": {
+      "method": "rhf",
+      "basis": "def2-svp",
+      "batch": 3,
+      "repeats": 7,
+      "schedule": "resident",
+      "resident_bra": true
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 1.0004875658307708,
+      "warm": 1.0035076974736497,
+      "changed_geometry": 0.998172317192765,
+      "changed_warm": 0.9983781117856895
+    }
+  },
+  {
+    "file": "ragged-final-svp-b3-2.json",
+    "config": {
+      "method": "rhf",
+      "basis": "def2-svp",
+      "batch": 3,
+      "repeats": 7,
+      "schedule": "paged",
+      "resident_bra": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 1.000428502786291,
+      "warm": 1.0005864608103523,
+      "changed_geometry": 1.000753355287624,
+      "changed_warm": 0.997093831812939
+    }
+  },
+  {
+    "file": "final-uhf-0.json",
+    "config": {
+      "case": "oh-def2-svp-spherical-uhf",
+      "batch": 1,
+      "schedule": "fixed",
+      "repeats": 5,
+      "df": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 0.999441755091059,
+      "warm": 0.9940994823117383,
+      "changed": 1.0004860141930385,
+      "changed_warm": 1.0010908486358818
+    }
+  },
+  {
+    "file": "final-uhf-1.json",
+    "config": {
+      "case": "oh-def2-svp-spherical-uhf",
+      "batch": 1,
+      "schedule": "paged",
+      "repeats": 5,
+      "df": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 1.0004012133197064,
+      "warm": 0.9997638875737829,
+      "changed": 0.9959858822859071,
+      "changed_warm": 1.0003050707484318
+    }
+  },
+  {
+    "file": "final-uhf-2.json",
+    "config": {
+      "case": "oh-def2-svp-spherical-uhf",
+      "batch": 4,
+      "schedule": "fixed",
+      "repeats": 5,
+      "df": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 0.998341424817047,
+      "warm": 1.0032822913121366,
+      "changed": 1.0019716928251914,
+      "changed_warm": 0.9952851383142919
+    }
+  },
+  {
+    "file": "final-uhf-3.json",
+    "config": {
+      "case": "oh-def2-svp-spherical-uhf",
+      "batch": 4,
+      "schedule": "paged",
+      "repeats": 5,
+      "df": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 1.0055042596145713,
+      "warm": 0.9999016503541887,
+      "changed": 1.0004771503679126,
+      "changed_warm": 0.9972278155154085
+    }
+  },
+  {
+    "file": "final-tetramer-0.json",
+    "config": {
+      "case": "water-tetramer-def2-svp-spherical",
+      "batch": 1,
+      "schedule": "fixed",
+      "repeats": 3,
+      "df": false
+    },
+    "numerical_passed": true,
+    "performance_passed": true,
+    "iteration_parity": true,
+    "ratios": {
+      "cold": 1.008213013718828,
+      "warm": 1.0097934088603502,
+      "changed": 1.0098749500701631,
+      "changed_warm": 1.0051540162879176
+    }
+  }
+]

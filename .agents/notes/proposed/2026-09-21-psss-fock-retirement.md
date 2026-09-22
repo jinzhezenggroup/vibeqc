@@ -3,6 +3,10 @@
 Status: proposed
 Date: 2026-09-21
 
+Implemented and qualified on 2026-09-23. This original proposal is retained for
+historical rationale; the [packed Fock claim-grid decision](../implemented/performance/2026-09-23-packed-fock-claim-grids.md)
+records the required scheduling repair and final 17-configuration endpoint gate.
+
 ## Problem
 
 Issue #356 keeps the fixed-topology pSSS Fock route as a measured native
