@@ -26,6 +26,8 @@ residual absent, the controller rebuilds the exact target Fock once at the final
 density and evaluates the target overlap commutator. The audit has explicit
 operator/density/overlap identities, time and Fock-work accounting; it does not
 reuse density-update RMS as a substitute.
+For density fitting, an omitted auxiliary basis retains HF's existing resolved
+model: the orbital basis is also the auxiliary basis.
 
 Exact target convergence and #173 observable-accuracy evidence are separate
 outcomes. The controller may report that the target state is established while

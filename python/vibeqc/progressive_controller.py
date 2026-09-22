@@ -855,14 +855,15 @@ def _audit_target_physical_residual(
         )
         auxiliary = None
         if fitted:
-            if calculator._auxiliary_basis is None:
-                raise ValueError(
-                    "density-fitted target has no resolved auxiliary basis"
-                )
+            auxiliary_basis = (
+                calculator._basis
+                if calculator._auxiliary_basis is None
+                else calculator._auxiliary_basis
+            )
             auxiliary = stack.enter_context(
                 NativeAO(
                     atoms,
-                    calculator._auxiliary_basis,
+                    auxiliary_basis,
                     representation=calculator._representation_name,
                     charge=charge,
                     multiplicity=multiplicity,
