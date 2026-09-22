@@ -4,7 +4,7 @@ This archive accepts only fixed-density LDA/PBE XC energy integration and AO
 potential assembly. It does not complete issue #162, register a public DFT
 method, establish SCF/quadrature convergence, or validate GPU execution.
 The interface and remaining dependencies are in
-[the integration contract](../../../docs/xc_integration.md).
+[the integration contract](../../../docs/developer/xc_integration.md).
 
 ## Archived raw records
 

@@ -1,14 +1,14 @@
 {
   "current_default": "Generated interior scalar expressions and compact CPU contractions; compiler spatial CUDA potentials enforce interior-v1. Resident native KS uses the shared scaled-domain point evaluator and ordinary-stream SCF.",
   "evidence": [
-    "docs/xc_expressions.md",
-    "docs/xc_contractions.md",
+    "docs/developer/xc_expressions.md",
+    "docs/developer/xc_contractions.md",
     "benchmarks/results/xc-contractions/README.md",
-    "docs/xc_scf_domain.md",
+    "docs/developer/xc_scf_domain.md",
     "tests/python/test_spatial_density_cuda.py",
     "tests/python/test_dft_cuda.py",
     "tools/validate_dft_endpoints.py",
-    "docs/xc_native_cuda.md",
+    "docs/developer/xc_native_cuda.md",
     "tests/python/test_ks_resources.py",
     "tests/native/test_dft_api.cpp"
   ],

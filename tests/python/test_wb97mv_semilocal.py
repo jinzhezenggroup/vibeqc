@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.provenance import file_hash
 from vibeqc_compiler.method import (
     MethodSpec,
@@ -17,6 +18,9 @@ from vibeqc_compiler.method import (
 from vibeqc_compiler.xc.cuda_emit import XCSchedule, emit_cuda
 from vibeqc_compiler.xc.program import build_program
 from vibeqc_compiler.xc.spec import FunctionalSpec, UnsupportedXC
+from vibeqc_compiler.xc.wb97mv_maple import (
+    energy_expression as production_energy_expression,
+)
 
 
 def test_wb97mv_manifest_resolves_exact_semilocal_rsh_and_vv10_definition() -> None:
@@ -174,6 +178,35 @@ def test_wb97mv_polarized_energy_vxc_fxc_match_libxc_7_pinned_oracle() -> None:
     np.testing.assert_allclose(
         result["hessian"][:, :, 0], expected_hessian, rtol=8e-11, atol=2e-12
     )
+
+
+def _production_first_derivatives(
+    spec: FunctionalSpec, point: np.ndarray
+) -> tuple[np.ndarray, object]:
+    graph, energy, variables = production_energy_expression(spec)
+    roots = (energy, *(graph.differentiate(energy, variable) for variable in variables))
+    values = evaluate_array_graph(
+        graph,
+        roots,
+        dict(zip(spec.features, np.asarray(point, dtype=float), strict=True)),
+    )
+    return np.asarray([float(np.asarray(value)) for value in values]), graph
+
+
+def test_wb97mv_production_maple_preserves_interior_and_large_a_tail() -> None:
+    spec = resolve_method("WB97M-V", spin="polarized").primitives[0].functional
+    interior = np.array((0.3, 0.2, 0.015, 0.003, 0.010, 0.08, 0.05))
+    actual, graph = _production_first_derivatives(spec, interior)
+    reference = build_program(spec, order=1).evaluate(interior[:, None])[:, 0]
+    np.testing.assert_allclose(actual, reference, rtol=3e-11, atol=3e-12)
+
+    # Each spin remains above Libxc's 1e-13 density screen while omega/(2*kF)
+    # is far beyond the direct attenuation branch. Production must take the
+    # pinned order-16 smooth-LR series rather than reject or clip this point.
+    tail = np.array((5e-11, 5e-11, 2.5e-31, 2.5e-31, 2.5e-31, 5e-13, 5e-13))
+    tail_value, _ = _production_first_derivatives(spec, tail)
+    assert np.all(np.isfinite(tail_value))
+    assert any(node.operation == "select_le" for node in graph.nodes)
 
 
 def test_wb97mv_generated_cuda_uses_same_tau_expression_graph() -> None:

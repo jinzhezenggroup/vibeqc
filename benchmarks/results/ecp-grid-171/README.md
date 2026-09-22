@@ -115,5 +115,5 @@ Formula migration is not misreported as a CUDA LOC reduction. Other retained
 generated-file measurements remain intact and the aggregate is reconciled with
 the exact ECP header bytes.
 
-See the [current contract](../../../docs/ecp.md) and
+See the [current contract](../../../docs/user/ecp.md) and
 [ownership decision](../../../.agents/notes/implemented/architecture/2026-09-17-ecp-host-grid.md).

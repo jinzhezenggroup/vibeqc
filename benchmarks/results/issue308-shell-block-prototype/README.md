@@ -64,7 +64,7 @@ the execution counts, component intervals, sample branches and file hashes.
 `reproduction/` retains the measured source patch, library/source identities,
 finite Slurm script and GPU state snapshots. Full logs and the binary remain
 under ignored `.artifacts/issue308-shell-block/v1`. The implementation and
-control contract are described in [the shell guide](../../../docs/df_shell_derivatives.md).
+control contract are described in [the shell guide](../../../docs/developer/df_shell_derivatives.md).
 
 ```text
 generated capability: shell-shared weighted derivatives for seven non-SSS s/p classes

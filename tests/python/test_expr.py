@@ -6,6 +6,7 @@ import math
 import typing
 from fractions import Fraction
 
+import pytest
 from vibeqc_compiler.integral import (
     PSSS_SPEC,
     AlgebraForm,
@@ -22,7 +23,37 @@ from vibeqc_compiler.integral import (
     build_weighted_shell_contraction_kernel,
 )
 from vibeqc_compiler.integral.cuda import CudaEmitter, format_constant
-from vibeqc_compiler.integral.expr import Graph
+from vibeqc_compiler.integral.expr import Graph, ScalarDomain
+
+
+def test_subexpression_replacement_is_simultaneous_and_preserves_branches() -> None:
+    """Inserted nodes are verbatim; conditional selection and later AD survive."""
+    graph = Graph()
+    x, y = (graph.variable(name) for name in ("x", "y"))
+    shared = x + y
+    root = graph.select_le(x, 0, shared.pow(2), shared.pow(3))
+    (replaced,) = graph.replace_subexpressions((root,), {shared: x - y, x: y})
+    # The condition's x is replaced, but the inserted x-y remains untouched.
+    for values, expected in (({"x": 2, "y": -1}, 9), ({"x": 2, "y": 1}, 1)):
+        assert graph.evaluate(replaced, values) == expected
+    derivative = graph.differentiate(replaced, x)
+    assert graph.evaluate(derivative, {"x": 2, "y": -1}) == 6
+    assert graph.evaluate(derivative, {"x": 2, "y": 1}) == 3
+    assert graph.replace_subexpressions((root,), {})[0].identifier == root.identifier
+
+
+def test_subexpression_replacement_rejects_foreign_graphs() -> None:
+    """A coincident node identifier from another graph is not a substitution."""
+    graph = Graph()
+    x = graph.variable("x")
+    foreign = Graph().variable("x")
+    for roots, replacements in (
+        ((x,), {foreign: x}),
+        ((x,), {x: foreign}),
+        ((foreign,), {}),
+    ):
+        with pytest.raises(ValueError):
+            graph.replace_subexpressions(roots, replacements)
 
 
 def test_deep_associative_regions_preserve_multiplicity_and_canonical_order() -> None:
@@ -435,6 +466,25 @@ def test_canonical_forms_ignore_binary_parenthesization() -> None:
         )
 
 
+def test_scalar_c_emitter_supports_explicit_fp32_literals_and_temporaries() -> None:
+    graph = Graph()
+    x = graph.variable("x")
+    root = (x + Fraction(1, 3)) * Fraction(2, 5)
+
+    emitter = CudaEmitter(graph, {"x": "x"}, scalar_type="float")
+    emitter.emit((root,))
+
+    assert emitter.lines
+    assert all("const float " in line for line in emitter.lines)
+    assert any("0.33333333333333331f" in line for line in emitter.lines)
+    assert any("0.40000000000000002f" in line for line in emitter.lines)
+    assert (
+        format_constant(Fraction(1, 3), scalar_type="float") == "0.33333333333333331f"
+    )
+    with pytest.raises(ValueError, match="scalar type"):
+        CudaEmitter(graph, {}, scalar_type="half")
+
+
 def test_exact_rational_coefficients_fold_before_cuda_lowering() -> None:
     """Keep coefficient algebra exact until the final double literal."""
 
@@ -634,3 +684,33 @@ def test_nary_differentiation_and_fma_lowering_cover_variable_arity_nodes() -> N
     emitter.emit((root,))
     assert emitter.lines == ["  const double v0 = fma(x, y, (z + w));"]
     assert plan.operation_counts == (("add", 1), ("fma", 1))
+
+
+def test_domain_analysis_blocks_boundary_sensitive_rewrites() -> None:
+    graph = Graph()
+    rho = graph.variable("rho")
+    root = rho.pow(-4.0 / 3.0) + rho.pow(0.5) + rho.pow(2.0)
+
+    physical = {"rho": ScalarDomain.NONNEGATIVE}
+    violations = graph.domain_violations((root,), physical)
+    assert {(item.operation, item.requirement) for item in violations} == {
+        ("power", "positive")
+    }
+
+    guarded, (guarded_root,) = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.FACTORED_NARY,
+        power_lowering=PowerLowering.SMALL_INTEGER,
+        variable_domains=physical,
+    )
+    assert guarded is graph
+    assert guarded_root.identifier == root.identifier
+
+    work = {"rho": ScalarDomain.POSITIVE}
+    assert graph.domain_violations((root,), work) == ()
+    optimized, _ = graph.apply_algebra_form(
+        (root,),
+        AlgebraForm.FACTORED_NARY,
+        variable_domains=work,
+    )
+    assert optimized is not graph

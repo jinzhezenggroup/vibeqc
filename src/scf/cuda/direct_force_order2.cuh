@@ -15,6 +15,7 @@
 #include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_force_density.cuh"
 #include "scf/cuda/direct_metadata.hpp"
+#include "scf/cuda/direct_native_gradient_types.cuh"
 #include "scf/cuda/direct_queue_index.cuh"
 #include "scf/cuda/gaussian_geometry.cuh"
 #include "scf/cuda/matrix_index.cuh"
@@ -151,6 +152,146 @@ contracted_eri_cartesian_source_order2_generated_weighted_gradient(
         }
       }
     }
+  }
+  return result;
+}
+
+/**
+ * Evaluate one exact order-two AO-quartet gradient through compiler-owned force roots.
+ *
+ * The generic force fallback supplies a one-hot Cartesian component weight. Shell/pair
+ * canonicalization remains runtime plumbing; all ERI/derivative algebra is shared with the
+ * generated PSPS/PPSS/DSSS production consumers above.
+ */
+__device__ inline CartesianQuartetGradient
+contracted_eri_cartesian_source_order2_generated_gradient(const DeviceBatch& batch,
+                                                          std::int32_t system, std::int32_t i,
+                                                          std::int32_t j, std::int32_t k,
+                                                          std::int32_t l) {
+  const std::size_t n = static_cast<std::size_t>(batch.direct_nbf);
+  const std::size_t system_ao_begin = static_cast<std::size_t>(system) * n;
+  const std::size_t raw_ao[4] = {
+      static_cast<std::size_t>(i),
+      static_cast<std::size_t>(j),
+      static_cast<std::size_t>(k),
+      static_cast<std::size_t>(l),
+  };
+  const std::int32_t raw_shell[4] = {
+      batch.direct_ao_shells[system_ao_begin + raw_ao[0]],
+      batch.direct_ao_shells[system_ao_begin + raw_ao[1]],
+      batch.direct_ao_shells[system_ao_begin + raw_ao[2]],
+      batch.direct_ao_shells[system_ao_begin + raw_ao[3]],
+  };
+  const unsigned shell_class = direct_quartet_shell_class_device(
+      batch.shell_angular[raw_shell[0]], batch.shell_angular[raw_shell[1]],
+      batch.shell_angular[raw_shell[2]], batch.shell_angular[raw_shell[3]]);
+
+  unsigned canonical_raw_slot[4]{};
+  if (shell_class == kPspsShellClass) {
+    unsigned first_p_slot = 4U;
+    unsigned second_p_slot = 4U;
+    for (unsigned slot = 0; slot < 2; ++slot) {
+      if (batch.shell_angular[raw_shell[slot]] == 1U) first_p_slot = slot;
+    }
+    for (unsigned slot = 2; slot < 4; ++slot) {
+      if (batch.shell_angular[raw_shell[slot]] == 1U) second_p_slot = slot;
+    }
+    if (first_p_slot >= 2U || second_p_slot < 2U || second_p_slot >= 4U) return {};
+    canonical_raw_slot[0] = first_p_slot;
+    canonical_raw_slot[1] = 1U - first_p_slot;
+    canonical_raw_slot[2] = second_p_slot;
+    canonical_raw_slot[3] = 5U - second_p_slot;
+  } else if (shell_class == kPpssShellClass) {
+    const bool first_pair_is_pp =
+        batch.shell_angular[raw_shell[0]] == 1U && batch.shell_angular[raw_shell[1]] == 1U;
+    const unsigned pair_begin = first_pair_is_pp ? 0U : 2U;
+    const unsigned other_pair_begin = first_pair_is_pp ? 2U : 0U;
+    canonical_raw_slot[0] = pair_begin;
+    canonical_raw_slot[1] = pair_begin + 1U;
+    canonical_raw_slot[2] = other_pair_begin;
+    canonical_raw_slot[3] = other_pair_begin + 1U;
+  } else if (shell_class == kDsssShellClass) {
+    unsigned d_slot = 4U;
+    for (unsigned slot = 0; slot < 4; ++slot) {
+      if (batch.shell_angular[raw_shell[slot]] == 2U) d_slot = slot;
+    }
+    if (d_slot >= 4U) return {};
+    const unsigned pair_begin = d_slot < 2U ? 0U : 2U;
+    const unsigned other_pair_begin = pair_begin == 0U ? 2U : 0U;
+    canonical_raw_slot[0] = d_slot;
+    canonical_raw_slot[1] = pair_begin + (d_slot == pair_begin ? 1U : 0U);
+    canonical_raw_slot[2] = other_pair_begin;
+    canonical_raw_slot[3] = other_pair_begin + 1U;
+  } else {
+    return {};
+  }
+
+  const std::int32_t canonical_shell[4] = {
+      raw_shell[canonical_raw_slot[0]],
+      raw_shell[canonical_raw_slot[1]],
+      raw_shell[canonical_raw_slot[2]],
+      raw_shell[canonical_raw_slot[3]],
+  };
+  const std::size_t canonical_pair[2] = {
+      system_shell_pair_index(batch, system, canonical_shell[0], canonical_shell[1]),
+      system_shell_pair_index(batch, system, canonical_shell[2], canonical_shell[3]),
+  };
+
+  const std::size_t component_begin[3] = {
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[canonical_shell[0]]) - system_ao_begin,
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[canonical_shell[1]]) - system_ao_begin,
+      static_cast<std::size_t>(batch.shell_direct_ao_offsets[canonical_shell[2]]) - system_ao_begin,
+  };
+  const unsigned first_component =
+      static_cast<unsigned>(raw_ao[canonical_raw_slot[0]] - component_begin[0]);
+  unsigned output = first_component;
+  if (shell_class == kPspsShellClass) {
+    const unsigned third_component =
+        static_cast<unsigned>(raw_ao[canonical_raw_slot[2]] - component_begin[2]);
+    if (first_component >= 3U || third_component >= 3U) return {};
+    output = first_component * 3U + third_component;
+  } else if (shell_class == kPpssShellClass) {
+    const unsigned second_component =
+        static_cast<unsigned>(raw_ao[canonical_raw_slot[1]] - component_begin[1]);
+    if (first_component >= 3U || second_component >= 3U) return {};
+    output = first_component * 3U + second_component;
+  } else if (first_component >= 6U) {
+    return {};
+  }
+
+  const double angular_coefficient = batch.direct_ao_coefficients[system_ao_begin + raw_ao[0]] *
+                                     batch.direct_ao_coefficients[system_ao_begin + raw_ao[1]] *
+                                     batch.direct_ao_coefficients[system_ao_begin + raw_ao[2]] *
+                                     batch.direct_ao_coefficients[system_ao_begin + raw_ao[3]];
+  double component_weight[9]{};
+  component_weight[output] = angular_coefficient;
+
+  generated_weighted_eri::IndependentGradient gradient{};
+  if (shell_class == kPspsShellClass) {
+    gradient = contracted_eri_cartesian_source_order2_generated_weighted_gradient<kPspsShellClass>(
+        batch, canonical_pair[0], canonical_pair[1], canonical_shell[0], canonical_shell[1],
+        canonical_shell[2], canonical_shell[3], component_weight);
+  } else if (shell_class == kPpssShellClass) {
+    gradient = contracted_eri_cartesian_source_order2_generated_weighted_gradient<kPpssShellClass>(
+        batch, canonical_pair[0], canonical_pair[1], canonical_shell[0], canonical_shell[1],
+        canonical_shell[2], canonical_shell[3], component_weight);
+  } else {
+    gradient = contracted_eri_cartesian_source_order2_generated_weighted_gradient<kDsssShellClass>(
+        batch, canonical_pair[0], canonical_pair[1], canonical_shell[0], canonical_shell[1],
+        canonical_shell[2], canonical_shell[3], component_weight);
+  }
+
+  CartesianQuartetGradient result{};
+#pragma unroll
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    double fourth = 0.0;
+#pragma unroll
+    for (unsigned canonical = 0; canonical < 3; ++canonical) {
+      const double value = gradient.center[canonical][axis];
+      result.center[canonical_raw_slot[canonical]][axis] = value;
+      fourth -= value;
+    }
+    result.center[canonical_raw_slot[3]][axis] = fourth;
   }
   return result;
 }

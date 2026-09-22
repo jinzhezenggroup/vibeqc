@@ -79,6 +79,38 @@ int main(int argc, char** argv) {
     }
     return 1;
   }
+  if (mode == "syr_alpha_zero") {
+    cpu_syr('L', 2, &nan, nullptr, 0.0, plan);
+    return 0;
+  }
+  if (mode == "syr_extent") {
+    try {
+      cpu_syr('L', std::numeric_limits<std::size_t>::max() / 2 + 1, nullptr, nullptr, 0.0, plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
+  if (mode == "syr2_scaled_overflow" || mode == "syr2_scaled_underflow") {
+    const int exponent = mode == "syr2_scaled_overflow" ? 600 : -600;
+    const double x = std::ldexp(1.0, exponent);
+    double a = 0.0;
+    cpu_syr2('U', 1, &x, &x, &a, std::ldexp(1.0, -exponent), plan);
+    return std::isfinite(a) && a == std::ldexp(1.0, exponent + 1) ? 0 : 1;
+  }
+  if (mode == "syr2_alpha_zero") {
+    cpu_syr2('U', 2, &nan, &nan, nullptr, 0.0, plan);
+    return 0;
+  }
+  if (mode == "syr2_extent") {
+    try {
+      cpu_syr2('U', std::numeric_limits<std::size_t>::max() / 2 + 1, nullptr, nullptr, nullptr, 0.0,
+               plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
   if (mode == "syrk_alpha_zero") {
     double matrix[4]{nan, 9.0, nan, nan};
     cpu_syrk('L', 'N', 2, 1, &nan, matrix, 0.0, 0.0, plan);
@@ -88,6 +120,20 @@ int main(int argc, char** argv) {
     try {
       cpu_syrk('L', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, &c, 1.0, 0.0,
                plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
+  if (mode == "syr2k_alpha_zero") {
+    double matrix[4]{nan, 9.0, nan, nan};
+    cpu_syr2k('L', 'N', 2, 1, &nan, &nan, matrix, 0.0, 0.0, plan);
+    return matrix[0] == 0.0 && matrix[1] == 9.0 && matrix[2] == 0.0 && matrix[3] == 0.0 ? 0 : 1;
+  }
+  if (mode == "syr2k_extent") {
+    try {
+      cpu_syr2k('L', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, nullptr, &c,
+                1.0, 0.0, plan);
     } catch (const std::length_error&) {
       return 0;
     }
@@ -103,6 +149,22 @@ int main(int argc, char** argv) {
   if (mode == "trsm_extent") {
     try {
       cpu_trsm('L', 'L', 'N', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, &c,
+               0.0, plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
+  if (mode == "trmm_alpha_zero") {
+    double matrix[4]{nan, nan, nan, nan};
+    cpu_trmm('L', 'L', 'N', 'N', 2, 2, &nan, matrix, 0.0, plan);
+    for (double value : matrix)
+      if (value != 0.0) return 1;
+    return 0;
+  }
+  if (mode == "trmm_extent") {
+    try {
+      cpu_trmm('L', 'L', 'N', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, &c,
                0.0, plan);
     } catch (const std::length_error&) {
       return 0;

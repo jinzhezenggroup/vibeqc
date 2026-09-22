@@ -1,0 +1,110 @@
+{
+  "source_sha": "0d89ab6fb6219d9af6641d5cfafe0b43f8387206",
+  "library_sha256": "7bb9c7ccd6381dbdaefb3cff752b8ede66445f3578b36ee79253874fa131c364",
+  "slurm_job": "11195",
+  "cuda_visible_devices": "0",
+  "hardware": "name, driver_version, memory.total [MiB], clocks.current.sm [MHz], clocks.current.memory [MHz], power.limit [W]\nNVIDIA GeForce RTX 5090, 580.95.05, 32607 MiB, 180 MHz, 405 MHz, 575.00 W\n",
+  "commands": [
+    {
+      "name": "native",
+      "command": [
+        "ctest",
+        "--test-dir",
+        "/home/jzzeng/codes/vibeqc-acceptance-closeout-20260922/build-acceptance",
+        "--output-on-failure",
+        "--timeout",
+        "300",
+        "-j",
+        "1"
+      ],
+      "returncode": 8,
+      "seconds": 92.20781175326556
+    },
+    {
+      "name": "python-hf-df-mp2",
+      "command": [
+        "/home/jzzeng/codes/vibeqc-torch-boundaries/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "-rs",
+        "tests/python/test_fock.py",
+        "tests/python/test_checkpoint.py",
+        "tests/python/test_batch.py",
+        "tests/python/test_hf_resources_cuda.py",
+        "tests/python/test_cuda_runtime.py",
+        "tests/python/test_df_derivatives_cuda.py",
+        "tests/python/test_calculator.py::test_cuda_energy_only_output_selection_omits_forces",
+        "tests/python/test_calculator.py::test_cuda_real_spherical_d_energy_and_force_match_pyscf",
+        "tests/python/test_calculator.py::test_cuda_spherical_def2_svp_water_matches_pyscf",
+        "tests/python/test_calculator.py::test_cuda_def2_tzvp_water_uses_graph_native_eigensolver",
+        "tests/python/test_calculator.py::test_cuda_spherical_uhf_doublet_matches_pyscf",
+        "tests/python/test_calculator.py::test_cuda_spherical_named_basis_uhf_breaks_excited_state_symmetry",
+        "tests/python/test_calculator.py::test_single_system_cuda_executes_full_scientific_path_when_available",
+        "tests/python/test_calculator.py::test_cartesian_p_shell_energy_force_and_cuda_agreement",
+        "tests/python/test_calculator.py::test_cartesian_d_f_cuda_matches_pyscf_libcint_reference",
+        "tests/python/test_calculator.py::test_cuda_final_fock_reuse_matches_forced_rebuild",
+        "tests/python/test_calculator.py::test_cuda_uhf_h2_plus_matches_pyscf_and_cpu_oracles",
+        "tests/python/test_calculator.py::test_cuda_uhf_closed_shell_limit_matches_rhf",
+        "tests/python/test_calculator.py::test_cuda_uhf_direct_quartet_closed_shell_matches_rhf",
+        "tests/python/test_calculator.py::test_cuda_uhf_direct_jk_matches_pyscf_and_force_finite_difference",
+        "tests/python/test_calculator.py::test_screened_cuda_uhf_direct_force_matches_energy_finite_difference",
+        "tests/python/test_mp2_public.py",
+        "tests/python/test_mp2_fixed_native.py",
+        "tests/python/test_mp2_native.py",
+        "tests/python/test_mp2_cuda.py",
+        "tests/python/test_mp2_extended.py",
+        "tests/python/test_direct_force_state_cuda.py",
+        "--junitxml=/home/jzzeng/codes/vibeqc-acceptance-evidence-20260922/python-hf-df-mp2.xml"
+      ],
+      "returncode": 124,
+      "seconds": 1800.1987871685997
+    },
+    {
+      "name": "weighted",
+      "command": [
+        "/home/jzzeng/codes/vibeqc-torch-boundaries/.venv/bin/python",
+        "tools/validate_weighted_eri.py",
+        "--probe",
+        "/home/jzzeng/codes/vibeqc-acceptance-closeout-20260922/build-acceptance/vibeqc_weighted_eri_probe",
+        "--output",
+        "/home/jzzeng/codes/vibeqc-acceptance-evidence-20260922/weighted"
+      ],
+      "returncode": 0,
+      "seconds": 3.2715693577192724
+    },
+    {
+      "name": "r2scan3c",
+      "command": [
+        "/home/jzzeng/codes/vibeqc-torch-boundaries/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "-rs",
+        "tests/python/test_r2scan3c_execution.py",
+        "tests/python/test_r2scan3c_public_api.py",
+        "tests/python/test_r2scan3c_cpu_composition.py",
+        "tests/python/test_r2scan3c_method.py",
+        "--junitxml=/home/jzzeng/codes/vibeqc-acceptance-evidence-20260922/r2scan3c.xml"
+      ],
+      "returncode": 0,
+      "seconds": 4.3231639000587165
+    },
+    {
+      "name": "public-dft",
+      "command": [
+        "/home/jzzeng/codes/vibeqc-torch-boundaries/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "-rs",
+        "tests/python/test_dft_complete_cuda.py::test_public_cuda_calculator_forces_match_independent_gradient",
+        "tests/python/test_dft_complete_cuda.py::test_public_cuda_prepared_force_replay_retains_execution",
+        "tests/python/test_dft_complete_cuda.py::test_public_cuda_batch_changed_geometry_and_failure_isolation",
+        "--junitxml=/home/jzzeng/codes/vibeqc-acceptance-evidence-20260922/public-dft.xml"
+      ],
+      "returncode": 1,
+      "seconds": 16.34654923994094
+    }
+  ]
+}

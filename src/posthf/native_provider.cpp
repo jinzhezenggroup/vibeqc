@@ -5,6 +5,8 @@
 #include <numeric>
 #include <stdexcept>
 
+#include "integrals/density_fitting_metric.hpp"
+#include "integrals/s_integrals.hpp"
 #include "posthf/cuda_transform.hpp"
 
 namespace vibeqc::posthf {
@@ -290,4 +292,129 @@ std::vector<double> NativeBlockProvider::get(const MOSlots& slots, bool cuda, in
   auto outputs = get_many(requests, cuda, device, metrics, work);
   return std::move(outputs.front());
 }
+
+DensityFittedBlockProvider::DensityFittedBlockProvider(const RawSource& source,
+                                                       const scf::PhysicalReference& reference,
+                                                       std::size_t budget,
+                                                       double relative_threshold)
+    : source_(source),
+      ref_(reference),
+      budget_(budget),
+      n_(reference.nbf),
+      naux_(source.naux()),
+      relative_threshold_(relative_threshold) {
+  if (!n_ || !ref_.nocc || ref_.nocc >= n_ || source_.nbf() != n_ || !naux_ ||
+      ref_.coefficients.size() != checked_mul(n_, n_) || !budget_ ||
+      !std::isfinite(relative_threshold_) || relative_threshold_ <= 0.0 ||
+      relative_threshold_ >= 1.0)
+    throw std::invalid_argument("invalid density-fitted MO provider request");
+
+  // This bound includes source owners, value generation/factorization and the
+  // returned RI-MP2 value state. Preflight it before any dense factor is built.
+  const auto preparation_peak = ri_mp2_capacity(source_.orbital(), source_.auxiliary(), ref_.nocc);
+  if (preparation_peak > budget_)
+    throw std::length_error("density-fitted MO provider exceeds memory budget");
+
+  auto raw =
+      integrals::build_density_fitting_integrals(source_.orbital(), source_.auxiliary(), false);
+  if (raw.nbf != n_ || raw.naux != naux_ || raw.metric.size() != checked_mul(naux_, naux_) ||
+      raw.three_center.size() != checked_mul(checked_mul(n_, n_), naux_))
+    throw std::runtime_error("density-fitted MO provider integral dimensions changed");
+  const auto factor =
+      integrals::factor_density_fitting_metric(raw.metric, naux_, relative_threshold_);
+  metric_ = std::move(raw.metric);
+  inverse_square_root_ = factor.inverse_square_root;
+
+  const auto pair_count = checked_mul(n_, n_);
+  const auto three_center_elements = checked_mul(pair_count, naux_);
+  transformed_.assign(three_center_elements, 0.0);
+  whitened_.assign(three_center_elements, 0.0);
+  auto idx = [this](std::size_t p, std::size_t q, std::size_t aux) {
+    return (p * n_ + q) * naux_ + aux;
+  };
+  for (std::size_t p = 0; p < n_; ++p)
+    for (std::size_t q = 0; q < n_; ++q)
+      for (std::size_t mu = 0; mu < n_; ++mu) {
+        const double left = ref_.coefficients[mu * n_ + p];
+        for (std::size_t nu = 0; nu < n_; ++nu) {
+          const double coefficient = left * ref_.coefficients[nu * n_ + q];
+          if (coefficient == 0.0) continue;
+          const auto raw_pair = (mu * n_ + nu) * naux_;
+          for (std::size_t aux = 0; aux < naux_; ++aux)
+            transformed_[idx(p, q, aux)] += coefficient * raw.three_center[raw_pair + aux];
+        }
+      }
+  for (std::size_t p = 0; p < n_; ++p)
+    for (std::size_t q = 0; q < n_; ++q)
+      for (std::size_t target = 0; target < naux_; ++target)
+        for (std::size_t source_aux = 0; source_aux < naux_; ++source_aux)
+          whitened_[idx(p, q, target)] += transformed_[idx(p, q, source_aux)] *
+                                          inverse_square_root_[source_aux * naux_ + target];
+
+  const auto reference_elements = checked_add(checked_mul(5, pair_count), n_);
+  auto bytes =
+      checked_add(source_capacity(source_.orbital()), source_capacity(source_.auxiliary()));
+  bytes = checked_add(bytes, checked_mul(reference_elements, sizeof(double)));
+  bytes = checked_add(bytes, checked_mul(metric_.size(), sizeof(double)));
+  bytes = checked_add(bytes, checked_mul(inverse_square_root_.size(), sizeof(double)));
+  bytes = checked_add(bytes, checked_mul(transformed_.size(), sizeof(double)));
+  bytes = checked_add(bytes, checked_mul(whitened_.size(), sizeof(double)));
+  provider_bytes_ = bytes;
+  if (provider_bytes_ > budget_)
+    throw std::length_error("density-fitted MO provider retained state exceeds memory budget");
+
+  auto finite = [](const std::vector<double>& values) {
+    return std::all_of(values.begin(), values.end(),
+                       [](double value) { return std::isfinite(value); });
+  };
+  if (!finite(metric_) || !finite(inverse_square_root_) || !finite(transformed_) ||
+      !finite(whitened_))
+    throw std::runtime_error("density-fitted MO provider produced nonfinite state");
+}
+
+std::vector<double> DensityFittedBlockProvider::get(const MOSlots& slots, bool cuda, int device,
+                                                    vibeqc_tensor::Metrics* metrics) const {
+  (void)device;
+  (void)metrics;
+  if (cuda) throw std::runtime_error("CUDA density-fitted MO block execution is not implemented");
+  std::array<std::size_t, 4> shape{};
+  std::size_t output_elements = 1;
+  for (unsigned axis = 0; axis < 4; ++axis) {
+    shape[axis] = slots[axis].size();
+    if (!shape[axis]) throw std::invalid_argument("density-fitted MO block has an empty axis");
+    output_elements = checked_mul(output_elements, shape[axis]);
+    for (std::size_t item = 0; item < shape[axis]; ++item) {
+      const auto orbital = slots[axis][item];
+      if (orbital != padded_mo && orbital >= n_)
+        throw std::invalid_argument("density-fitted MO index out of range");
+      if (orbital != padded_mo && std::find(slots[axis].begin(), slots[axis].begin() + item,
+                                            orbital) != slots[axis].begin() + item)
+        throw std::invalid_argument("density-fitted MO slots require unique real columns");
+    }
+  }
+  const auto output_bytes = checked_mul(output_elements, sizeof(double));
+  if (checked_add(provider_bytes_, output_bytes) > budget_)
+    throw std::length_error("density-fitted MO block exceeds memory budget");
+
+  std::vector<double> output(output_elements, 0.0);
+  auto pair_offset = [this](std::size_t p, std::size_t q) { return (p * n_ + q) * naux_; };
+  std::size_t out = 0;
+  for (const auto p : slots[0])
+    for (const auto q : slots[1])
+      for (const auto r : slots[2])
+        for (const auto s : slots[3]) {
+          if (p == padded_mo || q == padded_mo || r == padded_mo || s == padded_mo) {
+            ++out;
+            continue;
+          }
+          const auto left = pair_offset(p, q), right = pair_offset(r, s);
+          double value = 0.0;
+          for (std::size_t aux = 0; aux < naux_; ++aux)
+            value += whitened_[left + aux] * whitened_[right + aux];
+          if (!std::isfinite(value)) throw std::runtime_error("nonfinite density-fitted MO block");
+          output[out++] = value;
+        }
+  return output;
+}
+
 }  // namespace vibeqc::posthf

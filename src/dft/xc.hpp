@@ -156,8 +156,23 @@ SpinXcIntegral integrate_pw91_uks(const AoBasis& basis, const MolecularGrid& gri
                                   const std::vector<double>& beta_density,
                                   std::size_t tile_points = 256);
 
+using Wb97mvPointValue = SemilocalPointValue;
+
+inline constexpr const char* kWb97mvProductionTailPolicy =
+    "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
+
 R2scanPointValue evaluate_r2scan_point(const double rho[2], const double (&gradient)[2][3],
                                        const double tau[2]);
+Wb97mvPointValue evaluate_wb97mv_point(const double rho[2], const double (&gradient)[2][3],
+                                       const double tau[2]);
+
+XcIntegral integrate_wb97mv_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                const std::vector<double>& density, std::size_t tile_points = 256,
+                                XcDensitySource source = {});
+SpinXcIntegral integrate_wb97mv_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                    const std::vector<double>& alpha_density,
+                                    const std::vector<double>& beta_density,
+                                    std::size_t tile_points = 256);
 
 /** r2SCAN meta-GGA using rho/sigma/tau and the generated vtau weak-form term. */
 XcIntegral integrate_r2scan_rks(const AoBasis& basis, const MolecularGrid& grid,

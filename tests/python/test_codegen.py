@@ -250,13 +250,10 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_native_eri_order3.cuh",
             "cuda/direct_native_eri_order4.cuh",
             "cuda/direct_native_gradient_types.cuh",
-            "cuda/direct_native_order2_gradient.cuh",
             "cuda/direct_native_order2_shell.cuh",
-            "cuda/direct_native_order3_gradient.cuh",
             "cuda/direct_native_pair_order2.cuh",
             "cuda/direct_native_pair_order2_gradient.cuh",
             "cuda/direct_native_pair_order3.cuh",
-            "cuda/direct_native_pair_order3_gradient.cuh",
             "cuda/direct_native_psss.cuh",
             "cuda/direct_native_shell_class.cuh",
             "cuda/direct_native_shell_pair_hermite.cuh",
@@ -270,6 +267,7 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_force_density.cuh",
             "cuda/direct_force_low_order.cuh",
             "cuda/direct_force_order2.cuh",
+            "cuda/direct_force_order3.cuh",
             "cuda/direct_force_quartet.cuh",
             "cuda/direct_bounded_contraction.cuh",
             "cuda/direct_cached_tensor_kernels.cu",
@@ -1688,6 +1686,50 @@ def test_bounded_force_registry_gaps_use_exact_runtime_fallback() -> None:
     assert "return cudaErrorNotSupported;" not in source[dispatch:dispatch_end]
 
 
+def test_bounded_fock_registry_gaps_use_exact_runtime_fallback() -> None:
+    """Keep high-l bounded Fock correct without an unbounded descriptor arena."""
+
+    source = _direct_cuda_source()
+    fallback = source.index("const auto launch_bounded_generic_fock")
+    dispatch = source.index("const auto launch_bounded_generated_fock", fallback)
+    dispatch_end = source.index(
+        "// The exact provider is resolved/validated by run_hf_cuda_bucket_cached.",
+        dispatch,
+    )
+    assert fallback < dispatch < dispatch_end
+    assert "host_uncovered_fock_shell_class_mask == 0U" in source[fallback:dispatch]
+    assert (
+        "launch_bounded_direct_fock_shell_quartet_kernel" in source[fallback:dispatch]
+    )
+    assert "host_generated_fock_shell_class_mask" in source[fallback:dispatch]
+    assert "launch_bounded_generic_fock" in source[dispatch:dispatch_end]
+    assert "return cudaErrorNotSupported;" not in source[dispatch:dispatch_end]
+
+    fallback_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_fallback.cu"
+    ).read_text()
+    fock_wrapper = fallback_source.index(
+        "void launch_bounded_direct_fock_shell_quartet_kernel("
+    )
+    assert (
+        "bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, false>"
+        in fallback_source[fock_wrapper:]
+    )
+    assert (
+        "bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Fock, false>"
+        in fallback_source[fock_wrapper:]
+    )
+    # The older force fallback may use Fock screening while still writing forces.
+    # Do not conflate screening purpose with the scientific consumer again.
+    force_wrapper = fallback_source.index(
+        "void launch_bounded_direct_shell_quartet_kernel("
+    )
+    assert (
+        "bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, true>"
+        in fallback_source[force_wrapper:fock_wrapper]
+    )
+
+
 def test_production_manifest_drives_generated_registry_and_shards(
     tmp_path: Path,
 ) -> None:
@@ -2486,8 +2528,60 @@ def test_order2_force_retires_handwritten_gradient_bodies() -> None:
         assert f"generated_weighted_eri::{name}_force" in source
         assert f"direct_native_{name}_gradient.cuh" not in source
         assert f"contracted_eri_cartesian_source_{name}_weighted_gradient" not in source
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order2_gradient.cuh"
+    ).exists()
+    assert "contracted_eri_cartesian_source_order2_generated_gradient" in source
+    quartet_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh"
+    ).read_text(encoding="utf-8")
+    assert "direct_native_order2_gradient.cuh" not in quartet_source
+    assert "contracted_eri_cartesian_source_order2_generated_gradient" in quartet_source
     assert "generated_weighted_eri::Geometry geometry;" in source
     assert "generated_weighted_eri::Geometry geometry{};" not in source
+
+
+def test_order3_force_retires_handwritten_gradient_bodies() -> None:
+    """Keep all total-order-three Direct-HF force mathematics compiler-owned."""
+
+    generated = emit_low_order_weighted_header(inline_single_use=True)
+    for name in ("ppps", "dsps", "dpss", "fsss"):
+        assert f"IndependentGradient {name}_force(" in generated
+
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order3_gradient.cuh"
+    ).exists()
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_pair_order3_gradient.cuh"
+    ).exists()
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_order3.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "contracted_eri_cartesian_source_order3_generated_weighted_gradient" in source
+    )
+    for name in ("ppps", "dsps", "dpss", "fsss"):
+        assert f"generated_weighted_eri::{name}_force" in source
+
+    generic = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert "contracted_eri_cartesian_source_order3_gradient" not in generic
+    assert "direct_native_order3_gradient.cuh" not in generic
+
+
+def test_bounded_order3_force_uses_generated_shell_task_math() -> None:
+    """Keep bounded streaming disjoint from the retired order-three AO formula."""
+
+    bounded = (REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_fallback.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "contract_two_electron_force_order3_task<Unrestricted>(" in bounded
+    dispatcher = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_contraction.cuh"
+    ).read_text(encoding="utf-8")
+    assert "VIBEQC_BOUNDED_FORCE_CASE(3)" not in dispatcher
 
 
 def test_bounded_psss_resident_path_is_allocated_and_disjoint_from_page_fallback() -> (
@@ -2598,7 +2692,11 @@ def test_bounded_streaming_uses_monotonic_system_density_tail() -> None:
         encoding="utf-8"
     )
     generator = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_emission.py"
     ).read_text(encoding="utf-8")
     assert "const double* system_density_bounds" in topology
     assert "const double* system_pair_density_bounds" in topology
@@ -2612,7 +2710,11 @@ def test_bounded_streaming_profiles_executed_precision_per_shell_class() -> None
     """Count actual retained quartets without changing normal kernel work."""
 
     generator = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_emission.py"
     ).read_text(encoding="utf-8")
     source = _direct_cuda_source()
     assert "record_fock_precision" in generator

@@ -1,7 +1,10 @@
 """Shared GPU profitability records and ordering contracts."""
 
 import pytest
-from vibeqc_compiler.common.gpu_profitability import GpuProfitability
+from vibeqc_compiler.common.gpu_profitability import (
+    GpuProfitability,
+    scalar_reduction_promotion_rejection,
+)
 
 
 def test_static_priority_rejects_pressure_growth_without_a_traffic_win() -> None:
@@ -180,3 +183,62 @@ def test_precision_fields_preserve_positional_compiled_registers() -> None:
     assert facts.precision_cast_write_bytes is None
     assert facts.precision_cast_simultaneous_bytes is None
     assert facts.precision_widened_accumulation_terms is None
+
+
+def test_pathological_scalar_reduction_requires_a_concrete_parallel_alternative() -> (
+    None
+):
+    assert (
+        scalar_reduction_promotion_rejection(
+            output_elements=1,
+            reduction_elements=4096,
+            parallel_width=32,
+            alternative="GEMM",
+        )
+        == "scalar reduction exposes 1 independent output element(s) for reduction extent 4096; legal GEMM lowering exists"
+    )
+    assert (
+        scalar_reduction_promotion_rejection(
+            output_elements=1,
+            reduction_elements=4096,
+            parallel_width=32,
+            alternative=None,
+        )
+        is None
+    )
+
+
+def test_small_or_already_parallel_reductions_remain_promotion_eligible() -> None:
+    assert (
+        scalar_reduction_promotion_rejection(
+            output_elements=1,
+            reduction_elements=127,
+            parallel_width=32,
+            alternative="cooperative-reduction",
+        )
+        is None
+    )
+    assert (
+        scalar_reduction_promotion_rejection(
+            output_elements=32,
+            reduction_elements=4096,
+            parallel_width=32,
+            alternative="cooperative-reduction",
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"output_elements": -1, "reduction_elements": 1, "parallel_width": 32},
+        {"output_elements": 1, "reduction_elements": -1, "parallel_width": 32},
+        {"output_elements": 1, "reduction_elements": 1, "parallel_width": 0},
+    ],
+)
+def test_scalar_reduction_diagnostic_rejects_invalid_counts(
+    options: dict[str, int],
+) -> None:
+    with pytest.raises(ValueError):
+        scalar_reduction_promotion_rejection(**options, alternative="parallel")

@@ -135,7 +135,7 @@ relax the pinned hash checks.
 ## Reproduce
 
 Apply `source.patch` to the baseline checkout. Build Release CPU/CUDA libraries
-with the commands in [the ECP contract](../../../docs/ecp.md), substituting the
+with the commands in [the ECP contract](../../../docs/user/ecp.md), substituting the
 allocated GPU architecture for 89 when needed. Install the pinned `reference-test`
 extra, set `PYTHONPATH=python`, and point `VIBEQC_LIBRARY` to the exact build.
 

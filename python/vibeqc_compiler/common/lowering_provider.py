@@ -300,7 +300,8 @@ def lowering_diagnostics(
     materialized = tuple(candidates)
     if any(not isinstance(candidate, LoweringCandidate) for candidate in materialized):
         raise TypeError("lowering diagnostics require LoweringCandidate records")
-    payloads = [candidate.to_payload() for candidate in materialized]
+    ordered = sorted(materialized, key=lambda candidate: candidate.identity)
+    payloads = [candidate.to_payload() for candidate in ordered]
     providers = sorted(
         {
             provider.name

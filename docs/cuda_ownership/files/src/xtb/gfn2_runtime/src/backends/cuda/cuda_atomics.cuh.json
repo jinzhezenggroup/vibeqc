@@ -1,7 +1,0 @@
-{
-  "path": "src/xtb/gfn2_runtime/src/backends/cuda/cuda_atomics.cuh",
-  "reason": "Vendored CUDA execution support for the transitional GFN2 backend; retained as generic launch, validation, atomic, or result-ownership plumbing rather than a GFN2 scientific equation owner.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "gfn2"
-}

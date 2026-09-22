@@ -15,6 +15,7 @@
 #include "scf/cuda/direct_fock_quartet.cuh"
 #include "scf/cuda/direct_force_low_order.cuh"
 #include "scf/cuda/direct_force_order2.cuh"
+#include "scf/cuda/direct_force_order3.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_queue_index.cuh"
 #include "scf/cuda/direct_queue_profile.cuh"
@@ -160,6 +161,9 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
                 batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
             contract_two_electron_force_pair_order2_task<Unrestricted, kDsssShellClass>(
                 batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
+          } else if (angular_order == 3U) {
+            contract_two_electron_force_order3_task<Unrestricted>(
+                batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
           }
         } else {
           if (angular_order == 0U) {
@@ -187,7 +191,11 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
         const unsigned angular_order =
             batch.shell_angular[first_shell] + batch.shell_angular[second_shell] +
             batch.shell_angular[third_shell] + batch.shell_angular[fourth_shell];
-        if (angular_order <= 2U) continue;
+        // The scalar force pass covers order three (including fsss), but
+        // scalar Fock stops at order two.  Its order-three registry gaps must
+        // reach the generic value consumer or their contributions disappear.
+        constexpr unsigned scalar_maximum_order = Force ? 3U : 2U;
+        if (angular_order <= scalar_maximum_order) continue;
         const std::size_t first_ao_count = shell_ao_pair_count(batch, base.first_pair);
         const std::size_t second_ao_count = shell_ao_pair_count(batch, base.second_pair);
         const std::size_t ao_quartets = base.first_pair == base.second_pair
@@ -259,6 +267,32 @@ void launch_bounded_direct_shell_quartet_kernel(
               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
               density, active, output, global_cursor, profile);
     }
+  }
+}
+
+void launch_bounded_direct_fock_shell_quartet_kernel(
+    bool unrestricted, dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream,
+    DeviceBatch batch, double screening_tolerance, const double* shell_pair_bounds,
+    const ShellPairDensityBounds* shell_pair_density_bounds, const std::uint32_t* shell_pair_order,
+    const double* shell_pair_block_bounds, const double* system_density_bounds,
+    const std::uint64_t* enabled_mask_pointer, std::uint64_t enabled_mask,
+    const std::uint32_t* bounded_generated_overflow, const double* schwarz_bounds,
+    const double* density, const std::uint8_t* active, double* fock,
+    unsigned long long* global_cursor) {
+  if (unrestricted) {
+    bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, false>
+        <<<grid, block, shared_bytes, stream>>>(
+            batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
+            shell_pair_order, shell_pair_block_bounds, system_density_bounds, enabled_mask_pointer,
+            enabled_mask, bounded_generated_overflow, schwarz_bounds, density, active, fock,
+            global_cursor, nullptr);
+  } else {
+    bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Fock, false>
+        <<<grid, block, shared_bytes, stream>>>(
+            batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
+            shell_pair_order, shell_pair_block_bounds, system_density_bounds, enabled_mask_pointer,
+            enabled_mask, bounded_generated_overflow, schwarz_bounds, density, active, fock,
+            global_cursor, nullptr);
   }
 }
 

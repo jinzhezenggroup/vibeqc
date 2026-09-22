@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-RUNTIME = ROOT / "src/xtb/gfn2_runtime"
+RUNTIME = ROOT / "src/xtb/native"
 MANIFEST = RUNTIME / "CUDA_SOURCE_PROVENANCE.json"
 
 
@@ -11,7 +11,7 @@ def test_gfn2_cuda_source_manifest_is_current_and_gfn2_only() -> None:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert manifest["upstream_commit"] == "3c21f50195389b093941eb5ed6f1143b8802f96e"
     assert manifest["cpu_snapshot_commit"] == "5a67cc59ace94c8296e873503b2ae1298e7c2861"
-    assert len(manifest["cuda_sources"]) == 53
+    assert len(manifest["cuda_sources"]) == 52
     assert manifest["files"]
 
     adapted = []
@@ -28,20 +28,11 @@ def test_gfn2_cuda_source_manifest_is_current_and_gfn2_only() -> None:
         assert "parameters/gfn1" not in lowered
         assert "gfn1_classical_corrections" not in lowered
 
-    assert adapted == [
-        "src/backends/cuda/gfn2_aes2.cu",
-        "src/backends/cuda/gfn2_es2.cu",
-        "src/backends/cuda/gfn2_es3.cu",
-        "src/backends/cuda/gfn2_geometry.cu",
-        "src/backends/cuda/gfn2_hamiltonian.cu",
-        "src/backends/cuda/gfn2_hamiltonian_force.cu",
-        "src/backends/cuda/gfn2_integrals.cu",
-        "src/backends/cuda/gfn2_pairlist.cu",
-        "src/backends/cuda/gfn2_preprocessing.cu",
-        "src/backends/cuda/gfn2_repulsion.cu",
-        "src/backends/cuda/gfn2_repulsion.cuh",
-        "src/runtime/gfn2_cuda_execution.cu",
-    ]
+    # Every imported unit changed ownership namespace/includes. Scientific
+    # adaptations are recorded separately from this mechanical common cutover.
+    assert adapted == list(manifest["files"])
+    assert manifest["native_ownership"]["root"] == "src/xtb/native"
+    assert "src/backends/cuda/gfn2_spin.cu" in manifest["adaptations"]
 
 
 def test_gfn2_cuda_reuses_canonical_d4_data() -> None:

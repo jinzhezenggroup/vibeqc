@@ -7,7 +7,7 @@ is used. The private point bridge is covered by the 97 independent Libxc/mpmath
 SCF-domain references; the fixed-density multistep oracle and directional tests
 remain independent of the generated AO pullback. Complete grid/partition motion,
 molecular gradients, CUDA derivative lowering and public forces remain B/C.
-See [current method behavior](../../methods.md) and the
+See [current method behavior](../../user/methods.md) and the
 [native handoff decision](../../../.agents/notes/implemented/numerics/2026-09-16-stationary-native-handoff.md).
 
 ## Scope

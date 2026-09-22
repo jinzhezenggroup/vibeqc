@@ -29,6 +29,7 @@ struct CudaDensityFittingIntegralSourceImpl {
   int device_id{-1};
   // Freeze the generated schedule so a warm plan never mixes mapping policies.
   unsigned value_mapping{};
+  unsigned raw_value_mapping{};
   unsigned value_math{};  // Frozen with mapping; unsupported angular classes use generic Rys.
   std::size_t batch_size{};
   std::size_t public_nbf{};

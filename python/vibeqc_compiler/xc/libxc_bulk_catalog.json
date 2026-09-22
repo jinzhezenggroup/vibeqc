@@ -8,7 +8,7 @@
     "maple_files": 285,
     "registrations": 544
   },
-  "importer_semantics": "libxc-maple-graph/v10",
+  "importer_semantics": "libxc-maple-graph/v11",
   "parameter_binding_semantics": "libxc-c-copy-parameters/v1",
   "registrations": [
     {
@@ -2737,8 +2737,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 287,
-        "unpolarized": 139
+        "polarized": 302,
+        "unpolarized": 147
       },
       "graph_status": "imported",
       "id": 192,
@@ -2760,8 +2760,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 191,
-        "unpolarized": 87
+        "polarized": 206,
+        "unpolarized": 95
       },
       "graph_status": "imported",
       "id": 56,
@@ -2803,8 +2803,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 184,
@@ -2827,8 +2827,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 156,
-        "unpolarized": 64
+        "polarized": 172,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 103,
@@ -2851,8 +2851,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 167,
-        "unpolarized": 70
+        "polarized": 183,
+        "unpolarized": 78
       },
       "graph_status": "imported",
       "id": 105,
@@ -2875,8 +2875,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 167,
-        "unpolarized": 70
+        "polarized": 183,
+        "unpolarized": 78
       },
       "graph_status": "imported",
       "id": 41,
@@ -2898,8 +2898,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 197,
-        "unpolarized": 89
+        "polarized": 212,
+        "unpolarized": 97
       },
       "graph_status": "imported",
       "id": 106,
@@ -2921,8 +2921,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 197,
-        "unpolarized": 89
+        "polarized": 212,
+        "unpolarized": 97
       },
       "graph_status": "imported",
       "id": 570,
@@ -2944,8 +2944,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 197,
-        "unpolarized": 89
+        "polarized": 212,
+        "unpolarized": 97
       },
       "graph_status": "imported",
       "id": 179,
@@ -2965,8 +2965,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 195,
-        "unpolarized": 91
+        "polarized": 210,
+        "unpolarized": 99
       },
       "graph_status": "imported",
       "id": 125,
@@ -2988,8 +2988,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 38,
@@ -3032,8 +3032,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 155,
-        "unpolarized": 66
+        "polarized": 171,
+        "unpolarized": 74
       },
       "graph_status": "imported",
       "id": 338,
@@ -3058,8 +3058,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 155,
-        "unpolarized": 66
+        "polarized": 171,
+        "unpolarized": 74
       },
       "graph_status": "imported",
       "id": 339,
@@ -3079,8 +3079,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 389,
-        "unpolarized": 191
+        "polarized": 404,
+        "unpolarized": 199
       },
       "graph_status": "imported",
       "id": 98,
@@ -3100,8 +3100,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 178,
-        "unpolarized": 78
+        "polarized": 194,
+        "unpolarized": 86
       },
       "graph_status": "imported",
       "id": 158,
@@ -3123,8 +3123,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 195,
-        "unpolarized": 89
+        "polarized": 210,
+        "unpolarized": 97
       },
       "graph_status": "imported",
       "id": 270,
@@ -3144,8 +3144,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 216,
-        "unpolarized": 101
+        "polarized": 231,
+        "unpolarized": 109
       },
       "graph_status": "imported",
       "id": 298,
@@ -3168,8 +3168,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 192,
-        "unpolarized": 87
+        "polarized": 207,
+        "unpolarized": 95
       },
       "graph_status": "imported",
       "id": 111,
@@ -3192,8 +3192,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 203,
-        "unpolarized": 93
+        "polarized": 218,
+        "unpolarized": 101
       },
       "graph_status": "imported",
       "id": 112,
@@ -3215,8 +3215,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 197,
-        "unpolarized": 89
+        "polarized": 212,
+        "unpolarized": 97
       },
       "graph_status": "imported",
       "id": 271,
@@ -3242,8 +3242,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 187,
-        "unpolarized": 83
+        "polarized": 203,
+        "unpolarized": 91
       },
       "graph_status": "imported",
       "id": 215,
@@ -3269,8 +3269,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 247,
-        "unpolarized": 119
+        "polarized": 262,
+        "unpolarized": 127
       },
       "graph_status": "imported",
       "id": 35,
@@ -3370,8 +3370,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 134,
-        "unpolarized": 58
+        "polarized": 149,
+        "unpolarized": 66
       },
       "graph_status": "imported",
       "id": 107,
@@ -3622,8 +3622,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 187,
-        "unpolarized": 86
+        "polarized": 202,
+        "unpolarized": 94
       },
       "graph_status": "imported",
       "id": 193,
@@ -3721,8 +3721,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 304,
-        "unpolarized": 150
+        "polarized": 319,
+        "unpolarized": 158
       },
       "graph_status": "imported",
       "id": 113,
@@ -3770,8 +3770,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 286,
-        "unpolarized": 139
+        "polarized": 301,
+        "unpolarized": 147
       },
       "graph_status": "imported",
       "id": 58,
@@ -3793,8 +3793,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 197,
-        "unpolarized": 89
+        "polarized": 212,
+        "unpolarized": 97
       },
       "graph_status": "imported",
       "id": 149,
@@ -3907,8 +3907,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 190,
-        "unpolarized": 86
+        "polarized": 205,
+        "unpolarized": 94
       },
       "graph_status": "imported",
       "id": 183,
@@ -3931,8 +3931,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 160,
-        "unpolarized": 66
+        "polarized": 176,
+        "unpolarized": 74
       },
       "graph_status": "imported",
       "id": 171,
@@ -3954,8 +3954,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 197,
-        "unpolarized": 89
+        "polarized": 212,
+        "unpolarized": 97
       },
       "graph_status": "imported",
       "id": 139,
@@ -3978,8 +3978,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 165,
-        "unpolarized": 70
+        "polarized": 181,
+        "unpolarized": 78
       },
       "graph_status": "imported",
       "id": 110,
@@ -4001,8 +4001,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 101,
@@ -4042,8 +4042,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 265,
@@ -4067,8 +4067,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 204,
-        "unpolarized": 91
+        "polarized": 220,
+        "unpolarized": 99
       },
       "graph_status": "imported",
       "id": 60,
@@ -4090,8 +4090,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 139,
-        "unpolarized": 57
+        "polarized": 155,
+        "unpolarized": 65
       },
       "graph_status": "imported",
       "id": 140,
@@ -4129,8 +4129,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 252,
-        "unpolarized": 120
+        "polarized": 267,
+        "unpolarized": 128
       },
       "graph_status": "imported",
       "id": 291,
@@ -4166,8 +4166,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 321,
@@ -4189,8 +4189,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 126,
@@ -4212,8 +4212,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 320,
@@ -4235,8 +4235,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 49,
@@ -4258,8 +4258,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 102,
@@ -4281,8 +4281,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 116,
@@ -4304,8 +4304,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 59,
@@ -4328,8 +4328,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 197,
-        "unpolarized": 93
+        "polarized": 212,
+        "unpolarized": 101
       },
       "graph_status": "imported",
       "id": 108,
@@ -4356,8 +4356,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 274,
-        "unpolarized": 132
+        "polarized": 289,
+        "unpolarized": 140
       },
       "graph_status": "imported",
       "id": 109,
@@ -4391,8 +4391,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 278,
-        "unpolarized": 133
+        "polarized": 293,
+        "unpolarized": 141
       },
       "graph_status": "imported",
       "id": 734,
@@ -4412,8 +4412,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 286,
-        "unpolarized": 138
+        "polarized": 301,
+        "unpolarized": 146
       },
       "graph_status": "imported",
       "id": 48,
@@ -4446,8 +4446,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 181,
-        "unpolarized": 80
+        "polarized": 197,
+        "unpolarized": 88
       },
       "graph_status": "imported",
       "id": 142,
@@ -4469,8 +4469,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 145,
-        "unpolarized": 61
+        "polarized": 161,
+        "unpolarized": 69
       },
       "graph_status": "imported",
       "id": 117,
@@ -4493,8 +4493,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 197,
-        "unpolarized": 93
+        "polarized": 212,
+        "unpolarized": 101
       },
       "graph_status": "imported",
       "id": 144,
@@ -4565,8 +4565,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 238,
-        "unpolarized": 110
+        "polarized": 254,
+        "unpolarized": 118
       },
       "graph_status": "imported",
       "id": 533,
@@ -4616,8 +4616,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 358,
-        "unpolarized": 172
+        "polarized": 373,
+        "unpolarized": 180
       },
       "graph_status": "imported",
       "id": 151,
@@ -4668,8 +4668,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 216,
-        "unpolarized": 98
+        "polarized": 232,
+        "unpolarized": 106
       },
       "graph_status": "imported",
       "id": 90,
@@ -4795,8 +4795,8 @@
       "family": "gga",
       "flags": "XC_FLAGS_3D | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 152,
-        "unpolarized": 64
+        "polarized": 168,
+        "unpolarized": 72
       },
       "graph_status": "imported",
       "id": 123,
@@ -8532,8 +8532,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | XC_FLAGS_NEEDS_LAPLACIAN | MAPLE2C_FLAGS | XC_FLAGS_DEVELOPMENT",
       "graph_nodes": {
-        "polarized": 508,
-        "unpolarized": 252
+        "polarized": 527,
+        "unpolarized": 261
       },
       "graph_status": "imported",
       "id": 686,
@@ -8601,8 +8601,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | XC_FLAGS_NEEDS_LAPLACIAN | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 151,
-        "unpolarized": 68
+        "polarized": 168,
+        "unpolarized": 76
       },
       "graph_status": "imported",
       "id": 689,
@@ -8625,8 +8625,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | XC_FLAGS_NEEDS_LAPLACIAN | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 151,
-        "unpolarized": 69
+        "polarized": 169,
+        "unpolarized": 77
       },
       "graph_status": "imported",
       "id": 690,
@@ -8649,8 +8649,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | XC_FLAGS_NEEDS_LAPLACIAN | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 151,
-        "unpolarized": 69
+        "polarized": 169,
+        "unpolarized": 77
       },
       "graph_status": "imported",
       "id": 687,
@@ -8673,8 +8673,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | XC_FLAGS_NEEDS_LAPLACIAN | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 151,
-        "unpolarized": 68
+        "polarized": 168,
+        "unpolarized": 76
       },
       "graph_status": "imported",
       "id": 691,
@@ -8694,8 +8694,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 204,
@@ -8737,8 +8737,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 123,
-        "unpolarized": 52
+        "polarized": 139,
+        "unpolarized": 59
       },
       "graph_status": "imported",
       "id": 698,
@@ -8760,8 +8760,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_LAPLACIAN | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 298,
-        "unpolarized": 146
+        "polarized": 315,
+        "unpolarized": 154
       },
       "graph_status": "imported",
       "id": 256,
@@ -8793,8 +8793,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 735,
@@ -8826,8 +8826,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 736,
@@ -8859,8 +8859,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 745,
@@ -8892,8 +8892,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 746,
@@ -8925,8 +8925,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 747,
@@ -8958,8 +8958,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 748,
@@ -8991,8 +8991,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 749,
@@ -9024,8 +9024,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 750,
@@ -9057,8 +9057,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 751,
@@ -9090,8 +9090,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 752,
@@ -9123,8 +9123,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 753,
@@ -9156,8 +9156,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 754,
@@ -9189,8 +9189,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 737,
@@ -9222,8 +9222,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 755,
@@ -9255,8 +9255,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 756,
@@ -9288,8 +9288,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 757,
@@ -9321,8 +9321,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 758,
@@ -9354,8 +9354,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 759,
@@ -9387,8 +9387,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 738,
@@ -9420,8 +9420,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 739,
@@ -9453,8 +9453,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 740,
@@ -9486,8 +9486,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 741,
@@ -9519,8 +9519,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 742,
@@ -9552,8 +9552,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 743,
@@ -9585,8 +9585,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 744,
@@ -9618,8 +9618,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 383,
-        "unpolarized": 188
+        "polarized": 401,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 760,
@@ -9658,8 +9658,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 123,
-        "unpolarized": 52
+        "polarized": 139,
+        "unpolarized": 59
       },
       "graph_status": "imported",
       "id": 201,
@@ -9881,8 +9881,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | XC_FLAGS_NEEDS_LAPLACIAN | MAPLE2C_FLAGS | XC_FLAGS_DEVELOPMENT",
       "graph_nodes": {
-        "polarized": 164,
-        "unpolarized": 75
+        "polarized": 182,
+        "unpolarized": 83
       },
       "graph_status": "imported",
       "id": 230,
@@ -9971,8 +9971,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 375,
-        "unpolarized": 183
+        "polarized": 393,
+        "unpolarized": 191
       },
       "graph_status": "imported",
       "id": 221,
@@ -9995,8 +9995,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 375,
-        "unpolarized": 183
+        "polarized": 393,
+        "unpolarized": 191
       },
       "graph_status": "imported",
       "id": 222,
@@ -10019,8 +10019,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 384,
-        "unpolarized": 188
+        "polarized": 402,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 223,
@@ -10079,8 +10079,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 384,
-        "unpolarized": 188
+        "polarized": 402,
+        "unpolarized": 196
       },
       "graph_status": "imported",
       "id": 228,
@@ -10104,8 +10104,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 398,
-        "unpolarized": 195
+        "polarized": 416,
+        "unpolarized": 203
       },
       "graph_status": "imported",
       "id": 765,
@@ -10129,8 +10129,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 373,
-        "unpolarized": 182
+        "polarized": 391,
+        "unpolarized": 190
       },
       "graph_status": "imported",
       "id": 761,
@@ -10154,8 +10154,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 370,
-        "unpolarized": 181
+        "polarized": 388,
+        "unpolarized": 189
       },
       "graph_status": "imported",
       "id": 763,
@@ -10220,8 +10220,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 349,
-        "unpolarized": 170
+        "polarized": 367,
+        "unpolarized": 178
       },
       "graph_status": "imported",
       "id": 257,
@@ -10245,8 +10245,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 389,
-        "unpolarized": 191
+        "polarized": 407,
+        "unpolarized": 199
       },
       "graph_status": "imported",
       "id": 302,
@@ -10270,8 +10270,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 389,
-        "unpolarized": 191
+        "polarized": 407,
+        "unpolarized": 199
       },
       "graph_status": "imported",
       "id": 303,
@@ -10309,8 +10309,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 304,
-        "unpolarized": 147
+        "polarized": 322,
+        "unpolarized": 155
       },
       "graph_status": "imported",
       "id": 213,
@@ -10336,8 +10336,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 734,
-        "unpolarized": 376
+        "polarized": 751,
+        "unpolarized": 384
       },
       "graph_status": "imported",
       "id": 497,
@@ -10363,8 +10363,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 734,
-        "unpolarized": 376
+        "polarized": 751,
+        "unpolarized": 384
       },
       "graph_status": "imported",
       "id": 645,
@@ -10392,8 +10392,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 1003,
-        "unpolarized": 514
+        "polarized": 1020,
+        "unpolarized": 522
       },
       "graph_status": "imported",
       "id": 650,
@@ -10413,8 +10413,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 968,
-        "unpolarized": 492
+        "polarized": 986,
+        "unpolarized": 500
       },
       "graph_status": "imported",
       "id": 626,
@@ -10514,8 +10514,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 655,
-        "unpolarized": 333
+        "polarized": 672,
+        "unpolarized": 341
       },
       "graph_status": "imported",
       "id": 581,
@@ -10535,8 +10535,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 859,
-        "unpolarized": 436
+        "polarized": 876,
+        "unpolarized": 444
       },
       "graph_status": "imported",
       "id": 693,
@@ -10582,8 +10582,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | XC_FLAGS_NEEDS_LAPLACIAN | MAPLE2C_FLAGS | XC_FLAGS_DEVELOPMENT",
       "graph_nodes": {
-        "polarized": 164,
-        "unpolarized": 75
+        "polarized": 182,
+        "unpolarized": 83
       },
       "graph_status": "imported",
       "id": 688,
@@ -10607,8 +10607,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 433,
-        "unpolarized": 213
+        "polarized": 451,
+        "unpolarized": 221
       },
       "graph_status": "imported",
       "id": 766,
@@ -10632,8 +10632,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 408,
-        "unpolarized": 200
+        "polarized": 426,
+        "unpolarized": 208
       },
       "graph_status": "imported",
       "id": 762,
@@ -10657,8 +10657,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 405,
-        "unpolarized": 199
+        "polarized": 423,
+        "unpolarized": 207
       },
       "graph_status": "imported",
       "id": 764,
@@ -10788,8 +10788,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 655,
-        "unpolarized": 333
+        "polarized": 672,
+        "unpolarized": 341
       },
       "graph_status": "imported",
       "id": 263,
@@ -10908,8 +10908,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS | XC_FLAGS_DEVELOPMENT",
       "graph_nodes": {
-        "polarized": 234,
-        "unpolarized": 111
+        "polarized": 252,
+        "unpolarized": 119
       },
       "graph_status": "imported",
       "id": 225,
@@ -10930,8 +10930,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 123,
-        "unpolarized": 52
+        "polarized": 139,
+        "unpolarized": 59
       },
       "graph_status": "imported",
       "id": 685,
@@ -10951,8 +10951,8 @@
       "family": "mgga",
       "flags": "XC_FLAGS_3D | XC_FLAGS_NEEDS_TAU | MAPLE2C_FLAGS",
       "graph_nodes": {
-        "polarized": 779,
-        "unpolarized": 396
+        "polarized": 797,
+        "unpolarized": 404
       },
       "graph_status": "imported",
       "id": 540,

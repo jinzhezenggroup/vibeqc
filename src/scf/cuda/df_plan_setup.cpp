@@ -20,6 +20,7 @@
 #include "scf/cuda_density_fitting_eigen.hpp"
 #include "scf/cuda_density_fitting_final_state.hpp"
 #include "scf/df_exchange_policy.hpp"
+#include "scf/df_projected_exchange_schedule.hpp"
 
 namespace vibeqc::scf::cuda_df {
 namespace {
@@ -340,10 +341,16 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
 
   // Generic tensor/source callers cannot infer a reference from dimensions.
   // Even an authorized RHF hint cannot reserve for an ineligible layout. A
-  // dense generated source may keep its optional occupied owner only when the
-  // complete raw/scratch lease is resident; bounded Q panels remain dense
-  // fallback storage even though B itself is retained.
-  if (streamed || (integral_source && !packed && !complete_resident_layout) ||
+  // Resident generated plans need the complete raw/scratch lease. Streamed
+  // plans may instead reserve a private source-first value projection; metric
+  // rank and exact density provenance are checked later, before execution.
+  const bool streamed_projection =
+      streamed && integral_source &&
+      df_projected_exchange_schedule(nbf, naux, automatic_rhf_rank, tile_elements,
+                                     df_triangular_exchange_requested())
+          .rows;
+  if ((streamed && !streamed_projection) ||
+      (integral_source && !packed && !complete_resident_layout && !streamed_projection) ||
       (packed && automatic_rhf_rank > storage.rank_capacity))
     automatic_rhf_rank = 0;
   const bool occupied_scf_reserved =

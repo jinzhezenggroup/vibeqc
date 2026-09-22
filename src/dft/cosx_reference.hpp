@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/types.hpp"
+#include "dft/grid.hpp"
 
 namespace vibeqc::dft {
 
@@ -55,6 +56,14 @@ struct CosxPointDerivativeResult {
   std::vector<double> point_gradient;
 };
 
+/** Complete fixed-density derivative of the materialized molecular COSX model.
+ * Includes AO/ESP basis-center response, owner-attached point motion and Becke
+ * partition-weight motion. Orbital/Pulay response remains method-level. */
+struct CosxMolecularDerivativeResult {
+  CosxReferenceResult value;
+  std::vector<double> nuclear_gradient;
+};
+
 /** Small CPU oracle for the discrete COSX exchange model.
  *
  * points_xyz contains explicit Bohr xyz triples and weights contains the
@@ -70,5 +79,11 @@ CosxReferenceResult build_cosx_reference(
 CosxPointDerivativeResult build_cosx_point_derivative_reference(
     const core::System& system, std::span<const double> points_xyz, std::span<const double> weights,
     std::span<const double> density, CosxDensityConvention convention, CosxReferenceSpec spec = {});
+
+/** Independent CPU oracle for the complete fixed-density molecular COSX
+ * derivative of one materialized MolecularGrid. */
+CosxMolecularDerivativeResult build_cosx_molecular_derivative_reference(
+    const MolecularGrid& grid, std::span<const double> density, CosxDensityConvention convention,
+    CosxReferenceSpec spec = {});
 
 }  // namespace vibeqc::dft

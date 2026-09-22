@@ -29,4 +29,4 @@ These rules apply under `src/integrals/`.
 
 Non-trivial recurrence, precision, derivative-contraction, scheduling, or fallback
 choices should preserve their rationale in `.agents/notes/`. Cross-cutting
-performance rules are in `docs/performance_engineering.md`.
+performance rules are in `docs/maintainer/performance_engineering.md`.
