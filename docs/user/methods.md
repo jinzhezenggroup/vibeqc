@@ -4,7 +4,7 @@ VibeQC's long-term mission is to cover **all quantum-chemistry methods** in one
 accelerator-native system. Current executable method identity is registry-driven:
 the canonical native names, aliases, declared properties, and batch capability
 are generated from `manifests/public_methods.json` into the
-[public method table](../public_methods.md). That generated table is authoritative
+[public method table](../../public_methods.md). That generated table is authoritative
 for public native discovery; backend-, basis-, grid-, and model-specific
 execution constraints remain method-specific and fail closed.
 
@@ -90,7 +90,7 @@ the public API is independent of RHF/UHF dispatch, while each method family
 owns its validation, options, retained state, and batch policy.
 The native LDA/PBE RKS and UKS paths compose versioned atom-centered grids,
 XC, the common Coulomb provider and CPU/native CUDA SCF. The
-[SCF point-domain contract](../developer/xc_scf_domain.md) specifies the exact compositions,
+[SCF point-domain contract](../../developer/xc_scf_domain.md) specifies the exact compositions,
 stable tail algebra and explicit PBE spin endpoint extension. The issue-0162-b
 record retains the independent CPU H2-/H2+/OH UKS endpoints. Additional
 CPU/CUDA matched-grid tests use two PySCF initial guesses; native tests enforce
@@ -99,7 +99,7 @@ ragged batches preserve per-item status/order and last-good densities through
 geometry rebuilds, failure, frozen updates and atomic seed import. CUDA batches
 enqueue all active item streams before reading their scalar results. Public
 KS resource plans cover preparation, execution and geometry rebuilds through
-the common ledger; see [resource planning](../maintainer/resource_planning.md). Immutable
+the common ledger; see [resource planning](../../maintainer/resource_planning.md). Immutable
 [KS options](ks_options.md) bind the functional, grid/radii and tile schedule
 to native preparation and resource identity. Richer diagnostics and workload
 evidence remain open parts of #162.
@@ -145,7 +145,7 @@ AO-to-MO transforms and correlated tensor contractions open the post-HF families
 The conventional MP2 force endpoint adds a bounded adjoint, true-residual RHF
 response, relaxed weights, shell-local CPU/CUDA derivative contraction, and
 transactional single/batch publication. Exact support and evidence are
-documented in [Canonical RHF-MP2](../developer/mp2.md). The RI-MP2 endpoint uses an RHF
+documented in [Canonical RHF-MP2](../../developer/mp2.md). The RI-MP2 endpoint uses an RHF
 reference built with the same thresholded
 density-fitting Hamiltonian as its correlation integrals. The auxiliary Coulomb
 metric uses a square symmetric inverse square root with eigenvalues at or below
@@ -155,4 +155,4 @@ whose reference or RI transformation capacity exceeds the configured budget.
 Multireference, excited-state, periodic, embedding, and relativistic methods
 then build on those validated primitives rather than on reserved names alone.
 
-Detailed implementation milestones live in the [roadmap](../maintainer/roadmap.md).
+Detailed implementation milestones live in the [roadmap](../../maintainer/roadmap.md).
