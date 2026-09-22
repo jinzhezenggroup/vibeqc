@@ -76,7 +76,7 @@ measured provider deltas in this run were 8–12 MiB. The allowance remains
 conservative across supported provider versions and is checked at preparation.
 The source includes an 8 MiB through-f recurrence allowance. These bounds
 cover numeric buffers, with the precise ownership and cache rules in
-[`docs/posthf.md`](../../../docs/posthf.md). Object headers, allocator rounding,
+[`docs/posthf.md`](../../../docs/developer/posthf.md). Object headers, allocator rounding,
 BLAS host workspaces, CUDA context/modules/stacks, caller-retained detached
 exports, and preceding HF setup are outside this scope. They are not total
 process or total VRAM bounds. Simultaneous providers require summed budgets.

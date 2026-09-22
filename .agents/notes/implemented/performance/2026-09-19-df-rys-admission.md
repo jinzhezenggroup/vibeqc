@@ -86,7 +86,7 @@ this observation is not an upper bound on all possible fusion savings.
 
 - #445, #444, #435 (remaining consumer/admission work); #419 (separate fusion).
 - [Original cooperative Rys qualification](2026-09-17-cooperative-df-rys.md).
-- [Current selectors](../../../../docs/df_tuning.md).
+- [Current selectors](../../../../docs/developer/df_tuning.md).
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro

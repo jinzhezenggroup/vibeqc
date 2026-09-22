@@ -8,7 +8,7 @@
     "tests/python/test_matrix_function.py",
     "tests/python/test_matrix_function_native_range.py",
     "tests/native/test_density_fitting.cpp",
-    "docs/matrix_function.md",
+    "docs/developer/matrix_function.md",
     ".agents/notes/implemented/architecture/2026-09-19-df-hf-stationary-response.md"
   ],
   "status": "shared_custom_rule"

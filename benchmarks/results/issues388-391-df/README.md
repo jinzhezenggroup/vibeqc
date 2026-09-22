@@ -70,7 +70,7 @@ layout; all values and ordering within each record are retained.
 
 The [Agent Note](../../../.agents/notes/implemented/performance/2026-09-16-resident-df-dataflow.md)
 explains the ownership contract, algebra, fallback boundaries and rejected
-designs. [Current documentation](../../../docs/df_occupied_cuda.md) describes
+designs. [Current documentation](../../../docs/developer/df_occupied_cuda.md) describes
 the supported execution controls.
 
 ## Isolated clean comparisons

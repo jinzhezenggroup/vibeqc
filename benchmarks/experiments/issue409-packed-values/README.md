@@ -69,7 +69,7 @@ Without it, collection rejects an incomplete matrix. Completed cells must retain
 all seven pairs, normal convergence and unchanged numerical gates. Collection
 does not grant qualification or select a representation. Raw logs, traces,
 checkpoints and binaries remain transient under the
-[evidence retention policy](../../../docs/evidence_retention.md); compact raw
+[evidence retention policy](../../../docs/maintainer/evidence_retention.md); compact raw
 samples, original hashes and measured-source reconstruction stay reviewable.
 
 ## Fixed-input projection and producer experiments
