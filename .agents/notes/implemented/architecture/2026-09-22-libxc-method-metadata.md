@@ -59,3 +59,6 @@ production-policy suite passes 624 cases with no skips. The CPU native library
 is reused only for unchanged basis/integral consumers; generated Python metadata
 and compiler paths execute from this source. These are representation and
 fixed-density qualifications, without new SCF/public-capability admission.
+
+The same 624 cases pass after integrating master e9fa40b1, including the reviewed
+packed-XC donation and molecular-quadrature changes.

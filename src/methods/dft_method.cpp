@@ -584,6 +584,20 @@ std::optional<core::System> ks_auxiliary_for_system(const core::System& system,
   return auxiliary;
 }
 
+/** Backend selection must precede materialization: constructing the reference
+ * grid and then uploading it hides cubic host work in CUDA preparation. */
+dft::MolecularGrid ks_molecular_grid(const core::System& system, dft::GridSpec spec,
+                                     vibeqc_backend backend, int device) {
+  if (backend == VIBEQC_BACKEND_CUDA) {
+#if VIBEQC_HAS_CUDA
+    return dft::MolecularGrid::from_cuda(system, spec, device);
+#else
+    throw std::runtime_error("CUDA quadrature is unavailable in this build");
+#endif
+  }
+  return dft::MolecularGrid(system, spec);
+}
+
 class KsPreparedCalculation final : public PreparedCalculation {
  public:
   KsPreparedCalculation(Capabilities capabilities, core::System system,
@@ -600,7 +614,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
                   ? ks_provider_bytes(system_, backend)
                   : options_.density_fitting_memory_budget_bytes),
         basis_(system_),
-        grid_(system_, grid) {
+        grid_(ks_molecular_grid(system_, grid, backend_, device)) {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
     if (execution_plan_.range_exchange) prepare_range_exchange(device);
 #if VIBEQC_HAS_CUDA
