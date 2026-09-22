@@ -52,3 +52,19 @@ complete native LDA/PBE/r2SCAN endpoint qualification remains required and
 there is no speedup claim. Do not change only the probe flags while leaving
 production contraction enabled. A future narrower or stable algebra policy
 must independently pass the same boundary and full-endpoint gates.
+
+## Completed NVIDIA endpoint qualification and provider spelling
+
+The source-matched RTX 5090 Release library passes the native LDA/PBE/r2SCAN
+RKS/UKS suite, including physical-state closure, restart, resource and invalid
+input gates. The public DF suite passes 17 applicable cases. Seven selected
+r2SCAN tests pass together: CPU/GPU Libxc boundary fixtures, independent RKS
+and UKS analytic gradients, reconverged directional finite differences, and
+public RKS/UKS forces. The probe retains the original 5e-12 relative plus
+1e-12 absolute derivative gate; these results do not extend that raw gate
+to additional exploratory near-vacuum points.
+
+CuMetal's pinned nvcc-compatible driver delegates compilation to Clang and
+rejects NVIDIA's `--fmad=false` spelling. Select `-ffp-contract=off` for that
+provider and retain `--fmad=false` for NVIDIA. Both request the same policy;
+Apple execution remains covered by its provider CI, not by the NVIDIA run.

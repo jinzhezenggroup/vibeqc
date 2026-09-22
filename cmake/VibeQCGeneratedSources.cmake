@@ -513,7 +513,13 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_grid_policy.cu")
   # The r2SCAN minority-spin derivative is sensitive to contraction of 1-zeta
   # near the work-density floor. Match the compiler XC FP64 policy and the
-  # independent Libxc boundary qualification; do not let nvcc introduce FMA.
+  # independent Libxc boundary qualification; do not introduce FMA. CuMetal's
+  # nvcc-compatible driver delegates to Clang and requires its native spelling.
+  if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+    set(_vibeqc_grid_fp_contract_option -ffp-contract=off)
+  else()
+    set(_vibeqc_grid_fp_contract_option --fmad=false)
+  endif()
   vibeqc_register_generated_sources(
     TARGET ${target}
     ADD_TO_TARGET
@@ -522,7 +528,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/cuda_xc_kernels.cuh"
       "${VIBEQC_R2SCAN_CUDA_HEADER}"
-    COMPILE_OPTIONS --fmad=false
+    COMPILE_OPTIONS "${_vibeqc_grid_fp_contract_option}"
     ARGS --output "${VIBEQC_GRID_SOURCE}")
 
   set(VIBEQC_XC_GRADIENT_SOURCE
