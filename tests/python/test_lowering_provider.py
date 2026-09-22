@@ -117,9 +117,7 @@ def test_lowering_contract_is_canonical_and_keeps_negative_evidence() -> None:
     assert report["providers"] == ["nvidia.cublaslt"]
     assert report["candidates"][0]["reason"] == rejected.reason
 
-    with pytest.raises(
-        ValueError, match="rejection reason"
-    ):
+    with pytest.raises(ValueError, match="rejection reason"):
         LoweringCandidate(
             request=first,
             implementation="invalid",
