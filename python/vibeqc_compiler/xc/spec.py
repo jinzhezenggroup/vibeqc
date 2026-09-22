@@ -50,7 +50,10 @@ SPECIAL_EXPRESSION_COMPONENTS = RSH_COMPONENTS + PW91_COMPONENTS + P86_COMPONENT
 CURATED_COMPONENTS = (
     PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS + WB97MV_COMPONENTS
 )
-POINTWISE_BULK_COMPONENTS = claimable_components(families=("lda", "gga"))
+POINTWISE_BULK_COMPONENTS = claimable_components(
+    families=("lda", "gga", "mgga"),
+    supported_ingredients=("rho", "sigma", "tau"),
+)
 AUTO_BULK_COMPONENTS = tuple(
     name for name in POINTWISE_BULK_COMPONENTS if name not in CURATED_COMPONENTS
 )
