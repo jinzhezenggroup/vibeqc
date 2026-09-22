@@ -15,6 +15,33 @@ namespace vibeqc::scf {
 
 struct ScfHooks;
 
+/** Diagnostics for the opt-in exact incremental Direct-J/K controller.
+ *
+ * The controller changes only the density presented to the same exact provider:
+ * after one full anchor build, later accepted SCF iterates evaluate J/K on
+ * delta-D and add that result to the retained anchor matrices. Trial/proposal
+ * and post-SCF physical validation builds deliberately bypass the anchor.
+ */
+struct IncrementalDirectJkDiagnostic {
+  std::uint32_t policy_version{1};
+  bool requested{};
+  bool active{};
+  /** Full builds that establish/refresh the accepted-iterate anchor. */
+  std::uint64_t anchor_full_builds{};
+  /** Exact provider applications to delta-D for accepted SCF iterates. */
+  std::uint64_t delta_builds{};
+  /** Periodic accepted-iterate rebuilds after an existing anchor. */
+  std::uint64_t periodic_rebuilds{};
+  /** Full proposal/audit builds that never mutate the accepted anchor. */
+  std::uint64_t bypass_full_builds{};
+  /** Strict full physical builds performed by ordinary finalization. */
+  std::uint64_t post_scf_full_builds{};
+  /** Number of times a successful delta build became the next anchor. */
+  std::uint64_t anchor_updates{};
+  /** Largest absolute alpha/beta delta-density element observed. */
+  double max_abs_delta_density{};
+};
+
 /** How the requested floating-point precision policy actually resolved. */
 struct PrecisionProvenance {
   uint32_t policy_version{1};
@@ -57,6 +84,13 @@ struct ScfOptions {
   double energy_tolerance{1.0e-10};
   double density_tolerance{1.0e-8};
   double screening_tolerance{1.0e-12};
+  /** Experimental #990 exact incremental Direct-J/K controller. Off by
+   * default. It is admitted only when every requested J/K term is Exact.
+   * The final physical state still uses ordinary full provider builds. */
+  bool incremental_direct_jk{};
+  /** Accepted delta updates before refreshing the full anchor. Zero disables
+   * periodic refresh; strict post-SCF full rebuilds are never disabled. */
+  unsigned incremental_direct_jk_rebuild_interval{8};
   /** Select the DF solver; direct four-center remains the default. */
   vibeqc_density_fitting_mode density_fitting_mode{VIBEQC_DENSITY_FITTING_NONE};
   /** Relative cutoff used when factoring the auxiliary Coulomb metric. */
@@ -147,6 +181,8 @@ struct ScfResult {
   bool initial_density_used{};
   /** CPU physical operator evaluations, counting a joint UHF J/K as one build. */
   std::size_t fock_builds{};
+  /** Exact incremental Direct-J/K execution provenance, when requested. */
+  IncrementalDirectJkDiagnostic incremental_direct_jk{};
   /**
    * How the requested precision policy resolved. Set by the backend that can
    * report it (the CUDA mixed-precision route); the strict FP64 default

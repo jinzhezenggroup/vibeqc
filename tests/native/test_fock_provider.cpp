@@ -265,6 +265,58 @@ void molecular_endpoints() {
               "mixed-provider stationary molecular force");
       }
 
+  // #990 first slice: establish exact accepted-iterate delta-D parity before
+  // introducing any density-weighted quartet compaction. Finalization remains
+  // two ordinary full physical builds.
+  for (bool uhf : {false, true}) {
+    ScfOptions baseline_options;
+    baseline_options.energy_tolerance = 1e-12;
+    baseline_options.density_tolerance = 1e-10;
+    const auto direct_spec = make_hf_fock_spec(uhf ? FockSpin::Unrestricted : FockSpin::Restricted);
+    baseline_options.resolved_fock_build =
+        resolve_fock_build(direct_spec, FockBackend::Cpu, baseline_options.screening_tolerance);
+    const auto baseline = run_cpu_fock_strategy(system, nullptr, baseline_options);
+
+    auto incremental_options = baseline_options;
+    incremental_options.incremental_direct_jk = true;
+    incremental_options.incremental_direct_jk_rebuild_interval = 0;
+    const auto incremental = run_cpu_fock_strategy(system, nullptr, incremental_options);
+    require(baseline.converged && incremental.converged, "incremental direct J/K SCF failed");
+    close(incremental.energy, baseline.energy, 2e-12, "incremental direct J/K energy drift");
+    matrix(incremental.density, baseline.density, "incremental direct J/K density drift", 2e-11);
+    matrix(incremental.forces, baseline.forces, "incremental direct J/K force drift", 2e-9);
+
+    const auto& d = incremental.incremental_direct_jk;
+    require(d.requested && d.active, "exact direct J/K incremental mode was not admitted");
+    require(d.anchor_full_builds == 1, "incremental direct J/K did not establish one anchor");
+    require(d.delta_builds + d.anchor_full_builds == incremental.iterations,
+            "incremental direct J/K counters do not match accepted SCF evaluations");
+    require(d.anchor_updates == d.delta_builds,
+            "incremental direct J/K anchor-update counter mismatch");
+    require(d.post_scf_full_builds == 2,
+            "incremental direct J/K bypassed strict physical finalization");
+    require(d.periodic_rebuilds == 0, "disabled periodic rebuild unexpectedly executed");
+  }
+
+  // Approximate providers are deliberately outside #990's exact baseline and
+  // must fail closed to ordinary full builds rather than silently mixing models.
+  {
+    ScfOptions options;
+    options.energy_tolerance = 1e-12;
+    options.density_tolerance = 1e-10;
+    options.incremental_direct_jk = true;
+    auto spec = make_hf_fock_spec(FockSpin::Restricted);
+    spec.coulomb.approximation = FockApproximation::DensityFitted;
+    options.resolved_fock_build = resolve_fock_build(spec, FockBackend::Cpu);
+    const auto result = run_cpu_fock_strategy(system, nullptr, options);
+    require(result.converged, "incremental fail-closed DF control failed");
+    require(result.incremental_direct_jk.requested && !result.incremental_direct_jk.active,
+            "incremental direct J/K incorrectly admitted an approximate provider");
+    require(result.incremental_direct_jk.anchor_full_builds == 0 &&
+                result.incremental_direct_jk.delta_builds == 0,
+            "inactive incremental direct J/K reported provider work");
+  }
+
   auto helium = system;
   helium.atoms = {{2, {0.0, 0.0, 0.0}}};
   helium.shells.resize(1);
