@@ -1,9 +1,9 @@
 """Runtime-bound scalar GFN2 H0-force science generated from TensorIR.
 
-The CUDA runtime keeps ragged shell/AO traversal, validation, accumulation,
+The CPU/CUDA runtime keeps ragged shell/AO traversal, validation, accumulation,
 failure publication, and stream ownership. This module owns the local H0
 pair factor, its reverse-mode CN/radial response, and the AO contraction
-arithmetic so those equations are not duplicated in handwritten CUDA.
+arithmetic so value and force endpoints share the same mathematical owner.
 """
 
 from __future__ import annotations

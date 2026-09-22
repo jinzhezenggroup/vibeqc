@@ -17,33 +17,34 @@ namespace vibeqc::methods::detail {
 namespace {
 
 template <typename T>
-xtbloom_const_buffer_t input_buffer(std::span<const T> values) {
-  return {values.empty() ? nullptr : values.data(), values.size_bytes(), XTBLOOM_MEMORY_HOST, 0u};
-}
-
-template <typename T>
-xtbloom_buffer_t output_buffer(std::vector<T>& values) {
-  return {values.empty() ? nullptr : values.data(), values.size() * sizeof(T), XTBLOOM_MEMORY_HOST,
+vibeqc_xtb_const_buffer_t input_buffer(std::span<const T> values) {
+  return {values.empty() ? nullptr : values.data(), values.size_bytes(), VIBEQC_XTB_MEMORY_HOST,
           0u};
 }
 
-Gfn2RuntimeStatus map_status(xtbloom_status_t status) noexcept {
+template <typename T>
+vibeqc_xtb_buffer_t output_buffer(std::vector<T>& values) {
+  return {values.empty() ? nullptr : values.data(), values.size() * sizeof(T),
+          VIBEQC_XTB_MEMORY_HOST, 0u};
+}
+
+Gfn2RuntimeStatus map_status(vibeqc_xtb_status_t status) noexcept {
   switch (status) {
-    case XTBLOOM_STATUS_SUCCESS:
+    case VIBEQC_XTB_STATUS_SUCCESS:
       return Gfn2RuntimeStatus::kSuccess;
-    case XTBLOOM_STATUS_INVALID_ARGUMENT:
+    case VIBEQC_XTB_STATUS_INVALID_ARGUMENT:
       return Gfn2RuntimeStatus::kInvalidArgument;
-    case XTBLOOM_STATUS_BACKEND_UNAVAILABLE:
+    case VIBEQC_XTB_STATUS_BACKEND_UNAVAILABLE:
       return Gfn2RuntimeStatus::kBackendUnavailable;
-    case XTBLOOM_STATUS_NOT_SUPPORTED:
+    case VIBEQC_XTB_STATUS_NOT_SUPPORTED:
       return Gfn2RuntimeStatus::kNotSupported;
-    case XTBLOOM_STATUS_NOT_IMPLEMENTED:
+    case VIBEQC_XTB_STATUS_NOT_IMPLEMENTED:
       return Gfn2RuntimeStatus::kNotImplemented;
-    case XTBLOOM_STATUS_ALLOCATION_FAILED:
+    case VIBEQC_XTB_STATUS_ALLOCATION_FAILED:
       return Gfn2RuntimeStatus::kAllocationFailed;
-    case XTBLOOM_STATUS_SCC_NOT_CONVERGED:
+    case VIBEQC_XTB_STATUS_SCC_NOT_CONVERGED:
       return Gfn2RuntimeStatus::kNotConverged;
-    case XTBLOOM_STATUS_EIGENSOLVER_FAILED:
+    case VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED:
       return Gfn2RuntimeStatus::kEigensolverFailed;
     default:
       return Gfn2RuntimeStatus::kInternalError;
@@ -53,20 +54,20 @@ Gfn2RuntimeStatus map_status(xtbloom_status_t status) noexcept {
 }  // namespace
 
 struct Gfn2RuntimeBridge::Impl {
-  Impl(Gfn2RuntimeBackend requested_backend, int device_id)
-      : backend(requested_backend), cpu_cache(1) {
+  Impl(Gfn2RuntimeBackend requested_backend, int device_id) : backend(requested_backend) {
 #if defined(VIBEQC_HAS_GFN2_CUDA)
     if (backend == Gfn2RuntimeBackend::kCuda)
-      cuda_cache = std::make_unique<xtbloom::detail::Gfn2CudaExecutionCache>(device_id, nullptr);
+      cuda_cache =
+          std::make_unique<vibeqc::xtb::detail::Gfn2CudaExecutionCache>(device_id, nullptr);
 #else
     (void)device_id;
 #endif
   }
 
   Gfn2RuntimeBackend backend;
-  xtbloom::detail::Gfn2CpuExecutionCache cpu_cache;
+  vibeqc::xtb::detail::Gfn2CpuExecutionCache cpu_cache;
 #if defined(VIBEQC_HAS_GFN2_CUDA)
-  std::unique_ptr<xtbloom::detail::Gfn2CudaExecutionCache> cuda_cache;
+  std::unique_ptr<vibeqc::xtb::detail::Gfn2CudaExecutionCache> cuda_cache;
 #endif
 };
 
@@ -101,15 +102,15 @@ Gfn2RuntimeResult Gfn2RuntimeBridge::execute(const Gfn2RuntimeRequest& request) 
   // separate capability and must not be inferred at this adapter boundary.
   std::vector<std::int32_t> spin_channels{1};
 
-  xtbloom_batch_t batch{};
-  xtbloom_compute_options_t options{};
-  xtbloom_batch_result_t output{};
+  vibeqc_xtb_batch_t batch{};
+  vibeqc_xtb_compute_options_t options{};
+  vibeqc_xtb_batch_result_t output{};
   batch.struct_size = sizeof(batch);
-  batch.api_version = XTBLOOM_API_VERSION;
+  batch.api_version = VIBEQC_XTB_API_VERSION;
   options.struct_size = sizeof(options);
-  options.api_version = XTBLOOM_API_VERSION;
+  options.api_version = VIBEQC_XTB_API_VERSION;
   output.struct_size = sizeof(output);
-  output.api_version = XTBLOOM_API_VERSION;
+  output.api_version = VIBEQC_XTB_API_VERSION;
 
   batch.batch_size = 1;
   batch.total_atoms = atom_count;
@@ -120,16 +121,16 @@ Gfn2RuntimeResult Gfn2RuntimeBridge::execute(const Gfn2RuntimeRequest& request) 
   batch.unpaired_electrons = input_buffer<std::int32_t>(unpaired_electrons);
   batch.spin_channels = input_buffer<std::int32_t>(spin_channels);
 
-  options.model = XTBLOOM_MODEL_GFN2_XTB;
+  options.model = VIBEQC_XTB_MODEL_GFN2_XTB;
   options.flags =
-      static_cast<std::uint32_t>(XTBLOOM_COMPUTE_ENERGY) |
-      (request.compute_forces ? static_cast<std::uint32_t>(XTBLOOM_COMPUTE_FORCES) : 0u);
+      static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_ENERGY) |
+      (request.compute_forces ? static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_FORCES) : 0u);
   options.max_scc_iterations = request.maximum_iterations;
   options.charge_tolerance = request.charge_tolerance;
   options.energy_tolerance = request.energy_tolerance;
-  options.electronic_temperature = XTBLOOM_DEFAULT_ELECTRONIC_TEMPERATURE;
-  options.scc_start_mode = XTBLOOM_SCC_START_FRESH;
-  options.scc_mixer = XTBLOOM_SCC_MIXER_MODIFIED_BROYDEN;
+  options.electronic_temperature = VIBEQC_XTB_DEFAULT_ELECTRONIC_TEMPERATURE;
+  options.scc_start_mode = VIBEQC_XTB_SCC_START_FRESH;
+  options.scc_mixer = VIBEQC_XTB_SCC_MIXER_MODIFIED_BROYDEN;
   options.scc_mixer_history = request.mixer_history;
   options.scc_mixer_damping = 0.4;
 
@@ -145,30 +146,30 @@ Gfn2RuntimeResult Gfn2RuntimeBridge::execute(const Gfn2RuntimeRequest& request) 
   output.per_system_status = output_buffer(statuses);
 
   std::string execution_error;
-  xtbloom_status_t execution_status = XTBLOOM_STATUS_NOT_IMPLEMENTED;
+  vibeqc_xtb_status_t execution_status = VIBEQC_XTB_STATUS_NOT_IMPLEMENTED;
   if (impl_->backend == Gfn2RuntimeBackend::kCpu) {
-    execution_status = xtbloom::detail::execute_restricted_gfn2_cpu(
+    execution_status = vibeqc::xtb::detail::execute_restricted_gfn2_cpu(
         impl_->cpu_cache, batch, options, output, execution_error);
 #if defined(VIBEQC_HAS_GFN2_CUDA)
   } else if (impl_->backend == Gfn2RuntimeBackend::kCuda && impl_->cuda_cache) {
-    execution_status = xtbloom::detail::execute_restricted_gfn2_cuda(
+    execution_status = vibeqc::xtb::detail::execute_restricted_gfn2_cuda(
         *impl_->cuda_cache, batch, options, output, execution_error);
 #endif
   }
-  if (execution_status != XTBLOOM_STATUS_SUCCESS) {
+  if (execution_status != VIBEQC_XTB_STATUS_SUCCESS) {
     result.status = map_status(execution_status);
     result.detail = std::move(execution_error);
     return result;
   }
 
-  const auto system_status = static_cast<xtbloom_status_t>(statuses[0]);
-  if (system_status == XTBLOOM_STATUS_EIGENSOLVER_FAILED) {
+  const auto system_status = static_cast<vibeqc_xtb_status_t>(statuses[0]);
+  if (system_status == VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED) {
     result.status = Gfn2RuntimeStatus::kEigensolverFailed;
     result.detail = "generalized eigensolver failed";
     return result;
   }
-  if (system_status != XTBLOOM_STATUS_SUCCESS &&
-      system_status != XTBLOOM_STATUS_SCC_NOT_CONVERGED) {
+  if (system_status != VIBEQC_XTB_STATUS_SUCCESS &&
+      system_status != VIBEQC_XTB_STATUS_SCC_NOT_CONVERGED) {
     // Match the former public-method boundary exactly: only the eigensolver
     // status has a dedicated public mapping; every other unexpected terminal
     // per-system status remains an internal runtime failure.
@@ -181,7 +182,7 @@ Gfn2RuntimeResult Gfn2RuntimeBridge::execute(const Gfn2RuntimeRequest& request) 
   result.energy = energies[0];
   result.forces = std::move(forces);
   result.iterations = iterations[0] < 0 ? 0u : static_cast<unsigned>(iterations[0]);
-  result.converged = system_status == XTBLOOM_STATUS_SUCCESS && converged[0] != 0u;
+  result.converged = system_status == VIBEQC_XTB_STATUS_SUCCESS && converged[0] != 0u;
   return result;
 }
 

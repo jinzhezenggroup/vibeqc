@@ -1217,6 +1217,34 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
   return transformed;
 }
 
+std::vector<double> contract_weighted_density_fitting_derivative(
+    const core::System& orbital_system, const core::System& auxiliary_system,
+    std::span<const double> three_center_weights, std::span<const double> metric_weights,
+    std::size_t maximum_bytes) {
+  require_matching_density_fitting_geometry(orbital_system, auxiliary_system);
+  if (!maximum_bytes)
+    throw std::invalid_argument("density-fitting derivative contraction requires a memory budget");
+  const auto supported = [](const core::Shell& shell) { return shell.angular_momentum <= 3; };
+  if (!std::all_of(orbital_system.shells.begin(), orbital_system.shells.end(), supported) ||
+      !std::all_of(auxiliary_system.shells.begin(), auxiliary_system.shells.end(), supported))
+    throw std::invalid_argument("bounded DF derivative requires generated s/p/d/f coverage");
+  const auto nc = molecule::cartesian_ao_count(orbital_system);
+  const auto na = molecule::cartesian_ao_count(auxiliary_system);
+  const auto three = checked_product(checked_product(nc, nc), na);
+  const auto metric = checked_product(na, na);
+  const auto coordinates = checked_product(orbital_system.atoms.size(), std::size_t{3});
+  auto remaining = maximum_bytes / sizeof(double);
+  for (const auto elements : {three, metric, coordinates}) {
+    if (elements > remaining)
+      throw std::length_error("density-fitting derivative weights exceed memory budget");
+    remaining -= elements;
+  }
+  // The canonical entry consumes generated derivatives directly. Preserve its
+  // metric-first argument order; this compatibility overload is three-center-first.
+  return contract_weighted_density_fitting_derivative(orbital_system, auxiliary_system,
+                                                      metric_weights, three_center_weights);
+}
+
 DensityFittingIntegralData transform_density_fitting_integrals(
     const DensityFittingIntegralData& cartesian, const core::System& orbital_system,
     const core::System& auxiliary_system) {
