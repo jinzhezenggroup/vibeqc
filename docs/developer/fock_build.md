@@ -13,7 +13,7 @@ shell streams, with the established exact dddd fallback. The generic source
 remains available for K, derivatives, mixed precision, unsupported classes, or
 insufficient optional capacity. KS planning charges both owners; warm J calls
 keep their density and result on the provider stream. Qualification rationale
-is tracked in the [pure-J candidate note](../.agents/notes/proposed/2026-09-23-generated-pure-j-consumer.md).
+is tracked in the [pure-J candidate note](../../.agents/notes/proposed/2026-09-23-generated-pure-j-consumer.md).
 
 ## Public prepared API
 
