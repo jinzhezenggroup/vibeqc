@@ -68,6 +68,19 @@ void invalid_evidence_is_fail_closed() {
   require(threw, "shape mismatch did not reject warm-subspace input");
 }
 
+void finite_input_scale_overflow_requests_fallback() {
+  using namespace vibeqc::scf::solver;
+  // Every entry and the coupling residual is finite, but ||F||*||C||+||FC||
+  // overflows binary64. Dividing by infinity must not manufacture a zero gate.
+  const Matrix fock{8.0e307, 0.0, 0.125, 0.0, 8.0e307, 0.0, 0.125, 0.0, 8.0e307};
+  const Matrix identity{1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
+  const auto diagnostic = inspect_warm_occupied_subspace(fock, identity, 3, 2);
+  std::string detail;
+  require(!diagnostic.finite, "overflowed residual normalization reported valid evidence");
+  require(!accept_warm_occupied_subspace(diagnostic, 1.0, 0.0, detail),
+          "overflowed scale manufactured an accepted zero residual");
+}
+
 void full_space_is_trivially_invariant() {
   using namespace vibeqc::scf::solver;
   const Matrix fock{2.0, 0.25, 0.25, 3.0};
@@ -85,6 +98,7 @@ int main() {
     occupied_virtual_coupling_triggers_fallback();
     invalid_evidence_is_fail_closed();
     full_space_is_trivially_invariant();
+    finite_input_scale_overflow_requests_fallback();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;

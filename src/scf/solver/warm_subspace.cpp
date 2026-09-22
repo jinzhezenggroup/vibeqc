@@ -78,6 +78,11 @@ WarmSubspaceResidual inspect_warm_occupied_subspace(const std::vector<double>& o
   }
 
   const double scale = fock_norm * occupied_norm + fc_norm;
+  // Finite input entries do not guarantee representable normalization norms.
+  // Reject an overflowed scale rather than reporting a spurious zero residual.
+  if (!std::isfinite(fock_norm) || !std::isfinite(occupied_norm) || !std::isfinite(fc_norm) ||
+      !std::isfinite(scale))
+    return nonfinite_residual();
   diagnostic.scaled_residual =
       scale == 0.0 ? diagnostic.frobenius_residual : diagnostic.frobenius_residual / scale;
   diagnostic.finite = std::isfinite(diagnostic.maximum_residual) &&
