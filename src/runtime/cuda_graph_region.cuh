@@ -52,6 +52,9 @@ class CudaGraphRegion {
     // ineligible graph fallbacks. It has no compiled-region qualification and
     // must stay ordinary instead of binding a synthetic empty identity.
     if (!enabled && binding.qualification.empty()) {
+      // Losing qualification also loses the old binding. Release its graph
+      // before ordinary work can replace the referenced buffers or code.
+      if (lifecycle_.bound()) invalidate();
       metrics.mode = profile ? 5 : 0;
       operation();
       metrics.submission_ms = elapsed(started);
