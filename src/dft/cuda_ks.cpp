@@ -704,9 +704,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                             residual);
       check(cudaGetLastError());
       if (final_closure) {
-        // The public derivative state is validated against the unshifted
-        // physical F[D], not the preceding DIIS/stabilized proposal. During
-        // bounded final closure, diagonalize exactly that physical operator.
+        // Discard DIIS history and rebuild the closure proposal from F[D].
+        // A stationary UKS occupation cycle still needs its virtual-space
+        // shift, as on CPU. Export separately validates the unshifted F[D].
         check(cudaMemcpyAsync(effective, fock, elements * sizeof(double), cudaMemcpyDeviceToDevice,
                               stream));
       } else {
@@ -851,13 +851,13 @@ struct CudaKsPlan::Impl : KsStateStorage {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
       check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
     } else if (strict_final_closure && converged && !final_closure) {
-      // A DIIS proposal can satisfy the ordinary SCF density-change gate while
-      // the canonical density of the unshifted physical Fock is microscopically
-      // outside the derivative-state tolerance. UKS already requires this closure;
-      // ECP RKS needs the same physical fixed point for strict derivative snapshots.
+      // A DIIS proposal can satisfy the SCF gate before a fresh F[D] proposal
+      // does. Preserve any established UKS occupation stabilization through
+      // this bounded correction, just as CPU UKS does; clearing it restarts
+      // the stationary occupation cycle. Physical energy/residual gates and
+      // the separate unshifted final-state export validator stay unchanged.
       final_closure = true;
       final_corrections = 0;
-      stabilize_occupations = false;
       output.converged = false;
       is_active = true;
     } else if (final_closure) {

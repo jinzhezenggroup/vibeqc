@@ -199,6 +199,9 @@ void run_hydroxyl(bool pbe) {
   dft::CudaKsPlan plan(gpu, basis, grid, options, pbe);
   const auto cold = plan.run(nullptr, false, false);
   require(cold.converged && !plan.failed(), "CUDA OH occupation cycle did not converge");
+  const auto reference = scf::run_uks(cpu, basis, grid, options, pbe);
+  require(reference.converged && std::abs(reference.energy - cold.energy) < 1e-10,
+          "CUDA OH endpoint disagrees with independently solved CPU UKS");
   const auto cold_execution = plan.transfers();
   require(cold_execution.iterations == cold.iterations &&
               cold_execution.iteration_chunks == cold_execution.iteration_synchronizations &&
@@ -219,6 +222,8 @@ void run_hydroxyl(bool pbe) {
             "stationary energy bypassed the subsequent density-change gate");
     require(plan.transfers().occupation_stabilized_proposals > 0,
             "CUDA stationary cycle did not apply the CPU-compatible proposal policy");
+    require(history.back().occupation_stabilized,
+            "CUDA final closure discarded the qualified stationary occupation choice");
   }
   const auto stabilized_rows = std::count_if(
       history.begin(), history.end(), [](const auto& item) { return item.occupation_stabilized; });
