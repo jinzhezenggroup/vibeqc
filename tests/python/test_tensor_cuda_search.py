@@ -249,10 +249,10 @@ def test_new_schedule_dimensions_change_generated_execution_without_changing_def
     assert "__shfl_down_sync" not in cub_source
     cub_estimate = estimate_schedule(cub)
     assert cub_estimate["estimated_shared_bytes"] == 128 * 8
+    cub_contract = ScheduleContract.from_payload(cub_estimate["schedule_contract"])
+    assert cub_contract.resources.shared_bytes == 128 * 8
     assert (
-        dict(
-            ScheduleContract.from_payload(cub_estimate["schedule_contract"]).provenance
-        )["lowering_providers"]
+        dict(cub_contract.provenance)["lowering_providers"]
         == "nvidia.cccl.cub,vibeqc.generated_cuda"
     )
 
