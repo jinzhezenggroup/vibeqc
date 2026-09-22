@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 from vibeqc import Calculator, _native
 from vibeqc.checkpoint import _HEADER, CheckpointError, _json, _read, inspect_checkpoint
-from vibeqc.resources import ResourceBudget
+from vibeqc_compiler.common.resources import ResourceBudget
 
 DEVICE = os.environ.get("VIBEQC_CHECKPOINT_DEVICE", "cpu")
 H2 = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]

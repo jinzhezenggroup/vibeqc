@@ -113,6 +113,12 @@ bool cuda_density_fitting_integral_source_matches(const CudaDensityFittingIntegr
   return false;
 }
 
+bool cuda_density_fitting_integral_source_geometry_matches(const CudaDensityFittingIntegralSource*,
+                                                           std::size_t, const core::System&,
+                                                           const core::System&) noexcept {
+  return false;
+}
+
 vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
     int, CudaDensityFittingIntegralSource**, std::size_t, std::size_t, std::size_t,
     const std::vector<double>&, double, std::size_t, std::size_t, CudaDensityFittingJkPlan** plan,

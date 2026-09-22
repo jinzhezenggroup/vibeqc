@@ -12,8 +12,7 @@ from pathlib import Path
 
 import numpy as np
 from vibeqc.profiles import probe_device
-
-from tools.vibeqc_validation.schema import (
+from vibeqc_compiler.common.evidence import (
     block_error,
     canonical_hash,
     file_hash,

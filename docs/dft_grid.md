@@ -39,8 +39,8 @@ the fixed-topology first-derivative profile, use 64×20×40 for LDA and 72×24×
 for GGA. Partition iterations remain three; pruning and screening remain
 explicitly disabled so derivative topology does not change under response.
 
-Production radii are pinned xTBloom GFN1 covalent radii from
-`external/xtbloom-d3/covalent_radii.json`. Source hash/upstream revision provenance
+Production radii are the pinned `covalent_radius_bohr` values extracted from
+`upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json`. Their derived-table SHA-256 and upstream revision provenance
 is attached only when the complete concrete v2 spec exactly matches a canonical
 `GridPolicy` result. A user-constructed or deserialized v2 spec whose points,
 radii or topology differ is identified as `explicit-grid-v2` and does not claim
@@ -140,6 +140,22 @@ coordinate-by-grid-by-coordinate tensor is formed. Independent tests compare
 the mixed result with the finite difference of the existing analytic first
 response on rebuilt molecular grids. This supplies the grid/partition geometric
 primitive required by #180; it does not by itself publish a molecular DFT HVP.
+
+### Semilocal XC Hessian bilinear (#180)
+
+For LDA/GGA, `ContractionProgram(..., "geometry").mixed_geometry_directional`
+combines the AO geometric JVPs with the existing generated XC feature gradient
+and feature Hessian. The left direction is geometric; the right direction may
+also carry the CPKS density response. For a discrete energy
+`E = sum_g w_g e(z_g)`, it evaluates the mixed chain rule from first/mixed
+measure motion, left/right/mixed feature motion and `d2e/dz2`. No third XC
+feature derivative is required.
+
+The routine returns the four separately auditable contributions from mixed
+measure motion, the two measure-feature cross terms and the feature-mixed term.
+It owns neither the CPKS solve nor molecular-grid motion policy: those remain
+method-level #180 responsibilities. Meta-GGA is fail-closed here because its
+density response has not been qualified.
 
 ## AO derivative conventions
 

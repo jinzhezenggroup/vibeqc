@@ -94,41 +94,48 @@ struct Coefficient {
   double c6{}, first_cn{}, second_cn{};
 };
 
+VIBEQC_D3_HD inline bool prepare_atom_weights(std::size_t atom, const std::int32_t* z,
+                                              const double* cn, D3Tables tables, double* weights,
+                                              double* derivatives) {
+  const auto element = tables.elements[z[atom] - 1];
+  if (element.reference_count == 0 || element.reference_count > 7 || !finite(cn[atom]))
+    return false;
+  double norm = 0.0;
+  double derivative_norm = 0.0;
+  double maximum_cn = -DBL_MAX;
+  for (int ref = 0; ref < 7; ++ref) {
+    const std::size_t index = 7 * atom + ref;
+    weights[index] = derivatives[index] = 0.0;
+    if (ref >= element.reference_count) continue;
+    const double ref_cn = tables.reference_cn[element.reference_offset + ref];
+    maximum_cn = fmax(maximum_cn, ref_cn);
+    const double delta = ref_cn - cn[atom];
+    const double u = exp(-4.0 * delta * delta);
+    weights[index] = u;
+    norm += u;
+    derivative_norm += 8.0 * delta * u;
+  }
+  const double inverse_norm = 1.0 / norm;
+  for (int ref = 0; ref < element.reference_count; ++ref) {
+    const std::size_t index = 7 * atom + ref;
+    const double ref_cn = tables.reference_cn[element.reference_offset + ref];
+    const double delta = ref_cn - cn[atom];
+    const double u = weights[index];
+    double weight = u * inverse_norm;
+    if (!finite(weight)) weight = ref_cn == maximum_cn ? 1.0 : 0.0;
+    double derivative =
+        8.0 * delta * u * inverse_norm - u * derivative_norm * inverse_norm * inverse_norm;
+    if (!finite(derivative)) derivative = 0.0;
+    weights[index] = weight;
+    derivatives[index] = derivative;
+  }
+  return true;
+}
+
 VIBEQC_D3_HD inline bool prepare_weights(std::size_t n, const std::int32_t* z, const double* cn,
                                          D3Tables tables, double* weights, double* derivatives) {
   for (std::size_t atom = 0; atom < n; ++atom) {
-    const auto element = tables.elements[z[atom] - 1];
-    if (element.reference_count == 0 || element.reference_count > 7 || !finite(cn[atom]))
-      return false;
-    double norm = 0.0;
-    double derivative_norm = 0.0;
-    double maximum_cn = -DBL_MAX;
-    for (int ref = 0; ref < 7; ++ref) {
-      const std::size_t index = 7 * atom + ref;
-      weights[index] = derivatives[index] = 0.0;
-      if (ref >= element.reference_count) continue;
-      const double ref_cn = tables.reference_cn[element.reference_offset + ref];
-      maximum_cn = fmax(maximum_cn, ref_cn);
-      const double delta = ref_cn - cn[atom];
-      const double u = exp(-4.0 * delta * delta);
-      weights[index] = u;
-      norm += u;
-      derivative_norm += 8.0 * delta * u;
-    }
-    const double inverse_norm = 1.0 / norm;
-    for (int ref = 0; ref < element.reference_count; ++ref) {
-      const std::size_t index = 7 * atom + ref;
-      const double ref_cn = tables.reference_cn[element.reference_offset + ref];
-      const double delta = ref_cn - cn[atom];
-      const double u = weights[index];
-      double weight = u * inverse_norm;
-      if (!finite(weight)) weight = ref_cn == maximum_cn ? 1.0 : 0.0;
-      double derivative =
-          8.0 * delta * u * inverse_norm - u * derivative_norm * inverse_norm * inverse_norm;
-      if (!finite(derivative)) derivative = 0.0;
-      weights[index] = weight;
-      derivatives[index] = derivative;
-    }
+    if (!prepare_atom_weights(atom, z, cn, tables, weights, derivatives)) return false;
   }
   return true;
 }

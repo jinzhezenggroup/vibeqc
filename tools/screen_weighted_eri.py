@@ -23,6 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from vibeqc_compiler.common.evidence import file_hash
 from vibeqc_compiler.integral.shell_class import build_weighted_shell_contraction_kernel
 from vibeqc_compiler.integral.shell_spec import PSSS_SPEC
 from vibeqc_compiler.integral.weighted_eri import (
@@ -30,8 +31,6 @@ from vibeqc_compiler.integral.weighted_eri import (
     build_weighted_eri_kernel,
 )
 from vibeqc_compiler.integral.weighted_eri_cuda import emit_psss_weighted_header
-
-from tools.vibeqc_validation.schema import file_hash
 
 
 def main() -> None:

@@ -17,7 +17,7 @@ import typing
 from dataclasses import dataclass
 from pathlib import Path
 
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 
 from .solver import CCSDResult, solve
 

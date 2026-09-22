@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+
 from .capabilities import CAPABILITY_MIXED_FOCK, CAPABILITY_STREAMING_FOCK
-from .cuda_target import cuda_target_info
 from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer
 from .production_cost import shell_class_index

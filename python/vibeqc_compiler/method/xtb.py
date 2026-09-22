@@ -491,7 +491,7 @@ GFN2_PARAMETER_SET = XtbParameterSet(
 GFN1_PARAMETER_SET = XtbParameterSet(
     identifier="gfn1-xtb",
     revision=f"sha256:{_GFN1_PARAMETER_JSON_SHA256}",
-    source="sources/xtb/gfn1/gfn1.json",
+    source="upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json",
     supported_atomic_numbers=_GFN1_SUPPORTED_ATOMIC_NUMBERS,
     basis_tables=_GFN1_BASIS_TABLES,
     orbital_tables=_GFN1_ORBITAL_TABLES,
@@ -695,7 +695,10 @@ def _validate_gfn1_parameter_set(parameter_set: XtbParameterSet) -> None:
         raise UnsupportedXtbMethod(
             "GFN1-xTB parameter revision must match the canonical normalized JSON"
         )
-    if parameter_set.source != "sources/xtb/gfn1/gfn1.json":
+    if (
+        parameter_set.source
+        != "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
+    ):
         raise UnsupportedXtbMethod(
             "GFN1-xTB parameter source must use the canonical repository snapshot"
         )

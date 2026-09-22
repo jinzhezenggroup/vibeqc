@@ -27,12 +27,6 @@
       ]
     },
     {
-      "root": "tools/vibeqc_tensor",
-      "patterns": [
-        "*.py"
-      ]
-    },
-    {
       "root": "tools/vibeqc_mp2",
       "patterns": [
         "*.py"
@@ -78,11 +72,12 @@
     "tools/vibeqc_posthf/plan_spec.py",
     "tools/generate_scf_array_native.py",
     "tools/generate_gfn2_pair_native.py",
+    "tools/generate_gfn2_es2_native.py",
+    "tools/generate_gfn2_es3_native.py",
     "cmake/VibeQCGfn2Runtime.cmake",
     "tools/xtb/resolve-openblas-wheel.py",
     "tools/xtb/scipy_openblas32_manifest.json",
     "tools/generate_stationary_force_aot.py",
     "tools/write_stationary_aot_manifest.py"
-
   ]
 }

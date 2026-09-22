@@ -28,7 +28,11 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_gfn1_shell_discrete_types_fail_before_rendering(
     field: str, value: object
 ) -> None:
-    parameters = json.loads((ROOT / "sources/xtb/gfn1/gfn1.json").read_text())
+    parameters = json.loads(
+        (
+            ROOT / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
+        ).read_text()
+    )
     parameters["elements"][0]["shells"][0][field] = value
     with pytest.raises(ParameterError):
         validate(parameters)

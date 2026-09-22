@@ -16,13 +16,7 @@ import os
 import typing
 from dataclasses import asdict, replace
 
-from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
-from .basis import BasisSet
-from .basis_capabilities import require_basis
-from .calculator import Atom, _snapshot_basis
-from .elements import electron_state
-from .ks import resolve_ks_options
-from .resources import (
+from vibeqc_compiler.common.resources import (
     ResourceBudget,
     ResourceCandidate,
     ResourceEstimate,
@@ -32,6 +26,13 @@ from .resources import (
     checked_bytes,
     plan_resources,
 )
+
+from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
+from .basis import BasisSet
+from .basis_capabilities import require_basis
+from .calculator import Atom, _snapshot_basis
+from .elements import electron_state
+from .ks import resolve_ks_options
 from .resources_hf import _basis_record, _cuda_library_identity, _ecp_workspace
 
 _METHODS = (

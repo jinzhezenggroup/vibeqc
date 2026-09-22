@@ -336,6 +336,58 @@ def test_generated_residency_uses_complete_source_specific_budget() -> None:
     assert constrained.peak_workspace_bytes <= constrained.budget_bytes
 
 
+def test_generated_source_auto_occupied_requires_complete_q_scratch(
+    monkeypatch: typing.Any,
+) -> None:
+    """Automatic RHF factors are admitted only with the full source lease."""
+    library = Calculator()._library
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
+    dense = density_fitting_tile_plan(
+        library,
+        1,
+        768,
+        768,
+        160,
+        budget_bytes=0,
+        fixed_device_bytes=0,
+        generated_source=True,
+    )
+    assert dense.auxiliary_tile == 128
+    assert dense.automatic_rhf_rank == 0
+
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "auto")
+    full_budget = 1 << 40
+    complete = density_fitting_tile_plan(
+        library,
+        1,
+        768,
+        768,
+        160,
+        budget_bytes=full_budget,
+        fixed_device_bytes=0,
+        generated_source=True,
+        rhf_occupied=160,
+    )
+    assert complete.stores_full_three_center
+    assert complete.ao_pair_tile == 768 * 768
+    assert complete.auxiliary_tile == 768
+    assert complete.automatic_rhf_rank == 160
+
+    constrained = density_fitting_tile_plan(
+        library,
+        1,
+        768,
+        768,
+        160,
+        budget_bytes=complete.peak_workspace_bytes - 1,
+        fixed_device_bytes=0,
+        generated_source=True,
+        rhf_occupied=160,
+    )
+    assert constrained.auxiliary_tile < 768
+    assert constrained.automatic_rhf_rank == 0
+
+
 def test_overlap_storage_is_reserved_in_every_cuda_df_candidate() -> None:
     """Shape-only admission must charge retained S/X/coordinates for each item."""
     import json

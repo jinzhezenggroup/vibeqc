@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from test_cc_api import fixture_problem
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor.cuda_resident_emit import resident_source
 
 from tools.vibeqc_cc.gpu_state import AmplitudeSnapshot, solver_plans

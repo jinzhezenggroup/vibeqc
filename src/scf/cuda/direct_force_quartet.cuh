@@ -13,7 +13,6 @@
 #include "scf/cuda/direct_force_density.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_native_gradient_types.cuh"
-#include "scf/cuda/direct_native_order01_gradient.cuh"
 #include "scf/cuda/direct_native_order2_gradient.cuh"
 #include "scf/cuda/direct_native_order3_gradient.cuh"
 #include "scf/cuda/direct_native_source_contraction.cuh"
@@ -34,6 +33,7 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
     std::uint64_t generated_shell_class_mask, std::size_t active_subtile,
     unsigned ao_quartet_lane) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
+  static_assert(AngularOrder >= 2U, "order-0/1 Direct force uses generated exact shell tasks");
   constexpr std::size_t subtiles_per_tile = detail::direct_quartet_subtiles_per_tile(AngularOrder);
   const std::size_t active_tile = active_subtile / subtiles_per_tile;
   // Consume the identical compact tile list as direct Fock so energy and
@@ -121,13 +121,9 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
       }
     }
     double explicit_unique_gradient[4][3]{};
-    if constexpr (AngularOrder <= 6) {
+    if constexpr (AngularOrder >= 2U && AngularOrder <= 6U) {
       CartesianQuartetGradient explicit_gradient{};
-      if constexpr (AngularOrder <= 1) {
-        explicit_gradient = contracted_eri_cartesian_source_order01_gradient<AngularOrder>(
-            batch, system, static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
-            static_cast<std::int32_t>(k), static_cast<std::int32_t>(l));
-      } else if constexpr (AngularOrder == 2) {
+      if constexpr (AngularOrder == 2) {
         explicit_gradient = contracted_eri_cartesian_source_order2_gradient(
             batch, system, static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
             static_cast<std::int32_t>(k), static_cast<std::int32_t>(l));
@@ -167,7 +163,7 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
       double derivative_x = 0.0;
       double derivative_y = 0.0;
       double derivative_z = 0.0;
-      if constexpr (AngularOrder <= 6) {
+      if constexpr (AngularOrder >= 2U && AngularOrder <= 6U) {
         derivative_x = explicit_unique_gradient[center][0];
         derivative_y = explicit_unique_gradient[center][1];
         derivative_z = explicit_unique_gradient[center][2];

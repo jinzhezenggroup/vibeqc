@@ -130,7 +130,7 @@ def test_failed_preparation_keeps_evidence_and_failed_scf_keeps_samples(
     monkeypatch: typing.Any,
 ) -> None:
     from vibeqc import _native
-    from vibeqc.resources import ResourceAllocationError
+    from vibeqc_compiler.common.resources import ResourceAllocationError
 
     calculator = Calculator(method="pbe-uks", resource_budget=ResourceBudget())
     # CPU allocations have no limiter. Inject the native status at the prepare
@@ -304,7 +304,7 @@ def test_cuda_failed_preparation_retains_ledger_rejection_and_releases_buffers(
     monkeypatch: typing.Any,
     partial: typing.Any,
 ) -> None:
-    from vibeqc.resources import ResourceAllocationError
+    from vibeqc_compiler.common.resources import ResourceAllocationError
 
     calculator = Calculator(
         method="pbe-rks", device="cuda", resource_budget=ResourceBudget()

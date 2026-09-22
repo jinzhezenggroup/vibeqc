@@ -13,10 +13,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
 
 from tools.vibeqc_cc.oracle import random_case
 from tools.vibeqc_posthf.fixtures import fixture_snapshot, load_fixture
-from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 ROOT = Path(__file__).resolve().parents[1]
 

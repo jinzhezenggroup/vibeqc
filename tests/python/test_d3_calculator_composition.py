@@ -6,7 +6,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from vibeqc import Calculator, GridSpec, KsOptions, evaluate_d3_correction
-from vibeqc.resources import ResourceBudget
+from vibeqc_compiler.common.resources import ResourceBudget
 from vibeqc_compiler.method import DispersionCorrectionPrimitive, resolve_method
 
 H2 = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]

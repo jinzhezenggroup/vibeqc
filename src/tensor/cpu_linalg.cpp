@@ -136,6 +136,12 @@ void scalar_gemv(bool trans, std::size_t m, std::size_t n, const double* a, cons
   }
 }
 
+void scalar_ger(std::size_t m, std::size_t n, const double* x, const double* y, double* a,
+                double alpha) {
+  for (std::size_t i = 0; i < m; ++i)
+    for (std::size_t j = 0; j < n; ++j) a[i * n + j] += alpha * x[i] * y[j];
+}
+
 void scalar_symm(bool left, bool upper, std::size_t m, std::size_t n, const double* a,
                  const double* b, double* c, double alpha, double beta) {
   const std::size_t order = left ? m : n;
@@ -437,6 +443,20 @@ void openblas_gemv(bool trans, std::size_t m, std::size_t n, const double* a, co
 #endif
 }
 
+void openblas_ger(std::size_t m, std::size_t n, const double* x, const double* y, double* a,
+                  double alpha, const CpuLinalgPlan& plan) {
+  const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  if (m > limit || n > limit) throw std::length_error("OpenBLAS GER dimensions exceed int range");
+  OpenBlasThreadGuard guard(plan);
+#if VIBEQC_OPENBLAS_SCIPY_PREFIX
+  scipy_cblas_dger(CblasRowMajor, static_cast<int>(m), static_cast<int>(n), alpha, x, 1, y, 1, a,
+                   static_cast<int>(n));
+#else
+  cblas_dger(CblasRowMajor, static_cast<int>(m), static_cast<int>(n), alpha, x, 1, y, 1, a,
+             static_cast<int>(n));
+#endif
+}
+
 void openblas_symm(bool left, bool upper, std::size_t m, std::size_t n, const double* a,
                    const double* b, double* c, double alpha, double beta,
                    const CpuLinalgPlan& plan) {
@@ -688,6 +708,30 @@ void cpu_gemv(char trans, std::size_t m, std::size_t n, const double* a, const d
   }
 #endif
   scalar_gemv(transposed, m, n, a, x, y, alpha, beta);
+}
+
+void cpu_ger(std::size_t m, std::size_t n, const double* x, const double* y, double* a,
+             double alpha, const CpuLinalgPlan& plan) {
+  validate_plan(plan);
+  if (!m || !n) return;
+  checked_matrix_elements(m, n);
+  if (alpha == 0.0) return;
+  if (!x || !y || !a) throw std::invalid_argument("CPU GER received null storage");
+
+  CpuLinalgProvider provider = plan.provider;
+  if (provider == CpuLinalgProvider::automatic) {
+    provider =
+        fits_openblas(m, n, 1) ? resolve_cpu_linalg_provider(plan) : CpuLinalgProvider::scalar;
+  } else {
+    provider = resolve_cpu_linalg_provider(plan);
+  }
+#if VIBEQC_HAS_OPENBLAS
+  if (provider == CpuLinalgProvider::openblas) {
+    openblas_ger(m, n, x, y, a, alpha, plan);
+    return;
+  }
+#endif
+  scalar_ger(m, n, x, y, a, alpha);
 }
 
 void cpu_symm(char side, char uplo, std::size_t m, std::size_t n, const double* a, const double* b,

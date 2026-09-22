@@ -18,9 +18,9 @@ sys.path[:0] = [str(ROOT), str(ROOT / "python")]
 
 import numpy as np
 from vibeqc.profiles import canonical_hash, file_hash
+from vibeqc_compiler.dft.fixtures import load_fixture
 
 from tools.generate_validation_references import pyscf_molecule
-from tools.vibeqc_dft.fixtures import load_fixture
 
 CASES = ("h2", "water", "f_cartesian", "f_spherical")
 FUNCTIONALS = {"LDA_XC_PW": "LDA_X,LDA_C_PW", "PBE": "GGA_X_PBE,GGA_C_PBE"}

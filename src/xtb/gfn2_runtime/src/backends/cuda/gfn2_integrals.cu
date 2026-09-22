@@ -9,6 +9,7 @@
 #include "backends/cuda/cuda_atomics.cuh"
 #include "backends/cuda/gfn2_integral_force.cuh"
 #include "backends/cuda/gfn2_integrals.cuh"
+#include "generated_gfn2_sdq_cuda.cuh"
 
 namespace xtbloom::detail::cuda {
 namespace {
@@ -16,7 +17,6 @@ namespace {
 constexpr int kThreadsPerBlock = 64;
 constexpr std::int64_t kMaximumInt64 = 9223372036854775807LL;
 constexpr double kSqrtThree = 1.732050807568877293527446341505872367;
-constexpr double kSqrtPiCubed = 5.5683279968317061;
 constexpr double kMaximumCoordinate = 3.3519519824856493e153;
 constexpr int kMaximumCartesianBlock = 36;
 constexpr int kMultipoleComponents = 9;
@@ -229,34 +229,6 @@ __device__ int spherical_count(std::uint8_t angular_momentum) {
   return 2 * static_cast<int>(angular_momentum) + 1;
 }
 
-__device__ void cartesian_exponent(std::uint8_t angular_momentum, int function, int* x, int* y,
-                                   int* z) {
-  if (angular_momentum == 0u) {
-    *x = 0;
-    *y = 0;
-    *z = 0;
-  } else if (angular_momentum == 1u) {
-    *x = function == 0 ? 1 : 0;
-    *y = function == 1 ? 1 : 0;
-    *z = function == 2 ? 1 : 0;
-  } else {
-    constexpr int exponents[6][3] = {{2, 0, 0}, {1, 1, 0}, {1, 0, 1},
-                                     {0, 2, 0}, {0, 1, 1}, {0, 0, 2}};
-    *x = exponents[function][0];
-    *y = exponents[function][1];
-    *z = exponents[function][2];
-  }
-}
-
-__device__ void multipole_power(int component, int* x, int* y, int* z) {
-  constexpr int powers[kMultipoleComponents][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1},
-                                                   {2, 0, 0}, {1, 1, 0}, {0, 2, 0},
-                                                   {1, 0, 1}, {0, 1, 1}, {0, 0, 2}};
-  *x = powers[component][0];
-  *y = powers[component][1];
-  *z = powers[component][2];
-}
-
 /* tblite real-spherical rows in [-l,...,+l] and CCA Cartesian columns. */
 __device__ double spherical_coefficient(std::uint8_t angular_momentum, int spherical,
                                         int cartesian) {
@@ -280,38 +252,6 @@ __device__ double spherical_coefficient(std::uint8_t angular_momentum, int spher
     return cartesian == 2 ? kSqrtThree : 0.0;
   }
   return cartesian == 0 ? 0.5 * kSqrtThree : (cartesian == 3 ? -0.5 * kSqrtThree : 0.0);
-}
-
-__device__ void make_axis_overlap(double product_minus_i, double product_minus_j,
-                                  double inverse_twice_sum, int maximum_a, int maximum_b,
-                                  double overlap[6][3]) {
-#pragma unroll
-  for (int a = 0; a < 6; ++a) {
-#pragma unroll
-    for (int b = 0; b < 3; ++b) {
-      overlap[a][b] = 0.0;
-    }
-  }
-  overlap[0][0] = 1.0;
-  for (int a = 1; a <= maximum_a; ++a) {
-    overlap[a][0] = product_minus_i * overlap[a - 1][0];
-    if (a > 1) {
-      overlap[a][0] += static_cast<double>(a - 1) * inverse_twice_sum * overlap[a - 2][0];
-    }
-  }
-  for (int b = 1; b <= maximum_b; ++b) {
-    overlap[0][b] = product_minus_j * overlap[0][b - 1];
-    if (b > 1) {
-      overlap[0][b] += static_cast<double>(b - 1) * inverse_twice_sum * overlap[0][b - 2];
-    }
-    for (int a = 1; a <= maximum_a; ++a) {
-      overlap[a][b] = product_minus_i * overlap[a - 1][b] +
-                      static_cast<double>(b) * inverse_twice_sum * overlap[a - 1][b - 1];
-      if (a > 1) {
-        overlap[a][b] += static_cast<double>(a - 1) * inverse_twice_sum * overlap[a - 2][b];
-      }
-    }
-  }
 }
 
 /*
@@ -379,10 +319,6 @@ __global__ void integral_shell_pair_kernel(Gfn2IntegralDeviceBatch batch, const 
   if (cartesian_index < cartesian_block_size) {
     const int bra_cartesian = cartesian_index / ket_cartesian_count;
     const int ket_cartesian = cartesian_index % ket_cartesian_count;
-    int bra_power[3];
-    int ket_power[3];
-    cartesian_exponent(bra_l, bra_cartesian, &bra_power[0], &bra_power[1], &bra_power[2]);
-    cartesian_exponent(ket_l, ket_cartesian, &ket_power[0], &ket_power[1], &ket_power[2]);
     double overlap_value = 0.0;
     double multipoles[kMultipoleComponents] = {};
     const std::int64_t bra_primitive_begin = batch.shell_primitive_offsets[bra_shell];
@@ -398,34 +334,26 @@ __global__ void integral_shell_pair_kernel(Gfn2IntegralDeviceBatch batch, const 
         const double bra_alpha = batch.primitive_exponents[bra_primitive];
         const double alpha_sum = ket_alpha + bra_alpha;
         const double inverse_sum = 1.0 / alpha_sum;
-        const double product_exponent = ket_alpha * bra_alpha * distance_squared * inverse_sum;
+        const double product_exponent =
+            ket_alpha * bra_alpha * distance_squared * inverse_sum;
         if (product_exponent > batch.integral_cutoff) {
           continue;
         }
-        const double sqrt_inverse_sum = sqrt(inverse_sum);
-        const double primitive_prefactor = exp(-product_exponent) * kSqrtPiCubed *
-                                           sqrt_inverse_sum * sqrt_inverse_sum * sqrt_inverse_sum *
-                                           batch.primitive_coefficients[ket_primitive] *
-                                           batch.primitive_coefficients[bra_primitive];
-        const double inverse_twice_sum = 0.5 * inverse_sum;
-        double axis[3][6][3];
-        for (int coordinate = 0; coordinate < 3; ++coordinate) {
-          const double product_minus_i = -vector[coordinate] * bra_alpha * inverse_sum;
-          const double product_minus_j = +vector[coordinate] * ket_alpha * inverse_sum;
-          make_axis_overlap(product_minus_i, product_minus_j, inverse_twice_sum,
-                            static_cast<int>(ket_l) + 2, static_cast<int>(bra_l), axis[coordinate]);
+        vibeqc::xtb::generated::Gfn2SdqPrimitive primitive{};
+        if (!vibeqc::xtb::generated::evaluate_gfn2_sdq_values_primitive(
+                static_cast<unsigned>(bra_l), static_cast<unsigned>(ket_l),
+                static_cast<unsigned>(bra_cartesian), static_cast<unsigned>(ket_cartesian),
+                bra_alpha, ket_alpha, vector, primitive)) {
+          record_system_error(system_errors, system, device_error,
+                              Gfn2IntegralDeviceError::kNonfiniteIntegralArithmetic);
+          continue;
         }
-        const double x = axis[0][ket_power[0]][bra_power[0]];
-        const double y = axis[1][ket_power[1]][bra_power[1]];
-        const double z = axis[2][ket_power[2]][bra_power[2]];
-        overlap_value += primitive_prefactor * x * y * z;
+        const double primitive_weight =
+            batch.primitive_coefficients[ket_primitive] *
+            batch.primitive_coefficients[bra_primitive];
+        overlap_value += primitive_weight * primitive.values[0];
         for (int component = 0; component < kMultipoleComponents; ++component) {
-          int moment_power[3];
-          multipole_power(component, &moment_power[0], &moment_power[1], &moment_power[2]);
-          multipoles[component] += primitive_prefactor *
-                                   axis[0][ket_power[0] + moment_power[0]][bra_power[0]] *
-                                   axis[1][ket_power[1] + moment_power[1]][bra_power[1]] *
-                                   axis[2][ket_power[2] + moment_power[2]][bra_power[2]];
+          multipoles[component] += primitive_weight * primitive.values[component + 1];
         }
       }
     }
@@ -478,10 +406,8 @@ __global__ void integral_shell_pair_kernel(Gfn2IntegralDeviceBatch batch, const 
   }
 
   double dipole[3] = {raw_multipoles[0], raw_multipoles[1], raw_multipoles[2]};
-  const double trace = 0.5 * (raw_multipoles[3] + raw_multipoles[5] + raw_multipoles[8]);
-  double quadrupole[6] = {1.5 * raw_multipoles[3] - trace, 1.5 * raw_multipoles[4],
-                          1.5 * raw_multipoles[5] - trace, 1.5 * raw_multipoles[6],
-                          1.5 * raw_multipoles[7],         1.5 * raw_multipoles[8] - trace};
+  double quadrupole[6] = {raw_multipoles[3], raw_multipoles[4], raw_multipoles[5],
+                          raw_multipoles[6], raw_multipoles[7], raw_multipoles[8]};
   bool finite = isfinite(overlap_value);
   for (double value : dipole) {
     finite = finite && isfinite(value);
@@ -1377,10 +1303,6 @@ __global__ void integral_force_shell_pair_kernel(
   if (cartesian_index < cartesian_block_size) {
     const int bra_cartesian = cartesian_index / ket_cartesian_count;
     const int ket_cartesian = cartesian_index % ket_cartesian_count;
-    int bra_power[3];
-    int ket_power[3];
-    cartesian_exponent(bra_l, bra_cartesian, &bra_power[0], &bra_power[1], &bra_power[2]);
-    cartesian_exponent(ket_l, ket_cartesian, &ket_power[0], &ket_power[1], &ket_power[2]);
     double overlap_value = 0.0;
     double overlap_gradient[3] = {};
     double multipoles[kMultipoleComponents] = {};
@@ -1397,56 +1319,33 @@ __global__ void integral_force_shell_pair_kernel(
         const double bra_alpha = batch.primitive_exponents[bra_primitive];
         const double alpha_sum = ket_alpha + bra_alpha;
         const double inverse_sum = 1.0 / alpha_sum;
-        const double product_exponent = ket_alpha * bra_alpha * distance_squared * inverse_sum;
+        const double product_exponent =
+            ket_alpha * bra_alpha * distance_squared * inverse_sum;
         if (product_exponent > batch.integral_cutoff) {
           continue;
         }
-        const double sqrt_inverse_sum = sqrt(inverse_sum);
-        const double primitive_prefactor = exp(-product_exponent) * kSqrtPiCubed *
-                                           sqrt_inverse_sum * sqrt_inverse_sum * sqrt_inverse_sum *
-                                           batch.primitive_coefficients[ket_primitive] *
-                                           batch.primitive_coefficients[bra_primitive];
-        double axis[3][6][3];
-        for (int coordinate = 0; coordinate < 3; ++coordinate) {
-          make_axis_overlap(-vector[coordinate] * bra_alpha * inverse_sum,
-                            vector[coordinate] * ket_alpha * inverse_sum, 0.5 * inverse_sum,
-                            static_cast<int>(ket_l) + 3, static_cast<int>(bra_l), axis[coordinate]);
+        vibeqc::xtb::generated::Gfn2SdqPrimitive primitive{};
+        if (!vibeqc::xtb::generated::evaluate_gfn2_sdq_primitive(
+                static_cast<unsigned>(bra_l), static_cast<unsigned>(ket_l),
+                static_cast<unsigned>(bra_cartesian), static_cast<unsigned>(ket_cartesian),
+                bra_alpha, ket_alpha, vector, primitive)) {
+          record_system_error(system_errors, system, device_error,
+                              Gfn2IntegralDeviceError::kNonfiniteGradientArithmetic);
+          continue;
         }
-        const double one_dimensional[3] = {axis[0][ket_power[0]][bra_power[0]],
-                                           axis[1][ket_power[1]][bra_power[1]],
-                                           axis[2][ket_power[2]][bra_power[2]]};
-        overlap_value +=
-            primitive_prefactor * one_dimensional[0] * one_dimensional[1] * one_dimensional[2];
+        const double primitive_weight =
+            batch.primitive_coefficients[ket_primitive] *
+            batch.primitive_coefficients[bra_primitive];
+        overlap_value += primitive_weight * primitive.values[0];
         for (int coordinate = 0; coordinate < 3; ++coordinate) {
-          double derivative_1d =
-              2.0 * ket_alpha * axis[coordinate][ket_power[coordinate] + 1][bra_power[coordinate]];
-          if (ket_power[coordinate] > 0) {
-            derivative_1d -= static_cast<double>(ket_power[coordinate]) *
-                             axis[coordinate][ket_power[coordinate] - 1][bra_power[coordinate]];
-          }
-          overlap_gradient[coordinate] += primitive_prefactor * derivative_1d *
-                                          one_dimensional[(coordinate + 1) % 3] *
-                                          one_dimensional[(coordinate + 2) % 3];
+          overlap_gradient[coordinate] +=
+              primitive_weight * primitive.ket_gradient[coordinate][0];
         }
         for (int component = 0; component < kMultipoleComponents; ++component) {
-          int moment_power[3];
-          multipole_power(component, &moment_power[0], &moment_power[1], &moment_power[2]);
-          const double moment_axis[3] = {axis[0][ket_power[0] + moment_power[0]][bra_power[0]],
-                                         axis[1][ket_power[1] + moment_power[1]][bra_power[1]],
-                                         axis[2][ket_power[2] + moment_power[2]][bra_power[2]]};
-          multipoles[component] +=
-              primitive_prefactor * moment_axis[0] * moment_axis[1] * moment_axis[2];
+          multipoles[component] += primitive_weight * primitive.values[component + 1];
           for (int coordinate = 0; coordinate < 3; ++coordinate) {
-            const int exponent = ket_power[coordinate] + moment_power[coordinate];
-            double derivative_1d =
-                2.0 * ket_alpha * axis[coordinate][exponent + 1][bra_power[coordinate]];
-            if (exponent > 0) {
-              derivative_1d -= static_cast<double>(exponent) *
-                               axis[coordinate][exponent - 1][bra_power[coordinate]];
-            }
-            multipole_gradient[coordinate][component] += primitive_prefactor * derivative_1d *
-                                                         moment_axis[(coordinate + 1) % 3] *
-                                                         moment_axis[(coordinate + 2) % 3];
+            multipole_gradient[coordinate][component] +=
+                primitive_weight * primitive.ket_gradient[coordinate][component + 1];
           }
         }
       }
@@ -1519,15 +1418,10 @@ __global__ void integral_force_shell_pair_kernel(
     const double dipole[3] = {raw_multipoles[0], raw_multipoles[1], raw_multipoles[2]};
     double quadrupole_gradient[3][6];
     for (int coordinate = 0; coordinate < 3; ++coordinate) {
-      const double trace =
-          0.5 * (raw_multipole_gradient[coordinate][3] + raw_multipole_gradient[coordinate][5] +
-                 raw_multipole_gradient[coordinate][8]);
-      quadrupole_gradient[coordinate][0] = 1.5 * raw_multipole_gradient[coordinate][3] - trace;
-      quadrupole_gradient[coordinate][1] = 1.5 * raw_multipole_gradient[coordinate][4];
-      quadrupole_gradient[coordinate][2] = 1.5 * raw_multipole_gradient[coordinate][5] - trace;
-      quadrupole_gradient[coordinate][3] = 1.5 * raw_multipole_gradient[coordinate][6];
-      quadrupole_gradient[coordinate][4] = 1.5 * raw_multipole_gradient[coordinate][7];
-      quadrupole_gradient[coordinate][5] = 1.5 * raw_multipole_gradient[coordinate][8] - trace;
+      for (int component = 0; component < 6; ++component) {
+        quadrupole_gradient[coordinate][component] =
+            raw_multipole_gradient[coordinate][component + 3];
+      }
     }
     const std::int64_t orbital_begin = batch.batch_orbital_offsets[system];
     const std::int64_t orbital_count = batch.batch_orbital_offsets[system + 1] - orbital_begin;

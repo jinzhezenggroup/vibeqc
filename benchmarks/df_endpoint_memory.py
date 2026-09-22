@@ -19,10 +19,10 @@ except ModuleNotFoundError:
     from _retention import raw_output_path
 from vibeqc import Calculator, _native
 from vibeqc.autotune import source_identity
-from vibeqc.resources import ResourceBudget
+from vibeqc_compiler.common.evidence import file_hash
+from vibeqc_compiler.common.resources import ResourceBudget
 
 from benchmarks._cases import benchmark_cases
-from tools.vibeqc_validation.schema import file_hash
 
 
 def main() -> None:

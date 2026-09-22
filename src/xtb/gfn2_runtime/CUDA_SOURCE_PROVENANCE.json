@@ -1,14 +1,17 @@
 {
   "adaptations": {
     "src/backends/cuda/gfn2_aes2.cu": "Consume compiler-generated TensorIR/AD AES2 energy/potential/coordinate and CN reverse response; preserve runtime validation, topology, and publication ownership.",
+    "src/backends/cuda/gfn2_es3.cu": "Consume compiler-generated TensorIR/AD ES3 energy/potential and finite-range recovery; preserve runtime validation, topology, and publication ownership.",
     "src/backends/cuda/gfn2_geometry.cu": "Consume compiler-generated TensorIR/AD coordination pair science; retain CUDA geometry/topology ownership.",
     "src/backends/cuda/gfn2_hamiltonian.cu": "Consume compiler-generated fixed-state TensorIR S/D/Q pair Hamiltonian for both spin layouts.",
     "src/backends/cuda/gfn2_hamiltonian_force.cu": "Consume the matching compiler-generated S/D/Q reverse-mode pair adjoints, including spin overlap.",
-    "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references.",
+    "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references. Consume the same compiler-generated TensorIR/AD coordination pair helper as dense geometry, preserving bitwise CN admission and canonical neighbor accumulation.",
     "src/backends/cuda/gfn2_preprocessing.cu": "Backport xTBloom #487: pass committed pair-list CUDA kernel descriptors by value for GPUs without pageable host-memory access.",
     "src/backends/cuda/gfn2_repulsion.cu": "Consume compiler-generated TensorIR/AD repulsion pair science; retain CUDA reduction and error ownership.",
     "src/backends/cuda/gfn2_repulsion.cuh": "Add explicit generated-pair nonfinite arithmetic status.",
-    "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored."
+    "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored.",
+    "src/backends/cuda/gfn2_integrals.cu": "Consume compiler-generated S/D/Q primitive values and coordinate derivatives; retain CUDA screening, contraction, spherical transforms, translation, reduction, and publication ownership.",
+    "src/backends/cuda/gfn2_es2.cu": "Consume compiler-generated TensorIR/AD ES2 scalar science and coordinate-VJP algebra; retain CUDA topology, validation, reductions, cache/publication, and error ownership."
   },
   "backports": {
     "9881f3ef1c63364cecfc3c1226101b96fc38fd96": "fix(cuda): pass kernel descriptors by value (#487)"
@@ -166,9 +169,9 @@
       "vendored_sha256": "a136325ad2e5651b20d8f8798312c999eb90b3012d3d83d78adfd19c0b6676b6"
     },
     "src/backends/cuda/gfn2_es2.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "1f831ef1b95f4f9a0cdd12629d50cc2b7f5dd2e85d8f9413598ff3a6b862099b",
-      "vendored_sha256": "1f831ef1b95f4f9a0cdd12629d50cc2b7f5dd2e85d8f9413598ff3a6b862099b"
+      "vendored_sha256": "73bfc0e85c91d21cfc9d658a98ad1f30e8760d06c8e0b597d838c44586d1323c"
     },
     "src/backends/cuda/gfn2_es2.cuh": {
       "adapted": false,
@@ -176,9 +179,9 @@
       "vendored_sha256": "684fa6494f0ab10d200766b6bd54213edfb29d26c0fd3236a3c2c7cbbf10a6ae"
     },
     "src/backends/cuda/gfn2_es3.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "bc45598ffa06076f991fc118ccb52c61851ebafc1b9f9727b732def37f49f313",
-      "vendored_sha256": "bc45598ffa06076f991fc118ccb52c61851ebafc1b9f9727b732def37f49f313"
+      "vendored_sha256": "828a3bd57ef5f711ae0e422a1877bd435b0e1e0562359df7d6647129692eca09"
     },
     "src/backends/cuda/gfn2_es3.cuh": {
       "adapted": false,
@@ -266,9 +269,9 @@
       "vendored_sha256": "463d2cbe0dac409c676e4e7af14e2648a27f597eaa70cc86b320b33b7ff7de6d"
     },
     "src/backends/cuda/gfn2_integrals.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "8da9042b184a7c81650cf9e7f4dbcc4b183cffeee0bf0eab6596b5adb18f99d6",
-      "vendored_sha256": "8da9042b184a7c81650cf9e7f4dbcc4b183cffeee0bf0eab6596b5adb18f99d6"
+      "vendored_sha256": "afa85509e2c9e8e929c099cace0754943e2c8d0c7f7b597796b29c5c53fcf503"
     },
     "src/backends/cuda/gfn2_integrals.cuh": {
       "adapted": false,
@@ -298,7 +301,7 @@
     "src/backends/cuda/gfn2_pairlist.cu": {
       "adapted": true,
       "upstream_sha256": "4eadf7ae80179453ba3543a6354b9430228efe25575dedf41629b8b94aa8be13",
-      "vendored_sha256": "e934221e547997528fe21cf0287fa1f095d3acf7114857f578846ccccfc5d41b"
+      "vendored_sha256": "1dee9292facbb9d8f5331344e84a3d5083253ffa2ab9ca6987195c46f28eeae0"
     },
     "src/backends/cuda/gfn2_pairlist.cuh": {
       "adapted": false,

@@ -6,6 +6,10 @@ from dataclasses import asdict, dataclass
 
 from vibeqc_compiler.common.backend import TargetInfo, TargetScheduleShape
 from vibeqc_compiler.common.gpu_profitability import GpuProfitability
+from vibeqc_compiler.common.precision import (
+    ExecutionPrecisionSchedule,
+    uniform_precision_schedule,
+)
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.schedule import (
     ScheduleContract,
@@ -90,6 +94,7 @@ def cooperative_schedule_contract(
     target: TargetInfo,
     workload_hash: str | None = None,
     profile_key: str | None = None,
+    precision_schedule: ExecutionPrecisionSchedule | None = None,
     fallback: bool = False,
     provenance: tuple[tuple[str, str], ...] = (),
 ) -> ScheduleContract:
@@ -106,6 +111,12 @@ def cooperative_schedule_contract(
         raise TypeError("cooperative contract requires CooperativeLaneSchedule")
     if not isinstance(target, TargetInfo):
         raise TypeError("cooperative contract requires TargetInfo")
+    if precision_schedule is None:
+        precision_schedule = uniform_precision_schedule(consumer)
+    if not isinstance(precision_schedule, ExecutionPrecisionSchedule):
+        raise TypeError(
+            "cooperative precision schedule requires ExecutionPrecisionSchedule"
+        )
     schedule.validate_for(target)
     return ScheduleContract(
         consumer=consumer,
@@ -113,6 +124,7 @@ def cooperative_schedule_contract(
         workload_hash=workload_hash,
         profile_key=profile_key,
         target_hash=canonical_hash(asdict(target)),
+        precision_schedule_hash=precision_schedule.identity,
         fallback=fallback,
         topology=ScheduleTopology(
             workgroup_threads=schedule.workgroup_threads,
@@ -127,9 +139,19 @@ def cooperative_schedule_contract(
             bucket="lane-groups",
         ),
         resources=ScheduleResources(),
-        profitability=GpuProfitability(),
+        profitability=GpuProfitability(
+            precision_cast_read_bytes=0 if precision_schedule.is_strict_fp64 else None,
+            precision_cast_write_bytes=0 if precision_schedule.is_strict_fp64 else None,
+            precision_cast_simultaneous_bytes=(
+                0 if precision_schedule.is_strict_fp64 else None
+            ),
+            precision_widened_accumulation_terms=(
+                0 if precision_schedule.is_strict_fp64 else None
+            ),
+        ),
         provenance=provenance
         + (
+            ("precision_contract", "common.precision"),
             ("groups_per_workgroup", str(schedule.groups_per_workgroup)),
             ("lanes_per_group", str(schedule.lanes_per_group)),
         ),

@@ -10,6 +10,7 @@ from hashlib import sha256
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.common.program import PlanCall, ProgramBuffer, ProgramIR
 from vibeqc_compiler.common.solver_region import (
     RegionCarry,
@@ -22,7 +23,6 @@ from vibeqc_compiler.tensor import Program, execute
 from tools.vibeqc_posthf import MOBlock, ReferenceSnapshot
 from tools.vibeqc_posthf.providers import ConventionalProvider
 from tools.vibeqc_posthf.reference import immutable
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .doubles import build_ccsd_program
 from .equations import amplitude_layouts
@@ -564,6 +564,7 @@ def solve(
         "logical_required_bytes": prepared.logical_required_bytes,
         "solver_region_identity": prepared.solver_region.identity,
         "solver_region_max_steps": prepared.solver_region.max_steps,
+        "solver_region_payload": prepared.solver_region.to_payload(),
         "reference_energy": snapshot.reference_energy,
         "solver_source_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
     }

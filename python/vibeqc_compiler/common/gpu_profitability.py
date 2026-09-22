@@ -9,7 +9,7 @@ Missing evidence is kept explicit and ranks behind comparable measured evidence.
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 ENDPOINT_NOISE_FRACTION = 0.01
 
@@ -45,6 +45,10 @@ class GpuProfitability:
     estimated_occupancy_upper_bound: float | None = None
     launch_count: int | None = None
     source_bytes: int | None = None
+    precision_cast_read_bytes: int | None = field(default=None, kw_only=True)
+    precision_cast_write_bytes: int | None = field(default=None, kw_only=True)
+    precision_cast_simultaneous_bytes: int | None = field(default=None, kw_only=True)
+    precision_widened_accumulation_terms: int | None = field(default=None, kw_only=True)
     compiled_registers_per_thread: int | None = None
     spill_store_bytes: int | None = None
     spill_load_bytes: int | None = None
@@ -64,6 +68,10 @@ class GpuProfitability:
             "estimated_registers_per_thread",
             "launch_count",
             "source_bytes",
+            "precision_cast_read_bytes",
+            "precision_cast_write_bytes",
+            "precision_cast_simultaneous_bytes",
+            "precision_widened_accumulation_terms",
             "compiled_registers_per_thread",
             "spill_store_bytes",
             "spill_load_bytes",
@@ -99,18 +107,33 @@ class GpuProfitability:
             return None
         return self.spill_store_bytes + self.spill_load_bytes
 
+    @property
+    def precision_cast_bytes(self) -> int | None:
+        """Total explicit cast traffic when both transfer directions are known."""
+
+        if (
+            self.precision_cast_read_bytes is None
+            or self.precision_cast_write_bytes is None
+        ):
+            return None
+        return self.precision_cast_read_bytes + self.precision_cast_write_bytes
+
     def static_compile_priority(self, generation_index: int) -> tuple[object, ...]:
         """Order legal candidates before compilation without claiming a winner.
 
-        Traffic comes first because it captures endpoint data movement. Register
-        pressure and occupancy then guard against fusion/CSE choices that retain
-        too much live state. Launches, scalar liveness/work, and source size are
-        deterministic tie-breakers. The original generation order is final.
+        Traffic comes first because it captures endpoint data movement. Explicit
+        precision conversions and widened reductions then distinguish otherwise
+        similar candidates before register pressure and occupancy. Launches,
+        scalar liveness/work, and source size remain deterministic tie-breakers.
+        The original generation order is final.
         """
 
         _optional_count(generation_index, "generation_index")
         return (
             self._minimize(self.semantic_traffic_bytes),
+            self._minimize(self.precision_cast_bytes),
+            self._minimize(self.precision_cast_simultaneous_bytes),
+            self._minimize(self.precision_widened_accumulation_terms),
             self._minimize(self.estimated_registers_per_thread),
             self._maximize(self.estimated_occupancy_upper_bound),
             self._minimize(self.launch_count),
@@ -136,6 +159,9 @@ class GpuProfitability:
             self._minimize(self.shared_bytes),
             self._minimize(self.launch_count),
             self._minimize(self.semantic_traffic_bytes),
+            self._minimize(self.precision_cast_bytes),
+            self._minimize(self.precision_cast_simultaneous_bytes),
+            self._minimize(self.precision_widened_accumulation_terms),
             self._minimize(self.peak_live_values),
             self._minimize(self.arithmetic_operation_count),
             self._minimize(self.compile_seconds),
@@ -249,6 +275,10 @@ class GpuProfitability:
                     "estimated_occupancy_upper_bound",
                     "launch_count",
                     "source_bytes",
+                    "precision_cast_read_bytes",
+                    "precision_cast_write_bytes",
+                    "precision_cast_simultaneous_bytes",
+                    "precision_widened_accumulation_terms",
                 )
             },
             "compiled": {

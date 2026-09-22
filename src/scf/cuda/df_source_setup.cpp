@@ -194,7 +194,14 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   candidate->batch.total_shells = static_cast<std::int64_t>(host.shell_atoms.size());
   try {
     candidate->host_atom_offsets = host.atom_offsets;
-    // Only the atom-prefix mirror survives source construction.  Include the
+    candidate->orbital_identities.reserve(batch_size);
+    candidate->auxiliary_identities.reserve(batch_size);
+    for (std::size_t system = 0; system < batch_size; ++system) {
+      candidate->orbital_identities.emplace_back(orbital_systems[system]);
+      candidate->auxiliary_identities.emplace_back(auxiliary_systems[system]);
+    }
+    // This early charge covers the atom-prefix mirror. The complete retained
+    // identity/allocation ledger is finalized after upload below. Include the
     // owning object and vector capacity in the retained-host diagnostic so a
     // positive-budget plan cannot silently omit this metadata allocation.
     std::size_t atom_offset_bytes = 0U;
@@ -417,6 +424,13 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   host_peak += capacity_bytes(no_warm);
   host_peak += capacity_bytes(candidate->host_atom_offsets);
   host_peak += capacity_bytes(candidate->allocations);
+  long double identity_bytes = capacity_bytes(candidate->orbital_identities) +
+                               capacity_bytes(candidate->auxiliary_identities);
+  for (const auto& identity : candidate->orbital_identities)
+    identity_bytes += identity.storage_bytes();
+  for (const auto& identity : candidate->auxiliary_identities)
+    identity_bytes += identity.storage_bytes();
+  host_peak += identity_bytes;
   for (const core::System& system : combined) {
     host_peak += system_capacity_bytes(system);
   }
@@ -431,7 +445,7 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
   // resident-byte diagnostic.
   const long double retained_host = static_cast<long double>(sizeof(*candidate)) +
                                     capacity_bytes(candidate->host_atom_offsets) +
-                                    capacity_bytes(candidate->allocations);
+                                    capacity_bytes(candidate->allocations) + identity_bytes;
   const long double size_limit = static_cast<long double>(std::numeric_limits<std::size_t>::max());
   candidate->host_bytes = retained_host >= size_limit ? std::numeric_limits<std::size_t>::max()
                                                       : static_cast<std::size_t>(retained_host);

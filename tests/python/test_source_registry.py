@@ -25,12 +25,6 @@ def test_checked_in_registry_is_offline_verifiable() -> None:
     assert summary["derived_manifests"] == 4
 
 
-VENDORED_INITIAL_SOURCES = {
-    "dftd4-parameters",
-    "libxc-7.0.0",
-    "simple-dftd3-parameters",
-}
-
 REMOTE_REGENERATION_SOURCES = {
     "dftd4-reference",
     "gpu4pyscf-rys",
@@ -40,12 +34,13 @@ REMOTE_REGENERATION_SOURCES = {
 }
 
 
-def test_initial_upstream_sources_are_vendored_under_one_tree() -> None:
+def test_checked_in_sources_are_vendored_under_upstream_tree() -> None:
     registry = json.loads(source_registry.REGISTRY.read_text())
-    for source_id in VENDORED_INITIAL_SOURCES:
-        source = registry["sources"][source_id]
-        assert source["kind"] != "remote-file-set"
-        assert source["local_root"].startswith("upstream/")
+    for source_id, source in registry["sources"].items():
+        if "local_root" not in source:
+            continue
+        assert source["kind"] != "remote-file-set", source_id
+        assert source["local_root"].startswith("upstream/"), source_id
         root = source_registry.ROOT / source["local_root"]
         for name in source["files"]:
             assert (root / name).is_file()
@@ -88,7 +83,7 @@ def test_gcp_canonical_input_matches_registered_upstream_provenance() -> None:
     registry = json.loads(source_registry.REGISTRY.read_text())
     source = registry["sources"]["simple-dftd3-gcp"]
     data = json.loads(
-        (source_registry.ROOT / "external/r2scan3c/gcp-r2scan3c-h-ar.json").read_text()
+        (source_registry.ROOT / "tools/parameters/r2scan3c_gcp.json").read_text()
     )
     upstream = data["upstream"]
     assert upstream["commit"] == source["revision"]
@@ -124,7 +119,7 @@ def test_sync_is_pinned_and_normalizes_before_writing(
                 "repository": "https://example.invalid/sample",
                 "revision": "rev-123",
                 "license": "MIT",
-                "local_root": "external/sample",
+                "local_root": "upstream/sample",
                 "files": {
                     "data.txt": {
                         "upstream_path": "data.txt",
@@ -148,7 +143,7 @@ def test_sync_is_pinned_and_normalizes_before_writing(
         lambda request, timeout: contextlib.closing(io.BytesIO(upstream)),
     )
     written = source_registry.sync_source("sample", registry_path)
-    assert written == [tmp_path / "external/sample/data.txt"]
+    assert written == [tmp_path / "upstream/sample/data.txt"]
     assert written[0].read_bytes() == normalized
     assert source_registry.verify(registry_path)["local_files"] == 1
 
@@ -231,7 +226,7 @@ def test_update_requires_explicit_revision_and_invalidates_products(
         "repository": "https://github.com/example/sample",
         "revision": "rev-123",
         "license": "MIT",
-        "local_root": "external/sample",
+        "local_root": "upstream/sample",
         "files": {
             "data.txt": {
                 "upstream_path": "data.txt",
@@ -259,7 +254,7 @@ def test_update_requires_explicit_revision_and_invalidates_products(
     }
     registry_path = tmp_path / "manifest.json"
     registry_path.write_text(json.dumps(registry))
-    local = tmp_path / "external/sample/data.txt"
+    local = tmp_path / "upstream/sample/data.txt"
     local.parent.mkdir(parents=True)
     local.write_bytes(original)
     monkeypatch.setattr(source_registry, "ROOT", tmp_path)

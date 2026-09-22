@@ -54,17 +54,17 @@ VIBEQC_D3_ATM_HD inline double atm_radial(double x, double y, double z, double r
 
 }  // namespace d3_atm_detail
 
-// Standalone non-periodic D3(BJ)-ATM contribution with complete dE/dR,
-// including coordination-number response of all three C6 coefficients. This
-// intentionally does not alter the production D3 runtime or accept nonzero s9
-// there; it is the independently gated scientific primitive for that follow-up.
+// Non-periodic D3(BJ)-ATM contribution with complete dE/dR, including
+// coordination-number response of all three C6 coefficients. The default
+// standalone mode clears its output. Production composition may request
+// accumulation after a separately evaluated two-body D3(BJ) contribution.
 // Workspace is exactly 16*n doubles, matching evaluate_d3_bj.
 VIBEQC_D3_ATM_HD inline D3Status evaluate_d3_bj_atm(std::size_t n, const std::int32_t* z,
                                                     const double* xyz,
                                                     const D3ATMParameters& parameters,
                                                     D3Tables tables, double* workspace,
                                                     std::size_t workspace_elements, double* energy,
-                                                    double* gradient) {
+                                                    double* gradient, bool accumulate = false) {
   using namespace d3_detail;
   using namespace d3_atm_detail;
   if (!z || !xyz || !workspace || !energy || n == 0 || n > kD3MaximumAtomsPerSystem ||
@@ -84,8 +84,8 @@ VIBEQC_D3_ATM_HD inline D3Status evaluate_d3_bj_atm(std::size_t n, const std::in
   double* adjoints = derivatives + 7 * n;
   double* cn = adjoints + n;
   for (std::size_t atom = 0; atom < n; ++atom) cn[atom] = adjoints[atom] = 0.0;
-  *energy = 0.0;
-  if (gradient)
+  if (!accumulate) *energy = 0.0;
+  if (gradient && !accumulate)
     for (std::size_t i = 0; i < 3 * n; ++i) gradient[i] = 0.0;
   if (parameters.s9 == 0.0 || n < 3) return D3Status::success;
 

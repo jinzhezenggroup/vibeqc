@@ -14,8 +14,8 @@ import argparse
 import json
 from pathlib import Path
 
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.cuda_emitter import emit_shell_class_fused_cuda
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.fused_schedule import build_fused_shell_plan
 from vibeqc_compiler.integral.ir import KernelConsumer
 from vibeqc_compiler.integral.lowering.fock_accumulation import (
@@ -121,7 +121,7 @@ def main() -> None:
     parser.add_argument(
         "--profile",
         default="auto",
-        help="auto, portable, sm_XX, or a named manifest profile",
+        help="strict auto, explicit portable, sm_XX, or a named manifest profile",
     )
     parser.add_argument(
         "--profile-map",

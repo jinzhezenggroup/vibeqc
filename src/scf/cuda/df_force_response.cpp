@@ -162,6 +162,11 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     detail = "invalid generated DF force plan or batch index";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  if (plan->integral_source && !cuda_density_fitting_integral_source_geometry_matches(
+                                   plan->integral_source, system, orbital, auxiliary)) {
+    detail = "generated DF response source geometry or basis does not match";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   const auto elements = plan->naux * plan->naux, offset = system * elements;
   const char* host_policy = std::getenv("VIBEQC_DF_HOST_RESPONSE_WEIGHTS");
   const bool host_weights = host_policy && host_policy[0] == '1' && host_policy[1] == '\0';
@@ -171,12 +176,29 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     detail = "unknown DF response storage (use auto, panel or jk-scratch)";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  // Prepared generated-source metadata deliberately releases host A. In that
+  // case the integral source itself is the immutable geometry/metric owner;
+  // an empty raw span is therefore valid only after the exact per-item check
+  // above; it is not independently a geometry identity. This is not a
+  // missing owner. Materialized host routes still require every allocation
+  // identity below to match exactly.
+  const bool matching_source =
+      (plan->integral_source && !plan->response_host_raw && raw_a.empty()) ||
+      (plan->response_host_raw && plan->response_host_raw == raw_a.data() &&
+       plan->response_orbital_atoms == orbital.atoms.data() &&
+       plan->response_auxiliary_atoms == auxiliary.atoms.data() &&
+       plan->response_orbital_shells == orbital.shells.data() &&
+       plan->response_auxiliary_shells == auxiliary.shells.data() &&
+       plan->response_orbital_representation == orbital.basis_representation &&
+       plan->response_auxiliary_representation == auxiliary.basis_representation);
+  const bool source_dense_resident =
+      plan->integral_source && plan->value_storage.pairs == DfPairStorage::Dense && matching_source;
   // Retained B alone does not establish scratch capacity: generated resident
   // plans can retain B while their J/K temporaries cover only a small tile.
-  const bool full_scratch = !host_weights && !plan->integral_source && !plan->streamed &&
-                            plan->row_tile == plan->nbf && plan->auxiliary_tile == plan->naux &&
-                            plan->auxiliary_tile_values && plan->exchange_intermediate &&
-                            plan->exchange_contributions;
+  const bool full_scratch =
+      !host_weights && !plan->streamed && (!plan->integral_source || source_dense_resident) &&
+      plan->row_tile == plan->nbf && plan->auxiliary_tile == plan->naux &&
+      plan->auxiliary_tile_values && plan->exchange_intermediate && plan->exchange_contributions;
   const bool packed_resident = !host_weights && plan->integral_source && !plan->streamed &&
                                plan->value_storage.pairs == DfPairStorage::SymmetricLower &&
                                plan->packed_raw && plan->row_tile == plan->nbf;
@@ -220,7 +242,10 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
       // policy needs no occupied reservation or factor token. Keep this path
       // when occupied factors are unavailable, without any new allocation or
       // inferring full capacity from retained B alone.
-      if ((full_scratch && storage == "auto") || automatic_occupied) borrow = true;
+      if ((full_scratch && storage == "auto" &&
+           (!plan->integral_source || plan->resident_raw_valid)) ||
+          automatic_occupied)
+        borrow = true;
     }
   }
   CudaDfResponseBuffers buffers;
@@ -236,14 +261,6 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
                    plan->metric_eigenvalues + system * plan->naux, plan->metric_relative_threshold,
                    plan->metric_full_rank[system] != 0, plan->factor_basis_identity}};
   }
-  const bool matching_source =
-      plan->response_host_raw && plan->response_host_raw == raw_a.data() &&
-      plan->response_orbital_atoms == orbital.atoms.data() &&
-      plan->response_auxiliary_atoms == auxiliary.atoms.data() &&
-      plan->response_orbital_shells == orbital.shells.data() &&
-      plan->response_auxiliary_shells == auxiliary.shells.data() &&
-      plan->response_orbital_representation == orbital.basis_representation &&
-      plan->response_auxiliary_representation == auxiliary.basis_representation;
   const auto enabled = [](const char* name) {
     const char* value = std::getenv(name);
     return !value || std::string_view(value) == "auto";
@@ -261,7 +278,7 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     // the next replay. Never infer capacity from retained B alone: generated
     // resident plans can retain B while their K scratch is only a small tile.
     if (!full_scratch && !packed_resident) {
-      detail = "JK-scratch response requires a resident host-raw plan with full J/K tensors";
+      detail = "JK-scratch response requires a resident plan with full J/K tensors";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
     buffers = {plan->auxiliary_tile_values, plan->exchange_contributions,

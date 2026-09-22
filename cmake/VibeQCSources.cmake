@@ -85,6 +85,7 @@ function(vibeqc_add_posthf_cc_sources target)
     src/posthf/mp2_gradient.cpp
     src/posthf/native_provider.cpp
     src/response/native_gmres.cpp
+    src/methods/gfn2_runtime_bridge.cpp
     src/methods/xtb_method.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
@@ -117,6 +118,7 @@ function(vibeqc_add_integrals_scf_sources target)
     src/scf/solver/mean_field_driver.cpp
     src/scf/solver/eigen_frame.cpp
     src/scf/solver/final_state.cpp
+    src/scf/solver/warm_subspace.cpp
     src/scf/gradient/hf_gradient.cpp
     src/scf/reference/linalg.cpp
     src/scf/reference/mean_field.cpp

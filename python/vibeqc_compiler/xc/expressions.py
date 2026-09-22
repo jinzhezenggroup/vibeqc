@@ -1,10 +1,10 @@
 # Copyright (C) 2017 M.A.L. Marques
 # Copyright (C) 2026 VibeQC contributors
 # This Source Code Form is subject to the terms of the Mozilla Public License,
-# v. 2.0. See external/libxc-7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
+# v. 2.0. See upstream/libxc/7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
 """Audited Libxc 7.0.0 expressions, translated to the existing scalar DAG.
 
-The exact upstream files/hashes are in external/libxc-7.0.0/manifest.json.
+The exact upstream files/hashes are in manifests/libxc/7.0.0/manifest.json.
 Screening branches are deliberately excluded: the separately versioned domain
 contract rejects their inputs. Energy is per volume throughout this module.
 """
@@ -18,6 +18,7 @@ from fractions import Fraction as F
 from vibeqc_compiler.integral.expr import Graph
 
 from .pbe_maple import pbe_correlation, pbe_exchange
+from .pw_maple import pw_correlation
 from .scan_maple import scan_component
 
 _PW_PARAMETERS = {
@@ -385,8 +386,8 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
     builders = {
         "LDA_X": lda_exchange,
         "GGA_X_PBE": lambda: pbe_exchange(graph, spec, variables),
-        "LDA_C_PW": lambda: lda_correlation(False),
-        "LDA_C_PW_MOD": lambda: lda_correlation(True),
+        "LDA_C_PW": lambda: pw_correlation(graph, spec, variables, modified=False),
+        "LDA_C_PW_MOD": lambda: pw_correlation(graph, spec, variables, modified=True),
         "GGA_C_PBE": lambda: pbe_correlation(graph, spec, variables),
         "MGGA_X_SCAN": lambda: scan_component(graph, spec, variables, "MGGA_X_SCAN"),
         "MGGA_C_SCAN": lambda: scan_component(graph, spec, variables, "MGGA_C_SCAN"),
