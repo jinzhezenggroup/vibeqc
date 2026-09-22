@@ -41,10 +41,11 @@ vibeqc::core::System hydrogen_dimer(int charge, int multiplicity) {
   return system;
 }
 
-vibeqc::scf::ResolvedFockBuild mixed_strategy(vibeqc::scf::FockSpin spin) {
+vibeqc::scf::ResolvedFockBuild mixed_strategy(vibeqc::scf::FockSpin spin,
+                                              unsigned derivative_order = 0) {
   using namespace vibeqc::scf;
   auto spec = make_hf_fock_spec(spin);
-  spec.derivative_order = 0;
+  spec.derivative_order = derivative_order;
   spec.coulomb.approximation = FockApproximation::DensityFitted;
   spec.exchange.approximation = FockApproximation::SeminumericalCosx;
   spec.exchange.cosx = make_cosx_v1_spec(6, 4, 8, 3, 1.0e-12);
@@ -147,13 +148,35 @@ void verify_rhf(int device) {
 
   auto forces = control;
   forces.compute_forces = true;
-  bool rejected = false;
-  try {
-    (void)dft::run_cosx_rhf(plan, forces);
-  } catch (const std::invalid_argument&) {
-    rejected = true;
+  const auto force_strategy = mixed_strategy(scf::FockSpin::Restricted, 1);
+  dft::PreparedCosxFockPlan force_plan(system, &system, force_strategy, 16, device);
+  const auto forced = dft::run_cosx_rhf(force_plan, forces, &cold.density);
+  require(forced.converged && forced.forces.size() == 3 * system.atoms.size() &&
+              std::abs(forced.energy - cold.energy) < 5.0e-9,
+          "COSX RHF force endpoint changed the value semantics");
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    double translation = 0.0;
+    for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
+      translation += forced.forces[3 * atom + axis];
+    require(std::abs(translation) < 2.0e-7,
+            "COSX RHF analytic force violates translational invariance");
   }
-  require(rejected, "COSX RHF silently advertised analytic forces");
+  const auto displaced_energy = [&](double displacement) {
+    auto displaced = system;
+    displaced.atoms[1].position[2] += displacement;
+    dft::PreparedCosxFockPlan displaced_plan(displaced, &displaced,
+                                             mixed_strategy(scf::FockSpin::Restricted), 16, device);
+    const auto endpoint = dft::run_cosx_rhf(displaced_plan, control);
+    require(endpoint.converged, "displaced COSX RHF finite-difference endpoint did not converge");
+    return endpoint.energy;
+  };
+  const auto central = [&](double step) {
+    return (displaced_energy(step) - displaced_energy(-step)) / (2.0 * step);
+  };
+  const double coarse = central(2.0e-4), fine = central(1.0e-4);
+  const double extrapolated = (4.0 * fine - coarse) / 3.0;
+  require(std::abs(forced.forces[5] + extrapolated) < 4.0e-5,
+          "COSX RHF analytic force disagrees with multi-step SCF energy finite differences");
 
   auto one = control;
   one.max_iterations = 1;
@@ -189,13 +212,35 @@ void verify_uhf(int device) {
 
   auto forces = control;
   forces.compute_forces = true;
-  bool rejected = false;
-  try {
-    (void)dft::run_cosx_uhf(plan, forces);
-  } catch (const std::invalid_argument&) {
-    rejected = true;
+  const auto force_strategy = mixed_strategy(scf::FockSpin::Unrestricted, 1);
+  dft::PreparedCosxFockPlan force_plan(system, &system, force_strategy, 16, device);
+  const auto forced = dft::run_cosx_uhf(force_plan, forces, &cold.density);
+  require(forced.converged && forced.forces.size() == 3 * system.atoms.size() &&
+              std::abs(forced.energy - cold.energy) < 5.0e-9,
+          "COSX UHF force endpoint changed the value semantics");
+  for (unsigned axis = 0; axis < 3; ++axis) {
+    double translation = 0.0;
+    for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
+      translation += forced.forces[3 * atom + axis];
+    require(std::abs(translation) < 2.0e-7,
+            "COSX UHF analytic force violates translational invariance");
   }
-  require(rejected, "COSX UHF silently advertised analytic forces");
+  const auto displaced_energy = [&](double displacement) {
+    auto displaced = system;
+    displaced.atoms[1].position[2] += displacement;
+    dft::PreparedCosxFockPlan displaced_plan(
+        displaced, &displaced, mixed_strategy(scf::FockSpin::Unrestricted), 16, device);
+    const auto endpoint = dft::run_cosx_uhf(displaced_plan, control);
+    require(endpoint.converged, "displaced COSX UHF finite-difference endpoint did not converge");
+    return endpoint.energy;
+  };
+  const auto central = [&](double step) {
+    return (displaced_energy(step) - displaced_energy(-step)) / (2.0 * step);
+  };
+  const double coarse = central(2.0e-4), fine = central(1.0e-4);
+  const double extrapolated = (4.0 * fine - coarse) / 3.0;
+  require(std::abs(forced.forces[5] + extrapolated) < 4.0e-5,
+          "COSX UHF analytic force disagrees with multi-step SCF energy finite differences");
 
   auto one = control;
   one.max_iterations = 1;
@@ -217,7 +262,7 @@ int main() {
     if (cudaGetDeviceCount(&devices) != cudaSuccess || devices == 0) return 77;
     verify_rhf(0);
     verify_uhf(0);
-    std::cout << "energy-only prepared COSX RHF/UHF SCF PASS\n";
+    std::cout << "prepared COSX RHF/UHF value and analytic-force SCF PASS\n";
     return EXIT_SUCCESS;
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

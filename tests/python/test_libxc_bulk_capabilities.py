@@ -28,6 +28,23 @@ def _fixtures() -> list[dict]:
     ]
 
 
+def _stage_evidence(
+    capability: libxc_bulk_capabilities.BulkFunctionalCapability,
+    stage: str,
+    *,
+    status: str = "pass",
+    reason: str | None = None,
+) -> dict:
+    return {
+        "schema": libxc_bulk_capabilities.STAGE_EVIDENCE_SCHEMA,
+        "subject_identity": capability.identity,
+        "stage": stage,
+        "status": status,
+        "reason": reason,
+        "evidence": f"test://{capability.name}/{stage}" if status == "pass" else None,
+    }
+
+
 def test_bulk_capability_inventory_is_exact_imported_inventory() -> None:
     capabilities = libxc_bulk_capabilities.available_capabilities()
     imported = libxc_bulk.available_functionals()
@@ -42,7 +59,7 @@ def test_bulk_capability_inventory_is_exact_imported_inventory() -> None:
 
     for capability in capabilities:
         payload = capability.to_payload()
-        assert payload["schema"] == "vibeqc.libxc-bulk-capability.v1"
+        assert payload["schema"] == "vibeqc.libxc-bulk-capability.v2"
         assert capability.domain == libxc_bulk.BULK_SEMANTICS
         assert capability.spin_layouts == ("polarized", "unpolarized")
         assert capability.validated_outputs == ("energy", "vxc", "fxc")
@@ -51,6 +68,15 @@ def test_bulk_capability_inventory_is_exact_imported_inventory() -> None:
         assert capability.required_ingredients
         assert capability.required_ingredients[0] == "rho"
         assert capability.claim_level == "pointwise-validated"
+        assert capability.qualified_stages == (
+            "graph-imported",
+            "pointwise-validated",
+        )
+        assert capability.ready_stages == (
+            "compiled-cpu",
+            "compiled-cuda",
+            "production-domain",
+        )
         assert capability.public_dft is False
         assert "molecular-scf" in capability.unqualified_stages
         assert "forces" in capability.unqualified_stages
@@ -92,8 +118,177 @@ def test_bulk_capability_lookup_is_case_insensitive_and_fail_closed() -> None:
             libxc_bulk_capabilities.functional_capability(name)
 
     for level in ("compiled-cuda", "gpu-runtime", "molecular-scf", "public-method"):
-        with pytest.raises(ValueError):
-            libxc_bulk_capabilities.claimable_functionals(level)
+        assert libxc_bulk_capabilities.claimable_functionals(level) == ()
+
+    with pytest.raises(ValueError, match="unknown bulk capability stage"):
+        libxc_bulk_capabilities.claimable_functionals("not-a-stage")
+
+
+def test_stage_promotion_requires_prerequisites_and_never_jumps() -> None:
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    evidence = {
+        "molecular-scf": _stage_evidence(base, "molecular-scf"),
+        "public-method": _stage_evidence(base, "public-method"),
+    }
+
+    capability = libxc_bulk_capabilities.functional_capability(
+        base.name, evidence=evidence
+    )
+    assert capability.qualified_stages == (
+        "graph-imported",
+        "pointwise-validated",
+    )
+    assert capability.public_dft is False
+    assert "molecular-scf" not in capability.ready_stages
+    assert "public-method" not in capability.ready_stages
+
+
+def test_cpu_evidence_promotes_scf_and_public_without_force_or_response() -> None:
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    evidence = {
+        stage: _stage_evidence(base, stage)
+        for stage in (
+            "compiled-cpu",
+            "production-domain",
+            "molecular-scf",
+            "public-method",
+        )
+    }
+
+    capability = libxc_bulk_capabilities.functional_capability(
+        base.name, evidence=evidence
+    )
+    assert capability.qualified_stages == (
+        "graph-imported",
+        "pointwise-validated",
+        "compiled-cpu",
+        "production-domain",
+        "molecular-scf",
+        "public-method",
+    )
+    assert capability.public_dft is True
+    assert "forces" in capability.ready_stages
+    assert "response" in capability.ready_stages
+    assert "compiled-cuda" in capability.ready_stages
+
+
+def test_gpu_runtime_is_alternative_execution_prerequisite_for_scf() -> None:
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    evidence = {
+        stage: _stage_evidence(base, stage)
+        for stage in (
+            "compiled-cuda",
+            "production-domain",
+            "gpu-runtime",
+            "molecular-scf",
+        )
+    }
+
+    capability = libxc_bulk_capabilities.functional_capability(
+        base.name, evidence=evidence
+    )
+    assert "compiled-cpu" not in capability.qualified_stages
+    assert "compiled-cuda" in capability.qualified_stages
+    assert "gpu-runtime" in capability.qualified_stages
+    assert "molecular-scf" in capability.qualified_stages
+
+
+def test_claimable_inventory_is_computed_from_attached_evidence() -> None:
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    evidence = {
+        base.name: {
+            "compiled-cpu": _stage_evidence(base, "compiled-cpu"),
+        }
+    }
+
+    assert libxc_bulk_capabilities.claimable_functionals("compiled-cpu", evidence) == (
+        base.name,
+    )
+    assert (
+        libxc_bulk_capabilities.claimable_functionals("compiled-cuda", evidence) == ()
+    )
+
+
+def test_stage_evidence_is_identity_bound_and_schema_checked() -> None:
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    good = _stage_evidence(base, "compiled-cpu")
+
+    bad_identity = {**good, "subject_identity": "0" * 64}
+    with pytest.raises(ValueError, match="subject identity mismatch"):
+        libxc_bulk_capabilities.functional_capability(
+            base.name, evidence={"compiled-cpu": bad_identity}
+        )
+
+    bad_stage = {**good, "stage": "compiled-cuda"}
+    with pytest.raises(ValueError, match="stage mismatch"):
+        libxc_bulk_capabilities.functional_capability(
+            base.name, evidence={"compiled-cpu": bad_stage}
+        )
+
+    no_reference = {**good, "evidence": ""}
+    with pytest.raises(ValueError, match="non-empty evidence reference"):
+        libxc_bulk_capabilities.functional_capability(
+            base.name, evidence={"compiled-cpu": no_reference}
+        )
+
+    with pytest.raises(ValueError, match="cannot be overridden"):
+        libxc_bulk_capabilities.functional_capability(
+            base.name,
+            evidence={
+                "graph-imported": {
+                    **good,
+                    "stage": "graph-imported",
+                }
+            },
+        )
+
+
+@pytest.mark.parametrize(
+    "change", ("binding", "source", "upstream", "binding-semantics")
+)
+def test_stage_evidence_rejects_changed_scientific_inputs(
+    monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    """Same name and owner must not reuse proof for different scientific input."""
+    import copy
+
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    evidence = {"compiled-cpu": _stage_evidence(base, "compiled-cpu")}
+    catalog = copy.deepcopy(libxc_bulk.read_catalog())
+    record = next(
+        item for item in catalog["registrations"] if item["name"] == base.name
+    )
+    if change == "binding":
+        record["bindings"]["params_a_mu"] = "0.5"
+    elif change == "source":
+        catalog["source_files"][record["entry"]] = "0" * 64
+    elif change == "upstream":
+        catalog["upstream"] = {"revision": "changed-source-revision"}
+    else:
+        record["binding_semantics"] = "changed-parameter-interpretation"
+    monkeypatch.setattr(libxc_bulk, "read_catalog", lambda: catalog)
+    with pytest.raises(ValueError, match="subject identity mismatch"):
+        libxc_bulk_capabilities.functional_capability(base.name, evidence=evidence)
+
+
+def test_stage_evidence_rejects_changed_compiler_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Implementation drift invalidates proof without importing native runtime."""
+    from vibeqc_compiler.common import paths
+
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    evidence = {"compiled-cpu": _stage_evidence(base, "compiled-cpu")}
+    original = paths.source_hashes
+
+    def changed(*families: str, assets: tuple[str, ...] = ()) -> dict[str, str]:
+        result = original(*families, assets=assets)
+        result["python/vibeqc_compiler/integral/scalar_c.py"] = "0" * 64
+        return result
+
+    monkeypatch.setattr(paths, "source_hashes", changed)
+    with pytest.raises(ValueError, match="subject identity mismatch"):
+        libxc_bulk_capabilities.functional_capability(base.name, evidence=evidence)
 
 
 def test_pointwise_lda_gga_components_are_automatically_representable() -> None:

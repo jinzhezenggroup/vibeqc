@@ -45,10 +45,11 @@ double max_error(const std::vector<double>& first, const std::vector<double>& se
   return error;
 }
 
-vibeqc::scf::ResolvedFockBuild mixed_strategy(vibeqc::scf::FockSpin spin) {
+vibeqc::scf::ResolvedFockBuild mixed_strategy(vibeqc::scf::FockSpin spin,
+                                              unsigned derivative_order = 0) {
   using namespace vibeqc::scf;
   auto spec = make_hf_fock_spec(spin);
-  spec.derivative_order = 0;
+  spec.derivative_order = derivative_order;
   spec.coulomb.approximation = FockApproximation::DensityFitted;
   spec.exchange.approximation = FockApproximation::SeminumericalCosx;
   spec.exchange.cosx = make_cosx_v1_spec(12, 8, 16, 3, 1.0e-12);
@@ -130,6 +131,35 @@ void verify_restricted(const vibeqc::core::System& system, int device) {
   }
   require(budget_rejected,
           "prepared RI-J/COSX-K accepted a budget with no capacity for the J provider");
+
+  const auto force_strategy = mixed_strategy(scf::FockSpin::Restricted, 1);
+  dft::PreparedCosxFockPlan force_gpu(system, &system, force_strategy, 7, device);
+  scf::PreparedFockPlan force_cpu_j(system, &system, cpu_j_strategy(force_strategy));
+  auto expected_derivative = force_cpu_j.energy_derivative(density);
+  const auto reference_derivative = dft::build_cosx_molecular_derivative_reference(
+      force_gpu.grid(), density, dft::CosxDensityConvention::rhf_spin_summed);
+  for (std::size_t coordinate = 0; coordinate < expected_derivative.size(); ++coordinate)
+    expected_derivative[coordinate] += reference_derivative.nuclear_gradient[coordinate];
+  const auto actual_derivative = force_gpu.energy_derivative(density);
+  require(max_error(actual_derivative, expected_derivative) < 3.0e-8,
+          "prepared RI-J/COSX-K RHF derivative differs from independent J/K oracles");
+  require(force_gpu.diagnostic().derivative.bounded_tiling &&
+              force_gpu.diagnostic().derivative_peak_device_bytes <=
+                  force_gpu.diagnostic().device_budget_bytes,
+          "prepared COSX force provider lost bounded peak-resource accounting");
+
+  auto scaled_spec = force_strategy.spec;
+  scaled_spec.exchange.coefficient *= 0.5;
+  const auto scaled_strategy = scf::resolve_fock_build(scaled_spec, scf::FockBackend::Cuda,
+                                                       force_strategy.screening_tolerance,
+                                                       force_strategy.metric_relative_threshold);
+  dft::PreparedCosxFockPlan scaled_gpu(system, &system, scaled_strategy, 7, device);
+  scf::PreparedFockPlan scaled_cpu_j(system, &system, cpu_j_strategy(scaled_strategy));
+  auto scaled_expected = scaled_cpu_j.energy_derivative(density);
+  for (std::size_t coordinate = 0; coordinate < scaled_expected.size(); ++coordinate)
+    scaled_expected[coordinate] += 0.5 * reference_derivative.nuclear_gradient[coordinate];
+  require(max_error(scaled_gpu.energy_derivative(density), scaled_expected) < 3.0e-8,
+          "prepared COSX derivative ignored the resolved arbitrary exchange coefficient");
 }
 
 void verify_unrestricted(const vibeqc::core::System& system, int device) {
@@ -165,6 +195,20 @@ void verify_unrestricted(const vibeqc::core::System& system, int device) {
   require(max_error(actual_fock.alpha, expected_fock.alpha) < 3.0e-10 &&
               max_error(actual_fock.beta, expected_fock.beta) < 3.0e-10,
           "prepared UHF RI-J/COSX-K Fock differs from the independent oracles");
+
+  const auto force_strategy = mixed_strategy(scf::FockSpin::Unrestricted, 1);
+  dft::PreparedCosxFockPlan force_gpu(system, &system, force_strategy, 5, device);
+  scf::PreparedFockPlan force_cpu_j(system, &system, cpu_j_strategy(force_strategy));
+  auto expected_derivative = force_cpu_j.energy_derivative(alpha, beta);
+  const auto alpha_reference = dft::build_cosx_molecular_derivative_reference(
+      force_gpu.grid(), alpha, dft::CosxDensityConvention::spin_resolved);
+  const auto beta_reference = dft::build_cosx_molecular_derivative_reference(
+      force_gpu.grid(), beta, dft::CosxDensityConvention::spin_resolved);
+  for (std::size_t coordinate = 0; coordinate < expected_derivative.size(); ++coordinate)
+    expected_derivative[coordinate] +=
+        alpha_reference.nuclear_gradient[coordinate] + beta_reference.nuclear_gradient[coordinate];
+  require(max_error(force_gpu.energy_derivative(alpha, beta), expected_derivative) < 3.0e-8,
+          "prepared RI-J/COSX-K UHF derivative differs from independent J/K oracles");
 }
 
 }  // namespace
