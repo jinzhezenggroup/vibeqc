@@ -35,6 +35,7 @@ from vibeqc_compiler.method.spec import (
     SemilocalXCPrimitive,
     resolve_method,
 )
+from vibeqc_compiler.xc.expression_dispatch import build_energy_expression
 from vibeqc_compiler.xc.production_policy import (
     lda_xc_pw_polarized_tail_expression,
     lda_xc_pw_unpolarized_tail_expression,
@@ -42,7 +43,6 @@ from vibeqc_compiler.xc.production_policy import (
     pbe_exchange_direct_expression,
     pbe_exchange_reciprocal_expression,
 )
-from vibeqc_compiler.xc.program import build_energy_expression
 from vibeqc_compiler.xc.spec import functional
 from vibeqc_compiler.xc.wb97mv_maple import (
     DENSITY_THRESHOLD as WB97MV_DENSITY_THRESHOLD,

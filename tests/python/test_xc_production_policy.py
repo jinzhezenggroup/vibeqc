@@ -33,8 +33,25 @@ def test_production_policy_is_separate_from_legacy_formula_dispatch() -> None:
     assert {"pw", "lda_correlation"}.isdisjoint(_function_names(legacy))
 
 
-def test_cpu_generator_has_no_legacy_expression_consumer_edge() -> None:
-    assert all(
-        consumer.path != "tools/generate_xc_cpu.py"
-        for consumer in scan_legacy_consumers(ROOT)
-    )
+def test_runtime_and_cpu_generator_use_only_the_lightweight_dispatch() -> None:
+    consumers = scan_legacy_consumers(ROOT)
+    forbidden = {
+        "python/vibeqc_compiler/xc/program.py",
+        "tools/generate_xc_cpu.py",
+    }
+    assert all(consumer.path not in forbidden for consumer in consumers)
+    bridge = {
+        (consumer.path, consumer.module)
+        for consumer in consumers
+        if consumer.path == "python/vibeqc_compiler/xc/expression_dispatch.py"
+    }
+    assert bridge == {
+        (
+            "python/vibeqc_compiler/xc/expression_dispatch.py",
+            "vibeqc_compiler.xc.expressions",
+        ),
+        (
+            "python/vibeqc_compiler/xc/expression_dispatch.py",
+            "vibeqc_compiler.xc.rsh_expressions",
+        ),
+    }

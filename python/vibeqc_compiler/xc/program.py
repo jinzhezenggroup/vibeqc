@@ -12,15 +12,8 @@ from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.integral.expr import AlgebraForm, Expr, Graph
 
-from .expressions import energy_expression as semilocal_energy_expression
-from .rsh_expressions import energy_expression as rsh_energy_expression
-from .spec import (
-    SPECIAL_EXPRESSION_COMPONENTS,
-    WB97MV_COMPONENTS,
-    FunctionalSpec,
-    UnsupportedXC,
-)
-from .wb97mv_maple import energy_expression as wb97mv_energy_expression
+from .expression_dispatch import build_energy_expression
+from .spec import FunctionalSpec, UnsupportedXC
 
 
 def output_set(spec: typing.Any, order: typing.Any) -> typing.Any:
@@ -215,24 +208,6 @@ class XCProgram:
                 [rows[(min(i, j), max(i, j))] for i in range(size) for j in range(size)]
             ).reshape(size, size, result.shape[1])
         return answer
-
-
-def build_energy_expression(
-    spec: typing.Any, *, production: bool = False
-) -> typing.Any:
-    """Build the family-selected scalar energy DAG through one dispatch boundary."""
-    if type(production) is not bool:
-        raise TypeError("production must be bool")
-    active = {name for name, coefficient in spec.components if coefficient}
-    if active & set(WB97MV_COMPONENTS):
-        if not active <= set(WB97MV_COMPONENTS):
-            raise UnsupportedXC(
-                "omegaB97M-V semilocal components cannot be mixed with another XC family"
-            )
-        return wb97mv_energy_expression(spec)
-    if active & set(SPECIAL_EXPRESSION_COMPONENTS):
-        return rsh_energy_expression(spec, production=production)
-    return semilocal_energy_expression(spec, production=production)
 
 
 def build_program(
