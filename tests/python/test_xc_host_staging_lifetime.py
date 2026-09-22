@@ -17,6 +17,12 @@ def test_host_xc_staging_keeps_copy_sources_alive(tmp_path: Path) -> None:
     body = source.split("  CudaXcView stage_xc(", 1)[1].split(
         "\n  void enqueue_legacy()", 1
     )[0]
+    header = (ROOT / "src/dft/cuda_xc.hpp").read_text()
+    precision = (
+        "enum class CudaXcDensityPrecision"
+        + header.split("enum class CudaXcDensityPrecision", 1)[1].split("};", 1)[0]
+        + "};"
+    )
     harness = r"""
 #include <algorithm>
 #include <array>
@@ -32,7 +38,8 @@ namespace scf { struct ScfOptions {
 }; }
 struct CudaXcView { std::uint64_t generation; std::size_t n; unsigned spins;
  double* potential; double* totals; int* error; int stream; };
-struct DeviceXC { void enqueue(double*,std::size_t,std::uint64_t) {}
+DENSITY_PRECISION_DECL
+struct DeviceXC { void enqueue(double*,std::size_t,std::uint64_t,CudaXcDensityPrecision) {}
  CudaXcView view(std::uint64_t) { return {}; } };
 struct XcIntegral { std::vector<double> potential=std::vector<double>(4,3);
  double energy=2.5, electrons=2; };
@@ -101,7 +108,9 @@ int main() {
  }
 }
 """
-    harness = harness.replace("STAGE_BODY", body)
+    harness = harness.replace("STAGE_BODY", body).replace(
+        "DENSITY_PRECISION_DECL", precision
+    )
     cpp, binary = tmp_path / "staging.cpp", tmp_path / "staging"
     cpp.write_text(harness)
     subprocess.run(
