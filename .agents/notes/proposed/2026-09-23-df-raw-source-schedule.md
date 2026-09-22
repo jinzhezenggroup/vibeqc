@@ -74,3 +74,14 @@ short deadlines when the 96-atom endpoint remains abnormally slow.
 Source-driven reuse remains follow-up work under #1078. Revisit this mapping
 if long contractions or another target demonstrate a complete endpoint
 regression; keep explicit controls for a reproducible comparison.
+
+## Allocated source qualification
+
+All 48 independent libcint/NumPy cases passed on RTX 5090: automatic plus
+three explicit mappings, full and 7-pair/3-auxiliary tiles, Cartesian,
+spherical, both mixed representations, long contractions and rank deficiency.
+Each fixture has two geometries with different shell/primitive ordering;
+raw/metric values and RHF/UHF J/K use the unchanged gates above. The integration
+library hash was
+`93b9d7ddf6366f618fd8037a9d85e626b2f441ab8bfdbc3c58be9a8ed7fa6ec5`.
+Complete endpoint qualification remains pending.
