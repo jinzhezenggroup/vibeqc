@@ -5,6 +5,7 @@
 #include <string>
 
 #include "molecule/basis.hpp"
+#include "runtime/resource_usage.hpp"
 #include "scf/fleet.hpp"
 #include "scf/fock_prepared.hpp"
 #include "scf/fock_provider.hpp"
@@ -276,6 +277,29 @@ void molecular_endpoints() {
     baseline_options.resolved_fock_build =
         resolve_fock_build(direct_spec, FockBackend::Cpu, baseline_options.screening_tolerance);
     const auto baseline = run_cpu_fock_strategy(system, nullptr, baseline_options);
+    // One identical full-build iteration isolates retained anchor storage.
+    const auto observed_peak = [&](bool enabled) {
+      auto probe_options = baseline_options;
+      probe_options.max_iterations = 1;
+      probe_options.compute_forces = false;
+      probe_options.incremental_direct_jk = enabled;
+      auto& observation = vibeqc::runtime::cpu_resource_observation;
+      const auto saved = observation;
+      observation = {};
+      observation.active = true;
+      observation.outer_host_bytes = 17;
+      (void)run_cpu_fock_strategy(system, nullptr, probe_options);
+      const auto peak = observation.peak_bytes;
+      require(observation.outer_host_bytes == 17, "incremental observation leaked outer scope");
+      observation = saved;
+      return peak;
+    };
+    const auto ordinary_peak = observed_peak(false);
+    const auto incremental_peak = observed_peak(true);
+    const auto n = vibeqc::molecule::ao_count(system);
+    const auto anchor_bytes = (uhf ? 5U : 3U) * n * n * sizeof(double);
+    require(incremental_peak >= ordinary_peak + anchor_bytes,
+            "incremental density/J/K anchors missing from simultaneous CPU observation");
 
     auto incremental_options = baseline_options;
     incremental_options.incremental_direct_jk = true;
@@ -296,6 +320,26 @@ void molecular_endpoints() {
     require(d.post_scf_full_builds == 2,
             "incremental direct J/K bypassed strict physical finalization");
     require(d.periodic_rebuilds == 0, "disabled periodic rebuild unexpectedly executed");
+
+    auto asymmetric = system;
+    asymmetric.atoms[1].atomic_number = 2;
+    asymmetric.electron_count = uhf ? 3 : 2;
+    asymmetric.multiplicity = uhf ? 2 : 1;
+    auto periodic_options = incremental_options;
+    periodic_options.incremental_direct_jk_rebuild_interval = 1;
+    const auto full_asymmetric = run_cpu_fock_strategy(asymmetric, nullptr, baseline_options);
+    const auto periodic = run_cpu_fock_strategy(asymmetric, nullptr, periodic_options);
+    require(full_asymmetric.converged && periodic.converged,
+            "asymmetric periodic incremental solve failed");
+    close(periodic.energy, full_asymmetric.energy, 2e-11, "periodic incremental energy drift");
+    matrix(periodic.forces, full_asymmetric.forces, "periodic incremental force drift", 2e-9);
+    const auto& refresh = periodic.incremental_direct_jk;
+    require(refresh.periodic_rebuilds > 0, "periodic anchor refresh was not exercised");
+    require(refresh.anchor_full_builds == refresh.periodic_rebuilds + 1,
+            "periodic anchor full-build counter mismatch");
+    require(refresh.anchor_full_builds + refresh.delta_builds == periodic.iterations,
+            "periodic counter accounting lost an accepted iterate");
+    require(refresh.post_scf_full_builds == 2, "periodic mode bypassed physical finalization");
   }
 
   // Approximate providers are deliberately outside #990's exact baseline and
