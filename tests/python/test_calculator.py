@@ -40,6 +40,7 @@ def test_precision_provenance_reports_the_policy_that_actually_ran() -> None:
         assert result.precision["mixed_precision_fock_threshold"] == 0.0
         assert result.precision["mixed_precision_reserved_error"] == 0.0
         assert result.precision["refinement_iterations"] == 0
+        assert result.precision["operator_work_counters_valid"] is False
     with pytest.raises(ValueError):
         Calculator(method="rhf", basis="sto-3g", device="cpu", precision="tf32")
 

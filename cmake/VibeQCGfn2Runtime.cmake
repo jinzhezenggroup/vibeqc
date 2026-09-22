@@ -99,6 +99,21 @@ function(vibeqc_add_gfn2_runtime target)
       ${_gfn2_root}/src/backends/cuda/gfn2_total_energy.cu
     )
     add_library(vibeqc_gfn2_cuda STATIC ${_gfn2_cuda_sources})
+    set(VIBEQC_GFN2_ELECTRONIC_CUDA_HEADER
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_electronic_native.cuh")
+    vibeqc_register_generated_sources(
+      NAME vibeqc_gfn2_electronic_cuda_codegen
+      TARGET vibeqc_gfn2_cuda
+      GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_electronic_cuda.py"
+      OUTPUTS "${VIBEQC_GFN2_ELECTRONIC_CUDA_HEADER}"
+      DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_electronic.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_electronic_contract.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_electronic_runtime.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+      ARGS --output "${VIBEQC_GFN2_ELECTRONIC_CUDA_HEADER}"
+      COMMENT "Generating compiler-owned GFN2 CUDA electronic pair science")
     # Both CPU and CUDA consume the one compiler-owned pair artifact.
     add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_pair_cpu_codegen)
     target_include_directories(vibeqc_gfn2_cuda PRIVATE
@@ -106,6 +121,7 @@ function(vibeqc_add_gfn2_runtime target)
       ${_gfn2_root}
       ${_gfn2_root}/include
       ${_gfn2_root}/src
+      ${CMAKE_CURRENT_BINARY_DIR}/generated
       ${CMAKE_CURRENT_SOURCE_DIR}/include
       ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_definitions(vibeqc_gfn2_cuda PRIVATE XTBLOOM_HAS_CUDA=1)
