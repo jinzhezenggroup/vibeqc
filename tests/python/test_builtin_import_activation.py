@@ -90,6 +90,15 @@ assert not forbidden, (
     "ordinary runtime import activated compiler/JIT machinery: "
     + ", ".join(forbidden)
 )
+
+# Explicit prepared execution remains available and forwards to the original
+# classes, rather than a proxy or separately loaded copy of the implementation.
+import vibeqc_compiler.dft as dft
+assert {"PreparedGrid", "PreparedGridBatch"} <= set(dir(dft))
+from vibeqc_compiler.dft import PreparedGrid, PreparedGridBatch
+from vibeqc_compiler.dft import prepared
+assert PreparedGrid is prepared.PreparedGrid
+assert PreparedGridBatch is prepared.PreparedGridBatch
 """
 
     result = subprocess.run(
