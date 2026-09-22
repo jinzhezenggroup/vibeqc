@@ -40,6 +40,7 @@ def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     runtime = source.index('#include "cuda_grid.cu"')
     for scientific in (
         "__global__ void ao_kernel",
+        "__global__ void ao_kernel_fp32",
         "__global__ void feature_kernel",
         "__device__ vibeqc::dft::point::Value evaluate_xc_point",
         "__global__ void xc_local_potential_kernel",

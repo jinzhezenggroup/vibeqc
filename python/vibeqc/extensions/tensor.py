@@ -64,13 +64,26 @@ class CompiledTensorProgram:
     provenance is returned as a detached mapping for reproducibility.
     """
 
-    __slots__ = ("_native", "logical_hash", "mode", "target")
+    __slots__ = ("_logical_hash", "_native")
 
     def __init__(self, program: Program, native: typing.Any) -> None:
         self._native = native
-        self.logical_hash = program.logical_hash
-        self.target = "cpu"
-        self.mode = "jit"
+        self._logical_hash = program.logical_hash
+
+    @property
+    def logical_hash(self) -> str:
+        """Return the immutable mathematical identity of the compiled program."""
+        return self._logical_hash
+
+    @property
+    def target(self) -> str:
+        """Return the execution target bound to this native owner."""
+        return "cpu"
+
+    @property
+    def mode(self) -> str:
+        """Return the explicit compilation mode used for this artifact."""
+        return "jit"
 
     @property
     def identity(self) -> str:
@@ -164,9 +177,9 @@ def compile(
     if cache is not None and not isinstance(cache, (str, os.PathLike)):
         raise TypeError("cache must be a filesystem path")
 
-    # Keep activation below all semantic validation: merely importing the
-    # extension surface or rejecting an unsupported request must not probe a
-    # local compiler/toolchain.
+    # Import lowering only on an explicit request. The native owner invokes the
+    # compiler factory after its semantic/resource checks, so unsupported IR
+    # does not probe a toolchain or create cache artifacts.
     from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
     from vibeqc_compiler.tensor.cpu import NativeTensorProgram
 
@@ -180,10 +193,9 @@ def compile(
         )
     else:
         cache_path = Path(cache)
-    adapter = CppCompilerAdapter(compiler_path, compile_timeout=timeout)
     native = NativeTensorProgram(
         program,
-        compiler=adapter,
+        compiler=lambda: CppCompilerAdapter(compiler_path, compile_timeout=timeout),
         cache=cache_path,
         max_bytes=max_bytes,
         max_work=max_work,

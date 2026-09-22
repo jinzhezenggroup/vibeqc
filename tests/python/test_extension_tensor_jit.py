@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -43,7 +46,7 @@ def test_explicit_cpu_jit_wraps_native_artifact_without_leaking_owner(
             max_work: int,
             max_nodes: int,
         ) -> None:
-            calls["native_compiler"] = compiler
+            calls["native_compiler"] = compiler()
             calls["cache"] = cache
             calls["budgets"] = (max_bytes, max_work, max_nodes)
             self.identity = "native-source-identity"
@@ -96,6 +99,9 @@ def test_explicit_cpu_jit_wraps_native_artifact_without_leaking_owner(
     report["resources"]["required_bytes"] = 0
     assert compiled.artifact["metadata"]["key"] == "verified-artifact"
     assert compiled.resources["required_bytes"] == 128
+    for field in ("logical_hash", "target", "mode", "identity"):
+        with pytest.raises(AttributeError):
+            setattr(compiled, field, "tampered")
 
 
 def test_explicit_cpu_jit_compiles_and_executes_real_program(tmp_path: Path) -> None:
@@ -120,6 +126,12 @@ def test_explicit_cpu_jit_compiles_and_executes_real_program(tmp_path: Path) -> 
     assert Path(artifact["library"]).is_file()
     assert artifact["metadata"]["key"]
     assert artifact["metadata"]["binary_sha256"]
+
+    replay = tensor.compile(program, compiler=compiler, cache=tmp_path)
+    assert replay.identity == compiled.identity
+    assert replay.artifact["library"] == artifact["library"]
+    with pytest.raises(ValueError, match="invalid float64 tensor input"):
+        compiled.execute({"x": feed.astype(np.float32)})
 
 
 def test_tensor_jit_rejects_unsupported_requests_before_toolchain_activation(
@@ -159,6 +171,7 @@ def test_tensor_jit_resolves_toolchain_and_cache_only_on_explicit_request(
     class FakeNativeTensorProgram:
         def __init__(self, program: tensor.Program, **kwargs: object) -> None:
             calls.update(kwargs)
+            kwargs["compiler"]()
             self.identity = "identity"
             self.resources = {}
             cache = Path(kwargs["cache"])
@@ -187,3 +200,83 @@ def test_tensor_jit_validates_timeout_before_toolchain_activation(
     error = TypeError if isinstance(timeout, (bool, str)) else ValueError
     with pytest.raises(error, match="compile_timeout"):
         tensor.compile(program, compile_timeout=timeout)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("case", ["dtype", "primitive", "bytes", "work", "nodes"])
+def test_unsupported_ir_and_budgets_do_not_discover_toolchain(
+    case: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The actual lowering must reject before discovery, processes or cache writes."""
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("invalid IR activated a toolchain")
+
+    monkeypatch.setattr(shutil, "which", forbidden)
+    monkeypatch.setattr(subprocess, "Popen", forbidden)
+    program = _program()
+    budgets: dict[str, int] = {}
+    expected = "budget"
+    if case == "dtype":
+        i = tensor.Index("i", tensor.IndexSpace("ao", "ao", 2))
+        node = tensor.input_tensor(
+            "x", tensor.TensorSpec((i,), dtype="float32", role="input")
+        )
+        program = tensor.Program({"value": node})
+        expected = "float64"
+    elif case == "primitive":
+        from vibeqc_compiler.tensor import exp
+
+        program = tensor.Program({"value": exp(program.outputs["value"])})
+        expected = "unsupported CPU primitive"
+    else:
+        budgets["max_" + case] = 0
+    cache = tmp_path / "uncreated"
+    with pytest.raises(ValueError, match=expected):
+        tensor.compile(program, cache=cache, **budgets)
+    assert not cache.exists()
+
+
+def test_extension_import_and_rejection_are_lazy_in_fresh_process(
+    tmp_path: Path,
+) -> None:
+    """Collection-time compiler imports must not hide eager public activation."""
+    code = """
+import shutil
+import subprocess
+import sys
+
+def forbidden(*args, **kwargs):
+    raise AssertionError('import or rejected request activated the toolchain')
+
+shutil.which = forbidden
+subprocess.Popen = forbidden
+from vibeqc.extensions import tensor
+space = tensor.IndexSpace('ao', 'ao', 2)
+node = tensor.input_tensor('x', tensor.TensorSpec((tensor.Index('i', space),), role='input'))
+program = tensor.Program({'value': node})
+tensor.inspect(program)
+for kwargs in ({'mode': 'aot'}, {'target': 'cuda'}):
+    try:
+        tensor.compile(program, **kwargs)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('unsupported compilation accepted')
+assert not {
+    'vibeqc_compiler.common.cpp_adapter',
+    'vibeqc_compiler.common.cuda_adapter',
+    'vibeqc_compiler.common.native_runtime',
+    'vibeqc_compiler.tensor.cpu',
+} & sys.modules.keys()
+"""
+    root = Path(__file__).resolve().parents[2]
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(root / "python")},
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
