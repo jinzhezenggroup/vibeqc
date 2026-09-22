@@ -1,12 +1,18 @@
 """The pooled-J/K benchmark must reject invalid results before publication."""
 
+from __future__ import annotations
+
 import importlib.util
 import json
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -29,7 +35,7 @@ def run_benchmark(
     class Batch:
         calls = 0
 
-        def __enter__(self) -> "Batch":
+        def __enter__(self) -> Self:
             return self
 
         def __exit__(self, *args: object) -> None:
