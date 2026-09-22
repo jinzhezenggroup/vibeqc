@@ -44,7 +44,32 @@ from vibeqc_compiler.xc.expressions import (
 from vibeqc_compiler.xc.rsh_expressions import (
     energy_expression as rsh_energy_expression,
 )
-from vibeqc_compiler.xc.spec import SPECIAL_EXPRESSION_COMPONENTS, functional
+from vibeqc_compiler.xc.spec import (
+    SPECIAL_EXPRESSION_COMPONENTS,
+    WB97MV_COMPONENTS,
+    functional,
+)
+from vibeqc_compiler.xc.wb97mv_expressions import (
+    energy_expression as wb97mv_reference_energy_expression,
+)
+from vibeqc_compiler.xc.wb97mv_maple import (
+    DENSITY_THRESHOLD as WB97MV_DENSITY_THRESHOLD,
+)
+from vibeqc_compiler.xc.wb97mv_maple import (
+    SIGMA_THRESHOLD as WB97MV_SIGMA_THRESHOLD,
+)
+from vibeqc_compiler.xc.wb97mv_maple import (
+    SMOOTH_LR_CUTOFF as WB97MV_SMOOTH_LR_CUTOFF,
+)
+from vibeqc_compiler.xc.wb97mv_maple import (
+    SMOOTH_LR_ORDER as WB97MV_SMOOTH_LR_ORDER,
+)
+from vibeqc_compiler.xc.wb97mv_maple import (
+    TAU_THRESHOLD as WB97MV_TAU_THRESHOLD,
+)
+from vibeqc_compiler.xc.wb97mv_maple import (
+    energy_expression as wb97mv_maple_energy_expression,
+)
 
 
 def build_roots(
@@ -52,12 +77,15 @@ def build_roots(
 ) -> tuple[Any, Any, str]:
     """Build derivative roots and the exact emitted-expression identity."""
 
-    special = any(
-        name in SPECIAL_EXPRESSION_COMPONENTS
-        for name, coefficient in spec.components
-        if coefficient
-    )
-    if special:
+    active = {name for name, coefficient in spec.components if coefficient}
+    wb97mv = bool(active.intersection(WB97MV_COMPONENTS))
+    special = bool(active.intersection(SPECIAL_EXPRESSION_COMPONENTS))
+    if wb97mv:
+        if production:
+            graph, energy, variables = wb97mv_maple_energy_expression(spec)
+        else:
+            graph, energy, variables = wb97mv_reference_energy_expression(spec)
+    elif special:
         graph, energy, variables = rsh_energy_expression(spec, production=production)
     else:
         graph, energy, variables = energy_expression(spec, production=production)
@@ -216,6 +244,45 @@ def emit_lda_xc_pw_polarized_production() -> str:
             + ", "
             + references[2]
             + ", 0.0, 0.0, 0.0, 0.0, 0.0}};",
+            "}",
+            "",
+        ]
+    )
+
+
+def emit_wb97mv_polarized() -> str:
+    """Emit production B97M semilocal E/vxc from pinned Libxc Maple."""
+
+    method = resolve_method("WB97M-V", spin="polarized")
+    semilocal = next(
+        primitive.functional
+        for primitive in method.primitives
+        if isinstance(primitive, SemilocalXCPrimitive)
+    )
+    outputs = ((), *((i,) for i in range(len(semilocal.features))))
+    graph, roots, expression_hash = build_roots(semilocal, outputs, production=True)
+    emitter = ScalarCEmitter(graph, {name: name for name in semilocal.features})
+    emitter.emit(roots)
+    references = [emitter.reference(root) for root in roots]
+    return "\n".join(
+        [
+            "struct Wb97mvPolarizedValue {",
+            "  double energy_density;",
+            "  double feature_derivative[7];",
+            "};",
+            f'inline constexpr const char* kWb97mvSemilocalExpressionIdentity = "{expression_hash}";',
+            f'inline constexpr const char* kWb97mvMethodIdentity = "{method.identity}";',
+            'inline constexpr const char* kWb97mvProductionPolicy = "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";',
+            f"inline constexpr double kWb97mvDensityThreshold = {WB97MV_DENSITY_THRESHOLD.hex()};",
+            f"inline constexpr double kWb97mvSigmaThreshold = {WB97MV_SIGMA_THRESHOLD.hex()};",
+            f"inline constexpr double kWb97mvTauThreshold = {WB97MV_TAU_THRESHOLD.hex()};",
+            f"inline constexpr double kWb97mvSmoothLrCutoff = {WB97MV_SMOOTH_LR_CUTOFF.hex()};",
+            f"inline constexpr unsigned kWb97mvSmoothLrOrder = {WB97MV_SMOOTH_LR_ORDER};",
+            "inline Wb97mvPolarizedValue wb97mv_polarized(",
+            "    double rho_a, double rho_b, double sigma_aa, double sigma_ab,",
+            "    double sigma_bb, double tau_a, double tau_b) {",
+            *emitter.lines,
+            "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};",
             "}",
             "",
         ]
@@ -606,6 +673,7 @@ def main() -> None:
         + emit_pbe_polarized_production()
         + emit_b3lyp_polarized()
         + emit_cam_b3lyp_polarized()
+        + emit_wb97mv_polarized()
         + emit_r2scan_polarized()
         + emit_feature_policy()
         + "}  // namespace vibeqc::dft::generated\n",

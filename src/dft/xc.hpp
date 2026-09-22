@@ -138,16 +138,31 @@ SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid
                                        const std::vector<double>& beta_density,
                                        std::size_t tile_points = 256);
 
-struct R2scanPointValue {
+struct MetaGgaPointValue {
   double energy{};
   double rho[2]{};
   double gradient[2][3]{};
   /** Coefficient of grad(phi_mu).grad(phi_nu), i.e. vtau/2. */
   double kinetic[2]{};
 };
+using R2scanPointValue = MetaGgaPointValue;
+using Wb97mvPointValue = MetaGgaPointValue;
+
+inline constexpr const char* kWb97mvProductionTailPolicy =
+    "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
 
 R2scanPointValue evaluate_r2scan_point(const double rho[2], const double (&gradient)[2][3],
                                        const double tau[2]);
+Wb97mvPointValue evaluate_wb97mv_point(const double rho[2], const double (&gradient)[2][3],
+                                       const double tau[2]);
+
+XcIntegral integrate_wb97mv_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                const std::vector<double>& density, std::size_t tile_points = 256,
+                                XcDensitySource source = {});
+SpinXcIntegral integrate_wb97mv_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                    const std::vector<double>& alpha_density,
+                                    const std::vector<double>& beta_density,
+                                    std::size_t tile_points = 256);
 
 /** r2SCAN meta-GGA using rho/sigma/tau and the generated vtau weak-form term. */
 XcIntegral integrate_r2scan_rks(const AoBasis& basis, const MolecularGrid& grid,

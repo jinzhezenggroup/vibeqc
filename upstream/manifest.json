@@ -134,12 +134,13 @@
         "python/vibeqc_compiler/xc/rsh_expressions.py": "636ff472dd5615f66af5ca882e0e0bd44c333b6910ca21c7ce5d4ec789a701ad",
         "python/vibeqc_compiler/xc/rsh_maple.py": "fe2a2748861b63920be5ac10ad74d137fe30506afd5d9efce013bc98fede8bb3",
         "python/vibeqc_compiler/xc/scan_maple.py": "4d0078a8148e5be8435660b7677c685a55ee27360f4c84efaf15581e82b46e1b",
-        "python/vibeqc_compiler/xc/spec.py": "1c817045e02bb61c66ed8467c81ddb6296e51ace47ee9cd86c665100a33d3313",
-        "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d"
+        "python/vibeqc_compiler/xc/spec.py": "498cac36c935a157179ae2ebb6082d5d3d72bd469172ed6ec3c4fce14e3fc2ff",
+        "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d",
+        "python/vibeqc_compiler/xc/wb97mv_maple.py": "28193d470447e6d70aebe291eb0a459c5977d278d55f11872a4573d2082a206f"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
       "generator_sha256": "721b2492beddf6fa5cf97671b374258c4c2771b7a5b8459900bb2f49fe65890a",
-      "input_identity_sha256": "2664145467e9ab5103bd6994ceb604f3127b6492d974db01768ba0e7029a5633",
+      "input_identity_sha256": "e593f34010e3f13105191d7b202e3fad2d17fbc17e1685253361ae3944072376",
       "inputs": [
         "libxc-7.0.0"
       ],
@@ -355,7 +356,10 @@
           "util.mpl",
           "b97mv.mpl",
           "hyb_mgga_xc_wb97mv.mpl",
-          "hyb_mgga_xc_wb97mv.c"
+          "hyb_mgga_xc_wb97mv.c",
+          "functionals.c",
+          "work_mgga.c",
+          "work_mgga_inc.c"
         ]
       },
       "consumers": [
@@ -376,6 +380,11 @@
           "sha256": "cfaacb3b656066ab286df9120c27423985a4bc2766ee385a13b86115b6b4b8cc",
           "upstream_path": "maple/b97mv.mpl",
           "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/b97mv.mpl"
+        },
+        "functionals.c": {
+          "sha256": "0e4596fb62e283ebd05ccd400ea2977b28d91d6915db90199ddd0e5297185f65",
+          "upstream_path": "src/functionals.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/functionals.c"
         },
         "gga_c_lyp.c": {
           "sha256": "d34fb158f6174ee2c27b4fb06a5dd203b71299a0aae7857dba85953a41cc62c6",
@@ -573,6 +582,16 @@
           "sha256": "9b323c53526caac537ee57f73640b8cf9fd2768fca2d4634ee8d37978d480197",
           "upstream_path": "maple/vwn.mpl",
           "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/vwn.mpl"
+        },
+        "work_mgga.c": {
+          "sha256": "d7f3756b15c00d71227a6f80aafe8e62617ad13107223b694846c212359dfad3",
+          "upstream_path": "src/work_mgga.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/work_mgga.c"
+        },
+        "work_mgga_inc.c": {
+          "sha256": "a408ffed4036e108d3794db84cf9b9b596301632261d2a78c30273f6caf0c870",
+          "upstream_path": "src/work_mgga_inc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/work_mgga_inc.c"
         }
       },
       "kind": "file-set",
