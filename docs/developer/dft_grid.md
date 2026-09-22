@@ -90,7 +90,7 @@ All temporary CUDA arrays are charged through the resource ledger and the pure
 the prepared Fock provider and retires before KS/XC state allocation. Unsupported
 inputs or failed normalization throw without a CPU partition fallback. The
 ordinary `MolecularGrid` constructor remains the independent CPU reference.
-See the [CUDA quadrature decision](../.agents/notes/implemented/performance/2026-09-23-cuda-molecular-quadrature.md).
+See the [CUDA quadrature decision](../../.agents/notes/implemented/performance/2026-09-23-cuda-molecular-quadrature.md).
 
 `grid.explicit(max_points=...)` is a guarded small-grid exporter. `ExplicitGrid`
 stores exact points, weights, owners, provenance and a verified content hash.
