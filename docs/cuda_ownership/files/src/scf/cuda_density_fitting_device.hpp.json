@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda_density_fitting_device.hpp",
+  "reason": "Borrowed DF-provider stream and device identity; no integral dispatch or scientific equations.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "runtime"
+}

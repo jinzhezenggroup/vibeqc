@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import runpy
 import shutil
 import subprocess
@@ -140,3 +141,74 @@ def test_generated_r2scan_matches_zero_minority_spin_libxc(tmp_path: Path) -> No
     )
     expected = np.asarray([values for _, values in REFERENCE])
     np.testing.assert_allclose(actual, expected, rtol=5e-12, atol=1e-12)
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_DFT_CUDA_TEST") != "1",
+    reason="requires an explicitly Slurm-allocated CUDA device",
+)
+def test_generated_cuda_r2scan_zero_minority_spin_libxc(tmp_path: Path) -> None:
+    """Exercise device FP64 emission against Libxc, including exchanged spins."""
+    assert os.environ.get("SLURM_JOB_ID")
+    compiler = shutil.which("nvcc")
+    assert compiler is not None, "allocated CUDA qualification requires nvcc"
+    namespace = runpy.run_path(str(ROOT / "tools/generate_xc_r2scan_cuda.py"))
+    (tmp_path / "r2scan.cuh").write_text(namespace["emit_r2scan_device"]())
+    # Spin exchange permutes rho/sigma/tau channels without another oracle or
+    # any dependence on the generated implementation's own mathematics.
+    inputs = [values for values, _ in REFERENCE]
+    outputs = [values for _, values in REFERENCE]
+    inputs += [tuple(row[i] for i in (1, 0, 4, 3, 2, 6, 5)) for row in inputs[:]]
+    outputs += [tuple(row[i] for i in (0, 2, 1, 5, 4, 3, 7, 6)) for row in outputs[:]]
+    count = len(inputs)
+    rows = ",\n".join(
+        "{" + ",".join(float(x).hex() for x in row) + "}" for row in inputs
+    )
+    source = tmp_path / "probe.cu"
+    source.write_text(
+        '#include <cstdio>\n#include <cuda_runtime.h>\n#include "r2scan.cuh"\n'
+        "__global__ void evaluate(const double* inputs, double* outputs) {\n"
+        "  const auto i = blockIdx.x; const auto* p = inputs + 7 * i;\n"
+        "  const auto v = vibeqc::dft::generated::r2scan_device(\n"
+        "      p[0], p[1], p[2], p[3], p[4], p[5], p[6]);\n"
+        "  outputs[8 * i] = v.energy_density;\n"
+        "  for (unsigned k = 0; k < 7; ++k) outputs[8 * i + k + 1] = v.feature_derivative[k];\n"
+        "}\n"
+        f"int main() {{ const double inputs[{count}][7] = {{{rows}}};\n"
+        f"  double outputs[{count}][8]; double *input_device, *output_device;\n"
+        "  if (cudaMalloc(&input_device, sizeof(inputs)) != cudaSuccess ||\n"
+        "      cudaMalloc(&output_device, sizeof(outputs)) != cudaSuccess) return 1;\n"
+        "  if (cudaMemcpy(input_device, inputs, sizeof(inputs), cudaMemcpyHostToDevice)\n"
+        "      != cudaSuccess) return 2;\n"
+        f"  evaluate<<<{count}, 1>>>(input_device, output_device);\n"
+        "  if (cudaGetLastError() != cudaSuccess ||\n"
+        "      cudaMemcpy(outputs, output_device, sizeof(outputs), cudaMemcpyDeviceToHost)\n"
+        "      != cudaSuccess) return 3;\n"
+        "  cudaFree(input_device); cudaFree(output_device);\n"
+        "  for (const auto& row : outputs) for (unsigned k = 0; k < 8; ++k)\n"
+        "    std::printf(\"%.17g%c\", row[k], k == 7 ? '\\n' : ' ');\n}\n"
+    )
+    executable = tmp_path / "probe"
+    subprocess.run(
+        [
+            compiler,
+            "-std=c++17",
+            "-O2",
+            "-arch=native",
+            "--fmad=false",
+            str(source),
+            "-o",
+            str(executable),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    result = subprocess.run(
+        [str(executable)], check=True, capture_output=True, text=True, timeout=30
+    )
+    actual = np.asarray(
+        [[float(x) for x in row.split()] for row in result.stdout.splitlines()]
+    )
+    np.testing.assert_allclose(actual, outputs, rtol=5e-12, atol=1e-12)

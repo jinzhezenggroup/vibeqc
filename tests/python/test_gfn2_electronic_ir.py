@@ -13,7 +13,7 @@ from vibeqc_compiler.tensor import dot_test, execute, vjp
 
 # Frozen from xTBloom tests/cuda_hamiltonian_test.cu::make_case(2) and
 # evaluate_cpu at revision 2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3.
-XTBLOOM_EXPECTED = np.array(
+VIBEQC_XTB_EXPECTED = np.array(
     [
         -0.31025400000000003,
         -0.062346000000000026,
@@ -137,13 +137,13 @@ def _restricted_feeds() -> dict[str, np.ndarray]:
     }
 
 
-def test_ragged_fixed_state_hamiltonian_matches_pinned_xtbloom_reference() -> None:
+def test_ragged_fixed_state_hamiltonian_matches_pinned_vibeqc_xtb_reference() -> None:
     compiled = build_gfn2_electronic_program(
         "GFN2-xTB",
         _topology(),
     )
     actual = execute(compiled.program, _restricted_feeds()).outputs["hamiltonian"]
-    np.testing.assert_allclose(actual, XTBLOOM_EXPECTED, rtol=0, atol=8e-16)
+    np.testing.assert_allclose(actual, VIBEQC_XTB_EXPECTED, rtol=0, atol=8e-16)
     assert compiled.topology.matrix_offsets == (0, 1, 65)
     assert compiled.topology.canonical_forward[1] == 1
     assert compiled.topology.canonical_forward[8] == 8

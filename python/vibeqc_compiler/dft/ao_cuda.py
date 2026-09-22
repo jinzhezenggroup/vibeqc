@@ -299,6 +299,20 @@ __device__ inline DevicePointValue evaluate_semilocal_point(I functional, const 
   if (functional < 2) {
     return from_point(point::evaluate(functional == 1, rho, gradient));
   }
+  // Match the host r2SCAN physical-domain gate before either the vacuum
+  // shortcut or Libxc work-input continuation can hide an invalid density.
+  for (I spin = 0; spin < 2; ++spin) {
+    if (!isfinite(rho[spin]) || rho[spin] < 0.0 ||
+        !isfinite(tau[spin]) || tau[spin] < 0.0) {
+      out.valid = false;
+      return out;
+    }
+    for (I k = 0; k < 3; ++k)
+      if (!isfinite(gradient[spin][k])) {
+        out.valid = false;
+        return out;
+      }
+  }
   const double total = rho[0] + rho[1];
   constexpr double tail_low = 1.0e-56, tail_high = 1.0e-52;
   if (total <= tail_low) return out;

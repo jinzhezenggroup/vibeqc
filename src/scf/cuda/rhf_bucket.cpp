@@ -39,9 +39,12 @@ bool small_hf_cuda_resource_layout(std::size_t nbf, std::size_t direct_nbf, std:
   // This contract intentionally covers the provider with no cuBLAS/cuSOLVER
   // workspace or exact-quartet descriptor table. Other routes need their own
   // compact provider-workspace query before they can advertise a global bound.
+  const cuda_policy::SmallHfWorkload small_hf_workload{nbf, spins, 1U, spins};
+  const auto small_hf_profitability =
+      cuda_policy::resolve_small_hf_profitability(runtime::CudaTargetInfo{}, small_hf_workload);
   if (nbf == 0 || nbf > kPersistentEriAoLimit || nbf > kSmallEigensolverLimit ||
-      nbf >= kCublasMatrixProductAoThreshold || direct_nbf < nbf || direct_nbf > 2 * nbf ||
-      atoms == 0 || shells == 0 || shells > nbf || primitives == 0 || diis_history > 64 ||
+      small_hf_profitability.use_cublas || direct_nbf < nbf || direct_nbf > 2 * nbf || atoms == 0 ||
+      shells == 0 || shells > nbf || primitives == 0 || diis_history > 64 ||
       (spins != 1 && spins != 2))
     return false;
   const std::size_t pairs = shells * (shells + 1) / 2;

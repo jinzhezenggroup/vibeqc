@@ -18,3 +18,37 @@ CPU expression, Maple adapter and generated-C++ boundary tests pass. RTX 5090 FP
 ## Revisit when
 
 Revisit the candidate when the stated endpoint gates pass or the shared owner changes.
+
+## Integration with the shared compiler owner
+
+The #1092 merge moved scalar differentiation into `xc.semilocal_codegen`.
+The boundary-aware root construction and component-wise r2SCAN emitter now
+live there too; both tool wrappers forward to that owner. The emitted
+equations, constants and ABI match the original candidate; source-provenance
+hashes reflect the intervening compiler ownership changes.
+
+The native KS test helper previously narrowed functional ID 2 to a boolean,
+so the supposed r2SCAN tests ran PBE. Preserving the integer ID exposed a
+CUDA/CPU domain mismatch: the CUDA r2SCAN point shortcut/continuation could
+hide a negative spin density. Match the CPU finite/nonnegative rho/tau and
+finite-gradient gate before either continuation. Zero minority spin remains
+valid; an indefinite physical density must still fail and preserve the
+last-good seed. This does not change the interior functional or relax a gate.
+
+## CUDA contraction policy
+
+An independent RTX 5090 FP64 probe exposed a second boundary failure that the
+CPU tests could not detect. Default nvcc FMA contraction changed the empty-spin
+density derivative by 0.00530399 at rho=(0.073, 0), despite agreeing in energy.
+The same generated body with `--fmad=false` passes the unchanged Libxc 7.0
+energy/first-derivative gate (5e-12 relative plus 1e-12 absolute), including
+spin-exchanged points. Contracting the nearly cancelling `1-zeta` expression
+changes its rounded boundary argument and amplifies the derivative error.
+
+Apply the existing compiler XC FP64 no-contraction policy to the native
+generated grid translation unit and use that policy in the allocated-GPU
+regression. This includes AO/grid contractions in that translation unit;
+complete native LDA/PBE/r2SCAN endpoint qualification remains required and
+there is no speedup claim. Do not change only the probe flags while leaving
+production contraction enabled. A future narrower or stable algebra policy
+must independently pass the same boundary and full-endpoint gates.

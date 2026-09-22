@@ -22,6 +22,7 @@
 #include "scf/cuda/scf_density_kernels.hpp"
 #include "scf/cuda/scf_diis_kernels.hpp"
 #include "scf/cuda/scf_matrix_kernels.hpp"
+#include "scf/cuda_density_fitting_device.hpp"
 #include "scf/cuda_direct_jk_device.hpp"
 #include "scf/initial_guess/density.hpp"
 #include "scf/reference/mean_field.hpp"
@@ -140,6 +141,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
   const MolecularGrid& grid;
   scf::ScfOptions options;
   scf::CudaDirectJkPlan* direct{};
+  scf::CudaDensityFittingJkPlan* fitted{};
   cudaStream_t stream{};
   int device{};
   std::size_t n{}, matrix{}, elements{};
@@ -212,19 +214,23 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (functional > 2U) throw std::invalid_argument("unknown CUDA KS semilocal functional");
     const auto& strategy = provider.strategy();
     scf::validate_resolved_fock_build(strategy);
+    direct = provider.cuda_direct_source();
+    fitted = provider.cuda_fitted_source();
     if (!owner || strategy.backend != scf::FockBackend::Cuda ||
         strategy.spec.derivative_order != 0 || !strategy.spec.coulomb.present ||
         strategy.spec.coulomb.coefficient != 1.0 ||
-        strategy.spec.coulomb.approximation != scf::FockApproximation::Exact ||
-        strategy.spec.exchange.present || !(direct = provider.cuda_direct_source()))
+        (strategy.spec.coulomb.approximation != scf::FockApproximation::Exact &&
+         strategy.spec.coulomb.approximation != scf::FockApproximation::DensityFitted) ||
+        strategy.spec.exchange.present || (!direct && !fitted) || (direct && fitted))
       throw std::invalid_argument(
-          "CUDA KS requires the prepared conventional Coulomb-only strategy");
+          "CUDA KS requires a prepared exact or fitted Coulomb-only strategy");
     if (options.compute_forces || options.hooks || options.export_physical_reference ||
         options.xc_density_route != XcDensityRoute::DensityMatrix ||
         (options.precision_mode && *options.precision_mode != VIBEQC_PRECISION_FP64 &&
          *options.precision_mode != VIBEQC_PRECISION_AUTO))
       throw std::invalid_argument("CUDA KS received an unsupported execution policy");
     mixed_j = options.precision_mode && *options.precision_mode == VIBEQC_PRECISION_AUTO;
+    if (mixed_j && fitted) throw std::invalid_argument("CUDA fitted KS requires strict FP64");
     if (mixed_j && functional > 1U)
       throw std::invalid_argument("r2SCAN currently requires strict FP64");
     if (!options.max_iterations || !std::isfinite(options.energy_tolerance) ||
@@ -256,8 +262,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
         !std::all_of(integrals.hcore.begin(), integrals.hcore.end(), finite))
       throw std::runtime_error("nonfinite CUDA KS one-electron or nuclear energy");
     history = std::max(1U, options.diis_history);
-    device = scf::cuda_direct_jk_device(direct);
-    stream = scf::cuda_direct_jk_stream(direct);
+    device = fitted ? scf::cuda_density_fitting_device(fitted) : scf::cuda_direct_jk_device(direct);
+    stream = fitted ? scf::cuda_density_fitting_stream(fitted) : scf::cuda_direct_jk_stream(direct);
     current_device();
     orthogonalizer = scf::reference::symmetric_orthogonalizer(provider.one_electron().overlap, n);
     cold_density = seed(nullptr);
@@ -380,7 +386,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     // bypassed by an opt-in two-iteration device chunk.
     device_chunk_mode =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused &&
-        !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
+        !fitted && !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
         configured_chunk_width() == kCudaKsChunkCapacity;
     try {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
@@ -660,12 +666,22 @@ struct CudaKsPlan::Impl : KsStateStorage {
     try {
       std::string detail;
       pending_mixed_j = mixed_j && !strict_refinement;
-      const auto jk_status = pending_mixed_j ? scf::enqueue_cuda_direct_jk_device_mixed_j(
-                                                   direct, provider.strategy().spec, density,
-                                                   spins == 2 ? density + matrix : nullptr, matrix,
-                                                   j, nullptr, nullptr, jk_error, detail)
-                                             : scf::enqueue_cuda_direct_jk_device(
-                                                   direct, provider.strategy().spec, density,
+      // The DF provider consumes the same resident row-major density on its
+      // borrowed stream. J is raw/unscaled, and KS applies the Hartree factor.
+      if (fitted) check(cudaMemsetAsync(jk_error, 0, sizeof(*jk_error), stream));
+      const auto jk_status =
+          fitted ? (spins == 2 ? scf::execute_cuda_density_fitting_uhf_jk_device(
+                                     fitted, density, density + matrix, j, nullptr, nullptr, detail,
+                                     {true, false}, scf::FockMatrixLayout::RowMajor)
+                               : scf::execute_cuda_density_fitting_rhf_jk_device(
+                                     fitted, density, j, nullptr, detail, {true, false},
+                                     scf::FockMatrixLayout::RowMajor))
+          : pending_mixed_j
+              ? scf::enqueue_cuda_direct_jk_device_mixed_j(
+                    direct, provider.strategy().spec, density,
+                    spins == 2 ? density + matrix : nullptr, matrix, j, nullptr, nullptr, jk_error,
+                    detail)
+              : scf::enqueue_cuda_direct_jk_device(direct, provider.strategy().spec, density,
                                                    spins == 2 ? density + matrix : nullptr, matrix,
                                                    j, nullptr, nullptr, jk_error, detail);
       check(jk_status, detail);
