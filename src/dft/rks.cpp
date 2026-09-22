@@ -628,13 +628,13 @@ ScfResult run_rks(
           runtime::add_capacity(retained_without_incremental(current_density), extra_live_bytes),
           require_full_xc));
     }
-    auto physical = evaluate_rks(
-        plan, long_range_correction, basis, grid, current_density, evaluate_xc, method_name,
-        {options.xc_density_route, factor.get(), identity},
-        runtime::add_capacity(retained_capacity(current_density), extra_live_bytes),
-        options.xc_tile_points, options.semilocal_exchange_scale,
-        options.semilocal_correlation_scale, nonlocal_correlation, nonlocal_domain,
-        std::move(xc_override));
+    auto physical =
+        evaluate_rks(plan, long_range_correction, basis, grid, current_density, evaluate_xc,
+                     method_name, {options.xc_density_route, factor.get(), identity},
+                     runtime::add_capacity(retained_capacity(current_density), extra_live_bytes),
+                     options.xc_tile_points, options.semilocal_exchange_scale,
+                     options.semilocal_correlation_scale, nonlocal_correlation, nonlocal_domain,
+                     std::move(xc_override));
     const auto& record = physical.density_diagnostic;
     if (record.executed == dft::XcDensityRoute::OccupiedOrbitals)
       ++diagnostic.orbital_calls;
