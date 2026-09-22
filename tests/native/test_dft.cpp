@@ -350,6 +350,31 @@ int main() {
         require(std::abs(pw91_uks.potential[spin][i] - pw91.potential[i]) < 2.0e-11,
                 "PW91 generic-GGA equal-spin UKS potential differs from RKS");
 
+    // A genuine unequal-spin perturbation must use both independent Vxc blocks.
+    for (std::size_t i = 0; i < reference_density.size(); ++i) {
+      pw91_alpha[i] = 0.7 * reference_density[i];
+      pw91_beta[i] = 0.3 * reference_density[i];
+    }
+    const auto open_pw91 =
+        vibeqc::dft::integrate_pw91_uks(basis, cam_interior_grid, pw91_alpha, pw91_beta, 3);
+    for (double step : {1.0e-5, 3.0e-6}) {
+      auto ap = pw91_alpha, am = pw91_alpha, bp = pw91_beta, bm = pw91_beta;
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i) {
+        ap[i] += step * direction[i];
+        am[i] -= step * direction[i];
+        bp[i] -= 0.4 * step * direction[i];
+        bm[i] += 0.4 * step * direction[i];
+        trace += (open_pw91.potential[0][i] - 0.4 * open_pw91.potential[1][i]) * direction[i];
+      }
+      const double difference =
+          (vibeqc::dft::integrate_pw91_uks(basis, cam_interior_grid, ap, bp, 3).energy -
+           vibeqc::dft::integrate_pw91_uks(basis, cam_interior_grid, am, bm, 3).energy) /
+          (2.0 * step);
+      require(std::isfinite(difference) && std::abs(difference - trace) < 3.0e-6,
+              "PW91 unequal-spin potential violates delta E = Tr(Va dDa + Vb dDb)");
+    }
+
     const auto cam =
         vibeqc::dft::integrate_cam_b3lyp_rks(basis, cam_interior_grid, reference_density, 7);
     require(std::isfinite(cam.energy) && cam.potential.size() == reference_density.size(),
