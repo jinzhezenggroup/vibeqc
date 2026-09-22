@@ -91,6 +91,9 @@ def _item_host_inventory(
     )
     retained += solver_host
     quadrature = 16 * (model.grid.radial_points + model.grid.angular_polar) + 8 * a
+    if backend == "cuda":
+        # Shared rule/center/radius upload coexists with the small rule vectors.
+        quadrature += 8 * (4 * a + 2 * (512 + 256))
     matrix_work = byte_product(8, spins, n2, 128 + 2 * (diis_history + 1))
     matrix_work += byte_product(16, diis_history + 1, diis_history + 1)
     host_unfused = backend == "cuda" and model.xc_schedule == "host_unfused"
@@ -209,11 +212,29 @@ def _cuda_item_inventory(
     # This bound includes every explicit device buffer of that value-only path.
     setup = byte_product(64, 1 + a + s + p + n + pairs + n * n)
     setup = max(setup, _ecp_workspace(item, cuda=True))
+    quadrature_query = getattr(library, "vibeqc_resource_quadrature_cuda_v1", None)
+    if quadrature_query is None:
+        raise NotImplementedError(
+            "native library has no CUDA quadrature allocation inventory"
+        )
+    quadrature_query.argtypes = [
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_uint64),
+    ]
+    quadrature_query.restype = ctypes.c_int
+    quadrature = ctypes.c_uint64()
+    if quadrature_query(a, item["grid_points"], ctypes.byref(quadrature)):
+        raise NotImplementedError("invalid CUDA quadrature resource shape/build")
+    # Quadrature is built after the Coulomb provider, before KS/XC buffers.
+    # Count the coexistence explicitly, including changed-geometry rebuilds.
+    setup = max(setup, checked_bytes(int(output[2]) + quadrature.value))
     return {
         "state": checked_bytes(int(output[0])),
         "xc": checked_bytes(int(output[1])),
         "coulomb": checked_bytes(int(output[2])),
         "setup": checked_bytes(setup),
+        "quadrature_setup": checked_bytes(quadrature.value),
     }
 
 
@@ -484,14 +505,15 @@ def ks_resource_request(
                     )
                 )
             # At most one owner is rebuilt at a time. Its retired allocation
-            # need not coexist with its one-electron setup temporary.
+            # need not coexist with its setup temporary. Quadrature setup
+            # already includes the new owner's live Coulomb allocation.
             extra = max(
                 max(0, x["setup"] - sum(x[k] for k in ("state", "xc", "coulomb")))
                 for x in device
             )
             estimates.append(
                 ResourceEstimate(
-                    "KS one-electron setup excess over retired owner",
+                    "KS setup excess over retired owner",
                     extra,
                     f"device:{device_id}",
                     first_phase,

@@ -676,12 +676,19 @@ class ContractionProgram:
         if self.contract.request.observable != "potential":
             raise ValueError("potential rows require a potential request")
         weights = immutable(weights, shape=(jets.shape[1],))
+        # The packed scalar owner may be donated to the coefficient producer.
+        # Consume the energy row before that ownership transfer overwrites it.
+        energy = _weighted_energy(weights, rows[()])
         v = self._gradient(rows, jets.shape[1])
-        coefficients = self.coefficients.evaluate(
-            _functional_gradient(self.spec, features), v
+        gradient = _functional_gradient(self.spec, features)
+        output_owner = getattr(rows, "coefficient_output_owner", None)
+        coefficients = (
+            self.coefficients.evaluate(gradient, v)
+            if output_owner is None
+            else self.coefficients.evaluate(gradient, v, output_owner=output_owner)
         )
         return {
-            "energy": _weighted_energy(weights, rows[()]),
+            "energy": energy,
             "potential": assemble_coefficients(jets, coefficients, weights),
             "electrons": immutable(features["rho"] @ weights),
         }
