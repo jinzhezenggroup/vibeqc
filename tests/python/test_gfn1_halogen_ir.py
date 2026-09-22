@@ -353,6 +353,22 @@ def test_method_binding_rejects_structural_impostors_and_unrequested_vjp() -> No
     assert energy_only.geometry_program.coordinate_vjp().program is not None
 
 
+def test_geometry_program_rejects_matching_noncanonical_parameter_identities() -> None:
+    _name, elements, coordinates, _expected, _count = TBLITE_CASES[2]
+    compiled = compile_gfn1_halogen(_gfn1_method(), elements, coordinates)
+    noncanonical = "noncanonical-gfn1-halogen-parameters"
+    triplet_program = replace(
+        compiled.geometry_program.triplet_program,
+        parameter_identity=noncanonical,
+    )
+    with pytest.raises(ValueError, match="parameter identity is not canonical"):
+        replace(
+            compiled.geometry_program,
+            triplet_program=triplet_program,
+            parameter_identity=noncanonical,
+        )
+
+
 def test_primal_and_generated_vjp_lower_through_shared_cuda_tensorir() -> None:
     from vibeqc_compiler.common.cuda_target import CUDA_TARGETS
     from vibeqc_compiler.tensor.cuda_emit import emit_cuda
