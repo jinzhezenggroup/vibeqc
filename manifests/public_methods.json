@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "methods": [
+    {
+      "name": "rhf",
+      "symbol": "RHF",
+      "abi_id": 1,
+      "family": "hartree_fock",
+      "provider": "hf",
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "uhf",
+      "symbol": "UHF",
+      "abi_id": 2,
+      "family": "hartree_fock",
+      "provider": "hf",
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "wb97m-v",
+      "symbol": "WB97M_V",
+      "abi_id": 3,
+      "family": "density_functional",
+      "provider": "reserved",
+      "properties": [],
+      "supports_batch": false,
+      "unavailable_reason": "method has no executable provider registration"
+    },
+    {
+      "name": "rccsd(t)",
+      "symbol": "RCCSD_T",
+      "abi_id": 4,
+      "family": "coupled_cluster",
+      "provider": "rccsdt",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "aliases": [
+        "ccsd(t)"
+      ]
+    },
+    {
+      "name": "mp2",
+      "symbol": "MP2",
+      "abi_id": 5,
+      "family": "perturbation",
+      "provider": "mp2",
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "lda-rks",
+      "symbol": "LDA_RKS",
+      "abi_id": 6,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "pbe-rks",
+      "symbol": "PBE_RKS",
+      "abi_id": 7,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "lda-uks",
+      "symbol": "LDA_UKS",
+      "abi_id": 8,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "pbe-uks",
+      "symbol": "PBE_UKS",
+      "abi_id": 9,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "r2scan-rks",
+      "symbol": "R2SCAN_RKS",
+      "abi_id": 10,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "r2scan-uks",
+      "symbol": "R2SCAN_UKS",
+      "abi_id": 11,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "rccsd",
+      "symbol": "RCCSD",
+      "abi_id": 12,
+      "family": "coupled_cluster",
+      "provider": "rccsd",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "pbe0-rks",
+      "symbol": "PBE0_RKS",
+      "abi_id": 13,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "pbe0-uks",
+      "symbol": "PBE0_UKS",
+      "abi_id": 14,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "gfn2-xtb",
+      "symbol": "GFN2_XTB",
+      "abi_id": 15,
+      "family": "semiempirical",
+      "provider": "xtb",
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "supports_batch": false,
+      "aliases": [
+        "gfn2"
+      ]
+    },
+    {
+      "name": "b3lyp-rks",
+      "symbol": "B3LYP_RKS",
+      "abi_id": 16,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "b3lyp-uks",
+      "symbol": "B3LYP_UKS",
+      "abi_id": 17,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    },
+    {
+      "name": "pbe-d4-rks",
+      "symbol": "PBE_D4_RKS",
+      "abi_id": 18,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true
+    }
+  ]
+}
