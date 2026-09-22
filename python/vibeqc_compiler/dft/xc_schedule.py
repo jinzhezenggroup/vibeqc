@@ -452,7 +452,9 @@ def assess_grid_xc_schedule(
     if precision_schedule is None:
         precision_schedule = uniform_precision_schedule("dft.grid_xc")
     if not isinstance(precision_schedule, ExecutionPrecisionSchedule):
-        raise TypeError("grid/XC precision schedule requires ExecutionPrecisionSchedule")
+        raise TypeError(
+            "grid/XC precision schedule requires ExecutionPrecisionSchedule"
+        )
     reasons: list[str] = []
     if not precision_schedule.is_strict_fp64:
         reasons.append(

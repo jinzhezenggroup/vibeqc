@@ -80,7 +80,9 @@ class ExecutionPrecisionSchedule:
             raise ValueError("unsupported compiler arithmetic mode")
         regions = tuple(self.regions)
         if not regions:
-            raise ValueError("execution precision schedule requires at least one region")
+            raise ValueError(
+                "execution precision schedule requires at least one region"
+            )
         names: set[str] = set()
         normalized: list[tuple[str, PrecisionDirective]] = []
         for row in regions:

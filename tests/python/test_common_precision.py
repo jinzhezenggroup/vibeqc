@@ -1,7 +1,6 @@
 """Cross-IR execution-precision contracts for TensorIR, DFT, and integrals."""
 
 import pytest
-
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.precision import (
     ExecutionPrecisionSchedule,
@@ -22,12 +21,14 @@ from vibeqc_compiler.integral.one_electron_derivative_policy_cuda import (
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
-    PrecisionDirective as TensorPrecisionDirective,
     Program,
     TensorSpec,
     add,
     describe_precision,
     input_tensor,
+)
+from vibeqc_compiler.tensor import (
+    PrecisionDirective as TensorPrecisionDirective,
 )
 
 
@@ -125,9 +126,10 @@ def test_integral_schedule_contract_uses_common_precision_identity() -> None:
     contract = one_electron_derivative_schedule_contract(
         cuda_target_info("sm_120").target_info
     )
-    assert contract.precision_schedule_hash == uniform_precision_schedule(
-        "integral.one_electron_derivative"
-    ).identity
+    assert (
+        contract.precision_schedule_hash
+        == uniform_precision_schedule("integral.one_electron_derivative").identity
+    )
 
 
 def test_generated_fock_mixed_schedule_records_fp32_eri_fp64_accumulation() -> None:
