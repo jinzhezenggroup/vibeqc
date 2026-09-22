@@ -266,16 +266,21 @@ __global__ void density_product(const double* density, const double* ao, I n, I 
   }
 }
 
+template<bool Cooperative>
 __global__ void density_features(const double* ao, const double* work, I n, I count, I spins,
                                  I ao_jets, I work_jets, I feature_terms, I functional,
                                  double* features, int* error) {
   const I stride = count * n;
+  // A warp owns one point so adjacent lanes read adjacent AO components.
+  // Every lane follows the same point loop, including a partial final warp.
+  constexpr I width = Cooperative ? 32 : 1;
+  const I lane = threadIdx.x % width;
   const unsigned ingredient_mask = functional == 0 ? 1U : (functional == 1 ? 7U : 15U);
-  for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * count;
-       i += I(blockDim.x) * gridDim.x) {
+  for (I i = (I(blockIdx.x) * blockDim.x + threadIdx.x) / width; i < spins * count;
+       i += I(blockDim.x) * gridDim.x / width) {
     const I spin = i / count, point = i % count;
     double accum[5]{};
-    for (I mu = 0; mu < n; ++mu) {
+    for (I mu = lane; mu < n; mu += width) {
       const I index = point * n + mu;
       double derivatives[3]{};
       double panel[4]{work[(spin * work_jets) * stride + index], 0.0, 0.0, 0.0};
@@ -286,8 +291,27 @@ __global__ void density_features(const double* ao, const double* work, I n, I co
           panel[k + 1] = work[(spin * work_jets + k + 1) * stride + index];
       vibeqc_grid_policy::add_features(ao[index], derivatives, panel, accum, ingredient_mask);
     }
-    for (I k = 0; k < feature_terms; ++k)
-      features[(spin * feature_terms + k) * count + point] = finite(accum[k], error, 1);
+    for (I k = 0; k < feature_terms; ++k) {
+      if constexpr (Cooperative)
+        for (int offset = 16; offset > 0; offset >>= 1)
+          accum[k] += __shfl_down_sync(0xffffffffu, accum[k], offset);
+      if (lane == 0)
+        features[(spin * feature_terms + k) * count + point] = finite(accum[k], error, 1);
+    }
+  }
+}
+
+// Native binds buffers; this compiler owner selects the bounded reduction.
+// Preserve scalar order for small AO spaces, with no additional storage.
+inline void scheduled_density_features(cudaStream_t stream, const double* ao, const double* work,
+    I n, I count, I spins, I ao_jets, I work_jets, I feature_terms, I functional,
+    double* features, int* error) {
+  if (n >= 32) {
+    density_features<true><<<vibeqc_tensor::blocks(spins*count*32,128),128,0,stream>>>(
+        ao,work,n,count,spins,ao_jets,work_jets,feature_terms,functional,features,error);
+  } else {
+    density_features<false><<<vibeqc_tensor::blocks(spins*count,128),128,0,stream>>>(
+        ao,work,n,count,spins,ao_jets,work_jets,feature_terms,functional,features,error);
   }
 }
 
