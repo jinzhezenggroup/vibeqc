@@ -15,6 +15,7 @@ from .ir import OperatorFamily
 from .one_electron_derivatives import build_one_electron_derivative_kernel
 from .scalar_c import ScalarCEmitter
 from .shell_class import build_shell_class_component_kernel
+from .shell_signature import BasisConvention
 
 
 def emit_bounded_component(
@@ -32,6 +33,14 @@ def emit_bounded_component(
         raise ValueError("bounded component backend must be cpu or cuda")
     if integral.derivative is None or integral.derivative.order != 1:
         raise ValueError("bounded components require first-derivative raw IR")
+    if any(
+        shell.convention != BasisConvention.CARTESIAN
+        for shell in integral.signature.shells
+    ):
+        raise ValueError(
+            "bounded components consume Cartesian primitive signatures; "
+            "spherical transforms remain caller-owned"
+        )
     from .blocks import RawBlock
 
     if len(integral.contractions) != 1 or not isinstance(
