@@ -86,9 +86,7 @@ def energy_expression(
 ) -> tuple[Graph, typing.Any, tuple[typing.Any, ...]]:
     """Lower canonical B97M semilocal E from Libxc, including screened tails."""
 
-    active = {
-        name: coefficient for name, coefficient in spec.components if coefficient
-    }
+    active = {name: coefficient for name, coefficient in spec.components if coefficient}
     if active != {name: Fraction(1) for name in WB97MV_COMPONENTS}:
         raise ValueError(
             "omegaB97M-V production adapter requires the canonical unit-weight "
