@@ -49,10 +49,18 @@ def _watch(
             "endpoint": record["active_endpoint"],
             "limit_seconds": seconds,
         }
-        _append(output.with_suffix(".progress.jsonl"), event)
-        record.update(status="stopped", error="endpoint deadline exceeded", stop=event)
-        save_record(output, record)
-        os.kill(pid, signal.SIGKILL)
+        # Evidence writes are best-effort at the deadline: a full or unavailable
+        # filesystem must not leave a blocked CUDA endpoint running indefinitely.
+        try:
+            try:
+                _append(output.with_suffix(".progress.jsonl"), event)
+            finally:
+                record.update(
+                    status="stopped", error="endpoint deadline exceeded", stop=event
+                )
+                save_record(output, record)
+        finally:
+            os.kill(pid, signal.SIGKILL)
     finally:
         connection.close()
 
@@ -98,10 +106,15 @@ class EndpointProgress:
             args=(receiver, os.getpid(), self.seconds, self.output, self.record),
             daemon=True,
         )
-        watchdog.start()
-        receiver.close()
-        self.emit("begin", limit_seconds=self.seconds)
         try:
+            watchdog.start()
+        except BaseException:
+            receiver.close()
+            sender.close()
+            raise
+        receiver.close()
+        try:
+            self.emit("begin", limit_seconds=self.seconds)
             yield
         except BaseException as error:
             self.emit("failed", error=f"{type(error).__name__}: {error}")
