@@ -38,7 +38,7 @@ mixtures or hybrid support.
 
 The effective native domain is
 `semilocal-scaled-v1/pbe-spin-c2-1e-18`, documented in
-[the SCF domain contract](../../developer/xc_scf_domain.md). `FunctionalSpec` retains its
+[the SCF domain contract](../developer/xc_scf_domain.md). `FunctionalSpec` retains its
 independent interior-reference provenance; that provenance does not silently
 replace the native SCF boundary policy. The resolved options record both.
 The functional's required ingredients determine AO order: LDA needs values,
@@ -47,7 +47,7 @@ and its first derivative for the potential, even for an energy-only output.
 Neither route computes tau or higher AO jets.
 
 Completed results expose the resolved grid and physical iteration records in
-[`ks_diagnostic`](../../developer/ks_diagnostics.md).
+[`ks_diagnostic`](../developer/ks_diagnostics.md).
 
 `GridSpec` selects the radial/polar/azimuth counts, partition iterations,
 coincident-center tolerance and per-element radial scales. The native grid
