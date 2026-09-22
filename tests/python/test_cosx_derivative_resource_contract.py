@@ -46,6 +46,11 @@ def test_molecular_cosx_diagnostic_accounts_for_all_device_buffers(
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <type_traits>
+#include <utility>
+#include "dft/grid.hpp"
+using GridOwner = std::remove_cvref_t<decltype(
+    std::declval<const vibeqc::dft::MolecularGrid&>().owners())>::value_type;
 struct System { std::size_t natom=3, nprimitive=8, nao=5; };
 struct AoBasis : System { explicit AoBasis(const System& s) : System(s) {} };
 struct MolecularGrid {
@@ -64,7 +69,7 @@ int main() {
   // four projected/potential arrays, weights AND sensitivity, nuclear gradient,
   // owner indices, and the device error flag.
   const auto expected = sizeof(double) * (n*n + t*n*n + 4*t*n + 2*t + 3*grid.system().natom)
-                      + t*sizeof(std::size_t) + sizeof(int);
+                      + t*sizeof(GridOwner) + sizeof(int);
   if (report.derivative_device_bytes != expected) {
     std::cerr << report.derivative_device_bytes << " != " << expected;
     return 1;
@@ -85,7 +90,17 @@ int main() {
     path.write_text(harness)
     binary = tmp_path / "diagnostic"
     subprocess.run(
-        [compiler, "-std=c++20", str(path), "-o", str(binary)],
+        [
+            compiler,
+            "-std=c++20",
+            "-I",
+            str(ROOT / "src"),
+            "-I",
+            str(ROOT / "include"),
+            str(path),
+            "-o",
+            str(binary),
+        ],
         check=True,
         capture_output=True,
         text=True,

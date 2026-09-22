@@ -6,6 +6,8 @@
 #include <limits>
 #include <numeric>
 #include <stdexcept>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "dft/ao_grid.hpp"
@@ -30,6 +32,10 @@ int grid_cuda_basis_v1(void* pointer, vibeqc::dft::GridBasisView* output, char* 
 
 namespace vibeqc::dft {
 namespace {
+
+// The device layout and upload width must follow the host grid index storage.
+using GridOwner = std::remove_cvref_t<
+    decltype(std::declval<const vibeqc::dft::MolecularGrid&>().owners())>::value_type;
 
 void check(cudaError_t status) {
   if (status == cudaErrorMemoryAllocation) throw std::bad_alloc();
@@ -400,7 +406,7 @@ __global__ void apply_esp_bidirectional_kernel(const double* esp, const double* 
 __global__ void contract_molecular_ao_kernel(const double* basis, std::size_t natom,
                                              std::size_t nprimitive, const double* ao,
                                              const double* density, const double* weights,
-                                             const std::size_t* owners, const double* potential,
+                                             const GridOwner* owners, const double* potential,
                                              const double* left_potential, std::size_t npoint,
                                              std::size_t nbf, double energy_factor,
                                              double* nuclear_gradient, int* error) {
@@ -437,7 +443,7 @@ __global__ void contract_molecular_ao_kernel(const double* basis, std::size_t na
 __global__ void contract_molecular_esp_kernel(const double* basis, std::size_t natom,
                                               std::size_t nprimitive, std::size_t nao,
                                               const double* points, const double* weights,
-                                              const std::size_t* owners, const double* projected,
+                                              const GridOwner* owners, const double* projected,
                                               const double* symmetric_projection,
                                               std::size_t npoint, double energy_factor,
                                               double* nuclear_gradient, int* error) {
@@ -549,17 +555,17 @@ CudaCosxMolecularDerivativeDiagnostic cuda_cosx_molecular_derivative_diagnostic(
   const auto add_double = [&](std::size_t count) {
     extra_bytes = add(extra_bytes, mul(count, sizeof(double)));
   };
-  add_double(matrix);                                              // density
-  add_double(result.esp_tile_elements);                            // ESP
-  add_double(mul(tile, basis.nao));                                // projected
-  add_double(mul(tile, basis.nao));                                // symmetric projection
-  add_double(mul(tile, basis.nao));                                // potential
-  add_double(mul(tile, basis.nao));                                // left potential
-  add_double(tile);                                                // device weights
-  add_double(tile);                                                // weight sensitivity
-  add_double(coordinates);                                         // nuclear gradient
-  extra_bytes = add(extra_bytes, mul(tile, sizeof(std::size_t)));  // owners
-  extra_bytes = add(extra_bytes, sizeof(int));                     // error flag
+  add_double(matrix);                                            // density
+  add_double(result.esp_tile_elements);                          // ESP
+  add_double(mul(tile, basis.nao));                              // projected
+  add_double(mul(tile, basis.nao));                              // symmetric projection
+  add_double(mul(tile, basis.nao));                              // potential
+  add_double(mul(tile, basis.nao));                              // left potential
+  add_double(tile);                                              // device weights
+  add_double(tile);                                              // weight sensitivity
+  add_double(coordinates);                                       // nuclear gradient
+  extra_bytes = add(extra_bytes, mul(tile, sizeof(GridOwner)));  // owners
+  extra_bytes = add(extra_bytes, sizeof(int));                   // error flag
   result.derivative_device_bytes = extra_bytes;
   result.device_bytes = add(result.grid_device_bytes, result.derivative_device_bytes);
   result.bounded_tiling = true;
@@ -616,7 +622,7 @@ std::vector<double> cuda_cosx_molecular_energy_derivative(const MolecularGrid& g
 
   DeviceBuffer<double> density, esp, projected, symmetric_projection, potential, left_potential,
       device_weights, sensitivity, nuclear_gradient;
-  DeviceBuffer<std::size_t> owners;
+  DeviceBuffer<GridOwner> owners;
   DeviceBuffer<int> error;
   try {
     GridBasisView device_basis{};
@@ -661,7 +667,7 @@ std::vector<double> cuda_cosx_molecular_energy_derivative(const MolecularGrid& g
         throw std::runtime_error("CUDA COSX molecular derivative received an incompatible AO view");
       check(cudaMemcpyAsync(device_weights.get(), grid.weights().data() + begin,
                             count * sizeof(double), cudaMemcpyHostToDevice, view.stream));
-      check(cudaMemcpyAsync(owners.get(), grid.owners().data() + begin, count * sizeof(std::size_t),
+      check(cudaMemcpyAsync(owners.get(), grid.owners().data() + begin, count * sizeof(GridOwner),
                             cudaMemcpyHostToDevice, view.stream));
       esp_value_kernel<<<blocks(count * matrix), 128, 0, view.stream>>>(
           device_basis.basis, device_basis.natom, device_basis.nprimitive, n, view.points, count,
