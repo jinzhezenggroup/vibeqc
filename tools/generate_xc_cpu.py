@@ -43,6 +43,10 @@ from vibeqc_compiler.xc.production_policy import (
     pbe_exchange_direct_expression,
     pbe_exchange_reciprocal_expression,
 )
+from vibeqc_compiler.xc.semilocal_codegen import (
+    build_roots,
+    emit_polarized_semilocal as _emit_polarized_semilocal,
+)
 from vibeqc_compiler.xc.spec import functional
 from vibeqc_compiler.xc.wb97mv_maple import (
     DENSITY_THRESHOLD as WB97MV_DENSITY_THRESHOLD,
@@ -59,42 +63,6 @@ from vibeqc_compiler.xc.wb97mv_maple import (
 from vibeqc_compiler.xc.wb97mv_maple import (
     TAU_THRESHOLD as WB97MV_TAU_THRESHOLD,
 )
-
-
-def build_roots(
-    spec: Any, outputs: Any, *, production: bool = False
-) -> tuple[Any, Any, str]:
-    """Build derivative roots and the exact emitted-expression identity."""
-
-    graph, energy, variables = build_energy_expression(spec, production=production)
-    derivatives = {(): energy}
-    for output in outputs:
-        for depth in range(1, len(output) + 1):
-            key = output[:depth]
-            if key not in derivatives:
-                derivatives[key] = graph.differentiate(
-                    derivatives[key[:-1]], variables[key[-1]]
-                )
-    roots = tuple(derivatives[output] for output in outputs)
-    graph, roots = graph.apply_algebra_form(roots, AlgebraForm.FACTORED_NARY)
-    graph, roots = graph.lower_small_integer_powers(roots)
-    reachable = graph.topological_order(roots)
-    indices = {index: i for i, index in enumerate(reachable)}
-    payload = {
-        "spec": spec.to_payload(),
-        "outputs": outputs,
-        "optimization": "after",
-        "nodes": [
-            (
-                graph.nodes[i].operation,
-                [indices[j] for j in graph.nodes[i].arguments],
-                str(graph.nodes[i].payload),
-            )
-            for i in reachable
-        ],
-        "roots": [indices[root.identifier] for root in roots],
-    }
-    return graph, roots, canonical_hash(payload)
 
 
 def graph_identity(label: str, graph: Any, roots: Any) -> str:
@@ -296,56 +264,16 @@ def emit_polarized_semilocal(
     production: bool = False,
     declarations: tuple[str, ...] = (),
 ) -> str:
-    """Emit polarized GGA/MGGA E/vxc from one FunctionalSpec scalar DAG."""
+    """Compatibility facade for the compiler-owned semilocal native lowerer."""
 
-    if spec.spin != "polarized":
-        raise ValueError("generic semilocal lowering requires polarized FunctionalSpec")
-    if spec.ingredients == ("rho", "sigma"):
-        signature = (
-            f"inline {value_type} {function_name}(",
-            "    double rho_a, double rho_b, double sigma_aa, double sigma_ab, double sigma_bb) {",
-        )
-        prelude = (
-            "  const double tau_a = 0.0;",
-            "  const double tau_b = 0.0;",
-        )
-    elif spec.ingredients == ("rho", "sigma", "tau"):
-        signature = (
-            f"inline {value_type} {function_name}(",
-            "    double rho_a, double rho_b, double sigma_aa, double sigma_ab,",
-            "    double sigma_bb, double tau_a, double tau_b) {",
-        )
-        prelude = ()
-    else:
-        raise ValueError(
-            "generic polarized semilocal lowering requires rho/sigma or rho/sigma/tau FunctionalSpec"
-        )
-
-    # FunctionalSpec retains canonical tau slots for GGA graphs too. The
-    # evaluator ABI and expression identity include only active ingredients.
-    feature_count = 5 if spec.ingredients == ("rho", "sigma") else 7
-    outputs = ((), *((i,) for i in range(feature_count)))
-    graph, roots, expression_hash = build_roots(spec, outputs, production=production)
-    emitter = ScalarCEmitter(graph, {name: name for name in spec.features})
-    emitter.emit(roots)
-    references = [emitter.reference(root) for root in roots]
-    return "\n".join(
-        [
-            f"struct {value_type} {{",
-            "  double energy_density;",
-            f"  double feature_derivative[{feature_count}];",
-            "};",
-            f'inline constexpr const char* {identity_constant} = "{expression_hash}";',
-            *declarations,
-            *signature,
-            *prelude,
-            *emitter.lines,
-            "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};",
-            "}",
-            "",
-        ]
+    return _emit_polarized_semilocal(
+        spec,
+        value_type=value_type,
+        function_name=function_name,
+        identity_constant=identity_constant,
+        production=production,
+        declarations=declarations,
     )
-
 
 def emit_polarized_gga(
     spec: Any,
