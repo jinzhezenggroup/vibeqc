@@ -1,22 +1,28 @@
 {
   "archives": [],
   "decision": {
-    "reason": "The opt-in CUB candidate passes the FP64 numerical and complete-endpoint execution gates on H200, but neither matched fixture reaches the 1.02x endpoint threshold or clears the shared noise gate; generated CUDA remains the production default.",
+    "reason": "The provenance-bound opt-in CUB candidate passes the FP64 numerical and complete-endpoint execution gates on H200, but neither matched fixture reaches the 1.02x endpoint threshold or clears the shared noise gate; generated CUDA remains the production default.",
     "scope": "performance",
     "status": "rejected"
   },
   "files": [
     {
-      "bytes": 57936,
+      "bytes": 58406,
       "path": "evidence.json",
       "role": "evidence",
-      "sha256": "4fda64451f9c3fde953c775a4bb04a8a7865eb26a351485c9b225c14cf293c3d"
+      "sha256": "61a1248d33fe174ee01d7a3c6627e3ce695f33f74e7171e29eecc4bfa9ea3d51"
     },
     {
-      "bytes": 11563,
+      "bytes": 11934,
       "path": "summary.json",
       "role": "summary",
-      "sha256": "d7c39c75a83ccf2e58a6b263b38032836fbad47ccf57d0b3ce2286a4cab9c1fd"
+      "sha256": "6c1a5e92fbd5a274d4cdf936409318c3142488d5ef6529d6c4b99eab9b2840ce"
+    },
+    {
+      "bytes": 104938,
+      "path": "tuning-evidence.json",
+      "role": "samples",
+      "sha256": "9130a3676f27be7e2772e3923f7eca9eb95355de6b010778e48434f994635772"
     }
   ],
   "reproduction": {
@@ -34,13 +40,13 @@
       "--maximum-seconds",
       "900",
       "--allocation-id",
-      "issue-0971-cub-h200-ba577c7c-20260922",
+      "issue-0971-cub-h200-10472300-20260922",
       "--source-revision",
-      "ba577c7c83601c985f5126d81e68344119855ac7",
+      "104723008455ea6169d89d9fdfbc6625b0e46138",
       "--source-archive",
-      "<verified-source-archive>",
+      "<verified-git-archive>",
       "--source-archive-sha256",
-      "70d802582b2ba263b22e0d72a1c1c51f18815a6b6a9f234a0c0bbd6f93a386cb",
+      "4ecf5bd75eefafc003067f74545b9e507859e528e30903daaf3b6ce3e3d970d2",
       "--output",
       ".artifacts/benchmarks/issue971-cub-h200"
     ]
@@ -48,6 +54,6 @@
   "schema": "vibeqc.benchmark-publication.v1",
   "source": {
     "dirty": false,
-    "revision": "ba577c7c83601c985f5126d81e68344119855ac7"
+    "revision": "104723008455ea6169d89d9fdfbc6625b0e46138"
   }
 }

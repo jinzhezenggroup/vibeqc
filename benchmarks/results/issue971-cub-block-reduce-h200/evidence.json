@@ -34,7 +34,7 @@
         "stack_bytes": 0
       }
     ],
-    "seconds": 4.0515666007995605,
+    "seconds": 2.7322247736155987,
     "source_bytes": 9345
   },
   "device": {
@@ -43,17 +43,17 @@
     "driver": 12080,
     "runtime": 12080,
     "sm_count": 132,
-    "uuid": "5ea4d08d4c5888da489834cbfe92bfcb"
+    "uuid": "7c1a70325aeb9529257d35d9112b7482"
   },
   "hardware": {
-    "allocation_id": "issue-0971-cub-h200-ba577c7c-20260922",
+    "allocation_id": "issue-0971-cub-h200-10472300-20260922",
     "device": {
       "architecture": "sm_90",
       "cublas": "12.8.3",
       "driver": 12080,
       "runtime": 12080,
       "sm_count": 132,
-      "uuid": "5ea4d08d4c5888da489834cbfe92bfcb"
+      "uuid": "7c1a70325aeb9529257d35d9112b7482"
     },
     "execution_environment": {
       "accelerator": null,
@@ -64,7 +64,7 @@
       },
       "host": {
         "machine": "x86_64",
-        "node": "job-ec60d9aa-7694-46ec-94d8-f0f135b793de-worker-0",
+        "node": "job-de3cfb3b-cce4-4715-9628-b373a49987e9-worker-0",
         "platform": "Linux-5.15.0-119-generic-x86_64-with-glibc2.39",
         "processor": "x86_64"
       },
@@ -79,7 +79,7 @@
         "cuda_visible_devices": null,
         "vibeqc_library": null
       },
-      "timestamp_utc": "2026-09-22T08:56:23.561081+00:00",
+      "timestamp_utc": "2026-09-22T09:23:46.909951+00:00",
       "toolchain": {
         "cuobjdump": {
           "path": "/usr/local/cuda/bin/cuobjdump",
@@ -98,6 +98,12 @@
           "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Jan_15_19:17:38_PST_2025\nCuda compilation tools, release 12.8, V12.8.61\nBuild cuda_12.8.r12.8/compiler.35404655_0"
         }
       }
+    },
+    "nvidia_smi": {
+      "driver_version": "570.124.06",
+      "memory_total_mib": 143771,
+      "name": "NVIDIA H200",
+      "uuid": "GPU-7c1a7032-5aeb-9529-257d-35d9112b7482"
     },
     "reason": null,
     "status": "pass",
@@ -153,24 +159,24 @@
     "candidate_status": "rejected",
     "endpoint_gates": [
       {
-        "bootstrap_lower_95": 0.9896015910466818,
-        "median_speedup": 1.0028510426285948,
+        "bootstrap_lower_95": 0.9917820742897775,
+        "median_speedup": 1.0022382734665303,
         "minimum_speedup": 1.02,
         "passed": false
       },
       {
-        "bootstrap_lower_95": 0.9854370511161249,
-        "median_speedup": 0.9958376678742785,
+        "bootstrap_lower_95": 0.9908052501319857,
+        "median_speedup": 0.9997351890626924,
         "minimum_speedup": 1.02,
         "passed": false
       }
     ],
     "endpoint_profitability": [
       {
-        "baseline_endpoint_seconds": 0.0007292190566658974,
+        "baseline_endpoint_seconds": 0.0005546379834413528,
         "candidate": {
           "compiled": {
-            "compile_seconds": 4.0515666007995605,
+            "compile_seconds": 2.7322247736155987,
             "compiled_occupancy_upper_bound": 1.0,
             "compiled_registers_per_thread": 18,
             "local_bytes": null,
@@ -179,7 +185,7 @@
             "spill_load_bytes": 0,
             "spill_store_bytes": 0
           },
-          "endpoint_seconds": 0.0007271459326148033,
+          "endpoint_seconds": 0.0005533993244171143,
           "schema": "vibeqc.compiler.gpu-profitability.v1",
           "static": {
             "arithmetic_operation_count": null,
@@ -197,14 +203,14 @@
           }
         },
         "rejection_reasons": [
-          "endpoint speedup 1.00285x is below the required 1.02x"
+          "endpoint speedup 1.00224x is below the required 1.02x"
         ]
       },
       {
-        "baseline_endpoint_seconds": 0.0007907841354608536,
+        "baseline_endpoint_seconds": 0.0006047524511814117,
         "candidate": {
           "compiled": {
-            "compile_seconds": 4.0515666007995605,
+            "compile_seconds": 2.7322247736155987,
             "compiled_occupancy_upper_bound": 1.0,
             "compiled_registers_per_thread": 18,
             "local_bytes": null,
@@ -213,7 +219,7 @@
             "spill_load_bytes": 0,
             "spill_store_bytes": 0
           },
-          "endpoint_seconds": 0.0007940893992781639,
+          "endpoint_seconds": 0.0006049126386642456,
           "schema": "vibeqc.compiler.gpu-profitability.v1",
           "static": {
             "arithmetic_operation_count": null,
@@ -231,7 +237,7 @@
           }
         },
         "rejection_reasons": [
-          "endpoint speedup 0.995838x is below the required 1.02x"
+          "endpoint speedup 0.999735x is below the required 1.02x"
         ]
       }
     ],
@@ -243,41 +249,41 @@
         "workloads": {
           "unchanged-geometry": {
             "baseline": {
-              "maximum_seconds": 0.0008088592439889908,
-              "median_seconds": 0.0007292190566658974,
-              "minimum_seconds": 0.000718018040060997,
+              "maximum_seconds": 0.0006310567259788513,
+              "median_seconds": 0.0005546379834413528,
+              "minimum_seconds": 0.0005422458052635193,
               "raw_seconds": [
-                0.0008088592439889908,
-                0.0007421988993883133,
-                0.0007269978523254395,
-                0.0007314402610063553,
-                0.000731687992811203,
-                0.0007253363728523254,
-                0.0007188506424427032,
-                0.000718018040060997
+                0.0006310567259788513,
+                0.0005592070519924164,
+                0.0005653612315654755,
+                0.0005555227398872375,
+                0.0005438029766082764,
+                0.0005473457276821136,
+                0.0005422458052635193,
+                0.0005537532269954681
               ],
-              "relative_mad": 0.0097714794385135,
+              "relative_mad": 0.016240777246791977,
               "samples": 8
             },
             "candidate": {
-              "maximum_seconds": 0.0007499624043703079,
-              "median_seconds": 0.0007271459326148033,
-              "minimum_seconds": 0.0007167235016822815,
+              "maximum_seconds": 0.000568728893995285,
+              "median_seconds": 0.0005533993244171143,
+              "minimum_seconds": 0.0005407780408859253,
               "raw_seconds": [
-                0.0007499624043703079,
-                0.0007240939885377884,
-                0.0007298365235328674,
-                0.0007191002368927002,
-                0.0007296595722436905,
-                0.0007167235016822815,
-                0.0007377583533525467,
-                0.0007246322929859161
+                0.000568728893995285,
+                0.0005524642765522003,
+                0.0005557388067245483,
+                0.000557340681552887,
+                0.0005500949919223785,
+                0.0005407780408859253,
+                0.0005477666854858398,
+                0.0005543343722820282
               ],
-              "relative_mad": 0.0076309577633276,
+              "relative_mad": 0.006546529161505736,
               "samples": 8
             },
-            "noise_floor": 0.0348048744036822,
-            "relative_improvement": 0.0028429372931814134,
+            "noise_floor": 0.045574612816595424,
+            "relative_improvement": 0.0022332747868314407,
             "significant": false
           }
         }
@@ -288,41 +294,41 @@
         "workloads": {
           "unchanged-geometry": {
             "baseline": {
-              "maximum_seconds": 0.0007987041026353836,
-              "median_seconds": 0.0007907841354608536,
-              "minimum_seconds": 0.0007868930697441101,
+              "maximum_seconds": 0.0006119944155216217,
+              "median_seconds": 0.0006047524511814117,
+              "minimum_seconds": 0.0006033033132553101,
               "raw_seconds": [
-                0.0007916372269392014,
-                0.0007930602878332138,
-                0.0007868930697441101,
-                0.0007910635322332382,
-                0.0007904805243015289,
-                0.0007894355803728104,
-                0.0007905047386884689,
-                0.0007987041026353836
+                0.0006034374237060547,
+                0.0006119944155216217,
+                0.0006045214831829071,
+                0.0006082132458686829,
+                0.0006033033132553101,
+                0.000605165958404541,
+                0.0006037391722202301,
+                0.0006049834191799164
               ],
-              "relative_mad": 0.0013920654624083439,
+              "relative_mad": 0.0019250078540320444,
               "samples": 8
             },
             "candidate": {
-              "maximum_seconds": 0.0008078962564468384,
-              "median_seconds": 0.0007940893992781639,
-              "minimum_seconds": 0.0007892698049545288,
+              "maximum_seconds": 0.0006138458847999573,
+              "median_seconds": 0.0006049126386642456,
+              "minimum_seconds": 0.0006011389195919037,
               "raw_seconds": [
-                0.0007920525968074799,
-                0.0007916241884231567,
-                0.0008078962564468384,
-                0.0007931869477033615,
-                0.0007949918508529663,
-                0.0008061490952968597,
-                0.0007971152663230896,
-                0.0007892698049545288
+                0.0006055794656276703,
+                0.000612698495388031,
+                0.0006080307066440582,
+                0.00060281902551651,
+                0.0006138458847999573,
+                0.0006021596491336823,
+                0.0006042458117008209,
+                0.0006011389195919037
               ],
-              "relative_mad": 0.003457468330974014,
+              "relative_mad": 0.004852814386008129,
               "samples": 8
             },
             "noise_floor": 0.02,
-            "relative_improvement": -0.00417972954829704,
+            "relative_improvement": -0.0002648810807148738,
             "significant": false
           }
         }
@@ -331,11 +337,11 @@
     "status": "not-run"
   },
   "residuals": {},
-  "revision": "ba577c7c83601c985f5126d81e68344119855ac7",
+  "revision": "104723008455ea6169d89d9fdfbc6625b0e46138",
   "schema": "vibeqc.validation",
   "schema_version": 1,
   "settings": {
-    "allocation_id": "issue-0971-cub-h200-ba577c7c-20260922",
+    "allocation_id": "issue-0971-cub-h200-10472300-20260922",
     "comparison_kind": "kernel",
     "device": "cuda",
     "fast_compile": false,
@@ -378,14 +384,20 @@
     "precision": "float64->float64",
     "promotion_scope": "opt-in candidate qualification only; generated CUDA remains the production default",
     "rows": 65,
-    "source_archive_sha256": "70d802582b2ba263b22e0d72a1c1c51f18815a6b6a9f234a0c0bbd6f93a386cb",
+    "source_snapshot": {
+      "archive_sha256": "4ecf5bd75eefafc003067f74545b9e507859e528e30903daaf3b6ce3e3d970d2",
+      "execution_root": "/inspire/hdd/project/project-public/czxs25220150/issue971/runs/h200-cub-10472300-20260922/source",
+      "git_revision": "104723008455ea6169d89d9fdfbc6625b0e46138",
+      "verified_bytes": 130781880,
+      "verified_files": 6250
+    },
     "timing_scope": "complete prepared TensorIR endpoint: caller validation/staging, H2D, identical reduction work, D2H, and detached output"
   },
   "solver_iterations": [],
   "solver_trace_reason": "not exposed by executor",
   "stages": {
     "compilation": {
-      "cub_compile_seconds": 4.0515666007995605,
+      "cub_compile_seconds": 2.7322247736155987,
       "cub_resources": [
         {
           "function": "_ZN13vibeqc_tensor11check_scaleEPflfPii",
@@ -415,7 +427,7 @@
           "stack_bytes": 0
         }
       ],
-      "generated_compile_seconds": 3.1832573730498552,
+      "generated_compile_seconds": 2.2322836816310883,
       "generated_resources": [
         {
           "function": "_ZN13vibeqc_tensor11check_scaleEPflfPii",
@@ -494,8 +506,8 @@
   "timings": [
     {
       "diagnostics": {
-        "device_ms": 0.20073600113391876,
-        "endpoint_ms": 0.7798206061124802,
+        "device_ms": 0.1818239986896515,
+        "endpoint_ms": 0.6098635494709015,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -517,15 +529,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0008088592439889908,
+      "seconds": 0.0006310567259788513,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18835200369358063,
-        "endpoint_ms": 0.7237624377012253,
+        "device_ms": 0.17776000499725342,
+        "endpoint_ms": 0.547356903553009,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -547,15 +559,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007499624043703079,
+      "seconds": 0.000568728893995285,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18544000387191772,
-        "endpoint_ms": 0.7015317678451538,
+        "device_ms": 0.17238399386405945,
+        "endpoint_ms": 0.534307211637497,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -577,15 +589,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007240939885377884,
+      "seconds": 0.0005524642765522003,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.185248002409935,
-        "endpoint_ms": 0.7198303937911987,
+        "device_ms": 0.1736000031232834,
+        "endpoint_ms": 0.5416423082351685,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -607,15 +619,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007421988993883133,
+      "seconds": 0.0005592070519924164,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18483200669288635,
-        "endpoint_ms": 0.7033143192529678,
+        "device_ms": 0.17440000176429749,
+        "endpoint_ms": 0.5453526973724365,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -637,15 +649,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007269978523254395,
+      "seconds": 0.0005653612315654755,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18592000007629395,
-        "endpoint_ms": 0.7075369358062744,
+        "device_ms": 0.17270399630069733,
+        "endpoint_ms": 0.5373694002628326,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -667,15 +679,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007298365235328674,
+      "seconds": 0.0005557388067245483,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18483200669288635,
-        "endpoint_ms": 0.6972644478082657,
+        "device_ms": 0.17206400632858276,
+        "endpoint_ms": 0.5378648638725281,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -697,15 +709,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007191002368927002,
+      "seconds": 0.000557340681552887,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18307200074195862,
-        "endpoint_ms": 0.7021464407444,
+        "device_ms": 0.17043200135231018,
+        "endpoint_ms": 0.5356408655643463,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -727,15 +739,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007314402610063553,
+      "seconds": 0.0005555227398872375,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18457600474357605,
-        "endpoint_ms": 0.7102973759174347,
+        "device_ms": 0.16991999745368958,
+        "endpoint_ms": 0.5264692008495331,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -757,15 +769,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.000731687992811203,
+      "seconds": 0.0005438029766082764,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.1849920004606247,
-        "endpoint_ms": 0.7038209587335587,
+        "device_ms": 0.16864000260829926,
+        "endpoint_ms": 0.5332194268703461,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -787,15 +799,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007296595722436905,
+      "seconds": 0.0005500949919223785,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.1844480037689209,
-        "endpoint_ms": 0.6941035389900208,
+        "device_ms": 0.16867199540138245,
+        "endpoint_ms": 0.523000955581665,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -817,15 +829,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007167235016822815,
+      "seconds": 0.0005407780408859253,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18454399704933167,
-        "endpoint_ms": 0.7033590227365494,
+        "device_ms": 0.16927999258041382,
+        "endpoint_ms": 0.5293935537338257,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -847,15 +859,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007253363728523254,
+      "seconds": 0.0005473457276821136,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18435199558734894,
-        "endpoint_ms": 0.698065385222435,
+        "device_ms": 0.16870400309562683,
+        "endpoint_ms": 0.525105744600296,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -877,15 +889,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007188506424427032,
+      "seconds": 0.0005422458052635193,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.19705599546432495,
-        "endpoint_ms": 0.716404989361763,
+        "device_ms": 0.1701440066099167,
+        "endpoint_ms": 0.5289092659950256,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -907,15 +919,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007377583533525467,
+      "seconds": 0.0005477666854858398,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.1857600063085556,
-        "endpoint_ms": 0.7029492408037186,
+        "device_ms": 0.17212800681591034,
+        "endpoint_ms": 0.534646213054657,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -937,15 +949,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.0007246322929859161,
+      "seconds": 0.0005543343722820282,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.17881600558757782,
-        "endpoint_ms": 0.6959587335586548,
+        "device_ms": 0.17071999609470367,
+        "endpoint_ms": 0.5351714789867401,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -967,15 +979,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
-      "seconds": 0.000718018040060997,
+      "seconds": 0.0005537532269954681,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18352000415325165,
-        "endpoint_ms": 0.7706843316555023,
+        "device_ms": 0.16864000260829926,
+        "endpoint_ms": 0.5878433585166931,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -997,15 +1009,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007916372269392014,
+      "seconds": 0.0006034374237060547,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18400000035762787,
-        "endpoint_ms": 0.7699001580476761,
+        "device_ms": 0.16976000368595123,
+        "endpoint_ms": 0.588051974773407,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1027,15 +1039,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007920525968074799,
+      "seconds": 0.0006055794656276703,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18505600094795227,
-        "endpoint_ms": 0.7703211158514023,
+        "device_ms": 0.17612800002098083,
+        "endpoint_ms": 0.5946308374404907,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1057,15 +1069,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007916241884231567,
+      "seconds": 0.000612698495388031,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18848000466823578,
-        "endpoint_ms": 0.7718820124864578,
+        "device_ms": 0.17440000176429749,
+        "endpoint_ms": 0.5937479436397552,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1087,15 +1099,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007930602878332138,
+      "seconds": 0.0006119944155216217,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18361599743366241,
-        "endpoint_ms": 0.765511766076088,
+        "device_ms": 0.16940799355506897,
+        "endpoint_ms": 0.5866475403308868,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1117,15 +1129,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007868930697441101,
+      "seconds": 0.0006045214831829071,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.19577600061893463,
-        "endpoint_ms": 0.7852427661418915,
+        "device_ms": 0.17052799463272095,
+        "endpoint_ms": 0.5895495414733887,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1147,15 +1159,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0008078962564468384,
+      "seconds": 0.0006080307066440582,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18540799617767334,
-        "endpoint_ms": 0.7707197219133377,
+        "device_ms": 0.16988800466060638,
+        "endpoint_ms": 0.5857460200786591,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1177,15 +1189,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007931869477033615,
+      "seconds": 0.00060281902551651,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.1852799952030182,
-        "endpoint_ms": 0.768834725022316,
+        "device_ms": 0.16835199296474457,
+        "endpoint_ms": 0.5895234644412994,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1207,15 +1219,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007910635322332382,
+      "seconds": 0.0006082132458686829,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18451200425624847,
-        "endpoint_ms": 0.767536461353302,
+        "device_ms": 0.17027199268341064,
+        "endpoint_ms": 0.5852319300174713,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1237,15 +1249,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007904805243015289,
+      "seconds": 0.0006033033132553101,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18566399812698364,
-        "endpoint_ms": 0.7731374353170395,
+        "device_ms": 0.17919999361038208,
+        "endpoint_ms": 0.5964972078800201,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1267,15 +1279,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007949918508529663,
+      "seconds": 0.0006138458847999573,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18512000143527985,
-        "endpoint_ms": 0.7848683744668961,
+        "device_ms": 0.1693120002746582,
+        "endpoint_ms": 0.5852095782756805,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1297,15 +1309,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0008061490952968597,
+      "seconds": 0.0006021596491336823,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18438400328159332,
-        "endpoint_ms": 0.767657533288002,
+        "device_ms": 0.16950400173664093,
+        "endpoint_ms": 0.5876049399375916,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1327,15 +1339,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007894355803728104,
+      "seconds": 0.000605165958404541,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.1852799952030182,
-        "endpoint_ms": 0.7682908326387405,
+        "device_ms": 0.16911999881267548,
+        "endpoint_ms": 0.5858652293682098,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1357,15 +1369,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007905047386884689,
+      "seconds": 0.0006037391722202301,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18854400515556335,
-        "endpoint_ms": 0.7757768034934998,
+        "device_ms": 0.17068800330162048,
+        "endpoint_ms": 0.5856901407241821,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1387,15 +1399,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007971152663230896,
+      "seconds": 0.0006042458117008209,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18457600474357605,
-        "endpoint_ms": 0.7685590535402298,
+        "device_ms": 0.1700800061225891,
+        "endpoint_ms": 0.5831792950630188,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1417,15 +1429,15 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007892698049545288,
+      "seconds": 0.0006011389195919037,
       "selection": "candidate",
       "synchronized": true,
       "workload": "unchanged-geometry"
     },
     {
       "diagnostics": {
-        "device_ms": 0.18454399704933167,
-        "endpoint_ms": 0.7769465446472168,
+        "device_ms": 0.16979199647903442,
+        "endpoint_ms": 0.588197261095047,
         "host_buffer_bytes": 2266128,
         "input_ms": 0.0,
         "kernel_ms": 0.0,
@@ -1447,7 +1459,7 @@
         "provider_retained_bytes": 0
       },
       "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
-      "seconds": 0.0007987041026353836,
+      "seconds": 0.0006049834191799164,
       "selection": "baseline",
       "synchronized": true,
       "workload": "unchanged-geometry"

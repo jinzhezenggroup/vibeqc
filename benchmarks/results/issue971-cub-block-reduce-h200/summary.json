@@ -1,11 +1,11 @@
 {
-  "allocation_id": "issue-0971-cub-h200-ba577c7c-20260922",
+  "allocation_id": "issue-0971-cub-h200-10472300-20260922",
   "candidate_status": "rejected",
   "cub_artifact": {
     "artifact_bytes": 1068592,
     "binary_bytes": 1068592,
-    "binary_sha256": "62c4329be94badcb8c347b525814620aea32273228a5458ff23938be1c23f0bc",
-    "compile_seconds": 4.0515666007995605,
+    "binary_sha256": "59e38358f281a8262332cccaa76d8272eabaeec6daf386a24c5619f7703f3327",
+    "compile_seconds": 2.7322247736155987,
     "generated_source_bytes": 9345,
     "identity": {
       "compiler_environment": {
@@ -80,25 +80,25 @@
     "static_data_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "decision": "CUB remains opt-in; this single-shape qualification does not change the generated-CUDA production default",
-  "detailed_tuning_evidence": "cache/selections/f2a6821e40e646eef9097f1c64a9e29087a86b5a893d550e7732243d68001d32/evidence.json",
+  "detailed_tuning_evidence": "tuning-evidence.json",
   "device": {
     "architecture": "sm_90",
     "cublas": "12.8.3",
     "driver": 12080,
     "runtime": 12080,
     "sm_count": 132,
-    "uuid": "5ea4d08d4c5888da489834cbfe92bfcb"
+    "uuid": "7c1a70325aeb9529257d35d9112b7482"
   },
   "endpoint_gates": [
     {
-      "bootstrap_lower_95": 0.9896015910466818,
-      "median_speedup": 1.0028510426285948,
+      "bootstrap_lower_95": 0.9917820742897775,
+      "median_speedup": 1.0022382734665303,
       "minimum_speedup": 1.02,
       "passed": false
     },
     {
-      "bootstrap_lower_95": 0.9854370511161249,
-      "median_speedup": 0.9958376678742785,
+      "bootstrap_lower_95": 0.9908052501319857,
+      "median_speedup": 0.9997351890626924,
       "minimum_speedup": 1.02,
       "passed": false
     }
@@ -107,8 +107,8 @@
   "generated_artifact": {
     "artifact_bytes": 1063888,
     "binary_bytes": 1063888,
-    "binary_sha256": "408f2ac99ac6f14c6e1d49f5bab61748dbc1bf92cc771bb62a4b8dc83719b380",
-    "compile_seconds": 3.1832573730498552,
+    "binary_sha256": "2f93ebd450b5d7e84fc11325b71b94ed99c23ea6ebe8b78f7c2a683e2273eab7",
+    "compile_seconds": 2.2322836816310883,
     "generated_source_bytes": 9452,
     "identity": {
       "compiler_environment": {
@@ -184,7 +184,13 @@
   },
   "generated_default_retained": true,
   "max_absolute_error": 9.094947017729282e-13,
-  "revision": "ba577c7c83601c985f5126d81e68344119855ac7",
+  "nvidia_smi": {
+    "driver_version": "570.124.06",
+    "memory_total_mib": 143771,
+    "name": "NVIDIA H200",
+    "uuid": "GPU-7c1a7032-5aeb-9529-257d-35d9112b7482"
+  },
+  "revision": "104723008455ea6169d89d9fdfbc6625b0e46138",
   "schema": "vibeqc.tensor.cub-qualification.v1",
   "selected_schedule": {
     "direct_gemm": true,
@@ -210,41 +216,41 @@
       "workloads": {
         "unchanged-geometry": {
           "baseline": {
-            "maximum_seconds": 0.0008088592439889908,
-            "median_seconds": 0.0007292190566658974,
-            "minimum_seconds": 0.000718018040060997,
+            "maximum_seconds": 0.0006310567259788513,
+            "median_seconds": 0.0005546379834413528,
+            "minimum_seconds": 0.0005422458052635193,
             "raw_seconds": [
-              0.0008088592439889908,
-              0.0007421988993883133,
-              0.0007269978523254395,
-              0.0007314402610063553,
-              0.000731687992811203,
-              0.0007253363728523254,
-              0.0007188506424427032,
-              0.000718018040060997
+              0.0006310567259788513,
+              0.0005592070519924164,
+              0.0005653612315654755,
+              0.0005555227398872375,
+              0.0005438029766082764,
+              0.0005473457276821136,
+              0.0005422458052635193,
+              0.0005537532269954681
             ],
-            "relative_mad": 0.0097714794385135,
+            "relative_mad": 0.016240777246791977,
             "samples": 8
           },
           "candidate": {
-            "maximum_seconds": 0.0007499624043703079,
-            "median_seconds": 0.0007271459326148033,
-            "minimum_seconds": 0.0007167235016822815,
+            "maximum_seconds": 0.000568728893995285,
+            "median_seconds": 0.0005533993244171143,
+            "minimum_seconds": 0.0005407780408859253,
             "raw_seconds": [
-              0.0007499624043703079,
-              0.0007240939885377884,
-              0.0007298365235328674,
-              0.0007191002368927002,
-              0.0007296595722436905,
-              0.0007167235016822815,
-              0.0007377583533525467,
-              0.0007246322929859161
+              0.000568728893995285,
+              0.0005524642765522003,
+              0.0005557388067245483,
+              0.000557340681552887,
+              0.0005500949919223785,
+              0.0005407780408859253,
+              0.0005477666854858398,
+              0.0005543343722820282
             ],
-            "relative_mad": 0.0076309577633276,
+            "relative_mad": 0.006546529161505736,
             "samples": 8
           },
-          "noise_floor": 0.0348048744036822,
-          "relative_improvement": 0.0028429372931814134,
+          "noise_floor": 0.045574612816595424,
+          "relative_improvement": 0.0022332747868314407,
           "significant": false
         }
       }
@@ -255,47 +261,53 @@
       "workloads": {
         "unchanged-geometry": {
           "baseline": {
-            "maximum_seconds": 0.0007987041026353836,
-            "median_seconds": 0.0007907841354608536,
-            "minimum_seconds": 0.0007868930697441101,
+            "maximum_seconds": 0.0006119944155216217,
+            "median_seconds": 0.0006047524511814117,
+            "minimum_seconds": 0.0006033033132553101,
             "raw_seconds": [
-              0.0007916372269392014,
-              0.0007930602878332138,
-              0.0007868930697441101,
-              0.0007910635322332382,
-              0.0007904805243015289,
-              0.0007894355803728104,
-              0.0007905047386884689,
-              0.0007987041026353836
+              0.0006034374237060547,
+              0.0006119944155216217,
+              0.0006045214831829071,
+              0.0006082132458686829,
+              0.0006033033132553101,
+              0.000605165958404541,
+              0.0006037391722202301,
+              0.0006049834191799164
             ],
-            "relative_mad": 0.0013920654624083439,
+            "relative_mad": 0.0019250078540320444,
             "samples": 8
           },
           "candidate": {
-            "maximum_seconds": 0.0008078962564468384,
-            "median_seconds": 0.0007940893992781639,
-            "minimum_seconds": 0.0007892698049545288,
+            "maximum_seconds": 0.0006138458847999573,
+            "median_seconds": 0.0006049126386642456,
+            "minimum_seconds": 0.0006011389195919037,
             "raw_seconds": [
-              0.0007920525968074799,
-              0.0007916241884231567,
-              0.0008078962564468384,
-              0.0007931869477033615,
-              0.0007949918508529663,
-              0.0008061490952968597,
-              0.0007971152663230896,
-              0.0007892698049545288
+              0.0006055794656276703,
+              0.000612698495388031,
+              0.0006080307066440582,
+              0.00060281902551651,
+              0.0006138458847999573,
+              0.0006021596491336823,
+              0.0006042458117008209,
+              0.0006011389195919037
             ],
-            "relative_mad": 0.003457468330974014,
+            "relative_mad": 0.004852814386008129,
             "samples": 8
           },
           "noise_floor": 0.02,
-          "relative_improvement": -0.00417972954829704,
+          "relative_improvement": -0.0002648810807148738,
           "significant": false
         }
       }
     }
   ],
-  "source_archive_sha256": "70d802582b2ba263b22e0d72a1c1c51f18815a6b6a9f234a0c0bbd6f93a386cb",
+  "source_snapshot": {
+    "archive_sha256": "4ecf5bd75eefafc003067f74545b9e507859e528e30903daaf3b6ce3e3d970d2",
+    "execution_root": "/inspire/hdd/project/project-public/czxs25220150/issue971/runs/h200-cub-10472300-20260922/source",
+    "git_revision": "104723008455ea6169d89d9fdfbc6625b0e46138",
+    "verified_bytes": 130781880,
+    "verified_files": 6250
+  },
   "target": {
     "architecture": "sm_90",
     "compute_capability": "9.0",
