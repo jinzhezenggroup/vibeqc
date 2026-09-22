@@ -15,6 +15,7 @@ import os
 import subprocess
 import tempfile
 import typing
+from contextlib import nullcontext
 from pathlib import Path
 from time import perf_counter
 from types import MappingProxyType
@@ -22,11 +23,16 @@ from types import MappingProxyType
 import numpy as np
 from vibeqc import Calculator, GridSpec, KsOptions
 from vibeqc._dft_gradient import StationaryKsState
-from vibeqc._stationary_cuda import complete_rks_cuda_gradient_diagnostic
-from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc._stationary_cuda import (
+    PreparedStationaryCudaExecution,
+    complete_rks_cuda_gradient_diagnostic,
+)
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.provenance import atomic_json
 from vibeqc_compiler.dft import NativeAO
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 
 SYSTEMS = {
     "h2": [
@@ -60,6 +66,12 @@ GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
 # settings qualify the exported physical state without relaxing native checks.
 SCF_PREPARATION = MappingProxyType(
     {"energy_tolerance": 1e-12, "density_tolerance": 1e-12, "max_iterations": 200}
+)
+# Keep measurement provenance and the executed production schedule on one owner.
+# These are the public stationary CUDA defaults; benchmark metadata is derived
+# from this mapping instead of maintaining an independent copy.
+PRODUCTION_EXECUTION = MappingProxyType(
+    {"tile_points": 256, "integral_terms": 32, "primitive_tile": 4096}
 )
 
 
@@ -142,13 +154,34 @@ def _timeline_record(
 def _diagnostic(
     state: typing.Any,
     basis: typing.Any,
-    compiler: CudaCompilerAdapter,
+    compiler: CudaCompilerAdapter | None,
     cache: Path,
+    *,
+    prepared: PreparedStationaryCudaExecution | None = None,
+    target: typing.Any = None,
+    library: Path | None = None,
 ) -> tuple[typing.Any, float]:
+    kwargs: dict[str, typing.Any] = {
+        "compiler": compiler,
+        "cache": cache,
+        "profile_device": True,
+    }
+    if prepared is not None:
+        if compiler is not None:
+            raise ValueError(
+                "prepared AOT timeline must not enable runtime compilation"
+            )
+        if target is None or library is None:
+            raise ValueError("prepared AOT timeline requires target and native library")
+        kwargs.update(
+            aot_directory=library.parent,
+            native_grid_library=library,
+            target=target,
+            prepared=prepared,
+            **PRODUCTION_EXECUTION,
+        )
     started = perf_counter()
-    result = complete_rks_cuda_gradient_diagnostic(
-        state, basis, compiler=compiler, cache=cache, profile_device=True
-    )
+    result = complete_rks_cuda_gradient_diagnostic(state, basis, **kwargs)
     observed = perf_counter() - started
     return result, observed
 
@@ -233,10 +266,12 @@ def benchmark_case(
     system: str,
     atoms: list[tuple[str, tuple[float, float, float]]],
     method: str,
-    compiler: CudaCompilerAdapter,
+    compiler: CudaCompilerAdapter | None,
     cache: Path,
     same_state_repeats: int,
     records: list[dict[str, typing.Any]] | None = None,
+    target: typing.Any = None,
+    library: Path | None = None,
 ) -> list[dict[str, typing.Any]]:
     charge, multiplicity = _spin(method)
     calc = _calculator(method)
@@ -244,17 +279,41 @@ def benchmark_case(
     cache.mkdir(parents=True, exist_ok=True)
     # A cold measurement owns a fresh child, never deletes caller cache/evidence.
     cache = Path(tempfile.mkdtemp(prefix="cold-", dir=cache))
+    if (target is None) != (library is None):
+        raise ValueError(
+            "prepared AOT timeline requires both target and native library"
+        )
+    prepared_context: typing.ContextManager[PreparedStationaryCudaExecution | None] = (
+        PreparedStationaryCudaExecution() if target is not None else nullcontext(None)
+    )
 
     with (
         calc.prepare_batch(
             [atoms], charges=[charge], multiplicities=[multiplicity]
         ) as batch,
         NativeAO(atoms, charge=charge, multiplicity=multiplicity) as basis,
+        prepared_context as prepared,
     ):
+
+        def diagnostic(
+            state: typing.Any, current_basis: typing.Any
+        ) -> tuple[typing.Any, float]:
+            if prepared is None:
+                return _diagnostic(state, current_basis, compiler, cache)
+            return _diagnostic(
+                state,
+                current_basis,
+                compiler,
+                cache,
+                prepared=prepared,
+                target=target,
+                library=library,
+            )
+
         cold_item = batch.execute(strict=True, properties=("energy",)).items[0]
         cold_state, export_seconds = _export_state(batch, basis)
         try:
-            result, wall = _diagnostic(cold_state, basis, compiler, cache)
+            result, wall = diagnostic(cold_state, basis)
             records.append(
                 _successful_record(
                     system=system,
@@ -284,7 +343,7 @@ def benchmark_case(
 
         warm_item = batch.execute(strict=True, properties=("energy",)).items[0]
         warm_state, export_seconds = _export_state(batch, basis)
-        result, wall = _diagnostic(warm_state, basis, compiler, cache)
+        result, wall = diagnostic(warm_state, basis)
         records.append(
             _successful_record(
                 system=system,
@@ -300,7 +359,7 @@ def benchmark_case(
         )
 
         for repeat in range(same_state_repeats):
-            result, wall = _diagnostic(warm_state, basis, compiler, cache)
+            result, wall = diagnostic(warm_state, basis)
             records.append(
                 _successful_record(
                     system=system,
@@ -328,7 +387,7 @@ def benchmark_case(
             changed_atoms, charge=charge, multiplicity=multiplicity
         ) as changed_basis:
             changed_state, export_seconds = _export_state(batch, changed_basis)
-            result, wall = _diagnostic(changed_state, changed_basis, compiler, cache)
+            result, wall = diagnostic(changed_state, changed_basis)
             records.append(
                 _successful_record(
                     system=system,
@@ -368,16 +427,15 @@ def main() -> None:
         parser.error("--same-state-repeats must be in [1,20]")
     if not os.environ.get("SLURM_JOB_ID"):
         parser.error("issue #662 GPU benchmark requires a Slurm allocation")
-    nvcc = os.environ.get("CUDACXX") or os.environ.get("VIBEQC_NVCC")
-    if not nvcc:
-        parser.error("set CUDACXX or VIBEQC_NVCC")
-
-    compiler = CudaCompilerAdapter(
-        Path(nvcc), cuda_target_info(args.target), compile_timeout=600
-    )
-    records: list[dict[str, typing.Any]] = []
     library_text = os.environ.get("VIBEQC_LIBRARY")
-    library = Path(library_text) if library_text else None
+    if not library_text:
+        parser.error("set VIBEQC_LIBRARY to the qualified native CUDA library")
+    library = Path(library_text).resolve()
+    if not library.is_file():
+        parser.error(f"VIBEQC_LIBRARY is not a file: {library}")
+    target = cuda_target_info(args.target)
+
+    records: list[dict[str, typing.Any]] = []
     payload = {
         "schema": "vibeqc.stationary-cuda-force-benchmark.v1",
         "issue": 662,
@@ -386,22 +444,17 @@ def main() -> None:
         "provenance": {
             "head": _git(["rev-parse", "HEAD"]),
             "dirty": bool(_git(["status", "--porcelain"])),
-            "library": str(library) if library is not None else None,
-            "library_sha256": hashlib.sha256(library.read_bytes()).hexdigest()
-            if library is not None and library.is_file()
-            else None,
+            "library": str(library),
+            "library_sha256": hashlib.sha256(library.read_bytes()).hexdigest(),
             "gpu": _gpu_identity(),
             "slurm_job": os.environ.get("SLURM_JOB_ID"),
             "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
-            "nvcc": str(nvcc),
             "target": args.target,
+            "execution_route": "prepared-aot",
+            "runtime_compilation": False,
             "grid": [24, 8, 16],
             "scf_preparation": dict(SCF_PREPARATION),
-            "production_defaults": {
-                "tile_points": 256,
-                "integral_terms": 32,
-                "primitive_tile": 128,
-            },
+            "production_defaults": dict(PRODUCTION_EXECUTION),
         },
     }
 
@@ -413,7 +466,9 @@ def main() -> None:
                     system=system,
                     atoms=SYSTEMS[system],
                     method=method,
-                    compiler=compiler,
+                    compiler=None,
+                    target=target,
+                    library=library,
                     cache=args.cache / method / system,
                     same_state_repeats=args.same_state_repeats,
                     records=records,

@@ -5,7 +5,7 @@ from tools import audit_libxc_maple_coverage as coverage
 
 def test_pinned_libxc_maple_inventory_and_functional_parser_coverage() -> None:
     report = coverage.audit()
-    assert report["importer_semantics"] == "libxc-maple-graph/v10"
+    assert report["importer_semantics"] == "libxc-maple-graph/v11"
     assert report["source_files"] == 27
     assert report["functional_files"] == 23
     assert report["support_files"] == 4

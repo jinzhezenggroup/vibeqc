@@ -2,7 +2,7 @@
 
 Source implementation: `e8d6a006de601370feeab4702fd5b3c0f250d206`, rebased on
 `a50f93665081a7e2804f84aa617e6b3db7228aa4` (including PR #264).
-See [execution contracts and reproduction](../../../docs/high_angular_momentum.md)
+See [execution contracts and reproduction](../../../docs/user/high_angular_momentum.md)
 and [machine-readable results](results.json).
 
 ## Gates

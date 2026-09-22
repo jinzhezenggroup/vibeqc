@@ -333,7 +333,13 @@ def emit_cpu(
 
 
 class NativeTensorProgram:
-    """Compiled CPU-only program, with checked feeds and transactional outputs."""
+    """Compiled CPU-only program, with checked feeds and transactional outputs.
+
+    ``compiler`` accepts an adapter or a zero-argument adapter factory. The
+    factory runs only after bounded lowering succeeds, allowing public JIT
+    callers to reject unsupported IR without discovering a local toolchain.
+    Existing callers may continue supplying an already constructed adapter.
+    """
 
     def __init__(
         self,
@@ -346,8 +352,6 @@ class NativeTensorProgram:
         max_nodes: typing.Any = 4096,
         symbol: str = "tensor_cpu",
     ) -> None:
-        if not isinstance(compiler, CppCompilerAdapter):
-            raise TypeError("native TensorIR requires a CPU compiler adapter")
         source, self.resources = emit_cpu(
             program,
             max_bytes=max_bytes,
@@ -355,6 +359,10 @@ class NativeTensorProgram:
             max_nodes=max_nodes,
             symbol=symbol,
         )
+        if callable(compiler):
+            compiler = compiler()
+        if not isinstance(compiler, CppCompilerAdapter):
+            raise TypeError("native TensorIR requires a CPU compiler adapter")
         self.program, self.max_bytes = program, max_bytes
         self.inputs = tuple(n for n in program.live_nodes if n.op == "input")
         self.identity = canonical_hash(

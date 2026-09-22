@@ -1,7 +1,7 @@
 {
   "current_default": "experimental native matrix-prefix projection and cuBLAS J/K; CPU source and pivot policy",
   "evidence": [
-    "docs/incremental_low_rank.md"
+    "docs/developer/incremental_low_rank.md"
   ],
   "generated_capability": "no new shell/operator formula; existing raw source and shared native runtime",
   "missing_capability": "generic retained-factor J/K has no integrated TensorIR method adapter yet",

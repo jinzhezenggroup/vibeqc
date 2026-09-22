@@ -44,6 +44,7 @@ from vibeqc_compiler.xc.production_policy import (
 )
 from vibeqc_compiler.xc.semilocal_codegen import (
     build_roots,
+    emit_r2scan_program,
 )
 from vibeqc_compiler.xc.semilocal_codegen import (
     emit_polarized_semilocal as _emit_polarized_semilocal,
@@ -245,14 +246,13 @@ def emit_wb97mv_polarized() -> str:
 
 
 def emit_r2scan_polarized() -> str:
-    """Emit production r2SCAN through the common rho/sigma/tau lowerer."""
+    """Emit the production-domain first-feature ABI used by native MGGA KS."""
 
-    return emit_polarized_mgga(
-        functional("R2SCAN", spin="polarized"),
+    return emit_r2scan_program(
         value_type="R2scanPolarizedValue",
         function_name="r2scan_polarized",
         identity_constant="kR2scanPolarizedExpressionIdentity",
-        production=True,
+        qualifier="inline",
     )
 
 

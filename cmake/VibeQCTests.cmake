@@ -23,6 +23,10 @@ endfunction()
 macro(vibeqc_add_native_tests)
   enable_testing()
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_mean_field_setup_cuda_tests tests/native/test_mean_field_setup_cuda.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_cuda_quadrature_tests tests/native/test_cuda_quadrature.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
     vibeqc_native_test(vibeqc_xc_response_cuda_tests tests/native/test_xc_response_cuda.cu
                        NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
     target_compile_definitions(vibeqc_xc_response_cuda_tests PRIVATE
@@ -318,6 +322,8 @@ macro(vibeqc_add_native_tests)
     vibeqc_native_test(vibeqc_df_shell_pairs_tests tests/native/test_df_shell_pairs.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
     vibeqc_native_test(vibeqc_cuda_fock_provider_tests tests/native/test_cuda_fock_provider.cpp
+                       LIBRARIES CUDA::cudart)
+    vibeqc_native_test(vibeqc_cuda_stream_eigensolver_tests tests/native/test_cuda_stream_eigensolver.cpp
                        LIBRARIES CUDA::cudart)
     vibeqc_native_test(vibeqc_ecp_cuda_error_tests tests/native/test_ecp_cuda_errors.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
