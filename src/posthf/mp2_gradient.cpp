@@ -6,6 +6,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include "integrals/density_fitting_metric.hpp"
 #include "posthf/capacity.hpp"
 #include "posthf/native_provider.hpp"
 
@@ -92,7 +93,7 @@ std::vector<std::size_t> all_orbitals(std::size_t n) {
 }
 
 std::vector<double> streamed_fock(std::span<const double> h,
-                                  const posthf::NativeBlockProvider& provider, std::size_t n,
+                                  const posthf::MOBlockProvider& provider, std::size_t n,
                                   std::size_t occupied, bool cuda, int device_id) {
   auto fock = std::vector<double>(h.begin(), h.end());
   const auto all = all_orbitals(n);
@@ -116,7 +117,7 @@ std::vector<double> streamed_fock(std::span<const double> h,
 std::vector<double> rotation_gradient_streamed(std::span<const double> one,
                                                std::span<const double> two,
                                                std::span<const double> h,
-                                               const posthf::NativeBlockProvider& provider,
+                                               const posthf::MOBlockProvider& provider,
                                                std::size_t n, bool cuda, int device_id) {
   std::vector<double> result(square(n), 0.0);
   for (std::size_t p = 0; p < n; ++p)
@@ -273,7 +274,7 @@ OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo, std::span<con
 
 OrbitalRhs canonical_orbital_rhs_streamed(const scf::PhysicalReference& reference,
                                           std::span<const double> hcore_mo,
-                                          const posthf::NativeBlockProvider& provider,
+                                          const posthf::MOBlockProvider& provider,
                                           const EnergyAdjoint& adjoint, double same_space_threshold,
                                           bool cuda, int device_id) {
   validate_adjoint(adjoint);
@@ -364,7 +365,7 @@ LagrangianWeights canonical_lagrangian_weights(std::span<const double> hcore_mo,
 
 LagrangianWeights canonical_lagrangian_weights_streamed(
     const scf::PhysicalReference& reference, std::span<const double> hcore_mo,
-    const posthf::NativeBlockProvider& provider, const EnergyAdjoint& adjoint,
+    const posthf::MOBlockProvider& provider, const EnergyAdjoint& adjoint,
     std::span<const double> response, double same_space_threshold, bool cuda, int device_id) {
   auto orbital = canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint,
                                                 same_space_threshold, cuda, device_id);
@@ -397,6 +398,108 @@ LagrangianWeights canonical_lagrangian_weights_streamed(
       stationarity[p * n + q] = gradient[p * n + q] - gradient[q * n + p];
     }
   result.stationarity_residual = response::stable_norm(stationarity);
+  return result;
+}
+
+DensityFittedLagrangianWeights density_fitted_lagrangian_weights(
+    const scf::PhysicalReference& reference, const posthf::DensityFittedBlockProvider& provider,
+    const LagrangianWeights& weights, std::size_t maximum_bytes) {
+  const auto n = reference.nbf, occupied = reference.nocc, na = provider.auxiliary_count();
+  if (&provider.reference() != &reference || !n || !occupied || occupied >= n || !na ||
+      weights.orbitals != n || weights.occupied != occupied || !maximum_bytes)
+    throw std::invalid_argument("RI-MP2 Lagrangian/reference/provider mismatch");
+  const auto n2 = square(n), n4 = fourth_power(n), a2 = square(na);
+  const auto three = posthf::checked_mul(n2, na);
+  if (reference.coefficients.size() != n2 || weights.one_electron.size() != n2 ||
+      weights.overlap.size() != n2 || weights.two_electron.size() != n4 ||
+      provider.metric().size() != a2 || provider.inverse_square_root().size() != a2 ||
+      provider.transformed_three_center().size() != three ||
+      provider.whitened_three_center().size() != three || !finite(reference.coefficients) ||
+      !finite(weights.one_electron) || !finite(weights.overlap) || !finite(weights.two_electron))
+    throw std::invalid_argument("RI-MP2 Lagrangian weights have inconsistent dimensions");
+
+  // Result: S/H/A/M. Scratch: bar_B, bar_A_MO and bar_X plus conservative
+  // eigensystem workspace for the shared inverse-square-root pullback. Include
+  // the provider and incoming relaxed weights because they coexist at this
+  // stage of the endpoint.
+  auto result_elements = posthf::checked_add(posthf::checked_mul(2, n2), three);
+  result_elements = posthf::checked_add(result_elements, a2);
+  auto scratch_elements = posthf::checked_mul(2, three);
+  // bar_X and eigenvectors coexist with the VJP's symmetric/temp/transformed
+  // matrices (its returned metric is charged above). Reserve one additional
+  // matrix for eigensolver staging, plus eigenvalues and retained-rank flags.
+  scratch_elements = posthf::checked_add(scratch_elements, posthf::checked_mul(6, a2));
+  scratch_elements = posthf::checked_add(scratch_elements, posthf::checked_mul(2, na));
+  scratch_elements = posthf::checked_add(scratch_elements, n2);
+  auto weight_elements = posthf::checked_add(posthf::checked_mul(2, n2), n4);
+  auto required = provider.provider_bytes();
+  required = posthf::checked_add(required, posthf::checked_mul(weight_elements, sizeof(double)));
+  required = posthf::checked_add(required, posthf::checked_mul(result_elements, sizeof(double)));
+  required = posthf::checked_add(required, posthf::checked_mul(scratch_elements, sizeof(double)));
+  if (required > maximum_bytes)
+    throw std::length_error("RI-MP2 Lagrangian reverse exceeds memory budget");
+
+  const auto& c = reference.coefficients;
+  const auto& transformed = provider.transformed_three_center();
+  const auto& whitened = provider.whitened_three_center();
+  const auto& inverse_root = provider.inverse_square_root();
+  auto three_index = [n, na](std::size_t p, std::size_t q, std::size_t aux) {
+    return (p * n + q) * na + aux;
+  };
+
+  std::vector<double> bar_whitened(three, 0.0);
+  for (std::size_t p = 0; p < n; ++p)
+    for (std::size_t q = 0; q < n; ++q)
+      for (std::size_t aux = 0; aux < na; ++aux)
+        for (std::size_t r = 0; r < n; ++r)
+          for (std::size_t t = 0; t < n; ++t)
+            bar_whitened[three_index(p, q, aux)] +=
+                (weights.two_electron[eri_index(n, p, q, r, t)] +
+                 weights.two_electron[eri_index(n, r, t, p, q)]) *
+                whitened[three_index(r, t, aux)];
+
+  std::vector<double> bar_transformed(three, 0.0);
+  for (std::size_t p = 0; p < n; ++p)
+    for (std::size_t q = 0; q < n; ++q)
+      for (std::size_t P = 0; P < na; ++P)
+        for (std::size_t Q = 0; Q < na; ++Q)
+          bar_transformed[three_index(p, q, P)] +=
+              inverse_root[P * na + Q] * bar_whitened[three_index(p, q, Q)];
+
+  DensityFittedLagrangianWeights result;
+  result.orbitals = n;
+  result.auxiliary = na;
+  result.overlap.assign(n2, 0.0);
+  result.one_electron.assign(n2, 0.0);
+  result.three_center.assign(three, 0.0);
+  for (std::size_t mu = 0; mu < n; ++mu)
+    for (std::size_t nu = 0; nu < n; ++nu)
+      for (std::size_t p = 0; p < n; ++p)
+        for (std::size_t q = 0; q < n; ++q) {
+          const double coefficient = c[mu * n + p] * c[nu * n + q];
+          result.overlap[mu * n + nu] += coefficient * weights.overlap[p * n + q];
+          result.one_electron[mu * n + nu] += coefficient * weights.one_electron[p * n + q];
+          if (coefficient == 0.0) continue;
+          for (std::size_t P = 0; P < na; ++P)
+            result.three_center[(mu * n + nu) * na + P] +=
+                coefficient * bar_transformed[three_index(p, q, P)];
+        }
+
+  std::vector<double> bar_inverse_root(a2, 0.0);
+  for (std::size_t P = 0; P < na; ++P)
+    for (std::size_t Q = 0; Q < na; ++Q)
+      for (std::size_t p = 0; p < n; ++p)
+        for (std::size_t q = 0; q < n; ++q)
+          bar_inverse_root[P * na + Q] +=
+              transformed[three_index(p, q, P)] * bar_whitened[three_index(p, q, Q)];
+  result.metric = integrals::density_fitting_metric_response(
+      provider.metric(), inverse_root, bar_inverse_root, na, provider.relative_threshold(),
+      tensor::SymmetricMatrixFunction::inverse_sqrt);
+  result.workspace_bytes = posthf::checked_mul(scratch_elements, sizeof(double));
+  result.planned_peak_bytes = required;
+  if (!finite(result.overlap) || !finite(result.one_electron) || !finite(result.three_center) ||
+      !finite(result.metric))
+    throw std::runtime_error("RI-MP2 Lagrangian reverse produced nonfinite weights");
   return result;
 }
 

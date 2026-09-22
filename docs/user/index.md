@@ -16,6 +16,7 @@ Use this guide to install VibeQC and run calculations. If the terminology is unf
 - [Cross-basis initialization](basis_projection.md)
 - [Progressive HF](progressive_hf.md)
 - [KS options](ks_options.md)
+- [Density-fitted DFT energies](dft_density_fitting.md)
 - [r2SCAN-3c](r2scan3c.md)
 
 ## Basis and Hamiltonian

@@ -1,0 +1,93 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "18 strict GPU regressions and independent automatic RHF/UHF energy/force gates pass; exact final-density work counts agree with fixed execution.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 1914,
+      "path": "README.md",
+      "role": "summary",
+      "sha256": "e213b367979224ec3c7062223aa9f9c2796ef62f085f211d1b87116d2969f0ce"
+    },
+    {
+      "bytes": 35268,
+      "path": "automatic-rhf.json",
+      "role": "samples",
+      "sha256": "5fd607fe8c2e7fad1de87b69cc82ac00f7236cf2f3a7a40a209532aef264043f"
+    },
+    {
+      "bytes": 35298,
+      "path": "automatic-uhf.json",
+      "role": "samples",
+      "sha256": "7bf3b45fc8c779c59f71645e6bd67f6656ecee919cbc00f9460763bf25037f3d"
+    },
+    {
+      "bytes": 9248,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "9961acf108298459e5bee993b1ac099cc3f0339f39a01a6c169f6496f8fcb9e8"
+    },
+    {
+      "bytes": 285,
+      "path": "provenance.json",
+      "role": "samples",
+      "sha256": "85095bc7dc6ee2892f207f558abc0837d661a9f4e0cc7348d8e7aea7e4528849"
+    },
+    {
+      "bytes": 32603,
+      "path": "regressions.json",
+      "role": "samples",
+      "sha256": "fb0df51f5cc3ccedc17f336b6a9ca43700916ebeb5cad5944f7c3375b293ec5d"
+    },
+    {
+      "bytes": 6307,
+      "path": "reproduce.py",
+      "role": "reproduction",
+      "sha256": "8c6c083d6dc0a538fec0ae2a291c378831503154688f5e5380f98ed8061e91e4"
+    },
+    {
+      "bytes": 2227,
+      "path": "reproduce_uhf_reference.py",
+      "role": "reproduction",
+      "sha256": "f7306c4ce8cc7901cf1a928917b85449ae7c1449f301cac9005d064af62fff7b"
+    },
+    {
+      "bytes": 49024,
+      "path": "resource-baseline.json",
+      "role": "samples",
+      "sha256": "96d455e5431c56307c4a91a47bfb2a75e71f9ff2cadf671334962e62ff093701"
+    },
+    {
+      "bytes": 37921,
+      "path": "source.patch",
+      "role": "source-patch",
+      "sha256": "c265a340de1f20039fb59da59d9da6fd548d064bd459e12a58774a76f27a06d8"
+    },
+    {
+      "bytes": 3251,
+      "path": "uhf-aligned-oracle.json",
+      "role": "samples",
+      "sha256": "c881d8fd8322a5a7ede16c0a3d24112405dbd50286e1fa07561d127a80bb2660"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--time=00:15:00",
+      "python",
+      "benchmarks/results/bounded-direct-945-20260923/reproduce.py",
+      "--output",
+      ".artifacts/automatic-rhf.json"
+    ]
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": true,
+    "revision": "7d4797f21a1abf78941028e249244105d551ec76"
+  }
+}

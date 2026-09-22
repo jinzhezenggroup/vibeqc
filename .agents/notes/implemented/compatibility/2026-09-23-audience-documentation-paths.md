@@ -20,7 +20,9 @@ and equation identities for an editorial operation.
 Current CUDA ownership and evidence-retention ledgers follow the relocated
 guides. Historical numerical/provenance JSON retains its original contents.
 Links in Agent Notes and benchmark READMEs follow current guides without
-rewriting the historical rationale or measurement records.
+rewriting the historical rationale or measurement records. The density-source
+publication also hashes its README; preserve that file byte-for-byte and keep
+`docs/density_sources.md` as its forwarding target.
 
 ## Evidence
 

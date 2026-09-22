@@ -328,3 +328,10 @@ It contracts all nuclear coordinates with two pair passes per point instead of
 repeating the directional interpreter for each coordinate. Native execution,
 component budgets and output failure gates are distinct from full public
 DFT-force or CUDA qualification.
+
+## Density-fitted KS energies
+
+The public energy interface can select the shared DF provider with
+`density_fitting="auto"` and `auxiliary_basis=...`. See
+[`dft_density_fitting.md`](../user/dft_density_fitting.md) for backend, force, budget
+and independent-reference acceptance contracts.

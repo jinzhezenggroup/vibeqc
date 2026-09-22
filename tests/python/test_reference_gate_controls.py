@@ -141,8 +141,9 @@ def test_full_fock_control_is_scoped_to_selected_reference(
 
 
 @pytest.mark.parametrize("full_fock", [False, True])
+@pytest.mark.parametrize("density_fitting", [False, True])
 def test_reference_fock_setting_does_not_change_numerical_gates(
-    gate: typing.Any, full_fock: typing.Any
+    gate: typing.Any, full_fock: bool, density_fitting: bool
 ) -> None:
     comparison = importlib.import_module("compare_gpu4pyscf_batch")
     engine = SimpleNamespace()
@@ -152,8 +153,9 @@ def test_reference_fock_setting_does_not_change_numerical_gates(
         gradient_tolerance=1e-11,
         max_iterations=100,
         full_fock=full_fock,
+        density_fitting=density_fitting,
     )
-    assert engine.direct_scf is (not full_fock)
+    assert engine.direct_scf is (not (full_fock or density_fitting))
     assert engine.conv_tol == 1e-12
     assert engine.conv_tol_grad == 1e-11
     assert engine.direct_scf_tol == 1e-14

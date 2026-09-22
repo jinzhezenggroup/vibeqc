@@ -43,12 +43,28 @@ from the method graph.
 The planner binds the shared #179 CPKS contract, #161/#236 XC feature-Hessian
 action and #178 weighted second-integral HVP contract. Its integral blocks
 execute only the bounded source algebra; native CPKS and XC/grid consumers
-remain separate owners. It fails closed when an active primitive adds physics
-whose second-order rule is not registered. Therefore full/range-separated
+remain separate owners. Second-order support is now admitted through an exact
+primitive-type rule registry rather than a fixed "one semilocal primitive"
+condition. Each rule declares its required derivative capabilities, supported
+ingredients, directional sources and any response inputs needed by bounded
+integral HVP lowering. The plan derives its source inventory by composing those
+rules with the stationary mean-field envelope. It fails closed when an active
+primitive has no registered second-order rule. Therefore full/range-separated
 exchange, `tau`, nonlocal correlation, DF and ECP do not inherit Hessian
 support merely from energy or gradient support. Adding another functional
 inside an already qualified LDA/GGA primitive family must not add
 Hessian-specific scientific source code.
+
+Molecular execution is a separate method-neutral layer.
+`StationarySecondOrderExecutor` accepts only a plan identity and complete
+ordered source inventory, one perturbation provider, one opaque stationary
+response driver and exactly one contributor per declared source. It performs
+one response solve, passes the same response object to every contribution and
+publishes a result only after every source returns a finite Cartesian HVP.
+There is no HF/RKS/UKS or functional-name dispatch in this executor. A
+MethodIR-derived DFT plan and an HF second-order plan can therefore share the
+same orchestration while retaining their own perturbation, response and
+primitive providers. Missing or extra contributors fail before execution.
 
 The plan now exposes bounded `integral_block` programs for the one-electron,
 Coulomb and overlap/Pulay sources. Each block reuses the stationary-gradient
