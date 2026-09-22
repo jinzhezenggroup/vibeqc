@@ -15,6 +15,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from vibeqc_compiler.common import paths
 from vibeqc_compiler.common.evidence import canonical_hash, validate_outcome
 
 from . import libxc_bulk
@@ -145,12 +146,14 @@ class BulkFunctionalCapability:
         }
 
 
-def _imported_record(name: str) -> dict[str, Any]:
+def _imported_record(
+    name: str, catalog: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
     if not isinstance(name, str) or not name.strip():
         raise MapleImportError("bulk capability requires a non-empty registration name")
-    records = {
-        record["name"]: record for record in libxc_bulk.read_catalog()["registrations"]
-    }
+    if catalog is None:
+        catalog = libxc_bulk.read_catalog()
+    records = {record["name"]: record for record in catalog["registrations"]}
     key = name.upper()
     if key not in records:
         raise MapleImportError(f"unknown bulk Libxc registration: {name!r}")
@@ -162,15 +165,36 @@ def _imported_record(name: str) -> dict[str, Any]:
     return record
 
 
-def _capability_identity(record: Mapping[str, Any]) -> str:
+def _capability_source_identity(catalog: Mapping[str, Any]) -> str:
+    """Bind proof to pinned scientific inputs and the executing compiler bytes.
+
+    This conservative source inventory uses stable logical paths in both wheels
+    and checkouts. Compute it once per bulk query, without lowering any Graph or
+    importing a native runtime. Source edits invalidate previously attached proof.
+    """
+    return canonical_hash(
+        {
+            "schema": "vibeqc.libxc-bulk-capability-sources.v1",
+            "provider": libxc_bulk.SOURCE_ASSET,
+            "upstream": catalog["upstream"],
+            "source_files": catalog["source_files"],
+            "importer_semantics": catalog["importer_semantics"],
+            "parameter_binding_semantics": catalog["parameter_binding_semantics"],
+            "compiler_sources": paths.source_hashes("common", "integral", "xc"),
+        }
+    )
+
+
+def _capability_identity(record: Mapping[str, Any], source_identity: str) -> str:
     return canonical_hash(
         {
             "schema": CAPABILITY_SCHEMA,
-            "name": record["name"],
-            "family": record["family"],
-            "libxc_id": record["id"],
-            "entry": record["entry"],
-            "owner": record["owner"],
+            "registration": {
+                key: value
+                for key, value in record.items()
+                if key not in ("graph_status", "graph_nodes")
+            },
+            "source_identity": source_identity,
             "domain": libxc_bulk.BULK_SEMANTICS,
         }
     )
@@ -247,12 +271,10 @@ def _qualified_stages(evidence: tuple[StageEvidence, ...]) -> tuple[str, ...]:
     return tuple(stage for stage in CAPABILITY_STAGES if stage in qualified)
 
 
-def functional_capability(
-    name: str, *, evidence: Mapping[str, Any] | None = None
+def _functional_capability(
+    record: Mapping[str, Any], source_identity: str, evidence: Mapping[str, Any] | None
 ) -> BulkFunctionalCapability:
-    """Return qualification state for one imported registration."""
-    record = _imported_record(name)
-    identity = _capability_identity(record)
+    identity = _capability_identity(record, source_identity)
     stage_evidence = _normalize_stage_evidence(identity, evidence)
     return BulkFunctionalCapability(
         name=record["name"],
@@ -263,6 +285,17 @@ def functional_capability(
         identity=identity,
         qualified_stages=_qualified_stages(stage_evidence),
         stage_evidence=stage_evidence,
+    )
+
+
+def functional_capability(
+    name: str, *, evidence: Mapping[str, Any] | None = None
+) -> BulkFunctionalCapability:
+    """Return qualification state for one imported registration."""
+    catalog = libxc_bulk.read_catalog()
+    record = _imported_record(name, catalog)
+    return _functional_capability(
+        record, _capability_source_identity(catalog), evidence
     )
 
 
@@ -286,10 +319,15 @@ def available_capabilities(
     evidence_by_functional: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> tuple[BulkFunctionalCapability, ...]:
     """Return every imported functional with evidence-driven qualification state."""
+    catalog = libxc_bulk.read_catalog()
     evidence_inventory = _normalize_evidence_inventory(evidence_by_functional)
+    source_identity = _capability_source_identity(catalog)
     return tuple(
-        functional_capability(name, evidence=evidence_inventory.get(name))
-        for name in libxc_bulk.available_functionals()
+        _functional_capability(
+            record, source_identity, evidence_inventory.get(record["name"])
+        )
+        for record in catalog["registrations"]
+        if record["graph_status"] == "imported"
     )
 
 

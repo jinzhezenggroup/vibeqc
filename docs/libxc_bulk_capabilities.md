@@ -38,7 +38,10 @@ response support.
 
 Each non-intrinsic pass must use
 `vibeqc.libxc-bulk-stage-evidence.v1`, bind to the exact capability identity,
-name its stage, and point to a non-empty retained evidence reference. Missing,
+name its stage, and point to a non-empty retained evidence reference. The subject
+binds parameter bindings, pinned upstream/source digests, and the compiler source
+inventory under stable logical paths. A source or binding change invalidates old
+evidence; bulk queries hash the source inventory once and do not lower all graphs. Missing,
 failed, malformed, cross-functional, or out-of-order evidence never promotes a
 stage.
 

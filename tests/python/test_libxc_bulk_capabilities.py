@@ -230,3 +230,51 @@ def test_stage_evidence_is_identity_bound_and_schema_checked() -> None:
                 }
             },
         )
+
+
+@pytest.mark.parametrize(
+    "change", ("binding", "source", "upstream", "binding-semantics")
+)
+def test_stage_evidence_rejects_changed_scientific_inputs(
+    monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    """Same name and owner must not reuse proof for different scientific input."""
+    import copy
+
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    evidence = {"compiled-cpu": _stage_evidence(base, "compiled-cpu")}
+    catalog = copy.deepcopy(libxc_bulk.read_catalog())
+    record = next(
+        item for item in catalog["registrations"] if item["name"] == base.name
+    )
+    if change == "binding":
+        record["bindings"]["params_a_mu"] = "0.5"
+    elif change == "source":
+        catalog["source_files"][record["entry"]] = "0" * 64
+    elif change == "upstream":
+        catalog["upstream"] = {"revision": "changed-source-revision"}
+    else:
+        record["binding_semantics"] = "changed-parameter-interpretation"
+    monkeypatch.setattr(libxc_bulk, "read_catalog", lambda: catalog)
+    with pytest.raises(ValueError, match="subject identity mismatch"):
+        libxc_bulk_capabilities.functional_capability(base.name, evidence=evidence)
+
+
+def test_stage_evidence_rejects_changed_compiler_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Implementation drift invalidates proof without importing native runtime."""
+    from vibeqc_compiler.common import paths
+
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    evidence = {"compiled-cpu": _stage_evidence(base, "compiled-cpu")}
+    original = paths.source_hashes
+
+    def changed(*families: str, assets: tuple[str, ...] = ()) -> dict[str, str]:
+        result = original(*families, assets=assets)
+        result["python/vibeqc_compiler/integral/scalar_c.py"] = "0" * 64
+        return result
+
+    monkeypatch.setattr(paths, "source_hashes", changed)
+    with pytest.raises(ValueError, match="subject identity mismatch"):
+        libxc_bulk_capabilities.functional_capability(base.name, evidence=evidence)
