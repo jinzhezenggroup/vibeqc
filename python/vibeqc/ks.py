@@ -25,7 +25,7 @@ from vibeqc_compiler.method import (
     compile_ks_execution_plan,
     resolve_method,
 )
-from vibeqc_compiler.xc.spec import FunctionalSpec, functional
+from vibeqc_compiler.xc.spec import CATALOG, FunctionalSpec, functional
 
 from ._generated_methods import METHOD_METADATA
 
@@ -301,8 +301,24 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
 
     # MethodIR is authoritative for scientific composition.  The public
     # manifest owns only the stable name -> compiler-method/spin binding.
+    # Catalog-backed primitives retain their qualified native projection and
+    # declaration identity. Discover them from the existing catalog, not a
+    # second hand-maintained public-name or coefficient table.
+    if identifier in CATALOG:
+        if len(method_ir.primitives) != 1:
+            raise RuntimeError("MethodIR composition disagrees with native KS selector")
+        runtime_functional = functional(identifier, spin=spin)
+        semilocal = _native_semilocal(method_ir)
+        if SemilocalXCPrimitive(semilocal).semantic_payload() != (
+            SemilocalXCPrimitive(runtime_functional).semantic_payload()
+        ):
+            raise RuntimeError(
+                "MethodIR semilocal node disagrees with native KS XC catalog"
+            )
+        return method_ir, runtime_functional
+
     if _is_pbe_d4_composition(method_ir):
-        return method_ir, _native_pbe_d4_semilocal(method_ir)
+        return method_ir, functional("PBE", spin=spin)
 
     semilocal = _native_semilocal(method_ir)
     ks_coefficients(method_ir)
