@@ -69,8 +69,13 @@ the existing IR and scalar graph; splitting files introduces no new equations.
 candidate structure, `policy` enumerates/promotes schedules, `emission` writes
 candidate source, `manifest` serializes promotion records, `resources` applies
 resource gates, `process` handles external processes, `inputs` normalizes input,
-`driver` coordinates a run, and `cli` parses arguments. The type-only reference
-from analysis to policy is guarded by `TYPE_CHECKING`.
+`driver` coordinates a run, and `cli` parses arguments. After the caller's
+candidate bound, policy groups packed schedules that differ only in algebra
+ordering; emission hashes unsuffixed generated CUDA only for those groups and
+removes byte-identical no-op variants while retaining protected
+production/resource baselines. This is compile-work deduplication, never a
+profitability or promotion decision. The type-only reference from analysis to
+policy is guarded by `TYPE_CHECKING`.
 
 Generic CUDA targets, compilation, parsed resource records, artifact handles,
 metrics and preparation synchronization are owned by `common`. Static
@@ -114,10 +119,12 @@ separate work. The module contains no measured thresholds or method policy.
 
 `select_specialization(workload=..., target=..., identity=..., profiles=...,
 fallback=...)` chooses the first eligible promoted implementation in caller
-priority order. If none match, the explicit fallback must pass its own identity
-and correctness checks. Otherwise the result is `unsupported`: no *supplied*
-implementation is eligible, not proof that the mathematical method is impossible.
-There is no implicit CPU execution or compilation on a miss.
+priority order. Callers that require a promoted implementation pass
+`fallback=None`; a miss is then `unsupported` instead of a silent downgrade. If
+an explicit fallback is supplied, it must pass its own identity and correctness
+checks. `unsupported` means no supplied implementation is eligible, not proof
+that the mathematical method is impossible. There is no implicit CPU execution
+or compilation on a miss.
 
 The result exposes the original selected artifact and a detached JSON diagnostic
 record with profile/schedule/scientific/compiler identities and separate rejection

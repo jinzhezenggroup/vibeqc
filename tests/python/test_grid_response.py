@@ -11,8 +11,11 @@ import pytest
 from vibeqc_compiler.dft.grid import GridSpec, MolecularGrid, partition_weights
 from vibeqc_compiler.xc.contractions import GeometryPartials
 from vibeqc_compiler.xc.grid_response import (
+    grid_mixed_response_program,
+    grid_mixed_response_tiles,
     grid_response_program,
     grid_response_tiles,
+    partition_mixed_response,
     partition_response,
 )
 
@@ -20,6 +23,8 @@ CENTERS = np.array([[0.1, -0.2, 0.3], [1.2, 0.3, -0.1], [-0.5, 1.1, 0.8]])
 POINTS = np.array([[0.2, 0.4, -0.3], [0.6, -0.4, 0.7], [-0.2, 0.7, 0.4]])
 DC = np.array([[0.2, -0.1, 0.3], [-0.3, 0.4, 0.1], [0.1, 0.2, -0.2]])
 DP = np.array([[0.1, -0.3, 0.4], [0.2, 0.1, -0.2], [-0.4, 0.2, 0.1]])
+EC = np.array([[-0.15, 0.22, 0.08], [0.17, -0.11, 0.19], [0.04, 0.13, -0.16]])
+EP = np.array([[0.07, 0.16, -0.12], [-0.18, 0.05, 0.09], [0.11, -0.14, 0.06]])
 
 
 @pytest.mark.parametrize("iterations", [1, 3, 5])
@@ -116,6 +121,137 @@ def test_decimal_oracle_is_independent_of_generated_primal(
         POINTS, CENTERS, point_motion=DP, center_motion=DC, iterations=iterations
     )
     np.testing.assert_allclose(result.directional, derivative, atol=6e-15, rtol=5e-13)
+
+
+@pytest.mark.parametrize("iterations", [1, 3, 5])
+def test_partition_mixed_response_matches_first_response_difference(
+    iterations: typing.Any,
+) -> None:
+    mixed = partition_mixed_response(
+        POINTS,
+        CENTERS,
+        left_point_motion=DP,
+        left_center_motion=DC,
+        right_point_motion=EP,
+        right_center_motion=EC,
+        iterations=iterations,
+    )
+    left = partition_response(
+        POINTS,
+        CENTERS,
+        point_motion=DP,
+        center_motion=DC,
+        iterations=iterations,
+    )
+    right = partition_response(
+        POINTS,
+        CENTERS,
+        point_motion=EP,
+        center_motion=EC,
+        iterations=iterations,
+    )
+    np.testing.assert_allclose(mixed.weights, left.weights, atol=2e-15, rtol=2e-14)
+    np.testing.assert_allclose(mixed.left, left.directional, atol=3e-14, rtol=3e-13)
+    np.testing.assert_allclose(mixed.right, right.directional, atol=3e-14, rtol=3e-13)
+    assert mixed.branch_identity == left.branch_identity == right.branch_identity
+
+    errors = []
+    for h in (1e-3, 2e-4, 4e-5):
+        plus = partition_response(
+            POINTS + h * EP,
+            CENTERS + h * EC,
+            point_motion=DP,
+            center_motion=DC,
+            iterations=iterations,
+        )
+        minus = partition_response(
+            POINTS - h * EP,
+            CENTERS - h * EC,
+            point_motion=DP,
+            center_motion=DC,
+            iterations=iterations,
+        )
+        fd = (plus.directional - minus.directional) / (2 * h)
+        errors.append(float(np.max(np.abs(fd - mixed.mixed))))
+    assert errors[-1] < 3e-7
+    assert errors[-1] < errors[0] / 50
+    np.testing.assert_allclose(mixed.mixed.sum(axis=1), 0, atol=2e-13)
+
+    transpose = partition_mixed_response(
+        POINTS,
+        CENTERS,
+        left_point_motion=EP,
+        left_center_motion=EC,
+        right_point_motion=DP,
+        right_center_motion=DC,
+        iterations=iterations,
+    )
+    np.testing.assert_allclose(mixed.mixed, transpose.mixed, atol=3e-13, rtol=3e-12)
+
+
+def test_mixed_program_uses_generated_second_chain_rule() -> None:
+    program = grid_mixed_response_program("ratio")
+    a = np.array([1.3, 0.8])
+    b = np.array([0.9, 1.7])
+    la = np.array([0.2, -0.1])
+    lb = np.array([-0.3, 0.4])
+    ra = np.array([-0.15, 0.25])
+    rb = np.array([0.12, -0.2])
+    lra = np.array([0.05, -0.02])
+    lrb = np.array([-0.04, 0.03])
+    _, left, _, mixed = program.evaluate(
+        a=a, b=b, la=la, lb=lb, ra=ra, rb=rb, lra=lra, lrb=lrb
+    )
+    for h in (2e-4, 5e-5):
+        displaced_a = a + h * ra
+        displaced_b = b + h * rb
+        displaced_la = la + h * lra
+        displaced_lb = lb + h * lrb
+        plus_left = (
+            displaced_la * displaced_b - displaced_a * displaced_lb
+        ) / displaced_b**2
+
+        displaced_a = a - h * ra
+        displaced_b = b - h * rb
+        displaced_la = la - h * lra
+        displaced_lb = lb - h * lrb
+        minus_left = (
+            displaced_la * displaced_b - displaced_a * displaced_lb
+        ) / displaced_b**2
+        fd = (plus_left - minus_left) / (2 * h)
+    np.testing.assert_allclose(mixed, fd, atol=2e-8, rtol=2e-8)
+    assert np.linalg.norm(left) > 0
+
+
+def test_grid_mixed_weight_response_matches_rebuilt_first_response() -> None:
+    grid = grid_at()
+    tiles = list(grid_mixed_response_tiles(grid, DC, EC, tile_points=17))
+    left = np.concatenate([tile.left_weight_motion for tile in tiles])
+    right = np.concatenate([tile.right_weight_motion for tile in tiles])
+    mixed = np.concatenate([tile.mixed_weight_motion for tile in tiles])
+    np.testing.assert_allclose(left, gather(grid, DC)[2], atol=2e-12, rtol=2e-12)
+    np.testing.assert_allclose(right, gather(grid, EC)[2], atol=2e-12, rtol=2e-12)
+
+    errors = []
+    for h in (1e-3, 2e-4, 4e-5):
+        plus = gather(grid_at(CENTERS + h * EC), DC)[2]
+        minus = gather(grid_at(CENTERS - h * EC), DC)[2]
+        fd = (plus - minus) / (2 * h)
+        errors.append(float(np.max(np.abs(fd - mixed))))
+    scale = max(1.0, float(np.max(np.abs(mixed))))
+    assert errors[-1] / scale < 2e-6
+    assert errors[-1] < errors[0] / 40
+
+    rigid = np.broadcast_to([0.3, -0.2, 0.1], CENTERS.shape)
+    rigid_tiles = list(grid_mixed_response_tiles(grid, rigid, EC, tile_points=19))
+    np.testing.assert_array_equal(
+        np.concatenate([tile.left_weight_motion for tile in rigid_tiles]), 0
+    )
+    np.testing.assert_allclose(
+        np.concatenate([tile.mixed_weight_motion for tile in rigid_tiles]),
+        0,
+        atol=2e-12,
+    )
 
 
 def test_translation_permutation_and_empty_partition() -> None:

@@ -7,11 +7,11 @@ Normal configure, build, runtime, and test paths do not fetch the network. Netwo
 ## Source classes
 
 - **Checked-in file sets** keep the audited upstream bytes needed for deterministic regeneration under `upstream/<provider>/<revision>/`. The registry's `local_root` is the only canonical repository location for those bytes.
-- **Checked-in snapshots** keep compact upstream catalogs needed by deterministic generators, such as the simple-DFTD3 and DFT-D4 parameter TOML files.
+- **Checked-in snapshots** keep compact upstream catalogs needed by deterministic generators, such as the simple-DFTD3 and DFT-D4 parameter TOML files and the pinned xTBloom GFN1-xTB parameter export.
 - **Remote file sets** pin upstream implementation/qualification sources that are not needed by normal compiler/catalog work. `sync` materializes these under `.cache/vibeqc-sources/` only for maintainer regeneration. Large DFT-D4 reference data, EEQ implementation sources, simple-DFTD3 gCP implementation sources, and the GPU4PySCF Rys source table stay remote-only.
 - **Products** record deterministic generators, their hashes, canonical inputs where applicable, and checked-in output hashes. Generated tables are products, not source-of-truth definitions.
 
-The current registry covers Libxc, DFT-D4 reference inputs, EEQ/mctc-lib inputs, dispersion parameter snapshots, GPU4PySCF Rys tables, r2SCAN-3c gCP data, and VibeQC-generated high-accuracy Rys coefficients.
+The current registry covers Libxc, xTBloom GFN1-xTB parameter snapshots, DFT-D4 reference inputs, EEQ/mctc-lib inputs, dispersion parameter snapshots, GPU4PySCF Rys tables, r2SCAN-3c gCP data, and VibeQC-generated high-accuracy Rys coefficients.
 
 ## Commands
 

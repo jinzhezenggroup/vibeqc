@@ -20,7 +20,7 @@ from .spec import (
     FunctionalSpec,
     UnsupportedXC,
 )
-from .wb97mv_expressions import energy_expression as wb97mv_energy_expression
+from .wb97mv_maple import energy_expression as wb97mv_energy_expression
 
 
 def output_set(spec: typing.Any, order: typing.Any) -> typing.Any:

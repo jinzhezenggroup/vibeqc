@@ -15,6 +15,7 @@ from hashlib import sha256
 from types import MappingProxyType
 
 import numpy as np
+from vibeqc_compiler.common.solver_region import SolverRegion
 from vibeqc_compiler.tensor import execute
 
 from tools.vibeqc_posthf import ReferenceSnapshot
@@ -131,6 +132,7 @@ class BoundCCSDLambda:
     feeds: Mapping
     options: LambdaOptions
     logical_reserved_host_bytes: int
+    primal_solver_region: SolverRegion | None
 
     def __init__(
         self,
@@ -179,6 +181,25 @@ class BoundCCSDLambda:
             raise ResponseCompatibilityError(
                 "CC reference/Hamiltonian identity mismatch"
             )
+        primal_solver_region = None
+        solver_region_payload = provenance.get("solver_region_payload")
+        if solver_region_payload is not None:
+            try:
+                primal_solver_region = SolverRegion.from_payload(solver_region_payload)
+            except (TypeError, ValueError) as error:
+                raise ResponseCompatibilityError(
+                    "CC solver-region provenance is invalid"
+                ) from error
+            if (
+                primal_solver_region.identity
+                != provenance.get("solver_region_identity")
+                or primal_solver_region.max_steps
+                != provenance.get("solver_region_max_steps")
+                or primal_solver_region.name != "rccsd-cpu"
+            ):
+                raise ResponseCompatibilityError(
+                    "CC solver-region provenance does not match the executed primal"
+                )
         o, v = snapshot.nocc, snapshot.nmo - snapshot.nocc
         programs = build_lambda_programs(o, v)
         independent = build_lambda_programs(o, v, form="expanded")
@@ -247,6 +268,7 @@ class BoundCCSDLambda:
                 ),
             ),
             ("logical_reserved_host_bytes", required),
+            ("primal_solver_region", primal_solver_region),
         ):
             put(name, value)
         self._assert_current(snapshot.identity)

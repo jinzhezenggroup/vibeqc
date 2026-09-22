@@ -16,6 +16,7 @@ _SHA256 = re.compile(r"[0-9a-f]{64}")
 _CPP_SYMBOL = re.compile(r"k[A-Z][A-Za-z0-9]*")
 
 _D3_FIELDS = ("s6", "s8", "a1", "a2", "s9")
+_D3_ZERO_FIELDS = ("s6", "s8", "rs6", "rs8", "alp", "s9")
 _D4_CPP_FIELDS = (
     "s6",
     "s8",
@@ -37,6 +38,16 @@ _PYTHON_PARAMETER_TYPES = {
         "s8": "float",
         "a1": "float",
         "a2": "float",
+        "s9": "float",
+        "table_sha256": "str",
+        "radii_sha256": "str",
+    },
+    "d3_zero": {
+        "s6": "float",
+        "s8": "float",
+        "rs6": "float",
+        "rs8": "float",
+        "alp": "float",
         "s9": "float",
         "table_sha256": "str",
         "radii_sha256": "str",
@@ -108,8 +119,10 @@ def _validate_record(
 
 
 def load_source(path: Path) -> tuple[dict[str, Any], str]:
-    raw = path.read_bytes()
-    payload = json.loads(raw)
+    # Hash logical UTF-8 text rather than checkout-specific CRLF/LF bytes so
+    # generated provenance is reproducible across supported development hosts.
+    raw_text = path.read_text(encoding="utf-8")
+    payload = json.loads(raw_text)
     if payload.get("schema_version") != 1:
         raise ValueError("unsupported method-parameter schema")
     identity = payload.get("d3_data_identity")
@@ -128,6 +141,7 @@ def load_source(path: Path) -> tuple[dict[str, Any], str]:
         ("d3_bj", _D3_FIELDS),
         ("d4", _D4_CPP_FIELDS),
         ("gcp", _GCP_CPP_FIELDS),
+        ("d3_zero", _D3_ZERO_FIELDS),
     ):
         records = payload.get(category)
         if not isinstance(records, list) or not records:
@@ -182,15 +196,15 @@ def load_source(path: Path) -> tuple[dict[str, Any], str]:
             raise ValueError(
                 "gCP supported_atomic_numbers must be sorted, unique integers in [1, 118]"
             )
-    for category in ("d3_bj", "d4", "gcp"):
+    for category in ("d3_bj", "d4", "gcp", "d3_zero"):
         for record in payload[category]:
             if category == "d4" and not record.get("python_spec"):
                 continue
             params = dict(record["parameters"])
-            if category == "d3_bj":
+            if category in {"d3_bj", "d3_zero"}:
                 params.update(identity)
             _validate_python_parameters(params, category)
-    return payload, hashlib.sha256(raw).hexdigest()
+    return payload, hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
 
 
 def _py_value(value: Any) -> str:
@@ -244,6 +258,12 @@ def _render_parameter_accessors() -> list[str]:
         ("d3_bj", "D3Parameters", "D3_BJ_PARAMETER_SETS", "d3_parameters"),
         ("d4", "D4Parameters", "D4_PARAMETER_SETS", "d4_parameters"),
         ("gcp", "GCPParameters", "GCP_PARAMETER_SETS", "gcp_parameters"),
+        (
+            "d3_zero",
+            "D3ZeroParameters",
+            "D3_ZERO_PARAMETER_SETS",
+            "d3_zero_parameters",
+        ),
     ):
         schema = _PYTHON_PARAMETER_TYPES[category]
         lines += [f"class {record}(TypedDict):"]
@@ -291,6 +311,13 @@ def render_python(payload: dict[str, Any], source_sha256: str) -> str:
         params["radii_sha256"] = identity["radii_sha256"]
         d3_records.append((record["name"], params))
 
+    d3_zero_records: list[tuple[str, dict[str, Any]]] = []
+    for record in payload["d3_zero"]:
+        params = dict(record["parameters"])
+        params["table_sha256"] = identity["table_sha256"]
+        params["radii_sha256"] = identity["radii_sha256"]
+        d3_zero_records.append((record["name"], params))
+
     d4_records = [
         (record["name"], dict(record["parameters"]))
         for record in payload["d4"]
@@ -303,7 +330,7 @@ def render_python(payload: dict[str, Any], source_sha256: str) -> str:
         gcp_records.append((record["name"], params))
 
     provenance: dict[str, dict[str, Any]] = {}
-    for category in ("d3_bj", "d4", "gcp"):
+    for category in ("d3_bj", "d4", "gcp", "d3_zero"):
         for record in payload[category]:
             provenance[f"{category}:{record['name']}"] = dict(
                 record.get("provenance", {})
@@ -326,6 +353,8 @@ def render_python(payload: dict[str, Any], source_sha256: str) -> str:
     lines.extend(_render_py_mapping("D4_PARAMETER_SETS", d4_records))
     lines.append("")
     lines.extend(_render_py_mapping("GCP_PARAMETER_SETS", gcp_records))
+    lines.append("")
+    lines.extend(_render_py_mapping("D3_ZERO_PARAMETER_SETS", d3_zero_records))
     lines.append("")
     lines.extend(_render_py_mapping("PARAMETER_PROVENANCE", list(provenance.items())))
     lines.append("")
@@ -377,6 +406,23 @@ def render_cpp(payload: dict[str, Any], source_sha256: str) -> str:
         lines.append(
             _render_cpp_record(
                 record["cpp_symbol"], "D3BJParameters", record["parameters"], _D3_FIELDS
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "struct D3ZeroParameters {",
+            "  double s6, s8, rs6, rs8, alp, s9;",
+            "};",
+        ]
+    )
+    for record in payload["d3_zero"]:
+        lines.append(
+            _render_cpp_record(
+                record["cpp_symbol"],
+                "D3ZeroParameters",
+                record["parameters"],
+                _D3_ZERO_FIELDS,
             )
         )
     lines.extend(

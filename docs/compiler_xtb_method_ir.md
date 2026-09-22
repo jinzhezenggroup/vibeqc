@@ -74,7 +74,7 @@ different constants:
 10. non-self-consistent two-body D3(BJ).
 
 The canonical parameter-set revision is the SHA-256 identity of
-`sources/xtb/gfn1/gfn1.json`. The correction requirements additionally bind
+`upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json`. The correction requirements additionally bind
 the existing canonical GFN1 D3 reference-table digest rather than duplicating
 that table in the xTB parameter product.
 

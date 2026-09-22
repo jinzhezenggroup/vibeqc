@@ -62,7 +62,7 @@ def _scaled_bilinear_helper(function_name: str) -> str:
   double p = ma * mb, q = mc * md;
   double pe = std::fma(ma, mb, -p), qe = std::fma(mc, md, -q);
   const int ep = ea + eb, eq = ec + ed;
-  const int exponent = p == 0.0 ? eq : (q == 0.0 ? ep : std::max(ep, eq));
+  const int exponent = p == 0.0 ? eq : (q == 0.0 ? ep : (ep > eq ? ep : eq));
   constexpr int limit = 110;
   const int dp = ep - exponent, dq = eq - exponent;
   if (dp < -limit) {{ p = 0.0; pe = 0.0; }}

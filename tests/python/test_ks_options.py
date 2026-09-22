@@ -188,14 +188,23 @@ def test_grid_policy_capability_boundaries_fail_closed() -> None:
         GridPolicy("turbo").resolve("pbe-rks")
 
 
+@pytest.mark.parametrize(
+    ("replacement", "rejection"),
+    (
+        ("PBE0", "disagrees with native KS selector"),
+        ("PBE-D4(BJ-EEQ-ATM)", "one semilocal XC primitive"),
+    ),
+)
 def test_named_pbe_selector_cannot_silently_change_to_hybrid(
     monkeypatch: typing.Any,
+    replacement: str,
+    rejection: str,
 ) -> None:
     import vibeqc.ks as ks_module
 
-    hybrid = resolve_method("PBE0", spin="unpolarized")
+    hybrid = resolve_method(replacement, spin="unpolarized")
     monkeypatch.setattr(ks_module, "resolve_method", lambda *args, **kwargs: hybrid)
-    with pytest.raises(RuntimeError, match="disagrees with native KS selector"):
+    with pytest.raises(RuntimeError, match=rejection):
         ks_module.resolve_ks_options("pbe-rks")
 
 
