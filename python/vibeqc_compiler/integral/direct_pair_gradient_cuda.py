@@ -8,11 +8,13 @@ qualified arithmetic and reduction order while retiring the native scientific bo
 
 from __future__ import annotations
 
+from .coulomb_recurrence_cuda import emit_high_order_coulomb_support
+
 
 def emit_direct_high_order_pair_gradient_header() -> str:
     """Emit compiler-owned order-4/5/6 Direct force-consumer CUDA."""
 
-    return r"""#pragma once
+    source = r"""#pragma once
 
 #include <cuda_runtime.h>
 
@@ -27,7 +29,6 @@ def emit_direct_high_order_pair_gradient_header() -> str:
 #include "scf/cuda/direct_native_eri_order4.cuh"
 #include "scf/cuda/direct_native_gradient_types.cuh"
 #include "scf/cuda/direct_queue_index.cuh"
-#include "scf/cuda/direct_native_high_order_coulomb.cuh"
 #include "scf/cuda/gaussian_geometry.cuh"
 #include "scf/cuda/packed_basis.hpp"
 #include "scf/cuda/scalar_math.cuh"
@@ -606,3 +607,11 @@ __device__ inline CartesianQuartetGradient contracted_eri_cartesian_source_order
 
 }  // namespace vibeqc::scf::cuda_execution
 """
+
+    namespace_marker = "namespace vibeqc::scf::cuda_execution {\n\n"
+    recurrence = emit_high_order_coulomb_support()
+    return source.replace(
+        namespace_marker,
+        namespace_marker + recurrence + "\n",
+        1,
+    )

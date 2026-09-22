@@ -15,6 +15,8 @@ import typing
 from dataclasses import dataclass
 from pathlib import Path
 
+from vibeqc_compiler.common.compiler_work import compiler_work_budget
+
 from .cuda_schedule import schedule_candidates
 from .cuda_target import CudaTargetInfo, cuda_target_info
 from .fused_schedule import build_fused_shell_plan
@@ -30,6 +32,8 @@ from .shell_spec import FUSED_SHELL_SPECS, ShellClassSpec
 
 if typing.TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+
+DEFAULT_CAPABILITY_SYMBOLIC_WORK = 100_000
 
 CAPABILITY_STREAMING_FOCK = "streaming_fock"
 CAPABILITY_MIXED_FOCK = "mixed_fock"
@@ -369,8 +373,10 @@ def _check_recurrence(
     spec: ShellClassSpec,
     recurrence: str,
     target: CudaTargetInfo,
+    *,
+    maximum_symbolic_work: int | None = DEFAULT_CAPABILITY_SYMBOLIC_WORK,
 ) -> CapabilityCheck:
-    """Check IR legality and every target-legal emitter schedule."""
+    """Attempt every target-legal emitter under an explicit symbolic-work bound."""
 
     try:
         integral = build_integral_ir(
@@ -394,15 +400,16 @@ def _check_recurrence(
             # lowering itself without creating a cuda_emitter cycle.
             from .cuda_emitter import emit_shell_class_fused_cuda
 
-            plan = build_fused_shell_plan(
-                spec,
-                integral=integral,
-                schedule=schedule,
-                target=target,
-            )
-            # Source emission is part of the report deliberately: a schedule
-            # can be legal in ScheduleIR yet unavailable in the CUDA backend.
-            emit_shell_class_fused_cuda(spec, plan)
+            with compiler_work_budget(maximum_symbolic_work):
+                plan = build_fused_shell_plan(
+                    spec,
+                    integral=integral,
+                    schedule=schedule,
+                    target=target,
+                )
+                # Source emission is part of the report deliberately: a schedule
+                # can be legal in ScheduleIR yet unavailable in the CUDA backend.
+                emit_shell_class_fused_cuda(spec, plan)
         except (TypeError, ValueError, RuntimeError) as error:
             failures.setdefault(kind, str(error))
         else:
@@ -418,6 +425,8 @@ def _check_force_derivative_order(
     spec: ShellClassSpec,
     order: int,
     target: CudaTargetInfo,
+    *,
+    checked_first: CapabilityCheck | None = None,
 ) -> CapabilityCheck:
     """Report one force derivative order without widening the CUDA ABI.
 
@@ -444,6 +453,8 @@ def _check_force_derivative_order(
                 ("CUDA force result ABI currently exposes only order-one derivatives"),
             ),
         )
+    if checked_first is not None:
+        return checked_first
     return _check_recurrence(spec, "subset_wick", target)
 
 
@@ -484,8 +495,18 @@ def build_capability_report(
     architecture: str | None = None,
     profile: str = "auto",
     specifications: Iterable[ShellClassSpec] = FUSED_SHELL_SPECS,
+    maximum_symbolic_work: int | None = DEFAULT_CAPABILITY_SYMBOLIC_WORK,
 ) -> dict[str, object]:
-    """Build a deterministic report for every requested shell specification."""
+    """Build a deterministic, work-bounded structural emission report.
+
+    Exhausted candidates retain explicit unqualified reasons, not fabricated
+    successful emission. None deliberately requests an unbounded investigation.
+    Production selection, source emission and scientific tolerances are unchanged.
+    """
+    if maximum_symbolic_work is not None and (
+        type(maximum_symbolic_work) is not int or maximum_symbolic_work <= 0
+    ):
+        raise ValueError("compiler work limit must be a positive integer or None")
 
     if target is None:
         if architecture is None:
@@ -502,14 +523,24 @@ def build_capability_report(
     rows = []
     for spec in specifications:
         recurrence_rows = tuple(
-            (name, _check_recurrence(spec, name, target))
+            (
+                name,
+                _check_recurrence(
+                    spec, name, target, maximum_symbolic_work=maximum_symbolic_work
+                ),
+            )
             for name in ("subset_wick", "rys2", "rys3", "rys4", "rys5")
         )
+        generic = dict(recurrence_rows)["subset_wick"]
         derivative_rows = tuple(
-            (order, _check_force_derivative_order(spec, order, target))
+            (
+                order,
+                _check_force_derivative_order(
+                    spec, order, target, checked_first=generic
+                ),
+            )
             for order in (1, 2)
         )
-        generic = dict(recurrence_rows)["subset_wick"]
         production_row = production.get(
             spec.name,
             _production_gap_payload(),
@@ -554,6 +585,10 @@ def build_capability_report(
     }
     return {
         "schema_version": 1,
+        "compiler_work_budget": {
+            "unit": "symbolic_intern_attempt",
+            "per_candidate": maximum_symbolic_work,
+        },
         "backend": {
             "name": "cuda",
             "architecture": target.architecture,
@@ -596,11 +631,18 @@ def main() -> None:
     )
     parser.add_argument("--profile", default="auto")
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--maximum-symbolic-work",
+        type=int,
+        default=DEFAULT_CAPABILITY_SYMBOLIC_WORK,
+        help="maximum symbolic intern attempts per candidate (not a runtime or numerical limit)",
+    )
     arguments = parser.parse_args()
     report = build_capability_report(
         architecture=arguments.architecture,
         manifest=arguments.manifest,
         profile=arguments.profile,
+        maximum_symbolic_work=arguments.maximum_symbolic_work,
     )
     output = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if arguments.output is None:

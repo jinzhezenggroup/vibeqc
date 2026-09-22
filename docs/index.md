@@ -1,8 +1,10 @@
 # VibeQC documentation
 
 VibeQC is an experimental, accelerator-native quantum-chemistry engine. The
-current executable method scope is RHF and UHF; the long-term mission is to
-cover all quantum-chemistry methods through a coherent batched interface.
+public executable registry currently spans Hartree-Fock, density-functional,
+perturbation, coupled-cluster, and semiempirical method families. See the
+[generated public method table](public_methods.md) for canonical names and
+declared properties; method-specific backend and model constraints fail closed.
 
 ## Users
 
@@ -19,6 +21,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   gradients, supported domains and empirical quadrature convergence checks.
 - [Methods](methods.md): implemented methods, planned method families, and the
   acceptance standard for enabling new capabilities.
+- [Public native methods](public_methods.md): generated canonical method names,
+  aliases, properties, batch capability, and availability.
 - [Local autotuning](local_autotuning.md): optional workload-first CUDA tuning,
   compatible profile reuse, diagnostics, and homogeneous cluster export/import.
 - [Density fitting](density_fitting.md): milestone-1 correctness and planning

@@ -130,6 +130,25 @@ def test_shared_contract_roundtrip_preserves_owner_schedule_identity() -> None:
         assert replay.schedule_hash == contract.schedule_hash
 
 
+def test_legacy_profitability_v1_payload_without_precision_costs_still_loads() -> None:
+    payload = _tensor_contract().to_payload()
+    static = payload["profitability"]["static"]
+    for name in (
+        "precision_cast_read_bytes",
+        "precision_cast_write_bytes",
+        "precision_cast_simultaneous_bytes",
+        "precision_widened_accumulation_terms",
+    ):
+        static.pop(name)
+
+    replay = ScheduleContract.from_payload(payload)
+
+    assert replay.profitability.precision_cast_read_bytes is None
+    assert replay.profitability.precision_cast_write_bytes is None
+    assert replay.profitability.precision_cast_simultaneous_bytes is None
+    assert replay.profitability.precision_widened_accumulation_terms is None
+
+
 def test_shared_resource_admission_is_fail_closed_and_consumer_neutral() -> None:
     resources = ScheduleResources(
         device_bytes=4096,

@@ -125,6 +125,14 @@ def argument_parser() -> argparse.ArgumentParser:
         type=int,
         help="bound diverse schedule candidates per class (plus a required baseline)",
     )
+    parser.add_argument(
+        "--no-execution-dedup",
+        action="store_true",
+        help=(
+            "compile byte-identical generated CUDA candidates too; useful for "
+            "exhaustive schedule-ID studies"
+        ),
+    )
     return parser
 
 
