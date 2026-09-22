@@ -81,6 +81,8 @@ def build_df_derivative_kernel(
         tuple(g.variable(f"center_{i}_{axis}") for axis in AXES) for i in range(count)
     )
     p, q = sum(exponent[:-1]), exponent[-1]
+    if not isinstance(p, Expr):
+        raise ValueError("DF derivative lowering requires at least two centers")
     rho = p * q / (p + q)
     product = tuple(
         sum(exponent[i] * centers[i][axis] for i in range(count - 1)) / p
