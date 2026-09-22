@@ -223,6 +223,7 @@ class LoweringProvider(typing.Protocol):
         self, request: LoweringRequest, target: TargetCapabilities
     ) -> tuple[LoweringCandidate, ...]:
         """Return ready and/or explicit unsupported candidates for one request."""
+        ...
 
 
 def collect_lowering_candidates(
