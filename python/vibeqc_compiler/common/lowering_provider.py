@@ -203,7 +203,7 @@ class LoweringCandidate(_TypedRecord):
         if self.status == "ready" and self.reason is not None:
             raise ValueError("ready lowering candidate cannot carry a rejection reason")
         if self.status == "unsupported":
-            _name(self.reason, "unsupported lowering reason")
+            _name(self.reason, "unsupported lowering rejection reason")
         object.__setattr__(
             self, "provenance", _pairs(self.provenance, "lowering provenance")
         )

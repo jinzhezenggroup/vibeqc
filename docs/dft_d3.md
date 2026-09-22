@@ -1,24 +1,23 @@
-# D3(BJ) production correction runtime
+# D3 production correction runtime
 
 VibeQC represents additive geometry-only dispersion with
 `DispersionCorrectionPrimitive` and an immutable `D3Spec`. The native library
-now exposes a standalone production D3(BJ) correction owner for CPU and CUDA,
-including ragged batches and fixed-topology changed-geometry replay. `Calculator`
-now composes that owner automatically when its resolved `MethodIR` contains a
-production D3(BJ) correction: the electronic subgraph remains the native KS model,
-and the correction is added exactly once at the prepared execution boundary.
-Issue #492 remains open for the still-unpromoted D3 variants and generated-runtime
-performance/retirement work.
+exposes one retained production D3 owner for CPU and CUDA, including ragged batches
+and fixed-topology changed-geometry replay. `Calculator` composes that owner
+automatically when its resolved `MethodIR` contains a qualified D3 correction:
+the electronic subgraph remains the native KS model, and the correction is added
+exactly once at the prepared execution boundary.
 
 ## Supported model and MethodIR composition
 
-The production model is nonperiodic, real FP64, two-body D3(BJ), with `s9=0`.
-`D3Spec` records explicit `s6/s8/a1/a2`, source-data SHA-256 identities,
-coordination and pair cutoffs, and the pair-switch width. ATM and original
-zero damping now have standalone CPU/CUDA qualification primitives, but neither
-widens the public production owner: unsupported variants, invalid coefficients
-and mismatched table identities are still rejected rather than silently
-approximated.
+The production surface is nonperiodic, real FP64, and explicitly variant-gated:
+two-body D3(BJ) (`s9=0`), separately qualified D3(BJ)+ATM, and separately
+qualified original zero-damping two-body D3. `D3Spec` records the damping
+variant, source-data SHA-256 identities, variant-specific coefficients, cutoffs,
+and switch widths. Zero damping plus ATM and unknown variants fail closed;
+parameter-catalog availability never implies executable capability. Invalid
+coefficients and mismatched table identities are likewise rejected rather than
+silently approximated.
 
 The audited method catalog includes `PBE-D3(BJ)` and `PBE0-D3(BJ)`. Their
 `MethodIR` graphs contain the normal semilocal/exact-exchange primitives followed
@@ -115,9 +114,14 @@ The native owner copies all preparation inputs. CPU execution uses O(N) scratch
 and direct pair loops. CUDA keeps offsets, atomic numbers, compact tables,
 coordinates, masks, results and scratch resident behind one nonblocking stream;
 only changed coordinates/masks and requested results cross the device boundary
-per replay. The initial CUDA scheduling baseline uses one serial worker per
-molecule while independent molecules run as separate blocks. It is a bounded
-production ownership baseline, not a claim of pair-parallel performance.
+per replay. Scheduler identity `ragged-system-cooperative-pair-v1` uses one CUDA
+block per ragged system from 8 atoms upward, with atom-owned CN/direct-force/
+CN-response work and a deterministic system-local energy reduction; smaller
+systems retain the one-thread reference path to avoid launch overhead. ATM is
+accumulated after the qualified two-body stage, and every path preserves
+per-system failure isolation and exactly-once publication. A global unique-pair
+atomic prototype was measured on the same H100 endpoint but was not promoted
+because it did not materially improve the cooperative implementation.
 
 ## Data provenance and validation
 
@@ -211,16 +215,20 @@ failure boundary is not yet equivalent to the public native per-item status ABI.
 
 See the [generated ragged execution decision](../.agents/notes/implemented/numerics/2026-09-20-d3-generated-ragged-cuda.md).
 
-## Remaining boundary
+## Closure boundary
 
 The public correction owner remains deliberately separate from the electronic DFT
-SCF/Fock equation, but `Calculator` now owns their exact-once energy/force
-composition at the prepared execution boundary. Remaining #492 work is the
-pair-parallel/generated CUDA production promotion and retirement evidence, plus
-production admission of the separately validated ATM and zero-damping variants.
-The standalone ATM and D3(0) references do not grant nonzero-`s9` or zero-damping
-production capability. Native DFT paths must continue to reject a correction node unless the Calculator
-composition owner has explicitly split and retained it.
+SCF/Fock equation, while `Calculator` owns their exact-once energy/force composition
+at the prepared execution boundary. The production D3 closure admits only the three
+separately qualified capabilities described above: two-body BJ, BJ+ATM and
+zero-damping two-body. Unsupported combinations continue to fail closed, and native
+DFT paths still reject a correction node unless the Calculator composition owner has
+explicitly split and retained it.
+
+The generated GeometryIR/PairIR CUDA route remains a non-public retirement candidate.
+Its existence does not expand the public D3 capability matrix and retiring the native
+owner requires its own future evidence for per-item failure isolation, energy-only
+execution, resource bounds, changed-topology replay and matched endpoint performance.
 
 See [data provenance](../external/xtbloom-d3/README.md), the
 [baseline migration decision](../.agents/notes/implemented/architecture/2026-09-19-d3-xtbloom-baseline.md),

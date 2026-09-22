@@ -118,7 +118,7 @@ def test_lowering_contract_is_canonical_and_keeps_negative_evidence() -> None:
     assert report["candidates"][0]["reason"] == rejected.reason
 
     with pytest.raises(
-        ValueError, match="unsupported lowering reason must be a nonempty string"
+        ValueError, match="rejection reason"
     ):
         LoweringCandidate(
             request=first,

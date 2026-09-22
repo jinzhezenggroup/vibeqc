@@ -12,7 +12,7 @@ import math
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from .capabilities import normalize_capabilities
 from .cuda_schedule import (
@@ -188,7 +188,7 @@ def _validate_measured_target(
     """Reject stale exact-profile capability or generator-ABI metadata."""
 
     generator_abi = profile.get("generator_abi", target.generator_abi)
-    if int(generator_abi) != target.generator_abi:
+    if int(cast("str | int | float", generator_abi)) != target.generator_abi:
         raise ValueError(
             f"profile {profile_name!r} uses generator ABI {generator_abi}, "
             f"expected {target.generator_abi}"
@@ -489,8 +489,14 @@ def _selections_from_rows(
                 compile_seconds=_optional_nonnegative_number(
                     name, row, "compile_seconds"
                 ),
-                source_bytes=_optional_nonnegative_number(name, row, "source_bytes"),
-                object_bytes=_optional_nonnegative_number(name, row, "object_bytes"),
+                source_bytes=cast(
+                    "int | None",
+                    _optional_nonnegative_number(name, row, "source_bytes"),
+                ),
+                object_bytes=cast(
+                    "int | None",
+                    _optional_nonnegative_number(name, row, "object_bytes"),
+                ),
             )
         )
         seen.add(name)

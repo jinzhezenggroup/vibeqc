@@ -204,8 +204,8 @@ static cudaError_t contract_full_rank_response(
   // Applying M^-1 to the raw charges separately loses this consistency through
   // a different cancellation order on practical ill-conditioned auxiliary bases.
   if (blas_products) {
-    checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, static_cast<int>(terms.size()), mi,
-                        &one, fitted, mi, densities, mi, &zero, potentials, ai));
+    checked(generated::df_rhf_charge_contract(blas, mi, ai, 0, ai, static_cast<int>(terms.size()),
+                                              densities, fitted, potentials));
     runtime::cuda_trace::trace_counter("response_charge_blas_dots", terms.size() * a);
   } else {
     for (std::size_t q = 0; q < a; ++q)
@@ -303,12 +303,9 @@ static cudaError_t contract_full_rank_panels(
     error = cudaMemsetAsync(weights, 0, count * matrix * sizeof(double), stream);
     if (error != cudaSuccess) return error;
     if (blas_products) {
-      // fitted is column-major [ij,P] while densities is [ij,t]. Contract the
-      // whole auxiliary panel at once into the existing [P,t] view of
-      // potentials. Using ldc=a preserves potentials[t*a + P] without a copy.
-      checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(count),
-                          static_cast<int>(terms.size()), mi, &one, fitted, mi, densities, mi,
-                          &zero, potentials + begin, ai));
+      checked(generated::df_rhf_charge_contract(
+          blas, mi, ai, static_cast<int>(begin), static_cast<int>(count),
+          static_cast<int>(terms.size()), densities, fitted, potentials));
       runtime::cuda_trace::trace_counter("response_charge_blas_dots", terms.size() * count);
     } else {
       for (std::size_t p = 0; p < count; ++p)

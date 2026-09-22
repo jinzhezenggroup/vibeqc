@@ -116,6 +116,19 @@ function(vibeqc_add_gfn2_runtime target)
       COMMENT "Generating compiler-owned GFN2 CUDA electronic pair science")
     # Both CPU and CUDA consume the one compiler-owned pair artifact.
     add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_pair_cpu_codegen)
+    set(_gfn2_aes2_cuda_header
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_aes2_native.cuh")
+    vibeqc_register_generated_sources(
+      NAME vibeqc_gfn2_aes2_cuda_codegen
+      TARGET vibeqc_gfn2_cuda
+      GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_aes2_native.py"
+      OUTPUTS "${_gfn2_aes2_cuda_header}"
+      DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_aes2.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+      ARGS --cuda-output "${_gfn2_aes2_cuda_header}"
+      COMMENT "Generating compiler-owned GFN2 AES2 CUDA kernels")
     target_include_directories(vibeqc_gfn2_cuda PRIVATE
       "${CMAKE_CURRENT_BINARY_DIR}/generated"
       ${_gfn2_root}

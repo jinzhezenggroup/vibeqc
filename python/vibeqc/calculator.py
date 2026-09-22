@@ -950,12 +950,19 @@ class Calculator:
         basis_has_ecp = isinstance(self._basis, BasisSet) and any(
             element.ecp_core_electrons for element in self._basis.elements
         )
-        named_cpu_hybrid_force = (
+        named_cpu_all_electron_force = (
             self._device_name == "cpu"
-            and self._method_name in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks")
+            and self._method_name
+            in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks", "pbe-d4-rks")
             and not basis_has_ecp
             and self._ks_options is not None
-            and self._ks_options.coefficients[2] < 0.0
+            and (
+                self._ks_options.coefficients[2] < 0.0
+                or (
+                    self._method_name == "pbe-d4-rks"
+                    and self._ks_options.coefficients == (1.0, 1.0, 0.0)
+                )
+            )
         )
         semilocal_force = (
             self._ks_options is not None
@@ -964,6 +971,7 @@ class Calculator:
                 self._device_name == "cuda"
                 and self._ks_options.execution_plan.nonlocal_correlation is not None
             )
+            and not (self._method_name == "pbe-d4-rks" and basis_has_ecp)
             and (
                 self._device_name == "cuda"
                 or (self._device_name == "cpu" and qualified_basis(self._basis))
@@ -971,7 +979,7 @@ class Calculator:
         )
         if (
             self._capabilities.family == "density_functional"
-            and (semilocal_force or named_cpu_hybrid_force)
+            and (semilocal_force or named_cpu_all_electron_force)
             and not (
                 self._device_name == "cuda"
                 and basis_has_ecp

@@ -128,6 +128,20 @@ macro(vibeqc_register_host_generated_sources target)
     ARGS --output "${VIBEQC_GFN2_PAIR_CPU_HEADER}"
     COMMENT "Generating compiler-owned GFN2 CPU pair kernels")
 
+  set(VIBEQC_GFN2_AES2_CPU_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_aes2_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_aes2_cpu_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_aes2_native.py"
+    OUTPUTS "${VIBEQC_GFN2_AES2_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_aes2.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --cpu-output "${VIBEQC_GFN2_AES2_CPU_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 AES2 CPU kernels")
+
   set(VIBEQC_GFN2_ELECTRONIC_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_electronic_native.hpp")
   vibeqc_register_generated_sources(
@@ -186,6 +200,15 @@ macro(vibeqc_register_host_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_hf_response.py"
     OUTPUTS "${VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_contract.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_dtype.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_gemm.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ir.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/layout.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/types.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/common/layout.py"
     ARGS --contract-output "${VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER}")
 
   set(VIBEQC_ECP_HEADER
@@ -216,6 +239,15 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_hf_response.py"
     OUTPUTS "${VIBEQC_DF_HF_RESPONSE_CUDA_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_contract.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_dtype.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_gemm.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ir.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/layout.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/types.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/common/layout.py"
     ARGS --cuda-output "${VIBEQC_DF_HF_RESPONSE_CUDA_HEADER}")
 
   set(VIBEQC_DF_GENERATED_HEADER

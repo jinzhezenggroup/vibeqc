@@ -99,9 +99,9 @@
     {
       "id": "native-high-order-force",
       "status": "performance-exception",
-      "capability": "Order-4/5/6 Direct force families that fuse high-order recurrence/source contraction work. The shared high-order pair coefficient/first-center-gradient mathematics is now compiler-generated.",
-      "current_selector": "Retained native high-order force consumers remain production exceptions while generated multi-root sharing and resource-aware lowering are not yet endpoint-qualified. Their subset/Wick pair-gradient helper is generated at build time, so the native exception no longer owns that duplicate scientific formula.",
-      "generated_alternative": "IntegralIR already represents the derivatives, and the compiler now emits the high-order pair-gradient helper used by the retained consumer. Full consumer retirement still requires shared multi-root recurrence work and derivative-center recovery without excessive intermediates.",
+      "capability": "Order-4/5/6 Direct force canonicalization, primitive contraction, pair algebra and complete primitive ERI-gradient composition are compiler-generated. Shared high-order Coulomb recurrence support remains native pending common recurrence/spec retirement.",
+      "current_selector": "Production order-4/5/6 force directly includes the build-time generated consumer for canonicalization, primitive contraction and primitive gradients while retaining the existing queue/runtime schedule and selector semantics.",
+      "generated_alternative": "The compiler emits the complete order-4/5/6 force-side consumer: source canonicalization, primitive contraction, pair-term sharing, Coulomb derivative composition, Gaussian decay derivatives, and translational center recovery. The remaining native mathematical dependency is the shared high-order Coulomb recurrence helper.",
       "schedule_requirements": "Use common multi-root sharing, live-range shortening, pressure-aware rematerialization/fission, and bounded pair-term storage; do not add an order-specific Direct optimizer.",
       "resource_profile": "High register/stack pressure and repeated combinatorial traversal are the critical measured risks; peak workspace and actual recurrence walks must be reported with endpoint timing.",
       "evidence": [
@@ -111,10 +111,9 @@
         "python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py"
       ],
       "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
-      "retirement_condition": "At least one retained order-4/5/6 family must reach generated multi-root/resource parity before deleting its native body; repeat the same measured gate per remaining family.",
+      "retirement_condition": "The order-4/5/6 consumer body is retired. Remaining work for this family is to move shared high-order Coulomb recurrence/spec ownership under the common recurrence compiler once all dependent consumers can preserve the qualified resource and endpoint envelope.",
       "files": [
         "src/scf/cuda/direct_native_high_order_coulomb.cuh",
-        "src/scf/cuda/direct_native_order456_gradient.cuh",
         "src/scf/cuda/direct_native_pair_order2_gradient.cuh",
         "src/scf/cuda/direct_native_pair_order3_gradient.cuh",
         "src/scf/cuda/direct_native_source_contraction.cuh"

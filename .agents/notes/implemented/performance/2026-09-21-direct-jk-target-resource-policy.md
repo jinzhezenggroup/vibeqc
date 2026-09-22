@@ -31,3 +31,12 @@ Unknown resource facts fail toward conservative fallbacks: 256 MiB generated-tas
 The native policy test includes a 2-GiB target with 64 threads/SM and four blocks/SM. It resolves to a 64-MiB generated-task arena, two persistent warp workers/SM, and a 2M-record cap for 32-byte test records. This proves selection is resource-derived rather than keyed to RTX 5090 identity.
 
 No endpoint performance claim is made by this slice. RTX 5090 regression measurement remains required before #597 can close.
+
+## 2026-09-22 correction
+
+The original slice incorrectly reused the fixed-topology 1/32 memory budget to
+limit bounded-streaming page scratch. That coupled two different lifetime and
+performance domains and reduced the qualified RTX 5090 bounded page below 8M
+tasks. The follow-up `2026-09-22-direct-jk-capacity-domain-separation.md`
+splits those policies, restores the qualified bounded page, and adds explicit
+cross-domain regression guards.

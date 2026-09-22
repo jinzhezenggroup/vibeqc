@@ -1,5 +1,6 @@
 {
   "adaptations": {
+    "src/backends/cuda/gfn2_aes2.cu": "Consume compiler-generated TensorIR/AD AES2 energy/potential/coordinate and CN reverse response; preserve runtime validation, topology, and publication ownership.",
     "src/backends/cuda/gfn2_geometry.cu": "Consume compiler-generated TensorIR/AD coordination pair science; retain CUDA geometry/topology ownership.",
     "src/backends/cuda/gfn2_hamiltonian.cu": "Consume compiler-generated fixed-state TensorIR S/D/Q pair Hamiltonian for both spin layouts.",
     "src/backends/cuda/gfn2_hamiltonian_force.cu": "Consume the matching compiler-generated S/D/Q reverse-mode pair adjoints, including spin overlap.",
@@ -80,9 +81,9 @@
       "vendored_sha256": "ed0b9065a98dcbb191e371ad3680d3a41c21f42a5fc621f8f1e9d6a774010334"
     },
     "src/backends/cuda/gfn2_aes2.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "86ebfe4e4c846f2f2358e75eaa521b98ff2627e0ff1d659ddb4a64be9eb801de",
-      "vendored_sha256": "86ebfe4e4c846f2f2358e75eaa521b98ff2627e0ff1d659ddb4a64be9eb801de"
+      "vendored_sha256": "65d96603c5d02d89c853d0be985573b47c951304581b6589dd40a3518bd3abf6"
     },
     "src/backends/cuda/gfn2_aes2.cuh": {
       "adapted": false,

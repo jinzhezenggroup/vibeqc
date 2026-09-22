@@ -606,7 +606,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       direct_task_layout = {};
       total_shell_quartet_tiles = 0;
     } else if (direct_task_layout.exact_tile_count >
-               direct_schedule.generated_task_arena_maximum_bytes / sizeof(GeneratedShellTask)) {
+               direct_schedule.fixed_topology.arena_maximum_bytes / sizeof(GeneratedShellTask)) {
       // The uint32 grid limit is much larger than a practical descriptor
       // arena on a 32 GiB device.  Route large-but-grid-addressable buckets
       // through bounded streaming before make_layout() reserves the complete
@@ -743,9 +743,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       fill_global_failure(outputs, VIBEQC_STATUS_OUT_OF_MEMORY);
       return outputs;
     }
-    bounded_generated_task_capacity = std::min(bounded_generated_task_capacity,
-                                               cuda_policy::direct_jk_generated_task_capacity_limit(
-                                                   direct_schedule, sizeof(GeneratedShellTask)));
+    bounded_generated_task_capacity =
+        std::min(bounded_generated_task_capacity,
+                 cuda_policy::direct_jk_bounded_streaming_task_capacity_limit(
+                     direct_schedule, sizeof(GeneratedShellTask)));
   }
   if (requested_quartet_direct && first_setup && !requested_bounded_direct_streaming) {
     // The shared generated-task arena serves both exact Fock and force
