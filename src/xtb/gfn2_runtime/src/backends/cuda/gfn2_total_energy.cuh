@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <type_traits>
 
-#include "xtbloom/xtbloom.h"
+#include "vibeqc/xtb_runtime.h"
 
 namespace vibeqc::xtb::detail::cuda {
 

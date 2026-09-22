@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <string>
 
-#include "xtbloom/xtbloom.h"
+#include "vibeqc/xtb_runtime.h"
 
 namespace vibeqc::xtb::detail {
 

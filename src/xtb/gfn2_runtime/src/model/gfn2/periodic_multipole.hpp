@@ -12,7 +12,7 @@
 
 #include "model/gfn2/aes2.hpp"
 #include "model/gfn2/periodic_topology.hpp"
-#include "xtbloom/xtbloom.h"
+#include "vibeqc/xtb_runtime.h"
 
 namespace vibeqc::xtb::detail::gfn2 {
 

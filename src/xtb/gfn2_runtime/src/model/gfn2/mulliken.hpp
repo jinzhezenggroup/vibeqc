@@ -14,7 +14,7 @@
 #include "model/gfn2/mulliken_kernels.hpp"
 #include "model/gfn2/parallel_executor.hpp"
 #include "model/gfn2/wavefunction.hpp"
-#include "xtbloom/xtbloom.h"
+#include "vibeqc/xtb_runtime.h"
 
 namespace vibeqc::xtb::detail::gfn2 {
 

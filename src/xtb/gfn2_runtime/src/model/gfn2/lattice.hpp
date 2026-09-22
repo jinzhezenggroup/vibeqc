@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "xtbloom/xtbloom.h"
+#include "vibeqc/xtb_runtime.h"
 
 namespace vibeqc::xtb::detail::gfn2 {
 

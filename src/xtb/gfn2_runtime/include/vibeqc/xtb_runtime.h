@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "xtbloom/version.h"
+#include "vibeqc/xtb_runtime_version.h"
 
 #if defined(_WIN32)
 #if defined(VIBEQC_XTB_BUILDING_LIBRARY)

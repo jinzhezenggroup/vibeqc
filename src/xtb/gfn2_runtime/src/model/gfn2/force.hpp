@@ -21,7 +21,7 @@
 #include "model/gfn2/periodic_multipole.hpp"
 #include "model/gfn2/periodic_topology.hpp"
 #include "model/gfn2/repulsion.hpp"
-#include "xtbloom/xtbloom.h"
+#include "vibeqc/xtb_runtime.h"
 
 namespace vibeqc::xtb::detail::gfn2 {
 

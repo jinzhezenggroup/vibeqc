@@ -9,7 +9,7 @@
 #include <string>
 
 #include "runtime/dlpack_layout.hpp"
-#include "xtbloom/xtbloom.h"
+#include "vibeqc/xtb_runtime.h"
 
 namespace vibeqc::xtb::detail {
 

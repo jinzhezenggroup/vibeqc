@@ -9,7 +9,7 @@
 
 #include "model/gfn2/basis.hpp"
 #include "model/gfn2/integrals.hpp"
-#include "xtbloom/xtbloom.h"
+#include "vibeqc/xtb_runtime.h"
 
 namespace vibeqc::xtb::detail::gfn2 {
 

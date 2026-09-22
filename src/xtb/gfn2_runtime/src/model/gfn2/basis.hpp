@@ -6,7 +6,7 @@
 #include <string>
 
 #include "model/common/basis.hpp"
-#include "xtbloom/xtbloom.h"
+#include "vibeqc/xtb_runtime.h"
 
 namespace vibeqc::xtb::detail::gfn2 {
 
