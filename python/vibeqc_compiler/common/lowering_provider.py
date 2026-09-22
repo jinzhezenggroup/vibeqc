@@ -29,16 +29,6 @@ def _name(value: typing.Any, label: str) -> str:
     return value
 
 
-def _digest(value: typing.Any, label: str) -> str:
-    if (
-        type(value) is not str
-        or len(value) != 64
-        or any(character not in "0123456789abcdef" for character in value)
-    ):
-        raise ValueError(f"{label} must be a SHA-256 digest")
-    return value
-
-
 def _scalar(value: typing.Any, label: str) -> Scalar:
     if type(value) not in (bool, int, float, str) or (
         type(value) is float and not math.isfinite(value)
