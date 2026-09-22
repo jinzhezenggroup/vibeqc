@@ -22,7 +22,7 @@
 #include "scf/cuda/scf_density_kernels.hpp"
 #include "scf/cuda/scf_diis_kernels.hpp"
 #include "scf/cuda/scf_matrix_kernels.hpp"
-#include "scf/cuda_direct_jk_device.hpp"
+#include "scf/cuda_fock_execution.hpp"
 #include "scf/initial_guess/density.hpp"
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/proposal_control.hpp"
@@ -139,7 +139,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
   const AoBasis& basis;
   const MolecularGrid& grid;
   scf::ScfOptions options;
-  scf::CudaDirectJkPlan* direct{};
+  scf::PreparedCudaFockBinding fock_binding{};
   cudaStream_t stream{};
   int device{};
   std::size_t n{}, matrix{}, elements{};
@@ -216,7 +216,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
         strategy.spec.derivative_order != 0 || !strategy.spec.coulomb.present ||
         strategy.spec.coulomb.coefficient != 1.0 ||
         strategy.spec.coulomb.approximation != scf::FockApproximation::Exact ||
-        strategy.spec.exchange.present || !(direct = provider.cuda_direct_source()))
+        strategy.spec.exchange.present ||
+        !(fock_binding = scf::prepared_cuda_fock_binding(provider)))
       throw std::invalid_argument(
           "CUDA KS requires the prepared conventional Coulomb-only strategy");
     if (options.compute_forces || options.hooks || options.export_physical_reference ||
@@ -256,8 +257,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
         !std::all_of(integrals.hcore.begin(), integrals.hcore.end(), finite))
       throw std::runtime_error("nonfinite CUDA KS one-electron or nuclear energy");
     history = std::max(1U, options.diis_history);
-    device = scf::cuda_direct_jk_device(direct);
-    stream = scf::cuda_direct_jk_stream(direct);
+    device = fock_binding.device_id;
+    stream = fock_binding.stream;
     current_device();
     orthogonalizer = scf::reference::symmetric_orthogonalizer(provider.one_electron().overlap, n);
     cold_density = seed(nullptr);
@@ -424,7 +425,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
   }
 
   runtime::SolverRegionCudaBinding solver_region_binding() const {
-    return {{"cuda-ks-rks-solver-region-v1", device, stream, arena, direct},
+    return {{"cuda-ks-rks-solver-region-v1", device, stream, arena, fock_binding.source_identity},
             kCudaKsChunkCapacity,
             runtime::SolverRegionCompletionMode::Scalar,
             false};
@@ -450,8 +451,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (generation == std::numeric_limits<std::uint64_t>::max())
       throw std::overflow_error("CUDA KS density generation exhausted");
     std::string detail;
-    check(scf::enqueue_cuda_direct_jk_device(direct, provider.strategy().spec, density, nullptr,
-                                             matrix, j, nullptr, nullptr, jk_error, detail),
+    check(scf::enqueue_prepared_cuda_fock(provider, density, nullptr, matrix, j, nullptr, nullptr,
+                                          jk_error, false, detail),
           detail);
     xc->enqueue(density, elements, ++generation);
     pending_generations[slot] = generation;
@@ -660,14 +661,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
     try {
       std::string detail;
       pending_mixed_j = mixed_j && !strict_refinement;
-      const auto jk_status = pending_mixed_j ? scf::enqueue_cuda_direct_jk_device_mixed_j(
-                                                   direct, provider.strategy().spec, density,
-                                                   spins == 2 ? density + matrix : nullptr, matrix,
-                                                   j, nullptr, nullptr, jk_error, detail)
-                                             : scf::enqueue_cuda_direct_jk_device(
-                                                   direct, provider.strategy().spec, density,
-                                                   spins == 2 ? density + matrix : nullptr, matrix,
-                                                   j, nullptr, nullptr, jk_error, detail);
+      const auto jk_status = scf::enqueue_prepared_cuda_fock(
+          provider, density, spins == 2 ? density + matrix : nullptr, matrix, j, nullptr, nullptr,
+          jk_error, pending_mixed_j, detail);
       check(jk_status, detail);
       mixed_j_executed = mixed_j_executed || pending_mixed_j;
       const auto potential = stage_xc(++generation);

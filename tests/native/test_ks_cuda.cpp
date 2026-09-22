@@ -18,6 +18,7 @@
 #include "methods/dft_method.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_ledger.hpp"
+#include "scf/cuda_fock_execution.hpp"
 #include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
 
@@ -52,6 +53,23 @@ scf::ResolvedFockBuild strategy(bool restricted, scf::FockBackend backend) {
   spec.exchange.present = false;
   spec.derivative_order = 0;
   return scf::resolve_fock_build(spec, backend, 1e-12);
+}
+
+void prepared_cuda_fock_seam() {
+  const auto system = hydrogens(2, true);
+  const scf::PreparedFockPlan cpu(system, nullptr, strategy(true, scf::FockBackend::Cpu));
+  require(!scf::prepared_cuda_fock_binding(cpu),
+          "CPU Fock owner unexpectedly exposed a CUDA execution binding");
+
+  scf::FockBuildSpec spec;
+  spec.spin = scf::FockSpin::Restricted;
+  spec.derivative_order = 0;
+  const auto resolved = scf::resolve_fock_build(spec, scf::FockBackend::Cuda, 1e-12);
+  const scf::PreparedFockPlan hybrid(system, nullptr, resolved, 0);
+  const auto binding = scf::prepared_cuda_fock_binding(hybrid);
+  require(binding && binding.nbf == hybrid.one_electron().nbf && binding.stream != nullptr &&
+              binding.source_identity != nullptr,
+          "prepared full-range CUDA J/K owner lacks the method-neutral execution binding");
 }
 
 /** Independently rebuild the retained density with CPU integrals/XC. This
@@ -560,6 +578,7 @@ int main() {
   int devices = 0;
   if (cudaGetDeviceCount(&devices) != cudaSuccess || devices == 0) return 77;
   try {
+    prepared_cuda_fock_seam();
     if (std::getenv("VIBEQC_CUDA_KS_CHUNK") == nullptr) {
       require(::setenv("VIBEQC_CUDA_KS_CHUNK", "2", 1) == 0,
               "could not enable CUDA RKS chunk qualification");
