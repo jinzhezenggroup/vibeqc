@@ -184,7 +184,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
     return {"cuda-ks-device-chunk-v1:" + std::to_string(n) + ":" + std::to_string(spins) + ":" +
                 std::to_string(functional) + ":" + std::to_string(history) + ":" +
                 std::to_string(xc_layout.tile_points),
-            device, stream, arena, direct};
+            // The prepared facade owns provider lifetime and replay identity;
+            // device chunks are admitted only for its direct-Fock binding.
+            device, stream, arena, fock_binding.source_identity};
   }
 
   void current_device() const {

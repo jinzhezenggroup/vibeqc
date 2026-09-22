@@ -283,8 +283,10 @@ class DensityFittingBudgetError : public std::invalid_argument {
  * callers must pass stores_full_three_center to the source plan adapter. Explicit
  * host-tensor plans additionally need their raw upload during setup.
  * automatic_rhf_rank authorizes optional SCF factor reservation for a known
- * RHF occupation. Zero keeps dense accounting. If optional factors force
- * streaming, auto retries the dense budget; explicit occupied never does.
+ * RHF occupation. Zero keeps dense accounting. Streamed generated plans may
+ * reserve factors when source-first projection reduces raw work; factors never
+ * force an otherwise resident dense plan to stream. Explicit occupied retains
+ * its conservative reservation independently of automatic profitability.
  */
 [[nodiscard]] DensityFittingTilePlan plan_density_fitting_tiles(
     std::size_t batch_size, std::size_t nbf, std::size_t naux, std::size_t occupied,

@@ -44,4 +44,4 @@ force failures or qualify previously failed performance. #206 remains open.
 
 [#423 retained AOT matrix](https://github.com/jinzhezenggroup/vibeqc/pull/423),
 [#422 binary provenance](https://github.com/jinzhezenggroup/vibeqc/pull/422), and
-[performance qualification policy](../../../../docs/performance_engineering.md).
+[performance qualification policy](../../../../docs/maintainer/performance_engineering.md).

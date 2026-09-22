@@ -270,7 +270,7 @@ def main() -> typing.Any:
                     ),
                     "peak_bytes": max(row["statistics"]["peak_bytes"] for row in rows),
                     "reason": None,
-                    "scope": "numeric buffers plus provider allowance; see docs/posthf.md",
+                    "scope": "numeric buffers plus provider allowance; see docs/developer/posthf.md",
                 }
                 for row in rows:
                     record["timings"].append(

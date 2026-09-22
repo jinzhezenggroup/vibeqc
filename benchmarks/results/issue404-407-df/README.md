@@ -105,7 +105,7 @@ Later final-selector confirmation records its own source/library hashes.
 Library/module growth is reported separately from tensor storage: generated
 diagnostic families add code even when their automatic policy stays disabled.
 
-Use the commands in [DF tuning](../../../docs/df_tuning.md) for candidate batches.
+Use the commands in [DF tuning](../../../docs/developer/df_tuning.md) for candidate batches.
 For clean endpoints use `benchmarks.df_policy_endpoint` with the retained
 scientific settings, `--repeats 5 --expected-iterations 3 --components-after`,
 `--control VIBEQC_DF_SHELL_POLICY --policies legacy candidate` or

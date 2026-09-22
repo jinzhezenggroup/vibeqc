@@ -109,8 +109,8 @@ experiment. #206 retains fresh matched stock GPU4PySCF qualification.
 ## References
 
 - #409, #203, #206; independent Gram rejection in #412.
-- [Performance engineering](../../../docs/performance_engineering.md).
-- [Occupied CUDA ownership](../../../docs/df_occupied_cuda.md).
+- [Performance engineering](../../../docs/maintainer/performance_engineering.md).
+- [Occupied CUDA ownership](../../../docs/developer/df_occupied_cuda.md).
 
 ## Initial bounded experiments (2026-09-17)
 

@@ -120,3 +120,19 @@ from the resolved target and basis topology; it does not replace or authorize
 that lease. The earlier description of replacing the retained execution identity
 predates this integration. TensorIR publishes the new identity in execution
 metrics while preserving its historical public identity.
+
+The post-review integration binds KS chunks to the prepared Fock facade's
+`source_identity`, replacing the removed concrete Direct-Fock member. The chunk
+admission still excludes DF; the facade remains the provider lifetime authority.
+The qualified tree passes the full native LDA/PBE/r2SCAN regression with ordinary
+and two-slot control, including failure/recovery and warm-state gates. Seven
+public CUDA force/retained-execution tests and five real TensorIR graph tests
+also pass. Graph launch-error no-duplicate behavior is fault-injected in the
+host fake-runtime suite; the real GPU error tests exercise arithmetic failures
+and recovery, not device-fatal error injection. Forty host lifecycle/asset tests
+pass; the optional clang++ compile check is skipped when that compiler is absent.
+
+Slurm 11364 source identity:
+`2dd8ac38f3358a722340df47a1ce8ade3f074b307b89d8ebdfdd36de5c6a52fe`;
+library SHA256:
+`6f5274743aff2b9de8631dde78bd8e62590c10a37b0d47d09069aef6cc5038a6`.

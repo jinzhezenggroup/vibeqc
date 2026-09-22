@@ -56,4 +56,4 @@ Future element families, angular additions, molecular environments or method
 combinations require their own pinned parameters and complete endpoint gates.
 Revisit scheduling or quadrature only with evidence identifying a deficiency.
 
-Refs #171; see [the current ECP contract](../../../../docs/ecp.md).
+Refs #171; see [the current ECP contract](../../../../docs/user/ecp.md).

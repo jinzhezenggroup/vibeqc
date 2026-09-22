@@ -161,6 +161,7 @@ CUDA_ALLOWED["cuda_df_runtime"] = tuple(
     "scf/density_fitting.hpp",
     "scf/df_exchange_policy.hpp",
     "scf/df_streamed_k_policy.hpp",
+    "scf/df_projected_exchange_schedule.hpp",
     "molecule/basis.hpp",
     "runtime/",
 )

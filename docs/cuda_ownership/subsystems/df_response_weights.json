@@ -19,7 +19,7 @@
     "tests/native/test_df_shell_pairs.cpp",
     "tests/python/test_df_shell_derivatives_cuda.py",
     "benchmarks/results/issue382-packed-df/README.md",
-    "docs/df_tuning.md",
+    "docs/developer/df_tuning.md",
     "tests/python/test_df_exchange_policy.py",
     "tests/python/test_df_auto_exchange_cuda.py",
     ".agents/notes/implemented/performance/2026-09-18-general-occupied-df-policy.md",
