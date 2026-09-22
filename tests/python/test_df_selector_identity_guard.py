@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 
 DF_AUTO_SELECTOR_SOURCES = (
@@ -34,7 +36,9 @@ _ENDPOINT_VARIABLE = (
     r"(?:n(?:bf|ao|aux|occ)|ao_count|aux(?:iliary)?_count|"
     r"occupied(?:_rank|_count)?|rank)"
 )
-_ENDPOINT_VALUE = r"(?:80|160|384|768)"
+# C++ unsigned/long suffixes do not change the benchmark identity. Keep the
+# final word boundary so larger values and identifier continuations stay legal.
+_ENDPOINT_VALUE = r"(?:80|160|384|768)(?:u(?:ll?)?|ll?u?)?"
 EXACT_ENDPOINT_IDENTITY = re.compile(
     rf"\b(?:{_ENDPOINT_VARIABLE}\s*==\s*{_ENDPOINT_VALUE}|"
     rf"{_ENDPOINT_VALUE}\s*==\s*{_ENDPOINT_VARIABLE})\b",
@@ -88,3 +92,58 @@ def test_df_auto_selectors_do_not_encode_benchmark_identity() -> None:
         "production DF auto-selection must use workload/profile capabilities, "
         f"not benchmark endpoint identities: {violations}"
     )
+
+
+@pytest.mark.parametrize(
+    "suffix",
+    (
+        "",
+        "u",
+        "U",
+        "l",
+        "L",
+        "ul",
+        "UL",
+        "lu",
+        "LU",
+        "ll",
+        "LL",
+        "ull",
+        "ULL",
+        "llu",
+        "LLU",
+    ),
+)
+@pytest.mark.parametrize(
+    "variable,value", (("nbf", 384), ("nao", 768), ("nocc", 80), ("rank", 160))
+)
+@pytest.mark.parametrize("reversed_order", (False, True))
+def test_identity_guard_recognizes_cpp_integer_suffixes(
+    suffix: str, variable: str, value: int, reversed_order: bool
+) -> None:
+    literal = f"{value}{suffix}"
+    expression = (
+        f"{literal} == {variable}" if reversed_order else f"{variable} == {literal}"
+    )
+    assert _benchmark_identity_hits(expression) == (f"endpoint:{expression}",)
+
+
+@pytest.mark.parametrize(
+    "source",
+    (
+        "nbf >= 384U",
+        "768ULL > nao",
+        "nocc < 80",
+        "rank <= 160L",
+        "nbf == 3840U",
+        "7681ULL == nao",
+        "nocc == 801",
+        "rank == 1600",
+        "nbf == 384_units",
+        "rank == 160bytes",
+    ),
+)
+def test_identity_guard_preserves_general_thresholds_and_other_values(
+    source: str,
+) -> None:
+    assert _benchmark_identity_hits(source) == ()
