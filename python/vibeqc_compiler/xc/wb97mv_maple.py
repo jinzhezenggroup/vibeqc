@@ -83,30 +83,23 @@ def energy_expression(spec: typing.Any) -> typing.Any:
     if "MGGA_X_WB97M_V" in active and spec.range_omega <= 0:
         raise ValueError("omegaB97M-V exchange requires positive range_omega")
 
-    graph = libxc_maple.Graph() if hasattr(libxc_maple, "Graph") else None
-    if graph is None:
-        from vibeqc_compiler.integral.expr import Graph
-
-        graph = Graph()
+    graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
     density, zeta, rs, xt, xs_a, xs_b, ts_a, ts_b = _coordinates(
         graph, spec, variables
     )
     module = _wb97mv_module(spec.range_omega)
-    total = density * module.call(
-        graph, "f", rs, zeta, xt, xs_a, xs_b, 0, 0, ts_a, ts_b
+    builders = {
+        "MGGA_X_WB97M_V": lambda: density
+        * module.call(graph, "wb97mv_f", rs, zeta, xs_a, xs_b, ts_a, ts_b),
+        "MGGA_C_WB97M_V": lambda: density
+        * module.call(graph, "b97mv_f", rs, zeta, xs_a, xs_b, ts_a, ts_b),
+    }
+    total = graph.sum(
+        coefficient * builders[name]()
+        for name, coefficient in spec.components
+        if coefficient
     )
-
-    # The upstream entry is the complete semilocal WB97M-V XC expression.
-    # Preserve component coefficients by admitting only the canonical pair or
-    # a single component with unit coefficient; arbitrary recombination would
-    # require source-level component separation that the upstream entry does not expose.
-    coefficients = {name: coefficient for name, coefficient in spec.components if coefficient}
-    if len(coefficients) == 2:
-        if set(coefficients) != set(WB97MV_COMPONENTS) or set(coefficients.values()) != {1}:
-            raise ValueError("omegaB97M-V Maple entry requires canonical unit X/C composition")
-    elif len(coefficients) == 1:
-        raise ValueError("omegaB97M-V Maple entry does not expose separable X/C components")
     return graph, total, variables
 
 
