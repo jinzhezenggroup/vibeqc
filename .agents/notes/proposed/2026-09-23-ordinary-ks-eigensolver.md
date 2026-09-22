@@ -67,3 +67,33 @@ benchmark results or a claim that #1077 is fixed.
 Local evidence: `ks-solver-v4.log` and `pbe24-solver-v4.json` under the
 integration checkout's ignored `.artifacts/gpu-blocker-fixes/`; binary SHA256
 `e7759a605546ca82020f0c618bce4b2dada57dc6549e2e4442391f9db2cfb29e`.
+
+## PBE24 numerical follow-up
+
+The mismatch above was isolated to generated ddpp scheduling, not XC or the
+ordinary eigensolver. Issue #1095 / PR #1096 fixes premature worker retirement
+after a screened task. With that compiler fix, Slurm 11293 PBE24 passed the
+same complete cold/priming/warm comparison at screening 1e-12: maximum error
+1.444e-11 Hartree, native cold 27.249 seconds and warm 3.397/3.438 seconds.
+The integration binary SHA256 is
+`cdb92be28ccc73f9b3279ed2b61df7321ecb0934b40f2cbede65b23d20f0dc0e`.
+Larger endpoint qualification remains open under #1077. This observation does
+not change the standalone eigensolver's scientific or resource contract.
+
+## Public ordinary-owner qualification
+
+Slurm 11309 passed RKS and open-shell UKS water energy-only endpoints above
+16 AOs (24 spherical AOs). Exact-input PySCF oracles and identical explicit
+quadrature meet an absolute-only 1e-8 Hartree gate (`rel=0`) for cold/warm and
+changed geometry; physical residuals stay below 1e-9. Final-state export
+exercises canonicalization through the same solver. Exact-budget admission,
+zero warm provider allocations and observed storage below the conservative
+shape bound are checked. This supplements the independent 768-AO solver test;
+it does not publish CPU performance or qualify 96-atom complete DFT timing.
+
+The allocated CUDA resource suite also passed all seven selected tests:
+RKS/UKS preparation, replay, geometry rebuild, release, larger-solver shape
+queries and rejected allocation cleanup. Its SCF ledger probes explicitly
+request energy, separating provider allocations from optional force consumers;
+retained/rebuild allocations are compared to actual observations while the
+shape query remains a conservative bound.
