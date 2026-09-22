@@ -147,7 +147,9 @@ def compile(
     if not isinstance(program, Program):
         raise TypeError("tensor compilation requires Program")
     if mode != "jit":
-        raise ValueError("public TensorIR compilation currently supports mode='jit' only")
+        raise ValueError(
+            "public TensorIR compilation currently supports mode='jit' only"
+        )
     if target != "cpu":
         raise ValueError("public TensorIR JIT currently supports target='cpu' only")
     if isinstance(compile_timeout, bool) or not isinstance(

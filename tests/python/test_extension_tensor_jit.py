@@ -7,9 +7,9 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from vibeqc.extensions import tensor
-import vibeqc_compiler.common.cpp_adapter as cpp_adapter
 import vibeqc_compiler.tensor.cpu as tensor_cpu
+from vibeqc.extensions import tensor
+from vibeqc_compiler.common import cpp_adapter
 
 
 def _program() -> tensor.Program:
@@ -154,7 +154,9 @@ def test_tensor_jit_resolves_toolchain_and_cache_only_on_explicit_request(
 
 
 @pytest.mark.parametrize("timeout", [True, "30", float("inf"), 0.0, -1.0])
-def test_tensor_jit_validates_timeout_before_toolchain_activation(timeout: object) -> None:
+def test_tensor_jit_validates_timeout_before_toolchain_activation(
+    timeout: object,
+) -> None:
     program = _program()
     error = TypeError if isinstance(timeout, (bool, str)) else ValueError
     with pytest.raises(error, match="compile_timeout"):
