@@ -1,6 +1,8 @@
-# Reference repositories are cloned outside this source tree. Before any code
-# is adapted, fill in commit, license_spdx, and license_sha256 and preserve the
-# original copyright notices. Empty values mean "oracle/reference only".
+# External oracle/reference repositories are cloned outside this source tree.
+# This tooling registry stores provenance metadata only; vendored upstream source belongs
+# under upstream/. Before adapting any code, fill in commit, license_spdx, and
+# license_sha256 and preserve the original copyright notices. Empty values mean
+# "oracle/reference only".
 
 [[repository]]
 name = "gpu4pyscf"

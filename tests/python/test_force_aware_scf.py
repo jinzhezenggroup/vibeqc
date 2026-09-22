@@ -109,6 +109,70 @@ def test_holdout_reports_false_success_without_promoting_calibration_domain() ->
     assert report["false_success_rate"] == 1.0
 
 
+def test_holdout_reports_force_envelope_coverage_and_underestimation() -> None:
+    fit = estimator()
+    report = fit.evaluate_holdout(
+        (
+            sample(
+                "force-miss",
+                diagnostic=1e-8,
+                energy=1e-8,
+                force=1e-2,
+            ),
+            sample(
+                "force-covered",
+                diagnostic=1e-6,
+                energy=1e-8,
+                force=1e-7,
+            ),
+        ),
+        TargetErrorBudget(energy_abs=1e-5, force_max_abs=1e-1),
+    )
+
+    # A generous target can pass both samples while the envelope misses one.
+    assert report["false_successes"] == 0
+    assert report["force_coverage"] == 1
+    assert report["force_coverage_rate"] == pytest.approx(0.5)
+    assert report["force_underestimation_rows"] == 1
+    assert report["force_underestimation_nonfinite_rows"] == 0
+    assert report["max_force_underestimation_factor"] == pytest.approx(0.01 / 3.75e-8)
+    assert report["rows"][0]["force_covered"] is False
+    assert report["rows"][0]["force_underestimated"] is True
+    assert report["rows"][0]["force_underestimation_factor"] == pytest.approx(
+        0.01 / 3.75e-8
+    )
+    assert report["rows"][1]["force_covered"] is True
+    assert report["rows"][1]["force_underestimated"] is False
+
+
+def test_holdout_reports_nonfinite_force_underestimation_for_zero_envelope() -> None:
+    fit = ScfForceErrorEstimator.fit(
+        (sample("zero-a", force=0.0), sample("zero-b", force=0.0))
+    )
+    report = fit.evaluate_holdout(
+        (sample("zero-held", force=1e-6),),
+        TargetErrorBudget(energy_abs=1e-5, force_max_abs=1e-3),
+    )
+
+    assert report["force_coverage"] == 0
+    assert report["force_underestimation_rows"] == 1
+    assert report["max_force_underestimation_factor"] is None
+    assert report["force_underestimation_nonfinite_rows"] == 1
+    assert report["rows"][0]["force_underestimation_factor"] is None
+
+
+def test_empty_holdout_has_no_force_coverage_claim() -> None:
+    report = estimator().evaluate_holdout(
+        (), TargetErrorBudget(energy_abs=1e-5, force_max_abs=1e-3)
+    )
+    assert report["samples"] == 0
+    assert report["force_coverage"] == 0
+    assert report["force_coverage_rate"] == 0.0
+    assert report["force_underestimation_rows"] == 0
+    assert report["force_underestimation_nonfinite_rows"] == 0
+    assert report["max_force_underestimation_factor"] is None
+
+
 def test_policy_starts_strict_and_relaxes_only_after_hysteresis() -> None:
     controller = policy(relax_after=2)
     state = controller.initial_state()

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from .backend import TargetInfo
 from .provenance import canonical_hash
@@ -68,10 +68,12 @@ class _TypedRecord:
     def __eq__(self, other: object) -> bool:
         if type(self) is not type(other):
             return NotImplemented
-        return canonical_hash(asdict(self)) == canonical_hash(asdict(other))
+        return canonical_hash(asdict(cast("Any", self))) == canonical_hash(
+            asdict(cast("Any", other))
+        )
 
     def __hash__(self) -> int:
-        return hash((type(self), canonical_hash(asdict(self))))
+        return hash((type(self), canonical_hash(asdict(cast("Any", self)))))
 
 
 @dataclass(frozen=True, slots=True, eq=False)

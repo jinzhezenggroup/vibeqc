@@ -33,8 +33,8 @@ std::size_t checked_sum(std::size_t a, std::size_t b) {
 
 // Dynamic forward derivatives remain the structurally independent host reference
 // for raw integral validation and for families not yet promoted to generated CPU
-// production code.  Production s/p/d/f overlap/kinetic instead consumes the same
-// compiler-owned mathematical DAG used by the CUDA one-electron lowering.
+// production code.  Production s/p/d/f overlap/kinetic/nuclear-attraction instead
+// consumes the same compiler-owned mathematical DAG used by the CUDA one-electron lowering.
 struct Jet {
   double value{};
   std::vector<double> derivative;
@@ -423,6 +423,47 @@ Jet primitive_nuclear_attraction_cartesian(double alpha, const Vec3& a,
     result = result - static_cast<double>(system.atoms[atom].ionic_charge()) *
                           primitive_coulomb_potential_cartesian(alpha, a, angular_a, beta, b,
                                                                 angular_b, atoms[atom]);
+  }
+  return result;
+}
+
+// Production s/p/d/f V reuses the compiler-owned one-electron DAG.  The
+// dynamic-Jet implementation above remains the independent oracle and the
+// explicit g-shell fallback.
+Jet production_nuclear_attraction_cartesian(double alpha, const Vec3& a,
+                                            const molecule::CartesianComponent& angular_a,
+                                            std::size_t atom_a, double beta, const Vec3& b,
+                                            const molecule::CartesianComponent& angular_b,
+                                            std::size_t atom_b, const std::vector<Vec3>& atoms,
+                                            const core::System& system) {
+  const unsigned first = generated_component(angular_a);
+  const unsigned second = generated_component(angular_b);
+  const std::size_t ncoord = a[0].derivative.size();
+  if (first >= 20 || second >= 20)
+    return primitive_nuclear_attraction_cartesian(alpha, a, angular_a, beta, b, angular_b, atoms,
+                                                  system);
+
+  const auto pair = generated_one_electron_cpu::make_pair(
+      alpha, beta, a[0].value, a[1].value, a[2].value, b[0].value, b[1].value, b[2].value);
+  Jet result(0.0, ncoord);
+  for (std::size_t atom = 0; atom < atoms.size(); ++atom) {
+    const Vec3& center = atoms[atom];
+    const double charge = static_cast<double>(system.atoms[atom].ionic_charge());
+    const double value = generated_one_electron_cpu::attraction(
+        pair, first, second, center[0].value, center[1].value, center[2].value);
+    // The generated unit-charge V and its derivatives already include -1/r.
+    result.value += charge * value;
+    if (ncoord == 0) continue;
+
+    const auto gradient = generated_one_electron_cpu::attraction_gradient(
+        pair, first, second, center[0].value, center[1].value, center[2].value);
+    for (std::size_t axis = 0; axis < 3; ++axis) {
+      const double da = charge * gradient.first[axis];
+      const double db = charge * gradient.second[axis];
+      result.derivative[3 * atom_a + axis] += da;
+      result.derivative[3 * atom_b + axis] += db;
+      result.derivative[3 * atom + axis] -= da + db;
+    }
   }
   return result;
 }
@@ -1507,9 +1548,11 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
               pi.exponent, a, ao_i.angular, ao_i.shell->atom_index, pj.exponent, b, ao_j.angular,
               ao_j.shell->atom_index);
           sij = sij + weight * st.overlap;
-          hij = hij + weight * (st.kinetic + primitive_nuclear_attraction_cartesian(
-                                                 pi.exponent, a, ao_i.angular, pj.exponent, b,
-                                                 ao_j.angular, atom_coordinates, system));
+          hij =
+              hij + weight * (st.kinetic + production_nuclear_attraction_cartesian(
+                                               pi.exponent, a, ao_i.angular, ao_i.shell->atom_index,
+                                               pj.exponent, b, ao_j.angular, ao_j.shell->atom_index,
+                                               atom_coordinates, system));
         }
       }
       overlap[matrix_index(i, j, n)] = std::move(sij);
@@ -1824,9 +1867,10 @@ std::vector<double> contract_weighted_one_electron_derivative(
                     contracted =
                         contracted +
                         hcore_weight * primitive_weight *
-                            (st.kinetic + primitive_nuclear_attraction_cartesian(
-                                              pi.exponent, center_i, ei.component, pj.exponent,
-                                              center_j, ej.component, atoms, system));
+                            (st.kinetic + production_nuclear_attraction_cartesian(
+                                              pi.exponent, center_i, ei.component,
+                                              shell_i.atom_index, pj.exponent, center_j,
+                                              ej.component, shell_j.atom_index, atoms, system));
                 }
             }
         }

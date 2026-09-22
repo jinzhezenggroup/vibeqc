@@ -203,6 +203,7 @@ def test_bound_state_and_result_are_immutable_and_detached(
         "equation_hash",
         "independent_equation_hash",
         "integral_hash",
+        "solver_region_identity",
     ],
 )
 def test_rejects_changed_provenance(small_state: typing.Any, field: typing.Any) -> None:
