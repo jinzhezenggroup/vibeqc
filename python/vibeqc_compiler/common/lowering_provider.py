@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 import typing
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Literal
 
 from .provenance import canonical_hash
@@ -62,8 +62,24 @@ def _nonnegative_bytes(value: typing.Any, label: str) -> int:
     return value
 
 
-@dataclass(frozen=True, slots=True)
-class LoweringRequest:
+class _TypedRecord:
+    """Keep equality consistent with type-sensitive canonical JSON identities."""
+
+    __slots__ = ()
+
+    def __eq__(self, other: object) -> bool:
+        if type(self) is not type(other):
+            return NotImplemented
+        return canonical_hash(asdict(self)) == canonical_hash(
+            asdict(typing.cast(typing.Any, other))
+        )
+
+    def __hash__(self) -> int:
+        return hash((type(self), canonical_hash(asdict(self))))
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class LoweringRequest(_TypedRecord):
     """One compiler operation requesting an implementation on a target backend."""
 
     consumer: str
@@ -106,8 +122,8 @@ class LoweringRequest:
         }
 
 
-@dataclass(frozen=True, slots=True)
-class ProviderDescriptor:
+@dataclass(frozen=True, slots=True, eq=False)
+class ProviderDescriptor(_TypedRecord):
     """Stable provider identity independent of one particular lowering request."""
 
     name: str
@@ -150,8 +166,8 @@ class ProviderDescriptor:
         }
 
 
-@dataclass(frozen=True, slots=True)
-class LoweringCandidate:
+@dataclass(frozen=True, slots=True, eq=False)
+class LoweringCandidate(_TypedRecord):
     """One legal or rejected lowering, retaining explicit negative evidence."""
 
     request: LoweringRequest
