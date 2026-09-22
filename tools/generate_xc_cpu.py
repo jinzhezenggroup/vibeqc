@@ -250,6 +250,50 @@ def emit_r2scan_polarized() -> str:
     return "\n".join(lines)
 
 
+def emit_polarized_gga(
+    spec: Any,
+    *,
+    value_type: str,
+    function_name: str,
+    identity_constant: str,
+    production: bool = False,
+    declarations: tuple[str, ...] = (),
+) -> str:
+    """Emit one polarized GGA energy/feature-gradient evaluator from FunctionalSpec.
+
+    This is the common AOT scalar lowering boundary for GGA semilocal MethodIR
+    primitives. Scientific formulas remain owned by FunctionalSpec/XC graphs;
+    callers provide only stable ABI names and optional method-owned constants.
+    """
+    if spec.spin != "polarized" or spec.ingredients != ("rho", "sigma"):
+        raise ValueError(
+            "generic polarized GGA lowering requires rho/sigma FunctionalSpec"
+        )
+    outputs = ((), *((i,) for i in range(5)))
+    graph, roots, expression_hash = build_roots(spec, outputs, production=production)
+    emitter = ScalarCEmitter(graph, {name: name for name in spec.features})
+    emitter.emit(roots)
+    references = [emitter.reference(root) for root in roots]
+    return "\n".join(
+        [
+            f"struct {value_type} {{",
+            "  double energy_density;",
+            "  double feature_derivative[5];",
+            "};",
+            f'inline constexpr const char* {identity_constant} = "{expression_hash}";',
+            *declarations,
+            f"inline {value_type} {function_name}(",
+            "    double rho_a, double rho_b, double sigma_aa, double sigma_ab, double sigma_bb) {",
+            "  const double tau_a = 0.0;",
+            "  const double tau_b = 0.0;",
+            *emitter.lines,
+            "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};",
+            "}",
+            "",
+        ]
+    )
+
+
 def emit_b3lyp_polarized() -> str:
     """Emit canonical B3LYP semilocal E/vxc and its full-range exchange fraction."""
 
@@ -268,30 +312,16 @@ def emit_b3lyp_polarized() -> str:
         raise RuntimeError(
             "B3LYP MethodIR lost its canonical full-range exchange primitive"
         )
-
-    outputs = ((), *((i,) for i in range(5)))
-    graph, roots, expression_hash = build_roots(semilocal, outputs, production=True)
-    emitter = ScalarCEmitter(graph, {name: name for name in semilocal.features})
-    emitter.emit(roots)
-    references = [emitter.reference(root) for root in roots]
-    return "\n".join(
-        [
-            "struct B3lypPolarizedValue {",
-            "  double energy_density;",
-            "  double feature_derivative[5];",
-            "};",
-            f'inline constexpr const char* kB3lypSemilocalExpressionIdentity = "{expression_hash}";',
+    return emit_polarized_gga(
+        semilocal,
+        value_type="B3lypPolarizedValue",
+        function_name="b3lyp_polarized",
+        identity_constant="kB3lypSemilocalExpressionIdentity",
+        production=True,
+        declarations=(
             f'inline constexpr const char* kB3lypMethodIdentity = "{method.identity}";',
             f"inline constexpr double kB3lypExactExchange = {float(exchange[0].coefficient).hex()};",
-            "inline B3lypPolarizedValue b3lyp_polarized(",
-            "    double rho_a, double rho_b, double sigma_aa, double sigma_ab, double sigma_bb) {",
-            "  const double tau_a = 0.0;",
-            "  const double tau_b = 0.0;",
-            *emitter.lines,
-            "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};",
-            "}",
-            "",
-        ]
+        ),
     )
 
 
@@ -322,32 +352,38 @@ def emit_cam_b3lyp_polarized() -> str:
     )
     if short.omega != long.omega:
         raise RuntimeError("CAM-B3LYP MethodIR has inconsistent SR/LR omega")
-
-    outputs = ((), *((i,) for i in range(5)))
-    graph, roots, expression_hash = build_roots(semilocal, outputs)
-    emitter = ScalarCEmitter(graph, {name: name for name in semilocal.features})
-    emitter.emit(roots)
-    references = [emitter.reference(root) for root in roots]
-    return "\n".join(
-        [
-            "struct CamB3lypPolarizedValue {",
-            "  double energy_density;",
-            "  double feature_derivative[5];",
-            "};",
-            f'inline constexpr const char* kCamB3lypSemilocalExpressionIdentity = "{expression_hash}";',
+    return emit_polarized_gga(
+        semilocal,
+        value_type="CamB3lypPolarizedValue",
+        function_name="cam_b3lyp_polarized",
+        identity_constant="kCamB3lypSemilocalExpressionIdentity",
+        declarations=(
             f'inline constexpr const char* kCamB3lypMethodIdentity = "{method.identity}";',
             f"inline constexpr double kCamB3lypOmega = {float(short.omega).hex()};",
             f"inline constexpr double kCamB3lypShortExchange = {float(short.coefficient).hex()};",
             f"inline constexpr double kCamB3lypLongExchange = {float(long.coefficient).hex()};",
-            "inline CamB3lypPolarizedValue cam_b3lyp_polarized(",
-            "    double rho_a, double rho_b, double sigma_aa, double sigma_ab, double sigma_bb) {",
-            "  const double tau_a = 0.0;",
-            "  const double tau_b = 0.0;",
-            *emitter.lines,
-            "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};",
-            "}",
-            "",
-        ]
+        ),
+    )
+
+
+def emit_pw91_polarized() -> str:
+    """Emit the PW91 MethodIR semilocal primitive through the generic GGA lowerer."""
+
+    method = resolve_method("PW91", spin="polarized")
+    semilocal = next(
+        primitive.functional
+        for primitive in method.primitives
+        if isinstance(primitive, SemilocalXCPrimitive)
+    )
+    return emit_polarized_gga(
+        semilocal,
+        value_type="Pw91PolarizedValue",
+        function_name="pw91_polarized",
+        identity_constant="kPw91SemilocalExpressionIdentity",
+        declarations=(
+            f'inline constexpr const char* kPw91MethodIdentity = "{method.identity}";',
+            'inline constexpr const char* kPw91Domain = "interior-v1";',
+        ),
     )
 
 
@@ -606,6 +642,7 @@ def main() -> None:
         + emit_pbe_polarized_production()
         + emit_b3lyp_polarized()
         + emit_cam_b3lyp_polarized()
+        + emit_pw91_polarized()
         + emit_r2scan_polarized()
         + emit_feature_policy()
         + "}  // namespace vibeqc::dft::generated\n",

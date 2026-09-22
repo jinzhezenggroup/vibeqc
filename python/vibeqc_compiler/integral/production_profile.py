@@ -30,6 +30,7 @@ from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer, build_integral_ir
 from .production_selection import _SUPPORTED_RECURRENCES, KernelSelection
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
+from .specialize import specialize_fock_integral
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -311,15 +312,6 @@ def _recurrence_from_row(
             f"{name} has unsupported recurrence {recurrence!r}; "
             f"expected one of {supported}"
         )
-    if (
-        recurrence == "rys3"
-        and name == "ppps"
-        and KernelConsumer.FOCK in consumers
-        and row.get("fock_schedule") is None
-    ):
-        raise ValueError(
-            "ppps recurrence 'rys3' with a Fock consumer requires fock_schedule"
-        )
     # Construct the mathematical IR at the manifest boundary so an incorrect
     # fixed-root count or force/Fock combination fails independently of CUDA
     # scheduling and without a shell-name eligibility table.
@@ -438,18 +430,22 @@ def _selections_from_rows(
         fock_schedule_payload = row.get("fock_schedule")
         if fock_schedule_payload is None:
             if (
-                recurrence == "rys2"
-                and KernelConsumer.FOCK in consumers
+                KernelConsumer.FOCK in consumers
                 and schedule.kind == ScheduleKind.THREAD_TASKS
             ):
-                # The accepted low-order force path uses scalar Rys2, while
-                # its value consumer remains the compact subset/Wick mapping.
-                # Derive that companion through the same compiler scheduler
-                # instead of repeating an identical Fock table per class.
+                # A force-owned thread mapping may need a distinct value-only
+                # companion.  Derive that companion from the shared IntegralIR
+                # specialization contract instead of spelling out a recurrence
+                # pair in production-profile parsing.
+                shared_integral = build_integral_ir(
+                    spec,
+                    consumers,
+                    recurrence=recurrence,
+                )
+                fock_integral = specialize_fock_integral(shared_integral)
                 fock_schedule = build_fused_shell_plan(
                     spec,
-                    consumers=(KernelConsumer.FOCK,),
-                    recurrence="subset_wick",
+                    integral=fock_integral,
                     target=target,
                 ).schedule
             else:
@@ -458,14 +454,18 @@ def _selections_from_rows(
             if KernelConsumer.FOCK not in consumers:
                 raise ValueError(f"{name} fock_schedule requires a Fock consumer")
             fock_schedule = _schedule_from_payload(fock_schedule_payload)
-            # A fixed-root force promotion may use a very different execution
-            # geometry. Validate the retained value path independently so the
-            # manifest cannot silently retune Fock or inherit force recurrence.
+            # Validate the retained value route through the same specialization
+            # used by emission; the profile layer does not own recurrence policy.
+            shared_integral = build_integral_ir(
+                spec,
+                consumers,
+                recurrence=recurrence,
+            )
+            fock_integral = specialize_fock_integral(shared_integral)
             build_fused_shell_plan(
                 spec,
-                consumers=(KernelConsumer.FOCK,),
                 schedule=fock_schedule,
-                recurrence="subset_wick",
+                integral=fock_integral,
                 target=target,
             )
 

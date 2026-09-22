@@ -147,6 +147,25 @@ NVCC/PTXAS developer toolchain. The provider boundary
 and fallback rationale are recorded in the
 [CUDA wheel decision note](.agents/notes/implemented/architecture/2026-09-18-provider-free-cuda-wheels.md).
 
+## Methods
+
+The canonical native method names and declared capabilities are generated from
+`manifests/public_methods.json`. Run `vibeqc methods` or see the
+[public method table](docs/public_methods.md) for the current list.
+
+DFT selectors exposed through `Calculator(method=...)` currently include
+`lda-rks`, `lda-uks`, `pbe-rks`, `pbe-uks`, `r2scan-rks`,
+`r2scan-uks`, `pbe0-rks`, `pbe0-uks`, `b3lyp-rks`, `b3lyp-uks`,
+and `pbe-d4-rks`. The Python API also accepts the composite selectors
+`r2scan-3c`, `r2scan-3c-rks`, and `r2scan-3c-uks`. Some methods require
+method-specific KS options such as an explicit grid, and unsupported
+backend/model combinations fail closed rather than silently changing methods.
+
+```bash
+vibeqc methods
+vibeqc methods --json
+```
+
 ## Python API
 
 Coordinates are in Bohr, energies in Hartree, and forces in Hartree/Bohr.

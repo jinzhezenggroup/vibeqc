@@ -67,6 +67,7 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
     atoms, record, mol = fixture(
         spin=spin, representation=representation, d_shell=d_shell
     )
+    charge, multiplicity = mol.charge, mol.spin + 1
     # Exercise serialized spherical ECP data through the real public endpoint.
     public_basis = record
     if representation == "spherical":
@@ -75,18 +76,20 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
         public_basis = path
     calc = calculator(public_basis, method)
     started = perf_counter()
-    result = calc.singlepoint(atoms, charge=spin, multiplicity=spin + 1)
+    result = calc.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
     record_property("complete_endpoint_seconds", perf_counter() - started)
     assert result.executed_backend == "cpu_reference"
     assert result.converged and np.isfinite(result.forces).all()
     with (
-        calc.prepare_batch([atoms], charges=[spin], multiplicities=[spin + 1]) as batch,
+        calc.prepare_batch(
+            [atoms], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
         NativeAO(
             atoms,
             basis=record,
             representation=representation,
-            charge=spin,
-            multiplicity=spin + 1,
+            charge=charge,
+            multiplicity=multiplicity,
         ) as basis,
     ):
         energy = batch.execute(strict=True, properties=("energy",)).items[0]
@@ -114,7 +117,10 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
             ]
             energies.append(
                 calc.singlepoint(
-                    moved, charge=spin, multiplicity=spin + 1, properties=("energy",)
+                    moved,
+                    charge=charge,
+                    multiplicity=multiplicity,
+                    properties=("energy",),
                 ).energy
             )
         errors.append(abs(-(energies[0] - energies[1]) / (2 * step) - projection))
@@ -126,7 +132,7 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
         from dataclasses import replace
 
         cartesian = calculator(replace(record, representation="cartesian"), method)
-        other = cartesian.singlepoint(atoms, charge=spin, multiplicity=spin + 1)
+        other = cartesian.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
         assert abs(result.energy - other.energy) < 2e-9
         np.testing.assert_allclose(result.forces, other.forces, atol=1e-9, rtol=0)
         record_property(
@@ -147,8 +153,13 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
     atoms, record, mol = fixture(
         spin=spin, representation=representation, d_shell=d_shell
     )
+    charge, multiplicity = mol.charge, mol.spin + 1
     fragment = [("H", (0, 0, 0))] if spin else [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
-    systems, charges, multiplicities = [atoms, fragment], [spin, 0], [spin + 1] * 2
+    systems, charges, multiplicities = (
+        [atoms, fragment],
+        [charge, 0],
+        [multiplicity, spin + 1],
+    )
     calc = calculator(record, method)
     plan = calc.estimate_resources(
         systems, charges=charges, multiplicities=multiplicities
@@ -188,7 +199,7 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
         replay = batch.execute(coordinates=[moved, None], strict=True)
         record_property("batch_changed_geometry_seconds", perf_counter() - started)
         fresh_atoms = [(a, r) for (a, _), r in zip(atoms, moved)]
-        fresh = calc.singlepoint(fresh_atoms, charge=spin, multiplicity=spin + 1)
+        fresh = calc.singlepoint(fresh_atoms, charge=charge, multiplicity=multiplicity)
         np.testing.assert_allclose(
             replay.items[0].forces, fresh.forces, atol=1e-9, rtol=0
         )
