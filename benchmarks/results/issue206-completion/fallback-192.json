@@ -1,0 +1,38 @@
+{
+  "schema": "vibeqc.issue206.fallback.evidence",
+  "case": "water-octamer-s4-def2-svp-spherical",
+  "ao": 192,
+  "batch": 1,
+  "controls": {
+    "VIBEQC_DF_HOST_RESPONSE_WEIGHTS": "1",
+    "response_memory_budget_bytes": 33554432,
+    "expected_response_policy": "fallback"
+  },
+  "source_identity": "47d4c417aaa8f3ecaf61e62d96f9c0c54b5900cb20d99938abccac764d68dff3",
+  "library_sha256": "8d40c060e65dd0f3bb78209149e91de7da2b68f85ed16d349c58650b0365ad65",
+  "response": {
+    "policy": {
+      "storage": "bounded-panel",
+      "residency": "fallback",
+      "exchange": "dense",
+      "whitening": "unspecified",
+      "value_provider": "host-raw"
+    },
+    "raw_value_reuse_bytes": 339738624,
+    "raw_value_upload_bytes": 0,
+    "host_to_device_bytes": 56941136,
+    "device_to_host_bytes": 576,
+    "response_streamed_raw_passes": 0,
+    "raw_panel_host_gather_elements": 0,
+    "three_center_derivative_weights": 7077888,
+    "metric_derivative_weights": 36864
+  },
+  "endpoint": {
+    "seconds": 5.628900155425072,
+    "maximum_energy_error_hartree": 1.0459189070388675e-11,
+    "maximum_force_error_hartree_per_bohr": 6.678635422474599e-11,
+    "validation": "energy parity and complete force execution passed"
+  },
+  "raw_artifact": "timeline-192-current-explicit-host-fallback-32m/result.json",
+  "raw_artifact_sha256": "b163be21253b811333f2937d59fdd8466ce02c17e53efae5e2616c033302f00a"
+}

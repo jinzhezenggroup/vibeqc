@@ -13,11 +13,11 @@ from importlib import metadata
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
 
 from tools.generate_validation_references import molecular_data, pyscf_molecule
 from tools.vibeqc_numerics.fixtures import extra_inputs
 from tools.vibeqc_validation.fixtures import mathematical_hash, validate_fixture
-from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
 def generate(destination: Path) -> dict[str, typing.Any]:

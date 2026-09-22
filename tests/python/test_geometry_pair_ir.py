@@ -43,7 +43,7 @@ def _energy(pair_program: typing.Any, coordinates: typing.Any) -> typing.Any:
 
 
 def test_inplace_donation_reduces_real_pairir_peak_storage() -> None:
-    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 
     atom_count = 64

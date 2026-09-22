@@ -20,8 +20,9 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.evidence import block_error, canonical_hash, file_hash
 from vibeqc_compiler.tensor import execute
 from vibeqc_compiler.tensor.cuda_execute import compile_cuda, tensor_source_identity
 from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
@@ -29,7 +30,6 @@ from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 from tools.validate_cc import load_references
 from tools.vibeqc_cc.cuda import PreparedRCCSDResidual, rccsd_program
 from tools.vibeqc_cc.oracle import dense_feeds
-from tools.vibeqc_validation.schema import block_error, canonical_hash, file_hash
 
 ROOT = Path(__file__).resolve().parents[1]
 

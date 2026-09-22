@@ -8,9 +8,9 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 
 from tools.cc_endpoint_fixtures import load, snapshot_from_fixture
 from tools.vibeqc_cc import (

@@ -117,6 +117,7 @@ function(vibeqc_add_gfn2_runtime target)
     # Both CPU and CUDA consume the one compiler-owned pair artifact.
     add_dependencies(vibeqc_gfn2_cuda
       vibeqc_gfn2_pair_cpu_codegen
+      vibeqc_gfn2_sdq_cuda_codegen
       vibeqc_gfn2_es2_native_codegen)
     set(_gfn2_aes2_cuda_header
         "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_aes2_native.cuh")

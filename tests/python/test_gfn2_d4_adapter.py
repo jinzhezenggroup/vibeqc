@@ -67,6 +67,9 @@ def adapter(tmp_path_factory: pytest.TempPathFactory) -> Path:
         "nonfinite_output",
         "late_gradient_failure",
         "late_energy_failure",
+        "hotloop_shared_parity",
+        "per_system_cache_replay",
+        "per_system_failure_atomic",
         "success",
     ],
 )

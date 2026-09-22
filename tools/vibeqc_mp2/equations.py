@@ -2,7 +2,7 @@
 
 import typing
 
-from tools.vibeqc_tensor import (
+from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
     Program,

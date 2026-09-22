@@ -39,6 +39,13 @@ def test_installed_compiler_contains_pinned_libxc_source_closure(
         assert (installed / name).read_bytes() == (
             ROOT / libxc["local_root"] / name
         ).read_bytes()
+    xtbloom = registry["sources"]["xtbloom-gfn1-d3"]
+    installed_xtbloom = package / "assets" / xtbloom["local_root"]
+    for name in xtbloom["files"]:
+        assert (installed_xtbloom / name).read_bytes() == (
+            ROOT / xtbloom["local_root"] / name
+        ).read_bytes()
+    assert (installed_xtbloom / "gfn1.json").is_file()
     script = """
 from vibeqc_compiler.common.paths import asset_path, source_root
 from vibeqc_compiler.integral.expr import Graph
@@ -54,7 +61,10 @@ module = import_maple_file(root, 'gga_c_pbe.mpl', defines={'gga_c_pbe_params'}, 
 graph = Graph()
 energy = module.call(graph, 'f', graph.constant(1), graph.constant(0), graph.constant(0), 0, 0)
 assert -1 < graph.evaluate(energy, {}) < 0
-assert asset_path('external/libxc-7.0.0/manifest.json').is_file()
+assert asset_path('manifests/libxc/7.0.0/manifest.json').is_file()
+xtbloom = asset_path('upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3')
+assert (xtbloom / 'gfn1_d3.json').is_file()
+assert (xtbloom / 'gfn1.json').is_file()
 """
     completed = subprocess.run(
         [sys.executable, "-S", "-c", script],

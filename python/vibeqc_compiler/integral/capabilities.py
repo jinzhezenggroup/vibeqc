@@ -16,9 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from vibeqc_compiler.common.compiler_work import compiler_work_budget
+from vibeqc_compiler.common.cuda_target import CudaTargetInfo, cuda_target_info
 
 from .cuda_schedule import schedule_candidates
-from .cuda_target import CudaTargetInfo, cuda_target_info
 from .fused_schedule import build_fused_shell_plan
 from .ir import (
     FOUR_CENTER_ERI_OPERATOR,

@@ -113,6 +113,9 @@ def test_generated_stationary_weight_lowering_tracks_plan(
     for name in ("one_electron", "overlap_pulay", "coulomb"):
         identity = plan.integral_block(name, terms=1).weights.logical_hash
         assert f"stationary-weight-program-{name}: {identity}" in source
+        assert f"stationary-weight-specialization-{name}:" in source
+        assert f"stationary-weight-lowered-{name}:" in source
+        assert f"stationary-weight-optimizer-{name}:" in source
     assert ("density[1 * n * n" in source) == (spin_blocks == 2)
     assert ("weighted_density[1 * n * n" in source) == (spin_blocks == 2)
 

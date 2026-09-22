@@ -103,7 +103,7 @@ class CudaTriplesResponseTiles:
         compiler: typing.Any,
         cache: typing.Any,
     ) -> None:
-        from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+        from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
         from vibeqc_compiler.tensor.cuda_plan import plan_cuda
         from vibeqc_compiler.tensor.cuda_resident import (
             PreparedResident,

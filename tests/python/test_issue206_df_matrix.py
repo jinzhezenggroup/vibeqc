@@ -350,6 +350,7 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
         assert command[
             command.index("--density-fitting-memory-budget-bytes") + 1
         ] == str(32 << 20)
+        assert "--reference-full-fock" in command
         assert kwargs["env"].get("CUDA_VISIBLE_DEVICES") == os.environ.get(
             "CUDA_VISIBLE_DEVICES"
         )

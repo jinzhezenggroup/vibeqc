@@ -63,6 +63,12 @@ def reduction_program() -> typing.Any:
     return Program({"result": reduce_sum(x, (1,))})
 
 
+def scalar_reduction_program(size: int = 4096) -> typing.Any:
+    i = Index("i", IndexSpace("reduction", "batch", size))
+    x = input_tensor("x", TensorSpec((i,), role="input"))
+    return Program({"result": reduce_sum(x, (0,))})
+
+
 def test_structured_search_is_bounded_reproducible_and_covers_each_axis() -> None:
     space = TensorScheduleSpace()
     schedules = space.generate()
@@ -320,6 +326,38 @@ def test_pruning_has_legality_source_register_and_occupancy_reasons() -> None:
         TensorSearchLimits(minimum_resident_blocks=3),
     )
     assert "resident-block" in occupancy.reason
+
+
+def test_search_rejects_pathological_scalar_reduce_from_promotion() -> None:
+    program = scalar_reduction_program()
+    baseline = plan_cuda(
+        program,
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+    scalar = TensorSchedule(threads=64)
+    (candidate,) = plan_schedule_search(baseline, [scalar])
+
+    assert candidate.status == "pruned"
+    assert candidate.stage == "static-resource"
+    assert "cooperative-reduction" in candidate.reason
+    assert candidate.estimates["static_promotion_rejections"] == [candidate.reason]
+    # Direct execution remains legal as the explicit correctness/oracle fallback.
+    assert (
+        plan_cuda(program, TARGET, schedule=scalar).program.logical_hash
+        == program.logical_hash
+    )
+
+
+def test_small_scalar_reduction_is_not_rejected_by_profitability_guard() -> None:
+    program = scalar_reduction_program(127)
+    baseline = plan_cuda(
+        program, TARGET, schedule=TensorSchedule(stream_reductions=True)
+    )
+    (candidate,) = plan_schedule_search(baseline, [TensorSchedule(threads=64)])
+
+    assert candidate.status == "ready"
+    assert candidate.estimates["static_promotion_rejections"] == []
 
 
 def test_static_accounting_reuses_combined_numeric_budget_and_labels_unknowns() -> None:
@@ -1137,3 +1175,49 @@ def test_deadline_after_screening_does_not_promote_or_reopen_finalist(
     assert result.evidence["search_summary"]["endpoint_candidates"] == 0
     assert "deadline exhausted" in result.evidence["candidates"][0]["reason"]
     assert len(fake_cuda.prepared) == 4 and fake_cuda.active == 0
+
+
+@pytest.mark.parametrize("provider", ("generated", "cub"))
+@pytest.mark.parametrize("threads", (64, 256))
+def test_cooperative_reduction_is_not_rejected_as_scalar(
+    provider: str, threads: int
+) -> None:
+    program = scalar_reduction_program()
+    baseline = plan_cuda(program, TARGET)
+    schedule = TensorSchedule(
+        threads=threads, stream_reductions=True, reduction_provider=provider
+    )
+    candidate_plan = plan_cuda(program, TARGET, schedule=schedule)
+    assert estimate_schedule(candidate_plan)["static_promotion_rejections"] == []
+    (candidate,) = plan_schedule_search(baseline, [schedule])
+    assert candidate.status == "ready", candidate.reason
+
+
+def test_mixed_accumulation_without_legal_gemm_stays_eligible() -> None:
+    from vibeqc_compiler.tensor import PrecisionDirective, lower_precision
+
+    index = Index("i", IndexSpace("long_dot", "batch", 4096))
+    spec = TensorSpec((index,), role="input")
+    left, right = input_tensor("left", spec), input_tensor("right", spec)
+    dot = einsum("i,i->", left, right)
+    original = Program({"result": dot})
+    program = lower_precision(
+        original,
+        {
+            original.debug_names[dot]: PrecisionDirective(
+                "float32", "float32", "float64", qualification="review/mixed-dot"
+            )
+        },
+    )
+    baseline = plan_cuda(original, TARGET)
+    schedule = TensorSchedule(threads=64)
+    plan = plan_cuda(program, TARGET, schedule=schedule)
+    step = next(step for step in plan.steps if step.node.op == "einsum")
+    assert step.gemm == "none"
+    precision = plan.precision_by_node[step.node]
+    assert precision.compute_dtype != precision.accumulation_dtype
+    assert estimate_schedule(plan)["static_promotion_rejections"] == []
+    (candidate,) = plan_schedule_search(
+        baseline, [schedule], precision_programs=[program]
+    )
+    assert candidate.status == "ready", candidate.reason

@@ -451,7 +451,7 @@ class Calculator:
             raise TypeError("target_accuracy must be a TargetAccuracy contract")
         self._target_accuracy = target_accuracy
         if resource_budget is not None:
-            from .resources import ResourceBudget
+            from vibeqc_compiler.common.resources import ResourceBudget
 
             if not isinstance(resource_budget, ResourceBudget):
                 raise TypeError("resource_budget must be a ResourceBudget")
@@ -1805,7 +1805,7 @@ class Calculator:
         budget: typing.Any = None,
     ) -> typing.Any:
         """Dry-run the active scientific inputs; no solve or warm-state mutation."""
-        from .resources import ResourceBudget, plan_resources
+        from vibeqc_compiler.common.resources import ResourceBudget, plan_resources
 
         systems = tuple(
             tuple(Atom.from_value(atom) for atom in system) for system in systems

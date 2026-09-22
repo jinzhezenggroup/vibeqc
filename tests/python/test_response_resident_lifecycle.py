@@ -8,15 +8,18 @@ from weakref import WeakValueDictionary
 import pytest
 
 from tools.vibeqc_response.resident_cuda import CudaResidentRHFResponse
+from tools.vibeqc_response.resident_uhf_cuda import CudaResidentUHFResponse
 
 
-def _owner() -> typing.Any:
+def _owner(owner_type: typing.Any = CudaResidentRHFResponse) -> typing.Any:
     destroyed = []
-    owner = CudaResidentRHFResponse.__new__(CudaResidentRHFResponse)
-    owner._lib = SimpleNamespace(
-        vibeqc_rhf_response_resident_destroy=lambda handle: destroyed.append(
-            handle.value
-        )
+    owner = owner_type.__new__(owner_type)
+    owner._lib = SimpleNamespace()
+    prefix = "uhf" if owner_type is CudaResidentUHFResponse else "rhf"
+    setattr(
+        owner._lib,
+        f"vibeqc_{prefix}_response_resident_destroy",
+        lambda handle: destroyed.append(handle.value),
     )
     owner._handle = ct.c_void_p(123)
     owner._closed = False
@@ -29,10 +32,14 @@ def _owner() -> typing.Any:
 
 
 @pytest.mark.parametrize("error_type", [MemoryError, ValueError, RuntimeError])
+@pytest.mark.parametrize(
+    "owner_type", [CudaResidentRHFResponse, CudaResidentUHFResponse]
+)
 def test_exception_teardown_preserves_error_and_destroys_native_owner(
     error_type: typing.Any,
+    owner_type: typing.Any,
 ) -> None:
-    owner, destroyed = _owner()
+    owner, destroyed = _owner(owner_type)
     original = error_type("injected solver failure")
     with pytest.raises(error_type) as captured, owner:
         # A failed solver frame/traceback retains its vector leases while
@@ -49,8 +56,11 @@ def test_exception_teardown_preserves_error_and_destroys_native_owner(
     assert destroyed == [123]
 
 
-def test_normal_close_still_rejects_live_vector_leases() -> None:
-    owner, destroyed = _owner()
+@pytest.mark.parametrize(
+    "owner_type", [CudaResidentRHFResponse, CudaResidentUHFResponse]
+)
+def test_normal_close_still_rejects_live_vector_leases(owner_type: typing.Any) -> None:
+    owner, destroyed = _owner(owner_type)
     vector = owner._allocate()
     with pytest.raises(RuntimeError, match="live vectors"):
         owner.close()
@@ -62,12 +72,18 @@ def test_normal_close_still_rejects_live_vector_leases() -> None:
 
 @pytest.mark.parametrize("kind", ["foreign", "released", "reused"])
 @pytest.mark.parametrize("operation", ["copy", "norm", "to_host"])
+@pytest.mark.parametrize(
+    "owner_type", [CudaResidentRHFResponse, CudaResidentUHFResponse]
+)
 def test_native_access_rejects_invalid_vector_leases(
-    kind: typing.Any, operation: typing.Any, monkeypatch: typing.Any
+    kind: typing.Any,
+    operation: typing.Any,
+    monkeypatch: typing.Any,
+    owner_type: typing.Any,
 ) -> None:
-    owner, _ = _owner()
+    owner, _ = _owner(owner_type)
     owner.dimension = 1
-    origin = _owner()[0] if kind == "foreign" else owner
+    origin = _owner(owner_type)[0] if kind == "foreign" else owner
     value = origin._allocate()
     replacement = None
     if kind != "foreign":
@@ -89,10 +105,13 @@ def test_native_access_rejects_invalid_vector_leases(
     value.release()
 
 
-def test_native_access_rejects_closed_borrowed_backend() -> None:
+@pytest.mark.parametrize(
+    "owner_type", [CudaResidentRHFResponse, CudaResidentUHFResponse]
+)
+def test_native_access_rejects_closed_borrowed_backend(owner_type: typing.Any) -> None:
     import threading
 
-    owner, _ = _owner()
+    owner, _ = _owner(owner_type)
 
     def closed() -> typing.Any:
         raise RuntimeError("CUDA direct response backend is closed")
@@ -101,20 +120,26 @@ def test_native_access_rejects_closed_borrowed_backend() -> None:
         pytest.fail("closed borrowed backend reached the native ABI")
 
     owner._backend = SimpleNamespace(_lock=threading.RLock(), _ensure_open=closed)
-    owner._lib.vibeqc_rhf_response_resident_zero = forbidden
+    prefix = "uhf" if owner_type is CudaResidentUHFResponse else "rhf"
+    setattr(owner._lib, f"vibeqc_{prefix}_response_resident_zero", forbidden)
     with pytest.raises(RuntimeError, match="backend is closed"):
         owner._call("zero", 0)
 
 
 @pytest.mark.parametrize("raises", [False, True])
+@pytest.mark.parametrize(
+    "owner_type", [CudaResidentRHFResponse, CudaResidentUHFResponse]
+)
 def test_solver_releases_temporaries_even_when_a_profiler_retains_them(
-    monkeypatch: typing.Any, raises: typing.Any
+    monkeypatch: typing.Any,
+    raises: typing.Any,
+    owner_type: typing.Any,
 ) -> None:
     import numpy as np
 
     from tools.vibeqc_response import krylov
 
-    owner, _ = _owner()
+    owner, _ = _owner(owner_type)
     owner.dimension = 1
     # Leave room for the solver's conservative preflight; this test exercises
     # cleanup of a retained frame, independently of vector-slot admission.

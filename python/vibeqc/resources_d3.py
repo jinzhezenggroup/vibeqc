@@ -11,9 +11,7 @@ import ctypes
 import json
 import typing
 
-from vibeqc_compiler.method import D3Spec, DispersionCorrectionPrimitive, MethodIR
-
-from .resources import (
+from vibeqc_compiler.common.resources import (
     ResourceCandidate,
     ResourceEstimate,
     ResourceIdentity,
@@ -21,6 +19,7 @@ from .resources import (
     byte_product,
     checked_bytes,
 )
+from vibeqc_compiler.method import D3Spec, DispersionCorrectionPrimitive, MethodIR
 
 _D3_MAXIMUM_ATOMS_PER_SYSTEM = 4096
 _D3_ELEMENT_COUNT = 86

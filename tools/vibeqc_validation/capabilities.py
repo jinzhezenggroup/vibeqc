@@ -4,8 +4,9 @@ import argparse
 import json
 from pathlib import Path
 
+from vibeqc_compiler.common.evidence import file_hash, outcome
+
 from .fixtures import ROOT
-from .schema import file_hash, outcome
 
 
 def capability_table(catalog: Path = ROOT / "docs/codegen_capabilities.json") -> dict:

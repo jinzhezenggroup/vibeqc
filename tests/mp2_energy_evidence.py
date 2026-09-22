@@ -15,8 +15,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools.vibeqc_mp2 import PreparedMP2Energy
-from tools.vibeqc_validation.schema import (
+from vibeqc_compiler.common.evidence import (
     block_error,
     canonical_hash,
     file_hash,
@@ -24,6 +23,8 @@ from tools.vibeqc_validation.schema import (
     outcome,
     validate_evidence,
 )
+
+from tools.vibeqc_mp2 import PreparedMP2Energy
 
 
 def main() -> typing.Any:

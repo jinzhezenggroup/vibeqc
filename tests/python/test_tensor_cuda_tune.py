@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from vibeqc_compiler.tensor.cuda_resources import parse_resources
+from vibeqc_compiler.common.cuda_resources import parse_resources
 from vibeqc_compiler.tensor.cuda_tune import endpoint_gate
 
 

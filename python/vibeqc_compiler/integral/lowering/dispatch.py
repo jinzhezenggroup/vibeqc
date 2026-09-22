@@ -52,7 +52,7 @@ from .shared import _AXIS_INDEX
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from ..cuda_target import CudaTargetInfo
+    from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
 
 def _specialize_fock_plan(

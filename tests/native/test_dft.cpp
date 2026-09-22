@@ -350,6 +350,72 @@ int main() {
         require(std::abs(pw91_uks.potential[spin][i] - pw91.potential[i]) < 2.0e-11,
                 "PW91 generic-GGA equal-spin UKS potential differs from RKS");
 
+    const auto r2scan =
+        vibeqc::dft::integrate_r2scan_rks(basis, cam_interior_grid, reference_density, 7);
+    require(std::isfinite(r2scan.energy) && r2scan.potential.size() == reference_density.size(),
+            "r2SCAN generic-semilo native integration is invalid on the audited grid");
+    for (double step : {1.0e-5, 3.0e-6}) {
+      std::vector<double> plus = reference_density, minus = reference_density;
+      for (std::size_t i = 0; i < reference_density.size(); ++i) {
+        plus[i] += step * direction[i];
+        minus[i] -= step * direction[i];
+      }
+      const double finite_difference =
+          (vibeqc::dft::integrate_r2scan_rks(basis, cam_interior_grid, plus, 7).energy -
+           vibeqc::dft::integrate_r2scan_rks(basis, cam_interior_grid, minus, 7).energy) /
+          (2.0 * step);
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i)
+        trace += r2scan.potential[i] * direction[i];
+      require(std::abs(finite_difference - trace) < 3.0e-6,
+              "r2SCAN generic-semilo potential violates delta E = Tr(V delta D)");
+    }
+    std::vector<double> r2scan_alpha(reference_density.size()),
+        r2scan_beta(reference_density.size());
+    for (std::size_t i = 0; i < reference_density.size(); ++i)
+      r2scan_alpha[i] = r2scan_beta[i] = 0.5 * reference_density[i];
+    const auto r2scan_uks =
+        vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, r2scan_alpha, r2scan_beta, 7);
+    require(std::abs(r2scan_uks.energy - r2scan.energy) < 2.0e-12,
+            "r2SCAN generic-semilo equal-spin UKS energy differs from RKS");
+    for (std::size_t spin = 0; spin < 2; ++spin)
+      for (std::size_t i = 0; i < r2scan.potential.size(); ++i)
+        require(std::abs(r2scan_uks.potential[spin][i] - r2scan.potential[i]) < 2.0e-11,
+                "r2SCAN generic-semilo equal-spin UKS potential differs from RKS");
+    // Unequal spins exercise the independent vtau/2 channels and ragged AO tiles.
+    for (std::size_t i = 0; i < reference_density.size(); ++i) {
+      r2scan_alpha[i] = 0.7 * reference_density[i];
+      r2scan_beta[i] = 0.3 * reference_density[i];
+    }
+    const auto open_r2scan =
+        vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, r2scan_alpha, r2scan_beta, 3);
+    const auto whole_r2scan = vibeqc::dft::integrate_r2scan_uks(
+        basis, cam_interior_grid, r2scan_alpha, r2scan_beta, cam_interior_grid.point_count());
+    require(std::abs(open_r2scan.energy - whole_r2scan.energy) < 2.0e-13,
+            "r2SCAN semilocal energy depends on AO tile partition");
+    for (unsigned spin = 0; spin < 2; ++spin)
+      for (std::size_t i = 0; i < reference_density.size(); ++i)
+        require(
+            std::abs(open_r2scan.potential[spin][i] - whole_r2scan.potential[spin][i]) < 2.0e-12,
+            "r2SCAN unequal-spin potential depends on AO tile partition");
+    for (double step : {1.0e-5, 3.0e-6}) {
+      auto ap = r2scan_alpha, am = r2scan_alpha, bp = r2scan_beta, bm = r2scan_beta;
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i) {
+        ap[i] += step * direction[i];
+        am[i] -= step * direction[i];
+        bp[i] -= 0.4 * step * direction[i];
+        bm[i] += 0.4 * step * direction[i];
+        trace += (open_r2scan.potential[0][i] - 0.4 * open_r2scan.potential[1][i]) * direction[i];
+      }
+      const double difference =
+          (vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, ap, bp, 3).energy -
+           vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, am, bm, 3).energy) /
+          (2.0 * step);
+      require(std::isfinite(difference) && std::abs(difference - trace) < 3.0e-6,
+              "r2SCAN unequal-spin potential violates delta E = Tr(Va dDa + Vb dDb)");
+    }
+
     // A genuine unequal-spin perturbation must use both independent Vxc blocks.
     for (std::size_t i = 0; i < reference_density.size(); ++i) {
       pw91_alpha[i] = 0.7 * reference_density[i];

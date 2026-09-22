@@ -103,16 +103,28 @@ def test_resident_source_reuses_values_for_full_and_partial_force_panels(
             counters = response["counters"]
             assert response["source_backed"]
             assert counters.get("raw_tile_productions", 0) == 0
-            assert counters["response_borrowed_whitened_bytes"] > 0
-            assert counters["response_fitted_panel_calls"] >= 1
-            assert counters["response_metric_blas_gemms"] >= 1
+            borrowed_whitened = counters.get("response_borrowed_whitened_bytes", 0)
+            reused_raw = counters.get("raw_value_reused_bytes", 0)
+            assert (borrowed_whitened > 0) ^ (reused_raw > 0)
+            if reused_raw > 0:
+                assert counters.get("raw_value_upload_bytes", 0) == 0
+                assert counters.get("raw_value_bulk_uploads", 0) == 0
+                assert counters.get("response_fitted_panel_calls", 0) == 0
+                assert (
+                    counters.get("response_inverse_applied_factor_gemms", 0) >= 1
+                    or counters.get("response_occupied_projection_products", 0) >= 1
+                )
+            else:
+                assert counters["response_fitted_panel_calls"] >= 1
+                assert counters["response_metric_blas_gemms"] >= 1
             if response_budget is not None:
                 assert counters["response_scratch_bytes"] <= response_budget
             if case.expected_ao_count == 96:
                 assert counters["three_center_shell_panels"] >= 1
-                assert (counters["response_auxiliary_blocks"] == 1) == (
-                    response_budget is None
-                )
+                if borrowed_whitened:
+                    assert (counters["response_auxiliary_blocks"] == 1) == (
+                        response_budget is None
+                    )
             monkeypatch.delenv("VIBEQC_DF_TRACE")
             if response_budget is None:
                 # Each replay's coordinates are explicit; omitting them uses

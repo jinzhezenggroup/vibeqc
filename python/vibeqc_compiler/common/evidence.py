@@ -13,8 +13,6 @@ import re
 import typing
 from pathlib import Path
 
-import numpy as np
-
 SCHEMA = "vibeqc.validation"
 VERSION = 1
 TIERS = ("cpu", "cuda-compile", "gpu-numerical", "endpoint")
@@ -83,6 +81,8 @@ def block_error(
     actual: typing.Any, reference: typing.Any, *, atol: float, rtol: float
 ) -> dict:
     """Compare every entry using an absolute floor, including near-zero values."""
+    import numpy as np
+
     if not all(math.isfinite(x) and x >= 0 for x in (atol, rtol)) or atol + rtol == 0:
         raise ValueError("tolerances must be finite, nonnegative, and not both zero")
     actual, reference = (
@@ -122,6 +122,8 @@ def finite_difference(
     passed each time so an evaluator cannot silently retune subsequent steps.
     Analytic input is a gradient, never a force. No best-step gate is inferred.
     """
+    import numpy as np
+
     if len(set(steps)) < 3 or any(not math.isfinite(h) or h <= 0 for h in steps):
         raise ValueError("at least three distinct positive finite step sizes required")
     xyz = np.asarray(coordinates, dtype=float)

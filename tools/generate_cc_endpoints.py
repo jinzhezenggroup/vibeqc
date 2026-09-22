@@ -6,10 +6,10 @@ import platform
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
 
 from tools.cc_endpoint_fixtures import array_hash, cases
 from tools.generate_validation_references import pyscf_molecule
-from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
 def generate(output: Path, compare: Path | None = None) -> None:

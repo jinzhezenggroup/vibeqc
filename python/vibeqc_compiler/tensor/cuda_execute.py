@@ -33,6 +33,7 @@ from vibeqc_compiler.common.capture import (
     CaptureContract,
     _GraphMetrics,
 )
+from vibeqc_compiler.common.cuda_resources import parse_resources
 from vibeqc_compiler.common.cuda_runtime import (
     _PREPARATION_LOCK,
     CudaArtifact,
@@ -62,7 +63,6 @@ from .cuda_plan import (
     estimated_cuda_launches,
     static_data_slices,
 )
-from .cuda_resources import parse_resources
 
 if typing.TYPE_CHECKING:
     from typing_extensions import Self
