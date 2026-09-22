@@ -2,13 +2,13 @@
   "derived_manifests": {
     "manifests/libxc/7.0.0/manifest.json": {
       "collection": "core",
-      "final_newline": false,
+      "final_newline": true,
       "renderer": "libxc-collection",
       "source": "libxc-7.0.0"
     },
     "manifests/libxc/7.0.0/rsh-manifest.json": {
       "collection": "rsh",
-      "final_newline": false,
+      "final_newline": true,
       "renderer": "libxc-collection",
       "source": "libxc-7.0.0"
     },
@@ -3485,6 +3485,31 @@
       "repository": "https://github.com/dftd3/simple-dftd3",
       "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
     },
+    "xtbloom-gfn1-d3": {
+      "consumers": [
+        "manifests/xtbloom-d3.json",
+        "tools/vibeqc_d3/generate_native_data.py",
+        "tools/vibeqc_d3/reference.py",
+        "python/vibeqc_compiler/geometry/d3.py"
+      ],
+      "files": {
+        "gfn1_d3.json": {
+          "sha256": "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e",
+          "upstream_path": "data/parameters/gfn1_d3.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_d3.json"
+        },
+        "gfn1_d3_manifest.json": {
+          "sha256": "34344727c84992c566e2445f95e5c249222ba0ff0feeb70a0aa0f567257e8cbf",
+          "upstream_path": "data/parameters/gfn1_d3_manifest.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_d3_manifest.json"
+        }
+      },
+      "kind": "snapshot",
+      "license": "LGPL-3.0-or-later",
+      "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
+      "repository": "https://github.com/jinzhezenggroup/xtbloom",
+      "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+    },
     "xtbloom-gfn1-parameters": {
       "consumers": [
         "python/vibeqc_compiler/geometry/_gfn1_data.py",
@@ -3514,31 +3539,6 @@
       },
       "kind": "snapshot",
       "license": "LGPL-3.0-or-later AND Apache-2.0",
-      "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
-      "repository": "https://github.com/jinzhezenggroup/xtbloom",
-      "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
-    },
-    "xtbloom-gfn1-d3": {
-      "consumers": [
-        "manifests/xtbloom-d3.json",
-        "tools/vibeqc_d3/generate_native_data.py",
-        "tools/vibeqc_d3/reference.py",
-        "python/vibeqc_compiler/geometry/d3.py"
-      ],
-      "files": {
-        "gfn1_d3.json": {
-          "sha256": "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e",
-          "upstream_path": "data/parameters/gfn1_d3.json",
-          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_d3.json"
-        },
-        "gfn1_d3_manifest.json": {
-          "sha256": "34344727c84992c566e2445f95e5c249222ba0ff0feeb70a0aa0f567257e8cbf",
-          "upstream_path": "data/parameters/gfn1_d3_manifest.json",
-          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_d3_manifest.json"
-        }
-      },
-      "kind": "snapshot",
-      "license": "LGPL-3.0-or-later",
       "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
       "repository": "https://github.com/jinzhezenggroup/xtbloom",
       "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
