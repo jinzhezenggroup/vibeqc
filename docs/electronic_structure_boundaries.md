@@ -69,11 +69,12 @@ on source-text formatting or a line-count threshold.
 
 ## Duplicate infrastructure inventory
 
-CC host DIIS and its small dense linear solve moved to `src/solver/` in #922.
-Their duplicate-debt ceilings are now zero, so either owner returning under
-`src/cc/` fails the architecture gate. One method-specific CUDA DIIS
-orchestration owner remains in `src/cc/cuda_solver.cu`; its ceiling is one until
-a shared device-loop contract is justified.
+CC host bounded iteration moved to `src/solver/` in #920, and host DIIS plus its
+small dense linear solve moved there in #922. Their duplicate-debt ceilings are
+now zero, so reintroducing any of those generic host owners under `src/cc/`
+fails the architecture gate. One method-specific CUDA DIIS orchestration owner
+remains in `src/cc/cuda_solver.cu`; its ceiling is one until a shared device-loop
+contract is justified.
 
 Duplicate declarations are located with a comment- and literal-aware C++ token
 scan that distinguishes definitions from calls, forward declarations, template

@@ -1,0 +1,7 @@
+{
+  "path": "src/xtb/native/src/backends/cuda/gfn2_es2.cu",
+  "reason": "GFN2 ES2 topology, validation, reduction, stream/error handling, scratch/cache publication, and stable API boundary. Scientific scalar ES2 equations and cached coordinate-VJP algebra are compiler-owned in generated_gfn2_es2_native.hpp.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "gfn2"
+}

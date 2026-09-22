@@ -35,3 +35,16 @@ substitution is added. A later #930 slice may teach the same seam additional
 resident providers. CUDA PBE0/B3LYP promotion remains separately gated on
 semilocal scaling, K/Fock/energy assembly, convergence/final-state validation,
 and endpoint evidence; this refactor does not advertise that capability.
+
+## Integration with public DF KS (2026-09-23)
+
+The conventional-only admission above describes the initial slice. Public DF KS
+landed independently in #1073 before this branch merged. Conflict resolution
+retains its qualified resident DF adapter alongside the prepared exact binding;
+it does not reinterpret a DF request as exact or make the exact-only facade
+admit an unsupported provider. The two bindings are mutually exclusive. Mixed
+precision and the direct-J solver-region prototype remain disabled for DF.
+Extending the shared facade to fitted providers remains a separate follow-up.
+
+The integration gate runs both the native conventional KS endpoint/state tests
+and the public DF KS suite with independent PySCF references through Slurm.

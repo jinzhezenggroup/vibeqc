@@ -154,10 +154,8 @@ def test_native_es2_codegen_needs_no_site_packages(tmp_path: Path) -> None:
 
 
 def test_production_es2_consumers_do_not_restore_handwritten_science() -> None:
-    cpu = (ROOT / "src/xtb/gfn2_runtime/src/model/gfn2/es2.cpp").read_text(
-        encoding="utf-8"
-    )
-    cuda = (ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_es2.cu").read_text(
+    cpu = (ROOT / "src/xtb/native/src/model/gfn2/es2.cpp").read_text(encoding="utf-8")
+    cuda = (ROOT / "src/xtb/native/src/backends/cuda/gfn2_es2.cu").read_text(
         encoding="utf-8"
     )
     assert "generated_gfn2_es2_native.hpp" in cpu

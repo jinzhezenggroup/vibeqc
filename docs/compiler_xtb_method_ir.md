@@ -7,6 +7,9 @@ endpoint.
 
 ## Ownership boundary
 
+For executable GFN2 kernel consumers, the native runtime boundary, and remaining
+scientific cutovers, see [native xTB ownership](xtb_native_ownership.md).
+
 The compiler owns:
 
 - canonical method and parameter-set identity;
