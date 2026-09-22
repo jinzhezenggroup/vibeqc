@@ -217,7 +217,12 @@ class XCProgram:
         return answer
 
 
-def _energy_expression(spec: typing.Any) -> typing.Any:
+def build_energy_expression(
+    spec: typing.Any, *, production: bool = False
+) -> typing.Any:
+    """Build the family-selected scalar energy DAG through one dispatch boundary."""
+    if type(production) is not bool:
+        raise TypeError("production must be bool")
     active = {name for name, coefficient in spec.components if coefficient}
     if active & set(WB97MV_COMPONENTS):
         if not active <= set(WB97MV_COMPONENTS):
@@ -226,8 +231,8 @@ def _energy_expression(spec: typing.Any) -> typing.Any:
             )
         return wb97mv_energy_expression(spec)
     if active & set(SPECIAL_EXPRESSION_COMPONENTS):
-        return rsh_energy_expression(spec)
-    return semilocal_energy_expression(spec)
+        return rsh_energy_expression(spec, production=production)
+    return semilocal_energy_expression(spec, production=production)
 
 
 def build_program(
@@ -255,7 +260,7 @@ def build_program(
         raise UnsupportedXC("unsupported derivative output")
     if optimization not in ("none", "before", "after"):
         raise UnsupportedXC("unsupported optimization order")
-    graph, energy, variables = _energy_expression(spec)
+    graph, energy, variables = build_energy_expression(spec)
     if optimization == "before":
         graph, (energy,) = graph.apply_algebra_form(
             (energy,), AlgebraForm.FACTORED_NARY
