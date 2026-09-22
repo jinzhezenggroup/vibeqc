@@ -12,7 +12,7 @@ from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
-from vibeqc_compiler.xc.expressions import energy_expression
+from vibeqc_compiler.xc.semilocal_family import energy_expression
 from vibeqc_compiler.xc.fixtures import load_fixture
 from vibeqc_compiler.xc.libxc_maple import (
     MapleImportError,
