@@ -327,6 +327,26 @@ def test_method_topology_and_parameter_identities_are_bound() -> None:
         replace(energy_program, primitive_identity="0" * 64)
 
 
+@pytest.mark.parametrize("unreviewed", ["unreviewed-parameters", "0" * 64])
+def test_method_binding_rejects_agreeing_noncanonical_geometry_parameters(
+    unreviewed: str,
+) -> None:
+    """Matching nested strings cannot relabel an unqualified parameter set."""
+    _name, elements, coordinates, _expected, _count = TBLITE_CASES[0]
+    compiled = compile_gfn1_halogen(_gfn1_method(), elements, coordinates)
+    geometry = compiled.geometry_program
+    assert compiled.parameter_identity == geometry.parameter_identity
+    with pytest.raises(ValueError, match="canonical GFN1 halogen parameter"):
+        other = replace(
+            geometry,
+            parameter_identity=unreviewed,
+            triplet_program=replace(
+                geometry.triplet_program, parameter_identity=unreviewed
+            ),
+        )
+        replace(compiled, geometry_program=other)
+
+
 def test_method_binding_rejects_structural_impostors_and_unrequested_vjp() -> None:
     _name, elements, coordinates, _expected, _count = TBLITE_CASES[2]
     energy_method = resolve_xtb_method("GFN1-xTB", requested_products=("energy",))
