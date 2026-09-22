@@ -27,11 +27,21 @@ def force_resource_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     executable = directory / "probe"
     subprocess.run(
         [
-            compiler, "-std=c++20", "-O2", "-I" + str(ROOT / "src"),
-            "-I" + str(ROOT / "include"), str(source), str(library),
-            "-Wl,-rpath," + str(library.parent), "-o", str(executable),
+            compiler,
+            "-std=c++20",
+            "-O2",
+            "-I" + str(ROOT / "src"),
+            "-I" + str(ROOT / "include"),
+            str(source),
+            str(library),
+            "-Wl,-rpath," + str(library.parent),
+            "-o",
+            str(executable),
         ],
-        check=True, capture_output=True, text=True, timeout=90,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=90,
     )
     return executable
 
@@ -58,7 +68,10 @@ def test_native_force_exact_cap_and_nested_live_allocations(
     path.write_text("\n".join(rows) + "\n")
     result = subprocess.run(
         [str(force_resource_probe), str(path)],
-        capture_output=True, text=True, timeout=120,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
     (tmp_path / "trace.json").write_text(result.stdout)
     assert result.returncode == 0, result.stdout + result.stderr
