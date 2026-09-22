@@ -82,11 +82,18 @@ class NativeTensorProgramBundle:
         source_cache = cache / "sources"
         source_cache.mkdir(parents=True, exist_ok=True)
         emitted: list[
-            tuple[Program, tuple[typing.Any, ...], dict[str, typing.Any], str, str]
+            tuple[
+                Program,
+                str,
+                tuple[typing.Any, ...],
+                dict[str, typing.Any],
+                str,
+                str,
+            ]
         ] = []
         source_paths: list[Path] = []
-        for program in programs:
-            symbol = f"tensor_cpu_bundle_{program.logical_hash}"
+        for program, logical_id in zip(programs, logical_ids):
+            symbol = f"tensor_cpu_bundle_{logical_id}"
             source, resources = emit_cpu(
                 program,
                 max_bytes=max_bytes,
@@ -103,6 +110,7 @@ class NativeTensorProgramBundle:
             emitted.append(
                 (
                     program,
+                    logical_id,
                     tuple(node for node in program.live_nodes if node.op == "input"),
                     resources,
                     identity,
@@ -122,8 +130,9 @@ class NativeTensorProgramBundle:
         self.max_bytes = max_bytes
         self.program_identities = logical_ids
         self._entries: dict[str, _BundleEntry] = {}
-        for program, inputs, resources, identity, symbol in emitted:
-            self._entries[program.logical_hash] = _BundleEntry(
+        self._object_entries: dict[int, _BundleEntry] = {}
+        for program, logical_id, inputs, resources, identity, symbol in emitted:
+            entry = _BundleEntry(
                 program=program,
                 inputs=inputs,
                 resources=resources,
@@ -131,6 +140,8 @@ class NativeTensorProgramBundle:
                 symbol=symbol,
                 call=_bind_call(self.library, symbol),
             )
+            self._entries[logical_id] = entry
+            self._object_entries[id(program)] = entry
 
     @property
     def program_count(self) -> int:
@@ -151,9 +162,13 @@ class NativeTensorProgramBundle:
             raise TypeError(
                 "native TensorIR bundle execution requires a TensorIR Program"
             )
-        entry = self._entries.get(program.logical_hash)
-        if entry is None or entry.program.to_payload() != program.to_payload():
-            raise ValueError("TensorIR program is not present in this native bundle")
+        entry = self._object_entries.get(id(program))
+        if entry is None or entry.program is not program:
+            entry = self._entries.get(program.logical_hash)
+            if entry is None or entry.program.to_payload() != program.to_payload():
+                raise ValueError(
+                    "TensorIR program is not present in this native bundle"
+                )
         if not isinstance(feeds, Mapping):
             raise TypeError("CPU tensor feeds must be a mapping")
 

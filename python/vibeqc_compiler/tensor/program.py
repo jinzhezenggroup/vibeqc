@@ -12,6 +12,7 @@ import json
 import typing
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import cached_property
 from types import MappingProxyType
 
 from vibeqc_compiler.common.liveness import EffectKind, LivenessNode, analyze_liveness
@@ -163,7 +164,7 @@ class Program:
         live = set(analysis.live_node_keys)
         return tuple(node for node in nodes if node in live)
 
-    @property
+    @cached_property
     def logical_hash(self) -> str:
         """Identify output equations, excluding dead nodes and provenance."""
         hashes = node_hashes(self.nodes)

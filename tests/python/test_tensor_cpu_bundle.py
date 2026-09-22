@@ -100,3 +100,22 @@ def test_bundle_preserves_native_input_admission(tmp_path: Path) -> None:
         bundle.execute(program, {"value": np.arange(4, dtype=np.float32)})
     with pytest.raises(ValueError, match="missing tensor input"):
         bundle.execute(program, {})
+
+
+def test_bundle_same_program_execution_does_not_reserialize_payload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    program = _programs()[0]
+    bundle = _bundle((program,), tmp_path)
+    values = np.arange(4, dtype=np.float64)
+
+    def forbidden(_self: Program) -> typing.NoReturn:
+        raise AssertionError(
+            "same-object bundle execution reserialized TensorIR payload"
+        )
+
+    monkeypatch.setattr(Program, "to_payload", forbidden)
+    monkeypatch.setattr(Program, "logical_hash", property(forbidden))
+    np.testing.assert_array_equal(
+        bundle.execute(program, {"value": values})["out"], 2 * values
+    )

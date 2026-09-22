@@ -87,7 +87,11 @@ def test_native_cpu_lambda_does_not_fall_back_to_interpreter(
     assert result.converged
     assert result.provenance["tensor_backend"] == "native-cpu-tensorir"
     assert bound.tensor_executor is not None
-    assert bound.tensor_executor.compiled_program_count >= 3
+    assert bound.tensor_executor.compiled_program_count == 4
+    assert bound.tensor_executor.bundled_program_count == 4
+    assert bound.tensor_executor.artifact_count == 1
+    assert bound.tensor_executor.binary_bytes > 0
+    assert bound.tensor_executor.compile_seconds >= 0.0
 
 
 def test_molecular_lambda_matches_numerical_transpose(
