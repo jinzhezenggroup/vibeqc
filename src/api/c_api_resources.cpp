@@ -90,7 +90,7 @@ int vibeqc_resource_ks_cuda_v1(std::size_t nao, std::size_t atoms, std::size_t s
     const auto xc = vibeqc::dft::cuda_xc_layout_shape(atoms, primitives, nao, points, pbe != 0,
                                                       spins == 2, tile_points);
     const auto direct =
-        vibeqc::scf::cuda_direct_jk_device_bytes(1, nao, atoms, shells, primitives, 0);
+        vibeqc::scf::cuda_direct_coulomb_device_bytes(1, nao, atoms, shells, primitives);
     output[0] = state;
     output[1] = xc.device_bytes;
     output[2] = direct;

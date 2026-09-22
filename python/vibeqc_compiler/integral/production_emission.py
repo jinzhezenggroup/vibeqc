@@ -116,6 +116,8 @@ static_assert(offsetof(Generated{class_name}ShellTask, shell) ==
               offsetof(vibeqc::scf::detail::GeneratedShellTask, shell));
 static_assert(offsetof(Generated{class_name}ShellTask, atom) ==
               offsetof(vibeqc::scf::detail::GeneratedShellTask, atom));
+static_assert(offsetof(Generated{class_name}ShellTask, fock_consumer) ==
+              offsetof(vibeqc::scf::detail::GeneratedShellTask, fock_consumer));
 static_assert(sizeof(Generated{class_name}PrimitivePairData) ==
               sizeof(vibeqc::scf::detail::GeneratedPrimitivePairData));
 static_assert(alignof(Generated{class_name}PrimitivePairData) ==
@@ -397,6 +399,10 @@ def _streaming_fock_source(selection: KernelSelection) -> str:
             "static_cast<std::size_t>(system) * 10U + "
             f"{pair_class}U])"
         )
+    system_density_bound = (
+        "(topology.fock_consumer == vibeqc::scf::detail::GeneratedFockConsumer::Coulomb"
+        f" ? 1.0 : {system_density_bound})"
+    )
     prefix = f"generated_{spec.name}"
     supports_mixed_fock = selection.has_capability(CAPABILITY_MIXED_FOCK)
     internal_signature = _streaming_fock_internal_signature(selection)
@@ -457,6 +463,12 @@ __device__ __forceinline__ bool {prefix}_stream_survives(
   if (quartet_bound < screening_tolerance) return false;
   const std::int32_t system = topology.shell_pair_systems[first_pair];
   if (topology.active != nullptr && topology.active[system] == 0U) return false;
+  // The public pure-J provider uses geometry-only screening. Its optional
+  // topology intentionally has no HF density-bound allocations.
+  if (topology.fock_consumer == vibeqc::scf::detail::GeneratedFockConsumer::Coulomb) {{
+    if (contribution_bound != nullptr) *contribution_bound = quartet_bound;
+    return true;
+  }}
   const std::int32_t first_shell = topology.shell_pair_first[first_pair];
   const std::int32_t second_shell = topology.shell_pair_second[first_pair];
   const std::int32_t third_shell = topology.shell_pair_first[second_pair];
@@ -582,6 +594,7 @@ __device__ __forceinline__ void {prefix}_stream_populate_task(
   task.shell_pair[0] = shell_pairs[0];
   task.shell_pair[1] = shell_pairs[1];
   task.reversed_shell_pair_mask = reversed_mask;
+  task.fock_consumer = static_cast<Generated{class_name}FockConsumer>(topology.fock_consumer);
 }}
 """
 
