@@ -88,7 +88,7 @@ def test_generator_tools_do_not_reown_semilocal_differentiation() -> None:
     assert "ScalarCEmitter" not in cuda
     assert "build_roots" not in cuda
     assert "tools.generate_xc_cpu" not in cuda
-    assert "emit_polarized_semilocal" in cuda
+    assert "emit_r2scan_program" in cuda
 
 
 def test_unpolarized_spec_is_not_a_native_polarized_abi() -> None:
