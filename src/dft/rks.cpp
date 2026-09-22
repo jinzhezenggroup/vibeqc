@@ -327,11 +327,11 @@ struct IncrementalPbeRksState {
       ++updates_since_rebuild;
       return std::move(incremental.total);
     } catch (const std::domain_error&) {
-      return full_build(density, runtime::add_capacity(external_retained_bytes, update_bytes), false,
-                        false, false, false, true, false, true);
+      return full_build(density, runtime::add_capacity(external_retained_bytes, update_bytes),
+                        false, false, false, false, true, false, true);
     } catch (const std::runtime_error&) {
-      return full_build(density, runtime::add_capacity(external_retained_bytes, update_bytes), false,
-                        false, false, false, true, false, true);
+      return full_build(density, runtime::add_capacity(external_retained_bytes, update_bytes),
+                        false, false, false, false, true, false, true);
     }
   }
 
