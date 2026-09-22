@@ -23,10 +23,7 @@ import numpy as np
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from vibeqc_compiler.tensor import PASSES, Program, execute, optimize, rewrite
-from vibeqc_compiler.tensor.examples import example_cases
-
-from tools.vibeqc_validation.schema import (
+from vibeqc_compiler.common.evidence import (
     GATES,
     block_error,
     canonical_hash,
@@ -35,6 +32,8 @@ from tools.vibeqc_validation.schema import (
     outcome,
     validate_evidence,
 )
+from vibeqc_compiler.tensor import PASSES, Program, execute, optimize, rewrite
+from vibeqc_compiler.tensor.examples import example_cases
 
 ROOT = Path(__file__).resolve().parents[1]
 

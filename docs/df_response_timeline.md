@@ -14,6 +14,34 @@ instrumented runs use separate output directories. Raw profiler databases and
 logs belong in ignored `.artifacts/`; reviewed results retain compact summaries,
 raw endpoint samples, source/library identities and reproduction commands.
 
+For #206 closure rows that declare a resident response, pass
+`--expected-response-policy resident`. The runner then fails closed if the
+executed trace uses a streamed/host-panel fallback, performs a host raw-panel
+gather, uploads more than one full `[AO,AO,Naux]` raw tensor, or places its
+auxiliary consumer count outside the declared tile bounds. The lower bound is
+`ceil(Naux/tile)`; shell-aligned consumers may legitimately exceed it, up to
+`Naux`. It records response storage separately from the value provider, along
+with whitening and occupied/dense policy, in each response row. Optional
+`--max-h2d-bytes`, `--max-d2h-bytes`, and
+`--max-transformed-tile-productions` arguments make per-case resource ceilings
+explicit. The response-work gate accepts either exact dense AO-pair work
+(`Naux*N^2`) or exact symmetric packed-pair work
+(`Naux*N*(N+1)/2`), as selected by the trace's `response_packed_pairs`
+counter; the chosen representation and observed weight count are retained in
+each response row. The hardware-free validator is also available directly:
+
+```bash
+python benchmarks/issue206_resident_sentinel.py \
+  .artifacts/response-default-run/warm-0.cuda.jsonl \
+  --expected-policy resident \
+  --output .artifacts/response-default-run/resident-sentinel.json
+```
+
+Use `auto` for exploratory traces; it still publishes the selected route but
+does not turn a fallback control into a resident acceptance result. This
+structural sentinel complements, and does not replace, clean endpoint timing,
+numerical parity, and the complete resource ledger.
+
 ## Capture
 
 With an up-to-date Release library, run a single warm replay under Nsight:

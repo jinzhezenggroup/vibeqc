@@ -25,8 +25,8 @@ from pathlib import Path
 
 import numpy as np
 from vibeqc_compiler.common.arrays import immutable
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 
 from tools.vibeqc_posthf.reference import ReferenceSnapshot
 

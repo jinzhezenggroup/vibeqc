@@ -95,8 +95,8 @@ def test_cuda_host_unfused_resource_plan_moves_xc_out_of_device_arena(
 def test_estimate_resources_materializes_one_shot_charge_spin_inputs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from vibeqc import resources
     from vibeqc.ks import resolve_ks_options
+    from vibeqc_compiler.common import resources
 
     calculator = Calculator.__new__(Calculator)
     calculator._dispersion_method_ir = None

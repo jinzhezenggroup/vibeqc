@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from vibeqc_compiler.integral.cuda_adapter import CudaCompileResult
+from vibeqc_compiler.common.cuda_adapter import CudaCompileResult
 
 from tools.vibeqc_validation import f_shell
 from tools.vibeqc_validation.f_shell_cuda import emit_numerical_driver

@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import optimize
 from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 

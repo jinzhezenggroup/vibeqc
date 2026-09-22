@@ -194,21 +194,12 @@ inventories use the same logical paths, without absolute installation paths,
 timestamps, bytecode or compatibility shim bytes. Old artifacts must be rebuilt;
 binary content verification and numerical promotion gates are unchanged.
 
-Compatibility modules under `tools/vibeqc_codegen`, `tools/vibeqc_tensor`,
-`tools/vibeqc_xc` and `tools/vibeqc_dft` forward to their canonical owners. The
-same applies to moved generic helpers under former integral/tensor paths.
-Leaf modules alias the canonical module object, preserving enum/dataclass
-identity, `isinstance` checks, monkeypatches and imports through both the former
-`tools.` namespace and bare packages. Package facades delegate exports while
-keeping the legacy search path confined to forwarding modules. They do not
-reuse the canonical package `__path__`, which would load submodules twice.
 
-Remove these shims after downstream callers have migrated for one release and
-compatibility tests are the only remaining repository callers. Hash-pinned
-reference exporters intentionally retain their exact source bytes and legacy
-imports until a deliberate, independently verified reference regeneration;
-they must migrate before removal too. Legacy manifest paths are symlinks to the
-single canonical manifest, with the same removal condition.
+The compiler now has a single import surface under python/vibeqc_compiler.
+The former tools/vibeqc_codegen, tools/vibeqc_tensor, tools/vibeqc_xc and
+tools/vibeqc_dft forwarding packages were removed rather than retained as
+compatibility aliases. Repository generators and tests import canonical owners
+directly; generated-artifact identities therefore contain no shim bytes.
 
 ## Structural verification
 

@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+from vibeqc_compiler.common.evidence import block_error, canonical_hash
 from vibeqc_compiler.integral.artifact_cache import LocalArtifactCache
 from vibeqc_compiler.integral.cache import integral_cache_key
 from vibeqc_compiler.integral.df_values import (
@@ -52,7 +53,6 @@ from vibeqc_compiler.integral.runtime_backend import (
 )
 
 from tools.vibeqc_validation.df_values import make_df_value_fixture
-from tools.vibeqc_validation.schema import block_error, canonical_hash
 
 
 def integral_fixture() -> typing.Any:

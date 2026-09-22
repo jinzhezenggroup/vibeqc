@@ -8,11 +8,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+
 from ..cuda_schedule import (
     ScheduleIR,
     ScheduleKind,
 )
-from ..cuda_target import cuda_target_info
 from ..fused_schedule import (
     CoulombState,
     FusedShellPlan,

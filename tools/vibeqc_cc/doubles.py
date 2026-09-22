@@ -10,6 +10,7 @@ from fractions import Fraction
 from itertools import product
 from string import ascii_letters
 
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.tensor import (
     Index,
     Program,
@@ -20,8 +21,6 @@ from vibeqc_compiler.tensor import (
     input_tensor,
     optimize,
 )
-
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .equations import build_program
 

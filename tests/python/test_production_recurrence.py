@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.integral import (
     DPDS_SPEC,
     ContractionSpec,
@@ -16,7 +17,6 @@ from vibeqc_compiler.integral import (
     build_fused_shell_plan,
     build_integral_ir,
 )
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.production import (
     KernelSelection,
     emit_multi_registry_header,

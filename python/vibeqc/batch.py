@@ -426,7 +426,7 @@ class PreparedBatch:
                 else (request, dispersion_request)
             )
             if resource_plan is None:
-                from .resources import plan_resources
+                from vibeqc_compiler.common.resources import plan_resources
 
                 self.resource_plan = plan_resources(
                     requests, calculator._resource_budget

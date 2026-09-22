@@ -21,9 +21,8 @@ except ModuleNotFoundError:
 from vibeqc import Calculator, projected_singlepoint
 from vibeqc.autotune import source_identity
 from vibeqc.progressive import _retained_density
-
-from tools.vibeqc_validation.performance import assess_comparison, measure_interleaved
-from tools.vibeqc_validation.schema import canonical_hash, file_hash
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
+from vibeqc_compiler.common.performance import assess_comparison, measure_interleaved
 
 CASES = {
     "h2-rhf-small-large": ("rhf", "sto-3g", "def2-svp", 0, 1),

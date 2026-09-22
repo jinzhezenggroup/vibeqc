@@ -12,6 +12,7 @@ from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.common.solver_region import RegionDerivative, SolverRegion
 
 from tools.vibeqc_response.implicit import (
@@ -22,7 +23,6 @@ from tools.vibeqc_response.implicit import (
 )
 from tools.vibeqc_response.krylov import _vector_norm
 from tools.vibeqc_response.problem import ResponseCompatibilityError
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .lambda_equations import PARAMETERS, build_parameter_vjp
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, _feed_hash, _graph_bytes

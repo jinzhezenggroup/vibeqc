@@ -14,6 +14,12 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, cast
 
+from vibeqc_compiler.common.cuda_target import (
+    CudaTargetInfo,
+    cuda_target_info,
+    normalize_cuda_architecture,
+)
+
 from .capabilities import normalize_capabilities
 from .cuda_schedule import (
     AlgebraForm,
@@ -25,7 +31,6 @@ from .cuda_schedule import (
     ScheduleIR,
     ScheduleKind,
 )
-from .cuda_target import CudaTargetInfo, cuda_target_info, normalize_cuda_architecture
 from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer, build_integral_ir
 from .production_selection import _SUPPORTED_RECURRENCES, KernelSelection

@@ -62,6 +62,7 @@ _EXPORTS = {
     "KS_EXECUTION_PLAN_VERSION": ".ks_execution",
     "KsExchangeContribution": ".ks_execution",
     "KsExecutionPlan": ".ks_execution",
+    "METHOD_ALIASES": "._generated_xc_aliases",
     "METHOD_CATALOG": ".spec",
     "MethodIR": ".spec",
     "MethodSpec": ".spec",

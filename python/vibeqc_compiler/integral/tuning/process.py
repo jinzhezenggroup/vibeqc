@@ -9,11 +9,12 @@ import os
 import subprocess
 from typing import TYPE_CHECKING
 
-from ..batch_benchmark import parse_ptxas_resources
-from ..cuda_adapter import CudaCompilerAdapter
-from ..cuda_target import (
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import (
     cuda_target_info,
 )
+
+from ..batch_benchmark import parse_ptxas_resources
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -70,6 +70,7 @@ import typing
 from fractions import Fraction
 from itertools import permutations
 
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -85,8 +86,6 @@ from vibeqc_compiler.tensor import (
     reduce_sum,
     transpose,
 )
-
-from tools.vibeqc_validation.schema import canonical_hash
 
 # ---------------------------------------------------------------------------
 # Auditable rational inventory in doubles.DEFINITIONS style:

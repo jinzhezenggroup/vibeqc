@@ -12,14 +12,14 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from vibeqc.profiles import find_nvcc
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.geometry import (
     PreparedD3CudaBatch,
     compile_d3_bj_batch,
     execute_d3_bj_batch,
 )
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 
 from tools.vibeqc_d3.reference import gfn1_compatibility, make_spec
 

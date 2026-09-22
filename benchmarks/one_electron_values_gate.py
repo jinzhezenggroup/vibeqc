@@ -27,11 +27,11 @@ except ModuleNotFoundError:
     from _retention import raw_output_path
 from vibeqc import Calculator, Primitive, Shell, _native
 from vibeqc.autotune import source_identity
-from vibeqc.resources import ResourceBudget
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
+from vibeqc_compiler.common.performance import assess_comparison, measure_interleaved
+from vibeqc_compiler.common.resources import ResourceBudget
 
 from benchmarks._cases import benchmark_cases
-from tools.vibeqc_validation.performance import assess_comparison, measure_interleaved
-from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
 def main() -> None:

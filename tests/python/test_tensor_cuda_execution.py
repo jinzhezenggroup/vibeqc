@@ -15,8 +15,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc.profiles import find_nvcc
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -70,7 +70,11 @@ def test_two_tensor_providers_share_one_global_budget(
     compiler: typing.Any, cache: typing.Any
 ) -> None:
     """A retained neighbor forces an executable recomputation alternative."""
-    from vibeqc.resources import ResourceBudget, ResourceSession, plan_resources
+    from vibeqc_compiler.common.resources import (
+        ResourceBudget,
+        ResourceSession,
+        plan_resources,
+    )
     from vibeqc_compiler.tensor.resources import tensor_resource_choices
 
     index = Index("i", IndexSpace("axis", "batch", 8192))
@@ -712,7 +716,7 @@ def test_graph_arithmetic_failure_is_preserved_and_next_replay_recovers(
 def test_graph_global_budget_falls_back_without_untracked_graph_storage(
     compiler: typing.Any, cache: typing.Any
 ) -> None:
-    from vibeqc.resources import ResourceBudget, plan_resources
+    from vibeqc_compiler.common.resources import ResourceBudget, plan_resources
     from vibeqc_compiler.tensor.resources import tensor_resource_choices
 
     program = Program({"scalar": constant(3)})
