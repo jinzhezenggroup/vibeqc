@@ -537,8 +537,6 @@ class Gfn1HalogenGeometryProgram:
             raise ValueError("GFN1 halogen TripletIR geometry mismatch")
         if self.triplet_program.topology != self.topology:
             raise ValueError("GFN1 halogen TripletIR topology mismatch")
-        if self.parameter_identity != GFN1_HALOGEN_PARAMETER_IDENTITY:
-            raise ValueError("GFN1 halogen parameter identity is not canonical")
         if self.triplet_program.parameter_identity != self.parameter_identity:
             raise ValueError("GFN1 halogen TripletIR parameter identity mismatch")
         if self.triplet_program.triplet_kind != "gfn1-halogen-neighbor-donor-acceptor":
