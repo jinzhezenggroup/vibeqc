@@ -39,8 +39,8 @@ the fixed-topology first-derivative profile, use 64×20×40 for LDA and 72×24×
 for GGA. Partition iterations remain three; pruning and screening remain
 explicitly disabled so derivative topology does not change under response.
 
-Production radii are pinned xTBloom GFN1 covalent radii from
-`external/xtbloom-d3/covalent_radii.json`. Source hash/upstream revision provenance
+Production radii are the pinned `covalent_radius_bohr` values extracted from
+`upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json`. Their derived-table SHA-256 and upstream revision provenance
 is attached only when the complete concrete v2 spec exactly matches a canonical
 `GridPolicy` result. A user-constructed or deserialized v2 spec whose points,
 radii or topology differ is identified as `explicit-grid-v2` and does not claim

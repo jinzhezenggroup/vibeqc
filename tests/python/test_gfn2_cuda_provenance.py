@@ -35,6 +35,7 @@ def test_gfn2_cuda_source_manifest_is_current_and_gfn2_only() -> None:
         "src/backends/cuda/gfn2_geometry.cu",
         "src/backends/cuda/gfn2_hamiltonian.cu",
         "src/backends/cuda/gfn2_hamiltonian_force.cu",
+        "src/backends/cuda/gfn2_integrals.cu",
         "src/backends/cuda/gfn2_pairlist.cu",
         "src/backends/cuda/gfn2_preprocessing.cu",
         "src/backends/cuda/gfn2_repulsion.cu",

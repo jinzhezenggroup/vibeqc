@@ -23,7 +23,7 @@ from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
 LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
-LIBXC_MANIFEST_ROOT = ROOT / "upstream/libxc/7.0.0"
+LIBXC_MANIFEST_ROOT = ROOT / "manifests/libxc/7.0.0"
 PBE_X = LIBXC_ROOT / "gga_x_pbe.mpl"
 PBE_C = LIBXC_ROOT / "gga_c_pbe.mpl"
 MANIFEST = LIBXC_MANIFEST_ROOT / "manifest.json"

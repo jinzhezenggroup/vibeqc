@@ -4,7 +4,7 @@
 # v. 2.0. See upstream/libxc/7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
 """Audited Libxc 7.0.0 expressions, translated to the existing scalar DAG.
 
-The exact upstream files/hashes are in upstream/libxc/7.0.0/manifest.json.
+The exact upstream files/hashes are in manifests/libxc/7.0.0/manifest.json.
 Screening branches are deliberately excluded: the separately versioned domain
 contract rejects their inputs. Energy is per volume throughout this module.
 """

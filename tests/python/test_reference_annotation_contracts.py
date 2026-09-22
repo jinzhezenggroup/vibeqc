@@ -1,9 +1,10 @@
 """Concrete public helper types and explicitly audited source-only rebinding."""
 
 import ast
-import hashlib
 import json
 from pathlib import Path
+
+from vibeqc_compiler.common.reference_sources import reference_source_matches
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT = ROOT / "tests/reference_data/reference_source_annotation_audit.json"
@@ -14,8 +15,9 @@ def test_reference_source_rebinding_is_exact_and_does_not_claim_reexecution() ->
     assert "no new reference execution" in audit["scope"]
     assert len(audit["sources"]) == 11
     for record in audit["sources"]:
-        data = (ROOT / record["path"]).read_bytes()
-        assert hashlib.sha256(data).hexdigest() == record["annotated_source_sha256"]
+        assert reference_source_matches(
+            ROOT, record["path"], record["annotated_source_sha256"]
+        )
         assert len(record["original_source_sha256"]) == 64
         assert len(record["executable_ast_sha256"]) == 64
 
