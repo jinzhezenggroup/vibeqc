@@ -2412,9 +2412,9 @@ def test_order01_force_retires_handwritten_generic_fallback() -> None:
         REPOSITORY_ROOT / "src/scf/cuda/direct_native_order01_gradient.cuh"
     ).exists()
 
-    quartet = (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh"
-    ).read_text(encoding="utf-8")
+    quartet = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh").read_text(
+        encoding="utf-8"
+    )
     assert "direct_native_order01_gradient.cuh" not in quartet
     assert "contracted_eri_cartesian_source_order01_gradient" not in quartet
     assert "static_assert(AngularOrder >= 2U" in quartet
