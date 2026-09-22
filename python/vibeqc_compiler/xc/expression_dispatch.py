@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import typing
 
-from .semilocal_family import energy_expression as semilocal_energy_expression
 from .rsh_expressions import energy_expression as rsh_energy_expression
+from .semilocal_family import energy_expression as semilocal_energy_expression
 from .spec import SPECIAL_EXPRESSION_COMPONENTS, WB97MV_COMPONENTS, UnsupportedXC
 from .wb97mv_maple import energy_expression as wb97mv_energy_expression
 
