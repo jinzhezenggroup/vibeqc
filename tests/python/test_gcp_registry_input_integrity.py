@@ -1,7 +1,6 @@
 """Exercise the real gCP CLI against an isolated canonical-input checkout."""
 
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -23,7 +22,7 @@ def checkout(tmp_path: Path) -> Path:
     ):
         path = tmp_path / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ROOT / relative, path)
+        path.write_bytes((ROOT / relative).read_bytes().replace(b"\r\n", b"\n"))
     return tmp_path
 
 
@@ -75,4 +74,4 @@ def test_gcp_cli_valid_checkout_regenerates_pinned_header(
         check=True,
     )
     expected = ROOT / "src/dft/dispersion/gcp_r2scan3c_data.hpp"
-    assert output.read_bytes() == expected.read_bytes()
+    assert output.read_bytes() == expected.read_bytes().replace(b"\r\n", b"\n")
