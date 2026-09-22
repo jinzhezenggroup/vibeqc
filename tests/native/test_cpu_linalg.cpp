@@ -96,6 +96,24 @@ bool check_gemv(CpuLinalgProvider provider,
   return std::all_of(empty.begin(), empty.end(), [](double value) { return value == 0.0; });
 }
 
+bool check_ger(CpuLinalgProvider provider,
+               CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
+               int threads = 1) {
+  const CpuLinalgPlan plan{provider, ownership, threads};
+  const std::array<double, 2> x{2.0, -1.0};
+  const std::array<double, 3> y{3.0, 4.0, -2.0};
+  std::array<double, 6> a{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+  vibeqc::tensor::cpu_ger(2, 3, x.data(), y.data(), a.data(), 0.5, plan);
+  const std::array<double, 6> expected{4.0, 6.0, 1.0, 2.5, 3.0, 7.0};
+  for (std::size_t i = 0; i < a.size(); ++i)
+    if (!close(a[i], expected[i])) return false;
+
+  const double poison = std::numeric_limits<double>::quiet_NaN();
+  vibeqc::tensor::cpu_ger(2, 3, &poison, &poison, nullptr, 0.0, plan);
+  vibeqc::tensor::cpu_ger(0, 3, nullptr, nullptr, nullptr, 1.0, plan);
+  return true;
+}
+
 bool check_symm(CpuLinalgProvider provider,
                 CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
                 int threads = 1) {
@@ -252,9 +270,9 @@ bool check_eigen(CpuLinalgProvider provider,
 
 int main() {
   if (!check_gemm(CpuLinalgProvider::scalar) || !check_gemv(CpuLinalgProvider::scalar) ||
-      !check_symm(CpuLinalgProvider::scalar) || !check_syrk(CpuLinalgProvider::scalar) ||
-      !check_trsm(CpuLinalgProvider::scalar) || !check_cholesky(CpuLinalgProvider::scalar) ||
-      !check_eigen(CpuLinalgProvider::scalar)) {
+      !check_ger(CpuLinalgProvider::scalar) || !check_symm(CpuLinalgProvider::scalar) ||
+      !check_syrk(CpuLinalgProvider::scalar) || !check_trsm(CpuLinalgProvider::scalar) ||
+      !check_cholesky(CpuLinalgProvider::scalar) || !check_eigen(CpuLinalgProvider::scalar)) {
     std::cerr << "scalar CPU linear algebra failed\n";
     return 1;
   }
@@ -283,6 +301,7 @@ int main() {
                                  : CpuLinalgThreadOwnership::provider_parallel;
     if ((local || global) && (!check_gemm(CpuLinalgProvider::openblas, ownership) ||
                               !check_gemv(CpuLinalgProvider::openblas, ownership) ||
+                              !check_ger(CpuLinalgProvider::openblas, ownership) ||
                               !check_symm(CpuLinalgProvider::openblas, ownership) ||
                               !check_syrk(CpuLinalgProvider::openblas, ownership) ||
                               !check_trsm(CpuLinalgProvider::openblas, ownership))) {
