@@ -45,3 +45,20 @@ patterns with nonsymmetric densities. CUDA tests add through-d generated
 admission, through-f fallback, exact-budget fallback, spin sums and independent
 full-ERI matrices. Device execution and complete KS/HF endpoint qualification
 remain required before promoting this candidate. See #1077.
+
+## Allocated GPU update
+
+The through-d J matrix, nonsymmetric spin-density, through-f fallback and exact
+budget fallback tests passed on RTX 5090. Integration library
+`b3e08e5a556b1f8abbd6c72e7109ca92a135f9626ac121bc81c687bb3390916b`
+also includes the existing #1073 and #1076 implementations. PBE on the unchanged
+explicit grid passed complete cold/priming/two-repeat GPU4PySCF comparisons:
+3 atoms reached 0.264–0.274 s warm, and 6 atoms reached 0.630–0.631 s warm,
+both with two native iterations. Maximum energy errors across all four pairs
+were 1.33e-12 and 2.36e-12 Hartree, respectively.
+
+The 24-atom cold endpoint reached its 60-second deadline and was stopped.
+A bounded profile exposed a separate ordinary-KS eigensolver problem (#1090,
+PR #1091): one completed graph-native Jacobi call took 9.2 seconds. This is
+not evidence that 96-atom endpoint qualification is complete. Keep the larger
+gates and HF ABI performance check pending.

@@ -511,10 +511,10 @@
     "sm_90/vibeqc_generated_shell_sm90_shard_1.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_2.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_3.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
-    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "0022f434446e26538c16d7dcfce032490470abb293c44489a85a5fe89f246e08",
-    "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "7d21ed9d8d1a2665c61f1766cf2d0f477230f868d74613128b2265a65eba0fd3",
-    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "59fd0e269d945084657a2db77fdd3231f147dd65063b571ae374130227cc8c16",
-    "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "15de768b835687674add560f032bf73cdabdadf44e0e67d5e3e9903679a90245",
+    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "dc57b43f958951eed08df8b89c22161ae560425004e44f76c12ed4eb3f2bbb39",
+    "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "86f63490e0bbc09eb96fd0c909b4c1f5fa1d07cc61492b75a21c0b6f13c20696",
+    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "9141f5902bf4d4164c47c42fba7a184c798c14f3b5540e7c49989e759d7a4dd6",
+    "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "c42413573c65f8a96f13b225b9362d4520eb487741b7dd1eca8f3408aed5ce3f",
     "vibeqc_generated_shell_registry.hpp": "51ed327a1aef3d85580bd178474bdf80fa5eaac5ed2762eb0702abf8a47bd428",
     "vibeqc_generated_shell_registry.cu": "207c71f8077aa7817d155f9de76f2370e5a6f1eebb01106944464b0e50bd70e9"
   },
@@ -564,6 +564,16 @@
       "reason": "Compiler-derived scalar Rys2 force and subset/Wick Fock companion schedules replace the redundant per-class manifest payloads. The manifest bytes intentionally change; all ten regenerated sm_120/sm_90 shards and registry artifacts are byte-identical to the existing baseline, and the shell catalog is unchanged. Only the manifest fingerprint is refreshed.",
       "paths": [
         "python/vibeqc_compiler/integral/production_shell_classes.json"
+      ]
+    },
+    {
+      "issue": 1077,
+      "reason": "Typed HartreeFock/Coulomb task consumer deliberately extends generated scatter and streaming task binding. The four sm_120 shards change; portable sm_90 shards, registry and shell catalog remain unchanged. Independent dense scatter and allocated through-d J / through-f fallback matrix tests pass.",
+      "paths": [
+        "sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_3.cu"
       ]
     }
   ]
