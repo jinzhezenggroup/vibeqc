@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import typing
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 from .program import ProgramIR
 from .provenance import canonical_hash
@@ -60,31 +60,62 @@ class CallEffectBinding:
 
 
 @dataclass(frozen=True)
+class CallDonationBinding:
+    """Explicit same-call ownership transfer between ProgramIR buffers."""
+
+    call: str
+    donor: str
+    recipient: str
+
+    def __post_init__(self) -> None:
+        for value, name in (
+            (self.call, "donation call"),
+            (self.donor, "donation donor"),
+            (self.recipient, "donation recipient"),
+        ):
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"{name} must be a nonempty string")
+        if self.donor == self.recipient:
+            raise ValueError("donation donor and recipient must be distinct")
+
+
+@dataclass(frozen=True)
 class ProgramStoragePlan:
     """Explicit physical-storage facts bound to one immutable ProgramIR."""
 
     program: ProgramIR
     aliases: tuple[BufferAliasBinding, ...] = ()
     effects: tuple[CallEffectBinding, ...] = ()
-    schema_version: int = 1
+    donations: tuple[CallDonationBinding, ...] = field(default=(), kw_only=True)
+    schema_version: int = 2
 
     def __post_init__(self) -> None:
         if not isinstance(self.program, ProgramIR):
             raise TypeError("storage plan requires ProgramIR")
-        if type(self.schema_version) is not int or self.schema_version != 1:
+        if type(self.schema_version) is not int or self.schema_version not in (1, 2):
             raise ValueError("unsupported ProgramStoragePlan schema")
         aliases = tuple(self.aliases)
         effects = tuple(self.effects)
+        donations = tuple(self.donations)
         if not all(isinstance(item, BufferAliasBinding) for item in aliases):
             raise TypeError("storage plan requires structured alias bindings")
         if not all(isinstance(item, CallEffectBinding) for item in effects):
             raise TypeError("storage plan requires structured effect bindings")
+        if not all(isinstance(item, CallDonationBinding) for item in donations):
+            raise TypeError("storage plan requires structured donation bindings")
+        if self.schema_version == 1 and donations:
+            raise ValueError("ProgramStoragePlan schema v1 cannot encode donations")
         if len({item.buffer for item in aliases}) != len(aliases):
             raise ValueError("duplicate alias binding")
         if len({item.call for item in effects}) != len(effects):
             raise ValueError("duplicate effect binding")
+        if len({(item.call, item.donor) for item in donations}) != len(donations):
+            raise ValueError("duplicate donation donor binding")
+        if len({(item.call, item.recipient) for item in donations}) != len(donations):
+            raise ValueError("duplicate donation recipient binding")
         object.__setattr__(self, "aliases", aliases)
         object.__setattr__(self, "effects", effects)
+        object.__setattr__(self, "donations", donations)
         self._validate_bindings()
 
     def _validate_bindings(self) -> None:
@@ -114,6 +145,21 @@ class ProgramStoragePlan:
         for item in self.effects:
             if item.call not in calls:
                 raise ValueError("effect binding references unknown ProgramIR call")
+        for item in self.donations:
+            if item.call not in calls:
+                raise ValueError("donation binding references unknown ProgramIR call")
+            call = calls[item.call]
+            if item.donor not in buffers or item.recipient not in buffers:
+                raise ValueError("donation binding references unknown ProgramIR buffer")
+            if item.donor not in call.reads or item.recipient not in call.writes:
+                raise ValueError(
+                    "donation binding must map a call read to a call write"
+                )
+            if any(
+                effect.call == item.call and effect.effect is MemoryEffect.OPAQUE
+                for effect in self.effects
+            ):
+                raise ValueError("donation binding requires explicit memory effects")
 
         def root(name: str, stack: tuple[str, ...] = ()) -> str:
             binding = alias_map.get(name)
@@ -132,29 +178,33 @@ class ProgramStoragePlan:
         return canonical_hash(self.to_payload())
 
     def to_payload(self) -> dict[str, typing.Any]:
-        return json.loads(
-            json.dumps(
-                {
-                    "schema_version": self.schema_version,
-                    "program_identity": self.program.identity,
-                    "aliases": [
-                        {**asdict(item), "alias": item.alias.value}
-                        for item in self.aliases
-                    ],
-                    "effects": [
-                        {**asdict(item), "effect": item.effect.value}
-                        for item in self.effects
-                    ],
-                }
-            )
-        )
+        payload: dict[str, typing.Any] = {
+            "schema_version": self.schema_version,
+            "program_identity": self.program.identity,
+            "aliases": [
+                {**asdict(item), "alias": item.alias.value} for item in self.aliases
+            ],
+            "effects": [
+                {**asdict(item), "effect": item.effect.value} for item in self.effects
+            ],
+        }
+        if self.schema_version >= 2:
+            payload["donations"] = [asdict(item) for item in self.donations]
+        return json.loads(json.dumps(payload))
 
     @classmethod
     def from_payload(
         cls, program: ProgramIR, payload: typing.Any
     ) -> ProgramStoragePlan:
+        if not isinstance(payload, dict) or "schema_version" not in payload:
+            raise ValueError("invalid ProgramStoragePlan fields")
+        schema = payload.get("schema_version")
         expected = {"schema_version", "program_identity", "aliases", "effects"}
-        if not isinstance(payload, dict) or set(payload) != expected:
+        if schema == 2:
+            expected.add("donations")
+        elif schema != 1:
+            raise ValueError("unsupported ProgramStoragePlan schema")
+        if set(payload) != expected:
             raise ValueError("invalid ProgramStoragePlan fields")
         if payload["program_identity"] != program.identity:
             raise ValueError("storage plan does not match the supplied ProgramIR")
@@ -180,12 +230,32 @@ class ProgramStoragePlan:
             except (TypeError, ValueError) as exc:
                 raise ValueError("invalid effect binding kind") from exc
             effects.append(CallEffectBinding(row["call"], effect))
-        return cls(program, tuple(aliases), tuple(effects), payload["schema_version"])
+        donations = []
+        for row in payload.get("donations", []):
+            if not isinstance(row, dict) or set(row) != {
+                "call",
+                "donor",
+                "recipient",
+            }:
+                raise ValueError("invalid donation binding fields")
+            donations.append(
+                CallDonationBinding(row["call"], row["donor"], row["recipient"])
+            )
+        return cls(
+            program,
+            tuple(aliases),
+            tuple(effects),
+            schema_version=schema,
+            donations=tuple(donations),
+        )
 
     def storage_analysis(self) -> StorageAnalysis:
         """Analyze the bound physical contract with fail-closed defaults."""
         alias_map = {item.buffer: item for item in self.aliases}
         effect_map = {item.call: item.effect for item in self.effects}
+        donation_map: dict[str, list[tuple[str, str]]] = {}
+        for item in self.donations:
+            donation_map.setdefault(item.call, []).append((item.donor, item.recipient))
         values = []
         for buffer in self.program.buffers:
             binding = alias_map.get(buffer.name)
@@ -211,6 +281,7 @@ class ProgramStoragePlan:
                 call.reads,
                 call.writes,
                 effect_map.get(call.name, MemoryEffect.EXPLICIT),
+                donations=tuple(donation_map.get(call.name, ())),
             )
             for call in self.program.calls
         )

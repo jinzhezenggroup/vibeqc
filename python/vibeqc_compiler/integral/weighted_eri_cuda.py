@@ -12,6 +12,7 @@ import typing
 
 from .cuda import CudaEmitter
 from .expr import AlgebraForm, AlgebraFusion, AlgebraOrdering, RematerializationPolicy
+from .range_separation import CoulombKernelFamily
 from .weighted_eri import (
     WeightedEriKernel,
     build_weighted_eri_ir,
@@ -96,12 +97,14 @@ def emit_weighted_eri_function(
     ]
     if kernel.integral.operator.range_separated:
         radial = kernel.integral.operator.coulomb_kernel
+        family = CoulombKernelFamily(radial.family)
+        omega = float(radial.omega)
         # The geometry-factored helper consumes modified moments supplied by
         # its caller. Retain exact operator identity even when the arithmetic
         # DAG is shared with full Coulomb; legacy native streams reject this IR.
         lines.insert(
             0,
-            f"/** Requires {radial.family.value} moments; omega={radial.omega.hex()} inverse bohr, held fixed. */",
+            f"/** Requires {family.value} moments; omega={omega.hex()} inverse bohr, held fixed. */",
         )
     for assignment, value in zip(assignments, roots, strict=True):
         lines.append(f"  result.{assignment} = {emitter.reference(value)};")

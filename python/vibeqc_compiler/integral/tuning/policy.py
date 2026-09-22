@@ -133,10 +133,11 @@ def _production_fock_schedule_index(
     """Read explicit Fock baseline schedules from the production manifest.
 
     Generic schedule discovery intentionally avoids subgroup mappings for very
-    large component envelopes.  A tuned manifest may still contain a
-    hand-validated value-only Fock mapping for such a class.  Reusing that row
-    keeps autotune comparisons honest without maintaining a second shell-name
-    allowlist in Python.
+    large component envelopes. A tuned manifest may still contain a
+    hand-validated value-only Fock mapping for such a class. When a row has no
+    separate ``fock_schedule``, its primary schedule is the shipped Fock mapping
+    and must still be the comparison baseline. Reusing either form avoids a
+    second shell-name allowlist in Python.
     """
 
     selections = load_production_kernel_selections(
@@ -145,10 +146,14 @@ def _production_fock_schedule_index(
         profile="auto",
     )
     return tuple(
-        (selection.spec.name, selection.fock_schedule)
+        (
+            selection.spec.name,
+            selection.fock_schedule
+            if selection.fock_schedule is not None
+            else selection.schedule,
+        )
         for selection in selections
         if KernelConsumer.FOCK in selection.consumers
-        and selection.fock_schedule is not None
     )
 
 

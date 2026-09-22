@@ -1,9 +1,10 @@
 """Generated directional response of the existing unpruned Becke grid.
 
-This is a tiled CPU diagnostic/consumer building block for #163 B, not a
-complete KS gradient or a native force capability. Scalar derivatives use the
-common Graph. Pair/product reductions retain O(point_tile * atom) storage;
-no coordinate-by-grid Jacobian or SCF iteration tape is constructed.
+This is a tiled CPU diagnostic/consumer building block for #163 B and #180,
+not a complete KS gradient/HVP or a native derivative capability. Scalar first
+and mixed-second derivatives use the common Graph. Pair/product reductions
+retain O(point_tile * atom) storage; no coordinate-by-grid Jacobian, partition
+Hessian tensor or SCF iteration tape is constructed.
 """
 
 import typing
@@ -81,6 +82,77 @@ def grid_response_program(kind: typing.Any, iterations: typing.Any = 3) -> typin
     return GridResponseProgram(graph, roots, identity)
 
 
+@lru_cache(maxsize=8, typed=True)
+def grid_mixed_response_program(
+    kind: typing.Any, iterations: typing.Any = 3
+) -> typing.Any:
+    """Generate primal, two JVPs and their mixed directional derivative.
+
+    The left/right tangent leaves are independent. mixed_* inputs describe
+    a mixed derivative of an upstream leaf; ordinary Cartesian nuclear
+    directions bind them to zero. This lets composed primitives retain the
+    complete chain rule without introducing a second handwritten derivative.
+    """
+    checked_int(iterations, "partition iterations", high=5)
+    graph = Graph()
+    if kind == "norm":
+        names = ("x", "y", "z")
+        xyz = [graph.variable(name) for name in names]
+        primal = graph.power(graph.sum(v * v for v in xyz), 0.5)
+    elif kind == "ratio":
+        names = ("a", "b")
+        primal = graph.variable("a") / graph.variable("b")
+    elif kind == "log":
+        names = ("p",)
+        primal = graph.stable_unary("log", graph.variable("p"))
+    elif kind == "becke":
+        names = ("mu",)
+        mu = graph.variable("mu")
+        for _ in range(iterations):
+            mu = 0.5 * mu * (3 - mu * mu)
+        primal = 0.5 * (1 - mu)
+    else:
+        raise ValueError("unknown grid response primitive")
+
+    left = graph.differentiate(
+        primal,
+        graph.variable("left_direction"),
+        {name: graph.variable(f"l{name}") for name in names},
+    )
+    right = graph.differentiate(
+        primal,
+        graph.variable("right_direction"),
+        {name: graph.variable(f"r{name}") for name in names},
+    )
+    mixed = graph.differentiate(
+        left,
+        graph.variable("right_direction"),
+        {
+            **{name: graph.variable(f"r{name}") for name in names},
+            **{f"l{name}": graph.variable(f"lr{name}") for name in names},
+        },
+    )
+    roots = (primal, left, right, mixed)
+    reachable = graph.topological_order(roots)
+    indices = {node: i for i, node in enumerate(reachable)}
+    identity = canonical_hash(
+        {
+            "schema": "vibeqc.grid-mixed-response-program/v1",
+            "kind": kind,
+            "nodes": [
+                (
+                    graph.nodes[i].operation,
+                    [indices[j] for j in graph.nodes[i].arguments],
+                    str(graph.nodes[i].payload),
+                )
+                for i in reachable
+            ],
+            "roots": [indices[root.identifier] for root in roots],
+        }
+    )
+    return GridResponseProgram(graph, roots, identity)
+
+
 def _norm(delta: typing.Any, motion: typing.Any) -> typing.Any:
     # Homogeneity permits a frozen common scale in primal and JVP. This avoids
     # squaring huge/tiny unscaled coordinates without inventing a distance floor.
@@ -93,6 +165,26 @@ def _norm(delta: typing.Any, motion: typing.Any) -> typing.Any:
         values[f"d{name}"] = motion[..., k] / scale
     value, tangent = grid_response_program("norm").evaluate(**values)
     return value * scale, tangent * scale
+
+
+def _norm_mixed(
+    delta: typing.Any,
+    left_motion: typing.Any,
+    right_motion: typing.Any,
+    mixed_motion: typing.Any,
+) -> typing.Any:
+    """Evaluate a norm and its two first/mixed directional derivatives."""
+    scale = np.max(np.abs(delta), axis=-1)
+    if np.any(scale == 0):
+        raise ValueError("point/center collision is outside the smooth response branch")
+    values = {}
+    for k, name in enumerate(("x", "y", "z")):
+        values[name] = delta[..., k] / scale
+        values[f"l{name}"] = left_motion[..., k] / scale
+        values[f"r{name}"] = right_motion[..., k] / scale
+        values[f"lr{name}"] = mixed_motion[..., k] / scale
+    result = grid_mixed_response_program("norm").evaluate(**values)
+    return tuple(value * scale for value in result)
 
 
 @dataclass(frozen=True, eq=False)
@@ -229,6 +321,218 @@ def partition_response(
 
 
 @dataclass(frozen=True, eq=False)
+class PartitionMixedResponse:
+    """Normalized ownership, two JVPs and their mixed derivative."""
+
+    weights: np.ndarray
+    left: np.ndarray
+    right: np.ndarray
+    mixed: np.ndarray
+    branch_identity: str
+
+
+def partition_mixed_response(
+    points: typing.Any,
+    centers: typing.Any,
+    *,
+    left_point_motion: typing.Any,
+    left_center_motion: typing.Any,
+    right_point_motion: typing.Any,
+    right_center_motion: typing.Any,
+    iterations: typing.Any = 3,
+    coincident_tolerance: typing.Any = 1e-12,
+) -> typing.Any:
+    """Apply the smooth-branch Becke partition Hessian to two directions.
+
+    This is the mixed derivative d_right(d_left w) at fixed direction vectors.
+    Scalar primitive second derivatives are generated from the same Graph roots
+    as the first response. Product/normalization algebra retains exact-zero
+    factors explicitly, including the one- and two-zero mixed derivative limits.
+    """
+    checked_int(iterations, "partition iterations", high=5)
+    if not np.isfinite(coincident_tolerance) or coincident_tolerance < 0:
+        raise ValueError("invalid coincident-center tolerance")
+    points, centers = immutable(points), immutable(centers)
+    if (
+        points.ndim != 2
+        or points.shape[1:] != (3,)
+        or centers.ndim != 2
+        or centers.shape[1:] != (3,)
+        or not len(centers)
+    ):
+        raise ValueError("points/centers require (n,3) and at least one center")
+    lp = immutable(left_point_motion, shape=points.shape)
+    lc = immutable(left_center_motion, shape=centers.shape)
+    rp = immutable(right_point_motion, shape=points.shape)
+    rc = immutable(right_center_motion, shape=centers.shape)
+    npnt, natom = len(points), len(centers)
+    branch = sha256(
+        canonical_hash(
+            {
+                "schema": "vibeqc.becke-response-branch/v1",
+                "shape": (npnt, natom),
+                "iterations": iterations,
+                "coincident_tolerance": coincident_tolerance,
+                "pair_program": grid_response_program("becke", iterations).identity,
+            }
+        ).encode()
+    )
+    if natom == 1 or npnt == 0:
+        shape = (npnt, natom)
+        return PartitionMixedResponse(
+            immutable(np.ones(shape)),
+            immutable(np.zeros(shape)),
+            immutable(np.zeros(shape)),
+            immutable(np.zeros(shape)),
+            branch.hexdigest(),
+        )
+
+    distances = np.empty((npnt, natom))
+    left_distances = np.empty_like(distances)
+    right_distances = np.empty_like(distances)
+    mixed_distances = np.empty_like(distances)
+    zero_points = np.zeros_like(points)
+    for a in range(natom):
+        (
+            distances[:, a],
+            left_distances[:, a],
+            right_distances[:, a],
+            mixed_distances[:, a],
+        ) = _norm_mixed(
+            points - centers[a],
+            lp - lc[a],
+            rp - rc[a],
+            zero_points,
+        )
+
+    logs = np.zeros((npnt, natom))
+    left_rates = np.zeros_like(logs)
+    right_rates = np.zeros_like(logs)
+    mixed_rates = np.zeros_like(logs)
+    zeros = np.zeros((npnt, natom), dtype=np.int64)
+    zero_left = np.zeros_like(logs)
+    zero_right = np.zeros_like(logs)
+    zero_mixed = np.zeros_like(logs)
+    zero_left_right_same = np.zeros_like(logs)
+    ratio = grid_mixed_response_program("ratio")
+    pair_program = grid_mixed_response_program("becke", iterations)
+    log_program = grid_mixed_response_program("log")
+    zero_center = np.zeros(3)
+
+    for a in range(natom):
+        for b in range(a):
+            separation, ls, rs, lrs = _norm_mixed(
+                centers[a] - centers[b],
+                lc[a] - lc[b],
+                rc[a] - rc[b],
+                zero_center,
+            )
+            if separation <= coincident_tolerance:
+                raise ValueError(
+                    "coincident centers are outside the smooth response branch"
+                )
+            mu, lmu, rmu, lrmu = ratio.evaluate(
+                a=distances[:, a] - distances[:, b],
+                b=separation,
+                la=left_distances[:, a] - left_distances[:, b],
+                lb=ls,
+                ra=right_distances[:, a] - right_distances[:, b],
+                rb=rs,
+                lra=mixed_distances[:, a] - mixed_distances[:, b],
+                lrb=lrs,
+            )
+            clipped = np.abs(mu) >= 1
+            branch.update(np.asarray(np.sign(mu) * clipped, dtype=np.int8).tobytes())
+            pair, lpair, rpair, lrpair = pair_program.evaluate(
+                mu=np.clip(mu, -1, 1),
+                lmu=np.where(clipped, 0, lmu),
+                rmu=np.where(clipped, 0, rmu),
+                lrmu=np.where(clipped, 0, lrmu),
+            )
+            outside = (pair < 0) | (pair > 1)
+            branch.update(outside.tobytes())
+            lpair = np.where(outside, 0, lpair)
+            rpair = np.where(outside, 0, rpair)
+            lrpair = np.where(outside, 0, lrpair)
+            pair = np.clip(pair, 0, 1)
+            branch.update(
+                np.asarray((pair == 0) + 2 * (pair == 1), dtype=np.int8).tobytes()
+            )
+            for atom, value, left, right, mixed in (
+                (a, pair, lpair, rpair, lrpair),
+                (b, 1 - pair, -lpair, -rpair, -lrpair),
+            ):
+                active = value > 0
+                log_value, log_left, log_right, log_mixed = log_program.evaluate(
+                    p=value[active],
+                    lp=left[active],
+                    rp=right[active],
+                    lrp=mixed[active],
+                )
+                logs[active, atom] += log_value
+                left_rates[active, atom] += log_left
+                right_rates[active, atom] += log_right
+                mixed_rates[active, atom] += log_mixed
+                inactive = ~active
+                zeros[inactive, atom] += 1
+                zero_left[inactive, atom] += left[inactive]
+                zero_right[inactive, atom] += right[inactive]
+                zero_mixed[inactive, atom] += mixed[inactive]
+                zero_left_right_same[inactive, atom] += left[inactive] * right[inactive]
+
+    live = zeros == 0
+    maximum = np.max(np.where(live, logs, -np.inf), axis=1, keepdims=True)
+    if not np.isfinite(maximum).all():
+        raise ArithmeticError("invalid Becke partition normalization")
+    shifted = logs - maximum
+    products = np.zeros_like(logs)
+    left_products = np.zeros_like(logs)
+    right_products = np.zeros_like(logs)
+    mixed_products = np.zeros_like(logs)
+    with np.errstate(under="ignore"):
+        products[live] = np.exp(shifted[live])
+        left_products[live] = products[live] * left_rates[live]
+        right_products[live] = products[live] * right_rates[live]
+        mixed_products[live] = products[live] * (
+            mixed_rates[live] + left_rates[live] * right_rates[live]
+        )
+
+        single = zeros == 1
+        q_single = np.exp(shifted[single])
+        left_products[single] = q_single * zero_left[single]
+        right_products[single] = q_single * zero_right[single]
+        mixed_products[single] = q_single * (
+            zero_mixed[single]
+            + zero_left[single] * right_rates[single]
+            + zero_right[single] * left_rates[single]
+        )
+
+        double = zeros == 2
+        q_double = np.exp(shifted[double])
+        mixed_products[double] = q_double * (
+            zero_left[double] * zero_right[double] - zero_left_right_same[double]
+        )
+
+    weights, left, right, mixed = ratio.evaluate(
+        a=products,
+        b=products.sum(axis=1, keepdims=True),
+        la=left_products,
+        lb=left_products.sum(axis=1, keepdims=True),
+        ra=right_products,
+        rb=right_products.sum(axis=1, keepdims=True),
+        lra=mixed_products,
+        lrb=mixed_products.sum(axis=1, keepdims=True),
+    )
+    return PartitionMixedResponse(
+        immutable(weights),
+        immutable(left),
+        immutable(right),
+        immutable(mixed),
+        branch.hexdigest(),
+    )
+
+
+@dataclass(frozen=True, eq=False)
 class GridResponseTile:
     """Moved quadrature and its directional response with explicit source stamps."""
 
@@ -278,5 +582,79 @@ def grid_response_tiles(
             immutable(raw.weights * response.directional[selected]),
             grid.identity,
             direction_identity,
+            response.branch_identity,
+        )
+
+
+@dataclass(frozen=True, eq=False)
+class GridMixedResponseTile:
+    """Moved quadrature with two first and one mixed weight response."""
+
+    grid: GridTile
+    left_point_motion: np.ndarray
+    right_point_motion: np.ndarray
+    left_weight_motion: np.ndarray
+    right_weight_motion: np.ndarray
+    mixed_weight_motion: np.ndarray
+    grid_identity: str
+    left_direction_identity: str
+    right_direction_identity: str
+    branch_identity: str
+
+
+def grid_mixed_response_tiles(
+    grid: typing.Any,
+    left_center_motion: typing.Any,
+    right_center_motion: typing.Any,
+    *,
+    tile_points: typing.Any = 256,
+) -> typing.Any:
+    """Stream first/mixed molecular-grid responses for a Hessian bilinear.
+
+    Raw atom-centred point positions are affine in their owner center, so their
+    mixed motion is exactly zero. The nontrivial second geometric term is the
+    generated Becke partition-weight response.
+    """
+    if not isinstance(grid, MolecularGrid):
+        raise TypeError("grid mixed response requires MolecularGrid")
+    checked_int(tile_points, "tile points")
+    left = immutable(left_center_motion, shape=grid.centers.shape)
+    right = immutable(right_center_motion, shape=grid.centers.shape)
+    left_identity = canonical_hash(
+        {"grid": grid.identity, "center_motion": left.tolist()}
+    )
+    right_identity = canonical_hash(
+        {"grid": grid.identity, "center_motion": right.tolist()}
+    )
+    for raw in grid._raw_tiles(tile_points):
+        owner = np.asarray(raw.owners)
+        left_point = immutable(left[owner])
+        right_point = immutable(right[owner])
+        response = partition_mixed_response(
+            raw.points,
+            grid.centers,
+            left_point_motion=left_point,
+            left_center_motion=left,
+            right_point_motion=right_point,
+            right_center_motion=right,
+            iterations=grid.spec.partition_iterations,
+            coincident_tolerance=grid.spec.coincident_tolerance,
+        )
+        selected = (np.arange(len(owner)), owner)
+        yield GridMixedResponseTile(
+            GridTile(
+                raw.begin,
+                raw.points,
+                immutable(raw.weights * response.weights[selected]),
+                raw.owners,
+            ),
+            left_point,
+            right_point,
+            immutable(raw.weights * response.left[selected]),
+            immutable(raw.weights * response.right[selected]),
+            immutable(raw.weights * response.mixed[selected]),
+            grid.identity,
+            left_identity,
+            right_identity,
             response.branch_identity,
         )

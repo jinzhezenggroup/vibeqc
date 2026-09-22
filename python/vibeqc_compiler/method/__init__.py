@@ -10,8 +10,12 @@ from importlib import import_module
 _EXPORTS = {
     "D3_RADII_SHA256": ".dispersion",
     "D3_TABLE_SHA256": ".dispersion",
+    "D3_ZERO_PARAMETER_SETS": ".dispersion",
     "pbe0_d3_bj_spec": ".dispersion",
+    "pbe0_d3_zero_spec": ".dispersion",
     "pbe_d3_bj_spec": ".dispersion",
+    "pbe_d3_bj_atm_spec": ".dispersion",
+    "pbe_d3_zero_spec": ".dispersion",
     "pbe_d4_eeq_spec": ".dispersion",
     "BasisBinding": ".basis_binding",
     "CorrectionProvenance": ".correction",

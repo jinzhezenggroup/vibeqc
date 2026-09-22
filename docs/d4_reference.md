@@ -73,10 +73,15 @@ packed coordinate buffer. Diagnostics expose exact workspace slots, H2D bytes,
 kernel launches and host/device capacity bounds.
 
 The public named endpoint `pbe-d4-rks` executes native PBE RKS plus
-D4(BJ-EEQ-ATM) and advertises energy only. PBE stationary nuclear gradients are
-still owned by #163, so the analytic D4 gradient does not silently widen the
-complete method force capability. `D4CorrectionBatch` exposes the standalone D4
-energy, analytic gradient and EEQ charges.
+D4(BJ-EEQ-ATM). Native energy remains exact-once owned by the prepared KS/D4
+composition. In the bounded qualified force domain, the stationary derivative
+projects that composite state onto its electronic PBE MethodIR, evaluates the
+existing PBE stationary force, and combines it with the existing D4 analytic
+gradient as `F_total = F_PBE - dE_D4/dR`. The auxiliary D4 force owner publishes
+the correction component/gradient but never adds its energy a second time.
+Unsupported PBE-D4/ECP force combinations remain fail-closed.
+`D4CorrectionBatch` also continues to expose standalone D4 energy, analytic
+gradient and EEQ charges.
 
 There is no runtime dependency on xTBloom or an external dftd4 executable.
 Standard EEQ uses `ga/gc=3/2`; r2SCAN-3c uses the separate `2/1` profile. GFN2

@@ -254,7 +254,6 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_native_order01_gradient.cuh",
             "cuda/direct_native_order2_gradient.cuh",
             "cuda/direct_native_order2_shell.cuh",
-            "cuda/direct_native_order456_gradient.cuh",
             "cuda/direct_native_pair_order2.cuh",
             "cuda/direct_native_pair_order2_gradient.cuh",
             "cuda/direct_native_pair_order3.cuh",
@@ -1860,10 +1859,10 @@ def test_production_manifest_drives_generated_registry_and_shards(
 
 
 @pytest.mark.parametrize("architecture", ("sm_80", "sm_86", "sm_89", "sm_90"))
-def test_unmeasured_cuda_targets_resolve_to_empty_portable_profile(
+def test_unmeasured_cuda_targets_require_explicit_portable_profile(
     architecture: str,
 ) -> None:
-    """Never reuse the measured RTX 5090 schedule on another compute target."""
+    """Never hide a missing tuned profile behind an implicit generic build."""
 
     manifest = (
         REPOSITORY_ROOT
@@ -1872,7 +1871,9 @@ def test_unmeasured_cuda_targets_resolve_to_empty_portable_profile(
         / "integral"
         / "production_shell_classes.json"
     )
-    resolved = resolve_production_profile(manifest, architecture)
+    with pytest.raises(ValueError, match="portable_cuda.*explicitly"):
+        resolve_production_profile(manifest, architecture)
+    resolved = resolve_production_profile(manifest, architecture, "portable_cuda")
     assert resolved.profile == "portable_cuda"
     assert resolved.portable is True
     assert resolved.tuned is False
@@ -2272,11 +2273,24 @@ def test_fixed_generated_task_arena_has_a_memory_admission_limit() -> None:
     """Route large grid-addressable buckets before a multi-GiB allocation."""
 
     source = _direct_cuda_source()
-    assert "direct_schedule.generated_task_arena_maximum_bytes" in source
+    assert "direct_schedule.fixed_topology.arena_maximum_bytes" in source
+    assert "direct_jk_bounded_streaming_task_capacity_limit" in source
     assert "resolve_direct_jk_schedule_policy" in source
     assert "direct_task_layout.exact_tile_count >" in source
     assert "sizeof(GeneratedShellTask)" in source
     assert "requested_bounded_direct_streaming = true" in source
+
+
+def test_direct_task_resource_domains_remain_separate() -> None:
+    """Do not reuse fixed-topology storage to size bounded streaming pages."""
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text()
+    begin = source.index("direct_jk_bounded_streaming_task_capacity_limit")
+    end = source.index("bool reuse_converged_fock_requested", begin)
+    capacity_source = source[begin:end]
+    assert "policy.fixed_topology" not in capacity_source
+    assert "policy.bounded_streaming.task_capacity_ceiling" in capacity_source
+    assert "policy.bounded_streaming.arena_maximum_bytes" in capacity_source
 
 
 def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
@@ -4934,6 +4948,44 @@ def test_autotune_expands_shell_class_list_files_for_batch_runs(
     )
 
 
+@pytest.mark.parametrize("name", ("ssss", "psss", "psps", "ppss"))
+def test_fock_autotune_includes_shared_production_baseline(name: str) -> None:
+    """Treat a shared primary schedule as the shipped Fock baseline."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    expected = dict(_production_fock_schedule_index("sm_120"))[name]
+    trials = supported_schedule_trials(
+        spec, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )
+    assert sum(trial.schedule == expected for trial in trials) == 1
+
+
+def test_production_subgroup_fock_baseline_is_not_experimental() -> None:
+    """The shipped subgroup mapping is evidence, not a new proposal."""
+
+    from vibeqc_compiler.integral.tuning.driver import _experimental_subgroup_blocked
+
+    expected = dict(_production_fock_schedule_index("sm_120"))["ppps"]
+    trials = supported_schedule_trials(
+        FUSED_SHELL_SPEC_BY_NAME["ppps"],
+        KernelConsumer.FOCK,
+        target=TEST_CUDA_TARGET,
+    )
+    baseline = next(trial for trial in trials if trial.schedule == expected)
+    proposal = next(
+        trial
+        for trial in trials
+        if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and trial.schedule != expected
+    )
+    assert not _experimental_subgroup_blocked(
+        baseline, is_production_baseline=True, allow_experimental=False
+    )
+    assert _experimental_subgroup_blocked(
+        proposal, is_production_baseline=False, allow_experimental=False
+    )
+
+
 @pytest.mark.parametrize(
     "name",
     ("ppps", "pppp", "dpps", "dppp", "dpdp", "ddds", "dddp"),
@@ -5414,6 +5466,29 @@ def test_packed_autotune_searches_real_algebra_placement_variants() -> None:
     )
 
 
+def test_autotune_candidate_limit_samples_distinct_execution_geometries() -> None:
+    """Quick tuning must not spend its budget on one enumeration prefix."""
+
+    from vibeqc_compiler.integral.tuning.driver import (
+        _diverse_bounded_trials,
+        _schedule_geometry_key,
+    )
+
+    trials = supported_schedule_trials(
+        PSPS_SPEC, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )
+    chosen = _diverse_bounded_trials(trials, 8)
+
+    assert len(chosen) == 8
+    assert len({_schedule_geometry_key(trial) for trial in chosen}) == len(chosen)
+    assert {trial.schedule.kind for trial in chosen} >= {
+        ScheduleKind.PACKED_TASKS,
+        ScheduleKind.SHELL_TASK,
+        ScheduleKind.SUBGROUP_TASKS,
+        ScheduleKind.COMPONENT_LANES,
+    }
+
+
 def test_autotune_candidate_artifact_includes_static_model(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -5503,6 +5578,8 @@ def test_autotune_candidate_artifact_includes_static_model(
     assert report["artifacts"]["schedule_objects"] == {trial.key: None}
     assert report["search"] == {
         "schedule_kinds": [trial.schedule.kind.value],
+        "candidate_limit_per_class": None,
+        "candidate_limit_strategy": None,
         "trial_count": 1,
     }
     assert report["manifest"]["write_skipped"] is True

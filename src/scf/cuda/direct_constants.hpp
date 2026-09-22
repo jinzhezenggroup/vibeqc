@@ -36,11 +36,9 @@ constexpr unsigned kSchwarzThreads = 1;
 // exact-class pages and the same generated consumers. Keeping the cache modest
 // also leaves room for the large AOT module and CUDA Graph on a 32 GiB device.
 constexpr std::size_t kBoundedGeneratedTasksPerShellPair = 1024;
-// Resident psss force blocks keep one p-s primitive-pair list in shared
-// memory while their threads traverse the system's s-s ket pairs. Large
-// contracted bases fall back to the established compact-tile worker.
-constexpr unsigned kResidentPsssThreads = 128;
-constexpr std::size_t kResidentPsssMaximumBraPrimitivePairs = 64;
+// Resident-PSSS launch/admission parameters are compiler-owned and emitted
+// through generated_direct_resident_psss_schedule.cuh. Keep this header for
+// native correctness/topology invariants rather than accepted tuning evidence.
 // Orders zero through six have dedicated analytic derivatives and enough work
 // to amortize the device queue. Higher generic Dual3 orders retain fixed grids
 // because queue state raises their already-maximal register footprint without

@@ -7,6 +7,7 @@
 #include <limits>
 
 #include "backends/cuda/gfn2_hamiltonian.cuh"
+#include "generated_gfn2_electronic_native.cuh"
 
 namespace xtbloom::detail::cuda {
 namespace {
@@ -58,15 +59,6 @@ __device__ bool checked_square(std::int64_t value, std::int64_t* square) {
     return false;
   }
   *square = value * value;
-  return true;
-}
-
-__device__ bool add_product(double left, double right, double* accumulator) {
-  const double updated = fma(left, right, *accumulator);
-  if (!isfinite(updated)) {
-    return false;
-  }
-  *accumulator = updated;
   return true;
 }
 
@@ -331,57 +323,63 @@ __global__ void assemble_hamiltonian_kernel(Gfn2HamiltonianDeviceBatch batch,
       continue;
     }
 
-    double shift = 0.0;
-    const double half_overlap = -0.5 * overlap;
-    bool finite = add_product(half_overlap, row_scalar, &shift) &&
-                  add_product(half_overlap, column_scalar, &shift);
-    for (int component = 0; component < kGfn2HamiltonianDipoleComponents && finite; ++component) {
-      const double row_potential =
+    vibeqc::xtb::generated::Gfn2ElectronicPairIntegrals pair_integrals{};
+    vibeqc::xtb::generated::Gfn2ElectronicPairPotentials pair_potentials{};
+    pair_integrals.overlap = overlap;
+    pair_potentials.row_scalar = row_scalar;
+    pair_potentials.column_scalar = column_scalar;
+    bool finite = true;
+    for (int component = 0; component < kGfn2HamiltonianDipoleComponents; ++component) {
+      pair_integrals.dipole_forward[component] =
+          input.dipole_integrals[component * batch.total_matrix_elements + forward];
+      pair_integrals.dipole_reverse[component] =
+          input.dipole_integrals[component * batch.total_matrix_elements + reverse];
+      pair_potentials.dipole_row[component] =
           input.atomic_dipole_potentials[row_atom * kGfn2HamiltonianDipoleComponents + component];
-      const double column_potential =
+      pair_potentials.dipole_column[component] =
           input
               .atomic_dipole_potentials[column_atom * kGfn2HamiltonianDipoleComponents + component];
-      const double forward_integral =
-          -0.5 * input.dipole_integrals[component * batch.total_matrix_elements + forward];
-      const double reverse_integral =
-          -0.5 * input.dipole_integrals[component * batch.total_matrix_elements + reverse];
-      if (!isfinite(forward_integral) || !isfinite(reverse_integral)) {
+      if (!isfinite(pair_integrals.dipole_forward[component]) ||
+          !isfinite(pair_integrals.dipole_reverse[component])) {
         record_system_error(system_errors, system, device_error,
                             Gfn2HamiltonianDeviceError::kNonfiniteMultipoleIntegral);
         finite = false;
-      } else if (!isfinite(row_potential) || !isfinite(column_potential)) {
+      } else if (!isfinite(pair_potentials.dipole_row[component]) ||
+                 !isfinite(pair_potentials.dipole_column[component])) {
         record_system_error(system_errors, system, device_error,
                             Gfn2HamiltonianDeviceError::kNonfinitePotential);
         finite = false;
-      } else {
-        finite = add_product(forward_integral, column_potential, &shift) &&
-                 add_product(reverse_integral, row_potential, &shift);
       }
     }
-    for (int component = 0; component < kGfn2HamiltonianQuadrupoleComponents && finite;
-         ++component) {
-      const double row_potential =
+    for (int component = 0; component < kGfn2HamiltonianQuadrupoleComponents; ++component) {
+      pair_integrals.quadrupole_forward[component] =
+          input.quadrupole_integrals[component * batch.total_matrix_elements + forward];
+      pair_integrals.quadrupole_reverse[component] =
+          input.quadrupole_integrals[component * batch.total_matrix_elements + reverse];
+      pair_potentials.quadrupole_row[component] =
           input.atomic_quadrupole_potentials[row_atom * kGfn2HamiltonianQuadrupoleComponents +
                                              component];
-      const double column_potential =
+      pair_potentials.quadrupole_column[component] =
           input.atomic_quadrupole_potentials[column_atom * kGfn2HamiltonianQuadrupoleComponents +
                                              component];
-      const double forward_integral =
-          -0.5 * input.quadrupole_integrals[component * batch.total_matrix_elements + forward];
-      const double reverse_integral =
-          -0.5 * input.quadrupole_integrals[component * batch.total_matrix_elements + reverse];
-      if (!isfinite(forward_integral) || !isfinite(reverse_integral)) {
+      if (!isfinite(pair_integrals.quadrupole_forward[component]) ||
+          !isfinite(pair_integrals.quadrupole_reverse[component])) {
         record_system_error(system_errors, system, device_error,
                             Gfn2HamiltonianDeviceError::kNonfiniteMultipoleIntegral);
         finite = false;
-      } else if (!isfinite(row_potential) || !isfinite(column_potential)) {
+      } else if (!isfinite(pair_potentials.quadrupole_row[component]) ||
+                 !isfinite(pair_potentials.quadrupole_column[component])) {
         record_system_error(system_errors, system, device_error,
                             Gfn2HamiltonianDeviceError::kNonfinitePotential);
         finite = false;
-      } else {
-        finite = add_product(forward_integral, column_potential, &shift) &&
-                 add_product(reverse_integral, row_potential, &shift);
       }
+    }
+    double shift = 0.0;
+    if (finite && !vibeqc::xtb::generated::evaluate_gfn2_electronic_pair(pair_integrals,
+                                                                         pair_potentials, shift)) {
+      record_system_error(system_errors, system, device_error,
+                          Gfn2HamiltonianDeviceError::kNonfiniteAssemblyArithmetic);
+      finite = false;
     }
     if (!finite) {
       if (system_is_valid(system_errors, system)) {
@@ -496,11 +494,13 @@ __global__ void assemble_spin_hamiltonian_kernel(Gfn2HamiltonianDeviceBatch batc
         }
       }
 
-      double shift = 0.0;
-      const double half_overlap = -0.5 * overlap;
-      bool finite = add_product(half_overlap, row_scalar, &shift) &&
-                    add_product(half_overlap, column_scalar, &shift);
-      for (int component = 0; component < kGfn2HamiltonianDipoleComponents && finite; ++component) {
+      vibeqc::xtb::generated::Gfn2ElectronicPairIntegrals pair_integrals{};
+      vibeqc::xtb::generated::Gfn2ElectronicPairPotentials pair_potentials{};
+      pair_integrals.overlap = overlap;
+      pair_potentials.row_scalar = row_scalar;
+      pair_potentials.column_scalar = column_scalar;
+      bool finite = true;
+      for (int component = 0; component < kGfn2HamiltonianDipoleComponents; ++component) {
         const std::int64_t charge_row =
             (spin_atom_begin + local_row_atom) * kGfn2HamiltonianDipoleComponents + component;
         const std::int64_t charge_column =
@@ -534,21 +534,20 @@ __global__ void assemble_spin_hamiltonian_kernel(Gfn2HamiltonianDeviceBatch batc
                               Gfn2HamiltonianDeviceError::kNonfinitePotential);
           finite = false;
         }
-        const double forward_integral =
-            -0.5 * input.dipole_integrals[component * batch.total_matrix_elements + forward];
-        const double reverse_integral =
-            -0.5 * input.dipole_integrals[component * batch.total_matrix_elements + reverse];
-        if (!isfinite(forward_integral) || !isfinite(reverse_integral)) {
+        pair_potentials.dipole_row[component] = row_potential;
+        pair_potentials.dipole_column[component] = column_potential;
+        pair_integrals.dipole_forward[component] =
+            input.dipole_integrals[component * batch.total_matrix_elements + forward];
+        pair_integrals.dipole_reverse[component] =
+            input.dipole_integrals[component * batch.total_matrix_elements + reverse];
+        if (!isfinite(pair_integrals.dipole_forward[component]) ||
+            !isfinite(pair_integrals.dipole_reverse[component])) {
           record_system_error(system_errors, system, device_error,
                               Gfn2HamiltonianDeviceError::kNonfiniteMultipoleIntegral);
           finite = false;
-        } else if (finite) {
-          finite = add_product(forward_integral, column_potential, &shift) &&
-                   add_product(reverse_integral, row_potential, &shift);
         }
       }
-      for (int component = 0; component < kGfn2HamiltonianQuadrupoleComponents && finite;
-           ++component) {
+      for (int component = 0; component < kGfn2HamiltonianQuadrupoleComponents; ++component) {
         const std::int64_t charge_row =
             (spin_atom_begin + local_row_atom) * kGfn2HamiltonianQuadrupoleComponents + component;
         const std::int64_t charge_column =
@@ -584,18 +583,25 @@ __global__ void assemble_spin_hamiltonian_kernel(Gfn2HamiltonianDeviceBatch batc
                               Gfn2HamiltonianDeviceError::kNonfinitePotential);
           finite = false;
         }
-        const double forward_integral =
-            -0.5 * input.quadrupole_integrals[component * batch.total_matrix_elements + forward];
-        const double reverse_integral =
-            -0.5 * input.quadrupole_integrals[component * batch.total_matrix_elements + reverse];
-        if (!isfinite(forward_integral) || !isfinite(reverse_integral)) {
+        pair_potentials.quadrupole_row[component] = row_potential;
+        pair_potentials.quadrupole_column[component] = column_potential;
+        pair_integrals.quadrupole_forward[component] =
+            input.quadrupole_integrals[component * batch.total_matrix_elements + forward];
+        pair_integrals.quadrupole_reverse[component] =
+            input.quadrupole_integrals[component * batch.total_matrix_elements + reverse];
+        if (!isfinite(pair_integrals.quadrupole_forward[component]) ||
+            !isfinite(pair_integrals.quadrupole_reverse[component])) {
           record_system_error(system_errors, system, device_error,
                               Gfn2HamiltonianDeviceError::kNonfiniteMultipoleIntegral);
           finite = false;
-        } else if (finite) {
-          finite = add_product(forward_integral, column_potential, &shift) &&
-                   add_product(reverse_integral, row_potential, &shift);
         }
+      }
+      double shift = 0.0;
+      if (finite && !vibeqc::xtb::generated::evaluate_gfn2_electronic_pair(
+                        pair_integrals, pair_potentials, shift)) {
+        record_system_error(system_errors, system, device_error,
+                            Gfn2HamiltonianDeviceError::kNonfiniteAssemblyArithmetic);
+        finite = false;
       }
       if (!finite) {
         if (system_is_valid(system_errors, system)) {

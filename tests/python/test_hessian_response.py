@@ -136,3 +136,34 @@ def test_stationary_nuclear_response_accepts_cpks_induced_fock() -> None:
     assert np.max(np.abs(response.rhs - without_xc)) > 1e-8
     with pytest.raises(TypeError, match="RHF nuclear response"):
         solve_rhf_nuclear_perturbation(operator, frozen, overlap)
+
+
+@pytest.mark.parametrize("method", ("rhf", "cpks"))
+@pytest.mark.parametrize("transpose", (False, True))
+@pytest.mark.parametrize("imaginary", (0.0, 0.25))
+def test_induced_fock_rejects_complex_density_before_backend(
+    method: str, transpose: bool, imaginary: float
+) -> None:
+    meta, arrays = load_fixture("h2")
+    reference = fixture_snapshot(meta, arrays)
+    backend = DenseAOResponseBackend(np.zeros((reference.nmo,) * 4))
+    if method == "cpks":
+        reference = replace(
+            reference,
+            algorithm="KS",
+            functional_identity="pbe-test",
+            grid_identity="grid-test",
+            hf_backend="synthetic-test-ks",
+        )
+        kernel = _LinearXCKernel(
+            reference.basis_hash, reference.grid_identity, reference.functional_identity
+        )
+        problem = CPKSResponseOperator.build_problem(reference, backend, kernel)
+        operator = CPKSResponseOperator(problem, backend, kernel)
+    else:
+        problem = RHFResponseOperator.build_problem(reference, backend)
+        operator = RHFResponseOperator(problem, backend)
+    density = np.eye(reference.nmo, dtype=np.complex128) * (0.3 + imaginary * 1j)
+    with pytest.raises(ValueError, match="real"):
+        operator.induced_fock(density, transpose=transpose)
+    assert backend.statistics["actions"] == 0

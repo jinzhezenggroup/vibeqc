@@ -87,7 +87,7 @@ constexpr MethodDefinition register_method(const generated::MethodManifestEntry&
            runtime::ProviderFallback::None,
            runtime::ProviderRequirement::PreparedState,
            manifest.unavailable_reason,
-           "methods/public_methods.json"},
+           "manifests/public_methods.json"},
           validate,
           prepare,
           batch};

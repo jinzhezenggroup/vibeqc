@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -33,6 +34,17 @@ vibeqc_status public_status(vibeqc::dft::dispersion::D3Status status) {
   return VIBEQC_STATUS_INTERNAL_ERROR;
 }
 
+constexpr std::size_t kD3LegacyModelSize = offsetof(vibeqc_d3_bj_descriptor, rs6);
+
+bool valid_d3_model_descriptor(const vibeqc_d3_bj_descriptor* model) {
+  return model != nullptr && model->struct_size >= kD3LegacyModelSize &&
+         model->abi_version == VIBEQC_ABI_VERSION;
+}
+
+bool has_extended_d3_model(const vibeqc_d3_bj_descriptor* model) {
+  return model && model->struct_size >= sizeof(vibeqc_d3_bj_descriptor);
+}
+
 }  // namespace
 
 extern "C" {
@@ -41,6 +53,18 @@ const char* vibeqc_d3_table_sha256(void) { return vibeqc::dft::dispersion::d3_da
 
 const char* vibeqc_d3_radii_sha256(void) { return vibeqc::dft::dispersion::d3_data::kRadiiSha256; }
 
+const char* vibeqc_d3_provider_identity(void) {
+  return vibeqc::dft::dispersion::kD3ProductionProviderIdentity;
+}
+
+const char* vibeqc_d3_scheduler_identity(void) {
+  return vibeqc::dft::dispersion::kD3ProductionSchedulerIdentity;
+}
+
+const char* vibeqc_d3_batch_variant_identity(const vibeqc_d3_batch* batch) {
+  return batch ? vibeqc::dft::dispersion::d3_variant_identity(batch->plan->parameters()) : nullptr;
+}
+
 vibeqc_status vibeqc_d3_batch_prepare(vibeqc_context* context,
                                       const vibeqc_d3_system_descriptor* systems,
                                       uint32_t system_count, const vibeqc_d3_bj_descriptor* model,
@@ -48,15 +72,7 @@ vibeqc_status vibeqc_d3_batch_prepare(vibeqc_context* context,
   if (!context || !systems || !system_count || !model || !batch)
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   *batch = nullptr;
-  if (!vibeqc::api::valid_descriptor(model)) return VIBEQC_STATUS_ABI_MISMATCH;
-  if (model->damping != VIBEQC_D3_DAMPING_BJ) {
-    context->last_detail = "production D3 supports BJ damping only";
-    return VIBEQC_STATUS_NOT_IMPLEMENTED;
-  }
-  if (model->s9 != 0.0) {
-    context->last_detail = "production D3 is two-body only; ATM/s9 is unsupported";
-    return VIBEQC_STATUS_NOT_IMPLEMENTED;
-  }
+  if (!valid_d3_model_descriptor(model)) return VIBEQC_STATUS_ABI_MISMATCH;
 
   std::lock_guard<std::recursive_mutex> lock(context->mutex);
   try {
@@ -86,9 +102,41 @@ vibeqc_status vibeqc_d3_batch_prepare(vibeqc_context* context,
       offsets.push_back(static_cast<std::uint32_t>(total_atoms));
     }
 
-    vibeqc::dft::dispersion::D3Parameters parameters{
-        model->s6, model->s8,        model->a1,          model->a2,
-        model->s9, model->cn_cutoff, model->pair_cutoff, model->pair_switch_width};
+    using vibeqc::dft::dispersion::D3Damping;
+    using vibeqc::dft::dispersion::D3ModelParameters;
+    D3ModelParameters parameters{};
+    if (model->damping == VIBEQC_D3_DAMPING_BJ) {
+      parameters.damping = D3Damping::bj;
+      parameters.bj = {model->s6, model->s8,        model->a1,          model->a2,
+                       0.0,       model->cn_cutoff, model->pair_cutoff, model->pair_switch_width};
+      if (model->s9 != 0.0) {
+        if (!has_extended_d3_model(model)) {
+          context->last_detail = "D3(BJ)-ATM requires the extended D3 descriptor";
+          return VIBEQC_STATUS_NOT_IMPLEMENTED;
+        }
+        parameters.atm_enabled = true;
+        parameters.atm = {model->s9, model->cn_cutoff, model->atm_cutoff, model->atm_switch_width};
+      } else {
+        parameters.atm = {0.0, model->cn_cutoff, 0.0, 0.0};
+      }
+    } else if (model->damping == VIBEQC_D3_DAMPING_ZERO) {
+      if (!has_extended_d3_model(model)) {
+        context->last_detail = "zero-damping D3 requires the extended D3 descriptor";
+        return VIBEQC_STATUS_NOT_IMPLEMENTED;
+      }
+      if (model->s9 != 0.0) {
+        context->last_detail = "zero-damping D3 plus ATM is not a separately qualified capability";
+        return VIBEQC_STATUS_NOT_IMPLEMENTED;
+      }
+      parameters.damping = D3Damping::zero;
+      parameters.zero = {
+          model->s6,  model->s8,        model->rs6,         model->rs8,
+          model->alp, model->cn_cutoff, model->pair_cutoff, model->pair_switch_width};
+      parameters.atm = {0.0, model->cn_cutoff, 0.0, 0.0};
+    } else {
+      context->last_detail = "unsupported D3 damping variant";
+      return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    }
 
     vibeqc_status status = VIBEQC_STATUS_INTERNAL_ERROR;
     auto plan = vibeqc::dft::dispersion::D3Plan::prepare(

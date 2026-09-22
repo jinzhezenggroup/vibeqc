@@ -10,8 +10,10 @@
 namespace vibeqc::scf::cuda_policy {
 namespace {
 
-constexpr std::size_t kUnknownTargetGeneratedArenaBytes = std::size_t{256} << 20;
-constexpr std::size_t kGeneratedArenaDeviceMemoryDivisor = 32;
+constexpr std::size_t kUnknownTargetFixedTopologyArenaBytes = std::size_t{256} << 20;
+constexpr std::size_t kFixedTopologyArenaDeviceMemoryDivisor = 32;
+constexpr std::size_t kUnknownTargetBoundedStreamingArenaBytes = std::size_t{256} << 20;
+constexpr std::size_t kBoundedStreamingArenaDeviceMemoryDivisor = 16;
 constexpr unsigned kUnknownTargetPersistentQuartetWarpsPerSm = 4;
 
 constexpr double kDefaultMixedPrecisionFockThreshold = 1.0e-6;
@@ -47,6 +49,13 @@ bool selected(const char* variable, const char* value) noexcept {
          (std::strcmp(selection, "1") == 0 || std::strcmp(selection, value) == 0);
 }
 
+std::size_t resolve_target_memory_budget(std::size_t total_global_memory,
+                                         std::size_t profile_ceiling, std::size_t unknown_fallback,
+                                         std::size_t divisor) noexcept {
+  if (total_global_memory == 0) return std::min(profile_ceiling, unknown_fallback);
+  return std::min(profile_ceiling, total_global_memory / divisor);
+}
+
 std::optional<double> parsed_mixed_precision_override(double screening_tolerance) noexcept {
   // A user-supplied explicit numeric threshold from the legacy switch; the
   // absent / 0 / none / auto / invalid spellings yield std::nullopt.
@@ -67,21 +76,24 @@ std::optional<double> parsed_mixed_precision_override(double screening_tolerance
 DirectJkSchedulePolicy resolve_direct_jk_schedule_policy(const runtime::CudaTargetInfo& target,
                                                          DirectJkTuningProfile profile) noexcept {
   DirectJkSchedulePolicy policy;
-  policy.maximum_generated_task_capacity = profile.maximum_generated_task_capacity;
   policy.cuda_stack_limit_bytes = profile.cuda_stack_limit_bytes;
 
-  // Bound the descriptor arena by an explicit fraction of available device
-  // memory. A 32-GiB target therefore preserves the qualified 1-GiB ceiling,
-  // while smaller targets stop borrowing that endpoint's memory assumption.
-  if (target.total_global_memory == 0) {
-    policy.generated_task_arena_maximum_bytes =
-        std::min(profile.maximum_generated_task_arena_bytes, kUnknownTargetGeneratedArenaBytes);
-  } else {
-    const std::size_t resource_budget =
-        target.total_global_memory / kGeneratedArenaDeviceMemoryDivisor;
-    policy.generated_task_arena_maximum_bytes =
-        std::min(profile.maximum_generated_task_arena_bytes, resource_budget);
-  }
+  // Fixed-topology descriptors are long-lived prepared-state storage. Keep
+  // their historical one-GiB profile ceiling under the conservative 1/32
+  // target-memory budget.
+  policy.fixed_topology.arena_maximum_bytes = resolve_target_memory_budget(
+      target.total_global_memory, profile.fixed_topology.maximum_arena_bytes,
+      kUnknownTargetFixedTopologyArenaBytes, kFixedTopologyArenaDeviceMemoryDivisor);
+
+  // Bounded streaming is a reusable page scratch arena, not fixed-topology
+  // resident storage. Its independently qualified 8M-task page is 1.5 GiB at
+  // the current GeneratedShellTask ABI, so it gets a separate resource budget.
+  // Never derive this capacity from the fixed-topology arena: doing so shrinks
+  // the 768-AO page count and changes endpoint scheduling.
+  policy.bounded_streaming.task_capacity_ceiling = profile.bounded_streaming.maximum_task_capacity;
+  policy.bounded_streaming.arena_maximum_bytes = resolve_target_memory_budget(
+      target.total_global_memory, profile.bounded_streaming.maximum_arena_bytes,
+      kUnknownTargetBoundedStreamingArenaBytes, kBoundedStreamingArenaDeviceMemoryDivisor);
 
   // Persistent workers are one warp per block. Respect both the resident block
   // ceiling and the SM thread ceiling; unknown facts choose a smaller
@@ -101,11 +113,11 @@ DirectJkSchedulePolicy resolve_direct_jk_schedule_policy(const runtime::CudaTarg
   return policy;
 }
 
-std::size_t direct_jk_generated_task_capacity_limit(const DirectJkSchedulePolicy& policy,
-                                                    std::size_t generated_task_bytes) noexcept {
+std::size_t direct_jk_bounded_streaming_task_capacity_limit(
+    const DirectJkSchedulePolicy& policy, std::size_t generated_task_bytes) noexcept {
   if (generated_task_bytes == 0) return 0;
-  return std::min(policy.maximum_generated_task_capacity,
-                  policy.generated_task_arena_maximum_bytes / generated_task_bytes);
+  return std::min(policy.bounded_streaming.task_capacity_ceiling,
+                  policy.bounded_streaming.arena_maximum_bytes / generated_task_bytes);
 }
 
 bool reuse_converged_fock_requested() noexcept {

@@ -141,3 +141,13 @@ The [measured report](../benchmarks/results/accuracy-173/README.md) includes raw
 errors, holdout misses and excess conservatism, audit overhead, model/rank changes,
 failures and reproduction commands. This issue supplies evidence and calibration;
 the precision selection/refinement controller remains owned by #174.
+
+The opt-in NUM03 SCF-effort estimator reports the same distinction for its
+geometry-step holdouts: `force_coverage` counts independently observed strict
+force errors covered by the empirical max-force envelope, while
+`force_underestimation_rows` and the per-row
+`force_underestimation_factor` expose envelope misses. These fields are
+diagnostic evidence only; they do not certify the estimator or change its
+method/basis admission and strict-fallback rules. See the
+[holdout-coverage decision](../.agents/notes/implemented/numerics/2026-09-21-scf-holdout-coverage-reporting.md)
+for the edge-case semantics.
