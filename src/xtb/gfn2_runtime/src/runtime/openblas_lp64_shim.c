@@ -8,4 +8,4 @@
 // dependency closure. libxtbloom itself remains free of a hard BLAS dependency
 // and lazily dlmopens this sibling shim in a new glibc link-map namespace.
 
-static int xtbloom_openblas_lp64_shim_unit_marker;
+static int vibeqc_xtb_openblas_lp64_shim_unit_marker;

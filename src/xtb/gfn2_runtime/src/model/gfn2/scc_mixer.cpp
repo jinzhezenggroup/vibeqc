@@ -4,7 +4,7 @@
 #include <array>
 #include <utility>
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 namespace {
 
 common::SccMixerVectorLayoutView make_common_layout(const WavefunctionLayout& layout) {
@@ -64,52 +64,52 @@ bool SccMixerPlan::overlaps_storage(const void* data, std::size_t size_bytes) co
 }
 const SccMixerPlanData* SccMixerPlan::identity() const noexcept { return engine_.identity(); }
 
-xtbloom_status_t make_scc_mixer_plan(const WavefunctionLayout& layout, std::int64_t history_size,
+vibeqc_xtb_status_t make_scc_mixer_plan(const WavefunctionLayout& layout, std::int64_t history_size,
                                      double damping, double rms_tolerance, double maximum_tolerance,
                                      SccMixerPlan& plan, std::string& error) {
   WavefunctionWarmStartIdentity validated_layout;
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       make_wavefunction_warm_start_identity(layout, 0u, validated_layout, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   common::SccMixerPlan created;
   status = common::make_scc_mixer_plan(make_common_layout(layout), history_size, damping,
                                        rms_tolerance, maximum_tolerance, created, error);
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     plan.engine_ = std::move(created);
   }
   return status;
 }
 
-xtbloom_status_t bind_scc_mixer_state(const SccMixerPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_scc_mixer_state(const SccMixerPlan& plan, void* workspace,
                                       std::size_t workspace_size, SccMixerState& state,
                                       std::string& error) {
   return common::bind_scc_mixer_state(common_plan(plan), workspace, workspace_size, state, error);
 }
 
-xtbloom_status_t bind_scc_mixer_workspace(const SccMixerPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_scc_mixer_workspace(const SccMixerPlan& plan, void* workspace,
                                           std::size_t workspace_size, SccMixerWorkspace& view,
                                           std::string& error) {
   return common::bind_scc_mixer_workspace(common_plan(plan), workspace, workspace_size, view,
                                           error);
 }
 
-xtbloom_status_t initialize_scc_mixer_state_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t initialize_scc_mixer_state_cpu(const SccMixerPlan& plan,
                                                 const WavefunctionView& wavefunction,
                                                 const SccMixerState& state, std::string& error) {
   return common::initialize_scc_mixer_state_cpu(common_plan(plan), make_common_view(wavefunction),
                                                 state, error);
 }
 
-xtbloom_status_t restart_scc_mixer_system_cpu(const SccMixerPlan& plan, std::int64_t system,
+vibeqc_xtb_status_t restart_scc_mixer_system_cpu(const SccMixerPlan& plan, std::int64_t system,
                                               const WavefunctionView& wavefunction,
                                               const SccMixerState& state, std::string& error) {
   return common::restart_scc_mixer_system_cpu(common_plan(plan), system,
                                               make_common_view(wavefunction), state, error);
 }
 
-xtbloom_status_t mix_scc_broyden_system_cpu(const SccMixerPlan& plan, std::int64_t system,
+vibeqc_xtb_status_t mix_scc_broyden_system_cpu(const SccMixerPlan& plan, std::int64_t system,
                                             const WavefunctionView& wavefunction,
                                             const SccMixerState& state,
                                             const SccMixerWorkspace& workspace,
@@ -118,7 +118,7 @@ xtbloom_status_t mix_scc_broyden_system_cpu(const SccMixerPlan& plan, std::int64
       common_plan(plan), system, make_common_view(wavefunction), state, workspace, error);
 }
 
-xtbloom_status_t mix_scc_broyden_batch_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t mix_scc_broyden_batch_cpu(const SccMixerPlan& plan,
                                            const WavefunctionView& wavefunction,
                                            const SccMixerState& state,
                                            const SccMixerWorkspace& workspace, std::string& error) {
@@ -126,7 +126,7 @@ xtbloom_status_t mix_scc_broyden_batch_cpu(const SccMixerPlan& plan,
                                            workspace, error);
 }
 
-xtbloom_status_t prepare_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t prepare_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
                                                           std::int64_t system,
                                                           const SccMixerState& source,
                                                           const SccMixerState& staged,
@@ -135,7 +135,7 @@ xtbloom_status_t prepare_scc_mixer_system_transaction_cpu(const SccMixerPlan& pl
                                                           error);
 }
 
-xtbloom_status_t commit_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t commit_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
                                                          std::int64_t system,
                                                          const SccMixerState& staged,
                                                          const SccMixerState& destination,
@@ -144,4 +144,4 @@ xtbloom_status_t commit_scc_mixer_system_transaction_cpu(const SccMixerPlan& pla
                                                          destination, error);
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

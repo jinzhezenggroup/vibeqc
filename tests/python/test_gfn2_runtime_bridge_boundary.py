@@ -29,8 +29,8 @@ def test_method_layer_confines_vendor_abi_to_bridge_implementation() -> None:
 def test_vendor_runtime_dependency_is_confined_to_bridge_implementation() -> None:
     source = (ROOT / "src/methods/gfn2_runtime_bridge.cpp").read_text()
     assert '"runtime/gfn2_cpu_execution.hpp"' in source
-    assert "xtbloom::detail::execute_restricted_gfn2_cpu" in source
-    assert "xtbloom::detail::Gfn2CpuExecutionCache" in source
+    assert "vibeqc::xtb::detail::execute_restricted_gfn2_cpu" in source
+    assert "vibeqc::xtb::detail::Gfn2CpuExecutionCache" in source
 
 
 def test_bridge_is_part_of_main_library_sources() -> None:

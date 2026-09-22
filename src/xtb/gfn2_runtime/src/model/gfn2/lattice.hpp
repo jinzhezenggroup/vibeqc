@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#ifndef XTBLOOM_MODEL_GFN2_LATTICE_HPP
-#define XTBLOOM_MODEL_GFN2_LATTICE_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_LATTICE_HPP
+#define VIBEQC_XTB_MODEL_GFN2_LATTICE_HPP
 
 #include <array>
 #include <cmath>
@@ -12,12 +12,12 @@
 
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 #if defined(__CUDACC__)
-#define XTBLOOM_LATTICE_HD __host__ __device__
+#define VIBEQC_XTB_LATTICE_HD __host__ __device__
 #else
-#define XTBLOOM_LATTICE_HD
+#define VIBEQC_XTB_LATTICE_HD
 #endif
 
 namespace lattice_binary64_detail {
@@ -28,27 +28,27 @@ namespace lattice_binary64_detail {
  * backend from contracting the determinant into FMAs or retaining wider
  * intermediates at the acceptance boundary.
  */
-XTBLOOM_LATTICE_HD inline double rounded_add(double lhs, double rhs) noexcept {
+VIBEQC_XTB_LATTICE_HD inline double rounded_add(double lhs, double rhs) noexcept {
   volatile double result = lhs + rhs;
   return result;
 }
 
-XTBLOOM_LATTICE_HD inline double rounded_subtract(double lhs, double rhs) noexcept {
+VIBEQC_XTB_LATTICE_HD inline double rounded_subtract(double lhs, double rhs) noexcept {
   volatile double result = lhs - rhs;
   return result;
 }
 
-XTBLOOM_LATTICE_HD inline double rounded_multiply(double lhs, double rhs) noexcept {
+VIBEQC_XTB_LATTICE_HD inline double rounded_multiply(double lhs, double rhs) noexcept {
   volatile double result = lhs * rhs;
   return result;
 }
 
-XTBLOOM_LATTICE_HD inline double rounded_divide(double lhs, double rhs) noexcept {
+VIBEQC_XTB_LATTICE_HD inline double rounded_divide(double lhs, double rhs) noexcept {
   volatile double result = lhs / rhs;
   return result;
 }
 
-XTBLOOM_LATTICE_HD inline double rounded_square_root(double value) noexcept {
+VIBEQC_XTB_LATTICE_HD inline double rounded_square_root(double value) noexcept {
 #if defined(__CUDA_ARCH__)
   volatile double result = sqrt(value);
 #else
@@ -57,16 +57,16 @@ XTBLOOM_LATTICE_HD inline double rounded_square_root(double value) noexcept {
   return result;
 }
 
-XTBLOOM_LATTICE_HD inline double absolute(double value) noexcept {
+VIBEQC_XTB_LATTICE_HD inline double absolute(double value) noexcept {
   return value < 0.0 ? -value : value;
 }
 
-XTBLOOM_LATTICE_HD inline bool finite(double value) noexcept {
+VIBEQC_XTB_LATTICE_HD inline bool finite(double value) noexcept {
   constexpr double maximum = 1.79769313486231570814527423731704357e308;
   return value == value && value <= maximum && value >= -maximum;
 }
 
-XTBLOOM_LATTICE_HD inline double squared_norm(const double* row) noexcept {
+VIBEQC_XTB_LATTICE_HD inline double squared_norm(const double* row) noexcept {
   return rounded_add(
       rounded_add(rounded_multiply(row[0], row[0]), rounded_multiply(row[1], row[1])),
       rounded_multiply(row[2], row[2]));
@@ -82,7 +82,7 @@ XTBLOOM_LATTICE_HD inline double squared_norm(const double* row) noexcept {
  * make cells on the threshold receive one stable answer on every released
  * backend.
  */
-XTBLOOM_LATTICE_HD inline bool valid_lattice_cell_3d_binary64(const double* direct) noexcept {
+VIBEQC_XTB_LATTICE_HD inline bool valid_lattice_cell_3d_binary64(const double* direct) noexcept {
   using namespace lattice_binary64_detail;
   if (direct == nullptr) return false;
 
@@ -161,12 +161,12 @@ enum class LatticeOriginPolicy : std::int32_t {
  * fails. Left-handed cells are rejected instead of silently changing their
  * orientation because later strain derivatives depend on that convention.
  */
-xtbloom_status_t make_lattice_3d(const double* direct, Lattice3D& lattice, std::string& error);
+vibeqc_xtb_status_t make_lattice_3d(const double* direct, Lattice3D& lattice, std::string& error);
 
 /* Convert one xyz vector between Cartesian bohr and fractional coordinates. */
-xtbloom_status_t fractional_to_cartesian(const Lattice3D& lattice, const double* fractional,
+vibeqc_xtb_status_t fractional_to_cartesian(const Lattice3D& lattice, const double* fractional,
                                          double* cartesian, std::string& error);
-xtbloom_status_t cartesian_to_fractional(const Lattice3D& lattice, const double* cartesian,
+vibeqc_xtb_status_t cartesian_to_fractional(const Lattice3D& lattice, const double* cartesian,
                                          double* fractional, std::string& error);
 
 /*
@@ -174,8 +174,8 @@ xtbloom_status_t cartesian_to_fractional(const Lattice3D& lattice, const double*
  * may alias exactly. Cartesian wrapping converts through fractional space, so
  * rigid integer-lattice translations have one canonical representative.
  */
-xtbloom_status_t wrap_fractional(const double* fractional, double* wrapped, std::string& error);
-xtbloom_status_t wrap_cartesian(const Lattice3D& lattice, const double* cartesian, double* wrapped,
+vibeqc_xtb_status_t wrap_fractional(const double* fractional, double* wrapped, std::string& error);
+vibeqc_xtb_status_t wrap_cartesian(const Lattice3D& lattice, const double* cartesian, double* wrapped,
                                 std::string& error);
 
 /*
@@ -188,13 +188,13 @@ xtbloom_status_t wrap_cartesian(const Lattice3D& lattice, const double* cartesia
  * With kInclude the origin is first. All remaining integer triplets use
  * lexicographic (i, j, k) order, which is deterministic across backends.
  */
-xtbloom_status_t make_lattice_translations(const Lattice3D& lattice, double cutoff,
+vibeqc_xtb_status_t make_lattice_translations(const Lattice3D& lattice, double cutoff,
                                            LatticeOriginPolicy origin_policy,
                                            std::vector<LatticeTranslation>& translations,
                                            std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#undef XTBLOOM_LATTICE_HD
+#undef VIBEQC_XTB_LATTICE_HD
 
-#endif  // XTBLOOM_MODEL_GFN2_LATTICE_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_LATTICE_HPP

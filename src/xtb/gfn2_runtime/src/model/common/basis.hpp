@@ -1,14 +1,14 @@
-#ifndef XTBLOOM_MODEL_COMMON_BASIS_HPP
+#ifndef VIBEQC_XTB_MODEL_COMMON_BASIS_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_COMMON_BASIS_HPP
+#define VIBEQC_XTB_MODEL_COMMON_BASIS_HPP
 
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
 #include <vector>
 
-namespace xtbloom::detail::common {
+namespace vibeqc::xtb::detail::common {
 
 /*
  * Geometry-independent basis metadata shared by model-specific setup paths.
@@ -81,6 +81,6 @@ inline std::size_t basis_plan_resident_bytes(const BasisPlan& plan) noexcept {
          vector_bytes(plan.primitive_exponents) + vector_bytes(plan.primitive_coefficients);
 }
 
-}  // namespace xtbloom::detail::common
+}  // namespace vibeqc::xtb::detail::common
 
-#endif  // XTBLOOM_MODEL_COMMON_BASIS_HPP
+#endif  // VIBEQC_XTB_MODEL_COMMON_BASIS_HPP

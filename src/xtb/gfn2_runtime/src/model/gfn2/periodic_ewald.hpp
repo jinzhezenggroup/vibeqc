@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#ifndef XTBLOOM_MODEL_GFN2_PERIODIC_EWALD_HPP
-#define XTBLOOM_MODEL_GFN2_PERIODIC_EWALD_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_PERIODIC_EWALD_HPP
+#define VIBEQC_XTB_MODEL_GFN2_PERIODIC_EWALD_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -14,7 +14,7 @@
 #include "model/gfn2/periodic_topology.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct PeriodicEwaldPlanData;
 
@@ -64,9 +64,9 @@ class PeriodicEwaldPlan {
 
   std::shared_ptr<const PeriodicEwaldPlanData> data_;
 
-  friend xtbloom_status_t make_periodic_ewald_plan(const ES2Plan&, const PeriodicShortRangePlan&,
+  friend vibeqc_xtb_status_t make_periodic_ewald_plan(const ES2Plan&, const PeriodicShortRangePlan&,
                                                    PeriodicEwaldPlan&, std::string&);
-  friend xtbloom_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan&,
+  friend vibeqc_xtb_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan&,
                                                       const PeriodicShortRangePlan&, const double*,
                                                       const double*, double*, double*, double*,
                                                       double*, double*, std::string&);
@@ -77,7 +77,7 @@ class PeriodicEwaldPlan {
  * every lattice in a ragged batch. Alpha and cutoffs follow the pinned tblite
  * binary64 search contract; derivatives hold alpha fixed.
  */
-xtbloom_status_t make_periodic_ewald_plan(const ES2Plan& es2,
+vibeqc_xtb_status_t make_periodic_ewald_plan(const ES2Plan& es2,
                                           const PeriodicShortRangePlan& topology,
                                           PeriodicEwaldPlan& plan, std::string& error);
 
@@ -89,13 +89,13 @@ xtbloom_status_t make_periodic_ewald_plan(const ES2Plan& es2,
  * row-major 3x3 per system.  The operation is transactional: outputs are
  * written only after every system has produced finite values.
  */
-xtbloom_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan& plan,
+vibeqc_xtb_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan& plan,
                                              const PeriodicShortRangePlan& topology,
                                              const double* positions, const double* shell_charges,
                                              double* coulomb_matrix, double* shell_potentials,
                                              double* energies, double* gradients,
                                              double* strain_derivatives, std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_PERIODIC_EWALD_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_PERIODIC_EWALD_HPP

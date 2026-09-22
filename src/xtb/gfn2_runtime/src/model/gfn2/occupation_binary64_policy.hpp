@@ -5,25 +5,25 @@
 #include <cstdint>
 
 #if defined(__CUDACC__)
-#define XTBLOOM_OCCUPATION_HD __host__ __device__
+#define VIBEQC_XTB_OCCUPATION_HD __host__ __device__
 #else
-#define XTBLOOM_OCCUPATION_HD
+#define VIBEQC_XTB_OCCUPATION_HD
 #endif
 
-namespace xtbloom::detail::gfn2::binary64_policy {
+namespace vibeqc::xtb::detail::gfn2::binary64_policy {
 
 constexpr double kMaximum = 1.79769313486231570814527423731704357e308;
 constexpr double kEpsilon = 2.220446049250313080847263336181640625e-16;
 constexpr double kRepresentableErrorScale = 2.0 * kEpsilon;
 constexpr int kMaximumRootIterations = 4096;
 
-XTBLOOM_OCCUPATION_HD inline double maximum(double first, double second) {
+VIBEQC_XTB_OCCUPATION_HD inline double maximum(double first, double second) {
   return first > second ? first : second;
 }
 
-XTBLOOM_OCCUPATION_HD inline double absolute(double value) { return value < 0.0 ? -value : value; }
+VIBEQC_XTB_OCCUPATION_HD inline double absolute(double value) { return value < 0.0 ? -value : value; }
 
-XTBLOOM_OCCUPATION_HD inline bool finite(double value) {
+VIBEQC_XTB_OCCUPATION_HD inline bool finite(double value) {
 #if defined(__CUDA_ARCH__)
   return isfinite(value);
 #else
@@ -31,7 +31,7 @@ XTBLOOM_OCCUPATION_HD inline bool finite(double value) {
 #endif
 }
 
-XTBLOOM_OCCUPATION_HD inline bool negative_sign(double value) {
+VIBEQC_XTB_OCCUPATION_HD inline bool negative_sign(double value) {
 #if defined(__CUDA_ARCH__)
   return signbit(value);
 #else
@@ -39,7 +39,7 @@ XTBLOOM_OCCUPATION_HD inline bool negative_sign(double value) {
 #endif
 }
 
-XTBLOOM_OCCUPATION_HD inline double exponential(double value) {
+VIBEQC_XTB_OCCUPATION_HD inline double exponential(double value) {
 #if defined(__CUDA_ARCH__)
   return exp(value);
 #else
@@ -47,7 +47,7 @@ XTBLOOM_OCCUPATION_HD inline double exponential(double value) {
 #endif
 }
 
-XTBLOOM_OCCUPATION_HD inline double logarithm(double value) {
+VIBEQC_XTB_OCCUPATION_HD inline double logarithm(double value) {
 #if defined(__CUDA_ARCH__)
   return log(value);
 #else
@@ -55,7 +55,7 @@ XTBLOOM_OCCUPATION_HD inline double logarithm(double value) {
 #endif
 }
 
-XTBLOOM_OCCUPATION_HD inline double logarithm_one_plus(double value) {
+VIBEQC_XTB_OCCUPATION_HD inline double logarithm_one_plus(double value) {
 #if defined(__CUDA_ARCH__)
   return log1p(value);
 #else
@@ -63,7 +63,7 @@ XTBLOOM_OCCUPATION_HD inline double logarithm_one_plus(double value) {
 #endif
 }
 
-XTBLOOM_OCCUPATION_HD inline double adjacent(double value, double direction) {
+VIBEQC_XTB_OCCUPATION_HD inline double adjacent(double value, double direction) {
 #if defined(__CUDA_ARCH__)
   return nextafter(value, direction);
 #else
@@ -71,7 +71,7 @@ XTBLOOM_OCCUPATION_HD inline double adjacent(double value, double direction) {
 #endif
 }
 
-XTBLOOM_OCCUPATION_HD inline double saturated_add(double first, double second) {
+VIBEQC_XTB_OCCUPATION_HD inline double saturated_add(double first, double second) {
   const double result = first + second;
   if (finite(result)) {
     return result;
@@ -80,7 +80,7 @@ XTBLOOM_OCCUPATION_HD inline double saturated_add(double first, double second) {
                                                                                : kMaximum;
 }
 
-XTBLOOM_OCCUPATION_HD inline double saturated_subtract(double first, double second) {
+VIBEQC_XTB_OCCUPATION_HD inline double saturated_subtract(double first, double second) {
   const double result = first - second;
   if (finite(result)) {
     return result;
@@ -88,14 +88,14 @@ XTBLOOM_OCCUPATION_HD inline double saturated_subtract(double first, double seco
   return first < second ? -kMaximum : kMaximum;
 }
 
-XTBLOOM_OCCUPATION_HD inline double saturated_multiply_nonnegative(double first, double second) {
+VIBEQC_XTB_OCCUPATION_HD inline double saturated_multiply_nonnegative(double first, double second) {
   if (first == 0.0 || second == 0.0) {
     return 0.0;
   }
   return first > kMaximum / second ? kMaximum : first * second;
 }
 
-XTBLOOM_OCCUPATION_HD inline double saturated_affine(double reference, double multiplier,
+VIBEQC_XTB_OCCUPATION_HD inline double saturated_affine(double reference, double multiplier,
                                                      double scale) {
   const double product = multiplier * scale;
   if (finite(product)) {
@@ -111,7 +111,7 @@ XTBLOOM_OCCUPATION_HD inline double saturated_affine(double reference, double mu
   return normalized * kMaximum;
 }
 
-XTBLOOM_OCCUPATION_HD inline double scaled_energy_difference(double energy, double reference,
+VIBEQC_XTB_OCCUPATION_HD inline double scaled_energy_difference(double energy, double reference,
                                                              double temperature) {
   if (negative_sign(energy) == negative_sign(reference)) {
     const double result = (energy - reference) / temperature;
@@ -129,11 +129,11 @@ XTBLOOM_OCCUPATION_HD inline double scaled_energy_difference(double energy, doub
   return energy < reference ? -kMaximum : kMaximum;
 }
 
-XTBLOOM_OCCUPATION_HD inline double stable_middle(double lower, double upper) {
+VIBEQC_XTB_OCCUPATION_HD inline double stable_middle(double lower, double upper) {
   return 0.5 * lower + 0.5 * upper;
 }
 
-XTBLOOM_OCCUPATION_HD inline double fermi_value(double scaled_energy, double scaled_mu) {
+VIBEQC_XTB_OCCUPATION_HD inline double fermi_value(double scaled_energy, double scaled_mu) {
   const double argument = saturated_subtract(scaled_energy, scaled_mu);
   if (argument >= 0.0) {
     const double value = exponential(-argument);
@@ -142,7 +142,7 @@ XTBLOOM_OCCUPATION_HD inline double fermi_value(double scaled_energy, double sca
   return 1.0 / (exponential(argument) + 1.0);
 }
 
-XTBLOOM_OCCUPATION_HD inline double fermi_hole_value(double scaled_energy, double scaled_mu) {
+VIBEQC_XTB_OCCUPATION_HD inline double fermi_hole_value(double scaled_energy, double scaled_mu) {
   const double argument = saturated_subtract(scaled_energy, scaled_mu);
   if (argument >= 0.0) {
     return 1.0 / (exponential(-argument) + 1.0);
@@ -156,14 +156,14 @@ struct CompensatedSum {
   double compensation = 0.0;
 };
 
-XTBLOOM_OCCUPATION_HD inline void add_compensated(CompensatedSum& sum, double value) {
+VIBEQC_XTB_OCCUPATION_HD inline void add_compensated(CompensatedSum& sum, double value) {
   const double corrected = value - sum.compensation;
   const double updated = sum.value + corrected;
   sum.compensation = (updated - sum.value) - corrected;
   sum.value = updated;
 }
 
-XTBLOOM_OCCUPATION_HD inline double quantity(const double* eigenvalues, std::int64_t count,
+VIBEQC_XTB_OCCUPATION_HD inline double quantity(const double* eigenvalues, std::int64_t count,
                                              double energy_reference, double scaled_mu,
                                              double temperature, bool solve_holes) {
   CompensatedSum sum{};
@@ -193,7 +193,7 @@ struct Root {
  * and the CPU rare path deliberately reuses it so publication candidates and
  * chemical-potential tie breaking do not depend on wider host long double.
  */
-XTBLOOM_OCCUPATION_HD inline bool solve_root_once(const double* eigenvalues, std::int64_t count,
+VIBEQC_XTB_OCCUPATION_HD inline bool solve_root_once(const double* eigenvalues, std::int64_t count,
                                                   double quantity_target, double temperature,
                                                   bool solve_holes, double energy_reference,
                                                   Root& root) {
@@ -263,7 +263,7 @@ XTBLOOM_OCCUPATION_HD inline bool solve_root_once(const double* eigenvalues, std
   return true;
 }
 
-XTBLOOM_OCCUPATION_HD inline std::int64_t unique_changing_degenerate_frontier(
+VIBEQC_XTB_OCCUPATION_HD inline std::int64_t unique_changing_degenerate_frontier(
     const double* eigenvalues, std::int64_t count, double temperature, bool solve_holes,
     const Root& root) {
   std::int64_t frontier = count;
@@ -291,7 +291,7 @@ XTBLOOM_OCCUPATION_HD inline std::int64_t unique_changing_degenerate_frontier(
   return frontier;
 }
 
-XTBLOOM_OCCUPATION_HD inline bool root_straddles_target(const double* eigenvalues,
+VIBEQC_XTB_OCCUPATION_HD inline bool root_straddles_target(const double* eigenvalues,
                                                         std::int64_t count, double target,
                                                         double temperature, bool solve_holes,
                                                         const Root& root) {
@@ -304,7 +304,7 @@ XTBLOOM_OCCUPATION_HD inline bool root_straddles_target(const double* eigenvalue
                       : lower_quantity <= target && upper_quantity >= target);
 }
 
-XTBLOOM_OCCUPATION_HD inline bool solve_root(const double* eigenvalues, std::int64_t count,
+VIBEQC_XTB_OCCUPATION_HD inline bool solve_root(const double* eigenvalues, std::int64_t count,
                                              double target, double temperature, bool solve_holes,
                                              Root& root) {
   const double reference = solve_holes ? eigenvalues[count - 1] : eigenvalues[0];
@@ -345,7 +345,7 @@ XTBLOOM_OCCUPATION_HD inline bool solve_root(const double* eigenvalues, std::int
   return true;
 }
 
-XTBLOOM_OCCUPATION_HD inline std::int64_t largest_degenerate_block(const double* eigenvalues,
+VIBEQC_XTB_OCCUPATION_HD inline std::int64_t largest_degenerate_block(const double* eigenvalues,
                                                                    std::int64_t count) {
   std::int64_t largest = 0;
   for (std::int64_t begin = 0; begin < count;) {
@@ -361,7 +361,7 @@ XTBLOOM_OCCUPATION_HD inline std::int64_t largest_degenerate_block(const double*
   return largest;
 }
 
-XTBLOOM_OCCUPATION_HD inline double baseline_occupation(const double* eigenvalues,
+VIBEQC_XTB_OCCUPATION_HD inline double baseline_occupation(const double* eigenvalues,
                                                         std::int64_t orbital, double temperature,
                                                         const Root& root) {
   return fermi_value(
@@ -383,7 +383,7 @@ struct Publication {
   double compensated_error = 0.0;
 };
 
-XTBLOOM_OCCUPATION_HD inline double published_occupation(const double* eigenvalues,
+VIBEQC_XTB_OCCUPATION_HD inline double published_occupation(const double* eigenvalues,
                                                          std::int64_t orbital, double temperature,
                                                          const Root& root,
                                                          const Publication& publication) {
@@ -406,7 +406,7 @@ struct Candidate {
   double tolerance = 0.0;
 };
 
-XTBLOOM_OCCUPATION_HD inline bool better_candidate(double error, bool fractional,
+VIBEQC_XTB_OCCUPATION_HD inline bool better_candidate(double error, bool fractional,
                                                    std::int64_t begin, double occupation,
                                                    const Candidate& best) {
   return !best.found || error < best.error ||
@@ -416,7 +416,7 @@ XTBLOOM_OCCUPATION_HD inline bool better_candidate(double error, bool fractional
           begin < best.begin);
 }
 
-XTBLOOM_OCCUPATION_HD inline double compensated_publication_error(
+VIBEQC_XTB_OCCUPATION_HD inline double compensated_publication_error(
     const double* eigenvalues, std::int64_t count, double temperature, const Root& root,
     const Publication& publication, bool solve_holes, double target) {
   CompensatedSum sum{};
@@ -433,7 +433,7 @@ struct DoubleDouble {
   double low = 0.0;
 };
 
-XTBLOOM_OCCUPATION_HD inline void add_double_double(DoubleDouble& total, double value) {
+VIBEQC_XTB_OCCUPATION_HD inline void add_double_double(DoubleDouble& total, double value) {
   const double sum = total.high + value;
   const double virtual_value = sum - total.high;
   const double error = (total.high - (sum - virtual_value)) + (value - virtual_value) + total.low;
@@ -442,7 +442,7 @@ XTBLOOM_OCCUPATION_HD inline void add_double_double(DoubleDouble& total, double 
   total.high = high;
 }
 
-XTBLOOM_OCCUPATION_HD inline DoubleDouble audited_publication_residual(
+VIBEQC_XTB_OCCUPATION_HD inline DoubleDouble audited_publication_residual(
     const double* eigenvalues, std::int64_t count, double temperature, const Root& root,
     const Publication& publication, bool solve_holes, double target) {
   DoubleDouble total{};
@@ -455,7 +455,7 @@ XTBLOOM_OCCUPATION_HD inline DoubleDouble audited_publication_residual(
   return total;
 }
 
-XTBLOOM_OCCUPATION_HD inline int double_double_sign(const DoubleDouble& value) {
+VIBEQC_XTB_OCCUPATION_HD inline int double_double_sign(const DoubleDouble& value) {
   if (value.high > 0.0) {
     return 1;
   }
@@ -465,7 +465,7 @@ XTBLOOM_OCCUPATION_HD inline int double_double_sign(const DoubleDouble& value) {
   return value.low > 0.0 ? 1 : (value.low < 0.0 ? -1 : 0);
 }
 
-XTBLOOM_OCCUPATION_HD inline bool double_double_within(const DoubleDouble& residual,
+VIBEQC_XTB_OCCUPATION_HD inline bool double_double_within(const DoubleDouble& residual,
                                                        double tolerance) {
   DoubleDouble below_upper = residual;
   DoubleDouble above_lower = residual;
@@ -474,7 +474,7 @@ XTBLOOM_OCCUPATION_HD inline bool double_double_within(const DoubleDouble& resid
   return double_double_sign(below_upper) <= 0 && double_double_sign(above_lower) >= 0;
 }
 
-XTBLOOM_OCCUPATION_HD inline bool audited_publication_within(
+VIBEQC_XTB_OCCUPATION_HD inline bool audited_publication_within(
     const double* eigenvalues, std::int64_t count, double temperature, const Root& root,
     const Publication& publication, bool solve_holes, double target, double tolerance) {
   const DoubleDouble residual = audited_publication_residual(eigenvalues, count, temperature, root,
@@ -482,7 +482,7 @@ XTBLOOM_OCCUPATION_HD inline bool audited_publication_within(
   return double_double_within(residual, tolerance);
 }
 
-XTBLOOM_OCCUPATION_HD inline double publication_entropy(const double* eigenvalues,
+VIBEQC_XTB_OCCUPATION_HD inline double publication_entropy(const double* eigenvalues,
                                                         std::int64_t count, double temperature,
                                                         const Root& root,
                                                         const Publication& publication) {
@@ -498,7 +498,7 @@ XTBLOOM_OCCUPATION_HD inline double publication_entropy(const double* eigenvalue
   return entropy.value;
 }
 
-XTBLOOM_OCCUPATION_HD inline bool select_publication(const double* eigenvalues, std::int64_t count,
+VIBEQC_XTB_OCCUPATION_HD inline bool select_publication(const double* eigenvalues, std::int64_t count,
                                                      double target, double temperature,
                                                      bool solve_holes, const Root& root,
                                                      Publication& publication) {
@@ -605,7 +605,7 @@ XTBLOOM_OCCUPATION_HD inline bool select_publication(const double* eigenvalues, 
                                      solve_holes, target, publication.relaxed_tolerance));
 }
 
-XTBLOOM_OCCUPATION_HD inline double root_acceptance_tolerance(double target, const Root& root) {
+VIBEQC_XTB_OCCUPATION_HD inline double root_acceptance_tolerance(double target, const Root& root) {
   double tolerance = 1024.0 * kEpsilon * target;
   if (root.frontier_begin >= 0 && root.frontier_end > root.frontier_begin) {
     const double frontier_floor =
@@ -615,6 +615,6 @@ XTBLOOM_OCCUPATION_HD inline double root_acceptance_tolerance(double target, con
   return tolerance;
 }
 
-}  // namespace xtbloom::detail::gfn2::binary64_policy
+}  // namespace vibeqc::xtb::detail::gfn2::binary64_policy
 
-#undef XTBLOOM_OCCUPATION_HD
+#undef VIBEQC_XTB_OCCUPATION_HD

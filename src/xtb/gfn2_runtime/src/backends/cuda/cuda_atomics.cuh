@@ -1,11 +1,11 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_CUDA_ATOMICS_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_CUDA_ATOMICS_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_CUDA_ATOMICS_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_CUDA_ATOMICS_CUH
 
 #include <cuda_runtime.h>
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /*
  * FP64 atomic addition is native from sm_60 onward. CUDA can still compile
@@ -15,7 +15,7 @@ namespace xtbloom::detail::cuda {
  * cannot make the retry loop spin forever.
  */
 __device__ inline double atomic_add_fp64(double* address, double value) noexcept {
-#if !defined(XTBLOOM_FORCE_FP64_ATOMIC_CAS) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
+#if !defined(VIBEQC_XTB_FORCE_FP64_ATOMIC_CAS) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
   return atomicAdd(address, value);
 #else
   auto* bits = reinterpret_cast<unsigned long long*>(address);
@@ -29,6 +29,6 @@ __device__ inline double atomic_add_fp64(double* address, double value) noexcept
 #endif
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_CUDA_ATOMICS_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_CUDA_ATOMICS_CUH

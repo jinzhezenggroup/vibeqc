@@ -15,7 +15,7 @@
 #include "generated_gfn2_pair_native.hpp"
 #include "model/gfn2/periodic_topology.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 namespace {
 
 constexpr double kCutoffBohr = 25.0;
@@ -58,13 +58,13 @@ bool representable_geometry_size(std::int64_t atom_count) {
          count <= static_cast<std::uint64_t>(std::numeric_limits<std::ptrdiff_t>::max()) / 3u;
 }
 
-xtbloom_status_t validate_plan(const CoordinationPlan& plan, std::string& error) {
+vibeqc_xtb_status_t validate_plan(const CoordinationPlan& plan, std::string& error) {
   if (plan.batch_size <= 0 || plan.total_atoms <= 0 || !representable_as_size(plan.batch_size) ||
       !representable_geometry_size(plan.total_atoms) ||
       static_cast<std::uint64_t>(plan.batch_size) >=
           static_cast<std::uint64_t>(std::numeric_limits<std::ptrdiff_t>::max())) {
     error = "coordination plan has invalid batch or atom counts";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const auto atom_count = static_cast<std::size_t>(plan.total_atoms);
@@ -72,44 +72,44 @@ xtbloom_status_t validate_plan(const CoordinationPlan& plan, std::string& error)
       plan.covalent_radius.size() != atom_count || plan.atom_offsets.front() != 0 ||
       plan.atom_offsets.back() != plan.total_atoms) {
     error = "coordination plan is incomplete or internally inconsistent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::int64_t batch = 0; batch < plan.batch_size; ++batch) {
     const std::int64_t begin = plan.atom_offsets[static_cast<std::size_t>(batch)];
     const std::int64_t end = plan.atom_offsets[static_cast<std::size_t>(batch + 1)];
     if (begin < 0 || begin > end || end > plan.total_atoms) {
       error = "coordination plan offsets are not a valid ragged partition";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   for (double radius : plan.covalent_radius) {
     if (!(radius > 0.0) || !std::isfinite(radius)) {
       error = "coordination plan contains an invalid covalent radius";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_positions(const CoordinationPlan& plan, const double* positions,
+vibeqc_xtb_status_t validate_positions(const CoordinationPlan& plan, const double* positions,
                                     std::string& error) {
   if (positions == nullptr) {
     error = "coordination positions must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const auto coordinate_count = static_cast<std::size_t>(plan.total_atoms) * 3u;
   for (std::size_t coordinate = 0; coordinate < coordinate_count; ++coordinate) {
     if (!std::isfinite(positions[coordinate])) {
       error = "coordination positions contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 }  // namespace
 
-xtbloom_status_t make_coordination_plan(std::int64_t batch_size, std::int64_t total_atoms,
+vibeqc_xtb_status_t make_coordination_plan(std::int64_t batch_size, std::int64_t total_atoms,
                                         const std::int64_t* atom_offsets,
                                         const std::int32_t* atomic_numbers, CoordinationPlan& plan,
                                         std::string& error) {
@@ -118,20 +118,20 @@ xtbloom_status_t make_coordination_plan(std::int64_t batch_size, std::int64_t to
       static_cast<std::uint64_t>(batch_size) >=
           static_cast<std::uint64_t>(std::numeric_limits<std::ptrdiff_t>::max())) {
     error = "coordination plan requires positive, representable batch and atom counts";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atom_offsets == nullptr || atomic_numbers == nullptr) {
     error = "coordination plan offsets and atomic numbers must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atom_offsets[0] != 0 || atom_offsets[batch_size] != total_atoms) {
     error = "coordination plan offsets must start at zero and end at total_atoms";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::int64_t batch = 0; batch < batch_size; ++batch) {
     if (atom_offsets[batch] > atom_offsets[batch + 1]) {
       error = "coordination plan offsets must be monotonically nondecreasing";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -149,7 +149,7 @@ xtbloom_status_t make_coordination_plan(std::int64_t batch_size, std::int64_t to
           parameters::gfn2::find_element(static_cast<std::uint32_t>(atomic_number));
       if (element == nullptr || element->atomic_number != atomic_number) {
         error = "coordination plan contains an unsupported atomic number";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       created.covalent_radius[static_cast<std::size_t>(atom)] =
           radius_scale * kCovalentRadiiAngstrom[static_cast<std::size_t>(atomic_number - 1)];
@@ -157,25 +157,25 @@ xtbloom_status_t make_coordination_plan(std::int64_t batch_size, std::int64_t to
 
     plan = std::move(created);
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate the GFN2 coordination plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t evaluate_coordination_cpu(const CoordinationPlan& plan, const double* positions,
+vibeqc_xtb_status_t evaluate_coordination_cpu(const CoordinationPlan& plan, const double* positions,
                                            double* coordination_numbers, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (coordination_numbers == nullptr) {
     error = "coordination output must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_positions(plan, positions, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -205,7 +205,7 @@ xtbloom_status_t evaluate_coordination_cpu(const CoordinationPlan& plan, const d
            * threshold means two distinct atoms are coincident or nearly so.
            */
           error = "coordination is undefined for coincident or near-coincident atoms";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         if (distance_squared > cutoff_squared) {
           continue;
@@ -217,7 +217,7 @@ xtbloom_status_t evaluate_coordination_cpu(const CoordinationPlan& plan, const d
         if (!vibeqc::xtb::generated::evaluate_gfn2_coordination_pair(
                 std::sqrt(distance_squared), radius, pair)) {
           error = "compiler-generated GFN2 coordination pair evaluation failed";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         coordination_numbers[first_index] += pair.value;
         coordination_numbers[second_index] += pair.value;
@@ -226,29 +226,29 @@ xtbloom_status_t evaluate_coordination_cpu(const CoordinationPlan& plan, const d
   }
 
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_coordination_gradient_cpu(const CoordinationPlan& plan,
+vibeqc_xtb_status_t add_coordination_gradient_cpu(const CoordinationPlan& plan,
                                                const double* positions, const double* dE_dcn,
                                                double* gradients, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (dE_dcn == nullptr || gradients == nullptr) {
     error = "coordination derivative inputs and gradients must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_positions(plan, positions, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const auto atom_count = static_cast<std::size_t>(plan.total_atoms);
   for (std::size_t atom = 0; atom < atom_count; ++atom) {
     if (!std::isfinite(dE_dcn[atom])) {
       error = "coordination derivatives contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -266,7 +266,7 @@ xtbloom_status_t add_coordination_gradient_cpu(const CoordinationPlan& plan,
         const double distance_squared = dx * dx + dy * dy + dz * dz;
         if (distance_squared < kMinimumDistanceSquared) {
           error = "coordination derivative is undefined for coincident or near-coincident atoms";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         if (distance_squared > cutoff_squared) {
           continue;
@@ -279,7 +279,7 @@ xtbloom_status_t add_coordination_gradient_cpu(const CoordinationPlan& plan,
         if (!vibeqc::xtb::generated::evaluate_gfn2_coordination_pair(
                 distance, radius, pair)) {
           error = "compiler-generated GFN2 coordination derivative failed";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         const double weight = dE_dcn[first_index] + dE_dcn[second_index];
         const double scale = weight * pair.distance_derivative / distance;
@@ -298,7 +298,7 @@ xtbloom_status_t add_coordination_gradient_cpu(const CoordinationPlan& plan,
   }
 
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 namespace {
@@ -311,20 +311,20 @@ bool finite_array(const double* values, std::size_t count) {
   return true;
 }
 
-xtbloom_status_t validate_periodic_coordination_context(
+vibeqc_xtb_status_t validate_periodic_coordination_context(
     const CoordinationPlan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const PeriodicShortRangeWorkspace& workspace,
     std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!periodic_plan.sealed() || periodic_plan.batch_size() != plan.batch_size ||
       periodic_plan.total_atoms() != plan.total_atoms ||
       periodic_plan.atom_offsets() != plan.atom_offsets) {
     error = "periodic coordination topology does not match the coordination plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_periodic_short_range_workspace(periodic_plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (geometry.plan_identity != periodic_plan.identity() || geometry.geometry_generation == 0u ||
       geometry.wrapped_positions == nullptr ||
       geometry.wrapped_position_elements != plan.total_atoms * 3 ||
@@ -334,13 +334,13 @@ xtbloom_status_t validate_periodic_coordination_context(
       workspace.gradient_elements != plan.total_atoms * 3 ||
       workspace.strain_elements != plan.batch_size * 9) {
     error = "periodic coordination geometry or workspace is incomplete";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 template <typename PairOperation>
-xtbloom_status_t for_each_periodic_coordination_pair(const CoordinationPlan& plan,
+vibeqc_xtb_status_t for_each_periodic_coordination_pair(const CoordinationPlan& plan,
                                                      const PeriodicShortRangePlan& periodic_plan,
                                                      const PeriodicShortRangeGeometry& geometry,
                                                      PairOperation&& operation,
@@ -353,7 +353,7 @@ xtbloom_status_t for_each_periodic_coordination_pair(const CoordinationPlan& pla
         periodic_plan.translations(system, PeriodicTranslationCutoff::kShortRange25);
     if (translations.data == nullptr || translations.size <= 0) {
       error = "periodic coordination translation topology is empty";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     for (std::int64_t first = begin; first < end; ++first) {
       const std::array<double, 3> center{
@@ -381,35 +381,35 @@ xtbloom_status_t for_each_periodic_coordination_pair(const CoordinationPlan& pla
           }
           if (distance_squared < kMinimumDistanceSquared) {
             error = "periodic coordination is undefined for coincident or near-coincident images";
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
           if (!operation(system, first, second, displacement, distance_squared)) {
             if (error.empty()) {
               error = "periodic coordination pair operation failed";
             }
-            return XTBLOOM_STATUS_INTERNAL_ERROR;
+            return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
           }
         }
       }
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 }  // namespace
 
-xtbloom_status_t evaluate_periodic_coordination_cpu(const CoordinationPlan& plan,
+vibeqc_xtb_status_t evaluate_periodic_coordination_cpu(const CoordinationPlan& plan,
                                                     const PeriodicShortRangePlan& periodic_plan,
                                                     const PeriodicShortRangeGeometry& geometry,
                                                     double* coordination_numbers,
                                                     const PeriodicShortRangeWorkspace& workspace,
                                                     std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_periodic_coordination_context(plan, periodic_plan, geometry, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (coordination_numbers == nullptr) {
     error = "periodic coordination output must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms);
@@ -431,30 +431,30 @@ xtbloom_status_t evaluate_periodic_coordination_cpu(const CoordinationPlan& plan
         return true;
       },
       error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!finite_array(workspace.atom_scratch, atom_count)) {
     error = "periodic coordination evaluation overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   std::copy_n(workspace.atom_scratch, atom_count, coordination_numbers);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_periodic_coordination_gradient_cpu(
+vibeqc_xtb_status_t add_periodic_coordination_gradient_cpu(
     const CoordinationPlan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* dE_dcn, double* gradients,
     double* strain_derivatives, const PeriodicShortRangeWorkspace& workspace, std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_periodic_coordination_context(plan, periodic_plan, geometry, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms);
   const std::size_t gradient_count = atom_count * 3u;
   const std::size_t strain_count = static_cast<std::size_t>(plan.batch_size) * 9u;
   if (!finite_array(dE_dcn, atom_count) || !finite_array(gradients, gradient_count) ||
       !finite_array(strain_derivatives, strain_count)) {
     error = "periodic coordination derivatives and outputs must be finite";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::fill_n(workspace.gradient_scratch, gradient_count, 0.0);
@@ -493,11 +493,11 @@ xtbloom_status_t add_periodic_coordination_gradient_cpu(
         return true;
       },
       error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!finite_array(workspace.gradient_scratch, gradient_count) ||
       !finite_array(workspace.strain_scratch, strain_count)) {
     error = "periodic coordination derivative overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   for (std::size_t coordinate = 0; coordinate < gradient_count; ++coordinate) {
     gradients[coordinate] += workspace.gradient_scratch[coordinate];
@@ -506,7 +506,7 @@ xtbloom_status_t add_periodic_coordination_gradient_cpu(
     strain_derivatives[component] += workspace.strain_scratch[component];
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

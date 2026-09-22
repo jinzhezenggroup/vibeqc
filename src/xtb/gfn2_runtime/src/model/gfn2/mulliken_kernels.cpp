@@ -1,9 +1,9 @@
 #include "model/gfn2/mulliken_kernels.hpp"
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
-#if !defined(XTBLOOM_HAS_AVX2_FMA_KERNELS)
+#if !defined(VIBEQC_XTB_HAS_AVX2_FMA_KERNELS)
 const MullikenKernelTable& mulliken_avx2_fma_kernels() noexcept {
   /* Keep baseline-only builds linkable for generic diagnostics and tests that
    * mention the AVX2 table behind cpu_avx2_fma_kernels_built(). Selection can
@@ -13,7 +13,7 @@ const MullikenKernelTable& mulliken_avx2_fma_kernels() noexcept {
 #endif
 
 const MullikenKernelTable& mulliken_kernels_for_cpu_isa(CpuIsa isa) noexcept {
-#if defined(XTBLOOM_HAS_AVX2_FMA_KERNELS)
+#if defined(VIBEQC_XTB_HAS_AVX2_FMA_KERNELS)
   if (isa == CpuIsa::kAvx2Fma) {
     return mulliken_avx2_fma_kernels();
   }
@@ -23,4 +23,4 @@ const MullikenKernelTable& mulliken_kernels_for_cpu_isa(CpuIsa isa) noexcept {
   return mulliken_baseline_kernels();
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

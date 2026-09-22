@@ -10,7 +10,7 @@
 #include "backends/cuda/gfn2_classical_force.cuh"
 #include "backends/cuda/gfn2_parameters.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -506,7 +506,7 @@ __global__ void gate_and_seed_kernel(Gfn2ClassicalForceDevicePlan plan,
       if (requested > 1u) {
         record_system_error(system_errors, system, device_error,
                             Gfn2ClassicalForceDeviceError::kInvalidActivity);
-      } else if (requested == 1u && activity.system_statuses[system] == XTBLOOM_STATUS_SUCCESS) {
+      } else if (requested == 1u && activity.system_statuses[system] == VIBEQC_XTB_STATUS_SUCCESS) {
         selected = 1;
         workspace.selected_mask[system] = 1u;
       }
@@ -1132,4 +1132,4 @@ cudaError_t add_gfn2_classical_forces_cuda(
                                    system_errors, device_error, stream);
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

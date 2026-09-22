@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_D4_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_D4_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_D4_HPP
+#define VIBEQC_XTB_MODEL_GFN2_D4_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -11,7 +11,7 @@
 
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 class PeriodicShortRangePlan;
 struct PeriodicShortRangeGeometry;
@@ -58,7 +58,7 @@ class D4Plan {
   explicit D4Plan(std::shared_ptr<const D4PlanData> data) noexcept;
   std::shared_ptr<const D4PlanData> data_;
 
-  friend xtbloom_status_t make_d4_plan(std::int64_t, std::int64_t, const std::int64_t*,
+  friend vibeqc_xtb_status_t make_d4_plan(std::int64_t, std::int64_t, const std::int64_t*,
                                        const std::int32_t*, D4Plan&, std::string&);
 };
 
@@ -108,11 +108,11 @@ struct D4Workspace {
   const D4PlanData* plan_identity = nullptr;
 };
 
-xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
+vibeqc_xtb_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
                               const std::int64_t* atom_offsets, const std::int32_t* atomic_numbers,
                               D4Plan& plan, std::string& error);
 
-xtbloom_status_t bind_d4_workspace(const D4Plan& plan, void* workspace, std::size_t workspace_size,
+vibeqc_xtb_status_t bind_d4_workspace(const D4Plan& plan, void* workspace, std::size_t workspace_size,
                                    D4Workspace& view, std::string& error);
 
 /*
@@ -123,7 +123,7 @@ xtbloom_status_t bind_d4_workspace(const D4Plan& plan, void* workspace, std::siz
  * storage, and control descriptors must be mutually disjoint. The same output
  * arrays may be reused to refresh an existing cache generation.
  */
-xtbloom_status_t update_d4_geometry_cache_cpu(
+vibeqc_xtb_status_t update_d4_geometry_cache_cpu(
     const D4Plan& plan, const double* positions, std::uint64_t geometry_generation,
     double* pair_storage, std::size_t pair_storage_elements, double* coordination_storage,
     std::size_t coordination_storage_elements, const D4Workspace& workspace, D4GeometryCache& cache,
@@ -136,7 +136,7 @@ xtbloom_status_t update_d4_geometry_cache_cpu(
  * Active inputs, outputs, workspace, plan storage, and descriptors must not
  * overlap.
  */
-xtbloom_status_t evaluate_d4_two_body_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t evaluate_d4_two_body_cpu(const D4Plan& plan, const D4GeometryCache& cache,
                                           const double* atomic_charges, double* energies,
                                           double* atomic_potentials, const D4Workspace& workspace,
                                           std::string& error);
@@ -154,7 +154,7 @@ xtbloom_status_t evaluate_d4_two_body_cpu(const D4Plan& plan, const D4GeometryCa
  * optional target potential slice remain unchanged on every failure. The
  * operation uses canonical caller-owned scratch and allocates nothing.
  */
-xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4GeometryCache& cache,
                                                  std::int64_t system, const double* atomic_charges,
                                                  double& energy, double* atomic_potentials,
                                                  const D4Workspace& workspace, std::string& error);
@@ -165,7 +165,7 @@ xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4Geo
  * dE/dR in Hartree/bohr, not forces. The gradient output must not overlap the
  * charges, geometry cache, workspace, plan storage, or descriptors.
  */
-xtbloom_status_t add_d4_two_body_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t add_d4_two_body_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
                                               const double* positions, const double* atomic_charges,
                                               double* gradients, const D4Workspace& workspace,
                                               std::string& error);
@@ -178,7 +178,7 @@ xtbloom_status_t add_d4_two_body_gradient_cpu(const D4Plan& plan, const D4Geomet
  * must be disjoint from the geometry cache, workspace, plan storage, and
  * descriptors.
  */
-xtbloom_status_t evaluate_d4_atm_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t evaluate_d4_atm_cpu(const D4Plan& plan, const D4GeometryCache& cache,
                                      const double* positions, const double* atomic_charges,
                                      double* energies, const D4Workspace& workspace,
                                      std::string& error);
@@ -188,7 +188,7 @@ xtbloom_status_t evaluate_d4_atm_cpu(const D4Plan& plan, const D4GeometryCache& 
  * The gradient output obeys the same non-aliasing contract as the two-body
  * gradient operation.
  */
-xtbloom_status_t add_d4_atm_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t add_d4_atm_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
                                          const double* positions, const double* atomic_charges,
                                          double* gradients, const D4Workspace& workspace,
                                          std::string& error);
@@ -207,7 +207,7 @@ xtbloom_status_t add_d4_atm_gradient_cpu(const D4Plan& plan, const D4GeometryCac
  * sum succeeds. Workspace scratch may be changed on failure, but active
  * inputs, outputs, workspaces, plans, and descriptors must be disjoint.
  */
-xtbloom_status_t evaluate_periodic_d4_coordination_cpu(const D4Plan& plan,
+vibeqc_xtb_status_t evaluate_periodic_d4_coordination_cpu(const D4Plan& plan,
                                                        const PeriodicShortRangePlan& periodic_plan,
                                                        const PeriodicShortRangeGeometry& geometry,
                                                        double* coordination_numbers,
@@ -215,7 +215,7 @@ xtbloom_status_t evaluate_periodic_d4_coordination_cpu(const D4Plan& plan,
                                                        std::string& error);
 
 /* Accumulate the D4-CN VJP into dE/dR and row-major dE/d epsilon. */
-xtbloom_status_t add_periodic_d4_coordination_gradient_cpu(
+vibeqc_xtb_status_t add_periodic_d4_coordination_gradient_cpu(
     const D4Plan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* dE_dcn, double* gradients,
     double* strain_derivatives, const PeriodicShortRangeWorkspace& workspace, std::string& error);
@@ -230,7 +230,7 @@ xtbloom_status_t add_periodic_d4_coordination_gradient_cpu(
  * atom coordinate, while its affine strain derivative remains. Potentials
  * are dE/dq in Hartree per electron.
  */
-xtbloom_status_t evaluate_periodic_d4_two_body_cpu(
+vibeqc_xtb_status_t evaluate_periodic_d4_two_body_cpu(
     const D4Plan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* coordination_numbers,
     const double* atomic_charges, double* per_atom_energies, double* atomic_potentials,
@@ -238,7 +238,7 @@ xtbloom_status_t evaluate_periodic_d4_two_body_cpu(
     std::string& error);
 
 /* Add periodic two-body dE/dR and dE/d epsilon, including the D4-CN path. */
-xtbloom_status_t add_periodic_d4_two_body_gradient_cpu(
+vibeqc_xtb_status_t add_periodic_d4_two_body_gradient_cpu(
     const D4Plan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* coordination_numbers,
     const double* atomic_charges, double* gradients, double* strain_derivatives,
@@ -254,7 +254,7 @@ xtbloom_status_t add_periodic_d4_two_body_gradient_cpu(
  * are excluded on repeated legs, and the validated coincident image rule is
  * applied to the remaining edges.
  */
-xtbloom_status_t evaluate_periodic_d4_atm_cpu(
+vibeqc_xtb_status_t evaluate_periodic_d4_atm_cpu(
     const D4Plan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* coordination_numbers,
     double* per_atom_energies, const D4Workspace& d4_workspace,
@@ -262,12 +262,12 @@ xtbloom_status_t evaluate_periodic_d4_atm_cpu(
 
 /* Add periodic ATM dE/dR and dE/d epsilon, including its D4-CN path and the
  * product-rule derivative of the three pair cutoff switches. */
-xtbloom_status_t add_periodic_d4_atm_gradient_cpu(
+vibeqc_xtb_status_t add_periodic_d4_atm_gradient_cpu(
     const D4Plan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* coordination_numbers,
     double* gradients, double* strain_derivatives, const D4Workspace& d4_workspace,
     const PeriodicShortRangeWorkspace& workspace, std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_D4_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_D4_HPP

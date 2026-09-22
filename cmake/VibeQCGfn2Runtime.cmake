@@ -140,7 +140,7 @@ function(vibeqc_add_gfn2_runtime target)
       ${CMAKE_CURRENT_BINARY_DIR}/generated
       ${CMAKE_CURRENT_SOURCE_DIR}/include
       ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_compile_definitions(vibeqc_gfn2_cuda PRIVATE XTBLOOM_HAS_CUDA=1)
+    target_compile_definitions(vibeqc_gfn2_cuda PRIVATE VIBEQC_XTB_HAS_CUDA=1)
     set_target_properties(vibeqc_gfn2_cuda PROPERTIES
       POSITION_INDEPENDENT_CODE ON
       CUDA_STANDARD 20
@@ -215,7 +215,7 @@ function(vibeqc_add_gfn2_runtime target)
     target_link_libraries(vibeqc_gfn2_openblas_shim PRIVATE "${_gfn2_openblas_library}")
     target_link_options(vibeqc_gfn2_openblas_shim PRIVATE "LINKER:--no-as-needed")
     set_target_properties(vibeqc_gfn2_openblas_shim PROPERTIES
-      OUTPUT_NAME xtbloom_openblas_lp64_shim
+      OUTPUT_NAME vibeqc_xtb_openblas_lp64_shim
       CXX_VISIBILITY_PRESET hidden
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
       BUILD_RPATH "${_gfn2_openblas_dir}"
@@ -223,11 +223,11 @@ function(vibeqc_add_gfn2_runtime target)
     install(TARGETS vibeqc_gfn2_openblas_shim
       LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
     target_compile_definitions(${target} PRIVATE
-      XTBLOOM_CONFIGURED_WHEEL_OPENBLAS=1
-      "XTBLOOM_CONFIGURED_WHEEL_OPENBLAS_CONFIG_PREFIX=\"${_gfn2_openblas_prefix}\"")
+      VIBEQC_XTB_CONFIGURED_WHEEL_OPENBLAS=1
+      "VIBEQC_XTB_CONFIGURED_WHEEL_OPENBLAS_CONFIG_PREFIX=\"${_gfn2_openblas_prefix}\"")
     add_dependencies(${target} vibeqc_gfn2_openblas_shim)
-  elseif(XTBLOOM_CPU_LINALG_LIBRARY)
+  elseif(VIBEQC_XTB_CPU_LINALG_LIBRARY)
     target_compile_definitions(${target} PRIVATE
-      "XTBLOOM_CONFIGURED_CPU_LINALG_RUNTIME=\"${XTBLOOM_CPU_LINALG_LIBRARY}\"")
+      "VIBEQC_XTB_CONFIGURED_CPU_LINALG_RUNTIME=\"${VIBEQC_XTB_CPU_LINALG_LIBRARY}\"")
   endif()
 endfunction()

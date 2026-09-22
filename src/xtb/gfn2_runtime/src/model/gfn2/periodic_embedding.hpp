@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_PERIODIC_EMBEDDING_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_PERIODIC_EMBEDDING_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_PERIODIC_EMBEDDING_HPP
+#define VIBEQC_XTB_MODEL_GFN2_PERIODIC_EMBEDDING_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -11,7 +11,7 @@
 
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct PeriodicEmbeddingPlanData;
 
@@ -45,7 +45,7 @@ class PeriodicEmbeddingPlan {
   explicit PeriodicEmbeddingPlan(std::shared_ptr<const PeriodicEmbeddingPlanData> data) noexcept;
   std::shared_ptr<const PeriodicEmbeddingPlanData> data_;
 
-  friend xtbloom_status_t make_periodic_embedding_plan(std::int64_t batch_size,
+  friend vibeqc_xtb_status_t make_periodic_embedding_plan(std::int64_t batch_size,
                                                        std::int64_t total_atoms,
                                                        const std::int64_t* atom_offsets,
                                                        PeriodicEmbeddingPlan& plan,
@@ -75,7 +75,7 @@ struct PeriodicEmbeddingView {
   std::int64_t potential_elements = 0;
   double* energies = nullptr;
   std::int64_t energy_elements = 0;
-  xtbloom_status_t* system_statuses = nullptr;
+  vibeqc_xtb_status_t* system_statuses = nullptr;
   std::int64_t status_elements = 0;
   const PeriodicEmbeddingPlanData* plan_identity = nullptr;
 };
@@ -92,7 +92,7 @@ struct PeriodicEmbeddingWorkspace {
 };
 
 /* Build a plan from a monotone atom partition. Empty systems are supported. */
-xtbloom_status_t make_periodic_embedding_plan(std::int64_t batch_size, std::int64_t total_atoms,
+vibeqc_xtb_status_t make_periodic_embedding_plan(std::int64_t batch_size, std::int64_t total_atoms,
                                               const std::int64_t* atom_offsets,
                                               PeriodicEmbeddingPlan& plan, std::string& error);
 
@@ -104,11 +104,11 @@ xtbloom_status_t make_periodic_embedding_plan(std::int64_t batch_size, std::int6
  * must be mutually disjoint. Exact and partial overlaps are rejected. The
  * output descriptor is unchanged on failure.
  */
-xtbloom_status_t bind_periodic_embedding_view(
+vibeqc_xtb_status_t bind_periodic_embedding_view(
     const PeriodicEmbeddingPlan& plan, const double* shifts, std::size_t shift_elements,
     const double* response_matrices, std::size_t response_elements, const double* atomic_charges,
     std::size_t charge_elements, double* atomic_potentials, std::size_t potential_elements,
-    double* energies, std::size_t energy_elements, xtbloom_status_t* system_statuses,
+    double* energies, std::size_t energy_elements, vibeqc_xtb_status_t* system_statuses,
     std::size_t status_elements, PeriodicEmbeddingView& view, std::string& error);
 
 /*
@@ -116,7 +116,7 @@ xtbloom_status_t bind_periodic_embedding_view(
  * descriptor, or error object; evaluation additionally rejects overlap with
  * any active view range. The output descriptor is unchanged on failure.
  */
-xtbloom_status_t bind_periodic_embedding_workspace(const PeriodicEmbeddingPlan& plan,
+vibeqc_xtb_status_t bind_periodic_embedding_workspace(const PeriodicEmbeddingPlan& plan,
                                                    double* potential_scratch,
                                                    std::size_t potential_elements,
                                                    PeriodicEmbeddingWorkspace& workspace,
@@ -125,12 +125,12 @@ xtbloom_status_t bind_periodic_embedding_workspace(const PeriodicEmbeddingPlan& 
 /*
  * Evaluate one system. Structural errors publish nothing. Nonfinite values,
  * a nonsymmetric A, or floating-point range failure leave that system's v and
- * E unchanged and publish XTBLOOM_STATUS_INTERNAL_ERROR only to its status.
+ * E unchanged and publish VIBEQC_XTB_STATUS_INTERNAL_ERROR only to its status.
  * Calling different systems concurrently requires distinct workspaces and
  * distinct std::string objects; concurrent calls for the same system are not
  * supported.
  */
-xtbloom_status_t evaluate_periodic_embedding_system_cpu(const PeriodicEmbeddingPlan& plan,
+vibeqc_xtb_status_t evaluate_periodic_embedding_system_cpu(const PeriodicEmbeddingPlan& plan,
                                                         std::int64_t system,
                                                         const PeriodicEmbeddingView& view,
                                                         const PeriodicEmbeddingWorkspace& workspace,
@@ -139,13 +139,13 @@ xtbloom_status_t evaluate_periodic_embedding_system_cpu(const PeriodicEmbeddingP
 /*
  * Serial ragged-batch wrapper. Structural validation is whole-call atomic.
  * Numerical failures are isolated: all peers are still attempted, and the
- * call returns XTBLOOM_STATUS_INTERNAL_ERROR after processing the full batch.
+ * call returns VIBEQC_XTB_STATUS_INTERNAL_ERROR after processing the full batch.
  */
-xtbloom_status_t evaluate_periodic_embedding_batch_cpu(const PeriodicEmbeddingPlan& plan,
+vibeqc_xtb_status_t evaluate_periodic_embedding_batch_cpu(const PeriodicEmbeddingPlan& plan,
                                                        const PeriodicEmbeddingView& view,
                                                        const PeriodicEmbeddingWorkspace& workspace,
                                                        std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_PERIODIC_EMBEDDING_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_PERIODIC_EMBEDDING_HPP

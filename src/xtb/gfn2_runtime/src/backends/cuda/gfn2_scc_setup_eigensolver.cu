@@ -13,14 +13,14 @@
 
 #include "backends/cuda/gfn2_scc_setup_eigensolver.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 using SetupDiagnostic = Gfn2SccSetupEigensolverDiagnostic;
 using SetupError = Gfn2SccSetupEigensolverError;
 using SetupField = Gfn2SccSetupEigensolverField;
 
-SetupDiagnostic failure(xtbloom_status_t status, SetupError error, SetupField field,
+SetupDiagnostic failure(vibeqc_xtb_status_t status, SetupError error, SetupField field,
                         std::int64_t index = -1) noexcept {
   SetupDiagnostic result{};
   result.status = status;
@@ -32,7 +32,7 @@ SetupDiagnostic failure(xtbloom_status_t status, SetupError error, SetupField fi
 
 SetupDiagnostic capacity_failure(SetupError error, SetupField field, std::size_t required,
                                  std::size_t provided) noexcept {
-  SetupDiagnostic result = failure(XTBLOOM_STATUS_INVALID_ARGUMENT, error, field);
+  SetupDiagnostic result = failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, error, field);
   result.required_bytes = required;
   result.provided_bytes = provided;
   return result;
@@ -40,8 +40,8 @@ SetupDiagnostic capacity_failure(SetupError error, SetupField field, std::size_t
 
 SetupDiagnostic cuda_failure(SetupError error, SetupField field, cudaError_t status) noexcept {
   SetupDiagnostic result =
-      failure(error == SetupError::kAllocationFailed ? XTBLOOM_STATUS_ALLOCATION_FAILED
-                                                     : XTBLOOM_STATUS_INTERNAL_ERROR,
+      failure(error == SetupError::kAllocationFailed ? VIBEQC_XTB_STATUS_ALLOCATION_FAILED
+                                                     : VIBEQC_XTB_STATUS_INTERNAL_ERROR,
               error, field);
   result.cuda_status = status;
   return result;
@@ -430,40 +430,40 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::create(
     cusolverDnHandle_t solver, cusolverDnParams_t parameters, cublasHandle_t blas,
     const Gfn2EigensolverOptions& options, Gfn2SccSetupEigensolver& output) noexcept {
   if (!topology.valid()) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidTopology,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidTopology,
                    SetupField::kTopology);
   }
   const Gfn2RaggedTopologyView& host_topology = topology.host_topology();
   const Gfn2WavefunctionLayoutView& host_wavefunction = topology.host_wavefunction_layout();
   if (plan_token == 0u || host_topology.plan_token != plan_token) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kCrossPlan, SetupField::kPlanToken);
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kCrossPlan, SetupField::kPlanToken);
   }
   if (geometry_generation == 0u) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidGeneration,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidGeneration,
                    SetupField::kGeometryGeneration);
   }
   if (host_overlap == nullptr || host_overlap_elements != host_topology.total_matrix_elements ||
       reinterpret_cast<std::uintptr_t>(host_overlap) % alignof(double) != 0u) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidOverlap,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidOverlap,
                    SetupField::kOverlap);
   }
   if (!valid_options(options)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidOptions,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidOptions,
                    SetupField::kOptions);
   }
   if (solver == nullptr || parameters == nullptr || blas == nullptr) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidProvider,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidProvider,
                    SetupField::kHandles);
   }
   if (!valid_buckets(host_topology, topology.eigensolver_buckets())) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidTopology,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidTopology,
                    SetupField::kTopology);
   }
 
   try {
     std::unique_ptr<Impl> candidate(new (std::nothrow) Impl());
     if (candidate == nullptr) {
-      return failure(XTBLOOM_STATUS_ALLOCATION_FAILED, SetupError::kAllocationFailed,
+      return failure(VIBEQC_XTB_STATUS_ALLOCATION_FAILED, SetupError::kAllocationFailed,
                      SetupField::kOverlap);
     }
     candidate->solver = solver;
@@ -495,7 +495,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::create(
         !align_up(query_matrix_bytes, kGfn2SccSetupEigensolverArenaAlignment,
                   query_orbital_offset) ||
         !checked_add(query_orbital_offset, query_orbital_bytes, query_bytes)) {
-      return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kCountOverflow,
+      return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kCountOverflow,
                      SetupField::kWorkspaceQuery);
     }
 
@@ -556,7 +556,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::create(
     const cudaError_t free_status = cudaFree(query_storage);
     if (!query_result.success()) {
       SetupDiagnostic diagnostic =
-          failure(XTBLOOM_STATUS_EIGENSOLVER_FAILED, SetupError::kWorkspaceQueryFailed,
+          failure(VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED, SetupError::kWorkspaceQueryFailed,
                   SetupField::kWorkspaceQuery);
       diagnostic.cuda_status = query_result.cuda_status;
       diagnostic.cublas_status = query_result.cublas_status;
@@ -583,7 +583,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::create(
                                      candidate->requirements.cache_generation_offset) ||
         !append_array<std::uint32_t>(batch, cursor, candidate->requirements.cache_status_offset) ||
         !align_up(cursor, kGfn2SccSetupEigensolverArenaAlignment, cursor)) {
-      return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kCountOverflow,
+      return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kCountOverflow,
                      SetupField::kSetupArena);
     }
     candidate->requirements.setup_device_bytes = cursor;
@@ -610,10 +610,10 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::create(
     output = std::move(replacement);
     return {};
   } catch (const std::bad_alloc&) {
-    return failure(XTBLOOM_STATUS_ALLOCATION_FAILED, SetupError::kAllocationFailed,
+    return failure(VIBEQC_XTB_STATUS_ALLOCATION_FAILED, SetupError::kAllocationFailed,
                    SetupField::kTopology);
   } catch (...) {
-    return failure(XTBLOOM_STATUS_INTERNAL_ERROR, SetupError::kCudaError,
+    return failure(VIBEQC_XTB_STATUS_INTERNAL_ERROR, SetupError::kCudaError,
                    SetupField::kWorkspaceQuery);
   }
 }
@@ -640,7 +640,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
     void* setup_device_arena, std::size_t setup_device_arena_bytes,
     Gfn2SccSetupEigensolverBinding& binding, cudaStream_t stream) const noexcept {
   if (impl_ == nullptr) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidProvider,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidProvider,
                    SetupField::kHandles);
   }
   const auto& own = impl_->requirements;
@@ -650,7 +650,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
                                                        expected_iteration_requirements);
   if (!iteration_query.success() ||
       !same_iteration_requirements(iteration_requirements, expected_iteration_requirements)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
                    SetupField::kIterationArena);
   }
   if (device_topology.memory_space != Gfn2PlanMemorySpace::kCudaDevice ||
@@ -661,7 +661,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
       device_topology.total_orbitals != impl_->total_orbitals ||
       device_topology.total_matrix_elements != impl_->total_matrices ||
       device_topology.bucket_count != static_cast<std::int64_t>(impl_->buckets.size())) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT,
                    device_topology.plan_token == own.plan_token ? SetupError::kInvalidTopology
                                                                 : SetupError::kCrossPlan,
                    SetupField::kTopology);
@@ -678,13 +678,13 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
       iteration_plan.wavefunction_layout.total_spin_channels != impl_->total_spin_channels ||
       iteration_plan.wavefunction_layout.total_spin_orbitals != impl_->total_spin_orbitals ||
       iteration_plan.wavefunction_layout.total_spin_matrix_elements != impl_->total_spin_matrices) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kCrossPlan,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kCrossPlan,
                    SetupField::kIterationArena);
   }
   const Gfn2PlanSchemaDiagnostic topology_shape =
       validate_gfn2_topology_binding(device_topology, Gfn2PlanMemorySpace::kCudaDevice);
   if (topology_shape.error != Gfn2PlanSchemaError::kSuccess) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidTopology,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidTopology,
                    SetupField::kTopology, topology_shape.index);
   }
 
@@ -703,7 +703,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
   cudaPointerAttributes setup_attributes{};
   cudaError_t cuda_status = cudaSuccess;
   if (!cuda_accessible(setup_device_arena, setup_attributes, cuda_status)) {
-    SetupDiagnostic diagnostic = failure(XTBLOOM_STATUS_INVALID_ARGUMENT,
+    SetupDiagnostic diagnostic = failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT,
                                          SetupError::kInvalidArenaMemory, SetupField::kSetupArena);
     diagnostic.cuda_status = cuda_status;
     return diagnostic;
@@ -722,7 +722,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
   cudaPointerAttributes iteration_attributes{};
   if (!cuda_accessible(iteration_arena, iteration_attributes, cuda_status)) {
     SetupDiagnostic diagnostic =
-        failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidArenaMemory,
+        failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidArenaMemory,
                 SetupField::kIterationArena);
     diagnostic.cuda_status = cuda_status;
     return diagnostic;
@@ -749,7 +749,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
       iteration_requirements.provider_device_offset % kGfn2SccIterationArenaAlignment == 0u &&
       iteration_requirements.total_bytes % kGfn2SccIterationArenaAlignment == 0u;
   if (!valid_iteration_requirements) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
                    SetupField::kIterationArena);
   }
 
@@ -758,7 +758,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
   if (!make_range(setup_device_arena, own.setup_device_bytes, setup_range) ||
       !make_range(iteration_arena, iteration_requirements.total_bytes, iteration_range) ||
       overlaps(setup_range, iteration_range)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
                    SetupField::kIterationArena);
   }
 
@@ -793,7 +793,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
           own.provider.solver_device_workspace_bytes &&
       eigensolver_workspace.solver_host_workspace_bytes == own.provider.solver_host_workspace_bytes;
   if (!valid_counts) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationWorkspace,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationWorkspace,
                    SetupField::kIterationWorkspace);
   }
 
@@ -806,7 +806,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
                       ? nullptr
                       : iteration_bytes + iteration_requirements.provider_device_offset,
                   iteration_requirements.provider_device_bytes, provider_segment)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
                    SetupField::kIterationArena);
   }
 
@@ -833,12 +833,12 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
       !make_elements_range(eigensolver_workspace.bucket_activity, bucket_count,
                            workspace_ranges[12]) ||
       !pairwise_disjoint(workspace_ranges)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationWorkspace,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationWorkspace,
                    SetupField::kIterationWorkspace);
   }
   for (const AddressRange& range : workspace_ranges) {
     if (!contains(workspace_segment, range)) {
-      return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
+      return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
                      SetupField::kIterationWorkspace);
     }
   }
@@ -850,7 +850,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
         reinterpret_cast<std::uintptr_t>(eigensolver_workspace.solver_device_workspace) %
                 kGfn2SccIterationArenaAlignment !=
             0u))) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
                    SetupField::kIterationWorkspace);
   }
   AddressRange provider_workspace_range{};
@@ -859,7 +859,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
       (iteration_requirements.provider_device_bytes != 0u &&
        (!contains(provider_segment, provider_workspace_range) ||
         overlaps(workspace_segment, provider_workspace_range)))) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
                    SetupField::kIterationWorkspace);
   }
 
@@ -872,14 +872,14 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
   if (own.provider.solver_host_workspace_bytes == 0u) {
     if (provider_host_workspace != nullptr ||
         eigensolver_workspace.solver_host_workspace != nullptr) {
-      return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidHostWorkspace,
+      return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidHostWorkspace,
                      SetupField::kProviderHostWorkspace);
     }
   } else {
     if (provider_host_workspace == nullptr ||
         reinterpret_cast<std::uintptr_t>(provider_host_workspace) % alignof(std::max_align_t) !=
             0u) {
-      return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidHostWorkspace,
+      return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidHostWorkspace,
                      SetupField::kProviderHostWorkspace);
     }
     cudaPointerAttributes host_attributes{};
@@ -889,7 +889,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
         (void)cudaGetLastError();
       }
       SetupDiagnostic diagnostic =
-          failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidHostWorkspace,
+          failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidHostWorkspace,
                   SetupField::kProviderHostWorkspace);
       diagnostic.cuda_status = cuda_status;
       return diagnostic;
@@ -946,7 +946,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
 
   std::size_t overlap_bytes = 0u;
   if (!checked_multiply(static_cast<std::size_t>(matrices), sizeof(double), overlap_bytes)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kCountOverflow,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kCountOverflow,
                    SetupField::kOverlap);
   }
   cuda_status = cudaMemcpyAsync(const_cast<double*>(candidate.overlap_input), impl_->pinned_overlap,
@@ -972,7 +972,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::bind_and_factor_overl
       candidate.setup_device_error, stream);
   if (!launch.success()) {
     SetupDiagnostic diagnostic =
-        failure(XTBLOOM_STATUS_EIGENSOLVER_FAILED, SetupError::kProviderLaunchFailed,
+        failure(VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED, SetupError::kProviderLaunchFailed,
                 SetupField::kOverlapFactorization);
     diagnostic.cuda_status = launch.cuda_status;
     diagnostic.cublas_status = launch.cublas_status;
@@ -991,7 +991,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_impl
     const Gfn2GeometryEpochDevice* geometry_epoch, const std::uint32_t* request_error,
     cudaStream_t stream) const noexcept {
   if (impl_ == nullptr) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidProvider,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidProvider,
                    SetupField::kHandles);
   }
   const auto& own = impl_->requirements;
@@ -1001,7 +1001,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_impl
        (geometry_generation != 0u || geometry_epoch->value == nullptr ||
         geometry_epoch->value_elements != 1 || geometry_epoch->plan_token != own.plan_token ||
         reinterpret_cast<std::uintptr_t>(geometry_epoch->value) % alignof(std::uint64_t) != 0u))) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidGeneration,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidGeneration,
                    SetupField::kGeometryGeneration);
   }
   if (setup_device_arena == nullptr) {
@@ -1020,19 +1020,19 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_impl
   cudaPointerAttributes setup_attributes{};
   cudaError_t cuda_status = cudaSuccess;
   if (!cuda_accessible(setup_device_arena, setup_attributes, cuda_status)) {
-    SetupDiagnostic diagnostic = failure(XTBLOOM_STATUS_INVALID_ARGUMENT,
+    SetupDiagnostic diagnostic = failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT,
                                          SetupError::kInvalidArenaMemory, SetupField::kSetupArena);
     diagnostic.cuda_status = cuda_status;
     return diagnostic;
   }
   if (device_overlap == nullptr || device_overlap_elements != impl_->total_matrices ||
       reinterpret_cast<std::uintptr_t>(device_overlap) % alignof(double) != 0u) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidOverlap,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidOverlap,
                    SetupField::kOverlap);
   }
   cudaPointerAttributes overlap_attributes{};
   if (!cuda_accessible(device_overlap, overlap_attributes, cuda_status)) {
-    SetupDiagnostic diagnostic = failure(XTBLOOM_STATUS_INVALID_ARGUMENT,
+    SetupDiagnostic diagnostic = failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT,
                                          SetupError::kInvalidArenaMemory, SetupField::kOverlap);
     diagnostic.cuda_status = cuda_status;
     return diagnostic;
@@ -1040,7 +1040,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_impl
   cudaPointerAttributes epoch_attributes{};
   if (dynamic_epoch && !cuda_accessible(geometry_epoch->value, epoch_attributes, cuda_status)) {
     SetupDiagnostic diagnostic =
-        failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidArenaMemory,
+        failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidArenaMemory,
                 SetupField::kGeometryGeneration);
     diagnostic.cuda_status = cuda_status;
     return diagnostic;
@@ -1050,7 +1050,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_impl
       (request_error == nullptr ||
        reinterpret_cast<std::uintptr_t>(request_error) % alignof(std::uint32_t) != 0u ||
        !cuda_accessible(request_error, request_error_attributes, cuda_status))) {
-    SetupDiagnostic diagnostic = failure(XTBLOOM_STATUS_INVALID_ARGUMENT,
+    SetupDiagnostic diagnostic = failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT,
                                          SetupError::kInvalidArenaMemory, SetupField::kAdmission);
     diagnostic.cuda_status = cuda_status;
     return diagnostic;
@@ -1062,11 +1062,11 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_impl
   }
   if (setup_attributes.device != current_device || overlap_attributes.device != current_device ||
       (dynamic_epoch && epoch_attributes.device != current_device)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidArenaMemory,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidArenaMemory,
                    SetupField::kOverlap);
   }
   if (dynamic_epoch && request_error_attributes.device != current_device) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidArenaMemory,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidArenaMemory,
                    SetupField::kAdmission);
   }
 
@@ -1155,14 +1155,14 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_impl
       binding.provenance_seal != 0u &&
       binding.provenance_seal == binding_provenance_seal(binding, impl_->binding_salt);
   if (!valid_binding) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
                    SetupField::kOverlapFactorization);
   }
   if ((!dynamic_epoch && binding.geometry_epoch != nullptr) ||
       (dynamic_epoch && binding.geometry_epoch != nullptr &&
        (binding.geometry_epoch != geometry_epoch->value || binding.geometry_epoch_elements != 1)) ||
       (!dynamic_epoch && geometry_generation <= binding.geometry_generation)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidGeneration,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidGeneration,
                    SetupField::kGeometryGeneration);
   }
 
@@ -1183,7 +1183,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_impl
       overlaps(epoch_range, setup_range) || overlaps(epoch_range, input_range) ||
       overlaps(request_error_range, setup_range) || overlaps(request_error_range, input_range) ||
       overlaps(request_error_range, epoch_range)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidOverlap,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidOverlap,
                    overlaps(request_error_range, setup_range) ||
                            overlaps(request_error_range, input_range) ||
                            overlaps(request_error_range, epoch_range)
@@ -1236,14 +1236,14 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_impl
       !make_elements_range(binding.workspace.bucket_activity,
                            binding.workspace.bucket_activity_elements, protected_ranges[21]) ||
       !pairwise_disjoint(protected_ranges)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidIterationProvenance,
                    SetupField::kOverlapFactorization);
   }
   for (const AddressRange& range : protected_ranges) {
     if (overlaps(input_range, range) || overlaps(epoch_range, range) ||
         overlaps(request_error_range, range)) {
       return failure(
-          XTBLOOM_STATUS_INVALID_ARGUMENT, SetupError::kInvalidOverlap,
+          VIBEQC_XTB_STATUS_INVALID_ARGUMENT, SetupError::kInvalidOverlap,
           overlaps(request_error_range, range) ? SetupField::kAdmission : SetupField::kOverlap);
     }
   }
@@ -1290,7 +1290,7 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_impl
                           stream, Gfn2EigensolverFactorCachePolicy::kPreservePriorOnFailure);
   if (!launch.success()) {
     SetupDiagnostic diagnostic =
-        failure(XTBLOOM_STATUS_EIGENSOLVER_FAILED, SetupError::kProviderLaunchFailed,
+        failure(VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED, SetupError::kProviderLaunchFailed,
                 SetupField::kOverlapFactorization);
     diagnostic.cuda_status = launch.cuda_status;
     diagnostic.cublas_status = launch.cublas_status;
@@ -1328,4 +1328,4 @@ Gfn2SccSetupEigensolverDiagnostic Gfn2SccSetupEigensolver::refactor_overlap_from
                                request_error, stream);
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

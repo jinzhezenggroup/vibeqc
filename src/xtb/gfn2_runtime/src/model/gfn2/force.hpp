@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_FORCE_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_FORCE_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_FORCE_HPP
+#define VIBEQC_XTB_MODEL_GFN2_FORCE_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -23,7 +23,7 @@
 #include "model/gfn2/repulsion.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 /*
  * Converged stationary data used by the CPU force composer.
@@ -188,7 +188,7 @@ struct RestrictedGfn2ForceWorkspace {
  * total energies and forces are transactional on failure; optional component
  * diagnostics follow the progressive diagnostic contract described above.
  */
-xtbloom_status_t evaluate_restricted_gfn2_energy_forces_cpu(
+vibeqc_xtb_status_t evaluate_restricted_gfn2_energy_forces_cpu(
     const BasisPlan& basis, const IntegralPlan& integrals, const CoordinationPlan& coordination,
     const RepulsionPlan& repulsion, const H0Plan& h0, const MullikenPlan& mulliken,
     const ES2Plan& es2, const ES2GeometryCache& es2_cache, const AES2Plan& aes2,
@@ -199,6 +199,6 @@ xtbloom_status_t evaluate_restricted_gfn2_energy_forces_cpu(
     const RestrictedGfn2ForceWorkspace& workspace, std::string& error,
     const RestrictedGfn2PeriodicForceInput& periodic = {});
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_FORCE_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_FORCE_HPP

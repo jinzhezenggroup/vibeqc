@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_COMMON_INTEGRALS_HPP
+#ifndef VIBEQC_XTB_MODEL_COMMON_INTEGRALS_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_COMMON_INTEGRALS_HPP
+#define VIBEQC_XTB_MODEL_COMMON_INTEGRALS_HPP
 
 #include <array>
 #include <cstddef>
@@ -13,7 +13,7 @@
 #include "model/common/basis.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::common {
+namespace vibeqc::xtb::detail::common {
 
 inline constexpr std::size_t kIntegralMaximumCartesianFunctions = 6u;
 inline constexpr std::size_t kIntegralMaximumSphericalFunctions = 5u;
@@ -69,7 +69,7 @@ struct IntegralPlan {
 };
 
 /* Validate the immutable basis/integral relationship without numerical inputs. */
-xtbloom_status_t validate_integral_plan(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t validate_integral_plan(const BasisPlan& basis, const IntegralPlan& plan,
                                         std::string& error);
 
 /* tblite's default dimensionless Gaussian-product cutoff at accuracy 1.0. */
@@ -94,29 +94,29 @@ struct IntegralKernelTable {
 [[nodiscard]] const IntegralKernelTable& integral_avx2_fma_kernels() noexcept;
 [[nodiscard]] const IntegralKernelTable& integral_kernels_for_cpu_isa(CpuIsa isa) noexcept;
 
-xtbloom_status_t make_integral_plan(const BasisPlan& basis, IntegralPlan& plan, std::string& error,
+vibeqc_xtb_status_t make_integral_plan(const BasisPlan& basis, IntegralPlan& plan, std::string& error,
                                     double integral_cutoff = kDefaultIntegralCutoff);
 
-xtbloom_status_t evaluate_overlap_cpu(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t evaluate_overlap_cpu(const BasisPlan& basis, const IntegralPlan& plan,
                                       const double* positions, double* overlap, void* workspace,
                                       std::size_t workspace_size, std::string& error);
 
-xtbloom_status_t evaluate_multipole_cpu(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t evaluate_multipole_cpu(const BasisPlan& basis, const IntegralPlan& plan,
                                         const double* positions, double* dipole, double* quadrupole,
                                         void* workspace, std::size_t workspace_size,
                                         std::string& error);
 
-xtbloom_status_t add_multipole_gradient_cpu(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t add_multipole_gradient_cpu(const BasisPlan& basis, const IntegralPlan& plan,
                                             const double* positions, const double* dE_ddipole,
                                             const double* dE_dquadrupole, double* gradients,
                                             void* workspace, std::size_t workspace_size,
                                             std::string& error, CpuIsa cpu_isa = CpuIsa::kBaseline);
 
-xtbloom_status_t add_overlap_gradient_cpu(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t add_overlap_gradient_cpu(const BasisPlan& basis, const IntegralPlan& plan,
                                           const double* positions, const double* dE_doverlap,
                                           double* gradients, void* workspace,
                                           std::size_t workspace_size, std::string& error);
 
-}  // namespace xtbloom::detail::common
+}  // namespace vibeqc::xtb::detail::common
 
-#endif  // XTBLOOM_MODEL_COMMON_INTEGRALS_HPP
+#endif  // VIBEQC_XTB_MODEL_COMMON_INTEGRALS_HPP

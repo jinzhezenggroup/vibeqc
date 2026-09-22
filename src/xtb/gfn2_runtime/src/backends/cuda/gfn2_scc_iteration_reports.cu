@@ -7,7 +7,7 @@
 
 #include "backends/cuda/gfn2_scc_iteration_reports.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 using BindingDiagnostic = Gfn2SccIterationBindingDiagnostic;
@@ -82,7 +82,7 @@ struct ReportSpec {
   Gfn2SccStageCodeFormat format = Gfn2SccStageCodeFormat::kUint32Error;
   Gfn2SccStageDeviceCodeRole role = Gfn2SccStageDeviceCodeRole::kMixedFirstError;
   std::uint64_t peer_mask = 0u;
-  xtbloom_status_t peer_status = XTBLOOM_STATUS_INTERNAL_ERROR;
+  vibeqc_xtb_status_t peer_status = VIBEQC_XTB_STATUS_INTERNAL_ERROR;
 };
 
 bool report_spec(Gfn2SccStageId stage, ReportSpec& spec) noexcept {
@@ -126,15 +126,15 @@ bool report_spec(Gfn2SccStageId stage, ReportSpec& spec) noexcept {
       return true;
     case Gfn2SccStageId::kEigensolver:
       spec.peer_mask = 0x3e06u;
-      spec.peer_status = XTBLOOM_STATUS_EIGENSOLVER_FAILED;
+      spec.peer_status = VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED;
       return true;
     case Gfn2SccStageId::kOccupations:
       spec.peer_mask = 0x3feu;
-      spec.peer_status = XTBLOOM_STATUS_EIGENSOLVER_FAILED;
+      spec.peer_status = VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED;
       return true;
     case Gfn2SccStageId::kDensity:
       spec.peer_mask = 0x7feu;
-      spec.peer_status = XTBLOOM_STATUS_EIGENSOLVER_FAILED;
+      spec.peer_status = VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED;
       return true;
     case Gfn2SccStageId::kMulliken:
       spec.peer_mask = 0x1feu;
@@ -662,7 +662,7 @@ Gfn2SccIterationBindingDiagnostic project_gfn2_scc_iteration_reports_cuda(
                          candidate.workspace);
 
     const bool mixer = report.stage == Gfn2SccStageId::kMixer;
-    const std::size_t system_alignment = mixer ? alignof(xtbloom_status_t) : alignof(std::uint32_t);
+    const std::size_t system_alignment = mixer ? alignof(vibeqc_xtb_status_t) : alignof(std::uint32_t);
     if (report.system_codes == nullptr || (!mixer && report.device_error == nullptr) ||
         report.stage_sequence_active == nullptr) {
       return fail(BindingError::kNullPointer, BindingField::kStageReports, index);
@@ -694,4 +694,4 @@ Gfn2SccIterationBindingDiagnostic build_gfn2_scc_iteration_report_binding_cuda(
                                       projected.workspace, binding);
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

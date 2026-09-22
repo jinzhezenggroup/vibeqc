@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace xtbloom::detail::common {
+namespace vibeqc::xtb::detail::common {
 
 struct SccMixerPlanData final {
   std::int64_t batch_size = 0;
@@ -200,19 +200,19 @@ bool overlaps_plan_storage(const SccMixerPlan& plan, const AddressRange& range) 
   return false;
 }
 
-xtbloom_status_t validate_plan(const SccMixerPlan& plan, std::string& error) {
+vibeqc_xtb_status_t validate_plan(const SccMixerPlan& plan, std::string& error) {
   if (!plan.sealed()) {
     error = "SCC mixer plan is default-constructed, moved-from, or otherwise unsealed";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 bool exact_pointer(const void* base, std::size_t offset, const void* candidate) {
   return candidate == static_cast<const void*>(static_cast<const std::byte*>(base) + offset);
 }
 
-xtbloom_status_t validate_state(const SccMixerPlan& plan, const SccMixerState& state,
+vibeqc_xtb_status_t validate_state(const SccMixerPlan& plan, const SccMixerState& state,
                                 std::string& error) {
   const SccMixerPlanData& data = *plan.identity();
   AddressRange range;
@@ -238,12 +238,12 @@ xtbloom_status_t validate_state(const SccMixerPlan& plan, const SccMixerState& s
       !exact_pointer(state.workspace_base, data.initialized_offset_bytes, state.initialized) ||
       !exact_pointer(state.workspace_base, data.converged_offset_bytes, state.converged)) {
     error = "SCC mixer state is malformed or belongs to a different plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_workspace(const SccMixerPlan& plan, const SccMixerWorkspace& workspace,
+vibeqc_xtb_status_t validate_workspace(const SccMixerPlan& plan, const SccMixerWorkspace& workspace,
                                     std::string& error) {
   const SccMixerPlanData& data = *plan.identity();
   AddressRange range;
@@ -263,12 +263,12 @@ xtbloom_status_t validate_workspace(const SccMixerPlan& plan, const SccMixerWork
       !exact_pointer(workspace.workspace_base, data.history_slot_scratch_offset_bytes,
                      workspace.history_slots)) {
     error = "SCC mixer scratch is malformed or belongs to a different plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_vector(const SccMixerPlan& plan, const SccMixerVectorView& vector,
+vibeqc_xtb_status_t validate_vector(const SccMixerPlan& plan, const SccMixerVectorView& vector,
                                  std::string& error) {
   const SccMixerPlanData& data = *plan.identity();
   AddressRange range;
@@ -282,12 +282,12 @@ xtbloom_status_t validate_vector(const SccMixerPlan& plan, const SccMixerVectorV
       !make_range(vector.workspace_base, data.vector_workspace_size_bytes, range) ||
       !exact_fields) {
     error = "SCC mixer vector is not the canonical binding sealed by its plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_active_ranges(const SccMixerPlan& plan, const SccMixerVectorView& vector,
+vibeqc_xtb_status_t validate_active_ranges(const SccMixerPlan& plan, const SccMixerVectorView& vector,
                                         const SccMixerState& state,
                                         const SccMixerWorkspace* workspace, std::string& error) {
   const SccMixerPlanData& data = *plan.identity();
@@ -306,7 +306,7 @@ xtbloom_status_t validate_active_ranges(const SccMixerPlan& plan, const SccMixer
       ranges_overlap(vector_range, state_range) || overlaps_plan_storage(plan, vector_range) ||
       overlaps_plan_storage(plan, state_range)) {
     error = "SCC mixer vector, state, plan, and descriptors must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<AddressRange, 4> controls{
       {plan_descriptor, vector_descriptor, state_descriptor, error_descriptor}};
@@ -314,7 +314,7 @@ xtbloom_status_t validate_active_ranges(const SccMixerPlan& plan, const SccMixer
     for (const AddressRange& control : controls) {
       if (ranges_overlap(active, control)) {
         error = "SCC mixer numerical storage overlaps a control object";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
   }
@@ -333,34 +333,34 @@ xtbloom_status_t validate_active_ranges(const SccMixerPlan& plan, const SccMixer
         ranges_overlap(vector_range, workspace_descriptor) ||
         ranges_overlap(state_range, workspace_descriptor)) {
       error = "SCC mixer scratch overlaps active numerical or control storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_call(const SccMixerPlan& plan, const SccMixerVectorView& vector,
+vibeqc_xtb_status_t validate_call(const SccMixerPlan& plan, const SccMixerVectorView& vector,
                                const SccMixerState& state, const SccMixerWorkspace* workspace,
                                std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS ||
-      (status = validate_state(plan, state, error)) != XTBLOOM_STATUS_SUCCESS ||
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS ||
+      (status = validate_state(plan, state, error)) != VIBEQC_XTB_STATUS_SUCCESS ||
       (workspace != nullptr &&
-       (status = validate_workspace(plan, *workspace, error)) != XTBLOOM_STATUS_SUCCESS) ||
-      (status = validate_vector(plan, vector, error)) != XTBLOOM_STATUS_SUCCESS ||
+       (status = validate_workspace(plan, *workspace, error)) != VIBEQC_XTB_STATUS_SUCCESS) ||
+      (status = validate_vector(plan, vector, error)) != VIBEQC_XTB_STATUS_SUCCESS ||
       (status = validate_active_ranges(plan, vector, state, workspace, error)) !=
-          XTBLOOM_STATUS_SUCCESS) {
+          VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_transaction(const SccMixerPlan& plan, const SccMixerState& source,
+vibeqc_xtb_status_t validate_transaction(const SccMixerPlan& plan, const SccMixerState& source,
                                       const SccMixerState& staged, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS ||
-      (status = validate_state(plan, source, error)) != XTBLOOM_STATUS_SUCCESS ||
-      (status = validate_state(plan, staged, error)) != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS ||
+      (status = validate_state(plan, source, error)) != VIBEQC_XTB_STATUS_SUCCESS ||
+      (status = validate_state(plan, staged, error)) != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccMixerPlanData& data = *plan.identity();
@@ -379,7 +379,7 @@ xtbloom_status_t validate_transaction(const SccMixerPlan& plan, const SccMixerSt
       ranges_overlap(source_range, staged_range) || overlaps_plan_storage(plan, source_range) ||
       overlaps_plan_storage(plan, staged_range)) {
     error = "SCC mixer transaction source and staged storage must be disjoint and unaliased";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<AddressRange, 4> controls{
       {plan_descriptor, source_descriptor, staged_descriptor, error_descriptor}};
@@ -387,11 +387,11 @@ xtbloom_status_t validate_transaction(const SccMixerPlan& plan, const SccMixerSt
     for (const AddressRange& control : controls) {
       if (ranges_overlap(active, control)) {
         error = "SCC mixer transaction storage overlaps a control object";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 std::size_t system_index(std::int64_t system) { return static_cast<std::size_t>(system); }
@@ -482,13 +482,13 @@ void copy_mixer_system_state(const SccMixerPlanData& data, std::size_t system,
   destination.converged[system] = source.converged[system];
 }
 
-xtbloom_status_t record_numeric_failure(const SccMixerState& state, std::size_t system,
+vibeqc_xtb_status_t record_numeric_failure(const SccMixerState& state, std::size_t system,
                                         const char* message, std::string& error) {
   /* Preserve every numerical diagnostic and history field. A failed raw SCC
    * result is observable only through the per-system status and error text. */
-  state.system_statuses[system] = XTBLOOM_STATUS_INTERNAL_ERROR;
+  state.system_statuses[system] = VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   error = message;
-  return XTBLOOM_STATUS_INTERNAL_ERROR;
+  return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
 }
 
 bool dot_product(const double* first, const double* second, std::size_t count, double& result) {
@@ -556,7 +556,7 @@ bool cholesky_solve(double* matrix, double* right_hand_side, std::size_t dimensi
   return true;
 }
 
-xtbloom_status_t mix_system_unchecked(const SccMixerPlanData& data, std::size_t system,
+vibeqc_xtb_status_t mix_system_unchecked(const SccMixerPlanData& data, std::size_t system,
                                       const SccMixerVectorView& wavefunction,
                                       const SccMixerState& state,
                                       const SccMixerWorkspace& workspace, std::string& error) {
@@ -736,11 +736,11 @@ xtbloom_status_t mix_system_unchecked(const SccMixerPlanData& data, std::size_t 
   state.residual_rms[system] = residual_rms;
   state.residual_maximum[system] = residual_maximum;
   state.iterations[system] = new_iteration;
-  state.system_statuses[system] = XTBLOOM_STATUS_SUCCESS;
+  state.system_statuses[system] = VIBEQC_XTB_STATUS_SUCCESS;
   state.converged[system] =
       residual_rms < data.rms_tolerance && residual_maximum < data.maximum_tolerance ? 1u : 0u;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 }  // namespace
@@ -830,7 +830,7 @@ bool SccMixerPlan::overlaps_storage(const void* data, std::size_t size_bytes) co
 
 const SccMixerPlanData* SccMixerPlan::identity() const noexcept { return data_.get(); }
 
-xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
+vibeqc_xtb_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
                                      std::int64_t history_size, double damping,
                                      double rms_tolerance, double maximum_tolerance,
                                      SccMixerPlan& plan, std::string& error) {
@@ -842,7 +842,7 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
       !std::isfinite(rms_tolerance) || !(rms_tolerance > 0.0) ||
       !std::isfinite(maximum_tolerance) || !(maximum_tolerance > 0.0)) {
     error = "SCC mixer vector layout, history, damping, or convergence tolerances are invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t batch = static_cast<std::size_t>(layout.batch_size);
@@ -859,7 +859,7 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
         candidate.offset_bytes > layout.workspace_size_bytes ||
         candidate.size_bytes > layout.workspace_size_bytes - candidate.offset_bytes) {
       error = "SCC mixer vector field layout is malformed or exceeds its workspace";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     field_ranges[field] = {
         static_cast<std::uintptr_t>(candidate.offset_bytes),
@@ -868,7 +868,7 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
       if (candidate.system_offsets[system] < 0 ||
           candidate.system_offsets[system] >= candidate.system_offsets[system + 1u]) {
         error = "SCC mixer vector field offsets must give every system a nonempty slice";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
   }
@@ -876,7 +876,7 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
     for (std::size_t second = first + 1u; second < layout.field_count; ++second) {
       if (ranges_overlap(field_ranges[first], field_ranges[second])) {
         error = "SCC mixer vector fields overlap within their model workspace";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
   }
@@ -909,7 +909,7 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
                                             created.field_system_offsets[field][system];
         if (!checked_add_i64(field_elements, dimension)) {
           error = "SCC mixer ragged vector dimensions overflow int64_t";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
       }
       if (dimension <= 0 || !checked_multiply_i64(dimension, history_size, history_elements) ||
@@ -918,7 +918,7 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
           !checked_add_i64(history_elements, created.history_offsets[system + 1u]) ||
           !checked_add_i64(created.history_offsets[system], created.history_offsets[system + 1u])) {
         error = "SCC mixer ragged vector or history dimensions overflow int64_t";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       created.maximum_vector_elements = std::max(created.maximum_vector_elements, dimension);
     }
@@ -935,7 +935,7 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
     if (!checked_multiply_i64(layout.batch_size, history_size, omega_elements) ||
         !checked_multiply_i64(history_size, history_size, beta_elements)) {
       error = "SCC mixer history dimensions overflow int64_t";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     const std::int64_t total_history_elements = created.history_offsets.back();
     std::size_t vector_bytes = 0u;
@@ -954,14 +954,14 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
         !bytes_for(omega_elements, sizeof(double), omega_bytes) ||
         !bytes_for(layout.batch_size, sizeof(double), batch_double_bytes) ||
         !bytes_for(layout.batch_size, sizeof(std::uint64_t), batch_u64_bytes) ||
-        !bytes_for(layout.batch_size, sizeof(xtbloom_status_t), batch_status_bytes) ||
+        !bytes_for(layout.batch_size, sizeof(vibeqc_xtb_status_t), batch_status_bytes) ||
         !bytes_for(layout.batch_size, sizeof(std::uint8_t), batch_byte_bytes) ||
         !bytes_for(created.maximum_vector_elements, sizeof(double), maximum_vector_bytes) ||
         !bytes_for(beta_elements, sizeof(double), beta_bytes) ||
         !bytes_for(history_size, sizeof(double), coefficient_bytes) ||
         !bytes_for(history_size, sizeof(std::int64_t), slot_bytes)) {
       error = "SCC mixer caller-owned storage exceeds addressable memory";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     std::size_t cursor = 0u;
@@ -982,7 +982,7 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
                         created.iteration_offset_bytes) ||
         !append_segment(batch_u64_bytes, alignof(std::uint64_t), cursor,
                         created.restart_count_offset_bytes) ||
-        !append_segment(batch_status_bytes, alignof(xtbloom_status_t), cursor,
+        !append_segment(batch_status_bytes, alignof(vibeqc_xtb_status_t), cursor,
                         created.system_status_offset_bytes) ||
         !append_segment(batch_byte_bytes, alignof(std::uint8_t), cursor,
                         created.initialized_offset_bytes) ||
@@ -990,7 +990,7 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
                         created.converged_offset_bytes) ||
         !align_up(cursor, kSccMixerWorkspaceAlignment, created.state_size_bytes)) {
       error = "SCC mixer persistent state packing overflows size_t";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     cursor = 0u;
@@ -1009,24 +1009,24 @@ xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
                         created.history_slot_scratch_offset_bytes) ||
         !align_up(cursor, kSccMixerWorkspaceAlignment, created.workspace_size_bytes)) {
       error = "SCC mixer scratch packing overflows size_t";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     auto sealed = std::make_shared<const SccMixerPlanData>(std::move(created));
     plan = SccMixerPlan(std::move(sealed));
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate SCC mixer plan metadata";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t bind_scc_mixer_state(const SccMixerPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_scc_mixer_state(const SccMixerPlan& plan, void* workspace,
                                       std::size_t workspace_size, SccMixerState& state,
                                       std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccMixerPlanData& data = *plan.identity();
@@ -1045,7 +1045,7 @@ xtbloom_status_t bind_scc_mixer_state(const SccMixerPlan& plan, void* workspace,
       ranges_overlap(workspace_range, state_descriptor) ||
       ranges_overlap(workspace_range, error_descriptor)) {
     error = "SCC mixer persistent state storage is invalid or overlaps control storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   SccMixerState created;
@@ -1064,24 +1064,24 @@ xtbloom_status_t bind_scc_mixer_state(const SccMixerPlan& plan, void* workspace,
   created.restart_counts =
       offset_pointer<std::uint64_t>(workspace, data.restart_count_offset_bytes);
   created.system_statuses =
-      offset_pointer<xtbloom_status_t>(workspace, data.system_status_offset_bytes);
+      offset_pointer<vibeqc_xtb_status_t>(workspace, data.system_status_offset_bytes);
   created.initialized = offset_pointer<std::uint8_t>(workspace, data.initialized_offset_bytes);
   created.converged = offset_pointer<std::uint8_t>(workspace, data.converged_offset_bytes);
   created.plan_identity = &data;
 
   std::memset(workspace, 0, data.state_size_bytes);
   std::fill_n(created.system_statuses, static_cast<std::size_t>(data.batch_size),
-              XTBLOOM_STATUS_INVALID_ARGUMENT);
+              VIBEQC_XTB_STATUS_INVALID_ARGUMENT);
   state = created;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t bind_scc_mixer_workspace(const SccMixerPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_scc_mixer_workspace(const SccMixerPlan& plan, void* workspace,
                                           std::size_t workspace_size, SccMixerWorkspace& view,
                                           std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccMixerPlanData& data = *plan.identity();
@@ -1100,7 +1100,7 @@ xtbloom_status_t bind_scc_mixer_workspace(const SccMixerPlan& plan, void* worksp
       ranges_overlap(workspace_range, view_descriptor) ||
       ranges_overlap(workspace_range, error_descriptor)) {
     error = "SCC mixer scratch storage is invalid or overlaps control storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   SccMixerWorkspace created;
@@ -1117,27 +1117,27 @@ xtbloom_status_t bind_scc_mixer_workspace(const SccMixerPlan& plan, void* worksp
   created.plan_identity = &data;
   view = created;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_scc_mixer_state_binding(const SccMixerPlan& plan,
+vibeqc_xtb_status_t validate_scc_mixer_state_binding(const SccMixerPlan& plan,
                                                   const SccMixerState& state, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  return status == XTBLOOM_STATUS_SUCCESS ? validate_state(plan, state, error) : status;
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  return status == VIBEQC_XTB_STATUS_SUCCESS ? validate_state(plan, state, error) : status;
 }
 
-xtbloom_status_t validate_scc_mixer_workspace_binding(const SccMixerPlan& plan,
+vibeqc_xtb_status_t validate_scc_mixer_workspace_binding(const SccMixerPlan& plan,
                                                       const SccMixerWorkspace& workspace,
                                                       std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  return status == XTBLOOM_STATUS_SUCCESS ? validate_workspace(plan, workspace, error) : status;
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  return status == VIBEQC_XTB_STATUS_SUCCESS ? validate_workspace(plan, workspace, error) : status;
 }
 
-xtbloom_status_t initialize_scc_mixer_state_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t initialize_scc_mixer_state_cpu(const SccMixerPlan& plan,
                                                 const SccMixerVectorView& wavefunction,
                                                 const SccMixerState& state, std::string& error) {
-  xtbloom_status_t status = validate_call(plan, wavefunction, state, nullptr, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_call(plan, wavefunction, state, nullptr, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccMixerPlanData& data = *plan.identity();
@@ -1145,7 +1145,7 @@ xtbloom_status_t initialize_scc_mixer_state_cpu(const SccMixerPlan& plan,
   for (std::size_t system = 0u; system < batch; ++system) {
     if (!raw_components_are_finite(data, wavefunction, system)) {
       error = "SCC mixer initial wavefunction contains NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -1154,36 +1154,36 @@ xtbloom_status_t initialize_scc_mixer_state_cpu(const SccMixerPlan& plan,
     copy_raw_components(data, wavefunction, system,
                         state.current_inputs + system_vector_offset(data, system));
     state.initialized[system] = 1u;
-    state.system_statuses[system] = XTBLOOM_STATUS_SUCCESS;
+    state.system_statuses[system] = VIBEQC_XTB_STATUS_SUCCESS;
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t restart_scc_mixer_system_cpu(const SccMixerPlan& plan, std::int64_t system,
+vibeqc_xtb_status_t restart_scc_mixer_system_cpu(const SccMixerPlan& plan, std::int64_t system,
                                               const SccMixerVectorView& wavefunction,
                                               const SccMixerState& state, std::string& error) {
-  xtbloom_status_t status = validate_call(plan, wavefunction, state, nullptr, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_call(plan, wavefunction, state, nullptr, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccMixerPlanData& data = *plan.identity();
   if (system < 0 || system >= data.batch_size) {
     error = "SCC mixer restart requires a valid system index";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::size_t index = system_index(system);
   if (state.initialized[index] != 1u) {
     error = "SCC mixer system must be initialized before it can be restarted";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (state.restart_counts[index] == std::numeric_limits<std::uint64_t>::max()) {
     error = "SCC mixer restart counter cannot be advanced";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!raw_components_are_finite(data, wavefunction, index)) {
     error = "SCC mixer restart wavefunction contains NaN or infinity";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t dimension = system_dimension(data, index);
@@ -1201,40 +1201,40 @@ xtbloom_status_t restart_scc_mixer_system_cpu(const SccMixerPlan& plan, std::int
   state.residual_maximum[index] = 0.0;
   state.iterations[index] = 0u;
   ++state.restart_counts[index];
-  state.system_statuses[index] = XTBLOOM_STATUS_SUCCESS;
+  state.system_statuses[index] = VIBEQC_XTB_STATUS_SUCCESS;
   state.converged[index] = 0u;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t mix_scc_broyden_system_cpu(const SccMixerPlan& plan, std::int64_t system,
+vibeqc_xtb_status_t mix_scc_broyden_system_cpu(const SccMixerPlan& plan, std::int64_t system,
                                             const SccMixerVectorView& wavefunction,
                                             const SccMixerState& state,
                                             const SccMixerWorkspace& workspace,
                                             std::string& error) {
-  xtbloom_status_t status = validate_call(plan, wavefunction, state, &workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_call(plan, wavefunction, state, &workspace, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccMixerPlanData& data = *plan.identity();
   if (system < 0 || system >= data.batch_size) {
     error = "SCC mixer worker requires a valid system index";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::size_t index = system_index(system);
   if (state.initialized[index] != 1u) {
     error = "SCC mixer worker requires initialized per-system state";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   return mix_system_unchecked(data, index, wavefunction, state, workspace, error);
 }
 
-xtbloom_status_t mix_scc_broyden_batch_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t mix_scc_broyden_batch_cpu(const SccMixerPlan& plan,
                                            const SccMixerVectorView& wavefunction,
                                            const SccMixerState& state,
                                            const SccMixerWorkspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_call(plan, wavefunction, state, &workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_call(plan, wavefunction, state, &workspace, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccMixerPlanData& data = *plan.identity();
@@ -1242,73 +1242,73 @@ xtbloom_status_t mix_scc_broyden_batch_cpu(const SccMixerPlan& plan,
   for (std::size_t system = 0u; system < batch; ++system) {
     if (state.initialized[system] != 1u) {
       error = "SCC mixer batch requires every system state to be initialized";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
-  xtbloom_status_t first_failure = XTBLOOM_STATUS_SUCCESS;
+  vibeqc_xtb_status_t first_failure = VIBEQC_XTB_STATUS_SUCCESS;
   std::string first_error;
   for (std::size_t system = 0u; system < batch; ++system) {
     status = mix_system_unchecked(data, system, wavefunction, state, workspace, error);
-    if (status != XTBLOOM_STATUS_SUCCESS && first_failure == XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS && first_failure == VIBEQC_XTB_STATUS_SUCCESS) {
       first_failure = status;
       first_error = error;
     }
   }
-  if (first_failure != XTBLOOM_STATUS_SUCCESS) {
+  if (first_failure != VIBEQC_XTB_STATUS_SUCCESS) {
     error = std::move(first_error);
     return first_failure;
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t prepare_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t prepare_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
                                                           std::int64_t system,
                                                           const SccMixerState& source,
                                                           const SccMixerState& staged,
                                                           std::string& error) {
-  xtbloom_status_t status = validate_transaction(plan, source, staged, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_transaction(plan, source, staged, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccMixerPlanData& data = *plan.identity();
   if (system < 0 || system >= data.batch_size) {
     error = "SCC mixer transaction requires a valid system index";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::size_t index = system_index(system);
   if (source.initialized[index] != 1u) {
     error = "SCC mixer transaction source system must be initialized";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   copy_mixer_system_state(data, index, source, staged);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t commit_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t commit_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
                                                          std::int64_t system,
                                                          const SccMixerState& staged,
                                                          const SccMixerState& destination,
                                                          std::string& error) {
-  xtbloom_status_t status = validate_transaction(plan, staged, destination, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_transaction(plan, staged, destination, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccMixerPlanData& data = *plan.identity();
   if (system < 0 || system >= data.batch_size) {
     error = "SCC mixer transaction requires a valid system index";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::size_t index = system_index(system);
   if (staged.initialized[index] != 1u) {
     error = "SCC mixer transaction staged system must be initialized";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   copy_mixer_system_state(data, index, staged, destination);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-}  // namespace xtbloom::detail::common
+}  // namespace vibeqc::xtb::detail::common

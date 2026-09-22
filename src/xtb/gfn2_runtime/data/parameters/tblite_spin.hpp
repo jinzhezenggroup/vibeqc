@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#ifndef XTBLOOM_DATA_PARAMETERS_TBLITE_SPIN_HPP
-#define XTBLOOM_DATA_PARAMETERS_TBLITE_SPIN_HPP
+#ifndef VIBEQC_XTB_DATA_PARAMETERS_TBLITE_SPIN_HPP
+#define VIBEQC_XTB_DATA_PARAMETERS_TBLITE_SPIN_HPP
 
 #include <array>
 
-namespace xtbloom::parameters::tblite {
+namespace vibeqc::xtb::parameters::tblite {
 
 /*
  * Element spin constants (ss, sp, pp, sd, pd, dd) copied from
@@ -102,6 +102,6 @@ inline constexpr std::array<std::array<double, 6>, 86> kSpinConstants{{
     {{-0.0139000, -0.0097380, -0.0106500, -0.0028750, -0.0078120, -0.0130000}},
 }};
 
-}  // namespace xtbloom::parameters::tblite
+}  // namespace vibeqc::xtb::parameters::tblite
 
-#endif  // XTBLOOM_DATA_PARAMETERS_TBLITE_SPIN_HPP
+#endif  // VIBEQC_XTB_DATA_PARAMETERS_TBLITE_SPIN_HPP

@@ -15,7 +15,7 @@
 #include "runtime/cuda_descriptor_validation.hpp"
 #include "runtime/gfn2_cuda_topology_staging.hpp"
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 namespace {
 
 using Diagnostic = Gfn2CudaTopologyStagingDiagnostic;
@@ -23,7 +23,7 @@ using Error = Gfn2CudaTopologyStagingError;
 using Field = Gfn2CudaTopologyStagingField;
 using Disposition = Gfn2CudaTopologyStageDisposition;
 
-Diagnostic failure(xtbloom_status_t status, Error error, Field field, std::int64_t index = -1,
+Diagnostic failure(vibeqc_xtb_status_t status, Error error, Field field, std::int64_t index = -1,
                    cudaError_t cuda_status = cudaSuccess) noexcept {
   Diagnostic result{};
   result.status = status;
@@ -35,9 +35,9 @@ Diagnostic failure(xtbloom_status_t status, Error error, Field field, std::int64
 }
 
 Diagnostic cuda_failure(Field field, cudaError_t status) noexcept {
-  const xtbloom_status_t public_status = status == cudaErrorMemoryAllocation
-                                             ? XTBLOOM_STATUS_ALLOCATION_FAILED
-                                             : XTBLOOM_STATUS_INTERNAL_ERROR;
+  const vibeqc_xtb_status_t public_status = status == cudaErrorMemoryAllocation
+                                             ? VIBEQC_XTB_STATUS_ALLOCATION_FAILED
+                                             : VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   return failure(public_status,
                  status == cudaErrorMemoryAllocation ? Error::kAllocationFailed : Error::kCudaError,
                  field, -1, status);
@@ -45,8 +45,8 @@ Diagnostic cuda_failure(Field field, cudaError_t status) noexcept {
 
 Diagnostic restore_boundary(ScopedCudaDevice& guard, Diagnostic intended,
                             std::string& error) noexcept {
-  const xtbloom_status_t status = guard.restore(error);
-  return status == XTBLOOM_STATUS_SUCCESS ? intended
+  const vibeqc_xtb_status_t status = guard.restore(error);
+  return status == VIBEQC_XTB_STATUS_SUCCESS ? intended
                                           : failure(status, Error::kCudaError, Field::kNone);
 }
 
@@ -108,7 +108,7 @@ struct PackedLayout {
   }
 };
 
-bool make_layout(const xtbloom_batch_t& batch, PackedLayout& layout) noexcept {
+bool make_layout(const vibeqc_xtb_batch_t& batch, PackedLayout& layout) noexcept {
   if (batch.batch_size <= 0 || batch.batch_size == std::numeric_limits<std::int64_t>::max() ||
       batch.total_atoms <= 0 || batch.total_point_charges < 0 ||
       batch.total_charge_response_elements < 0) {
@@ -385,7 +385,7 @@ Diagnostic allocate_backing(std::int32_t device_id, const PackedLayout& layout,
                             std::unique_ptr<Backing>& output) noexcept {
   std::unique_ptr<Backing> created(new (std::nothrow) Backing());
   if (!created) {
-    return failure(XTBLOOM_STATUS_ALLOCATION_FAILED, Error::kAllocationFailed, Field::kArena);
+    return failure(VIBEQC_XTB_STATUS_ALLOCATION_FAILED, Error::kAllocationFailed, Field::kArena);
   }
   created->device_id = device_id;
   created->layout = layout;
@@ -459,7 +459,7 @@ const char* field_name(Field field) noexcept {
   }
 }
 
-const xtbloom_const_buffer_t& field_buffer(const xtbloom_batch_t& batch, Field field) noexcept {
+const vibeqc_xtb_const_buffer_t& field_buffer(const vibeqc_xtb_batch_t& batch, Field field) noexcept {
   switch (field) {
     case Field::kAtomOffsets:
       return batch.atom_offsets;
@@ -497,9 +497,9 @@ Diagnostic diagnostic_from_device_report(const DeviceReport& report) noexcept {
   if (report.error == static_cast<std::uint32_t>(DeviceError::kSuccess)) return {};
   const Field field = static_cast<Field>(report.field);
   if (report.error == static_cast<std::uint32_t>(DeviceError::kCountOverflow)) {
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, Error::kCountOverflow, field, report.index);
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, Error::kCountOverflow, field, report.index);
   }
-  return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, Error::kInvalidMetadata, field, report.index);
+  return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, Error::kInvalidMetadata, field, report.index);
 }
 
 void set_semantic_error(const Diagnostic& diagnostic, std::string& error) {
@@ -557,7 +557,7 @@ struct Gfn2CudaTopologyStaging::Impl {
   DeviceReport* device_report = nullptr;
   DeviceReport* pinned_report = nullptr;
   bool initialized = false;
-  xtbloom_status_t initialization_status = XTBLOOM_STATUS_BACKEND_UNAVAILABLE;
+  vibeqc_xtb_status_t initialization_status = VIBEQC_XTB_STATUS_BACKEND_UNAVAILABLE;
   std::string initialization_error;
   std::unique_ptr<Backing> active;
   std::unique_ptr<Backing> pending;
@@ -605,8 +605,8 @@ Gfn2CudaTopologyStaging::Gfn2CudaTopologyStaging(std::int32_t device_id, void* s
     impl_->initialization_error = std::move(error);
     return;
   }
-  xtbloom_status_t status = validate_cuda_stream_owner(device_id, impl_->stream, true, error);
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_cuda_stream_owner(device_id, impl_->stream, true, error);
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     cudaError_t cuda_status = cudaEventCreateWithFlags(&impl_->event, cudaEventDisableTiming);
     if (cuda_status == cudaSuccess) {
       cuda_status =
@@ -617,17 +617,17 @@ Gfn2CudaTopologyStaging::Gfn2CudaTopologyStaging(std::int32_t device_id, void* s
           cudaMallocHost(reinterpret_cast<void**>(&impl_->pinned_report), sizeof(DeviceReport));
     }
     if (cuda_status != cudaSuccess) {
-      status = cuda_status == cudaErrorMemoryAllocation ? XTBLOOM_STATUS_ALLOCATION_FAILED
-                                                        : XTBLOOM_STATUS_INTERNAL_ERROR;
+      status = cuda_status == cudaErrorMemoryAllocation ? VIBEQC_XTB_STATUS_ALLOCATION_FAILED
+                                                        : VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       error = std::string("failed to allocate CUDA topology staging diagnostics: ") +
               cudaGetErrorString(cuda_status);
     }
   }
-  const xtbloom_status_t restore_status = guard.restore(error);
-  if (status == XTBLOOM_STATUS_SUCCESS) status = restore_status;
+  const vibeqc_xtb_status_t restore_status = guard.restore(error);
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) status = restore_status;
   impl_->initialization_status = status;
   impl_->initialization_error = error;
-  impl_->initialized = status == XTBLOOM_STATUS_SUCCESS;
+  impl_->initialized = status == VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 Gfn2CudaTopologyStaging::~Gfn2CudaTopologyStaging() {
@@ -648,23 +648,23 @@ Gfn2CudaTopologyStaging::~Gfn2CudaTopologyStaging() {
 bool Gfn2CudaTopologyStaging::valid() const noexcept { return impl_ && impl_->initialized; }
 
 Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::stage_and_validate(
-    const xtbloom_batch_t& batch, std::string& error) {
+    const vibeqc_xtb_batch_t& batch, std::string& error) {
   error.clear();
   if (!impl_ || !impl_->initialized) {
     if (impl_) error = impl_->initialization_error;
-    return failure(impl_ ? impl_->initialization_status : XTBLOOM_STATUS_ALLOCATION_FAILED,
+    return failure(impl_ ? impl_->initialization_status : VIBEQC_XTB_STATUS_ALLOCATION_FAILED,
                    Error::kNotInitialized, Field::kNone);
   }
   if (impl_->pending) {
     error = "a CUDA topology candidate is already pending commit or abort";
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, Error::kCandidatePending, Field::kNone);
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, Error::kCandidatePending, Field::kNone);
   }
 
   ScopedCudaDevice guard(impl_->device_id, error);
   if (!guard.ok()) return failure(guard.status(), Error::kCudaError, Field::kNone);
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_cuda_stream_owner(impl_->device_id, impl_->stream, true, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return restore_boundary(guard, failure(status, Error::kInvalidDescriptor, Field::kStream),
                             error);
   }
@@ -674,7 +674,7 @@ Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::stage_and_validate(
     error = "CUDA topology dimensions are invalid or overflow host address space";
     return restore_boundary(
         guard,
-        failure(XTBLOOM_STATUS_INVALID_ARGUMENT, Error::kInvalidDimensions, Field::kDimensions),
+        failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, Error::kInvalidDimensions, Field::kDimensions),
         error);
   }
   const bool point_supplied = batch.total_point_charges != 0 ||
@@ -689,7 +689,7 @@ Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::stage_and_validate(
   /* The ABI-v2 suffix is optional. Avoid reading it for an ABI-v1 caller and
    * let the validation kernel materialize the canonical restricted default. */
   const bool spin_channels_supplied =
-      batch.struct_size >= XTBLOOM_BATCH_V2_SIZE &&
+      batch.struct_size >= VIBEQC_XTB_BATCH_V2_SIZE &&
       (batch.spin_channels.data != nullptr || batch.spin_channels.size_bytes != 0u);
 
   struct Input {
@@ -709,7 +709,7 @@ Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::stage_and_validate(
         impl_->device_id, field_name(input.field), field_buffer(batch, input.field),
         field_bytes(layout, input.field), field_alignment(input.field),
         CudaManagedMemoryPolicy::kReject, input.buffer, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       return restore_boundary(guard, failure(status, Error::kInvalidDescriptor, input.field),
                               error);
     }
@@ -745,7 +745,7 @@ Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::stage_and_validate(
     const std::size_t offset = field_offset(layout, input.field);
     void* destination = static_cast<unsigned char*>(workspace->staging) + offset;
     cuda_status = cudaSuccess;
-    if (input.buffer.memory_space == XTBLOOM_MEMORY_HOST) {
+    if (input.buffer.memory_space == VIBEQC_XTB_MEMORY_HOST) {
       void* pinned = static_cast<unsigned char*>(workspace->pinned) + offset;
       std::memcpy(pinned, input.buffer.data, bytes);
       cuda_status =
@@ -798,8 +798,8 @@ Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::stage_and_validate(
                               impl_->committed_snapshot &&
                               impl_->committed_snapshot->periodic_enabled == periodic_enabled;
   if (metadata_match) {
-    const xtbloom_status_t restore_status = guard.restore(error);
-    if (restore_status != XTBLOOM_STATUS_SUCCESS) {
+    const vibeqc_xtb_status_t restore_status = guard.restore(error);
+    if (restore_status != VIBEQC_XTB_STATUS_SUCCESS) {
       return failure(restore_status, Error::kCudaError, Field::kNone);
     }
     Diagnostic result{};
@@ -839,7 +839,7 @@ Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::stage_and_validate(
   if (!snapshot) {
     error = "failed to allocate the canonical host topology snapshot";
     return restore_boundary(
-        guard, failure(XTBLOOM_STATUS_ALLOCATION_FAILED, Error::kAllocationFailed, Field::kArena),
+        guard, failure(VIBEQC_XTB_STATUS_ALLOCATION_FAILED, Error::kAllocationFailed, Field::kArena),
         error);
   }
   try {
@@ -847,14 +847,14 @@ Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::stage_and_validate(
   } catch (const std::bad_alloc&) {
     error = "failed to allocate arrays for the canonical host topology snapshot";
     return restore_boundary(
-        guard, failure(XTBLOOM_STATUS_ALLOCATION_FAILED, Error::kAllocationFailed, Field::kArena),
+        guard, failure(VIBEQC_XTB_STATUS_ALLOCATION_FAILED, Error::kAllocationFailed, Field::kArena),
         error);
   }
   impl_->pending = std::move(created);
   impl_->pending_snapshot = std::move(snapshot);
   impl_->pending_ready = false;
-  const xtbloom_status_t restore_status = guard.restore(error);
-  if (restore_status != XTBLOOM_STATUS_SUCCESS) {
+  const vibeqc_xtb_status_t restore_status = guard.restore(error);
+  if (restore_status != VIBEQC_XTB_STATUS_SUCCESS) {
     impl_->pending.reset();
     impl_->pending_snapshot.reset();
     return failure(restore_status, Error::kCudaError, Field::kNone);
@@ -869,19 +869,19 @@ Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::prepare_candidate_com
   error.clear();
   if (!impl_ || !impl_->initialized) {
     if (impl_) error = impl_->initialization_error;
-    return failure(impl_ ? impl_->initialization_status : XTBLOOM_STATUS_ALLOCATION_FAILED,
+    return failure(impl_ ? impl_->initialization_status : VIBEQC_XTB_STATUS_ALLOCATION_FAILED,
                    Error::kNotInitialized, Field::kNone);
   }
   if (!impl_->pending || !impl_->pending_snapshot) {
     error = "no CUDA topology candidate is pending";
-    return failure(XTBLOOM_STATUS_INVALID_ARGUMENT, Error::kNoCandidate, Field::kNone);
+    return failure(VIBEQC_XTB_STATUS_INVALID_ARGUMENT, Error::kNoCandidate, Field::kNone);
   }
   if (impl_->pending_ready) return {};
   ScopedCudaDevice guard(impl_->device_id, error);
   if (!guard.ok()) return failure(guard.status(), Error::kCudaError, Field::kNone);
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_cuda_stream_owner(impl_->device_id, impl_->stream, true, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return restore_boundary(guard, failure(status, Error::kInvalidDescriptor, Field::kStream),
                             error);
   }
@@ -897,8 +897,8 @@ Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::prepare_candidate_com
   if (!waited.success()) {
     return restore_boundary(guard, waited, error);
   }
-  const xtbloom_status_t restore_status = guard.restore(error);
-  if (restore_status != XTBLOOM_STATUS_SUCCESS) {
+  const vibeqc_xtb_status_t restore_status = guard.restore(error);
+  if (restore_status != VIBEQC_XTB_STATUS_SUCCESS) {
     return failure(restore_status, Error::kCudaError, Field::kNone);
   }
   impl_->pending_ready = true;
@@ -923,7 +923,7 @@ Gfn2CudaTopologyStagingDiagnostic Gfn2CudaTopologyStaging::commit_candidate(std:
   if (!diagnostic.success()) return diagnostic;
   if (!publish_candidate()) {
     error = "prepared CUDA topology candidate violated the publication invariant";
-    return failure(XTBLOOM_STATUS_INTERNAL_ERROR, Error::kNoCandidate, Field::kNone);
+    return failure(VIBEQC_XTB_STATUS_INTERNAL_ERROR, Error::kNoCandidate, Field::kNone);
   }
   return {};
 }
@@ -1013,4 +1013,4 @@ Gfn2CudaTopologyStagingWorkspaceBytes Gfn2CudaTopologyStaging::workspace_bytes()
   return result;
 }
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail

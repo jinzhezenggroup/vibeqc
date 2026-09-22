@@ -7,7 +7,7 @@
 
 #include "backends/cuda/gfn2_plan_schema.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr std::int64_t kInt64Maximum = 9223372036854775807LL;
@@ -857,4 +857,4 @@ cudaError_t bind_gfn2_element_identity_projection_cuda(
   return cudaSuccess;
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

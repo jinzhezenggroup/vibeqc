@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_RUNTIME_GFN2_CPU_EXECUTION_HPP
+#ifndef VIBEQC_XTB_RUNTIME_GFN2_CPU_EXECUTION_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_RUNTIME_GFN2_CPU_EXECUTION_HPP
+#define VIBEQC_XTB_RUNTIME_GFN2_CPU_EXECUTION_HPP
 
 #include <cstdint>
 #include <memory>
@@ -11,7 +11,7 @@
 #include "cpu_dispatch/features.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 
 struct Gfn2CpuPeriodicSnapshot;
 
@@ -43,18 +43,18 @@ class Gfn2CpuExecutionCache {
   struct Impl;
   std::unique_ptr<Impl> impl_;
 
-  friend xtbloom_status_t execute_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
-                                                      const xtbloom_batch_t& batch,
-                                                      const xtbloom_compute_options_t& options,
-                                                      xtbloom_batch_result_t& result,
+  friend vibeqc_xtb_status_t execute_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
+                                                      const vibeqc_xtb_batch_t& batch,
+                                                      const vibeqc_xtb_compute_options_t& options,
+                                                      vibeqc_xtb_batch_result_t& result,
                                                       std::string& error);
-  friend xtbloom_status_t prepare_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
-                                                      const xtbloom_batch_t& batch,
-                                                      const xtbloom_compute_options_t& options,
+  friend vibeqc_xtb_status_t prepare_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
+                                                      const vibeqc_xtb_batch_t& batch,
+                                                      const vibeqc_xtb_compute_options_t& options,
                                                       bool& reused, std::string& error);
   friend std::size_t persistent_workspace_bytes_restricted_gfn2_cpu(
       Gfn2CpuExecutionCache& cache) noexcept;
-  friend xtbloom_status_t snapshot_restricted_gfn2_periodic_state(Gfn2CpuExecutionCache& cache,
+  friend vibeqc_xtb_status_t snapshot_restricted_gfn2_periodic_state(Gfn2CpuExecutionCache& cache,
                                                                   Gfn2CpuPeriodicSnapshot& snapshot,
                                                                   std::string& error);
 };
@@ -67,7 +67,7 @@ class Gfn2CpuExecutionCache {
  */
 struct Gfn2CpuPeriodicSystemSnapshot {
   bool native_periodic = false;
-  xtbloom_status_t status = XTBLOOM_STATUS_INTERNAL_ERROR;
+  vibeqc_xtb_status_t status = VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   std::vector<double> shell_charges;
   std::vector<double> coordination_numbers;
   std::vector<double> atomic_charges;
@@ -98,7 +98,7 @@ struct Gfn2CpuPeriodicSnapshot {
 
 /* Capture the converged/terminal native-periodic state without exposing the
  * CPU cache's private SystemExecution objects to CUDA code. */
-xtbloom_status_t snapshot_restricted_gfn2_periodic_state(Gfn2CpuExecutionCache& cache,
+vibeqc_xtb_status_t snapshot_restricted_gfn2_periodic_state(Gfn2CpuExecutionCache& cache,
                                                          Gfn2CpuPeriodicSnapshot& snapshot,
                                                          std::string& error);
 
@@ -110,22 +110,22 @@ xtbloom_status_t snapshot_restricted_gfn2_periodic_state(Gfn2CpuExecutionCache& 
  * call. Requested outputs and result flags are committed only after every
  * batch member reaches either a successful or documented terminal state.
  */
-xtbloom_status_t execute_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
-                                             const xtbloom_batch_t& batch,
-                                             const xtbloom_compute_options_t& options,
-                                             xtbloom_batch_result_t& result, std::string& error);
+vibeqc_xtb_status_t execute_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
+                                             const vibeqc_xtb_batch_t& batch,
+                                             const vibeqc_xtb_compute_options_t& options,
+                                             vibeqc_xtb_batch_result_t& result, std::string& error);
 
 /*
  * Allocation-permitted fixed-topology setup for a public plan.
  *
  * Stages and validates the request and builds (or reuses) the per-system
  * SystemExecution objects for the requested identity, leaving the cache warm
- * so the following xtbloom_plan_compute runs allocation-free. `reused` is true
+ * so the following vibeqc_xtb_plan_compute runs allocation-free. `reused` is true
  * when the cache already held an identical identity and no system was rebuilt.
  */
-xtbloom_status_t prepare_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
-                                             const xtbloom_batch_t& batch,
-                                             const xtbloom_compute_options_t& options, bool& reused,
+vibeqc_xtb_status_t prepare_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
+                                             const vibeqc_xtb_batch_t& batch,
+                                             const vibeqc_xtb_compute_options_t& options, bool& reused,
                                              std::string& error);
 
 /*
@@ -137,7 +137,7 @@ xtbloom_status_t prepare_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
  */
 std::size_t persistent_workspace_bytes_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache) noexcept;
 
-#if defined(XTBLOOM_CPU_WORKER_TEARDOWN_TESTING)
+#if defined(VIBEQC_XTB_CPU_WORKER_TEARDOWN_TESTING)
 /* Test-only observability for the standalone public-runtime teardown binary.
  * These functions are not compiled into the production shared library. */
 using Gfn2CpuWorkerTssHook = void (*)(bool after_scc_iteration) noexcept;
@@ -150,6 +150,6 @@ std::size_t gfn2_cpu_test_background_thread_cleanups() noexcept;
 bool gfn2_cpu_test_provider_requires_thread_cleanup() noexcept;
 #endif
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail
 
-#endif  // XTBLOOM_RUNTIME_GFN2_CPU_EXECUTION_HPP
+#endif  // VIBEQC_XTB_RUNTIME_GFN2_CPU_EXECUTION_HPP

@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_AES2_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_AES2_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_AES2_HPP
+#define VIBEQC_XTB_MODEL_GFN2_AES2_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -12,7 +12,7 @@
 #include "model/gfn2/basis.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct AES2PlanData;
 
@@ -64,7 +64,7 @@ class AES2Plan {
 
   std::shared_ptr<const AES2PlanData> data_;
 
-  friend xtbloom_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
+  friend vibeqc_xtb_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
                                          AES2Plan& plan, std::string& error);
 };
 
@@ -113,7 +113,7 @@ struct AES2Workspace {
  * shell metadata is cross-checked against the generated parameter table so a
  * same-sized but mismatched atomic-number list is rejected.
  */
-xtbloom_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
+vibeqc_xtb_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
                                 AES2Plan& plan, std::string& error);
 
 /*
@@ -131,7 +131,7 @@ xtbloom_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atom
  * workspace.pair_scratch must each hold plan.pair_data_elements() doubles and
  * must be disjoint. On failure, pair_storage and cache are unchanged.
  */
-xtbloom_status_t update_aes2_geometry_cache_cpu(
+vibeqc_xtb_status_t update_aes2_geometry_cache_cpu(
     const AES2Plan& plan, const double* positions, const double* coordination_numbers,
     std::uint64_t geometry_generation, double* pair_storage, std::size_t pair_storage_elements,
     const AES2Workspace& workspace, AES2GeometryCache& cache, std::string& error);
@@ -149,7 +149,7 @@ xtbloom_status_t update_aes2_geometry_cache_cpu(
  * and workspace.potential_scratch must be mutually disjoint. No output is
  * modified if validation or arithmetic fails.
  */
-xtbloom_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
+vibeqc_xtb_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
                                              const double* atomic_charges,
                                              const double* atomic_dipoles,
                                              const double* atomic_quadrupoles,
@@ -169,7 +169,7 @@ xtbloom_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2Geo
  * potential slices remain unchanged. The canonical caller-owned scratch is
  * used for staging, and successful calls allocate nothing.
  */
-xtbloom_status_t evaluate_aes2_potential_system_cpu(
+vibeqc_xtb_status_t evaluate_aes2_potential_system_cpu(
     const AES2Plan& plan, const AES2GeometryCache& cache, std::int64_t system,
     const double* atomic_charges, const double* atomic_dipoles, const double* atomic_quadrupoles,
     double* charge_potentials, double* dipole_potentials, double* quadrupole_potentials,
@@ -180,7 +180,7 @@ xtbloom_status_t evaluate_aes2_potential_system_cpu(
  * be finite. workspace.batch_scratch stages every contribution before any
  * caller output is updated, preserving call-level failure atomicity.
  */
-xtbloom_status_t add_aes2_energy_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
+vibeqc_xtb_status_t add_aes2_energy_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
                                      const double* atomic_charges, const double* atomic_dipoles,
                                      const double* atomic_quadrupoles, double* energies,
                                      const AES2Workspace& workspace, std::string& error);
@@ -197,7 +197,7 @@ xtbloom_status_t add_aes2_energy_cpu(const AES2Plan& plan, const AES2GeometryCac
  * contribution is finite. The canonical batch scratch remains caller-owned,
  * and successful calls allocate nothing.
  */
-xtbloom_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
+vibeqc_xtb_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
                                             std::int64_t system, const double* atomic_charges,
                                             const double* atomic_dipoles,
                                             const double* atomic_quadrupoles,
@@ -235,13 +235,13 @@ xtbloom_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2Geom
  * storage, and scratch buffers must be mutually disjoint and must not overlap
  * plan or descriptor storage. Successful calls allocate nothing.
  */
-xtbloom_status_t add_aes2_vjp_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
+vibeqc_xtb_status_t add_aes2_vjp_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
                                   const double* positions, const double* coordination_numbers,
                                   std::uint64_t geometry_generation, const double* atomic_charges,
                                   const double* atomic_dipoles, const double* atomic_quadrupoles,
                                   double* gradients, double* coordination_adjoints,
                                   const AES2Workspace& workspace, std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_AES2_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_AES2_HPP

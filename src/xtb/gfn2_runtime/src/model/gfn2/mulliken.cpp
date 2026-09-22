@@ -15,7 +15,7 @@
 #include "data/parameters/gfn2.hpp"
 #include "generated_gfn2_electronic_native.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct MullikenPlanData final {
   std::int64_t batch_size = 0;
@@ -200,60 +200,60 @@ bool overlaps_control_storage(const MullikenPlan& plan, const MemoryRange& candi
   return false;
 }
 
-xtbloom_status_t validate_plan(const MullikenPlan& plan, std::string& error) {
+vibeqc_xtb_status_t validate_plan(const MullikenPlan& plan, std::string& error) {
   if (!plan.sealed()) {
     error = "Mulliken plan is default-constructed, moved-from, or otherwise unsealed";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_pointer_count(const void* pointer, std::int64_t actual,
+vibeqc_xtb_status_t validate_pointer_count(const void* pointer, std::int64_t actual,
                                         std::int64_t expected, const char* message,
                                         std::string& error) {
   if (pointer == nullptr || actual != expected || !is_aligned_double(pointer)) {
     error = message;
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_integral_view(const MullikenPlan& plan,
+vibeqc_xtb_status_t validate_integral_view(const MullikenPlan& plan,
                                         const MullikenIntegralView& integrals, std::string& error) {
   if (integrals.plan_identity != plan.identity()) {
     error = "Mulliken integral view belongs to a different plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (validate_pointer_count(integrals.overlap, integrals.matrix_elements, plan.matrix_elements(),
                              "Mulliken overlap view is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS) {
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+                             error) != VIBEQC_XTB_STATUS_SUCCESS) {
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (integrals.dipole == nullptr || integrals.quadrupole == nullptr ||
       !is_aligned_double(integrals.dipole) || !is_aligned_double(integrals.quadrupole)) {
     error = "Mulliken multipole integral views must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_view_identity(const MullikenPlan& plan, const MullikenPlanData* identity,
+vibeqc_xtb_status_t validate_view_identity(const MullikenPlan& plan, const MullikenPlanData* identity,
                                         const char* message, std::string& error) {
   if (identity != plan.identity()) {
     error = message;
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_workspace(const MullikenWorkspace& workspace, std::int64_t required,
+vibeqc_xtb_status_t validate_workspace(const MullikenWorkspace& workspace, std::int64_t required,
                                     std::string& error) {
   if (workspace.scratch == nullptr || workspace.elements < required ||
       !is_aligned_double(workspace.scratch)) {
     error = "Mulliken workspace is NULL, misaligned, or too small";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 }  // namespace
@@ -286,8 +286,8 @@ const char* mulliken_population_failure_message(int code) noexcept {
 /* The system-level assembly reports every data-level failure as an internal
  * error and leaves the staged Hamiltonian unchanged (see the batch wrapper for
  * the INVALID_ARGUMENT integral validation). */
-xtbloom_status_t mulliken_hamiltonian_failure_status(int code) noexcept {
-  return code != 0 ? XTBLOOM_STATUS_INTERNAL_ERROR : XTBLOOM_STATUS_SUCCESS;
+vibeqc_xtb_status_t mulliken_hamiltonian_failure_status(int code) noexcept {
+  return code != 0 ? VIBEQC_XTB_STATUS_INTERNAL_ERROR : VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 const char* mulliken_hamiltonian_failure_message(int code) noexcept {
@@ -437,20 +437,20 @@ bool MullikenPlan::overlaps_storage(const void* data, std::size_t size_bytes) co
 
 const MullikenPlanData* MullikenPlan::identity() const noexcept { return data_.get(); }
 
-xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& integrals,
+vibeqc_xtb_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& integrals,
                                     const WavefunctionLayout& wavefunction, MullikenPlan& plan,
                                     std::string& error) {
   return make_mulliken_plan(basis, integrals, wavefunction, mulliken_baseline_kernels(), plan,
                             error);
 }
 
-xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& integrals,
+vibeqc_xtb_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& integrals,
                                     const WavefunctionLayout& wavefunction,
                                     const MullikenKernelTable& kernels, MullikenPlan& plan,
                                     std::string& error) {
   if (kernels.population == nullptr || kernels.hamiltonian == nullptr) {
     error = "Mulliken CPU kernel table is incomplete";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (basis.batch_size <= 0 || basis.total_atoms <= 0 || basis.total_shells <= 0 ||
       basis.total_orbitals <= 0 ||
@@ -459,7 +459,7 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
       !count_fits_storage(basis.total_shells, sizeof(std::int64_t), true) ||
       !count_fits_storage(basis.total_orbitals, sizeof(std::int64_t))) {
     error = "Mulliken plan requires positive, representable basis dimensions";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t batch_count = static_cast<std::size_t>(basis.batch_size);
@@ -487,7 +487,7 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
       basis.shell_orbital_offsets.front() != 0 ||
       basis.shell_orbital_offsets.back() != basis.total_orbitals) {
     error = "Mulliken plan received an incomplete or inconsistent basis";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::int64_t dipole_integral_elements = 0;
@@ -502,7 +502,7 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
       !count_fits_storage(dipole_integral_elements, sizeof(double)) ||
       !count_fits_storage(quadrupole_integral_elements, sizeof(double))) {
     error = "Mulliken integral plan is incompatible with the basis";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   if (wavefunction.batch_size != basis.batch_size ||
@@ -517,7 +517,7 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
       wavefunction.reference_shell_occupations.size() != shell_count ||
       wavefunction.reference_atom_occupations.size() != atom_count) {
     error = "Mulliken wavefunction layout is incompatible with the basis";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::array<const WavefunctionFieldLayout*, 5> fields{
@@ -529,7 +529,7 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
         field->system_offsets.back() != field->element_count ||
         !count_fits_storage(field->element_count, sizeof(double))) {
       error = "Mulliken wavefunction fields have invalid ragged extents";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -559,7 +559,7 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
         orbital_begin != basis.atom_orbital_offsets[static_cast<std::size_t>(atom_begin)] ||
         orbital_end != basis.atom_orbital_offsets[static_cast<std::size_t>(atom_end)]) {
       error = "Mulliken basis offsets are not valid nonempty ragged partitions";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     std::int64_t matrix = 0;
@@ -588,7 +588,7 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
         !checked_add(dipole_population, expected_dipole_total) ||
         !checked_add(quadrupole_population, expected_quadrupole_total)) {
       error = "Mulliken ragged field dimensions overflow or disagree";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -599,7 +599,7 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
       expected_dipole_total != wavefunction.dipole.element_count ||
       expected_quadrupole_total != wavefunction.quadrupole.element_count) {
     error = "Mulliken ragged field offsets do not span their expected storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   for (std::size_t atom = 0; atom < atom_count; ++atom) {
@@ -618,7 +618,7 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
         element->shell_offset > parameters::gfn2::kShells.size() ||
         element->shell_count > parameters::gfn2::kShells.size() - element->shell_offset) {
       error = "Mulliken atom identity or shell/orbital topology is inconsistent";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     double atom_reference = 0.0;
@@ -640,13 +640,13 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
           basis.slater_exponents[shell_index] != expected.slater ||
           wavefunction.reference_shell_occupations[shell_index] != expected.reference_occupation) {
         error = "Mulliken basis shell metadata or reference occupation is inconsistent";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
     if (!std::isfinite(atom_reference) ||
         wavefunction.reference_atom_occupations[atom] != atom_reference) {
       error = "Mulliken atomic reference occupation is inconsistent";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -656,13 +656,13 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
       !checked_add(expected_quadrupole_total, population_scratch) ||
       !count_fits_storage(population_scratch, sizeof(double))) {
     error = "Mulliken population scratch extent is not representable";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::int64_t hamiltonian_scratch = expected_density_total;
   if (!checked_add(population_scratch, hamiltonian_scratch) ||
       !count_fits_storage(hamiltonian_scratch, sizeof(double))) {
     error = "Mulliken Hamiltonian scratch extent is not representable";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   try {
@@ -707,63 +707,63 @@ xtbloom_status_t make_mulliken_plan(const BasisPlan& basis, const IntegralPlan& 
 
     plan = MullikenPlan(std::make_shared<const MullikenPlanData>(std::move(created)));
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate immutable Mulliken plan metadata";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t evaluate_mulliken_population_system_cpu(
+vibeqc_xtb_status_t evaluate_mulliken_population_system_cpu(
     const MullikenPlan& plan, const MullikenIntegralView& integrals,
     const MullikenDensityView& density, const MullikenPopulationView& population,
     std::int64_t system, const MullikenWorkspace& workspace, std::string& error,
     const SccParallelExecutor* parallel) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_integral_view(plan, integrals, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_view_identity(plan, density.plan_identity,
                                   "Mulliken density view belongs to a different plan", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_view_identity(plan, population.plan_identity,
                                   "Mulliken population view belongs to a different plan", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (validate_pointer_count(density.density, density.elements, plan.density_elements(),
                              "Mulliken density view is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(population.qsh, population.qsh_elements,
                              plan.shell_population_elements(),
                              "Mulliken qsh output is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(population.qat, population.qat_elements,
                              plan.atom_population_elements(),
                              "Mulliken qat output is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(population.dipole, population.dipole_elements,
                              plan.dipole_population_elements(),
                              "Mulliken dipole output is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(population.quadrupole, population.quadrupole_elements,
                              plan.quadrupole_population_elements(),
                              "Mulliken quadrupole output is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS) {
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+                             error) != VIBEQC_XTB_STATUS_SUCCESS) {
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (system < 0 || system >= plan.batch_size()) {
     error = "Mulliken population system index is out of range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_workspace(workspace, plan.population_scratch_elements(), error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -786,7 +786,7 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
       !byte_count(plan.quadrupole_population_elements(), quadrupole_population_bytes) ||
       !byte_count(plan.population_scratch_elements(), scratch_bytes)) {
     error = "Mulliken population byte extents are not representable";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<MemoryRange, 8> active_ranges{
       {{integrals.overlap, matrix_bytes},
@@ -799,7 +799,7 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
        {population.quadrupole, quadrupole_population_bytes}}};
   if (!pairwise_disjoint(active_ranges)) {
     error = "Mulliken population inputs and outputs must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const MemoryRange scratch_range{workspace.scratch, scratch_bytes};
   const std::array<MemoryRange, 4> descriptor_ranges{{{&integrals, sizeof(integrals)},
@@ -810,16 +810,16 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
     if (ranges_overlap(scratch_range.data, scratch_range.size_bytes, range.data,
                        range.size_bytes)) {
       error = "Mulliken population workspace must not overlap inputs or outputs";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     if (overlaps_control_storage(plan, range, descriptor_ranges)) {
       error = "Mulliken population buffers must not overlap plan or descriptor storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   if (overlaps_control_storage(plan, scratch_range, descriptor_ranges)) {
     error = "Mulliken population workspace must not overlap plan or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const MullikenPlanData& data = *plan.identity();
@@ -844,7 +844,7 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
       orbital_begin > orbital_end || orbital_end > data.total_orbitals || qsh_base < 0 ||
       dipole_base < 0 || quadrupole_base < 0) {
     error = "Mulliken target system partition is structurally invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   double* qsh_scratch = workspace.scratch;
@@ -901,7 +901,7 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
   const std::uint64_t population_failure = population_task.failure.load(std::memory_order_relaxed);
   if (population_failure != 0u) {
     error = mulliken_population_failure_message(static_cast<int>(population_failure & 0xFFFFu));
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   if (nspin == 2) {
@@ -915,7 +915,7 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
       const double magnetization = alpha - beta;
       if (!std::isfinite(charge) || !std::isfinite(magnetization)) {
         error = "Mulliken target spin conversion exceeded floating-point range";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
       qsh_scratch[charge_index] = charge;
       qsh_scratch[magnetization_index] = magnetization;
@@ -930,14 +930,14 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
       const double charge = qsh_scratch[charge_index] + reference;
       if (!std::isfinite(charge)) {
         error = "Mulliken target reference-charge addition exceeded floating-point range";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
       qsh_scratch[charge_index] = charge;
     } else {
       const double charge = qsh_scratch[charge_index] + reference;
       if (!std::isfinite(charge)) {
         error = "Mulliken target reference-charge addition exceeded floating-point range";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
       qsh_scratch[charge_index] = charge;
     }
@@ -956,7 +956,7 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
         const double magnetization = alpha - beta;
         if (!std::isfinite(charge) || !std::isfinite(magnetization)) {
           error = "Mulliken target dipole spin conversion exceeded floating-point range";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         dipole_scratch[charge_index] = charge;
         dipole_scratch[magnetization_index] = magnetization;
@@ -972,7 +972,7 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
         const double magnetization = alpha - beta;
         if (!std::isfinite(charge) || !std::isfinite(magnetization)) {
           error = "Mulliken target quadrupole spin conversion exceeded floating-point range";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         quadrupole_scratch[charge_index] = charge;
         quadrupole_scratch[magnetization_index] = magnetization;
@@ -992,7 +992,7 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
           qsh_scratch[static_cast<std::size_t>(qsh_base + channel * shells + local_shell)];
       if (!std::isfinite(updated)) {
         error = "Mulliken target shell-to-atom charge reduction exceeded floating-point range";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
       qat_scratch[atom_index] = updated;
     }
@@ -1007,56 +1007,56 @@ xtbloom_status_t evaluate_mulliken_population_system_cpu(
   std::copy_n(quadrupole_scratch + quadrupole_base, static_cast<std::size_t>(nspin) * atoms * 6,
               population.quadrupole + quadrupole_base);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
+vibeqc_xtb_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
                                                   const MullikenIntegralView& integrals,
                                                   const MullikenDensityView& density,
                                                   const MullikenPopulationView& population,
                                                   const MullikenWorkspace& workspace,
                                                   std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_integral_view(plan, integrals, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_view_identity(plan, density.plan_identity,
                                   "Mulliken density view belongs to a different plan", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_view_identity(plan, population.plan_identity,
                                   "Mulliken population view belongs to a different plan", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (validate_pointer_count(density.density, density.elements, plan.density_elements(),
                              "Mulliken density view is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(population.qsh, population.qsh_elements,
                              plan.shell_population_elements(),
                              "Mulliken qsh output is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(population.qat, population.qat_elements,
                              plan.atom_population_elements(),
                              "Mulliken qat output is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(population.dipole, population.dipole_elements,
                              plan.dipole_population_elements(),
                              "Mulliken dipole output is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(population.quadrupole, population.quadrupole_elements,
                              plan.quadrupole_population_elements(),
                              "Mulliken quadrupole output is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS) {
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+                             error) != VIBEQC_XTB_STATUS_SUCCESS) {
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_workspace(workspace, plan.population_scratch_elements(), error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -1079,7 +1079,7 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
       !byte_count(plan.quadrupole_population_elements(), quadrupole_population_bytes) ||
       !byte_count(plan.population_scratch_elements(), scratch_bytes)) {
     error = "Mulliken population byte extents are not representable";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<MemoryRange, 8> active_ranges{
       {{integrals.overlap, matrix_bytes},
@@ -1092,7 +1092,7 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
        {population.quadrupole, quadrupole_population_bytes}}};
   if (!pairwise_disjoint(active_ranges)) {
     error = "Mulliken population inputs and outputs must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const MemoryRange scratch_range{workspace.scratch, scratch_bytes};
   const std::array<MemoryRange, 4> descriptor_ranges{{{&integrals, sizeof(integrals)},
@@ -1103,16 +1103,16 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
     if (ranges_overlap(scratch_range.data, scratch_range.size_bytes, range.data,
                        range.size_bytes)) {
       error = "Mulliken population workspace must not overlap inputs or outputs";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     if (overlaps_control_storage(plan, range, descriptor_ranges)) {
       error = "Mulliken population buffers must not overlap plan or descriptor storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   if (overlaps_control_storage(plan, scratch_range, descriptor_ranges)) {
     error = "Mulliken population workspace must not overlap plan or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const MullikenPlanData& data = *plan.identity();
@@ -1162,12 +1162,12 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
           const double overlap_value = integrals.overlap[static_cast<std::size_t>(matrix_index)];
           if (!std::isfinite(density_value) || !std::isfinite(overlap_value)) {
             error = "Mulliken population inputs contain NaN or infinity";
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
           if (!::vibeqc::xtb::generated::gfn2_population_update_tensor(
                   density_value, overlap_value, shell_charge, shell_charge)) {
             error = "Mulliken qsh contraction exceeded floating-point range";
-            return XTBLOOM_STATUS_INTERNAL_ERROR;
+            return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
           }
           for (std::int64_t component = 0; component < 3; ++component) {
             double& value = dipole_scratch[static_cast<std::size_t>(
@@ -1176,12 +1176,12 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
                 component * data.matrix_elements + matrix_index)];
             if (!std::isfinite(integral)) {
               error = "Mulliken population inputs contain NaN or infinity";
-              return XTBLOOM_STATUS_INVALID_ARGUMENT;
+              return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
             }
             if (!::vibeqc::xtb::generated::gfn2_population_update_tensor(
                     density_value, integral, value, value)) {
               error = "Mulliken dipole contraction exceeded floating-point range";
-              return XTBLOOM_STATUS_INTERNAL_ERROR;
+              return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
             }
           }
           for (std::int64_t component = 0; component < 6; ++component) {
@@ -1191,12 +1191,12 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
                 component * data.matrix_elements + matrix_index)];
             if (!std::isfinite(integral)) {
               error = "Mulliken population inputs contain NaN or infinity";
-              return XTBLOOM_STATUS_INVALID_ARGUMENT;
+              return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
             }
             if (!::vibeqc::xtb::generated::gfn2_population_update_tensor(
                     density_value, integral, value, value)) {
               error = "Mulliken quadrupole contraction exceeded floating-point range";
-              return XTBLOOM_STATUS_INTERNAL_ERROR;
+              return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
             }
           }
         }
@@ -1211,7 +1211,7 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
         const double charge = qsh_scratch[charge_index] + reference;
         if (!std::isfinite(charge)) {
           error = "Mulliken reference-charge addition exceeded floating-point range";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         qsh_scratch[charge_index] = charge;
       } else {
@@ -1223,7 +1223,7 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
         const double magnetization = alpha - beta;
         if (!std::isfinite(charge) || !std::isfinite(magnetization)) {
           error = "Mulliken spin conversion exceeded floating-point range";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         qsh_scratch[charge_index] = charge;
         qsh_scratch[magnetization_index] = magnetization;
@@ -1243,7 +1243,7 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
           const double magnetization = alpha - beta;
           if (!std::isfinite(charge) || !std::isfinite(magnetization)) {
             error = "Mulliken dipole spin conversion exceeded floating-point range";
-            return XTBLOOM_STATUS_INTERNAL_ERROR;
+            return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
           }
           dipole_scratch[charge_index] = charge;
           dipole_scratch[magnetization_index] = magnetization;
@@ -1259,7 +1259,7 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
           const double magnetization = alpha - beta;
           if (!std::isfinite(charge) || !std::isfinite(magnetization)) {
             error = "Mulliken quadrupole spin conversion exceeded floating-point range";
-            return XTBLOOM_STATUS_INTERNAL_ERROR;
+            return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
           }
           quadrupole_scratch[charge_index] = charge;
           quadrupole_scratch[magnetization_index] = magnetization;
@@ -1279,7 +1279,7 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
             qsh_scratch[static_cast<std::size_t>(qsh_base + channel * shells + local_shell)];
         if (!std::isfinite(updated)) {
           error = "Mulliken shell-to-atom charge reduction exceeded floating-point range";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         qat_scratch[atom_index] = updated;
       }
@@ -1294,56 +1294,56 @@ xtbloom_status_t evaluate_mulliken_population_cpu(const MullikenPlan& plan,
   std::copy_n(quadrupole_scratch, static_cast<std::size_t>(data.quadrupole_population_elements),
               population.quadrupole);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
+vibeqc_xtb_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
                                               const MullikenIntegralView& integrals,
                                               const MullikenPotentialView& potential,
                                               const MullikenHamiltonianView& hamiltonian,
                                               const MullikenWorkspace& workspace,
                                               std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_integral_view(plan, integrals, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_view_identity(plan, potential.plan_identity,
                                   "Mulliken potential view belongs to a different plan", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_view_identity(plan, hamiltonian.plan_identity,
                                   "Mulliken Hamiltonian view belongs to a different plan", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (validate_pointer_count(potential.vat, potential.vat_elements, plan.atom_population_elements(),
                              "Mulliken vat view is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(potential.vsh, potential.vsh_elements,
                              plan.shell_population_elements(),
                              "Mulliken vsh view is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(potential.dipole, potential.dipole_elements,
                              plan.dipole_population_elements(),
                              "Mulliken dipole potential is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(
           potential.quadrupole, potential.quadrupole_elements,
           plan.quadrupole_population_elements(),
           "Mulliken quadrupole potential is NULL, misaligned, or has wrong extent",
-          error) != XTBLOOM_STATUS_SUCCESS ||
+          error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(hamiltonian.matrix, hamiltonian.elements, plan.density_elements(),
                              "Mulliken Hamiltonian is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS) {
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+                             error) != VIBEQC_XTB_STATUS_SUCCESS) {
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_workspace(workspace, plan.hamiltonian_scratch_elements(), error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -1366,7 +1366,7 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
       !byte_count(plan.density_elements(), hamiltonian_bytes) ||
       !byte_count(plan.hamiltonian_scratch_elements(), scratch_bytes)) {
     error = "Mulliken Hamiltonian byte extents are not representable";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<MemoryRange, 8> active_ranges{{{integrals.overlap, matrix_bytes},
                                                   {integrals.dipole, dipole_integral_bytes},
@@ -1378,7 +1378,7 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
                                                   {hamiltonian.matrix, hamiltonian_bytes}}};
   if (!pairwise_disjoint(active_ranges)) {
     error = "Mulliken Hamiltonian inputs and output must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const MemoryRange scratch_range{workspace.scratch, scratch_bytes};
   const std::array<MemoryRange, 4> descriptor_ranges{{{&integrals, sizeof(integrals)},
@@ -1389,16 +1389,16 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
     if (ranges_overlap(scratch_range.data, scratch_range.size_bytes, range.data,
                        range.size_bytes)) {
       error = "Mulliken Hamiltonian workspace must not overlap inputs or output";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     if (overlaps_control_storage(plan, range, descriptor_ranges)) {
       error = "Mulliken Hamiltonian buffers must not overlap plan or descriptor storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   if (overlaps_control_storage(plan, scratch_range, descriptor_ranges)) {
     error = "Mulliken Hamiltonian workspace must not overlap plan or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const MullikenPlanData& data = *plan.identity();
@@ -1411,7 +1411,7 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
     const double value = hamiltonian.matrix[static_cast<std::size_t>(element)];
     if (!std::isfinite(value)) {
       error = "Mulliken Hamiltonian input contains NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     hamiltonian_scratch[static_cast<std::size_t>(element)] = value;
   }
@@ -1441,11 +1441,11 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
           const std::size_t index = static_cast<std::size_t>(base + element);
           const double value = source[index];
           if (!std::isfinite(value)) {
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
           destination[index] = value;
         }
-        return XTBLOOM_STATUS_SUCCESS;
+        return VIBEQC_XTB_STATUS_SUCCESS;
       }
       for (std::int64_t element = 0; element < channel_elements; ++element) {
         const std::size_t charge_index = static_cast<std::size_t>(base + element);
@@ -1454,38 +1454,38 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
         const double charge = source[charge_index];
         const double magnetization = source[magnetization_index];
         if (!std::isfinite(charge) || !std::isfinite(magnetization)) {
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         /* Half-before-add matches tblite's magnet_to_updown conversion. */
         const double alpha = 0.5 * charge + 0.5 * magnetization;
         const double beta = 0.5 * charge - 0.5 * magnetization;
         if (!std::isfinite(alpha) || !std::isfinite(beta)) {
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         destination[charge_index] = alpha;
         destination[magnetization_index] = beta;
       }
-      return XTBLOOM_STATUS_SUCCESS;
+      return VIBEQC_XTB_STATUS_SUCCESS;
     };
-    const xtbloom_status_t vat_status =
+    const vibeqc_xtb_status_t vat_status =
         convert_potential(potential.vat, vat_scratch, vat_base, atoms);
-    const xtbloom_status_t vsh_status =
+    const vibeqc_xtb_status_t vsh_status =
         convert_potential(potential.vsh, vsh_scratch, vsh_base, shells);
-    const xtbloom_status_t dipole_status =
+    const vibeqc_xtb_status_t dipole_status =
         convert_potential(potential.dipole, dipole_scratch, dipole_base, atoms * 3);
-    const xtbloom_status_t quadrupole_status =
+    const vibeqc_xtb_status_t quadrupole_status =
         convert_potential(potential.quadrupole, quadrupole_scratch, quadrupole_base, atoms * 6);
-    if (vat_status != XTBLOOM_STATUS_SUCCESS || vsh_status != XTBLOOM_STATUS_SUCCESS ||
-        dipole_status != XTBLOOM_STATUS_SUCCESS || quadrupole_status != XTBLOOM_STATUS_SUCCESS) {
-      if (vat_status == XTBLOOM_STATUS_INVALID_ARGUMENT ||
-          vsh_status == XTBLOOM_STATUS_INVALID_ARGUMENT ||
-          dipole_status == XTBLOOM_STATUS_INVALID_ARGUMENT ||
-          quadrupole_status == XTBLOOM_STATUS_INVALID_ARGUMENT) {
+    if (vat_status != VIBEQC_XTB_STATUS_SUCCESS || vsh_status != VIBEQC_XTB_STATUS_SUCCESS ||
+        dipole_status != VIBEQC_XTB_STATUS_SUCCESS || quadrupole_status != VIBEQC_XTB_STATUS_SUCCESS) {
+      if (vat_status == VIBEQC_XTB_STATUS_INVALID_ARGUMENT ||
+          vsh_status == VIBEQC_XTB_STATUS_INVALID_ARGUMENT ||
+          dipole_status == VIBEQC_XTB_STATUS_INVALID_ARGUMENT ||
+          quadrupole_status == VIBEQC_XTB_STATUS_INVALID_ARGUMENT) {
         error = "Mulliken potentials contain NaN or infinity";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       error = "Mulliken potential spin conversion exceeded floating-point range";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
 
     for (std::int32_t spin = 0; spin < nspin; ++spin) {
@@ -1529,12 +1529,12 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
               integrals.overlap[static_cast<std::size_t>(reverse_matrix)];
           if (!std::isfinite(overlap) || !std::isfinite(reverse_overlap)) {
             error = "Mulliken overlap input contains NaN or infinity";
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
           if (!::vibeqc::xtb::generated::gfn2_scalar_hamiltonian_update_tensor(
                   overlap, row_vat, row_vsh, column_vat, column_vsh, shift, shift)) {
             error = "Mulliken scalar Hamiltonian assembly exceeded floating-point range";
-            return XTBLOOM_STATUS_INTERNAL_ERROR;
+            return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
           }
 
           for (std::int64_t component = 0; component < 3; ++component) {
@@ -1548,14 +1548,14 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
                 component * data.matrix_elements + reverse_matrix)];
             if (!std::isfinite(forward_integral) || !std::isfinite(reverse_integral)) {
               error = "Mulliken dipole integral input contains NaN or infinity";
-              return XTBLOOM_STATUS_INVALID_ARGUMENT;
+              return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
             }
             if (!std::isfinite(row_potential) || !std::isfinite(column_potential) ||
                 !::vibeqc::xtb::generated::gfn2_multipole_hamiltonian_update_tensor(
                     forward_integral, reverse_integral, row_potential, column_potential, shift,
                     shift)) {
               error = "Mulliken dipole Hamiltonian assembly exceeded floating-point range";
-              return XTBLOOM_STATUS_INTERNAL_ERROR;
+              return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
             }
           }
 
@@ -1570,21 +1570,21 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
                 component * data.matrix_elements + reverse_matrix)];
             if (!std::isfinite(forward_integral) || !std::isfinite(reverse_integral)) {
               error = "Mulliken quadrupole integral input contains NaN or infinity";
-              return XTBLOOM_STATUS_INVALID_ARGUMENT;
+              return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
             }
             if (!std::isfinite(row_potential) || !std::isfinite(column_potential) ||
                 !::vibeqc::xtb::generated::gfn2_multipole_hamiltonian_update_tensor(
                     forward_integral, reverse_integral, row_potential, column_potential, shift,
                     shift)) {
               error = "Mulliken quadrupole Hamiltonian assembly exceeded floating-point range";
-              return XTBLOOM_STATUS_INTERNAL_ERROR;
+              return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
             }
           }
           const double forward_value =
               hamiltonian_scratch[static_cast<std::size_t>(forward_hamiltonian)] + shift;
           if (!std::isfinite(forward_value)) {
             error = "Mulliken Hamiltonian accumulation exceeded floating-point range";
-            return XTBLOOM_STATUS_INTERNAL_ERROR;
+            return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
           }
           hamiltonian_scratch[static_cast<std::size_t>(forward_hamiltonian)] = forward_value;
           if (forward_hamiltonian != reverse_hamiltonian) {
@@ -1592,7 +1592,7 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
                 hamiltonian_scratch[static_cast<std::size_t>(reverse_hamiltonian)] + shift;
             if (!std::isfinite(reverse_value)) {
               error = "Mulliken Hamiltonian accumulation exceeded floating-point range";
-              return XTBLOOM_STATUS_INTERNAL_ERROR;
+              return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
             }
             hamiltonian_scratch[static_cast<std::size_t>(reverse_hamiltonian)] = reverse_value;
           }
@@ -1604,59 +1604,59 @@ xtbloom_status_t add_mulliken_hamiltonian_cpu(const MullikenPlan& plan,
   std::copy_n(hamiltonian_scratch, static_cast<std::size_t>(data.density_elements),
               hamiltonian.matrix);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_mulliken_hamiltonian_system_cpu(
+vibeqc_xtb_status_t add_mulliken_hamiltonian_system_cpu(
     const MullikenPlan& plan, const MullikenIntegralView& integrals,
     const MullikenPotentialView& potential, const MullikenHamiltonianView& hamiltonian,
     std::int64_t system, const MullikenWorkspace& workspace, std::string& error,
     const SccParallelExecutor* parallel) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_integral_view(plan, integrals, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_view_identity(plan, potential.plan_identity,
                                   "Mulliken potential view belongs to a different plan", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_view_identity(plan, hamiltonian.plan_identity,
                                   "Mulliken Hamiltonian view belongs to a different plan", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (validate_pointer_count(potential.vat, potential.vat_elements, plan.atom_population_elements(),
                              "Mulliken vat view is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(potential.vsh, potential.vsh_elements,
                              plan.shell_population_elements(),
                              "Mulliken vsh view is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(potential.dipole, potential.dipole_elements,
                              plan.dipole_population_elements(),
                              "Mulliken dipole potential is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS ||
+                             error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(
           potential.quadrupole, potential.quadrupole_elements,
           plan.quadrupole_population_elements(),
           "Mulliken quadrupole potential is NULL, misaligned, or has wrong extent",
-          error) != XTBLOOM_STATUS_SUCCESS ||
+          error) != VIBEQC_XTB_STATUS_SUCCESS ||
       validate_pointer_count(hamiltonian.matrix, hamiltonian.elements, plan.density_elements(),
                              "Mulliken Hamiltonian is NULL, misaligned, or has wrong extent",
-                             error) != XTBLOOM_STATUS_SUCCESS) {
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+                             error) != VIBEQC_XTB_STATUS_SUCCESS) {
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (system < 0 || system >= plan.batch_size()) {
     error = "Mulliken Hamiltonian system index is out of range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_workspace(workspace, plan.hamiltonian_scratch_elements(), error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -1679,7 +1679,7 @@ xtbloom_status_t add_mulliken_hamiltonian_system_cpu(
       !byte_count(plan.density_elements(), hamiltonian_bytes) ||
       !byte_count(plan.hamiltonian_scratch_elements(), scratch_bytes)) {
     error = "Mulliken Hamiltonian byte extents are not representable";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<MemoryRange, 8> active_ranges{{{integrals.overlap, matrix_bytes},
                                                   {integrals.dipole, dipole_integral_bytes},
@@ -1691,7 +1691,7 @@ xtbloom_status_t add_mulliken_hamiltonian_system_cpu(
                                                   {hamiltonian.matrix, hamiltonian_bytes}}};
   if (!pairwise_disjoint(active_ranges)) {
     error = "Mulliken Hamiltonian inputs and output must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const MemoryRange scratch_range{workspace.scratch, scratch_bytes};
   const std::array<MemoryRange, 4> descriptor_ranges{{{&integrals, sizeof(integrals)},
@@ -1702,16 +1702,16 @@ xtbloom_status_t add_mulliken_hamiltonian_system_cpu(
     if (ranges_overlap(scratch_range.data, scratch_range.size_bytes, range.data,
                        range.size_bytes)) {
       error = "Mulliken Hamiltonian workspace must not overlap inputs or output";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     if (overlaps_control_storage(plan, range, descriptor_ranges)) {
       error = "Mulliken Hamiltonian buffers must not overlap plan or descriptor storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   if (overlaps_control_storage(plan, scratch_range, descriptor_ranges)) {
     error = "Mulliken Hamiltonian workspace must not overlap plan or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const MullikenPlanData& data = *plan.identity();
@@ -1736,7 +1736,7 @@ xtbloom_status_t add_mulliken_hamiltonian_system_cpu(
       orbital_begin > orbital_end || orbital_end > data.total_orbitals || vat_base < 0 ||
       vsh_base < 0 || dipole_base < 0 || quadrupole_base < 0) {
     error = "Mulliken target system partition is structurally invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   double* hamiltonian_scratch = workspace.scratch;
@@ -1751,7 +1751,7 @@ xtbloom_status_t add_mulliken_hamiltonian_system_cpu(
     const double value = hamiltonian.matrix[static_cast<std::size_t>(hamiltonian_base) + element];
     if (!std::isfinite(value)) {
       error = "Mulliken target Hamiltonian input contains NaN or infinity";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     hamiltonian_scratch[static_cast<std::size_t>(hamiltonian_base) + element] = value;
   }
@@ -1763,11 +1763,11 @@ xtbloom_status_t add_mulliken_hamiltonian_system_cpu(
         const std::size_t index = static_cast<std::size_t>(base + element);
         const double value = source[index];
         if (!std::isfinite(value)) {
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         destination[index] = value;
       }
-      return XTBLOOM_STATUS_SUCCESS;
+      return VIBEQC_XTB_STATUS_SUCCESS;
     }
     for (std::int64_t element = 0; element < channel_elements; ++element) {
       const std::size_t charge_index = static_cast<std::size_t>(base + element);
@@ -1776,31 +1776,31 @@ xtbloom_status_t add_mulliken_hamiltonian_system_cpu(
       const double charge = source[charge_index];
       const double magnetization = source[magnetization_index];
       if (!std::isfinite(charge) || !std::isfinite(magnetization)) {
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
       /* Half-before-add matches tblite's magnet_to_updown conversion. */
       const double alpha = 0.5 * charge + 0.5 * magnetization;
       const double beta = 0.5 * charge - 0.5 * magnetization;
       if (!std::isfinite(alpha) || !std::isfinite(beta)) {
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
       destination[charge_index] = alpha;
       destination[magnetization_index] = beta;
     }
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   };
-  const xtbloom_status_t vat_status =
+  const vibeqc_xtb_status_t vat_status =
       convert_potential(potential.vat, vat_scratch, vat_base, atoms);
-  const xtbloom_status_t vsh_status =
+  const vibeqc_xtb_status_t vsh_status =
       convert_potential(potential.vsh, vsh_scratch, vsh_base, shells);
-  const xtbloom_status_t dipole_status =
+  const vibeqc_xtb_status_t dipole_status =
       convert_potential(potential.dipole, dipole_scratch, dipole_base, atoms * 3);
-  const xtbloom_status_t quadrupole_status =
+  const vibeqc_xtb_status_t quadrupole_status =
       convert_potential(potential.quadrupole, quadrupole_scratch, quadrupole_base, atoms * 6);
-  if (vat_status != XTBLOOM_STATUS_SUCCESS || vsh_status != XTBLOOM_STATUS_SUCCESS ||
-      dipole_status != XTBLOOM_STATUS_SUCCESS || quadrupole_status != XTBLOOM_STATUS_SUCCESS) {
+  if (vat_status != VIBEQC_XTB_STATUS_SUCCESS || vsh_status != VIBEQC_XTB_STATUS_SUCCESS ||
+      dipole_status != VIBEQC_XTB_STATUS_SUCCESS || quadrupole_status != VIBEQC_XTB_STATUS_SUCCESS) {
     error = "Mulliken target potential data or spin conversion is not finite";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   const bool use_parallel = parallel != nullptr && scc_parallel_enabled(*parallel) && orbitals >= 2;
@@ -1854,7 +1854,7 @@ xtbloom_status_t add_mulliken_hamiltonian_system_cpu(
   std::copy_n(hamiltonian_scratch + hamiltonian_base, target_hamiltonian_elements,
               hamiltonian.matrix + hamiltonian_base);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_SCC_ITERATION_INITIALIZE_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_ITERATION_INITIALIZE_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_SCC_ITERATION_INITIALIZE_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_ITERATION_INITIALIZE_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -12,7 +12,7 @@
 
 #include "backends/cuda/gfn2_scc_iteration_arena.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /* ABI v3 requires an exact setup-sealed spin layout for mixed-spin restores. */
 inline constexpr std::uint32_t kGfn2SccIterationInitializationAbiVersion = 3u;
@@ -56,7 +56,7 @@ enum class Gfn2SccIterationInitializationField : std::uint32_t {
 };
 
 struct Gfn2SccIterationInitializationDiagnostic {
-  xtbloom_status_t status = XTBLOOM_STATUS_SUCCESS;
+  vibeqc_xtb_status_t status = VIBEQC_XTB_STATUS_SUCCESS;
   Gfn2SccIterationInitializationError error = Gfn2SccIterationInitializationError::kSuccess;
   Gfn2SccIterationInitializationField field = Gfn2SccIterationInitializationField::kNone;
   std::int64_t index = -1;
@@ -65,7 +65,7 @@ struct Gfn2SccIterationInitializationDiagnostic {
   cudaError_t cuda_status = cudaSuccess;
 
   [[nodiscard]] bool success() const noexcept {
-    return status == XTBLOOM_STATUS_SUCCESS &&
+    return status == VIBEQC_XTB_STATUS_SUCCESS &&
            error == Gfn2SccIterationInitializationError::kSuccess;
   }
 };
@@ -151,7 +151,7 @@ struct Gfn2SccIterationHostMixerView {
   Gfn2SccIterationHostArrayView<double> residual_maximum{};
   Gfn2SccIterationHostArrayView<std::uint64_t> iterations{};
   Gfn2SccIterationHostArrayView<std::uint64_t> restart_counts{};
-  Gfn2SccIterationHostArrayView<xtbloom_status_t> system_statuses{};
+  Gfn2SccIterationHostArrayView<vibeqc_xtb_status_t> system_statuses{};
   Gfn2SccIterationHostArrayView<std::uint8_t> initialized{};
   Gfn2SccIterationHostArrayView<std::uint8_t> residual_converged{};
   std::uint64_t plan_token = 0u;
@@ -170,7 +170,7 @@ struct Gfn2SccIterationHostTraceView {
   Gfn2SccIterationHostArrayView<double> free_energy_changes{};
   Gfn2SccIterationHostArrayView<double> residual_rms{};
   Gfn2SccIterationHostArrayView<std::uint64_t> iterations{};
-  Gfn2SccIterationHostArrayView<xtbloom_status_t> system_statuses{};
+  Gfn2SccIterationHostArrayView<vibeqc_xtb_status_t> system_statuses{};
   Gfn2SccIterationHostArrayView<std::uint8_t> converged{};
   std::uint64_t plan_token = 0u;
 };
@@ -276,6 +276,6 @@ class Gfn2SccIterationInitializer {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_SCC_ITERATION_INITIALIZE_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_ITERATION_INITIALIZE_CUH

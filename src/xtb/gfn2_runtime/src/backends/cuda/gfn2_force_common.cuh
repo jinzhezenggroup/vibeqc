@@ -1,14 +1,14 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_FORCE_COMMON_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_FORCE_COMMON_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_FORCE_COMMON_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_FORCE_COMMON_CUH
 
 #include <cstdint>
 #include <type_traits>
 
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /*
  * Common post-SCC force gate. A member is evaluated only when it is requested
@@ -22,7 +22,7 @@ namespace xtbloom::detail::cuda {
  */
 struct Gfn2ForceDeviceActivity {
   const std::uint8_t* requested_mask = nullptr;
-  const xtbloom_status_t* system_statuses = nullptr;
+  const vibeqc_xtb_status_t* system_statuses = nullptr;
   std::int64_t batch_elements = 0;
   std::uint64_t plan_token = 0u;
 };
@@ -30,6 +30,6 @@ struct Gfn2ForceDeviceActivity {
 static_assert(std::is_trivially_copyable_v<Gfn2ForceDeviceActivity>);
 static_assert(std::is_standard_layout_v<Gfn2ForceDeviceActivity>);
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_FORCE_COMMON_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_FORCE_COMMON_CUH

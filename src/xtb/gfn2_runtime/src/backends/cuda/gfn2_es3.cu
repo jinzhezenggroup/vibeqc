@@ -8,7 +8,7 @@
 #include "backends/cuda/gfn2_es3.cuh"
 #include "generated_gfn2_es3_native.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -552,4 +552,4 @@ cudaError_t evaluate_gfn2_es3_scc_energy_cuda(
   return cudaPeekAtLastError();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

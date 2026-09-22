@@ -8,7 +8,7 @@
 
 #include "data/parameters/tblite_sto.hpp"
 
-namespace xtbloom::detail::common {
+namespace vibeqc::xtb::detail::common {
 namespace {
 
 constexpr double kPi = 3.141592653589793238462643383279502884;
@@ -120,4 +120,4 @@ void orthogonalize_to_first(const double* first_alpha, const double* first_coeff
   }
 }
 
-}  // namespace xtbloom::detail::common
+}  // namespace vibeqc::xtb::detail::common

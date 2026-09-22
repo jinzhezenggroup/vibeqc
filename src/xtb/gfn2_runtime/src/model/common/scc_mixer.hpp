@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_COMMON_SCC_MIXER_HPP
+#ifndef VIBEQC_XTB_MODEL_COMMON_SCC_MIXER_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_COMMON_SCC_MIXER_HPP
+#define VIBEQC_XTB_MODEL_COMMON_SCC_MIXER_HPP
 
 #include <array>
 #include <cstddef>
@@ -12,7 +12,7 @@
 
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::common {
+namespace vibeqc::xtb::detail::common {
 
 inline constexpr std::size_t kSccMixerWorkspaceAlignment = 64u;
 inline constexpr std::size_t kSccMixerMaximumFields = 4u;
@@ -91,7 +91,7 @@ class SccMixerPlan {
  private:
   std::shared_ptr<const SccMixerPlanData> data_;
 
-  friend xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
+  friend vibeqc_xtb_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
                                               std::int64_t history_size, double damping,
                                               double rms_tolerance, double maximum_tolerance,
                                               SccMixerPlan& plan, std::string& error);
@@ -113,7 +113,7 @@ struct SccMixerState {
   double* residual_maximum = nullptr;
   std::uint64_t* iterations = nullptr;
   std::uint64_t* restart_counts = nullptr;
-  xtbloom_status_t* system_statuses = nullptr;
+  vibeqc_xtb_status_t* system_statuses = nullptr;
   std::uint8_t* initialized = nullptr;
   std::uint8_t* converged = nullptr;
 
@@ -136,33 +136,33 @@ struct SccMixerWorkspace {
   const SccMixerPlanData* plan_identity = nullptr;
 };
 
-xtbloom_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
+vibeqc_xtb_status_t make_scc_mixer_plan(const SccMixerVectorLayoutView& layout,
                                      std::int64_t history_size, double damping,
                                      double rms_tolerance, double maximum_tolerance,
                                      SccMixerPlan& plan, std::string& error);
 
-xtbloom_status_t bind_scc_mixer_state(const SccMixerPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_scc_mixer_state(const SccMixerPlan& plan, void* workspace,
                                       std::size_t workspace_size, SccMixerState& state,
                                       std::string& error);
 
-xtbloom_status_t bind_scc_mixer_workspace(const SccMixerPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_scc_mixer_workspace(const SccMixerPlan& plan, void* workspace,
                                           std::size_t workspace_size, SccMixerWorkspace& view,
                                           std::string& error);
 
 /* Read-only canonical-binding checks for higher-level allocation-free drivers. */
-xtbloom_status_t validate_scc_mixer_state_binding(const SccMixerPlan& plan,
+vibeqc_xtb_status_t validate_scc_mixer_state_binding(const SccMixerPlan& plan,
                                                   const SccMixerState& state, std::string& error);
-xtbloom_status_t validate_scc_mixer_workspace_binding(const SccMixerPlan& plan,
+vibeqc_xtb_status_t validate_scc_mixer_workspace_binding(const SccMixerPlan& plan,
                                                       const SccMixerWorkspace& workspace,
                                                       std::string& error);
 
 /* Initialization is all-or-nothing across the complete ragged batch. */
-xtbloom_status_t initialize_scc_mixer_state_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t initialize_scc_mixer_state_cpu(const SccMixerPlan& plan,
                                                 const SccMixerVectorView& vector,
                                                 const SccMixerState& state, std::string& error);
 
 /* Restart clears only the selected system after its new vector is validated. */
-xtbloom_status_t restart_scc_mixer_system_cpu(const SccMixerPlan& plan, std::int64_t system,
+vibeqc_xtb_status_t restart_scc_mixer_system_cpu(const SccMixerPlan& plan, std::int64_t system,
                                               const SccMixerVectorView& vector,
                                               const SccMixerState& state, std::string& error);
 
@@ -170,30 +170,30 @@ xtbloom_status_t restart_scc_mixer_system_cpu(const SccMixerPlan& plan, std::int
  * Mix one raw vector in place. Numerical failure changes only the selected
  * system status; raw values and all persistent numerical history stay intact.
  */
-xtbloom_status_t mix_scc_broyden_system_cpu(const SccMixerPlan& plan, std::int64_t system,
+vibeqc_xtb_status_t mix_scc_broyden_system_cpu(const SccMixerPlan& plan, std::int64_t system,
                                             const SccMixerVectorView& vector,
                                             const SccMixerState& state,
                                             const SccMixerWorkspace& workspace, std::string& error);
 
 /* Serial wrapper retaining peer-local numerical failure isolation. */
-xtbloom_status_t mix_scc_broyden_batch_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t mix_scc_broyden_batch_cpu(const SccMixerPlan& plan,
                                            const SccMixerVectorView& vector,
                                            const SccMixerState& state,
                                            const SccMixerWorkspace& workspace, std::string& error);
 
 /* Copy exactly one system into or out of a disjoint full-layout binding. */
-xtbloom_status_t prepare_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t prepare_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
                                                           std::int64_t system,
                                                           const SccMixerState& source,
                                                           const SccMixerState& staged,
                                                           std::string& error);
 
-xtbloom_status_t commit_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
+vibeqc_xtb_status_t commit_scc_mixer_system_transaction_cpu(const SccMixerPlan& plan,
                                                          std::int64_t system,
                                                          const SccMixerState& staged,
                                                          const SccMixerState& destination,
                                                          std::string& error);
 
-}  // namespace xtbloom::detail::common
+}  // namespace vibeqc::xtb::detail::common
 
-#endif  // XTBLOOM_MODEL_COMMON_SCC_MIXER_HPP
+#endif  // VIBEQC_XTB_MODEL_COMMON_SCC_MIXER_HPP

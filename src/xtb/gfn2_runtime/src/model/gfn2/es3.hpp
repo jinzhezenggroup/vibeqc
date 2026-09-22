@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_ES3_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_ES3_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_ES3_HPP
+#define VIBEQC_XTB_MODEL_GFN2_ES3_HPP
 
 #include <cstdint>
 #include <string>
@@ -11,7 +11,7 @@
 #include "model/gfn2/basis.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 /*
  * Geometry-independent storage for the shell-resolved GFN2 onsite cubic
@@ -54,7 +54,7 @@ static_assert(std::is_standard_layout_v<ES3View>);
  * metadata is cross-checked so a same-size but mismatched element list is
  * rejected rather than silently selecting the wrong gam3 values.
  */
-xtbloom_status_t make_es3_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
+vibeqc_xtb_status_t make_es3_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
                                ES3Plan& plan, std::string& error);
 
 /* Return a lightweight view over a plan; the plan must outlive the view. */
@@ -69,7 +69,7 @@ xtbloom_status_t make_es3_plan(const BasisPlan& basis, const std::int32_t* atomi
  * before modifying shell_potentials. Thus every reported failure leaves the
  * output unchanged. Input and output arrays must not overlap.
  */
-xtbloom_status_t evaluate_es3_potential_cpu(ES3View view, const double* shell_charges,
+vibeqc_xtb_status_t evaluate_es3_potential_cpu(ES3View view, const double* shell_charges,
                                             double* shell_potentials, std::string& error);
 
 /*
@@ -81,7 +81,7 @@ xtbloom_status_t evaluate_es3_potential_cpu(ES3View view, const double* shell_ch
  * including accumulated-output range, so a failure leaves every energy
  * unchanged. Input and output arrays must not overlap.
  */
-xtbloom_status_t add_es3_energy_cpu(ES3View view, const double* shell_charges, double* energies,
+vibeqc_xtb_status_t add_es3_energy_cpu(ES3View view, const double* shell_charges, double* energies,
                                     std::string& error);
 
 /*
@@ -95,7 +95,7 @@ xtbloom_status_t add_es3_energy_cpu(ES3View view, const double* shell_charges, d
  * must treat the whole target system as failed. The routine allocates no
  * memory and needs no scratch.
  */
-xtbloom_status_t evaluate_es3_potential_system_cpu(ES3View view, std::int64_t system,
+vibeqc_xtb_status_t evaluate_es3_potential_system_cpu(ES3View view, std::int64_t system,
                                                    const double* shell_charges,
                                                    double* shell_potentials, std::string& error);
 
@@ -103,14 +103,14 @@ xtbloom_status_t evaluate_es3_potential_system_cpu(ES3View view, std::int64_t sy
  * Accumulate E3 for exactly one ragged batch member. shell_charges addresses
  * the complete packed array, while numerical validation and arithmetic touch
  * only system's shell slice. Structural/binding errors return
- * XTBLOOM_STATUS_INVALID_ARGUMENT; invalid target numerical data and range
- * failures return XTBLOOM_STATUS_INTERNAL_ERROR. accumulated_energy is unchanged
+ * VIBEQC_XTB_STATUS_INVALID_ARGUMENT; invalid target numerical data and range
+ * failures return VIBEQC_XTB_STATUS_INTERNAL_ERROR. accumulated_energy is unchanged
  * on every failure. The routine allocates no memory and needs no scratch.
  */
-xtbloom_status_t add_es3_energy_system_cpu(ES3View view, std::int64_t system,
+vibeqc_xtb_status_t add_es3_energy_system_cpu(ES3View view, std::int64_t system,
                                            const double* shell_charges, double& accumulated_energy,
                                            std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_ES3_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_ES3_HPP

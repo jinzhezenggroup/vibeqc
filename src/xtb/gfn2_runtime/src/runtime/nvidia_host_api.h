@@ -42,8 +42,8 @@
  *     version checks above decide which route is actually exercised.
  */
 
-#ifndef XTBLOOM_NVIDIA_HOST_API_H
-#define XTBLOOM_NVIDIA_HOST_API_H
+#ifndef VIBEQC_XTB_NVIDIA_HOST_API_H
+#define VIBEQC_XTB_NVIDIA_HOST_API_H
 
 #include <cuda_runtime_api.h>
 #include <library_types.h>
@@ -237,4 +237,4 @@ CUresult cuMemGetAddressRange_v2(CUdeviceptr* pbase, size_t* psize, CUdeviceptr 
 } /* extern "C" */
 #endif
 
-#endif /* XTBLOOM_NVIDIA_HOST_API_H */
+#endif /* VIBEQC_XTB_NVIDIA_HOST_API_H */

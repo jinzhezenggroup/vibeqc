@@ -10,7 +10,7 @@
 #include "backends/cuda/gfn2_h0_force.cuh"
 #include "generated_gfn2_h0_force.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 128;
@@ -92,7 +92,7 @@ __device__ bool load_force_gate(const Gfn2ForceDeviceActivity& activity, std::in
     if (requested > 1u) {
       record_system_error(system_errors, system, device_error,
                           Gfn2H0ForceDeviceError::kInvalidActiveMask);
-    } else if (requested == 1u && activity.system_statuses[system] == XTBLOOM_STATUS_SUCCESS) {
+    } else if (requested == 1u && activity.system_statuses[system] == VIBEQC_XTB_STATUS_SUCCESS) {
       *selected = 1;
     }
   }
@@ -440,7 +440,7 @@ __global__ void publish_kernel(Gfn2IntegralDeviceBatch batch, Gfn2ForceDeviceAct
                                const std::uint32_t* system_errors) {
   const std::int64_t system = static_cast<std::int64_t>(blockIdx.x);
   if (!sequence_is_active(workspace) || activity.requested_mask[system] != 1u ||
-      activity.system_statuses[system] != XTBLOOM_STATUS_SUCCESS ||
+      activity.system_statuses[system] != VIBEQC_XTB_STATUS_SUCCESS ||
       !system_is_valid(system_errors, system)) {
     return;
   }
@@ -570,7 +570,7 @@ cudaError_t validate_descriptors(
       !required_pointer(h0_plan.shell_polynomial, batch.total_shells) ||
       !required_pointer(h0_plan.shell_pair_scale, batch.total_shell_pair_elements) ||
       !is_aligned(activity.requested_mask, alignof(std::uint8_t)) ||
-      !is_aligned(activity.system_statuses, alignof(xtbloom_status_t)) ||
+      !is_aligned(activity.system_statuses, alignof(vibeqc_xtb_status_t)) ||
       !required_pointer(input.positions, batch.total_atoms * 3) ||
       !required_pointer(input.coordination_numbers, batch.total_atoms) ||
       !required_pointer(input.overlap, batch.total_matrix_elements) ||
@@ -709,4 +709,4 @@ cudaError_t add_gfn2_h0_pulay_gradient_cuda(
   return check_launch();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_SCC_ITERATION_CONTROL_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_ITERATION_CONTROL_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_SCC_ITERATION_CONTROL_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_ITERATION_CONTROL_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -13,7 +13,7 @@
 #include "backends/cuda/gfn2_geometry.cuh"
 #include "backends/cuda/gfn2_scc.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /*
  * Stable internal stage identities for the SCC iteration ledger. Primitive
@@ -142,7 +142,7 @@ struct Gfn2SccIterationDevicePolicy {
 /* Read-only projection of the driver state fields used by the CPU predicate. */
 struct Gfn2SccIterationDeviceStateInput {
   const std::uint64_t* iterations = nullptr;
-  const xtbloom_status_t* system_statuses = nullptr;
+  const vibeqc_xtb_status_t* system_statuses = nullptr;
   const std::uint8_t* converged = nullptr;
   std::int64_t batch_elements = 0;
   std::uint64_t plan_token = 0u;
@@ -179,7 +179,7 @@ struct Gfn2SccIterationDeviceProvenance {
  */
 struct Gfn2SccIterationDeviceLedger {
   std::uint8_t* active_mask = nullptr;
-  xtbloom_status_t* pending_statuses = nullptr;
+  vibeqc_xtb_status_t* pending_statuses = nullptr;
   std::uint64_t* system_failure_records = nullptr;
   std::uint64_t* plan_failure_record = nullptr;
   std::uint32_t* sequence_active = nullptr;
@@ -226,7 +226,7 @@ struct Gfn2SccStageDeviceReport {
   std::int64_t stage_sequence_elements = 0;
 
   std::uint64_t peer_error_mask = 0u;
-  xtbloom_status_t peer_failure_status = XTBLOOM_STATUS_INTERNAL_ERROR;
+  vibeqc_xtb_status_t peer_failure_status = VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   std::uint64_t plan_token = 0u;
 
   // Kept at the tail so legacy aggregate initializers retain the mixed-first-
@@ -299,6 +299,6 @@ cudaError_t normalize_gfn2_scc_stage_cuda(const Gfn2SccStageDeviceReport& report
 cudaError_t open_gfn2_scc_stage_cuda(const Gfn2SccStageDeviceReport& report,
                                      cudaStream_t stream = nullptr) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_SCC_ITERATION_CONTROL_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_ITERATION_CONTROL_CUH

@@ -12,7 +12,7 @@
 
 #include "backends/cuda/gfn2_eigensolver.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerSystem = 128;
@@ -3786,4 +3786,4 @@ Gfn2EigensolverLaunchResult solve_gfn2_spin_eigensystems_cuda(
       solver, parameters, blas, workspace, results, system_errors, device_error, stream);
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

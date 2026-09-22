@@ -6,7 +6,7 @@
 
 #include "backends/cuda/gfn2_scc_iteration_control.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -65,12 +65,12 @@ bool valid_ledger(const Gfn2SccIterationDeviceLedger& ledger, std::int64_t batch
                   std::uint64_t plan_token, AddressRange (&writes)[5]) noexcept {
   return ledger.batch_elements == batch_size && ledger.scalar_elements == 1 &&
          ledger.plan_token == plan_token && is_aligned(ledger.active_mask, alignof(std::uint8_t)) &&
-         is_aligned(ledger.pending_statuses, alignof(xtbloom_status_t)) &&
+         is_aligned(ledger.pending_statuses, alignof(vibeqc_xtb_status_t)) &&
          is_aligned(ledger.system_failure_records, alignof(std::uint64_t)) &&
          is_aligned(ledger.plan_failure_record, alignof(std::uint64_t)) &&
          is_aligned(ledger.sequence_active, alignof(std::uint32_t)) &&
          make_range(ledger.active_mask, batch_size, sizeof(std::uint8_t), &writes[0]) &&
-         make_range(ledger.pending_statuses, batch_size, sizeof(xtbloom_status_t), &writes[1]) &&
+         make_range(ledger.pending_statuses, batch_size, sizeof(vibeqc_xtb_status_t), &writes[1]) &&
          make_range(ledger.system_failure_records, batch_size, sizeof(std::uint64_t), &writes[2]) &&
          make_range(ledger.plan_failure_record, 1, sizeof(std::uint64_t), &writes[3]) &&
          make_range(ledger.sequence_active, 1, sizeof(std::uint32_t), &writes[4]) &&
@@ -87,8 +87,8 @@ bool overlaps_any(const AddressRange& range, const AddressRange* ranges,
   return false;
 }
 
-__device__ bool known_status(xtbloom_status_t status) {
-  return status >= XTBLOOM_STATUS_SUCCESS && status <= XTBLOOM_STATUS_EIGENSOLVER_FAILED;
+__device__ bool known_status(vibeqc_xtb_status_t status) {
+  return status >= VIBEQC_XTB_STATUS_SUCCESS && status <= VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED;
 }
 
 __device__ bool aligned_device_pointer(const void* pointer, std::size_t alignment) {
@@ -138,7 +138,7 @@ __device__ bool provenance_generation_aliases_ledger(const Gfn2GeometryCacheProv
   return device_ranges_overlap(begin, end, ledger.active_mask, ledger.batch_elements,
                                sizeof(std::uint8_t)) ||
          device_ranges_overlap(begin, end, ledger.pending_statuses, ledger.batch_elements,
-                               sizeof(xtbloom_status_t)) ||
+                               sizeof(vibeqc_xtb_status_t)) ||
          device_ranges_overlap(begin, end, ledger.system_failure_records, ledger.batch_elements,
                                sizeof(std::uint64_t)) ||
          device_ranges_overlap(begin, end, ledger.plan_failure_record, 1, sizeof(std::uint64_t)) ||
@@ -153,7 +153,7 @@ __device__ std::uint32_t load_system_code(const Gfn2SccStageDeviceReport& report
                                           std::int64_t system) {
   if (report.system_code_format == Gfn2SccStageCodeFormat::kXTBloomStatus) {
     return static_cast<std::uint32_t>(
-        static_cast<const xtbloom_status_t*>(report.system_codes)[system]);
+        static_cast<const vibeqc_xtb_status_t*>(report.system_codes)[system]);
   }
   return static_cast<const std::uint32_t*>(report.system_codes)[system];
 }
@@ -222,7 +222,7 @@ __global__ void derive_activity_kernel(Gfn2SccIterationDevicePolicy policy,
     /* The refresh gate may exact-alias ledger.active_mask.  Snapshot it before
      * this kernel resets the canonical SCC activity byte. */
     const std::uint8_t refresh_eligible = dynamic_epoch != 0 ? geometry.eligible_mask[system] : 1u;
-    const xtbloom_status_t status = state.system_statuses[system];
+    const vibeqc_xtb_status_t status = state.system_statuses[system];
     const std::uint8_t converged = state.converged[system];
     const std::uint64_t iterations = state.iterations[system];
     ledger.system_failure_records[system] = 0u;
@@ -232,7 +232,7 @@ __global__ void derive_activity_kernel(Gfn2SccIterationDevicePolicy policy,
       atomicExch(&invalid_state, 1);
       continue;
     }
-    const bool active = status == XTBLOOM_STATUS_SUCCESS && converged == 0u &&
+    const bool active = status == VIBEQC_XTB_STATUS_SUCCESS && converged == 0u &&
                         iterations < policy.maximum_iterations;
     ledger.active_mask[system] = active ? 1u : 0u;
     /* Eligibility is a plan-owned byte domain, not an activity-dependent
@@ -247,7 +247,7 @@ __global__ void derive_activity_kernel(Gfn2SccIterationDevicePolicy policy,
       ledger.system_failure_records[system] = gfn2_scc_stage_failure_record(
           Gfn2SccStageId::kGeometry,
           static_cast<std::uint32_t>(Gfn2SccIterationControlCode::kStaleGeneration));
-      ledger.pending_statuses[system] = XTBLOOM_STATUS_INTERNAL_ERROR;
+      ledger.pending_statuses[system] = VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       ledger.active_mask[system] = 0u;
     } else if (active) {
       atomicExch(&any_active, 1);
@@ -334,7 +334,7 @@ __global__ void derive_activity_kernel(Gfn2SccIterationDevicePolicy policy,
         ledger.system_failure_records[system] = gfn2_scc_stage_failure_record(
             binding.owner_stage,
             static_cast<std::uint32_t>(Gfn2SccIterationControlCode::kStaleGeneration));
-        ledger.pending_statuses[system] = XTBLOOM_STATUS_INTERNAL_ERROR;
+        ledger.pending_statuses[system] = VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         ledger.active_mask[system] = 0u;
         break;
       }
@@ -344,7 +344,7 @@ __global__ void derive_activity_kernel(Gfn2SccIterationDevicePolicy policy,
       ledger.system_failure_records[system] = gfn2_scc_stage_failure_record(
           Gfn2SccStageId::kWarmStartProvenance,
           static_cast<std::uint32_t>(Gfn2SccIterationControlCode::kStaleGeneration));
-      ledger.pending_statuses[system] = XTBLOOM_STATUS_INTERNAL_ERROR;
+      ledger.pending_statuses[system] = VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       ledger.active_mask[system] = 0u;
     }
   }
@@ -479,7 +479,7 @@ static cudaError_t derive_activity_impl(const Gfn2SccIterationDevicePolicy& poli
       state.batch_elements != policy.batch_size || state.plan_token != policy.plan_token ||
       provenance.plan_token != policy.plan_token || provenance.cache_binding_count < 0 ||
       !is_aligned(state.iterations, alignof(std::uint64_t)) ||
-      !is_aligned(state.system_statuses, alignof(xtbloom_status_t)) ||
+      !is_aligned(state.system_statuses, alignof(vibeqc_xtb_status_t)) ||
       !is_aligned(state.converged, alignof(std::uint8_t)) ||
       (provenance.cache_binding_count == 0
            ? provenance.cache_bindings != nullptr ||
@@ -517,7 +517,7 @@ static cudaError_t derive_activity_impl(const Gfn2SccIterationDevicePolicy& poli
   }
   AddressRange reads[5];
   if (!make_range(state.iterations, policy.batch_size, sizeof(std::uint64_t), &reads[0]) ||
-      !make_range(state.system_statuses, policy.batch_size, sizeof(xtbloom_status_t), &reads[1]) ||
+      !make_range(state.system_statuses, policy.batch_size, sizeof(vibeqc_xtb_status_t), &reads[1]) ||
       !make_range(state.converged, policy.batch_size, sizeof(std::uint8_t), &reads[2]) ||
       !make_range(provenance.cache_bindings, provenance.cache_binding_count,
                   sizeof(Gfn2SccCacheProvenanceBinding), &reads[3]) ||
@@ -613,8 +613,8 @@ cudaError_t normalize_gfn2_scc_stage_cuda(const Gfn2SccStageDeviceReport& report
       (report.device_code_role == Gfn2SccStageDeviceCodeRole::kPlanOnly &&
        report.device_error == nullptr) ||
       (report.peer_error_mask & 1u) != 0u ||
-      (report.peer_failure_status != XTBLOOM_STATUS_INTERNAL_ERROR &&
-       report.peer_failure_status != XTBLOOM_STATUS_EIGENSOLVER_FAILED)) {
+      (report.peer_failure_status != VIBEQC_XTB_STATUS_INTERNAL_ERROR &&
+       report.peer_failure_status != VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED)) {
     return cudaErrorInvalidValue;
   }
 
@@ -660,4 +660,4 @@ cudaError_t open_gfn2_scc_stage_cuda(const Gfn2SccStageDeviceReport& report,
   return cudaPeekAtLastError();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

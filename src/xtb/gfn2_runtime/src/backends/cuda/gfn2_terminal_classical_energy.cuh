@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_TERMINAL_CLASSICAL_ENERGY_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_TERMINAL_CLASSICAL_ENERGY_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_TERMINAL_CLASSICAL_ENERGY_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_TERMINAL_CLASSICAL_ENERGY_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -13,7 +13,7 @@
 #include "backends/cuda/gfn2_geometry.cuh"
 #include "backends/cuda/gfn2_repulsion.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /* ABI v2 replaces the legacy dense D4 cache with the committed pair-list
  * cache and its role-specific consumer views. */
@@ -143,6 +143,6 @@ cudaError_t evaluate_gfn2_terminal_classical_energy_cuda(
     const Gfn2TerminalClassicalEnergyDeviceDiagnostics& diagnostics,
     cudaStream_t stream = nullptr) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_TERMINAL_CLASSICAL_ENERGY_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_TERMINAL_CLASSICAL_ENERGY_CUH

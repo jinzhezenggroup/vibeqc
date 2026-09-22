@@ -8,7 +8,7 @@
 
 #include "backends/cuda/gfn2_scc_potential.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -2070,4 +2070,4 @@ cudaError_t compose_gfn2_scc_potentials_cuda(
   return cudaGetLastError();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

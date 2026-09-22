@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_EIGENSOLVER_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_EIGENSOLVER_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_EIGENSOLVER_HPP
+#define VIBEQC_XTB_MODEL_GFN2_EIGENSOLVER_HPP
 
 #include <array>
 #include <cstddef>
@@ -13,7 +13,7 @@
 #include "model/gfn2/wavefunction.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 inline constexpr std::size_t kEigensolverWorkspaceAlignment = 64u;
 using LapackInt = std::int32_t;
@@ -117,19 +117,19 @@ class CpuLinearAlgebraBackend {
   BlasSetNumThreadsLocal set_num_threads_local_ = nullptr;
   BlasThreadCleanup thread_cleanup_ = nullptr;
 
-  friend xtbloom_status_t make_mkl_rt_lp64_backend(CpuLinearAlgebraBackend& backend,
+  friend vibeqc_xtb_status_t make_mkl_rt_lp64_backend(CpuLinearAlgebraBackend& backend,
                                                    std::string& error);
-  friend xtbloom_status_t make_internal_test_lp64_backend(
+  friend vibeqc_xtb_status_t make_internal_test_lp64_backend(
       LapackDpotrfWork dpotrf_work, LapackDpoconWork dpocon_work, LapackDsyevdWork dsyevd_work,
       CblasDtrsm dtrsm, CblasDgemm dgemm, BlasSetNumThreadsLocal set_num_threads_local,
       CpuLinearAlgebraBackend& backend, std::string& error, BlasThreadCleanup thread_cleanup);
   friend struct CpuLinearAlgebraAccess;
 };
 
-xtbloom_status_t make_mkl_rt_lp64_backend(CpuLinearAlgebraBackend& backend, std::string& error);
+vibeqc_xtb_status_t make_mkl_rt_lp64_backend(CpuLinearAlgebraBackend& backend, std::string& error);
 
 /* Internal test-only dependency injection; production must use the runtime factory. */
-xtbloom_status_t make_internal_test_lp64_backend(
+vibeqc_xtb_status_t make_internal_test_lp64_backend(
     LapackDpotrfWork dpotrf_work, LapackDpoconWork dpocon_work, LapackDsyevdWork dsyevd_work,
     CblasDtrsm dtrsm, CblasDgemm dgemm, BlasSetNumThreadsLocal set_num_threads_local,
     CpuLinearAlgebraBackend& backend, std::string& error,
@@ -208,10 +208,10 @@ class EigensolverPlan {
   explicit EigensolverPlan(std::shared_ptr<const EigensolverPlanData> data) noexcept;
   std::shared_ptr<const EigensolverPlanData> data_;
 
-  friend xtbloom_status_t make_eigensolver_plan(const WavefunctionLayout& layout,
+  friend vibeqc_xtb_status_t make_eigensolver_plan(const WavefunctionLayout& layout,
                                                 EigensolverPlan& plan, std::string& error,
                                                 double minimum_overlap_rcond);
-  friend xtbloom_status_t make_eigensolver_plan(const EigensolverWavefunctionLayout& layout,
+  friend vibeqc_xtb_status_t make_eigensolver_plan(const EigensolverWavefunctionLayout& layout,
                                                 EigensolverPlan& plan, std::string& error,
                                                 double minimum_overlap_rcond);
 };
@@ -221,7 +221,7 @@ struct EigensolverOverlapCache {
   std::size_t workspace_size_bytes = 0u;
   double* cholesky_factors = nullptr;
   std::uint64_t* geometry_generations = nullptr;
-  xtbloom_status_t* system_statuses = nullptr;
+  vibeqc_xtb_status_t* system_statuses = nullptr;
   const EigensolverPlanData* plan_identity = nullptr;
 };
 
@@ -247,14 +247,14 @@ struct EigensolverWorkspace {
 
   double* factor_staging = nullptr;
   std::uint64_t* factor_generation_staging = nullptr;
-  xtbloom_status_t* factor_status_staging = nullptr;
+  vibeqc_xtb_status_t* factor_status_staging = nullptr;
 
   double* batch_coefficients = nullptr;
   double* batch_densities = nullptr;
   double* batch_energy_weighted_densities = nullptr;
   double* batch_eigenvalues = nullptr;
   double* batch_occupations = nullptr;
-  xtbloom_status_t* batch_system_statuses = nullptr;
+  vibeqc_xtb_status_t* batch_system_statuses = nullptr;
   double* batch_chemical_potentials = nullptr;
   double* batch_entropies = nullptr;
   double* batch_band_energies = nullptr;
@@ -268,7 +268,7 @@ struct EigensolverWorkspace {
  * Hartree, so free_energy = band_energy - temperature*entropy is in Hartree.
  */
 struct EigensolverThermodynamicsView {
-  xtbloom_status_t* system_statuses = nullptr;
+  vibeqc_xtb_status_t* system_statuses = nullptr;
   std::size_t system_status_capacity = 0u;
   double* chemical_potentials = nullptr;
   std::size_t chemical_potential_capacity = 0u;
@@ -280,27 +280,27 @@ struct EigensolverThermodynamicsView {
   std::size_t free_energy_capacity = 0u;
 };
 
-xtbloom_status_t make_eigensolver_plan(const WavefunctionLayout& layout, EigensolverPlan& plan,
+vibeqc_xtb_status_t make_eigensolver_plan(const WavefunctionLayout& layout, EigensolverPlan& plan,
                                        std::string& error, double minimum_overlap_rcond = 1.0e-12);
-xtbloom_status_t make_eigensolver_plan(const EigensolverWavefunctionLayout& layout,
+vibeqc_xtb_status_t make_eigensolver_plan(const EigensolverWavefunctionLayout& layout,
                                        EigensolverPlan& plan, std::string& error,
                                        double minimum_overlap_rcond = 1.0e-12);
 
-xtbloom_status_t bind_eigensolver_overlap_cache(const EigensolverPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_eigensolver_overlap_cache(const EigensolverPlan& plan, void* workspace,
                                                 std::size_t workspace_size,
                                                 EigensolverOverlapCache& cache, std::string& error);
-xtbloom_status_t bind_eigensolver_workspace(const EigensolverPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_eigensolver_workspace(const EigensolverPlan& plan, void* workspace,
                                             std::size_t workspace_size, EigensolverWorkspace& view,
                                             std::string& error);
-xtbloom_status_t bind_eigensolver_worker_workspace(const EigensolverPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_eigensolver_worker_workspace(const EigensolverPlan& plan, void* workspace,
                                                    std::size_t workspace_size,
                                                    EigensolverWorkspace& view, std::string& error);
 
 /* Read-only canonical-binding checks used by model-owned SCC orchestrators. */
-xtbloom_status_t validate_eigensolver_overlap_cache_binding(const EigensolverPlan& plan,
+vibeqc_xtb_status_t validate_eigensolver_overlap_cache_binding(const EigensolverPlan& plan,
                                                             const EigensolverOverlapCache& cache,
                                                             std::string& error);
-xtbloom_status_t validate_eigensolver_worker_workspace_binding(
+vibeqc_xtb_status_t validate_eigensolver_worker_workspace_binding(
     const EigensolverPlan& plan, const EigensolverWorkspace& workspace, std::string& error);
 
 /*
@@ -309,7 +309,7 @@ xtbloom_status_t validate_eigensolver_worker_workspace_binding(
  * nothing; positive-definiteness and conditioning failures are recorded per
  * system when the complete staged batch is committed.
  */
-xtbloom_status_t factor_overlap_cpu(const EigensolverPlan& plan, const double* overlap,
+vibeqc_xtb_status_t factor_overlap_cpu(const EigensolverPlan& plan, const double* overlap,
                                     std::uint64_t geometry_generation,
                                     const CpuLinearAlgebraBackend& backend,
                                     const EigensolverWorkspace& workspace,
@@ -321,13 +321,13 @@ xtbloom_status_t factor_overlap_cpu(const EigensolverPlan& plan, const double* o
  * have ruled out call-level backend failures. The MKL backend temporarily
  * requests one BLAS thread, avoiding nested oversubscription.
  */
-xtbloom_status_t solve_eigensystems_cpu(
+vibeqc_xtb_status_t solve_eigensystems_cpu(
     const EigensolverPlan& plan, const EigensolverOverlapCache& overlap_cache,
     std::uint64_t geometry_generation, const double* hamiltonians, double temperature,
     const CpuLinearAlgebraBackend& backend, const EigensolverWorkspace& workspace,
     const WavefunctionView& wavefunction, const EigensolverThermodynamicsView& thermodynamics,
     std::string& error);
-xtbloom_status_t solve_eigensystems_cpu(
+vibeqc_xtb_status_t solve_eigensystems_cpu(
     const EigensolverPlan& plan, const EigensolverOverlapCache& overlap_cache,
     std::uint64_t geometry_generation, const double* hamiltonians, double temperature,
     const CpuLinearAlgebraBackend& backend, const EigensolverWorkspace& workspace,
@@ -342,13 +342,13 @@ xtbloom_status_t solve_eigensystems_cpu(
  * slices are disjoint. Validation is O(1) plus the fixed number of output
  * fields and never scans other batch members.
  */
-xtbloom_status_t solve_eigensystem_cpu(
+vibeqc_xtb_status_t solve_eigensystem_cpu(
     const EigensolverPlan& plan, std::int64_t system, const EigensolverOverlapCache& overlap_cache,
     std::uint64_t geometry_generation, const double* system_hamiltonians, double temperature,
     const CpuLinearAlgebraBackend& backend, const EigensolverWorkspace& workspace,
     const WavefunctionView& wavefunction, const EigensolverThermodynamicsView& thermodynamics,
     std::string& error);
-xtbloom_status_t solve_eigensystem_cpu(
+vibeqc_xtb_status_t solve_eigensystem_cpu(
     const EigensolverPlan& plan, std::int64_t system, const EigensolverOverlapCache& overlap_cache,
     std::uint64_t geometry_generation, const double* system_hamiltonians, double temperature,
     const CpuLinearAlgebraBackend& backend, const EigensolverWorkspace& workspace,
@@ -356,11 +356,11 @@ xtbloom_status_t solve_eigensystem_cpu(
     const EigensolverThermodynamicsView& thermodynamics, std::string& error);
 
 /* Standalone tblite-compatible per-spin Aufbau/Fermi filling helper. */
-xtbloom_status_t fill_occupations_cpu(std::int64_t orbital_count, const double* eigenvalues,
+vibeqc_xtb_status_t fill_occupations_cpu(std::int64_t orbital_count, const double* eigenvalues,
                                       double electron_count, double temperature,
                                       double* occupations, double& chemical_potential,
                                       double& entropy, std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_EIGENSOLVER_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_EIGENSOLVER_HPP

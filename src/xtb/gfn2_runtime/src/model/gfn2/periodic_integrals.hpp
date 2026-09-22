@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#ifndef XTBLOOM_MODEL_GFN2_PERIODIC_INTEGRALS_HPP
-#define XTBLOOM_MODEL_GFN2_PERIODIC_INTEGRALS_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_PERIODIC_INTEGRALS_HPP
+#define VIBEQC_XTB_MODEL_GFN2_PERIODIC_INTEGRALS_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -16,7 +16,7 @@
 #include "model/gfn2/periodic_topology.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 /* The definition remains private to periodic_topology.cpp. */
 struct PeriodicShortRangePlanData;
@@ -125,13 +125,13 @@ class PeriodicIntegralPlan {
 
   std::shared_ptr<const PeriodicIntegralPlanData> data_;
 
-  friend xtbloom_status_t make_periodic_integral_plan(const BasisPlan&, const IntegralPlan&,
+  friend vibeqc_xtb_status_t make_periodic_integral_plan(const BasisPlan&, const IntegralPlan&,
                                                       const PeriodicShortRangePlan&,
                                                       PeriodicIntegralPlan&, std::string&);
 };
 
 /* Build the immutable image lists and one raw workspace layout. */
-xtbloom_status_t make_periodic_integral_plan(const BasisPlan& basis, const IntegralPlan& integrals,
+vibeqc_xtb_status_t make_periodic_integral_plan(const BasisPlan& basis, const IntegralPlan& integrals,
                                              const PeriodicShortRangePlan& periodic,
                                              PeriodicIntegralPlan& plan, std::string& error);
 
@@ -144,7 +144,7 @@ xtbloom_status_t make_periodic_integral_plan(const BasisPlan& basis, const Integ
  * aligned to 64 bytes. Outputs are published only after all staged values are
  * finite.
  */
-xtbloom_status_t evaluate_periodic_integrals_h0_cpu(
+vibeqc_xtb_status_t evaluate_periodic_integrals_h0_cpu(
     const BasisPlan& basis, const IntegralPlan& integrals, const H0Plan& h0,
     const PeriodicIntegralPlan& periodic, const PeriodicShortRangePlan& topology,
     const PeriodicShortRangeGeometry& geometry,
@@ -159,7 +159,7 @@ xtbloom_status_t evaluate_periodic_integrals_h0_cpu(
  * r' = r (I + epsilon)^T and H' = H (I + epsilon)^T; self images therefore
  * have no Cartesian coordinate derivative but retain a cell derivative.
  */
-xtbloom_status_t add_periodic_integrals_h0_vjp_cpu(
+vibeqc_xtb_status_t add_periodic_integrals_h0_vjp_cpu(
     const BasisPlan& basis, const IntegralPlan& integrals, const H0Plan& h0,
     const PeriodicIntegralPlan& periodic, const PeriodicShortRangePlan& topology,
     const PeriodicShortRangeGeometry& geometry,
@@ -169,6 +169,6 @@ xtbloom_status_t add_periodic_integrals_h0_vjp_cpu(
     void* workspace, std::size_t workspace_size, std::string& error,
     CpuIsa cpu_isa = CpuIsa::kBaseline);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_PERIODIC_INTEGRALS_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_PERIODIC_INTEGRALS_HPP

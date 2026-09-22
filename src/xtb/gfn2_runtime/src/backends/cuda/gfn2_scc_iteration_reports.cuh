@@ -1,14 +1,14 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_SCC_ITERATION_REPORTS_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_ITERATION_REPORTS_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_SCC_ITERATION_REPORTS_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_ITERATION_REPORTS_CUH
 
 #include <cstdint>
 #include <type_traits>
 
 #include "backends/cuda/gfn2_scc_iteration.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /*
  * Canonical arena projection for stage-local diagnostics not already owned by
@@ -88,6 +88,6 @@ static_assert(std::is_standard_layout_v<Gfn2SccIterationProjectedDescriptors>);
     const Gfn2SccIterationDeviceWorkspace& workspace_seed,
     Gfn2SccIterationBinding& binding) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_SCC_ITERATION_REPORTS_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_ITERATION_REPORTS_CUH

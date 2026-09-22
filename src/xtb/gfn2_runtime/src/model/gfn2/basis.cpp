@@ -15,7 +15,7 @@
 #include "data/parameters/gfn2.hpp"
 #include "model/common/sto.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 namespace {
 
 bool count_fits_vector(std::int64_t count, std::size_t element_size, bool add_sentinel = false) {
@@ -63,7 +63,7 @@ bool validate_shell(const parameters::gfn2::ShellParameters& shell) {
 
 }  // namespace
 
-xtbloom_status_t make_basis_plan(std::int64_t batch_size, std::int64_t total_atoms,
+vibeqc_xtb_status_t make_basis_plan(std::int64_t batch_size, std::int64_t total_atoms,
                                  const std::int64_t* atom_offsets,
                                  const std::int32_t* atomic_numbers, BasisPlan& plan,
                                  std::string& error) {
@@ -71,21 +71,21 @@ xtbloom_status_t make_basis_plan(std::int64_t batch_size, std::int64_t total_ato
       !count_fits_vector(batch_size, sizeof(std::int64_t), true) ||
       !count_fits_vector(total_atoms, sizeof(std::int64_t), true)) {
     error = "basis plan requires positive, representable batch and atom counts";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atom_offsets == nullptr || atomic_numbers == nullptr) {
     error = "basis plan offsets and atomic numbers must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atom_offsets[0] != 0 || atom_offsets[batch_size] != total_atoms) {
     error = "basis plan offsets must start at zero and end at total_atoms";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::int64_t batch = 0; batch < batch_size; ++batch) {
     if (atom_offsets[batch] < 0 || atom_offsets[batch] > atom_offsets[batch + 1] ||
         atom_offsets[batch + 1] > total_atoms) {
       error = "basis plan offsets must be a monotone ragged partition";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -111,12 +111,12 @@ xtbloom_status_t make_basis_plan(std::int64_t batch_size, std::int64_t total_ato
           parameters::gfn2::find_element(static_cast<std::uint32_t>(atomic_number));
       if (element == nullptr || element->atomic_number != atomic_number) {
         error = "basis plan contains an unsupported atomic number";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       const auto* shells = element_shells(*element);
       if (shells == nullptr || element->shell_count == 0u) {
         error = "basis plan contains inconsistent generated element parameters";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
 
       std::array<std::uint8_t, 5> first_count{};
@@ -124,7 +124,7 @@ xtbloom_status_t make_basis_plan(std::int64_t batch_size, std::int64_t total_ato
         const auto& shell = shells[local_shell];
         if (!validate_shell(shell)) {
           error = "basis plan contains an unsupported generated STO-nG shell";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         const std::int64_t spherical = 2 * static_cast<std::int64_t>(shell.angular_momentum) + 1;
         const std::int64_t cartesian = (static_cast<std::int64_t>(shell.angular_momentum) + 1) *
@@ -142,7 +142,7 @@ xtbloom_status_t make_basis_plan(std::int64_t batch_size, std::int64_t total_ato
             !checked_add(cartesian, created.total_cartesian_orbitals) ||
             !checked_add(primitives, created.total_primitives)) {
           error = "basis plan dimensions overflow the supported index range";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         created.maximum_angular_momentum =
             std::max(created.maximum_angular_momentum, shell.angular_momentum);
@@ -159,7 +159,7 @@ xtbloom_status_t make_basis_plan(std::int64_t batch_size, std::int64_t total_ato
         !count_fits_vector(created.total_cartesian_orbitals, sizeof(double)) ||
         !count_fits_vector(created.total_primitives, sizeof(double))) {
       error = "basis plan dimensions are not representable by host containers";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     const std::size_t shell_count = static_cast<std::size_t>(created.total_shells);
@@ -205,7 +205,7 @@ xtbloom_status_t make_basis_plan(std::int64_t batch_size, std::int64_t total_ato
         if (!common::expand_sto_shell(shell.principal_quantum_number, shell.angular_momentum,
                                       shell.gaussian_count, shell.slater, alpha, coeff)) {
           error = "GFN2 basis references an unavailable pinned STO table row";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         std::size_t actual_count = shell.gaussian_count;
 
@@ -257,14 +257,14 @@ xtbloom_status_t make_basis_plan(std::int64_t batch_size, std::int64_t total_ato
 
     plan = std::move(created);
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate the GFN2 basis plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   } catch (const std::length_error&) {
     error = "GFN2 basis plan dimensions exceed host container limits";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

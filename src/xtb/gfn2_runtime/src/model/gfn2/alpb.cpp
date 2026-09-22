@@ -9,7 +9,7 @@
 #include <new>
 #include <vector>
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 namespace {
 
 constexpr double kP16Zeta = 1.028;
@@ -126,48 +126,48 @@ bool compute_shape_descriptor(std::size_t atom_count, const double* positions,
   return !need_inverse || invert_symmetric_3x3(inertia, determinant, shape.inverse_inertia);
 }
 
-xtbloom_status_t validate_geometry_inputs(std::int64_t atom_count, const double* positions,
+vibeqc_xtb_status_t validate_geometry_inputs(std::int64_t atom_count, const double* positions,
                                           const double* born_radii, const double* cavity_radii,
                                           const AlpbPolarSettings& settings, std::string& error) {
   if (!representable_atom_count(atom_count)) {
     error = "ALPB polar term requires a nonnegative, representable atom count";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!valid_settings(settings)) {
     error = "ALPB polar settings contain an invalid model, kernel, or dielectric constant";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atom_count == 0) {
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   }
   if (positions == nullptr || born_radii == nullptr ||
       (settings.model == AlpbPolarModel::kAlpb && cavity_radii == nullptr)) {
     error = "ALPB polar geometry inputs must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const auto count = static_cast<std::size_t>(atom_count);
   for (std::size_t coordinate = 0; coordinate < count * 3u; ++coordinate) {
     if (!std::isfinite(positions[coordinate])) {
       error = "ALPB polar positions contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   for (std::size_t atom = 0; atom < count; ++atom) {
     if (!(born_radii[atom] > 0.0) || !std::isfinite(born_radii[atom])) {
       error = "ALPB polar Born radii must be finite and positive";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     if (settings.model == AlpbPolarModel::kAlpb &&
         (!(cavity_radii[atom] > 0.0) || !std::isfinite(cavity_radii[atom]))) {
       error = "ALPB polar cavity radii must be finite and positive";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     if (settings.model == AlpbPolarModel::kAlpb) {
       const double squared_radius = cavity_radii[atom] * cavity_radii[atom];
       const double cavity_weight = squared_radius * cavity_radii[atom];
       if (!(cavity_weight > 0.0) || !std::isfinite(cavity_weight)) {
         error = "ALPB polar cavity radii exceed the stable binary64 range";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
   }
@@ -183,11 +183,11 @@ xtbloom_status_t validate_geometry_inputs(std::int64_t atom_count, const double*
       if (!std::isfinite(distance_measure) || !(radius_product > 0.0) ||
           !std::isfinite(radius_product)) {
         error = "ALPB polar pair inputs exceed the stable binary64 range";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 double p16_inverse_distance(double distance, double first_radius, double second_radius) {
@@ -209,22 +209,22 @@ double still_inverse_distance(double distance_squared, double first_radius, doub
 
 }  // namespace
 
-xtbloom_status_t build_alpb_polar_matrix_cpu(std::int64_t atom_count, const double* positions,
+vibeqc_xtb_status_t build_alpb_polar_matrix_cpu(std::int64_t atom_count, const double* positions,
                                              const double* born_radii, const double* cavity_radii,
                                              const AlpbPolarSettings& settings, double* matrix,
                                              std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_geometry_inputs(atom_count, positions, born_radii, cavity_radii, settings, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (atom_count == 0) {
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   }
   if (matrix == nullptr) {
     error = "ALPB polar matrix output must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   ShapeDescriptor shape;
@@ -232,7 +232,7 @@ xtbloom_status_t build_alpb_polar_matrix_cpu(std::int64_t atom_count, const doub
       !compute_shape_descriptor(static_cast<std::size_t>(atom_count), positions, cavity_radii,
                                 false, shape)) {
     error = "ALPB polar cavity has an invalid electrostatic-size descriptor";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const double inverse_dielectric = 1.0 / settings.dielectric_constant;
@@ -264,12 +264,12 @@ xtbloom_status_t build_alpb_polar_matrix_cpu(std::int64_t atom_count, const doub
   for (std::size_t first = 0; first < count; ++first) {
     if (!std::isfinite(matrix_element(first, first))) {
       error = "ALPB polar matrix arithmetic exceeded the stable binary64 range";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     for (std::size_t second = 0; second < first; ++second) {
       if (!std::isfinite(matrix_element(first, second))) {
         error = "ALPB polar matrix arithmetic exceeded the stable binary64 range";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
   }
@@ -284,37 +284,37 @@ xtbloom_status_t build_alpb_polar_matrix_cpu(std::int64_t atom_count, const doub
   }
 
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_alpb_polar_cpu(std::int64_t atom_count, const double* matrix,
+vibeqc_xtb_status_t evaluate_alpb_polar_cpu(std::int64_t atom_count, const double* matrix,
                                          const double* atomic_charges, double* atomic_potentials,
                                          double* energy, std::string& error) {
   if (!representable_atom_count(atom_count)) {
     error = "ALPB polar evaluation requires a nonnegative, representable atom count";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (energy == nullptr || (atom_count != 0 && (matrix == nullptr || atomic_charges == nullptr ||
                                                 atomic_potentials == nullptr))) {
     error = "ALPB polar evaluation inputs and outputs must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atom_count == 0) {
     *energy = 0.0;
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   }
   const auto count = static_cast<std::size_t>(atom_count);
   for (std::size_t atom = 0; atom < count; ++atom) {
     if (!std::isfinite(atomic_charges[atom])) {
       error = "ALPB polar charges contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   for (std::size_t element = 0; element < count * count; ++element) {
     if (!std::isfinite(matrix[element])) {
       error = "ALPB polar matrix contains NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -328,49 +328,49 @@ xtbloom_status_t evaluate_alpb_polar_cpu(std::int64_t atom_count, const double* 
       }
       if (!std::isfinite(potential)) {
         error = "ALPB polar potential arithmetic exceeded the stable binary64 range";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       candidate_potentials[row] = potential;
       polar_energy = std::fma(0.5 * atomic_charges[row], potential, polar_energy);
     }
     if (!std::isfinite(polar_energy)) {
       error = "ALPB polar energy arithmetic exceeded the stable binary64 range";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     std::copy(candidate_potentials.begin(), candidate_potentials.end(), atomic_potentials);
     *energy = polar_energy;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate transactional ALPB polar potential storage";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_alpb_polar_gradient_cpu(std::int64_t atom_count, const double* positions,
+vibeqc_xtb_status_t add_alpb_polar_gradient_cpu(std::int64_t atom_count, const double* positions,
                                              const double* born_radii, const double* cavity_radii,
                                              const double* atomic_charges,
                                              const AlpbPolarSettings& settings, double* gradients,
                                              std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_geometry_inputs(atom_count, positions, born_radii, cavity_radii, settings, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (atom_count == 0) {
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   }
   if (atomic_charges == nullptr || gradients == nullptr) {
     error = "ALPB polar gradient charges and output must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const auto count = static_cast<std::size_t>(atom_count);
   for (std::size_t atom = 0; atom < count; ++atom) {
     if (!std::isfinite(atomic_charges[atom]) || !std::isfinite(gradients[atom * 3u]) ||
         !std::isfinite(gradients[atom * 3u + 1u]) || !std::isfinite(gradients[atom * 3u + 2u])) {
       error = "ALPB polar charges and accumulated gradients must be finite";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -382,7 +382,7 @@ xtbloom_status_t add_alpb_polar_gradient_cpu(std::int64_t atom_count, const doub
         const double dz = positions[first * 3u + 2u] - positions[second * 3u + 2u];
         if (std::hypot(dx, dy, dz) == 0.0) {
           error = "the P16 polar coordinate derivative is undefined for coincident atoms";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
       }
     }
@@ -392,7 +392,7 @@ xtbloom_status_t add_alpb_polar_gradient_cpu(std::int64_t atom_count, const doub
   if (settings.model == AlpbPolarModel::kAlpb &&
       !compute_shape_descriptor(count, positions, cavity_radii, true, shape)) {
     error = "ALPB polar cavity has an invalid electrostatic-size derivative";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const double inverse_dielectric = 1.0 / settings.dielectric_constant;
@@ -474,17 +474,17 @@ xtbloom_status_t add_alpb_polar_gradient_cpu(std::int64_t atom_count, const doub
     for (const double component : candidate) {
       if (!std::isfinite(component)) {
         error = "ALPB polar gradient arithmetic exceeded the stable binary64 range";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
     std::copy(candidate.begin(), candidate.end(), gradients);
   } catch (const std::bad_alloc&) {
     error = "failed to allocate transactional ALPB polar gradient storage";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

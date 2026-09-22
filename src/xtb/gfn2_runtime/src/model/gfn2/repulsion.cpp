@@ -13,7 +13,7 @@
 #include "generated_gfn2_pair_native.hpp"
 #include "model/gfn2/periodic_topology.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 namespace {
 
 constexpr double kCutoffBohr = 25.0;
@@ -34,7 +34,7 @@ bool representable_geometry_size(std::int64_t atom_count) {
 
 }  // namespace
 
-xtbloom_status_t make_repulsion_plan(std::int64_t batch_size, std::int64_t total_atoms,
+vibeqc_xtb_status_t make_repulsion_plan(std::int64_t batch_size, std::int64_t total_atoms,
                                      const std::int64_t* atom_offsets,
                                      const std::int32_t* atomic_numbers, RepulsionPlan& plan,
                                      std::string& error) {
@@ -43,20 +43,20 @@ xtbloom_status_t make_repulsion_plan(std::int64_t batch_size, std::int64_t total
       static_cast<std::uint64_t>(batch_size) >=
           static_cast<std::uint64_t>(std::numeric_limits<std::ptrdiff_t>::max())) {
     error = "repulsion plan requires positive, representable batch and atom counts";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atom_offsets == nullptr || atomic_numbers == nullptr) {
     error = "repulsion plan offsets and atomic numbers must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atom_offsets[0] != 0 || atom_offsets[batch_size] != total_atoms) {
     error = "repulsion plan offsets must start at zero and end at total_atoms";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::int64_t batch = 0; batch < batch_size; ++batch) {
     if (atom_offsets[batch] > atom_offsets[batch + 1]) {
       error = "repulsion plan offsets must be monotonically nondecreasing";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -76,7 +76,7 @@ xtbloom_status_t make_repulsion_plan(std::int64_t batch_size, std::int64_t total
       if (element == nullptr || !(element->arep > 0.0) || !(element->zeff > 0.0) ||
           !std::isfinite(element->arep) || !std::isfinite(element->zeff)) {
         error = "repulsion plan contains an unsupported atomic number or invalid parameter";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
 
       const std::size_t index = static_cast<std::size_t>(atom);
@@ -87,14 +87,14 @@ xtbloom_status_t make_repulsion_plan(std::int64_t batch_size, std::int64_t total
 
     plan = std::move(created);
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate the GFN2 repulsion plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t add_repulsion_cpu(const RepulsionPlan& plan, const double* positions,
+vibeqc_xtb_status_t add_repulsion_cpu(const RepulsionPlan& plan, const double* positions,
                                    double* energies, double* forces, std::string& error) {
   const auto atom_count = static_cast<std::size_t>(plan.total_atoms);
   if (plan.batch_size <= 0 || plan.total_atoms <= 0 ||
@@ -103,28 +103,28 @@ xtbloom_status_t add_repulsion_cpu(const RepulsionPlan& plan, const double* posi
       plan.sqrt_alpha.size() != atom_count || plan.effective_charge.size() != atom_count ||
       plan.light_element.size() != atom_count) {
     error = "repulsion plan is incomplete or internally inconsistent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (plan.atom_offsets.front() != 0 || plan.atom_offsets.back() != plan.total_atoms) {
     error = "repulsion plan offsets do not span the stored atoms";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::int64_t batch = 0; batch < plan.batch_size; ++batch) {
     const std::int64_t begin = plan.atom_offsets[static_cast<std::size_t>(batch)];
     const std::int64_t end = plan.atom_offsets[static_cast<std::size_t>(batch + 1)];
     if (begin < 0 || begin > end || end > plan.total_atoms) {
       error = "repulsion plan offsets are not a valid ragged partition";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   if (positions == nullptr || energies == nullptr) {
     error = "repulsion positions and energies must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::size_t coordinate = 0; coordinate < atom_count * 3; ++coordinate) {
     if (!std::isfinite(positions[coordinate])) {
       error = "repulsion positions contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -142,7 +142,7 @@ xtbloom_status_t add_repulsion_cpu(const RepulsionPlan& plan, const double* posi
         const double distance_squared = dx * dx + dy * dy + dz * dz;
         if (distance_squared <= kMinimumDistanceSquared) {
           error = "repulsion is undefined for coincident atoms in one molecule";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         if (distance_squared > cutoff_squared) {
           continue;
@@ -158,7 +158,7 @@ xtbloom_status_t add_repulsion_cpu(const RepulsionPlan& plan, const double* posi
         if (!vibeqc::xtb::generated::evaluate_gfn2_repulsion_pair(
                 distance, pair_alpha, pair_charge, light_pair, pair)) {
           error = "compiler-generated GFN2 repulsion pair evaluation failed";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         energies[batch] += pair.energy;
 
@@ -179,7 +179,7 @@ xtbloom_status_t add_repulsion_cpu(const RepulsionPlan& plan, const double* posi
   }
 
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 namespace {
@@ -192,7 +192,7 @@ bool finite_repulsion_array(const double* values, std::size_t count) {
   return true;
 }
 
-xtbloom_status_t validate_periodic_repulsion_context(const RepulsionPlan& plan,
+vibeqc_xtb_status_t validate_periodic_repulsion_context(const RepulsionPlan& plan,
                                                      const PeriodicShortRangePlan& periodic_plan,
                                                      const PeriodicShortRangeGeometry& geometry,
                                                      const PeriodicShortRangeWorkspace& workspace,
@@ -204,17 +204,17 @@ xtbloom_status_t validate_periodic_repulsion_context(const RepulsionPlan& plan,
       plan.light_element.size() != atom_count || plan.atom_offsets.front() != 0 ||
       plan.atom_offsets.back() != plan.total_atoms) {
     error = "repulsion plan is incomplete or internally inconsistent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!periodic_plan.sealed() || periodic_plan.batch_size() != plan.batch_size ||
       periodic_plan.total_atoms() != plan.total_atoms ||
       periodic_plan.atom_offsets() != plan.atom_offsets) {
     error = "periodic repulsion topology does not match the repulsion plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  const xtbloom_status_t workspace_status =
+  const vibeqc_xtb_status_t workspace_status =
       validate_periodic_short_range_workspace(periodic_plan, workspace, error);
-  if (workspace_status != XTBLOOM_STATUS_SUCCESS) return workspace_status;
+  if (workspace_status != VIBEQC_XTB_STATUS_SUCCESS) return workspace_status;
   if (geometry.plan_identity != periodic_plan.identity() || geometry.geometry_generation == 0u ||
       geometry.wrapped_positions == nullptr ||
       geometry.wrapped_position_elements != plan.total_atoms * 3 ||
@@ -224,23 +224,23 @@ xtbloom_status_t validate_periodic_repulsion_context(const RepulsionPlan& plan,
       workspace.gradient_elements != plan.total_atoms * 3 ||
       workspace.strain_elements != plan.batch_size * 9) {
     error = "periodic repulsion geometry or workspace is incomplete";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 }  // namespace
 
-xtbloom_status_t evaluate_periodic_repulsion_cpu(
+vibeqc_xtb_status_t evaluate_periodic_repulsion_cpu(
     const RepulsionPlan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, double* per_atom_energies, double* gradients,
     double* strain_derivatives, const PeriodicShortRangeWorkspace& workspace, std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_periodic_repulsion_context(plan, periodic_plan, geometry, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (per_atom_energies == nullptr || gradients == nullptr || strain_derivatives == nullptr) {
     error = "periodic repulsion outputs must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms);
@@ -258,7 +258,7 @@ xtbloom_status_t evaluate_periodic_repulsion_cpu(
         periodic_plan.translations(system, PeriodicTranslationCutoff::kShortRange25);
     if (translations.data == nullptr || translations.size <= 0) {
       error = "periodic repulsion translation topology is empty";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     for (std::int64_t first = begin; first < end; ++first) {
       const std::array<double, 3> center{
@@ -286,7 +286,7 @@ xtbloom_status_t evaluate_periodic_repulsion_cpu(
           }
           if (distance_squared <= kMinimumDistanceSquared) {
             error = "periodic repulsion is undefined for coincident or near-coincident images";
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
 
           const std::size_t first_index = static_cast<std::size_t>(first);
@@ -301,7 +301,7 @@ xtbloom_status_t evaluate_periodic_repulsion_cpu(
           if (!vibeqc::xtb::generated::evaluate_gfn2_repulsion_pair(
                   distance, pair_alpha, pair_charge, light_pair, pair)) {
             error = "compiler-generated periodic GFN2 repulsion pair evaluation failed";
-            return XTBLOOM_STATUS_INTERNAL_ERROR;
+            return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
           }
           workspace.atom_scratch[first_index] += 0.5 * pair.energy;
           if (first != second) workspace.atom_scratch[second_index] += 0.5 * pair.energy;
@@ -336,13 +336,13 @@ xtbloom_status_t evaluate_periodic_repulsion_cpu(
       !finite_repulsion_array(workspace.gradient_scratch, gradient_count) ||
       !finite_repulsion_array(workspace.strain_scratch, strain_count)) {
     error = "periodic repulsion evaluation overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   std::copy_n(workspace.atom_scratch, atom_count, per_atom_energies);
   std::copy_n(workspace.gradient_scratch, gradient_count, gradients);
   std::copy_n(workspace.strain_scratch, strain_count, strain_derivatives);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

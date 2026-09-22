@@ -17,7 +17,7 @@
 
 #include "model/common/integrals.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 namespace {
 
 constexpr std::size_t kDipoleComponents = common::kIntegralDipoleComponents;
@@ -184,17 +184,17 @@ bool valid_plan_relationship(const BasisPlan& basis, const IntegralPlan& integra
          data->workspace_size_bytes >= kPeriodicIntegralWorkspaceAlignment;
 }
 
-xtbloom_status_t validate_context(const BasisPlan& basis, const IntegralPlan& integrals,
+vibeqc_xtb_status_t validate_context(const BasisPlan& basis, const IntegralPlan& integrals,
                                   const H0Plan& h0, const PeriodicIntegralPlan& periodic,
                                   const PeriodicShortRangePlan& topology,
                                   const PeriodicShortRangeGeometry& geometry,
                                   const PeriodicShortRangeWorkspace& geometry_workspace,
                                   const double* coordination_numbers, void* workspace,
                                   std::size_t workspace_size, std::string& error) {
-  xtbloom_status_t status = common::validate_integral_plan(basis, integrals, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  vibeqc_xtb_status_t status = common::validate_integral_plan(basis, integrals, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   status = validate_h0_plan(basis, integrals, h0, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   /* The image radius is derived from this aggregate. Recompute it after the
    * general basis validation so a mutated value object cannot retain a stale
    * minimum and silently omit diffuse-image contributions. */
@@ -202,7 +202,7 @@ xtbloom_status_t validate_context(const BasisPlan& basis, const IntegralPlan& in
       *std::min_element(basis.primitive_exponents.begin(), basis.primitive_exponents.end());
   if (actual_minimum != basis.minimum_primitive_exponent) {
     error = "periodic integral basis minimum exponent is inconsistent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!valid_plan_relationship(basis, integrals, periodic, topology) ||
       periodic.data()->topology_identity == nullptr ||
@@ -221,27 +221,27 @@ xtbloom_status_t validate_context(const BasisPlan& basis, const IntegralPlan& in
       geometry.wrapped_position_elements != basis.total_atoms * 3 ||
       geometry_workspace.wrapped_position_elements != basis.total_atoms * 3) {
     error = "periodic integral plan, topology, or geometry identity is inconsistent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_periodic_short_range_workspace(topology, geometry_workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (workspace == nullptr ||
       reinterpret_cast<std::uintptr_t>(workspace) % kPeriodicIntegralWorkspaceAlignment != 0u ||
       workspace_size < periodic.workspace_size_bytes() ||
       periodic.overlaps_storage(workspace, periodic.workspace_size_bytes())) {
     error = "periodic integral workspace is too small, misaligned, or aliases its plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::size_t atom_count = static_cast<std::size_t>(basis.total_atoms);
   if (!finite_values(geometry.wrapped_positions, atom_count * 3u)) {
     error = "periodic integral wrapped positions contain NaN or infinity";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!finite_values(coordination_numbers, atom_count)) {
     error = "periodic H0 coordination numbers contain NaN or infinity";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 std::int64_t absolute_index(std::int64_t value) noexcept { return value < 0 ? -value : value; }
@@ -268,16 +268,16 @@ bool lexicographic_translation_position(const std::array<std::int64_t, 3>& repea
   return true;
 }
 
-xtbloom_status_t make_tblite_ordered_translations(const Lattice3D& lattice, double cutoff,
+vibeqc_xtb_status_t make_tblite_ordered_translations(const Lattice3D& lattice, double cutoff,
                                                   std::vector<LatticeTranslation>& ordered,
                                                   std::string& error) {
   std::vector<LatticeTranslation> lexicographic;
-  xtbloom_status_t status = make_lattice_translations(
+  vibeqc_xtb_status_t status = make_lattice_translations(
       lattice, cutoff, LatticeOriginPolicy::kInclude, lexicographic, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (lexicographic.empty()) {
     error = "periodic integral lattice generator returned no origin";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   std::array<std::int64_t, 3> repeat{};
@@ -308,7 +308,7 @@ xtbloom_status_t make_tblite_ordered_translations(const Lattice3D& lattice, doub
                 if (!lexicographic_translation_position(repeat, index, source) ||
                     source >= lexicographic.size() || lexicographic[source].index != index) {
                   error = "periodic integral translation reordering lost an image";
-                  return XTBLOOM_STATUS_INTERNAL_ERROR;
+                  return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
                 }
                 created.push_back(lexicographic[source]);
               }
@@ -319,14 +319,14 @@ xtbloom_status_t make_tblite_ordered_translations(const Lattice3D& lattice, doub
     }
     if (created.size() != lexicographic.size()) {
       error = "periodic integral translation ordering produced an inconsistent count";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     ordered = std::move(created);
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate tblite-ordered periodic integral translations";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
@@ -366,7 +366,7 @@ ImageGeometryStatus image_geometry(const double* ket, const double* bra,
 }
 
 template <typename PairOperation, typename OnsiteOperation>
-xtbloom_status_t for_each_periodic_pair(const BasisPlan& basis,
+vibeqc_xtb_status_t for_each_periodic_pair(const BasisPlan& basis,
                                         const PeriodicIntegralPlan& periodic,
                                         const PeriodicShortRangeGeometry& geometry,
                                         PairOperation&& pair_operation,
@@ -381,7 +381,7 @@ xtbloom_status_t for_each_periodic_pair(const BasisPlan& basis,
     if (translations.data == nullptr || translations.size <= 0 || !(cutoff > 0.0) ||
         !std::isfinite(cutoff_squared)) {
       error = "periodic integral translation topology is incomplete";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     for (std::int64_t ket_atom = atom_begin; ket_atom < atom_end; ++ket_atom) {
       const double* ket = geometry.wrapped_positions + static_cast<std::size_t>(ket_atom) * 3u;
@@ -394,16 +394,16 @@ xtbloom_status_t for_each_periodic_pair(const BasisPlan& basis,
                              distance_squared) == ImageGeometryStatus::kOutside) {
             continue;
           }
-          const xtbloom_status_t status =
+          const vibeqc_xtb_status_t status =
               pair_operation(system, ket_atom, bra_atom, vector, distance_squared, error);
-          if (status != XTBLOOM_STATUS_SUCCESS) return status;
+          if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
         }
       }
-      const xtbloom_status_t status = onsite_operation(system, ket_atom, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      const vibeqc_xtb_status_t status = onsite_operation(system, ket_atom, error);
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 template <typename Operation>
@@ -640,23 +640,23 @@ bool PeriodicIntegralPlan::overlaps_storage(const void* pointer, std::size_t byt
          overlaps_vector(active, data_->translations);
 }
 
-xtbloom_status_t make_periodic_integral_plan(const BasisPlan& basis, const IntegralPlan& integrals,
+vibeqc_xtb_status_t make_periodic_integral_plan(const BasisPlan& basis, const IntegralPlan& integrals,
                                              const PeriodicShortRangePlan& periodic,
                                              PeriodicIntegralPlan& plan, std::string& error) {
-  xtbloom_status_t status = common::validate_integral_plan(basis, integrals, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  vibeqc_xtb_status_t status = common::validate_integral_plan(basis, integrals, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!periodic.sealed() || periodic.batch_size() != basis.batch_size ||
       periodic.total_atoms() != basis.total_atoms ||
       periodic.atom_offsets() != basis.atom_offsets || !(basis.minimum_primitive_exponent > 0.0) ||
       !std::isfinite(basis.minimum_primitive_exponent)) {
     error = "periodic integral plan requires matching topology and a finite minimum exponent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const double actual_minimum =
       *std::min_element(basis.primitive_exponents.begin(), basis.primitive_exponents.end());
   if (actual_minimum != basis.minimum_primitive_exponent) {
     error = "periodic integral basis minimum exponent is inconsistent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   /* Pinned tblite caps the exponent-derived image search at 40 bohr. This is
    * a compatibility rule, not a Wigner--Seitz or performance-only cutoff. */
@@ -665,7 +665,7 @@ xtbloom_status_t make_periodic_integral_plan(const BasisPlan& basis, const Integ
                kPeriodicIntegralMaximumCutoffBohr);
   if (!(cutoff > 0.0) || !std::isfinite(cutoff)) {
     error = "periodic integral real-space cutoff is invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   try {
@@ -687,7 +687,7 @@ xtbloom_status_t make_periodic_integral_plan(const BasisPlan& basis, const Integ
       std::string local_error;
       status =
           make_tblite_ordered_translations(periodic.lattice(system), cutoff, local, local_error);
-      if (status != XTBLOOM_STATUS_SUCCESS) {
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) {
         error = "periodic integral translations for system " + std::to_string(system) + ": " +
                 local_error;
         return status;
@@ -696,7 +696,7 @@ xtbloom_status_t make_periodic_integral_plan(const BasisPlan& basis, const Integ
           local.size() > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) -
                              created->translations.size()) {
         error = "periodic integral translation count overflows";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       created->translations.insert(created->translations.end(), local.begin(), local.end());
       created->translation_offsets[static_cast<std::size_t>(system + 1)] =
@@ -715,7 +715,7 @@ xtbloom_status_t make_periodic_integral_plan(const BasisPlan& basis, const Integ
         !checked_multiply(atom_elements, 3u, gradient_elements) ||
         !checked_multiply(batch_elements, 9u, strain_elements)) {
       error = "periodic integral workspace element count overflows";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     std::size_t cursor = 0u;
@@ -730,29 +730,29 @@ xtbloom_status_t make_periodic_integral_plan(const BasisPlan& basis, const Integ
         !append_doubles(strain_elements, cursor, created->strain_scratch_offset) ||
         !align_up(cursor, kPeriodicIntegralWorkspaceAlignment, created->workspace_size_bytes)) {
       error = "periodic integral workspace byte count overflows";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     plan = PeriodicIntegralPlan(std::move(created));
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate periodic integral plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t evaluate_periodic_integrals_h0_cpu(
+vibeqc_xtb_status_t evaluate_periodic_integrals_h0_cpu(
     const BasisPlan& basis, const IntegralPlan& integrals, const H0Plan& h0,
     const PeriodicIntegralPlan& periodic, const PeriodicShortRangePlan& topology,
     const PeriodicShortRangeGeometry& geometry,
     const PeriodicShortRangeWorkspace& geometry_workspace, const double* coordination_numbers,
     double* overlap, double* dipole, double* quadrupole, double* hamiltonian, void* workspace,
     std::size_t workspace_size, std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_context(basis, integrals, h0, periodic, topology, geometry, geometry_workspace,
                        coordination_numbers, workspace, workspace_size, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
 
   const std::size_t matrix_elements = static_cast<std::size_t>(integrals.total_matrix_elements);
   const std::size_t atom_elements = static_cast<std::size_t>(basis.total_atoms);
@@ -761,7 +761,7 @@ xtbloom_status_t evaluate_periodic_integrals_h0_cpu(
   if (!checked_multiply(matrix_elements, kDipoleComponents, dipole_elements) ||
       !checked_multiply(matrix_elements, kQuadrupoleComponents, quadrupole_elements)) {
     error = "periodic integral output dimensions overflow";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::array<AddressRange, 5> numerical{};
@@ -773,7 +773,7 @@ xtbloom_status_t evaluate_periodic_integrals_h0_cpu(
       !valid_buffer_set(basis, integrals, h0, periodic, topology, geometry_workspace, geometry,
                         workspace, workspace_size, numerical.data(), numerical.size())) {
     error = "periodic integral inputs, outputs, workspace, and plans must be disjoint";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const PeriodicIntegralPlanData& data = *periodic.data();
@@ -848,7 +848,7 @@ xtbloom_status_t evaluate_periodic_integrals_h0_cpu(
                 }
               }
             });
-        return XTBLOOM_STATUS_SUCCESS;
+        return VIBEQC_XTB_STATUS_SUCCESS;
       },
       [&](std::int64_t system, std::int64_t atom, std::string&) {
         const std::array<double, 3> zero{};
@@ -879,27 +879,27 @@ xtbloom_status_t evaluate_periodic_integrals_h0_cpu(
             }
           }
         });
-        return XTBLOOM_STATUS_SUCCESS;
+        return VIBEQC_XTB_STATUS_SUCCESS;
       },
       error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
 
   if (!finite_values(overlap_scratch, matrix_elements) ||
       !finite_values(dipole_scratch, dipole_elements) ||
       !finite_values(quadrupole_scratch, quadrupole_elements) ||
       !finite_values(h0_scratch, matrix_elements)) {
     error = "periodic integral or H0 evaluation overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   std::copy_n(overlap_scratch, matrix_elements, overlap);
   std::copy_n(dipole_scratch, dipole_elements, dipole);
   std::copy_n(quadrupole_scratch, quadrupole_elements, quadrupole);
   std::copy_n(h0_scratch, matrix_elements, hamiltonian);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_periodic_integrals_h0_vjp_cpu(
+vibeqc_xtb_status_t add_periodic_integrals_h0_vjp_cpu(
     const BasisPlan& basis, const IntegralPlan& integrals, const H0Plan& h0,
     const PeriodicIntegralPlan& periodic, const PeriodicShortRangePlan& topology,
     const PeriodicShortRangeGeometry& geometry,
@@ -907,10 +907,10 @@ xtbloom_status_t add_periodic_integrals_h0_vjp_cpu(
     const double* dE_doverlap, const double* dE_ddipole, const double* dE_dquadrupole,
     const double* dE_dhamiltonian, double* dE_dcn, double* gradients, double* strain_derivatives,
     void* workspace, std::size_t workspace_size, std::string& error, CpuIsa cpu_isa) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_context(basis, integrals, h0, periodic, topology, geometry, geometry_workspace,
                        coordination_numbers, workspace, workspace_size, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
 
   const std::size_t matrix_elements = static_cast<std::size_t>(integrals.total_matrix_elements);
   const std::size_t atom_elements = static_cast<std::size_t>(basis.total_atoms);
@@ -921,7 +921,7 @@ xtbloom_status_t add_periodic_integrals_h0_vjp_cpu(
   if (!checked_multiply(matrix_elements, kDipoleComponents, dipole_elements) ||
       !checked_multiply(matrix_elements, kQuadrupoleComponents, quadrupole_elements)) {
     error = "periodic integral derivative dimensions overflow";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::array<AddressRange, 8> numerical{};
@@ -941,7 +941,7 @@ xtbloom_status_t add_periodic_integrals_h0_vjp_cpu(
       !finite_values(gradients, gradient_elements) ||
       !finite_values(strain_derivatives, strain_elements)) {
     error = "periodic integral derivatives, accumulators, workspace, and plans are invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const PeriodicIntegralPlanData& data = *periodic.data();
@@ -1068,7 +1068,7 @@ xtbloom_status_t add_periodic_integrals_h0_vjp_cpu(
             system_strain[row * 3u + column] += pair_gradient[row] * vector[column];
           }
         }
-        return XTBLOOM_STATUS_SUCCESS;
+        return VIBEQC_XTB_STATUS_SUCCESS;
       },
       [&](std::int64_t system, std::int64_t atom, std::string&) {
         const std::array<double, 3> zero{};
@@ -1090,33 +1090,33 @@ xtbloom_status_t add_periodic_integrals_h0_vjp_cpu(
               (h0.shell_coordination_scale[ket_shell] + h0.shell_coordination_scale[bra_shell]) *
               level_weight;
         });
-        return XTBLOOM_STATUS_SUCCESS;
+        return VIBEQC_XTB_STATUS_SUCCESS;
       },
       error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
 
   if (!finite_values(coordination_scratch, atom_elements) ||
       !finite_values(gradient_scratch, gradient_elements) ||
       !finite_values(strain_scratch, strain_elements)) {
     error = "periodic integral or H0 derivative overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   for (std::size_t index = 0; index < atom_elements; ++index) {
     if (!std::isfinite(dE_dcn[index] + coordination_scratch[index])) {
       error = "periodic H0 coordination derivative publication would overflow";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
   for (std::size_t index = 0; index < gradient_elements; ++index) {
     if (!std::isfinite(gradients[index] + gradient_scratch[index])) {
       error = "periodic integral Cartesian derivative publication would overflow";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
   for (std::size_t index = 0; index < strain_elements; ++index) {
     if (!std::isfinite(strain_derivatives[index] + strain_scratch[index])) {
       error = "periodic integral strain derivative publication would overflow";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
   for (std::size_t index = 0; index < atom_elements; ++index) {
@@ -1129,7 +1129,7 @@ xtbloom_status_t add_periodic_integrals_h0_vjp_cpu(
     strain_derivatives[index] += strain_scratch[index];
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

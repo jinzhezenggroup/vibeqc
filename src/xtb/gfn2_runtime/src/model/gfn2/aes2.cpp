@@ -16,7 +16,7 @@
 #include "data/parameters/gfn2.hpp"
 #include "generated_gfn2_aes2_native.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct AES2PlanData final {
   std::int64_t batch_size = 0;
@@ -167,13 +167,13 @@ bool overlaps_control_storage(const AES2Plan& plan, const AES2GeometryCache& cac
          ranges_overlap(data, bytes, &workspace, sizeof(workspace));
 }
 
-xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
+vibeqc_xtb_status_t validate_basis(const BasisPlan& basis, std::string& error) {
   if (basis.batch_size <= 0 || basis.total_atoms <= 0 || basis.total_shells <= 0 ||
       !representable_as_size(basis.batch_size) || !representable_as_size(basis.total_atoms) ||
       !representable_as_size(basis.total_shells) ||
       basis.batch_size == std::numeric_limits<std::int64_t>::max()) {
     error = "AES2 requires a positive, representable basis plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t batch_count = static_cast<std::size_t>(basis.batch_size);
@@ -191,7 +191,7 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
       basis.atom_shell_offsets.front() != 0 ||
       basis.atom_shell_offsets.back() != basis.total_shells) {
     error = "AES2 basis plan is incomplete or internally inconsistent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   for (std::size_t batch = 0; batch < batch_count; ++batch) {
@@ -204,7 +204,7 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
         shell_begin != basis.atom_shell_offsets[static_cast<std::size_t>(atom_begin)] ||
         shell_end != basis.atom_shell_offsets[static_cast<std::size_t>(atom_end)]) {
       error = "AES2 basis offsets are not valid ragged partitions";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -213,7 +213,7 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
     const std::int64_t shell_end = basis.atom_shell_offsets[atom + 1u];
     if (shell_begin < 0 || shell_begin >= shell_end || shell_end > basis.total_shells) {
       error = "AES2 atom-to-shell offsets are invalid";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     for (std::int64_t shell = shell_begin; shell < shell_end; ++shell) {
       const std::size_t shell_index = static_cast<std::size_t>(shell);
@@ -221,14 +221,14 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
           basis.angular_momenta[shell_index] > 2u || !(basis.slater_exponents[shell_index] > 0.0) ||
           !std::isfinite(basis.slater_exponents[shell_index])) {
         error = "AES2 basis shell metadata is invalid";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_plan(const AES2Plan& plan, std::string& error) {
+vibeqc_xtb_status_t validate_plan(const AES2Plan& plan, std::string& error) {
   if (!plan.sealed() || plan.batch_size() <= 0 || plan.total_atoms() <= 0 ||
       plan.total_pairs() < 0 || plan.pair_data_elements() < 0 ||
       plan.potential_scratch_elements() <= 0 || !representable_as_size(plan.batch_size()) ||
@@ -237,7 +237,7 @@ xtbloom_status_t validate_plan(const AES2Plan& plan, std::string& error) {
       !representable_as_size(plan.potential_scratch_elements()) ||
       plan.batch_size() == std::numeric_limits<std::int64_t>::max()) {
     error = "AES2 plan is default-constructed, moved-from, or has invalid dimensions";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t batch_count = static_cast<std::size_t>(plan.batch_size());
@@ -256,7 +256,7 @@ xtbloom_status_t validate_plan(const AES2Plan& plan, std::string& error) {
       plan.atom_offsets().back() != plan.total_atoms() || plan.pair_offsets().front() != 0 ||
       plan.pair_offsets().back() != plan.total_pairs()) {
     error = "AES2 plan storage is incomplete or internally inconsistent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   for (std::size_t batch = 0; batch < batch_count; ++batch) {
@@ -270,7 +270,7 @@ xtbloom_status_t validate_plan(const AES2Plan& plan, std::string& error) {
         !checked_pair_count(atom_end - atom_begin, expected_pairs) ||
         pair_end - pair_begin != expected_pairs) {
       error = "AES2 plan offsets are not valid ragged atom/pair partitions";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -282,22 +282,22 @@ xtbloom_status_t validate_plan(const AES2Plan& plan, std::string& error) {
         !(plan.multipole_valence_cn()[atom] > 0.0) ||
         !std::isfinite(plan.multipole_valence_cn()[atom])) {
       error = "AES2 plan contains an invalid element parameter";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_cache_shape(const AES2Plan& plan, const AES2GeometryCache& cache,
+vibeqc_xtb_status_t validate_cache_shape(const AES2Plan& plan, const AES2GeometryCache& cache,
                                       std::string& error) {
   if (cache.pair_data_elements != plan.pair_data_elements() ||
       cache.plan_identity != plan.identity() ||
       (cache.pair_data_elements != 0 &&
        (cache.pair_data == nullptr || !is_aligned(cache.pair_data, alignof(double))))) {
     error = "AES2 geometry cache is missing or belongs to a different plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 bool finite_cache_pair_slice(const AES2GeometryCache& cache, std::int64_t pair_begin,
@@ -314,44 +314,44 @@ bool finite_cache_pair_slice(const AES2GeometryCache& cache, std::int64_t pair_b
   return true;
 }
 
-xtbloom_status_t validate_cache(const AES2Plan& plan, const AES2GeometryCache& cache,
+vibeqc_xtb_status_t validate_cache(const AES2Plan& plan, const AES2GeometryCache& cache,
                                 std::string& error) {
-  xtbloom_status_t status = validate_cache_shape(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_cache_shape(plan, cache, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (!finite_cache_pair_slice(cache, 0, plan.total_pairs())) {
     error = "AES2 geometry cache contains an invalid pair kernel";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_workspace_pointer(double* pointer, std::int64_t available,
+vibeqc_xtb_status_t validate_workspace_pointer(double* pointer, std::int64_t available,
                                             std::int64_t required, const char* message,
                                             std::string& error) {
   if (available < required ||
       (required != 0 && (pointer == nullptr || !is_aligned(pointer, alignof(double))))) {
     error = message;
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_finite_array(const double* values, std::int64_t count,
+vibeqc_xtb_status_t validate_finite_array(const double* values, std::int64_t count,
                                        const char* null_message, const char* finite_message,
                                        std::string& error, bool require_nonnegative = false) {
   if (values == nullptr || !is_aligned(values, alignof(double))) {
     error = null_message;
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::int64_t index = 0; index < count; ++index) {
     if (!std::isfinite(values[index]) || (require_nonnegative && values[index] < 0.0)) {
       error = finite_message;
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 double multipole_radius(const AES2Plan& plan, std::size_t atom, double coordination_number) {
@@ -593,15 +593,15 @@ bool AES2Plan::overlaps_storage(const void* data, std::size_t size_bytes) const 
 
 const AES2PlanData* AES2Plan::identity() const noexcept { return data_.get(); }
 
-xtbloom_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
+vibeqc_xtb_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
                                 AES2Plan& plan, std::string& error) {
-  xtbloom_status_t status = validate_basis(basis, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_basis(basis, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (atomic_numbers == nullptr || !is_aligned(atomic_numbers, alignof(std::int32_t))) {
     error = "AES2 atomic numbers must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   try {
@@ -618,7 +618,7 @@ xtbloom_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atom
       if (!checked_pair_count(atom_count, pair_count) ||
           !checked_add(pair_count, created->total_pairs)) {
         error = "AES2 ragged pair count exceeds supported dimensions";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       created->pair_offsets[static_cast<std::size_t>(batch + 1)] = created->total_pairs;
     }
@@ -628,7 +628,7 @@ xtbloom_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atom
         !representable_as_size(created->pair_data_elements) ||
         !representable_as_size(created->potential_scratch_elements)) {
       error = "AES2 plan dimensions exceed host storage limits";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     const std::size_t atom_count = static_cast<std::size_t>(basis.total_atoms);
@@ -648,7 +648,7 @@ xtbloom_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atom
           !std::isfinite(element->multipole_radius) || !(element->multipole_valence_cn > 0.0) ||
           !std::isfinite(element->multipole_valence_cn)) {
         error = "AES2 plan contains an unsupported element or invalid parameter";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
 
       const std::int64_t shell_begin = basis.atom_shell_offsets[atom_index];
@@ -657,7 +657,7 @@ xtbloom_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atom
           element->shell_offset > parameters::gfn2::kShells.size() ||
           element->shell_count > parameters::gfn2::kShells.size() - element->shell_offset) {
         error = "AES2 atomic numbers do not match the supplied basis shell layout";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       for (std::int64_t shell = shell_begin; shell < shell_end; ++shell) {
         const std::size_t shell_index = static_cast<std::size_t>(shell);
@@ -668,7 +668,7 @@ xtbloom_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atom
             basis.angular_momenta[shell_index] != parameter.angular_momentum ||
             basis.slater_exponents[shell_index] != parameter.slater) {
           error = "AES2 atomic numbers do not match the supplied basis shell metadata";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
       }
 
@@ -680,38 +680,38 @@ xtbloom_status_t make_aes2_plan(const BasisPlan& basis, const std::int32_t* atom
 
     AES2Plan completed(std::move(created));
     status = validate_plan(completed, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       return status;
     }
     plan = std::move(completed);
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate the GFN2 AES2 plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   } catch (const std::length_error&) {
     error = "GFN2 AES2 plan dimensions exceed host container limits";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t update_aes2_geometry_cache_cpu(
+vibeqc_xtb_status_t update_aes2_geometry_cache_cpu(
     const AES2Plan& plan, const double* positions, const double* coordination_numbers,
     std::uint64_t geometry_generation, double* pair_storage, std::size_t pair_storage_elements,
     const AES2Workspace& workspace, AES2GeometryCache& cache, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(positions, plan.total_atoms() * 3, "AES2 positions are invalid",
                                  "AES2 positions contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(
       coordination_numbers, plan.total_atoms(), "AES2 coordination numbers are invalid",
       "AES2 coordination numbers must be finite and nonnegative", error, true);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const std::size_t required_elements = static_cast<std::size_t>(plan.pair_data_elements());
@@ -719,12 +719,12 @@ xtbloom_status_t update_aes2_geometry_cache_cpu(
       (required_elements != 0u &&
        (pair_storage == nullptr || !is_aligned(pair_storage, alignof(double))))) {
     error = "AES2 pair cache storage is NULL, misaligned, or too small";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_workspace_pointer(workspace.pair_scratch, workspace.pair_elements,
                                       plan.pair_data_elements(),
                                       "AES2 pair scratch is NULL, misaligned, or too small", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -735,7 +735,7 @@ xtbloom_status_t update_aes2_geometry_cache_cpu(
       !count_bytes(plan.total_atoms(), sizeof(double), atom_bytes) ||
       !count_bytes(plan.pair_data_elements(), sizeof(double), pair_bytes)) {
     error = "AES2 cache dimensions exceed addressable host storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<MemoryRange, 4> active{{{positions, position_bytes},
                                            {coordination_numbers, atom_bytes},
@@ -743,12 +743,12 @@ xtbloom_status_t update_aes2_geometry_cache_cpu(
                                            {workspace.pair_scratch, pair_bytes}}};
   if (!ranges_are_disjoint(active.data(), active.size())) {
     error = "AES2 cache inputs, output, and scratch must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (const MemoryRange& range : active) {
     if (overlaps_control_storage(plan, cache, workspace, range.data, range.size_bytes)) {
       error = "AES2 cache buffers must not overlap plan or descriptor storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -768,7 +768,7 @@ xtbloom_status_t update_aes2_geometry_cache_cpu(
         if (!std::isfinite(dx) || !std::isfinite(dy) || !std::isfinite(dz) ||
             !std::isfinite(distance) || distance_squared < kMinimumDistanceSquared) {
           error = "AES2 is undefined for coincident, near-coincident, or unrepresentable atoms";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         const double first_radius =
             multipole_radius(plan, first_index, coordination_numbers[first_index]);
@@ -782,7 +782,7 @@ xtbloom_status_t update_aes2_geometry_cache_cpu(
             !std::isfinite(average_radius) ||
             !pair_kernels(distance, average_radius, kernel3, kernel5)) {
           error = "AES2 damping-radius or pair-kernel arithmetic failed";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         const std::size_t base = static_cast<std::size_t>(pair * kPairStride);
         workspace.pair_scratch[base] = dx;
@@ -796,7 +796,7 @@ xtbloom_status_t update_aes2_geometry_cache_cpu(
   }
   if (pair != plan.total_pairs()) {
     error = "AES2 internal pair enumeration disagrees with the sealed plan";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   if (required_elements != 0u) {
@@ -805,40 +805,40 @@ xtbloom_status_t update_aes2_geometry_cache_cpu(
   cache = AES2GeometryCache{pair_storage, plan.pair_data_elements(), geometry_generation,
                             plan.identity()};
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
+vibeqc_xtb_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
                                              const double* atomic_charges,
                                              const double* atomic_dipoles,
                                              const double* atomic_quadrupoles,
                                              double* charge_potentials, double* dipole_potentials,
                                              double* quadrupole_potentials,
                                              const AES2Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status =
       validate_finite_array(atomic_charges, plan.total_atoms(), "AES2 atomic charges are invalid",
                             "AES2 atomic charges contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(atomic_dipoles, plan.total_atoms() * 3,
                                  "AES2 atomic dipoles are invalid",
                                  "AES2 atomic dipoles contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(atomic_quadrupoles, plan.total_atoms() * 6,
                                  "AES2 atomic quadrupoles are invalid",
                                  "AES2 atomic quadrupoles contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (charge_potentials == nullptr || dipole_potentials == nullptr ||
@@ -846,12 +846,12 @@ xtbloom_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2Geo
       !is_aligned(dipole_potentials, alignof(double)) ||
       !is_aligned(quadrupole_potentials, alignof(double))) {
     error = "AES2 potential outputs must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_workspace_pointer(
       workspace.potential_scratch, workspace.potential_elements, plan.potential_scratch_elements(),
       "AES2 potential scratch is NULL, misaligned, or too small", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -866,7 +866,7 @@ xtbloom_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2Geo
       !count_bytes(plan.pair_data_elements(), sizeof(double), pair_bytes) ||
       !count_bytes(plan.potential_scratch_elements(), sizeof(double), scratch_bytes)) {
     error = "AES2 potential dimensions exceed addressable host storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<MemoryRange, 8> active{{{atomic_charges, atom_bytes},
                                            {atomic_dipoles, dipole_bytes},
@@ -878,12 +878,12 @@ xtbloom_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2Geo
                                            {workspace.potential_scratch, scratch_bytes}}};
   if (!ranges_are_disjoint(active.data(), active.size())) {
     error = "AES2 potential inputs, outputs, cache, and scratch must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (const MemoryRange& range : active) {
     if (overlaps_control_storage(plan, cache, workspace, range.data, range.size_bytes)) {
       error = "AES2 potential buffers must not overlap plan or descriptor storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -895,7 +895,7 @@ xtbloom_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2Geo
   if (!initialize_onsite_potential(plan, atomic_dipoles, atomic_quadrupoles,
                                    workspace.potential_scratch)) {
     error = "AES2 onsite potential arithmetic exceeded floating-point range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::int64_t pair = 0;
@@ -910,7 +910,7 @@ xtbloom_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2Geo
                                 atomic_quadrupoles, scratch_charge, scratch_dipole,
                                 scratch_quadrupole)) {
           error = "AES2 pair potential arithmetic exceeded floating-point range";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         ++pair;
       }
@@ -918,32 +918,32 @@ xtbloom_status_t evaluate_aes2_potential_cpu(const AES2Plan& plan, const AES2Geo
   }
   if (pair != plan.total_pairs()) {
     error = "AES2 internal pair enumeration disagrees with the geometry cache";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   std::memcpy(charge_potentials, scratch_charge, atom_bytes);
   std::memcpy(dipole_potentials, scratch_dipole, dipole_bytes);
   std::memcpy(quadrupole_potentials, scratch_quadrupole, quadrupole_bytes);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_aes2_potential_system_cpu(
+vibeqc_xtb_status_t evaluate_aes2_potential_system_cpu(
     const AES2Plan& plan, const AES2GeometryCache& cache, std::int64_t system,
     const double* atomic_charges, const double* atomic_dipoles, const double* atomic_quadrupoles,
     double* charge_potentials, double* dipole_potentials, double* quadrupole_potentials,
     const AES2Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache_shape(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (system < 0 || system >= plan.batch_size()) {
     error = "AES2 potential system index is out of range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atomic_charges == nullptr || atomic_dipoles == nullptr || atomic_quadrupoles == nullptr ||
       charge_potentials == nullptr || dipole_potentials == nullptr ||
@@ -954,12 +954,12 @@ xtbloom_status_t evaluate_aes2_potential_system_cpu(
       !is_aligned(dipole_potentials, alignof(double)) ||
       !is_aligned(quadrupole_potentials, alignof(double))) {
     error = "AES2 system potential inputs and outputs must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_workspace_pointer(
       workspace.potential_scratch, workspace.potential_elements, plan.potential_scratch_elements(),
       "AES2 potential scratch is NULL, misaligned, or too small", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -976,7 +976,7 @@ xtbloom_status_t evaluate_aes2_potential_system_cpu(
       !count_bytes(pairs * kPairStride, sizeof(double), pair_bytes) ||
       !count_bytes(plan.potential_scratch_elements(), sizeof(double), scratch_bytes)) {
     error = "AES2 system potential dimensions exceed addressable host storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   /* Only the target system's atom, pair, and output slices are touched, but
    * overlapping full-batch ranges still guarantee the caller's descriptors
@@ -991,12 +991,12 @@ xtbloom_status_t evaluate_aes2_potential_system_cpu(
                                            {workspace.potential_scratch, scratch_bytes}}};
   if (!ranges_are_disjoint(active.data(), active.size())) {
     error = "AES2 system potential inputs, outputs, cache, and scratch must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (const MemoryRange& range : active) {
     if (overlaps_control_storage(plan, cache, workspace, range.data, range.size_bytes)) {
       error = "AES2 system potential buffers must not overlap plan or descriptor storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -1007,24 +1007,24 @@ xtbloom_status_t evaluate_aes2_potential_system_cpu(
   const std::int64_t pair_end = plan.pair_offsets()[system_index + 1u];
   if (!finite_cache_pair_slice(cache, pair_begin, pair_end)) {
     error = "AES2 target geometry cache contains invalid numerical data";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   for (std::int64_t atom = atom_begin; atom < atom_end; ++atom) {
     const std::size_t atom_index = static_cast<std::size_t>(atom);
     if (!std::isfinite(atomic_charges[atom_index])) {
       error = "AES2 target atomic charges contain NaN or infinity";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     for (std::size_t component = 0u; component < 3u; ++component) {
       if (!std::isfinite(atomic_dipoles[atom_index * 3u + component])) {
         error = "AES2 target atomic dipoles contain NaN or infinity";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
     for (std::size_t component = 0u; component < 6u; ++component) {
       if (!std::isfinite(atomic_quadrupoles[atom_index * 6u + component])) {
         error = "AES2 target atomic quadrupoles contain NaN or infinity";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
@@ -1045,7 +1045,7 @@ xtbloom_status_t evaluate_aes2_potential_system_cpu(
           2.0 * plan.dipole_kernel()[atom_index] * atomic_dipoles[atom_index * 3u + component];
       if (!std::isfinite(scratch_dipole[index])) {
         error = "AES2 target onsite potential arithmetic exceeded floating-point range";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
     for (std::size_t component = 0u; component < 6u; ++component) {
@@ -1054,7 +1054,7 @@ xtbloom_status_t evaluate_aes2_potential_system_cpu(
                                   atomic_quadrupoles[atom_index * 6u + component];
       if (!std::isfinite(scratch_quadrupole[index])) {
         error = "AES2 target onsite potential arithmetic exceeded floating-point range";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
@@ -1068,13 +1068,13 @@ xtbloom_status_t evaluate_aes2_potential_system_cpu(
                               atomic_quadrupoles, scratch_charge, scratch_dipole,
                               scratch_quadrupole)) {
         error = "AES2 target pair potential arithmetic exceeded floating-point range";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
   if (pair != pair_end) {
     error = "AES2 target pair enumeration disagrees with the plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t target_atoms = static_cast<std::size_t>(atom_end - atom_begin);
@@ -1084,48 +1084,48 @@ xtbloom_status_t evaluate_aes2_potential_system_cpu(
   std::copy_n(scratch_quadrupole + static_cast<std::size_t>(atom_begin) * 6u, target_atoms * 6u,
               quadrupole_potentials + static_cast<std::size_t>(atom_begin) * 6u);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_aes2_energy_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
+vibeqc_xtb_status_t add_aes2_energy_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
                                      const double* atomic_charges, const double* atomic_dipoles,
                                      const double* atomic_quadrupoles, double* energies,
                                      const AES2Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status =
       validate_finite_array(atomic_charges, plan.total_atoms(), "AES2 atomic charges are invalid",
                             "AES2 atomic charges contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(atomic_dipoles, plan.total_atoms() * 3,
                                  "AES2 atomic dipoles are invalid",
                                  "AES2 atomic dipoles contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(atomic_quadrupoles, plan.total_atoms() * 6,
                                  "AES2 atomic quadrupoles are invalid",
                                  "AES2 atomic quadrupoles contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(energies, plan.batch_size(), "AES2 energies are invalid",
                                  "AES2 input energies contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_workspace_pointer(
       workspace.batch_scratch, workspace.batch_elements, plan.batch_size(),
       "AES2 batch scratch is NULL, misaligned, or too small", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -1140,7 +1140,7 @@ xtbloom_status_t add_aes2_energy_cpu(const AES2Plan& plan, const AES2GeometryCac
       !count_bytes(plan.pair_data_elements(), sizeof(double), pair_bytes) ||
       !count_bytes(plan.batch_size(), sizeof(double), batch_bytes)) {
     error = "AES2 energy dimensions exceed addressable host storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<MemoryRange, 6> active{{{atomic_charges, atom_bytes},
                                            {atomic_dipoles, dipole_bytes},
@@ -1150,12 +1150,12 @@ xtbloom_status_t add_aes2_energy_cpu(const AES2Plan& plan, const AES2GeometryCac
                                            {workspace.batch_scratch, batch_bytes}}};
   if (!ranges_are_disjoint(active.data(), active.size())) {
     error = "AES2 energy inputs, output, cache, and scratch must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (const MemoryRange& range : active) {
     if (overlaps_control_storage(plan, cache, workspace, range.data, range.size_bytes)) {
       error = "AES2 energy buffers must not overlap plan or descriptor storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -1172,7 +1172,7 @@ xtbloom_status_t add_aes2_energy_cpu(const AES2Plan& plan, const AES2GeometryCac
                          atomic_quadrupoles + atom_index * 6u, onsite) ||
           !add_value(onsite, contribution)) {
         error = "AES2 onsite energy arithmetic exceeded floating-point range";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
     for (std::int64_t second = atom_begin; second < atom_end; ++second) {
@@ -1184,7 +1184,7 @@ xtbloom_status_t add_aes2_energy_cpu(const AES2Plan& plan, const AES2GeometryCac
                          atomic_quadrupoles, pair_contribution) ||
             !add_value(pair_contribution, contribution)) {
           error = "AES2 pair energy arithmetic exceeded floating-point range";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         ++pair;
       }
@@ -1192,39 +1192,39 @@ xtbloom_status_t add_aes2_energy_cpu(const AES2Plan& plan, const AES2GeometryCac
     const double updated = energies[batch] + contribution;
     if (!std::isfinite(updated)) {
       error = "AES2 accumulated energy exceeded floating-point range";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     workspace.batch_scratch[batch] = contribution;
   }
   if (pair != plan.total_pairs()) {
     error = "AES2 internal pair enumeration disagrees with the geometry cache";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   for (std::int64_t batch = 0; batch < plan.batch_size(); ++batch) {
     energies[batch] += workspace.batch_scratch[batch];
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
+vibeqc_xtb_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
                                             std::int64_t system, const double* atomic_charges,
                                             const double* atomic_dipoles,
                                             const double* atomic_quadrupoles,
                                             double& accumulated_energy,
                                             const AES2Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache_shape(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (system < 0 || system >= plan.batch_size()) {
     error = "AES2 energy system index is out of range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atomic_charges == nullptr || atomic_dipoles == nullptr || atomic_quadrupoles == nullptr ||
       !is_aligned(atomic_charges, alignof(double)) ||
@@ -1232,12 +1232,12 @@ xtbloom_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2Geom
       !is_aligned(atomic_quadrupoles, alignof(double)) ||
       !is_aligned(&accumulated_energy, alignof(double))) {
     error = "AES2 system energy inputs and output must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_workspace_pointer(
       workspace.batch_scratch, workspace.batch_elements, plan.batch_size(),
       "AES2 batch scratch is NULL, misaligned, or too small", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -1252,7 +1252,7 @@ xtbloom_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2Geom
       !count_bytes(plan.pair_data_elements(), sizeof(double), pair_bytes) ||
       !count_bytes(plan.batch_size(), sizeof(double), batch_bytes)) {
     error = "AES2 system energy dimensions exceed addressable host storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<MemoryRange, 6> active{{{atomic_charges, atom_bytes},
                                            {atomic_dipoles, dipole_bytes},
@@ -1262,12 +1262,12 @@ xtbloom_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2Geom
                                            {workspace.batch_scratch, batch_bytes}}};
   if (!ranges_are_disjoint(active.data(), active.size())) {
     error = "AES2 system energy inputs, output, cache, and scratch must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (const MemoryRange& range : active) {
     if (overlaps_control_storage(plan, cache, workspace, range.data, range.size_bytes)) {
       error = "AES2 system energy buffers must not overlap plan or descriptor storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -1278,30 +1278,30 @@ xtbloom_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2Geom
   const std::int64_t pair_end = plan.pair_offsets()[system_index + 1u];
   if (!finite_cache_pair_slice(cache, pair_begin, pair_end)) {
     error = "AES2 target geometry cache contains invalid numerical data";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   for (std::int64_t atom = atom_begin; atom < atom_end; ++atom) {
     const std::size_t atom_index = static_cast<std::size_t>(atom);
     if (!std::isfinite(atomic_charges[atom_index])) {
       error = "AES2 target atomic charges contain NaN or infinity";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     for (std::size_t component = 0u; component < 3u; ++component) {
       if (!std::isfinite(atomic_dipoles[atom_index * 3u + component])) {
         error = "AES2 target atomic dipoles contain NaN or infinity";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
     for (std::size_t component = 0u; component < 6u; ++component) {
       if (!std::isfinite(atomic_quadrupoles[atom_index * 6u + component])) {
         error = "AES2 target atomic quadrupoles contain NaN or infinity";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
   if (!std::isfinite(accumulated_energy)) {
     error = "AES2 target accumulated energy is not finite";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   double contribution = 0.0;
@@ -1312,7 +1312,7 @@ xtbloom_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2Geom
                        atomic_quadrupoles + atom_index * 6u, onsite) ||
         !add_value(onsite, contribution)) {
       error = "AES2 target onsite energy arithmetic exceeded floating-point range";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
   std::int64_t pair = pair_begin;
@@ -1325,96 +1325,96 @@ xtbloom_status_t add_aes2_energy_system_cpu(const AES2Plan& plan, const AES2Geom
                        atomic_quadrupoles, pair_contribution) ||
           !add_value(pair_contribution, contribution)) {
         error = "AES2 target pair energy arithmetic exceeded floating-point range";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
   if (pair != pair_end) {
     error = "AES2 target pair enumeration disagrees with the plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const double updated = accumulated_energy + contribution;
   if (!std::isfinite(updated)) {
     error = "AES2 target accumulated energy exceeded floating-point range";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   workspace.batch_scratch[system_index] = contribution;
   accumulated_energy = updated;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_aes2_vjp_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
+vibeqc_xtb_status_t add_aes2_vjp_cpu(const AES2Plan& plan, const AES2GeometryCache& cache,
                                   const double* positions, const double* coordination_numbers,
                                   std::uint64_t geometry_generation, const double* atomic_charges,
                                   const double* atomic_dipoles, const double* atomic_quadrupoles,
                                   double* gradients, double* coordination_adjoints,
                                   const AES2Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (cache.geometry_generation != geometry_generation) {
     error = "AES2 VJP inputs do not match the cached geometry generation";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status =
       validate_finite_array(positions, plan.total_atoms() * 3, "AES2 VJP positions are invalid",
                             "AES2 VJP positions contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(
       coordination_numbers, plan.total_atoms(), "AES2 VJP coordination numbers are invalid",
       "AES2 VJP coordination numbers must be finite and nonnegative", error, true);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(atomic_charges, plan.total_atoms(), "AES2 VJP charges are invalid",
                                  "AES2 VJP charges contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status =
       validate_finite_array(atomic_dipoles, plan.total_atoms() * 3, "AES2 VJP dipoles are invalid",
                             "AES2 VJP dipoles contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(atomic_quadrupoles, plan.total_atoms() * 6,
                                  "AES2 VJP quadrupoles are invalid",
                                  "AES2 VJP quadrupoles contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(gradients, plan.gradient_scratch_elements(),
                                  "AES2 gradient output is invalid",
                                  "AES2 input gradients contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_finite_array(coordination_adjoints, plan.coordination_scratch_elements(),
                                  "AES2 coordination-adjoint output is invalid",
                                  "AES2 input coordination adjoints contain NaN or infinity", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_workspace_pointer(
       workspace.gradient_scratch, workspace.gradient_elements, plan.gradient_scratch_elements(),
       "AES2 gradient scratch is NULL, misaligned, or too small", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_workspace_pointer(
       workspace.coordination_scratch, workspace.coordination_elements,
       plan.coordination_scratch_elements(),
       "AES2 coordination scratch is NULL, misaligned, or too small", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -1429,7 +1429,7 @@ xtbloom_status_t add_aes2_vjp_cpu(const AES2Plan& plan, const AES2GeometryCache&
       !count_bytes(plan.total_atoms() * 6, sizeof(double), quadrupole_bytes) ||
       !count_bytes(plan.pair_data_elements(), sizeof(double), pair_bytes)) {
     error = "AES2 VJP dimensions exceed addressable host storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::array<MemoryRange, 10> active{{
       {positions, position_bytes},
@@ -1445,12 +1445,12 @@ xtbloom_status_t add_aes2_vjp_cpu(const AES2Plan& plan, const AES2GeometryCache&
   }};
   if (!ranges_are_disjoint(active.data(), active.size())) {
     error = "AES2 VJP inputs, outputs, cache, and scratch must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (const MemoryRange& range : active) {
     if (overlaps_control_storage(plan, cache, workspace, range.data, range.size_bytes)) {
       error = "AES2 VJP buffers must not overlap plan or descriptor storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -1486,14 +1486,14 @@ xtbloom_status_t add_aes2_vjp_cpu(const AES2Plan& plan, const AES2GeometryCache&
             !std::isfinite(average_radius) ||
             !pair_kernels(distance, average_radius, expected_kernel3, expected_kernel5)) {
           error = "AES2 VJP geometry or damping-radius arithmetic failed";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         if (cache.pair_data[pair_base] != dx || cache.pair_data[pair_base + 1u] != dy ||
             cache.pair_data[pair_base + 2u] != dz ||
             cache.pair_data[pair_base + 3u] != expected_kernel3 ||
             cache.pair_data[pair_base + 4u] != expected_kernel5) {
           error = "AES2 VJP positions or coordination numbers disagree with the geometry cache";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         const double first_cn_derivative =
             multipole_radius_cn_derivative(plan, first_index, coordination_numbers[first_index]);
@@ -1504,7 +1504,7 @@ xtbloom_status_t add_aes2_vjp_cpu(const AES2Plan& plan, const AES2GeometryCache&
                       atomic_dipoles, atomic_quadrupoles, workspace.gradient_scratch,
                       workspace.coordination_scratch)) {
           error = "AES2 coordinate/CN VJP arithmetic exceeded floating-point range";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         ++pair;
       }
@@ -1512,21 +1512,21 @@ xtbloom_status_t add_aes2_vjp_cpu(const AES2Plan& plan, const AES2GeometryCache&
   }
   if (pair != plan.total_pairs()) {
     error = "AES2 internal pair enumeration disagrees with the geometry cache";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   for (std::size_t coordinate = 0;
        coordinate < static_cast<std::size_t>(plan.gradient_scratch_elements()); ++coordinate) {
     if (!std::isfinite(gradients[coordinate] + workspace.gradient_scratch[coordinate])) {
       error = "AES2 accumulated gradient exceeded floating-point range";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   for (std::size_t atom = 0; atom < static_cast<std::size_t>(plan.coordination_scratch_elements());
        ++atom) {
     if (!std::isfinite(coordination_adjoints[atom] + workspace.coordination_scratch[atom])) {
       error = "AES2 accumulated coordination adjoint exceeded floating-point range";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   for (std::size_t coordinate = 0;
@@ -1538,7 +1538,7 @@ xtbloom_status_t add_aes2_vjp_cpu(const AES2Plan& plan, const AES2GeometryCache&
     coordination_adjoints[atom] += workspace.coordination_scratch[atom];
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

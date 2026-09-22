@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_SCC_SETUP_INPUTS_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_SETUP_INPUTS_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_SCC_SETUP_INPUTS_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_SETUP_INPUTS_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -25,7 +25,7 @@
 #include "model/gfn2/scc_mixer.hpp"
 #include "model/gfn2/wavefunction.hpp"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /* Exact host array view used at the host/CUDA setup boundary. The owner copies
  * every nonempty view into its pinned packed image during create(), so caller
@@ -149,7 +149,7 @@ enum class Gfn2SccSetupInputsField : std::uint32_t {
 };
 
 struct Gfn2SccSetupInputsDiagnostic {
-  xtbloom_status_t status = XTBLOOM_STATUS_SUCCESS;
+  vibeqc_xtb_status_t status = VIBEQC_XTB_STATUS_SUCCESS;
   Gfn2SccSetupInputsError error = Gfn2SccSetupInputsError::kSuccess;
   Gfn2SccSetupInputsField field = Gfn2SccSetupInputsField::kNone;
   std::int64_t index = -1;
@@ -157,7 +157,7 @@ struct Gfn2SccSetupInputsDiagnostic {
   cudaError_t cuda_status = cudaSuccess;
 
   [[nodiscard]] bool success() const noexcept {
-    return status == XTBLOOM_STATUS_SUCCESS && error == Gfn2SccSetupInputsError::kSuccess;
+    return status == VIBEQC_XTB_STATUS_SUCCESS && error == Gfn2SccSetupInputsError::kSuccess;
   }
 };
 
@@ -209,6 +209,6 @@ class Gfn2SccSetupInputs {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_SCC_SETUP_INPUTS_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_SETUP_INPUTS_CUH

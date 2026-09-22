@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_RUNTIME_DLPACK_LAYOUT_HPP
+#ifndef VIBEQC_XTB_RUNTIME_DLPACK_LAYOUT_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_RUNTIME_DLPACK_LAYOUT_HPP
+#define VIBEQC_XTB_RUNTIME_DLPACK_LAYOUT_HPP
 
 /*
  * Byte-exact mirrors of the DLPack 1.0 C managed-tensor layouts, used only to
@@ -26,7 +26,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 
 /* DLPack DLDataTypeCode values used by the producer. */
 enum DlpackDtypeCode : std::uint8_t {
@@ -135,6 +135,6 @@ static_assert(offsetof(DlpackManagedTensorVersioned, dl_tensor) == 24u,
               "ILP32 versioned DLTensor must sit at byte 24");
 #endif
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail
 
-#endif /* XTBLOOM_RUNTIME_DLPACK_LAYOUT_HPP */
+#endif /* VIBEQC_XTB_RUNTIME_DLPACK_LAYOUT_HPP */

@@ -18,7 +18,7 @@
 #include "dft/dispersion/d4_reference.hpp"
 #include "model/gfn2/periodic_topology.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct D4PlanData {
   std::int64_t batch_size = 0;
@@ -164,16 +164,16 @@ bool valid_count(std::int64_t value) {
                            static_cast<std::uint64_t>(std::numeric_limits<std::ptrdiff_t>::max());
 }
 
-xtbloom_status_t validate_plan(const D4Plan& plan, std::string& error) {
+vibeqc_xtb_status_t validate_plan(const D4Plan& plan, std::string& error) {
   if (!plan.sealed() || plan.batch_size() <= 0 || plan.total_atoms() <= 0 ||
       plan.total_pairs() < 0) {
     error = "D4 plan is not sealed or has invalid extents";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_workspace(const D4Plan& plan, const D4Workspace& workspace,
+vibeqc_xtb_status_t validate_workspace(const D4Plan& plan, const D4Workspace& workspace,
                                     std::string& error) {
   const D4PlanData& data = *plan.identity();
   if (workspace.plan_identity != plan.identity() ||
@@ -205,12 +205,12 @@ xtbloom_status_t validate_workspace(const D4Plan& plan, const D4Workspace& works
       workspace.batch_elements != plan.batch_size() ||
       workspace.gradient_elements != plan.total_atoms() * 3) {
     error = "D4 workspace is incomplete or belongs to another plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_cache(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t validate_cache(const D4Plan& plan, const D4GeometryCache& cache,
                                 std::string& error) {
   if (cache.plan_identity != plan.identity() || cache.geometry_generation == 0u ||
       !aligned(cache.pair_data, alignof(double)) ||
@@ -219,9 +219,9 @@ xtbloom_status_t validate_cache(const D4Plan& plan, const D4GeometryCache& cache
           plan.total_pairs() * static_cast<std::int64_t>(kD4PairDataElements) ||
       cache.coordination_elements != plan.total_atoms()) {
     error = "D4 geometry cache is incomplete or belongs to another plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 bool finite_values(const double* values, std::size_t count) {
@@ -382,16 +382,16 @@ void prepare_weight_slice(const D4PlanData& data, const double* coordination,
       workspace.weight_charge_derivatives + weight_begin);
 }
 
-xtbloom_status_t prepare_weights(const D4PlanData& data, const double* coordination,
+vibeqc_xtb_status_t prepare_weights(const D4PlanData& data, const double* coordination,
                                  const double* charges, bool derivatives,
                                  const D4Workspace& workspace, std::string& error) {
   const std::size_t atom_count = static_cast<std::size_t>(data.total_atoms);
   if (!finite_values(coordination, atom_count) || !finite_values(charges, atom_count)) {
     error = "D4 coordination numbers and charges must be finite";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   prepare_weight_slice(data, coordination, charges, 0, data.total_atoms, derivatives, workspace);
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 using PairCoefficient = ::vibeqc::dft::dispersion::D4CachedPairCoefficient;
@@ -406,20 +406,20 @@ PairCoefficient pair_coefficient(const D4PlanData& data, std::int64_t first,
       workspace.weight_charge_derivatives);
 }
 
-xtbloom_status_t evaluate_shared_molecular_d4_component(
+vibeqc_xtb_status_t evaluate_shared_molecular_d4_component(
     const D4Plan& plan, const D4GeometryCache& cache, const double* positions,
     const double* atomic_charges, bool include_two_body, bool include_atm, double* energies,
     double* gradients, const D4Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   status = validate_workspace(plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (positions == nullptr || atomic_charges == nullptr || (!include_two_body && !include_atm) ||
       (energies == nullptr && gradients == nullptr)) {
     error = "shared molecular D4 adapter received incomplete inputs";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   namespace shared = ::vibeqc::dft::dispersion;
@@ -431,7 +431,7 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
       (energies && !aligned(energies, alignof(double))) ||
       (gradients && !aligned(gradients, alignof(double)))) {
     error = "shared molecular D4 requires aligned inputs and finite gradient outputs";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::array<AddressRange, 6> numerical{};
   std::array<AddressRange, 4> controls{};
@@ -447,11 +447,11 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
       !make_range(&error, sizeof(error), controls[3]) ||
       !valid_call_storage(plan, workspace, numerical, controls)) {
     error = "shared molecular D4 buffers overlap numerical, plan, workspace, or descriptors";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (gradients && !finite_values(gradients, coordinates)) {
     error = "shared molecular D4 requires finite gradient outputs";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   auto parameters = shared::gfn2_d4_parameters();
   if (!include_two_body) {
@@ -469,13 +469,13 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
     const std::int64_t count64 = end - begin;
     if (count64 <= 0 || count64 > std::numeric_limits<int>::max()) {
       error = "shared molecular D4 adapter does not support this system size";
-      return XTBLOOM_STATUS_NOT_SUPPORTED;
+      return VIBEQC_XTB_STATUS_NOT_SUPPORTED;
     }
     const int count = static_cast<int>(count64);
     const std::size_t required_workspace = shared::d4_unbounded_workspace_elements(count);
     if (required_workspace == 0u) {
       error = "shared molecular D4 adapter workspace size overflowed";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     double* shared_workspace = offset_pointer<double>(
@@ -492,13 +492,13 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
       switch (shared_status) {
         case shared::D4Status::invalid_argument:
           error = "shared molecular D4 adapter rejected its numerical inputs";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         case shared::D4Status::unsupported:
           error = "shared molecular D4 adapter does not support the requested GFN2 case";
-          return XTBLOOM_STATUS_NOT_SUPPORTED;
+          return VIBEQC_XTB_STATUS_NOT_SUPPORTED;
         case shared::D4Status::numerical_failure:
           error = "shared molecular D4 adapter encountered a numerical failure";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         case shared::D4Status::success:
           break;
       }
@@ -512,7 +512,7 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
     for (std::int64_t coordinate = 0; coordinate < 3 * data.total_atoms; ++coordinate) {
       if (!std::isfinite(gradients[coordinate] + workspace.gradient_scratch[coordinate])) {
         error = "shared molecular D4 gradient accumulation overflowed";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
@@ -523,7 +523,7 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
       gradients[coordinate] += workspace.gradient_scratch[coordinate];
 
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 }  // namespace
@@ -605,14 +605,14 @@ std::size_t D4Plan::resident_bytes() const noexcept {
 
 const D4PlanData* D4Plan::identity() const noexcept { return data_.get(); }
 
-xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
+vibeqc_xtb_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
                               const std::int64_t* atom_offsets, const std::int32_t* atomic_numbers,
                               D4Plan& plan, std::string& error) {
   if (batch_size <= 0 || total_atoms <= 0 || !valid_count(batch_size) ||
       !valid_count(total_atoms) || atom_offsets == nullptr || atomic_numbers == nullptr ||
       atom_offsets[0] != 0 || atom_offsets[batch_size] != total_atoms) {
     error = "D4 plan requires a valid positive ragged batch";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   try {
     auto created = std::make_shared<D4PlanData>();
@@ -627,21 +627,21 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
       const std::int64_t end = atom_offsets[batch + 1];
       if (begin < 0 || begin > end || end > total_atoms) {
         error = "D4 atom offsets are not a valid ragged partition";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       const std::uint64_t count = static_cast<std::uint64_t>(end - begin);
       if (count > 0u &&
           count - 1u >
               static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) / count) {
         error = "D4 pair count overflows";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       const std::uint64_t pairs = count * (count - 1u) / 2u;
       if (pairs >
           static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max() -
                                      created->pair_offsets[static_cast<std::size_t>(batch)])) {
         error = "D4 total pair count overflows";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       created->pair_offsets[static_cast<std::size_t>(batch + 1)] =
           created->pair_offsets[static_cast<std::size_t>(batch)] + static_cast<std::int64_t>(pairs);
@@ -651,7 +651,7 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
       const std::int32_t atomic_number = atomic_numbers[atom];
       if (atomic_number <= 0 || atomic_number > static_cast<std::int32_t>(d4_data::kElementCount)) {
         error = "D4 plan contains an unsupported atomic number";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       created->element_indices[static_cast<std::size_t>(atom)] =
           static_cast<std::uint8_t>(atomic_number - 1);
@@ -693,7 +693,7 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
         !checked_multiply_size(atom_count, kD4MaximumReferences, weight_elements) ||
         !checked_multiply_size(atom_count, 3u, gradient_elements)) {
       error = "D4 workspace element count overflows";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     std::size_t maximum_atoms = 0u;
     for (std::size_t system = 0; system < batch_count; ++system) {
@@ -702,7 +702,7 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
     }
     if (!checked_multiply_size(maximum_atoms, 27u, created->shared_scratch_elements)) {
       error = "shared D4 scratch extent overflows";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     std::size_t cursor = 0u;
     std::size_t bytes = 0u;
@@ -721,22 +721,22 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
         !append_doubles(created->shared_scratch_elements, created->shared_scratch_offset) ||
         !align_up(cursor, kD4WorkspaceAlignment, created->workspace_size_bytes)) {
       error = "D4 workspace byte count overflows";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     plan = D4Plan(std::move(created));
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate D4 plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t bind_d4_workspace(const D4Plan& plan, void* workspace, std::size_t workspace_size,
+vibeqc_xtb_status_t bind_d4_workspace(const D4Plan& plan, void* workspace, std::size_t workspace_size,
                                    D4Workspace& view, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   AddressRange workspace_range;
@@ -750,7 +750,7 @@ xtbloom_status_t bind_d4_workspace(const D4Plan& plan, void* workspace, std::siz
       ranges_overlap(view_range, error_range) ||
       plan.overlaps_storage(workspace, plan.workspace_size_bytes())) {
     error = "D4 workspace must be sufficiently large and 64-byte aligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const D4PlanData& data = *plan.identity();
   auto* base = static_cast<std::byte*>(workspace);
@@ -775,20 +775,20 @@ xtbloom_status_t bind_d4_workspace(const D4Plan& plan, void* workspace, std::siz
   bound.plan_identity = plan.identity();
   view = bound;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t update_d4_geometry_cache_cpu(
+vibeqc_xtb_status_t update_d4_geometry_cache_cpu(
     const D4Plan& plan, const double* positions, std::uint64_t geometry_generation,
     double* pair_storage, std::size_t pair_storage_elements, double* coordination_storage,
     std::size_t coordination_storage_elements, const D4Workspace& workspace, D4GeometryCache& cache,
     std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_workspace(plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const D4PlanData& data = *plan.identity();
@@ -800,7 +800,7 @@ xtbloom_status_t update_d4_geometry_cache_cpu(
       pair_storage_elements < expected_pairs || coordination_storage_elements < atom_count ||
       !finite_values(positions, atom_count * 3u)) {
     error = "D4 geometry update requires finite positions and complete output storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::size_t position_bytes = 0u;
   std::size_t pair_bytes = 0u;
@@ -819,7 +819,7 @@ xtbloom_status_t update_d4_geometry_cache_cpu(
       !make_range(&error, sizeof(error), controls[3]) ||
       !valid_call_storage(plan, workspace, numerical, controls)) {
     error = "D4 geometry buffers overlap numerical, plan, workspace, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::fill_n(workspace.coordination_scratch, atom_count, 0.0);
@@ -839,7 +839,7 @@ xtbloom_status_t update_d4_geometry_cache_cpu(
         const double distance_squared = pair[0] * pair[0] + pair[1] * pair[1] + pair[2] * pair[2];
         if (distance_squared < kMinimumDistanceSquared) {
           error = "D4 geometry contains coincident atoms";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         if (distance_squared <= kCoordinationCutoff * kCoordinationCutoff) {
           const double distance = std::sqrt(distance_squared);
@@ -869,7 +869,7 @@ xtbloom_status_t update_d4_geometry_cache_cpu(
         }
         if (!std::isfinite(pair[3]) || !std::isfinite(pair[4])) {
           error = "D4 geometry cache overflowed";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
       }
     }
@@ -884,30 +884,30 @@ xtbloom_status_t update_d4_geometry_cache_cpu(
   cache.geometry_generation = geometry_generation;
   cache.plan_identity = plan.identity();
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_d4_two_body_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t evaluate_d4_two_body_cpu(const D4Plan& plan, const D4GeometryCache& cache,
                                           const double* atomic_charges, double* energies,
                                           double* atomic_potentials, const D4Workspace& workspace,
                                           std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_workspace(plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const D4PlanData& data = *plan.identity();
   if (!aligned(atomic_charges, alignof(double)) || !aligned(energies, alignof(double)) ||
       !aligned(atomic_potentials, alignof(double))) {
     error = "D4 two-body outputs must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::size_t pair_count = static_cast<std::size_t>(cache.pair_data_elements);
   const std::size_t atom_count = static_cast<std::size_t>(data.total_atoms);
@@ -931,11 +931,11 @@ xtbloom_status_t evaluate_d4_two_body_cpu(const D4Plan& plan, const D4GeometryCa
       !make_range(&error, sizeof(error), controls[3]) ||
       !valid_call_storage(plan, workspace, numerical, controls)) {
     error = "D4 two-body buffers overlap numerical, plan, workspace, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status =
       prepare_weights(data, cache.coordination_numbers, atomic_charges, true, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   std::fill_n(workspace.batch_scratch, static_cast<std::size_t>(data.batch_size), 0.0);
@@ -961,40 +961,40 @@ xtbloom_status_t evaluate_d4_two_body_cpu(const D4Plan& plan, const D4GeometryCa
   if (!finite_values(workspace.batch_scratch, static_cast<std::size_t>(data.batch_size)) ||
       !finite_values(workspace.atom_scratch, static_cast<std::size_t>(data.total_atoms))) {
     error = "D4 two-body evaluation overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   std::memcpy(energies, workspace.batch_scratch,
               static_cast<std::size_t>(data.batch_size) * sizeof(double));
   std::memcpy(atomic_potentials, workspace.atom_scratch,
               static_cast<std::size_t>(data.total_atoms) * sizeof(double));
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4GeometryCache& cache,
                                                  std::int64_t system, const double* atomic_charges,
                                                  double& energy, double* atomic_potentials,
                                                  const D4Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_workspace(plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (system < 0 || system >= plan.batch_size()) {
     error = "D4 two-body system index is out of range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!aligned(atomic_charges, alignof(double)) || !aligned(&energy, alignof(double)) ||
       (atomic_potentials != nullptr && !aligned(atomic_potentials, alignof(double)))) {
     error = "D4 system two-body inputs and outputs must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const D4PlanData& data = *plan.identity();
@@ -1018,7 +1018,7 @@ xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4Geo
       !make_range(&error, sizeof(error), controls[3]) ||
       !valid_call_storage(plan, workspace, numerical, controls)) {
     error = "D4 system two-body buffers overlap numerical, plan, workspace, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t system_index = static_cast<std::size_t>(system);
@@ -1029,7 +1029,7 @@ xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4Geo
   if (atom_begin < 0 || atom_begin > atom_end || atom_end > data.total_atoms || pair_begin < 0 ||
       pair_begin > pair_end || pair_end > data.total_pairs) {
     error = "D4 target system partition is structurally invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::uint64_t target_atom_count = static_cast<std::uint64_t>(atom_end - atom_begin);
   if (target_atom_count > 0u &&
@@ -1037,24 +1037,24 @@ xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4Geo
           static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) /
               target_atom_count) {
     error = "D4 target system pair count overflows";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::uint64_t expected_pairs = target_atom_count * (target_atom_count - 1u) / 2u;
   if (expected_pairs != static_cast<std::uint64_t>(pair_end - pair_begin)) {
     error = "D4 target atom and pair partitions disagree";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t target_atoms = static_cast<std::size_t>(atom_end - atom_begin);
   if (!finite_values(cache.coordination_numbers + atom_begin, target_atoms) ||
       !finite_values(atomic_charges + atom_begin, target_atoms)) {
     error = "D4 target coordination numbers and charges must be finite";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   for (std::int64_t atom = atom_begin; atom < atom_end; ++atom) {
     if (cache.coordination_numbers[atom] < 0.0) {
       error = "D4 target coordination numbers must be nonnegative";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
   for (std::int64_t pair_index = pair_begin; pair_index < pair_end; ++pair_index) {
@@ -1062,7 +1062,7 @@ xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4Geo
         cache.pair_data + static_cast<std::size_t>(pair_index) * kD4PairDataElements;
     if (!finite_values(pair, kD4PairDataElements) || pair[3] < 0.0) {
       error = "D4 target geometry cache contains invalid numerical data";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
 
@@ -1091,12 +1091,12 @@ xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4Geo
   }
   if (packed_pair != static_cast<std::size_t>(pair_end)) {
     error = "D4 target pair enumeration disagrees with the plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!std::isfinite(contribution) ||
       (derivatives && !finite_values(workspace.atom_scratch + atom_begin, target_atoms))) {
     error = "D4 target two-body evaluation overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   workspace.batch_scratch[system_index] = contribution;
@@ -1106,10 +1106,10 @@ xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4Geo
   }
   energy = contribution;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_d4_two_body_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t add_d4_two_body_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
                                               const double* positions, const double* atomic_charges,
                                               double* gradients, const D4Workspace& workspace,
                                               std::string& error) {
@@ -1117,7 +1117,7 @@ xtbloom_status_t add_d4_two_body_gradient_cpu(const D4Plan& plan, const D4Geomet
                                                 nullptr, gradients, workspace, error);
 }
 
-xtbloom_status_t evaluate_d4_atm_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t evaluate_d4_atm_cpu(const D4Plan& plan, const D4GeometryCache& cache,
                                      const double* positions, const double* atomic_charges,
                                      double* energies, const D4Workspace& workspace,
                                      std::string& error) {
@@ -1125,7 +1125,7 @@ xtbloom_status_t evaluate_d4_atm_cpu(const D4Plan& plan, const D4GeometryCache& 
                                                 energies, nullptr, workspace, error);
 }
 
-xtbloom_status_t add_d4_atm_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+vibeqc_xtb_status_t add_d4_atm_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
                                          const double* positions, const double* atomic_charges,
                                          double* gradients, const D4Workspace& workspace,
                                          std::string& error) {
@@ -1224,24 +1224,24 @@ bool finite_nonnegative_values(const double* values, std::size_t count) {
   return true;
 }
 
-xtbloom_status_t validate_periodic_d4_context(const D4Plan& plan,
+vibeqc_xtb_status_t validate_periodic_d4_context(const D4Plan& plan,
                                               const PeriodicShortRangePlan& periodic_plan,
                                               const PeriodicShortRangeGeometry& geometry,
                                               const D4Workspace& d4_workspace,
                                               const PeriodicShortRangeWorkspace& workspace,
                                               std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   status = validate_workspace(plan, d4_workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!periodic_plan.sealed() || periodic_plan.batch_size() != plan.batch_size() ||
       periodic_plan.total_atoms() != plan.total_atoms() ||
       periodic_plan.atom_offsets() != plan.atom_offsets()) {
     error = "periodic D4 topology does not match the D4 plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_periodic_short_range_workspace(periodic_plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (geometry.plan_identity != periodic_plan.identity() || geometry.geometry_generation == 0u ||
       geometry.wrapped_positions == nullptr ||
       geometry.wrapped_position_elements != plan.total_atoms() * 3 ||
@@ -1256,13 +1256,13 @@ xtbloom_status_t validate_periodic_d4_context(const D4Plan& plan,
       workspace.strain_elements != plan.batch_size() * 9 ||
       workspace.batch_elements != plan.batch_size()) {
     error = "periodic D4 geometry or workspace is incomplete";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 template <typename Operation>
-xtbloom_status_t for_each_periodic_d4_pair(const D4Plan& plan,
+vibeqc_xtb_status_t for_each_periodic_d4_pair(const D4Plan& plan,
                                            const PeriodicShortRangePlan& periodic_plan,
                                            const PeriodicShortRangeGeometry& geometry,
                                            PeriodicTranslationCutoff translation_cutoff,
@@ -1277,7 +1277,7 @@ xtbloom_status_t for_each_periodic_d4_pair(const D4Plan& plan,
         periodic_plan.translations(system, translation_cutoff);
     if (translations.data == nullptr || translations.size <= 0) {
       error = "periodic D4 translation topology is empty";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     for (std::int64_t first = begin; first < end; ++first) {
       const std::array<double, 3> center{
@@ -1308,18 +1308,18 @@ xtbloom_status_t for_each_periodic_d4_pair(const D4Plan& plan,
           }
           if (distance_squared < kMinimumDistanceSquared) {
             error = "periodic D4 is undefined for coincident or near-coincident images";
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
           operation(system, first, second, parameters, displacement, distance_squared);
         }
       }
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 /* Apply (d CN_D4 / d R)^T dE/dCN and its affine cell adjoint. */
-xtbloom_status_t add_periodic_d4_coordination_vjp_impl(const D4Plan& plan,
+vibeqc_xtb_status_t add_periodic_d4_coordination_vjp_impl(const D4Plan& plan,
                                                        const PeriodicShortRangePlan& periodic_plan,
                                                        const PeriodicShortRangeGeometry& geometry,
                                                        const double* dE_dcn,
@@ -1402,7 +1402,7 @@ bool finite_periodic_distance(const std::array<double, 3>& vector, double cutoff
 }
 
 template <typename Operation>
-xtbloom_status_t for_each_periodic_d4_atm(const D4Plan& plan,
+vibeqc_xtb_status_t for_each_periodic_d4_atm(const D4Plan& plan,
                                           const PeriodicShortRangePlan& periodic_plan,
                                           const PeriodicShortRangeGeometry& geometry,
                                           const D4Workspace& d4_workspace, Operation&& operation,
@@ -1417,7 +1417,7 @@ xtbloom_status_t for_each_periodic_d4_atm(const D4Plan& plan,
         periodic_plan.translations(system, PeriodicTranslationCutoff::kShortRange25);
     if (translations.data == nullptr || translations.size <= 0) {
       error = "periodic D4 ATM translation topology is empty";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     for (std::int64_t first = begin; first < end; ++first) {
       const std::array<double, 3> center{
@@ -1460,7 +1460,7 @@ xtbloom_status_t for_each_periodic_d4_atm(const D4Plan& plan,
             }
             if (r2ij < kMinimumDistanceSquared) {
               error = "periodic D4 ATM has a coincident or near-coincident ij image";
-              return XTBLOOM_STATUS_INVALID_ARGUMENT;
+              return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
             }
             for (std::int64_t second_translation_index = 0;
                  second_translation_index < translations.size; ++second_translation_index) {
@@ -1478,7 +1478,7 @@ xtbloom_status_t for_each_periodic_d4_atm(const D4Plan& plan,
               }
               if (r2ik < kMinimumDistanceSquared) {
                 error = "periodic D4 ATM has a coincident or near-coincident ik image";
-                return XTBLOOM_STATUS_INVALID_ARGUMENT;
+                return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
               }
               std::array<double, 3> vjk{};
               for (std::size_t axis = 0; axis < 3u; ++axis) vjk[axis] = vik[axis] - vij[axis];
@@ -1489,31 +1489,31 @@ xtbloom_status_t for_each_periodic_d4_atm(const D4Plan& plan,
                   continue;
                 }
                 error = "periodic D4 ATM has a coincident or near-coincident jk image";
-                return XTBLOOM_STATUS_INVALID_ARGUMENT;
+                return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
               }
               const PeriodicAtmTerm term{system, first, second, third, vij, vik, vjk, r2ij,  r2ik,
                                          r2jk,   pij,   pik,    pjk,   cij, cik, cjk, triple};
-              const xtbloom_status_t status = operation(term, error);
-              if (status != XTBLOOM_STATUS_SUCCESS) return status;
+              const vibeqc_xtb_status_t status = operation(term, error);
+              if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
             }
           }
         }
       }
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 }  // namespace
 
-xtbloom_status_t evaluate_periodic_d4_coordination_cpu(const D4Plan& plan,
+vibeqc_xtb_status_t evaluate_periodic_d4_coordination_cpu(const D4Plan& plan,
                                                        const PeriodicShortRangePlan& periodic_plan,
                                                        const PeriodicShortRangeGeometry& geometry,
                                                        double* coordination_numbers,
                                                        const PeriodicShortRangeWorkspace& workspace,
                                                        std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!periodic_plan.sealed() || periodic_plan.batch_size() != plan.batch_size() ||
       periodic_plan.total_atoms() != plan.total_atoms() ||
       periodic_plan.atom_offsets() != plan.atom_offsets() ||
@@ -1524,13 +1524,13 @@ xtbloom_status_t evaluate_periodic_d4_coordination_cpu(const D4Plan& plan,
       workspace.wrapped_positions != geometry.wrapped_positions ||
       workspace.atom_elements != plan.total_atoms()) {
     error = "periodic D4 coordination geometry or workspace is incomplete";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_periodic_short_range_workspace(periodic_plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (coordination_numbers == nullptr) {
     error = "periodic D4 coordination output must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms());
   std::array<AddressRange, 1> numerical{};
@@ -1542,7 +1542,7 @@ xtbloom_status_t evaluate_periodic_d4_coordination_cpu(const D4Plan& plan,
     error =
         "periodic D4 coordination buffers overlap numerical, plan, workspace, or descriptor "
         "storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::fill_n(workspace.atom_scratch, atom_count, 0.0);
   status = for_each_periodic_d4_pair(
@@ -1561,23 +1561,23 @@ xtbloom_status_t evaluate_periodic_d4_coordination_cpu(const D4Plan& plan,
         if (first != second) workspace.atom_scratch[second] += count;
       },
       error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!finite_nonnegative_values(workspace.atom_scratch, atom_count)) {
     error = "periodic D4 coordination evaluation overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   std::copy_n(workspace.atom_scratch, atom_count, coordination_numbers);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_periodic_d4_coordination_gradient_cpu(
+vibeqc_xtb_status_t add_periodic_d4_coordination_gradient_cpu(
     const D4Plan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* dE_dcn, double* gradients,
     double* strain_derivatives, const PeriodicShortRangeWorkspace& workspace, std::string& error) {
   if (!plan.sealed()) {
     error = "periodic D4 coordination plan is not sealed";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!periodic_plan.sealed() || periodic_plan.batch_size() != plan.batch_size() ||
       periodic_plan.total_atoms() != plan.total_atoms() ||
@@ -1592,11 +1592,11 @@ xtbloom_status_t add_periodic_d4_coordination_gradient_cpu(
       workspace.gradient_elements != plan.total_atoms() * 3 ||
       workspace.strain_elements != plan.batch_size() * 9) {
     error = "periodic D4 coordination geometry or workspace is incomplete";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_periodic_short_range_workspace(periodic_plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms());
   const std::size_t gradient_count = atom_count * 3u;
   const std::size_t strain_count = static_cast<std::size_t>(plan.batch_size()) * 9u;
@@ -1611,22 +1611,22 @@ xtbloom_status_t add_periodic_d4_coordination_gradient_cpu(
     error =
         "periodic D4 coordination buffers overlap numerical, plan, workspace, or descriptor "
         "storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!finite_values(dE_dcn, atom_count) || !finite_values(gradients, gradient_count) ||
       !finite_values(strain_derivatives, strain_count)) {
     error = "periodic D4 coordination derivatives and outputs must be finite";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::fill_n(workspace.gradient_scratch, gradient_count, 0.0);
   std::fill_n(workspace.strain_scratch, strain_count, 0.0);
   status = add_periodic_d4_coordination_vjp_impl(plan, periodic_plan, geometry, dE_dcn, workspace,
                                                  error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!finite_values(workspace.gradient_scratch, gradient_count) ||
       !finite_values(workspace.strain_scratch, strain_count)) {
     error = "periodic D4 coordination derivative overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   for (std::size_t index = 0; index < gradient_count; ++index) {
     gradients[index] += workspace.gradient_scratch[index];
@@ -1635,18 +1635,18 @@ xtbloom_status_t add_periodic_d4_coordination_gradient_cpu(
     strain_derivatives[index] += workspace.strain_scratch[index];
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_periodic_d4_two_body_cpu(
+vibeqc_xtb_status_t evaluate_periodic_d4_two_body_cpu(
     const D4Plan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* coordination_numbers,
     const double* atomic_charges, double* per_atom_energies, double* atomic_potentials,
     const D4Workspace& d4_workspace, const PeriodicShortRangeWorkspace& workspace,
     std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_periodic_d4_context(plan, periodic_plan, geometry, d4_workspace, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms());
   std::array<AddressRange, 4> numerical{};
   std::array<AddressRange, 6> controls{};
@@ -1660,17 +1660,17 @@ xtbloom_status_t evaluate_periodic_d4_two_body_cpu(
                                       controls)) {
     error =
         "periodic D4 two-body buffers overlap numerical, plan, workspace, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (per_atom_energies == nullptr || atomic_potentials == nullptr ||
       !finite_nonnegative_values(coordination_numbers, atom_count) ||
       !finite_values(atomic_charges, atom_count)) {
     error = "periodic D4 two-body inputs and outputs are invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = prepare_weights(*plan.identity(), coordination_numbers, atomic_charges, true,
                            d4_workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   std::fill_n(workspace.atom_scratch, atom_count, 0.0);
   std::fill_n(workspace.secondary_atom_scratch, atom_count, 0.0);
   status = for_each_periodic_d4_pair(
@@ -1697,27 +1697,27 @@ xtbloom_status_t evaluate_periodic_d4_two_body_cpu(
         }
       },
       error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!finite_values(workspace.atom_scratch, atom_count) ||
       !finite_values(workspace.secondary_atom_scratch, atom_count)) {
     error = "periodic D4 two-body evaluation overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   std::copy_n(workspace.atom_scratch, atom_count, per_atom_energies);
   std::copy_n(workspace.secondary_atom_scratch, atom_count, atomic_potentials);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_periodic_d4_two_body_gradient_cpu(
+vibeqc_xtb_status_t add_periodic_d4_two_body_gradient_cpu(
     const D4Plan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* coordination_numbers,
     const double* atomic_charges, double* gradients, double* strain_derivatives,
     const D4Workspace& d4_workspace, const PeriodicShortRangeWorkspace& workspace,
     std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_periodic_d4_context(plan, periodic_plan, geometry, d4_workspace, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms());
   const std::size_t gradient_count = atom_count * 3u;
   const std::size_t strain_count = static_cast<std::size_t>(plan.batch_size()) * 9u;
@@ -1733,17 +1733,17 @@ xtbloom_status_t add_periodic_d4_two_body_gradient_cpu(
                                       controls)) {
     error =
         "periodic D4 two-body buffers overlap numerical, plan, workspace, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!finite_nonnegative_values(coordination_numbers, atom_count) ||
       !finite_values(atomic_charges, atom_count) || !finite_values(gradients, gradient_count) ||
       !finite_values(strain_derivatives, strain_count)) {
     error = "periodic D4 two-body derivative inputs and outputs are invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = prepare_weights(*plan.identity(), coordination_numbers, atomic_charges, true,
                            d4_workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   std::fill_n(workspace.gradient_scratch, gradient_count, 0.0);
   std::fill_n(workspace.strain_scratch, strain_count, 0.0);
   std::fill_n(workspace.secondary_atom_scratch, atom_count, 0.0);
@@ -1786,14 +1786,14 @@ xtbloom_status_t add_periodic_d4_two_body_gradient_cpu(
         }
       },
       error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   status = add_periodic_d4_coordination_vjp_impl(
       plan, periodic_plan, geometry, workspace.secondary_atom_scratch, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!finite_values(workspace.gradient_scratch, gradient_count) ||
       !finite_values(workspace.strain_scratch, strain_count)) {
     error = "periodic D4 two-body derivative overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   for (std::size_t index = 0; index < gradient_count; ++index) {
     gradients[index] += workspace.gradient_scratch[index];
@@ -1802,17 +1802,17 @@ xtbloom_status_t add_periodic_d4_two_body_gradient_cpu(
     strain_derivatives[index] += workspace.strain_scratch[index];
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_periodic_d4_atm_cpu(
+vibeqc_xtb_status_t evaluate_periodic_d4_atm_cpu(
     const D4Plan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* coordination_numbers,
     double* per_atom_energies, const D4Workspace& d4_workspace,
     const PeriodicShortRangeWorkspace& workspace, std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_periodic_d4_context(plan, periodic_plan, geometry, d4_workspace, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms());
   std::array<AddressRange, 2> numerical{};
   std::array<AddressRange, 6> controls{};
@@ -1823,23 +1823,23 @@ xtbloom_status_t evaluate_periodic_d4_atm_cpu(
       !valid_periodic_d4_call_storage(plan, periodic_plan, &d4_workspace, workspace, numerical,
                                       controls)) {
     error = "periodic D4 ATM buffers overlap numerical, plan, workspace, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (per_atom_energies == nullptr ||
       !finite_nonnegative_values(coordination_numbers, atom_count)) {
     error = "periodic D4 ATM coordination input or output is invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::fill_n(d4_workspace.atom_scratch, atom_count, 0.0);
   status = prepare_weights(*plan.identity(), coordination_numbers, d4_workspace.atom_scratch, true,
                            d4_workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   std::fill_n(workspace.atom_scratch, atom_count, 0.0);
   status = for_each_periodic_d4_atm(
       plan, periodic_plan, geometry, d4_workspace,
       [&](const PeriodicAtmTerm& term, std::string&) {
         if (!(term.cij.c6 > 0.0) || !(term.cik.c6 > 0.0) || !(term.cjk.c6 > 0.0)) {
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         const double r2_product = term.r2ij * term.r2ik * term.r2jk;
         const double r1_product = std::sqrt(r2_product);
@@ -1865,30 +1865,30 @@ xtbloom_status_t evaluate_periodic_d4_atm_cpu(
         workspace.atom_scratch[term.first] -= per_atom;
         workspace.atom_scratch[term.second] -= per_atom;
         workspace.atom_scratch[term.third] -= per_atom;
-        return XTBLOOM_STATUS_SUCCESS;
+        return VIBEQC_XTB_STATUS_SUCCESS;
       },
       error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     if (error.empty()) error = "periodic D4 ATM evaluation failed";
     return status;
   }
   if (!finite_values(workspace.atom_scratch, atom_count)) {
     error = "periodic D4 ATM evaluation overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   std::copy_n(workspace.atom_scratch, atom_count, per_atom_energies);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_periodic_d4_atm_gradient_cpu(
+vibeqc_xtb_status_t add_periodic_d4_atm_gradient_cpu(
     const D4Plan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* coordination_numbers,
     double* gradients, double* strain_derivatives, const D4Workspace& d4_workspace,
     const PeriodicShortRangeWorkspace& workspace, std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_periodic_d4_context(plan, periodic_plan, geometry, d4_workspace, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms());
   const std::size_t gradient_count = atom_count * 3u;
   const std::size_t strain_count = static_cast<std::size_t>(plan.batch_size()) * 9u;
@@ -1902,18 +1902,18 @@ xtbloom_status_t add_periodic_d4_atm_gradient_cpu(
       !valid_periodic_d4_call_storage(plan, periodic_plan, &d4_workspace, workspace, numerical,
                                       controls)) {
     error = "periodic D4 ATM buffers overlap numerical, plan, workspace, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!finite_nonnegative_values(coordination_numbers, atom_count) ||
       !finite_values(gradients, gradient_count) ||
       !finite_values(strain_derivatives, strain_count)) {
     error = "periodic D4 ATM derivative inputs and outputs are invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::fill_n(d4_workspace.atom_scratch, atom_count, 0.0);
   status = prepare_weights(*plan.identity(), coordination_numbers, d4_workspace.atom_scratch, true,
                            d4_workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   std::fill_n(workspace.gradient_scratch, gradient_count, 0.0);
   std::fill_n(workspace.strain_scratch, strain_count, 0.0);
   std::fill_n(workspace.secondary_atom_scratch, atom_count, 0.0);
@@ -1922,7 +1922,7 @@ xtbloom_status_t add_periodic_d4_atm_gradient_cpu(
       [&](const PeriodicAtmTerm& term, std::string& local_error) {
         if (!(term.cij.c6 > 0.0) || !(term.cik.c6 > 0.0) || !(term.cjk.c6 > 0.0)) {
           local_error = "periodic D4 ATM encountered a nonpositive C6 coefficient";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         const double r2_product = term.r2ij * term.r2ik * term.r2jk;
         const double r1_product = std::sqrt(r2_product);
@@ -1999,17 +1999,17 @@ xtbloom_status_t add_periodic_d4_atm_gradient_cpu(
             0.5 * d_e * (term.cij.second_cn / term.cij.c6 + term.cjk.first_cn / term.cjk.c6);
         workspace.secondary_atom_scratch[term.third] -=
             0.5 * d_e * (term.cik.second_cn / term.cik.c6 + term.cjk.second_cn / term.cjk.c6);
-        return XTBLOOM_STATUS_SUCCESS;
+        return VIBEQC_XTB_STATUS_SUCCESS;
       },
       error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   status = add_periodic_d4_coordination_vjp_impl(
       plan, periodic_plan, geometry, workspace.secondary_atom_scratch, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (!finite_values(workspace.gradient_scratch, gradient_count) ||
       !finite_values(workspace.strain_scratch, strain_count)) {
     error = "periodic D4 ATM derivative overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   for (std::size_t index = 0; index < gradient_count; ++index) {
     gradients[index] += workspace.gradient_scratch[index];
@@ -2018,7 +2018,7 @@ xtbloom_status_t add_periodic_d4_atm_gradient_cpu(
     strain_derivatives[index] += workspace.strain_scratch[index];
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

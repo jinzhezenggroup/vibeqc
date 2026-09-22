@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_REPULSION_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_REPULSION_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_REPULSION_HPP
+#define VIBEQC_XTB_MODEL_GFN2_REPULSION_HPP
 
 #include <cstdint>
 #include <string>
@@ -9,7 +9,7 @@
 
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 class PeriodicShortRangePlan;
 struct PeriodicShortRangeGeometry;
@@ -30,7 +30,7 @@ struct RepulsionPlan {
 };
 
 /* Build a reusable ragged-batch plan from atomic numbers and molecule offsets. */
-xtbloom_status_t make_repulsion_plan(std::int64_t batch_size, std::int64_t total_atoms,
+vibeqc_xtb_status_t make_repulsion_plan(std::int64_t batch_size, std::int64_t total_atoms,
                                      const std::int64_t* atom_offsets,
                                      const std::int32_t* atomic_numbers, RepulsionPlan& plan,
                                      std::string& error);
@@ -40,7 +40,7 @@ xtbloom_status_t make_repulsion_plan(std::int64_t batch_size, std::int64_t total
  * buffers. Positions use atom-major xyz layout in bohr; output is Hartree and
  * Hartree/bohr. Forces may be NULL for an energy-only evaluation.
  */
-xtbloom_status_t add_repulsion_cpu(const RepulsionPlan& plan, const double* positions,
+vibeqc_xtb_status_t add_repulsion_cpu(const RepulsionPlan& plan, const double* positions,
                                    double* energies, double* forces, std::string& error);
 
 /*
@@ -49,11 +49,11 @@ xtbloom_status_t add_repulsion_cpu(const RepulsionPlan& plan, const double* posi
  * are overwritten transactionally. Self images contribute energy and strain
  * but have no Cartesian derivative with respect to their central atom.
  */
-xtbloom_status_t evaluate_periodic_repulsion_cpu(
+vibeqc_xtb_status_t evaluate_periodic_repulsion_cpu(
     const RepulsionPlan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, double* per_atom_energies, double* gradients,
     double* strain_derivatives, const PeriodicShortRangeWorkspace& workspace, std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_REPULSION_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_REPULSION_HPP

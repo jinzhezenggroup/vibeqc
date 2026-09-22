@@ -12,7 +12,7 @@
 #include <new>
 #include <utility>
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct PeriodicShortRangePlanData {
   std::int64_t batch_size = 0;
@@ -114,17 +114,17 @@ std::size_t cutoff_index(PeriodicTranslationCutoff cutoff) noexcept {
   return 3u;
 }
 
-xtbloom_status_t validate_plan(const PeriodicShortRangePlan& plan, std::string& error) {
+vibeqc_xtb_status_t validate_plan(const PeriodicShortRangePlan& plan, std::string& error) {
   if (!plan.sealed() || plan.batch_size() <= 0 || plan.total_atoms() <= 0 ||
       plan.atom_offsets().size() != static_cast<std::size_t>(plan.batch_size() + 1) ||
       plan.atom_offsets().front() != 0 || plan.atom_offsets().back() != plan.total_atoms()) {
     error = "periodic short-range plan is incomplete or internally inconsistent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_workspace_layout(const PeriodicShortRangePlan& plan,
+vibeqc_xtb_status_t validate_workspace_layout(const PeriodicShortRangePlan& plan,
                                            const PeriodicShortRangeWorkspace& workspace,
                                            std::string& error) {
   const PeriodicShortRangePlanData& data = *plan.identity();
@@ -152,9 +152,9 @@ xtbloom_status_t validate_workspace_layout(const PeriodicShortRangePlan& plan,
       workspace.batch_elements != plan.batch_size() ||
       plan.overlaps_storage(workspace.workspace_base, plan.workspace_size_bytes())) {
     error = "periodic short-range workspace is incomplete or belongs to another plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 }  // namespace
@@ -223,7 +223,7 @@ const PeriodicShortRangePlanData* PeriodicShortRangePlan::identity() const noexc
   return data_.get();
 }
 
-xtbloom_status_t make_periodic_short_range_plan(std::int64_t batch_size, std::int64_t total_atoms,
+vibeqc_xtb_status_t make_periodic_short_range_plan(std::int64_t batch_size, std::int64_t total_atoms,
                                                 const std::int64_t* atom_offsets,
                                                 const double* cell_matrices,
                                                 PeriodicShortRangePlan& plan, std::string& error) {
@@ -235,7 +235,7 @@ xtbloom_status_t make_periodic_short_range_plan(std::int64_t batch_size, std::in
           static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max() / 9u) ||
       atom_offsets[0] != 0 || atom_offsets[batch_size] != total_atoms) {
     error = "periodic short-range plan requires a valid positive ragged batch and cells";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   try {
@@ -253,13 +253,13 @@ xtbloom_status_t make_periodic_short_range_plan(std::int64_t batch_size, std::in
       const std::int64_t end = atom_offsets[system + 1];
       if (begin < 0 || begin > end || end > total_atoms) {
         error = "periodic short-range atom offsets are not a valid ragged partition";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       std::string local_error;
-      xtbloom_status_t status =
+      vibeqc_xtb_status_t status =
           make_lattice_3d(cell_matrices + static_cast<std::size_t>(system) * 9u,
                           created->lattices[static_cast<std::size_t>(system)], local_error);
-      if (status != XTBLOOM_STATUS_SUCCESS) {
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) {
         error = "periodic short-range cell " + std::to_string(system) + ": " + local_error;
         return status;
       }
@@ -268,7 +268,7 @@ xtbloom_status_t make_periodic_short_range_plan(std::int64_t batch_size, std::in
         status = make_lattice_translations(created->lattices[static_cast<std::size_t>(system)],
                                            kCutoffs[kind], LatticeOriginPolicy::kInclude, local,
                                            local_error);
-        if (status != XTBLOOM_STATUS_SUCCESS) {
+        if (status != VIBEQC_XTB_STATUS_SUCCESS) {
           error = "periodic short-range translation set " + std::to_string(kind) + " for system " +
                   std::to_string(system) + ": " + local_error;
           return status;
@@ -278,7 +278,7 @@ xtbloom_status_t make_periodic_short_range_plan(std::int64_t batch_size, std::in
             local.size() > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) -
                                values.size()) {
           error = "periodic short-range translation count overflows";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         values.insert(values.end(), local.begin(), local.end());
         created->translation_offsets[kind][static_cast<std::size_t>(system + 1)] =
@@ -295,7 +295,7 @@ xtbloom_status_t make_periodic_short_range_plan(std::int64_t batch_size, std::in
         !checked_multiply(atom_count, 3u, gradient_count) ||
         !checked_multiply(batch_count, 9u, strain_count)) {
       error = "periodic short-range workspace element count overflows";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     std::size_t cursor = 0u;
     if (!append_doubles(wrapped_count, cursor, created->wrapped_positions_offset) ||
@@ -306,24 +306,24 @@ xtbloom_status_t make_periodic_short_range_plan(std::int64_t batch_size, std::in
         !append_doubles(batch_count, cursor, created->batch_scratch_offset) ||
         !align_up(cursor, kPeriodicShortRangeWorkspaceAlignment, created->workspace_size_bytes)) {
       error = "periodic short-range workspace byte count overflows";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     plan = PeriodicShortRangePlan(std::move(created));
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate periodic short-range plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t bind_periodic_short_range_workspace(const PeriodicShortRangePlan& plan,
+vibeqc_xtb_status_t bind_periodic_short_range_workspace(const PeriodicShortRangePlan& plan,
                                                      void* workspace, std::size_t workspace_size,
                                                      PeriodicShortRangeWorkspace& view,
                                                      std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   AddressRange workspace_range;
   AddressRange view_range;
   AddressRange error_range;
@@ -339,7 +339,7 @@ xtbloom_status_t bind_periodic_short_range_workspace(const PeriodicShortRangePla
     error =
         "periodic short-range workspace must be aligned, sufficiently large, and disjoint from "
         "plan and descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const PeriodicShortRangePlanData& data = *plan.identity();
   PeriodicShortRangeWorkspace bound;
@@ -360,28 +360,28 @@ xtbloom_status_t bind_periodic_short_range_workspace(const PeriodicShortRangePla
   bound.plan_identity = plan.identity();
   view = bound;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_periodic_short_range_workspace(
+vibeqc_xtb_status_t validate_periodic_short_range_workspace(
     const PeriodicShortRangePlan& plan, const PeriodicShortRangeWorkspace& workspace,
     std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   return validate_workspace_layout(plan, workspace, error);
 }
 
-xtbloom_status_t update_periodic_short_range_geometry_cpu(
+vibeqc_xtb_status_t update_periodic_short_range_geometry_cpu(
     const PeriodicShortRangePlan& plan, const double* positions, std::uint64_t geometry_generation,
     const PeriodicShortRangeWorkspace& workspace, PeriodicShortRangeGeometry& geometry,
     std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   status = validate_workspace_layout(plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
   if (positions == nullptr || geometry_generation == 0u) {
     error = "periodic short-range geometry requires positions and a nonzero generation";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   /* First pass proves that publication to the workspace cannot fail halfway. */
@@ -393,7 +393,7 @@ xtbloom_status_t update_periodic_short_range_geometry_cpu(
       std::string local_error;
       status = wrap_cartesian(plan.lattice(system), positions + static_cast<std::size_t>(atom) * 3u,
                               wrapped.data(), local_error);
-      if (status != XTBLOOM_STATUS_SUCCESS) {
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) {
         error = "periodic short-range position " + std::to_string(atom) + ": " + local_error;
         return status;
       }
@@ -407,9 +407,9 @@ xtbloom_status_t update_periodic_short_range_geometry_cpu(
       status = wrap_cartesian(plan.lattice(system), positions + static_cast<std::size_t>(atom) * 3u,
                               workspace.wrapped_positions + static_cast<std::size_t>(atom) * 3u,
                               local_error);
-      if (status != XTBLOOM_STATUS_SUCCESS) {
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) {
         error = "periodic short-range wrapping changed after validation: " + local_error;
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
@@ -421,7 +421,7 @@ xtbloom_status_t update_periodic_short_range_geometry_cpu(
   prepared.plan_identity = plan.identity();
   geometry = prepared;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

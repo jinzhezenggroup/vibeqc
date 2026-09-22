@@ -12,7 +12,7 @@
 #include <new>
 #include <utility>
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 namespace {
 
 constexpr long double kTwoPi = 6.2831853071795864769252867665590057683943387987502L;
@@ -398,22 +398,22 @@ bool store_double(long double value, double& output, bool require_positive) {
   return std::isfinite(output) && (!require_positive || output > 0.0);
 }
 
-xtbloom_status_t validate_transform_arguments(const Lattice3D& lattice, const double* input,
+vibeqc_xtb_status_t validate_transform_arguments(const Lattice3D& lattice, const double* input,
                                               double* output, const char* quantity,
                                               std::string& error) {
   if (!finite_lattice(lattice)) {
     error = "lattice geometry is incomplete or contains nonfinite values";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (input == nullptr || output == nullptr) {
     error = std::string(quantity) + " input and output must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!finite_vector(input)) {
     error = std::string(quantity) + " input contains NaN or infinity";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 bool checked_product(std::size_t factor, std::size_t& product) {
@@ -459,16 +459,16 @@ bool valid_lattice_cell_3d(const double* direct) noexcept {
   return valid_lattice_cell_3d_binary64(direct);
 }
 
-xtbloom_status_t make_lattice_3d(const double* direct, Lattice3D& lattice, std::string& error) {
+vibeqc_xtb_status_t make_lattice_3d(const double* direct, Lattice3D& lattice, std::string& error) {
   if (direct == nullptr) {
     error = "direct lattice must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   for (std::size_t element = 0; element < 9u; ++element) {
     if (!std::isfinite(direct[element])) {
       error = "direct lattice contains NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   if (!valid_lattice_cell_3d(direct)) {
@@ -479,13 +479,13 @@ xtbloom_status_t make_lattice_3d(const double* direct, Lattice3D& lattice, std::
                                         : 0.0L;
     error = determinant < 0.0L ? "direct lattice must be right-handed"
                                : "direct lattice is singular or numerically ill-conditioned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   ScaledLatticeDerivation derived;
   if (!derive_lattice_geometry(direct, derived)) {
     error = "lattice geometry is outside the supported binary64 range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   Lattice3D created;
   std::copy_n(direct, 9u, created.direct.begin());
@@ -495,14 +495,14 @@ xtbloom_status_t make_lattice_3d(const double* direct, Lattice3D& lattice, std::
 
   lattice = created;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t fractional_to_cartesian(const Lattice3D& lattice, const double* fractional,
+vibeqc_xtb_status_t fractional_to_cartesian(const Lattice3D& lattice, const double* fractional,
                                          double* cartesian, std::string& error) {
-  const xtbloom_status_t status =
+  const vibeqc_xtb_status_t status =
       validate_transform_arguments(lattice, fractional, cartesian, "fractional coordinate", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -514,26 +514,26 @@ xtbloom_status_t fractional_to_cartesian(const Lattice3D& lattice, const double*
         static_cast<long double>(fractional[2]) * lattice.direct[6u + component];
     if (!store_double(value, result[component])) {
       error = "fractional-to-Cartesian conversion overflowed binary64";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   std::copy(result.begin(), result.end(), cartesian);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t cartesian_to_fractional(const Lattice3D& lattice, const double* cartesian,
+vibeqc_xtb_status_t cartesian_to_fractional(const Lattice3D& lattice, const double* cartesian,
                                          double* fractional, std::string& error) {
-  const xtbloom_status_t status =
+  const vibeqc_xtb_status_t status =
       validate_transform_arguments(lattice, cartesian, fractional, "Cartesian coordinate", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
   ScaledLatticeDerivation derived;
   if (!derive_lattice_geometry(lattice.direct.data(), derived)) {
     error = "lattice inverse could not be derived in binary64 range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::array<double, 3> result{};
   std::array<std::array<double, 3>, 3> normalized_direct{};
@@ -561,7 +561,7 @@ xtbloom_status_t cartesian_to_fractional(const Lattice3D& lattice, const double*
     if (!store_scaled_double(normalized_fractional,
                              numerator_exponent - derived.row_exponents[vector], result[vector])) {
       error = "Cartesian-to-fractional conversion overflowed binary64";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   /* Certify an exactly representable forward-transform preimage. The inverse
@@ -613,17 +613,17 @@ xtbloom_status_t cartesian_to_fractional(const Lattice3D& lattice, const double*
   }
   std::copy(result.begin(), result.end(), fractional);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t wrap_fractional(const double* fractional, double* wrapped, std::string& error) {
+vibeqc_xtb_status_t wrap_fractional(const double* fractional, double* wrapped, std::string& error) {
   if (fractional == nullptr || wrapped == nullptr) {
     error = "fractional wrapping input and output must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!finite_vector(fractional)) {
     error = "fractional wrapping input contains NaN or infinity";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::array<double, 3> result{};
@@ -638,18 +638,18 @@ xtbloom_status_t wrap_fractional(const double* fractional, double* wrapped, std:
   }
   std::copy(result.begin(), result.end(), wrapped);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t wrap_cartesian(const Lattice3D& lattice, const double* cartesian, double* wrapped,
+vibeqc_xtb_status_t wrap_cartesian(const Lattice3D& lattice, const double* cartesian, double* wrapped,
                                 std::string& error) {
   if (wrapped == nullptr) {
     error = "Cartesian wrapping output must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::array<double, 3> fractional{};
-  xtbloom_status_t status = cartesian_to_fractional(lattice, cartesian, fractional.data(), error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = cartesian_to_fractional(lattice, cartesian, fractional.data(), error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   /* A rounded inverse can place an exact integer lattice translation just
@@ -679,7 +679,7 @@ xtbloom_status_t wrap_cartesian(const Lattice3D& lattice, const double* cartesia
         std::array<double, 3> reconstructed{};
         std::string reconstruction_error;
         if (fractional_to_cartesian(lattice, candidate.data(), reconstructed.data(),
-                                    reconstruction_error) == XTBLOOM_STATUS_SUCCESS &&
+                                    reconstruction_error) == VIBEQC_XTB_STATUS_SUCCESS &&
             reconstructed[0] == cartesian[0] && reconstructed[1] == cartesian[1] &&
             reconstructed[2] == cartesian[2]) {
           fractional = candidate;
@@ -690,28 +690,28 @@ xtbloom_status_t wrap_cartesian(const Lattice3D& lattice, const double* cartesia
     }
   }
   status = wrap_fractional(fractional.data(), fractional.data(), error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   return fractional_to_cartesian(lattice, fractional.data(), wrapped, error);
 }
 
-xtbloom_status_t make_lattice_translations(const Lattice3D& lattice, double cutoff,
+vibeqc_xtb_status_t make_lattice_translations(const Lattice3D& lattice, double cutoff,
                                            LatticeOriginPolicy origin_policy,
                                            std::vector<LatticeTranslation>& translations,
                                            std::string& error) {
   if (!finite_lattice(lattice)) {
     error = "lattice geometry is incomplete or contains nonfinite values";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!(cutoff >= 0.0) || !std::isfinite(cutoff)) {
     error = "lattice-image cutoff must be finite and nonnegative";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (origin_policy != LatticeOriginPolicy::kInclude &&
       origin_policy != LatticeOriginPolicy::kExclude) {
     error = "lattice-image origin policy is invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::array<std::int64_t, 3> repeat{};
@@ -719,13 +719,13 @@ xtbloom_status_t make_lattice_translations(const Lattice3D& lattice, double cuto
   for (std::size_t vector = 0; vector < 3u; ++vector) {
     if (!repeat_count(cutoff, lattice.plane_spacing[vector], repeat[vector])) {
       error = "lattice-image repeat count is outside the supported integer range";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     const auto width = static_cast<std::uint64_t>(repeat[vector]) * 2u + 1u;
     if (width > std::numeric_limits<std::size_t>::max() ||
         !checked_product(static_cast<std::size_t>(width), count)) {
       error = "lattice-image count overflows the host address space";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   if (origin_policy == LatticeOriginPolicy::kExclude) {
@@ -736,7 +736,7 @@ xtbloom_status_t make_lattice_translations(const Lattice3D& lattice, double cuto
     std::vector<LatticeTranslation> created;
     if (count > created.max_size()) {
       error = "lattice-image count exceeds the vector implementation limit";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     created.reserve(count);
     if (origin_policy == LatticeOriginPolicy::kInclude) {
@@ -752,7 +752,7 @@ xtbloom_status_t make_lattice_translations(const Lattice3D& lattice, double cuto
           LatticeTranslation translation;
           if (!make_translation(lattice, first, second, third, translation)) {
             error = "lattice translation is outside the binary64 range";
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
           created.push_back(translation);
         }
@@ -760,16 +760,16 @@ xtbloom_status_t make_lattice_translations(const Lattice3D& lattice, double cuto
     }
     if (created.size() != count) {
       error = "lattice-image enumeration produced an inconsistent count";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
 
     translations = std::move(created);
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate lattice translations";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

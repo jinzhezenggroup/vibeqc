@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_SCC_SETUP_EIGENSOLVER_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_SETUP_EIGENSOLVER_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_SCC_SETUP_EIGENSOLVER_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_SETUP_EIGENSOLVER_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -16,7 +16,7 @@
 #include "runtime/nvidia_host_api.h"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 inline constexpr std::size_t kGfn2SccSetupEigensolverArenaAlignment = 256u;
 
@@ -60,7 +60,7 @@ enum class Gfn2SccSetupEigensolverField : std::uint32_t {
 };
 
 struct Gfn2SccSetupEigensolverDiagnostic {
-  xtbloom_status_t status = XTBLOOM_STATUS_SUCCESS;
+  vibeqc_xtb_status_t status = VIBEQC_XTB_STATUS_SUCCESS;
   Gfn2SccSetupEigensolverError error = Gfn2SccSetupEigensolverError::kSuccess;
   Gfn2SccSetupEigensolverField field = Gfn2SccSetupEigensolverField::kNone;
   std::int64_t index = -1;
@@ -71,7 +71,7 @@ struct Gfn2SccSetupEigensolverDiagnostic {
   cusolverStatus_t cusolver_status = CUSOLVER_STATUS_SUCCESS;
 
   [[nodiscard]] bool success() const noexcept {
-    return status == XTBLOOM_STATUS_SUCCESS && error == Gfn2SccSetupEigensolverError::kSuccess;
+    return status == VIBEQC_XTB_STATUS_SUCCESS && error == Gfn2SccSetupEigensolverError::kSuccess;
   }
 };
 
@@ -249,6 +249,6 @@ class Gfn2SccSetupEigensolver {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_SCC_SETUP_EIGENSOLVER_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_SETUP_EIGENSOLVER_CUH

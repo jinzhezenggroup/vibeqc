@@ -13,7 +13,7 @@
 #include <new>
 #include <utility>
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct PeriodicEwaldPlanData final {
   std::int64_t batch_size = 0;
@@ -271,9 +271,9 @@ double reciprocal_sum(const std::array<double, 3>& rij,
 bool build_wsc_images(const Lattice3D& lattice, const std::array<double, 3>& rij, bool self,
                       std::vector<WscImage>& images, std::string& error) {
   std::vector<LatticeTranslation> translations;
-  const xtbloom_status_t status = make_lattice_translations(
+  const vibeqc_xtb_status_t status = make_lattice_translations(
       lattice, kWignerThreshold, LatticeOriginPolicy::kInclude, translations, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return false;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return false;
 
   double minimum = std::numeric_limits<double>::infinity();
   struct Candidate {
@@ -585,10 +585,10 @@ bool PeriodicEwaldPlan::overlaps_storage(const void* pointer, std::size_t bytes)
                   data_->reciprocal_translations.capacity() * sizeof(LatticeTranslation));
 }
 
-xtbloom_status_t make_periodic_ewald_plan(const ES2Plan& es2,
+vibeqc_xtb_status_t make_periodic_ewald_plan(const ES2Plan& es2,
                                           const PeriodicShortRangePlan& topology,
                                           PeriodicEwaldPlan& plan, std::string& error) {
-  if (!valid_dimensions(es2, topology, error)) return XTBLOOM_STATUS_INVALID_ARGUMENT;
+  if (!valid_dimensions(es2, topology, error)) return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   try {
     PeriodicEwaldPlanData created;
     created.batch_size = es2.batch_size();
@@ -617,15 +617,15 @@ xtbloom_status_t make_periodic_ewald_plan(const ES2Plan& es2,
       created.reciprocal_cutoffs[system] = reciprocal_cutoff;
       std::vector<LatticeTranslation> direct;
       std::vector<LatticeTranslation> reciprocal;
-      xtbloom_status_t status = make_lattice_translations(
+      vibeqc_xtb_status_t status = make_lattice_translations(
           lattice, direct_cutoff, LatticeOriginPolicy::kInclude, direct, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
       Lattice3D reciprocal_lattice;
       status = make_lattice_3d(lattice.reciprocal.data(), reciprocal_lattice, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
       status = make_lattice_translations(reciprocal_lattice, reciprocal_cutoff,
                                          LatticeOriginPolicy::kExclude, reciprocal, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
       created.direct_translation_offsets[system + 1u] =
           created.direct_translation_offsets[system] + static_cast<std::int64_t>(direct.size());
       created.reciprocal_translation_offsets[system + 1u] =
@@ -638,14 +638,14 @@ xtbloom_status_t make_periodic_ewald_plan(const ES2Plan& es2,
     }
     plan = PeriodicEwaldPlan(std::make_shared<const PeriodicEwaldPlanData>(std::move(created)));
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate periodic Ewald plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan& plan,
+vibeqc_xtb_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan& plan,
                                              const PeriodicShortRangePlan& topology,
                                              const double* positions, const double* shell_charges,
                                              double* coulomb_matrix, double* shell_potentials,
@@ -661,7 +661,7 @@ xtbloom_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan& plan,
       !finite_array(positions, static_cast<std::size_t>(plan.total_atoms()) * 3u) ||
       !finite_array(shell_charges, static_cast<std::size_t>(plan.total_shells()))) {
     error = "periodic Ewald inputs are malformed or nonfinite";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   try {
     const std::size_t matrix_count = static_cast<std::size_t>(plan.total_matrix_elements());
@@ -696,21 +696,21 @@ xtbloom_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan& plan,
           plan.data_->reciprocal_translations.begin() + reciprocal_end);
       std::vector<std::array<double, 3>> wrapped(molecule_atoms);
       for (std::size_t atom = 0; atom < molecule_atoms; ++atom) {
-        const xtbloom_status_t status = wrap_cartesian(
+        const vibeqc_xtb_status_t status = wrap_cartesian(
             lattice, positions + (atom_begin + atom) * 3u, wrapped[atom].data(), error);
-        if (status != XTBLOOM_STATUS_SUCCESS) return status;
+        if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
       }
       std::vector<std::vector<WscImage>> pair_images(molecule_atoms * molecule_atoms);
       for (std::size_t center = 0; center < molecule_atoms; ++center) {
         for (std::size_t image = 0; image < center; ++image) {
           if (!build_wsc_images(lattice, subtract(wrapped[center], wrapped[image]), false,
                                 pair_images[center * molecule_atoms + image], error)) {
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
         }
         if (!build_wsc_images(lattice, {}, true, pair_images[center * molecule_atoms + center],
                               error)) {
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
       }
 
@@ -836,7 +836,7 @@ xtbloom_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan& plan,
       if (!std::isfinite(total_charge) || !(alpha_squared > 0.0) ||
           !std::isfinite(background_factor)) {
         error = "periodic Ewald background contribution is invalid";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
 
       for (std::size_t row = 0; row < molecule_shells; ++row) {
@@ -862,7 +862,7 @@ xtbloom_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan& plan,
         !finite_array(staged_gradient.data(), staged_gradient.size()) ||
         !finite_array(staged_strain.data(), staged_strain.size())) {
       error = "periodic Ewald evaluation overflowed";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     std::copy(staged_matrix.begin(), staged_matrix.end(), coulomb_matrix);
     std::copy(staged_potential.begin(), staged_potential.end(), shell_potentials);
@@ -870,11 +870,11 @@ xtbloom_status_t evaluate_periodic_ewald_cpu(const PeriodicEwaldPlan& plan,
     std::copy(staged_gradient.begin(), staged_gradient.end(), gradients);
     std::copy(staged_strain.begin(), staged_strain.end(), strain_derivatives);
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate periodic Ewald evaluation scratch";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

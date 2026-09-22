@@ -1,14 +1,14 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_GEOMETRY_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_GEOMETRY_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_GEOMETRY_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_GEOMETRY_CUH
 
 #include <cuda_runtime_api.h>
 
 #include <cstdint>
 #include <type_traits>
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /*
  * Per unordered atom pair, in lower-triangle order, the cache stores
@@ -186,6 +186,6 @@ cudaError_t add_gfn2_coordination_vjp_cuda(
  * immutable inputs and from one another.
  */
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_GEOMETRY_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_GEOMETRY_CUH

@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_MULLIKEN_KERNELS_IMPL_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_MULLIKEN_KERNELS_IMPL_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_MULLIKEN_KERNELS_IMPL_HPP
+#define VIBEQC_XTB_MODEL_GFN2_MULLIKEN_KERNELS_IMPL_HPP
 
 #include <algorithm>
 #include <cmath>
@@ -11,7 +11,7 @@
 #include "generated_gfn2_electronic_native.hpp"
 #include "model/gfn2/mulliken_kernels.hpp"
 
-namespace xtbloom::detail::gfn2::kernel_implementation {
+namespace vibeqc::xtb::detail::gfn2::kernel_implementation {
 
 static void population_record_failure(MullikenPopulationTask& task,
                                       std::uint64_t candidate) noexcept {
@@ -247,6 +247,6 @@ static void hamiltonian_chunk(void* opaque, std::size_t chunk) noexcept {
   }
 }
 
-}  // namespace xtbloom::detail::gfn2::kernel_implementation
+}  // namespace vibeqc::xtb::detail::gfn2::kernel_implementation
 
-#endif  // XTBLOOM_MODEL_GFN2_MULLIKEN_KERNELS_IMPL_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_MULLIKEN_KERNELS_IMPL_HPP

@@ -8,7 +8,7 @@
 
 #include "backends/cuda/gfn2_force_composition.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -83,7 +83,7 @@ bool validate_launch(const Gfn2ForceCompositionDeviceBatch& batch,
       output.plan_token != batch.plan_token || workspace.plan_token != batch.plan_token ||
       activity.batch_elements != batch.batch_size ||
       !is_aligned(activity.requested_mask, alignof(std::uint8_t)) ||
-      !is_aligned(activity.system_statuses, alignof(xtbloom_status_t)) ||
+      !is_aligned(activity.system_statuses, alignof(vibeqc_xtb_status_t)) ||
       !is_aligned(batch.atom_offsets, alignof(std::int64_t)) ||
       !is_aligned(batch.point_charge_offsets, alignof(std::int64_t)) ||
       !is_aligned(system_errors, alignof(std::uint32_t)) ||
@@ -142,7 +142,7 @@ bool validate_launch(const Gfn2ForceCompositionDeviceBatch& batch,
                   &reads[1]) ||
       !make_range(activity.requested_mask, activity.batch_elements, sizeof(std::uint8_t),
                   &reads[2]) ||
-      !make_range(activity.system_statuses, activity.batch_elements, sizeof(xtbloom_status_t),
+      !make_range(activity.system_statuses, activity.batch_elements, sizeof(vibeqc_xtb_status_t),
                   &reads[3]) ||
       !make_range(input.electronic_gradients, input.electronic_gradient_elements, sizeof(double),
                   &reads[4]) ||
@@ -262,7 +262,7 @@ __global__ void compose_force_kernel(Gfn2ForceCompositionDeviceBatch batch,
       if (requested > 1u) {
         record_system_error(system_errors, system,
                             Gfn2ForceCompositionDeviceError::kInvalidRequestedMask);
-      } else if (requested == 1u && activity.system_statuses[system] == XTBLOOM_STATUS_SUCCESS) {
+      } else if (requested == 1u && activity.system_statuses[system] == VIBEQC_XTB_STATUS_SUCCESS) {
         atom_begin = batch.atom_offsets[system];
         atom_end = batch.atom_offsets[system + 1];
         point_begin = batch.point_charge_offsets[system];
@@ -439,4 +439,4 @@ cudaError_t compose_gfn2_forces_cuda(const Gfn2ForceCompositionDeviceBatch& batc
   return cudaGetLastError();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

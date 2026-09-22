@@ -13,7 +13,7 @@
 #include "data/parameters/gfn2.hpp"
 #include "runtime/backend.hpp"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 constexpr std::size_t kPairOverrideStorage = parameters::gfn2::kPairScaleOverrides.size() == 0u
                                                  ? 1u
@@ -74,9 +74,9 @@ bool table_bytes_match(const std::array<T, Size>& actual, const std::array<T, Si
 
 }  // namespace
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 
 bool ensure_cuda_gfn2_parameters(std::int32_t device_id, std::string& error) {
   int device_count = 0;
@@ -225,4 +225,4 @@ bool cuda_gfn2_parameters_match_host(std::int32_t device_id, std::string& error)
   return true;
 }
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail

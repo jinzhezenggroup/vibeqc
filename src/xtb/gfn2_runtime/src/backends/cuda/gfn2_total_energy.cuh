@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_TOTAL_ENERGY_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_TOTAL_ENERGY_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_TOTAL_ENERGY_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_TOTAL_ENERGY_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -10,7 +10,7 @@
 
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /* Non-SCC terms admitted by the restricted GFN2 total-energy composer. */
 enum class Gfn2TotalEnergyComponent : std::uint32_t {
@@ -61,7 +61,7 @@ struct Gfn2TotalEnergyDeviceInput {
  * inputs, which preserves failed and max-iteration peers in a ragged batch.
  */
 struct Gfn2TotalEnergyDeviceSccState {
-  const xtbloom_status_t* system_statuses = nullptr;
+  const vibeqc_xtb_status_t* system_statuses = nullptr;
   const std::uint8_t* converged = nullptr;
   std::int64_t elements = 0;
   std::uint64_t plan_token = 0u;
@@ -123,6 +123,6 @@ cudaError_t compose_gfn2_total_energy_cuda(
     const Gfn2TotalEnergyDeviceWorkspace& workspace, std::uint32_t* system_errors,
     std::uint32_t* device_error, cudaStream_t stream = nullptr) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_TOTAL_ENERGY_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_TOTAL_ENERGY_CUH

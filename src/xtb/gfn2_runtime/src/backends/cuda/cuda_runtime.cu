@@ -3,7 +3,7 @@
 
 #include "runtime/backend.hpp"
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 
 bool resolve_cuda_device(std::int32_t requested_device, std::int32_t& resolved_device,
                          std::string& error) {
@@ -37,4 +37,4 @@ bool resolve_cuda_device(std::int32_t requested_device, std::int32_t& resolved_d
   return true;
 }
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail

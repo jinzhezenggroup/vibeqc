@@ -15,7 +15,7 @@
 #include "data/parameters/gfn2.hpp"
 #include "generated_gfn2_es2_native.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct ES2PlanData final {
   std::int64_t batch_size = 0;
@@ -93,71 +93,71 @@ bool is_aligned_double(const void* pointer) {
   return reinterpret_cast<std::uintptr_t>(pointer) % alignof(double) == 0u;
 }
 
-xtbloom_status_t validate_plan(const ES2Plan& plan, std::string& error) {
+vibeqc_xtb_status_t validate_plan(const ES2Plan& plan, std::string& error) {
   if (!plan.sealed()) {
     error = "ES2 plan is default-constructed, moved-from, or otherwise unsealed";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_cache(const ES2Plan& plan, const ES2GeometryCache& cache,
+vibeqc_xtb_status_t validate_cache(const ES2Plan& plan, const ES2GeometryCache& cache,
                                 std::string& error) {
   if (cache.coulomb_matrix == nullptr || cache.matrix_elements != plan.total_matrix_elements() ||
       !is_aligned_double(cache.coulomb_matrix) || cache.plan_identity != plan.identity()) {
     error = "ES2 geometry cache is missing or belongs to a different plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_scratch(double* pointer, std::int64_t available, std::int64_t required,
+vibeqc_xtb_status_t validate_scratch(double* pointer, std::int64_t available, std::int64_t required,
                                   const char* message, std::string& error) {
   if (pointer == nullptr || available < required || !is_aligned_double(pointer)) {
     error = message;
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_positions_pointer(const double* positions, std::string& error) {
+vibeqc_xtb_status_t validate_positions_pointer(const double* positions, std::string& error) {
   if (positions == nullptr || !is_aligned_double(positions)) {
     error = "ES2 positions must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_position_values(const ES2Plan& plan, const double* positions,
+vibeqc_xtb_status_t validate_position_values(const ES2Plan& plan, const double* positions,
                                           std::string& error) {
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms());
   for (std::size_t coordinate = 0; coordinate < atom_count * 3u; ++coordinate) {
     if (!std::isfinite(positions[coordinate])) {
       error = "ES2 positions contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_shell_charge_pointer(const double* shell_charges, std::string& error) {
+vibeqc_xtb_status_t validate_shell_charge_pointer(const double* shell_charges, std::string& error) {
   if (shell_charges == nullptr || !is_aligned_double(shell_charges)) {
     error = "ES2 shell charges must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_shell_charge_values(const ES2Plan& plan, const double* shell_charges,
+vibeqc_xtb_status_t validate_shell_charge_values(const ES2Plan& plan, const double* shell_charges,
                                               std::string& error) {
   for (std::int64_t shell = 0; shell < plan.total_shells(); ++shell) {
     if (!std::isfinite(shell_charges[static_cast<std::size_t>(shell)])) {
       error = "ES2 shell charges contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 struct MemoryRange {
@@ -240,7 +240,7 @@ bool softened_kernel(double dx, double dy, double dz, double first_hardness, dou
 }
 
 template <ES2HardnessAverage Average>
-xtbloom_status_t populate_geometry_matrix(const ES2Plan& plan, const double* positions,
+vibeqc_xtb_status_t populate_geometry_matrix(const ES2Plan& plan, const double* positions,
                                           double* matrix_scratch, std::string& error) {
   for (std::int64_t batch = 0; batch < plan.batch_size(); ++batch) {
     const std::size_t batch_index = static_cast<std::size_t>(batch);
@@ -261,7 +261,7 @@ xtbloom_status_t populate_geometry_matrix(const ES2Plan& plan, const double* pos
           if (!(pair_hardness > 0.0) || !std::isfinite(pair_hardness) ||
               !std::isfinite(inverse_average_hardness)) {
             error = "ES2 onsite hardness arithmetic exceeded floating-point range";
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
           matrix_scratch[matrix_index(plan, batch_index, first_shell, second_shell)] =
               pair_hardness;
@@ -274,7 +274,7 @@ xtbloom_status_t populate_geometry_matrix(const ES2Plan& plan, const double* pos
         const double dz = positions[first_index * 3u + 2u] - positions[second_index * 3u + 2u];
         if (!std::isfinite(dx) || !std::isfinite(dy) || !std::isfinite(dz)) {
           error = "ES2 coordinate differences overflow floating-point range";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         const std::int64_t second_shell_begin = plan.atom_shell_offsets()[second_index];
         const std::int64_t second_shell_end = plan.atom_shell_offsets()[second_index + 1u];
@@ -287,7 +287,7 @@ xtbloom_status_t populate_geometry_matrix(const ES2Plan& plan, const double* pos
                     dx, dy, dz, plan.shell_hardness()[static_cast<std::size_t>(first_shell)],
                     plan.shell_hardness()[static_cast<std::size_t>(second_shell)], kernel)) {
               error = "ES2 Coulomb-kernel arithmetic exceeded floating-point range";
-              return XTBLOOM_STATUS_INVALID_ARGUMENT;
+              return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
             }
             matrix_scratch[matrix_index(plan, batch_index, first_shell, second_shell)] = kernel;
             matrix_scratch[matrix_index(plan, batch_index, second_shell, first_shell)] = kernel;
@@ -296,7 +296,7 @@ xtbloom_status_t populate_geometry_matrix(const ES2Plan& plan, const double* pos
       }
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 bool calculate_potential_row(const ES2Plan& plan, const ES2GeometryCache& cache,
@@ -409,14 +409,14 @@ bool ES2Plan::overlaps_storage(const void* data, std::size_t size_bytes) const n
 
 const ES2PlanData* ES2Plan::identity() const noexcept { return data_.get(); }
 
-xtbloom_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
+vibeqc_xtb_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
                                ES2Plan& plan, std::string& error) {
   if (basis.batch_size <= 0 || basis.total_atoms <= 0 || basis.total_shells <= 0 ||
       !count_fits_storage(basis.batch_size, sizeof(std::int64_t), true) ||
       !count_fits_storage(basis.total_atoms, sizeof(std::int64_t), true) ||
       !count_fits_storage(basis.total_shells, sizeof(std::int64_t)) || atomic_numbers == nullptr) {
     error = "ES2 plan requires a representable basis and atomic numbers";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t batch_count = static_cast<std::size_t>(basis.batch_size);
@@ -434,7 +434,7 @@ xtbloom_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomi
       basis.atom_shell_offsets.front() != 0 ||
       basis.atom_shell_offsets.back() != basis.total_shells) {
     error = "ES2 plan received an inconsistent basis plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::int64_t total_matrix_elements = 0;
@@ -448,18 +448,18 @@ xtbloom_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomi
         shell_begin != basis.atom_shell_offsets[static_cast<std::size_t>(atom_begin)] ||
         shell_end != basis.atom_shell_offsets[static_cast<std::size_t>(atom_end)]) {
       error = "ES2 basis offsets are not valid ragged partitions";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     std::int64_t matrix_elements = 0;
     if (!checked_square(shell_end - shell_begin, matrix_elements) ||
         !checked_add(matrix_elements, total_matrix_elements)) {
       error = "ES2 ragged Coulomb matrices exceed representable storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   if (total_matrix_elements <= 0 || !count_fits_storage(total_matrix_elements, sizeof(double))) {
     error = "ES2 Coulomb matrix storage is not representable";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   try {
@@ -493,7 +493,7 @@ xtbloom_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomi
       if (element == nullptr || element->atomic_number != atomic_number || !(element->gam > 0.0) ||
           !std::isfinite(element->gam)) {
         error = "ES2 plan contains an unsupported element or invalid hardness";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
 
       const std::int64_t shell_begin = basis.atom_shell_offsets[atom_index];
@@ -504,7 +504,7 @@ xtbloom_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomi
           parameter_begin > parameters::gfn2::kShells.size() ||
           element->shell_count > parameters::gfn2::kShells.size() - parameter_begin) {
         error = "ES2 element list does not match the basis shell layout";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
 
       for (std::int64_t shell = shell_begin; shell < shell_end; ++shell) {
@@ -519,12 +519,12 @@ xtbloom_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomi
             !(shell_parameters.shell_hubbard_scale > 0.0) ||
             !std::isfinite(shell_parameters.shell_hubbard_scale)) {
           error = "ES2 element list does not match the basis shell metadata";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         const double hardness = element->gam * shell_parameters.shell_hubbard_scale;
         if (!(hardness > 0.0) || !std::isfinite(hardness)) {
           error = "ES2 generated shell hardness is invalid";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         created.shell_hardness[shell_index] = hardness;
       }
@@ -533,14 +533,14 @@ xtbloom_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomi
     auto sealed = std::make_shared<const ES2PlanData>(std::move(created));
     plan = ES2Plan(std::move(sealed));
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate the GFN2 ES2 plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
+vibeqc_xtb_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
                                                    ES2HardnessAverage average,
                                                    const double* shell_hardness,
                                                    std::int64_t shell_hardness_count, ES2Plan& plan,
@@ -552,7 +552,7 @@ xtbloom_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
       shell_hardness_count != basis.total_shells ||
       (average != ES2HardnessAverage::kArithmetic && average != ES2HardnessAverage::kHarmonic)) {
     error = "ES2 shared plan requires a representable basis, averaging rule, and shell hardnesses";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t batch_count = static_cast<std::size_t>(basis.batch_size);
@@ -567,7 +567,7 @@ xtbloom_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
       basis.atom_shell_offsets.front() != 0 ||
       basis.atom_shell_offsets.back() != basis.total_shells) {
     error = "ES2 shared plan received an inconsistent basis topology";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::int64_t total_matrix_elements = 0;
@@ -584,17 +584,17 @@ xtbloom_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
         !checked_square(shell_end - shell_begin, matrix_elements) ||
         !checked_add(matrix_elements, total_matrix_elements)) {
       error = "ES2 shared plan basis offsets are not valid ragged partitions";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   if (total_matrix_elements <= 0 || !count_fits_storage(total_matrix_elements, sizeof(double))) {
     error = "ES2 shared plan matrix storage is not representable";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::size_t shell = 0; shell < shell_count; ++shell) {
     if (!(shell_hardness[shell] > 0.0) || !std::isfinite(shell_hardness[shell])) {
       error = "ES2 shared plan shell hardnesses must be positive and finite";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     const std::int64_t atom = basis.shell_to_atom[shell];
     if (atom < 0 || atom >= basis.total_atoms ||
@@ -603,7 +603,7 @@ xtbloom_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
         static_cast<std::int64_t>(shell) >=
             basis.atom_shell_offsets[static_cast<std::size_t>(atom) + 1u]) {
       error = "ES2 shared plan contains an invalid shell-to-atom mapping";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -632,40 +632,40 @@ xtbloom_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
     auto sealed = std::make_shared<const ES2PlanData>(std::move(created));
     plan = ES2Plan(std::move(sealed));
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate the shared ES2 plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   } catch (const std::length_error&) {
     error = "shared ES2 plan dimensions exceed host container limits";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t update_es2_geometry_cache_cpu(const ES2Plan& plan, const double* positions,
+vibeqc_xtb_status_t update_es2_geometry_cache_cpu(const ES2Plan& plan, const double* positions,
                                                std::uint64_t geometry_generation,
                                                double* matrix_storage,
                                                std::size_t matrix_storage_elements,
                                                const ES2Workspace& workspace,
                                                ES2GeometryCache& cache, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_positions_pointer(positions, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (matrix_storage == nullptr ||
       matrix_storage_elements < static_cast<std::size_t>(plan.total_matrix_elements()) ||
       !is_aligned_double(matrix_storage)) {
     error = "ES2 matrix storage is NULL, too small, or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_scratch(workspace.matrix_scratch, workspace.matrix_elements,
                             plan.total_matrix_elements(),
                             "ES2 matrix scratch is NULL, too small, or misaligned", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const std::size_t position_bytes =
@@ -674,7 +674,7 @@ xtbloom_status_t update_es2_geometry_cache_cpu(const ES2Plan& plan, const double
       static_cast<std::size_t>(plan.total_matrix_elements()) * sizeof(double);
   if (cache.coulomb_matrix != nullptr) {
     status = validate_cache(plan, cache, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       return status;
     }
   }
@@ -689,17 +689,17 @@ xtbloom_status_t update_es2_geometry_cache_cpu(const ES2Plan& plan, const double
     error =
         "ES2 positions, matrix output, matrix scratch, cache, workspace, and plan storage must "
         "not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (cache.coulomb_matrix != nullptr) {
     if (ranges_overlap(cache.coulomb_matrix, matrix_bytes, workspace.matrix_scratch,
                        matrix_bytes)) {
       error = "ES2 active cache and matrix scratch must not overlap";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   status = validate_position_values(plan, positions, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -708,7 +708,7 @@ xtbloom_status_t update_es2_geometry_cache_cpu(const ES2Plan& plan, const double
                      plan, positions, workspace.matrix_scratch, error)
                : populate_geometry_matrix<ES2HardnessAverage::kArithmetic>(
                      plan, positions, workspace.matrix_scratch, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   std::copy_n(workspace.matrix_scratch, static_cast<std::size_t>(plan.total_matrix_elements()),
@@ -718,31 +718,31 @@ xtbloom_status_t update_es2_geometry_cache_cpu(const ES2Plan& plan, const double
   cache.geometry_generation = geometry_generation;
   cache.plan_identity = plan.identity();
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_es2_potential_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
+vibeqc_xtb_status_t evaluate_es2_potential_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
                                             const double* shell_charges, double* shell_potentials,
                                             const ES2Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_shell_charge_pointer(shell_charges, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (shell_potentials == nullptr || !is_aligned_double(shell_potentials)) {
     error = "ES2 shell potential output must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_scratch(workspace.shell_scratch, workspace.shell_elements, plan.total_shells(),
                             "ES2 shell scratch is NULL, too small, or misaligned", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const std::size_t shell_bytes = static_cast<std::size_t>(plan.total_shells()) * sizeof(double);
@@ -760,10 +760,10 @@ xtbloom_status_t evaluate_es2_potential_cpu(const ES2Plan& plan, const ES2Geomet
     error =
         "ES2 potential inputs, output, cache, shell scratch, descriptors, and plan storage must "
         "not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_shell_charge_values(plan, shell_charges, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -774,7 +774,7 @@ xtbloom_status_t evaluate_es2_potential_cpu(const ES2Plan& plan, const ES2Geomet
       double potential = 0.0;
       if (!calculate_potential_row(plan, cache, shell_charges, batch_index, shell, potential)) {
         error = "ES2 potential arithmetic exceeded floating-point range";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       workspace.shell_scratch[static_cast<std::size_t>(shell)] = potential;
     }
@@ -782,29 +782,29 @@ xtbloom_status_t evaluate_es2_potential_cpu(const ES2Plan& plan, const ES2Geomet
   std::copy_n(workspace.shell_scratch, static_cast<std::size_t>(plan.total_shells()),
               shell_potentials);
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_es2_potential_system_cpu(const ES2Plan& plan,
+vibeqc_xtb_status_t evaluate_es2_potential_system_cpu(const ES2Plan& plan,
                                                    const ES2GeometryCache& cache,
                                                    std::int64_t system, const double* shell_charges,
                                                    double* shell_potentials, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (system < 0 || system >= plan.batch_size()) {
     error = "ES2 potential system index is out of range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (shell_charges == nullptr || !is_aligned_double(shell_charges) ||
       shell_potentials == nullptr || !is_aligned_double(shell_potentials)) {
     error = "ES2 one-system potential inputs and output must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t shell_bytes = static_cast<std::size_t>(plan.total_shells()) * sizeof(double);
@@ -823,7 +823,7 @@ xtbloom_status_t evaluate_es2_potential_system_cpu(const ES2Plan& plan,
     error =
         "ES2 one-system potential inputs, output, cache, error, and plan storage must not "
         "overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t system_index = static_cast<std::size_t>(system);
@@ -832,7 +832,7 @@ xtbloom_status_t evaluate_es2_potential_system_cpu(const ES2Plan& plan,
   for (std::int64_t shell = shell_begin; shell < shell_end; ++shell) {
     if (!std::isfinite(shell_charges[static_cast<std::size_t>(shell)])) {
       error = "ES2 target-system shell charges contain NaN or infinity";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
 
@@ -840,36 +840,36 @@ xtbloom_status_t evaluate_es2_potential_system_cpu(const ES2Plan& plan,
     double potential = 0.0;
     if (!calculate_potential_row(plan, cache, shell_charges, system_index, shell, potential)) {
       error = "ES2 target-system potential arithmetic exceeded floating-point range";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     shell_potentials[static_cast<std::size_t>(shell)] = potential;
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_es2_energy_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
+vibeqc_xtb_status_t add_es2_energy_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
                                     const double* shell_charges, double* energies,
                                     const ES2Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_shell_charge_pointer(shell_charges, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (energies == nullptr || !is_aligned_double(energies)) {
     error = "ES2 energy output must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_scratch(workspace.batch_scratch, workspace.batch_elements, plan.batch_size(),
                             "ES2 batch scratch is NULL, too small, or misaligned", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const std::size_t shell_bytes = static_cast<std::size_t>(plan.total_shells()) * sizeof(double);
@@ -888,10 +888,10 @@ xtbloom_status_t add_es2_energy_cpu(const ES2Plan& plan, const ES2GeometryCache&
     error =
         "ES2 energy inputs, output, cache, batch scratch, descriptors, and plan storage must not "
         "overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_shell_charge_values(plan, shell_charges, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -900,7 +900,7 @@ xtbloom_status_t add_es2_energy_cpu(const ES2Plan& plan, const ES2GeometryCache&
     if (!calculate_batch_energy(plan, cache, shell_charges, batch_index,
                                 workspace.batch_scratch[batch_index])) {
       error = "ES2 energy arithmetic exceeded floating-point range";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   for (std::int64_t batch = 0; batch < plan.batch_size(); ++batch) {
@@ -908,7 +908,7 @@ xtbloom_status_t add_es2_energy_cpu(const ES2Plan& plan, const ES2GeometryCache&
     if (!std::isfinite(energies[batch_index]) ||
         !std::isfinite(energies[batch_index] + workspace.batch_scratch[batch_index])) {
       error = "ES2 accumulated energy exceeded floating-point range";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   for (std::int64_t batch = 0; batch < plan.batch_size(); ++batch) {
@@ -916,26 +916,26 @@ xtbloom_status_t add_es2_energy_cpu(const ES2Plan& plan, const ES2GeometryCache&
     energies[batch_index] += workspace.batch_scratch[batch_index];
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_es2_energy_system_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
+vibeqc_xtb_status_t add_es2_energy_system_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
                                            std::int64_t system, const double* shell_charges,
                                            double& accumulated_energy, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (system < 0 || system >= plan.batch_size()) {
     error = "ES2 energy system index is out of range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_shell_charge_pointer(shell_charges, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -953,7 +953,7 @@ xtbloom_status_t add_es2_energy_system_cpu(const ES2Plan& plan, const ES2Geometr
       ranges_overlap(energy_pointer, sizeof(double), cache.coulomb_matrix, matrix_bytes) ||
       ranges_overlap(energy_pointer, sizeof(double), &error, sizeof(error))) {
     error = "ES2 one-system energy inputs, output, cache, error, and plan storage must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t system_index = static_cast<std::size_t>(system);
@@ -962,7 +962,7 @@ xtbloom_status_t add_es2_energy_system_cpu(const ES2Plan& plan, const ES2Geometr
   for (std::int64_t shell = shell_begin; shell < shell_end; ++shell) {
     if (!std::isfinite(shell_charges[static_cast<std::size_t>(shell)])) {
       error = "ES2 target-system shell charges contain NaN or infinity";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
 
@@ -970,46 +970,46 @@ xtbloom_status_t add_es2_energy_system_cpu(const ES2Plan& plan, const ES2Geometr
   if (!calculate_batch_energy(plan, cache, shell_charges, system_index, contribution) ||
       !std::isfinite(accumulated_energy) || !std::isfinite(accumulated_energy + contribution)) {
     error = "ES2 target-system energy arithmetic exceeded floating-point range";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   accumulated_energy += contribution;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
+vibeqc_xtb_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
                                       const double* positions, std::uint64_t geometry_generation,
                                       const double* shell_charges, double* gradients,
                                       const ES2Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (cache.geometry_generation != geometry_generation) {
     error = "ES2 gradient positions do not match the cached geometry generation";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_positions_pointer(positions, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_shell_charge_pointer(shell_charges, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (gradients == nullptr || !is_aligned_double(gradients)) {
     error = "ES2 gradient output must not be NULL or misaligned";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::int64_t gradient_elements = plan.total_atoms() * 3;
   status =
       validate_scratch(workspace.gradient_scratch, workspace.gradient_elements, gradient_elements,
                        "ES2 gradient scratch is NULL, too small, or misaligned", error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const std::size_t position_bytes =
@@ -1034,14 +1034,14 @@ xtbloom_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCach
     error =
         "ES2 gradient inputs, output, cache, gradient scratch, descriptors, and plan storage must "
         "not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_position_values(plan, positions, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_shell_charge_values(plan, shell_charges, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -1064,7 +1064,7 @@ xtbloom_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCach
         if (!std::isfinite(displacement[0]) || !std::isfinite(displacement[1]) ||
             !std::isfinite(displacement[2])) {
           error = "ES2 coordinate differences overflow floating-point range";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         const std::int64_t second_shell_begin = plan.atom_shell_offsets()[second_index];
         const std::int64_t second_shell_end = plan.atom_shell_offsets()[second_index + 1u];
@@ -1081,12 +1081,12 @@ xtbloom_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCach
                     kernel, shell_charges[static_cast<std::size_t>(first_shell)],
                     shell_charges[static_cast<std::size_t>(second_shell)], shell_weight)) {
               error = "ES2 coordinate VJP arithmetic exceeded floating-point range";
-              return XTBLOOM_STATUS_INVALID_ARGUMENT;
+              return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
             }
             const double updated = weighted_kernel_derivative + shell_weight;
             if (!std::isfinite(updated)) {
               error = "ES2 coordinate VJP arithmetic exceeded floating-point range";
-              return XTBLOOM_STATUS_INVALID_ARGUMENT;
+              return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
             }
             weighted_kernel_derivative = updated;
           }
@@ -1096,7 +1096,7 @@ xtbloom_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCach
                 weighted_kernel_derivative, displacement[0], displacement[1], displacement[2],
                 pair_gradient[0], pair_gradient[1], pair_gradient[2])) {
           error = "ES2 coordinate VJP arithmetic exceeded floating-point range";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         for (std::size_t axis = 0; axis < 3u; ++axis) {
           const double pair_contribution = pair_gradient[axis];
@@ -1109,7 +1109,7 @@ xtbloom_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCach
           if (!std::isfinite(pair_contribution) || !std::isfinite(updated_first) ||
               !std::isfinite(updated_second)) {
             error = "ES2 coordinate VJP arithmetic exceeded floating-point range";
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
           workspace.gradient_scratch[first_coordinate] = updated_first;
           workspace.gradient_scratch[second_coordinate] = updated_second;
@@ -1123,7 +1123,7 @@ xtbloom_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCach
     if (!std::isfinite(gradients[coordinate]) ||
         !std::isfinite(gradients[coordinate] + workspace.gradient_scratch[coordinate])) {
       error = "ES2 accumulated gradient exceeded floating-point range";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   for (std::size_t coordinate = 0; coordinate < static_cast<std::size_t>(gradient_elements);
@@ -1131,7 +1131,7 @@ xtbloom_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCach
     gradients[coordinate] += workspace.gradient_scratch[coordinate];
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

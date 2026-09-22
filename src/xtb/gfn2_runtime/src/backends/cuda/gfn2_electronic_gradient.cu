@@ -5,7 +5,7 @@
 
 #include "backends/cuda/gfn2_electronic_gradient.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 128;
@@ -19,7 +19,7 @@ __global__ void propagate_success_mask_kernel(const Gfn2ForceDeviceActivity acti
   }
   const std::uint8_t requested = activity.requested_mask[system];
   success_mask[system] = requested == 1u &&
-                                 activity.system_statuses[system] == XTBLOOM_STATUS_SUCCESS &&
+                                 activity.system_statuses[system] == VIBEQC_XTB_STATUS_SUCCESS &&
                                  upstream_errors[system] == 0u
                              ? 1u
                              : 0u;
@@ -158,4 +158,4 @@ cudaError_t compose_gfn2_electronic_gradient_cuda(
       diagnostics.integral_system_errors, diagnostics.integral_device_error, stream);
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

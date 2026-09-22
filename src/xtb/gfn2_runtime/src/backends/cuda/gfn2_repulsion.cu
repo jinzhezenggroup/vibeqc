@@ -9,7 +9,7 @@
 #include "backends/cuda/gfn2_repulsion.cuh"
 #include "generated_gfn2_pair_native.hpp"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -181,4 +181,4 @@ cudaError_t add_gfn2_repulsion_cuda(const Gfn2RepulsionDeviceBatch& batch, doubl
   return cudaGetLastError();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

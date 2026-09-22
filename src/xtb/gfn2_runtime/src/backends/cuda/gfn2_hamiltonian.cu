@@ -9,7 +9,7 @@
 #include "backends/cuda/gfn2_hamiltonian.cuh"
 #include "generated_gfn2_electronic_native.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -1049,4 +1049,4 @@ cudaError_t assemble_gfn2_spin_hamiltonian_cuda(
   return check_launch();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

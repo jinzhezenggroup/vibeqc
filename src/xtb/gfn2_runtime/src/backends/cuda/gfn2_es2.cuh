@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_ES2_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_ES2_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_ES2_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_ES2_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -10,7 +10,7 @@
 
 #include "backends/cuda/gfn2_scc_iteration_control.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /* First semantic or arithmetic failure recorded by an ES2 device sequence. */
 enum class Gfn2ES2DeviceError : std::uint32_t {
@@ -182,6 +182,6 @@ cudaError_t evaluate_gfn2_es2_scc_energy_cuda(
     const Gfn2ES2DeviceWorkspace& workspace, std::uint32_t* system_errors,
     std::uint32_t* plan_error, cudaStream_t stream = nullptr) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_ES2_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_ES2_CUH

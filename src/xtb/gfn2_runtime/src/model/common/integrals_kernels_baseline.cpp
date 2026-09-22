@@ -7,5 +7,5 @@
  * implementation source suppresses its normal public entry points in this
  * mode, so the only emitted external symbol is the baseline kernel table.
  */
-#define XTBLOOM_INTEGRALS_BASELINE_VARIANT 1
+#define VIBEQC_XTB_INTEGRALS_BASELINE_VARIANT 1
 #include "model/common/integrals.cpp"

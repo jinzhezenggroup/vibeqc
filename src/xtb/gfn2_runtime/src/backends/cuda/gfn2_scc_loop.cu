@@ -9,7 +9,7 @@
 
 #include "backends/cuda/gfn2_scc_loop.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 struct alignas(16) Gfn2SccDeviceLoopControl {
@@ -1435,4 +1435,4 @@ std::size_t Gfn2SccLoopCudaGraphOwner::dispatch_chain_executable_count() const n
   return state_ == nullptr ? 0u : state_->executables.size();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

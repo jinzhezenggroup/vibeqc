@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_MULLIKEN_KERNELS_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_MULLIKEN_KERNELS_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_MULLIKEN_KERNELS_HPP
+#define VIBEQC_XTB_MODEL_GFN2_MULLIKEN_KERNELS_HPP
 
 #include <atomic>
 #include <cstddef>
@@ -9,7 +9,7 @@
 
 #include "cpu_dispatch/features.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 /* Non-copyable one-shot states passed by pointer to the selected leaf
  * callbacks. The generic Mulliken layer owns all validation, staging,
@@ -90,6 +90,6 @@ void mulliken_hamiltonian_chunk_avx2_fma(void* opaque, std::size_t chunk) noexce
 [[nodiscard]] const MullikenKernelTable& mulliken_avx2_fma_kernels() noexcept;
 [[nodiscard]] const MullikenKernelTable& mulliken_kernels_for_cpu_isa(CpuIsa isa) noexcept;
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_MULLIKEN_KERNELS_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_MULLIKEN_KERNELS_HPP

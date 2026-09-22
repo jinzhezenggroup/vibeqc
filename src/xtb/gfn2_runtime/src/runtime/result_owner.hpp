@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_RUNTIME_RESULT_OWNER_HPP
+#ifndef VIBEQC_XTB_RUNTIME_RESULT_OWNER_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_RUNTIME_RESULT_OWNER_HPP
+#define VIBEQC_XTB_RUNTIME_RESULT_OWNER_HPP
 
 #include <atomic>
 #include <cstddef>
@@ -11,7 +11,7 @@
 #include "runtime/dlpack_layout.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 
 /*
  * Ref-counted xtbloom-owned result arena.
@@ -32,7 +32,7 @@ namespace xtbloom::detail {
  */
 class ResultOwner {
  public:
-  ResultOwner(xtbloom_memory_space_t memory_space, std::int32_t device_id, std::size_t size_bytes,
+  ResultOwner(vibeqc_xtb_memory_space_t memory_space, std::int32_t device_id, std::size_t size_bytes,
               void* data)
       : memory_space_(memory_space),
         device_id_(device_id),
@@ -42,7 +42,7 @@ class ResultOwner {
   ResultOwner(const ResultOwner&) = delete;
   ResultOwner& operator=(const ResultOwner&) = delete;
 
-  xtbloom_memory_space_t memory_space() const noexcept { return memory_space_; }
+  vibeqc_xtb_memory_space_t memory_space() const noexcept { return memory_space_; }
   std::int32_t device_id() const noexcept { return device_id_; }
   std::size_t size_bytes() const noexcept { return size_bytes_; }
   void* data() const noexcept { return data_; }
@@ -66,7 +66,7 @@ class ResultOwner {
   /* Free data_ through the correct allocation path, then delete this. */
   void destroy() noexcept;
 
-  xtbloom_memory_space_t memory_space_;
+  vibeqc_xtb_memory_space_t memory_space_;
   std::int32_t device_id_;
   std::size_t size_bytes_;
   void* data_;
@@ -74,33 +74,33 @@ class ResultOwner {
 };
 
 /*
- * Host allocation used when memory_space == XTBLOOM_MEMORY_HOST. The pointer is
+ * Host allocation used when memory_space == VIBEQC_XTB_MEMORY_HOST. The pointer is
  * 64-byte aligned so any xtbloom scalar slice and any common DLPack consumer
  * alignment requirement is satisfied regardless of arena layout.
  */
-xtbloom_status_t allocate_host_result_arena(std::size_t size_bytes, void** data,
+vibeqc_xtb_status_t allocate_host_result_arena(std::size_t size_bytes, void** data,
                                             std::string& error) noexcept;
 void free_host_result_arena(void* data) noexcept;
 
-#if defined(XTBLOOM_HAS_CUDA)
+#if defined(VIBEQC_XTB_HAS_CUDA)
 /*
- * CUDA device allocation used when memory_space == XTBLOOM_MEMORY_CUDA_DEVICE.
+ * CUDA device allocation used when memory_space == VIBEQC_XTB_MEMORY_CUDA_DEVICE.
  * Implemented in result_owner_cuda.cu; every exit restores the caller's
  * current device, and a failure leaves *data untouched.
  */
-xtbloom_status_t allocate_cuda_result_arena(std::int32_t device_id, std::size_t size_bytes,
+vibeqc_xtb_status_t allocate_cuda_result_arena(std::int32_t device_id, std::size_t size_bytes,
                                             void** data, std::string& error) noexcept;
 /* Frees a CUDA arena, preserving the caller's current device on exit. */
 void free_cuda_result_arena(std::int32_t device_id, void* data) noexcept;
-#endif  // XTBLOOM_HAS_CUDA
+#endif  // VIBEQC_XTB_HAS_CUDA
 
 /* Scalar width and natural alignment for one supported DLPack dtype code/bits
  * pair, or zero when unsupported. */
 std::size_t dlpack_dtype_size(std::int32_t code, std::int32_t bits) noexcept;
 
 /* The DLPack device type reported for one xtbloom memory space; -1 if unknown. */
-std::int32_t dlpack_device_type(xtbloom_memory_space_t memory_space) noexcept;
+std::int32_t dlpack_device_type(vibeqc_xtb_memory_space_t memory_space) noexcept;
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail
 
-#endif /* XTBLOOM_RUNTIME_RESULT_OWNER_HPP */
+#endif /* VIBEQC_XTB_RUNTIME_RESULT_OWNER_HPP */

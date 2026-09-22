@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_EIGENSOLVER_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_EIGENSOLVER_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_EIGENSOLVER_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_EIGENSOLVER_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -14,7 +14,7 @@
 #include "backends/cuda/gfn2_geometry.cuh"
 #include "runtime/nvidia_host_api.h"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /* Per-system numerical and semantic diagnostics produced asynchronously. */
 enum class Gfn2EigensolverDeviceError : std::uint32_t {
@@ -587,6 +587,6 @@ Gfn2EigensolverLaunchResult solve_gfn2_eigensystems_cuda(
     const Gfn2EigensolverDeviceResults& results, std::uint32_t* system_errors,
     std::uint32_t* device_error, cudaStream_t stream = nullptr) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_EIGENSOLVER_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_EIGENSOLVER_CUH

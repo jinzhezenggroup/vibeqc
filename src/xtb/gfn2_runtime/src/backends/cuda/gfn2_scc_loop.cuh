@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_SCC_LOOP_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_LOOP_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_SCC_LOOP_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_LOOP_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -10,7 +10,7 @@
 
 #include "backends/cuda/gfn2_scc_iteration.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 inline constexpr std::uint32_t kGfn2SccLoopAbiVersion = 3u;
 
@@ -276,6 +276,6 @@ class Gfn2SccLoopCudaGraphOwner {
     const Gfn2SccIterationBinding& binding, const Gfn2GeometryEpochConsumerDevice& geometry,
     cudaStream_t stream = nullptr) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_SCC_LOOP_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_LOOP_CUH

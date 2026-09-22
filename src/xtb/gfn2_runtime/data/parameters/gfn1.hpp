@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <type_traits>
 
-namespace xtbloom::parameters::gfn1 {
+namespace vibeqc::xtb::parameters::gfn1 {
 
 inline constexpr std::uint32_t kSchemaVersion = 2u;
 inline constexpr char kSourceRevision[] = "fa8a4416e8fe093d0075bc10ac875494c2a449a9";
@@ -1348,4 +1348,4 @@ inline constexpr std::array<PairScaleOverride, 869u> kPairScaleOverrides{{
   return kGlobal.pair_scale_default;
 }
 
-}  // namespace xtbloom::parameters::gfn1
+}  // namespace vibeqc::xtb::parameters::gfn1

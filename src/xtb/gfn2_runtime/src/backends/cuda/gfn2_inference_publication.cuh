@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_INFERENCE_PUBLICATION_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_INFERENCE_PUBLICATION_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_INFERENCE_PUBLICATION_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_INFERENCE_PUBLICATION_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -12,7 +12,7 @@
 #include "backends/cuda/gfn2_geometry.cuh"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 inline constexpr std::uint32_t kGfn2InferencePublicationAbiVersion = 2u;
 
@@ -73,7 +73,7 @@ struct Gfn2InferencePublicationDeviceInput {
 
   const std::uint64_t* iterations = nullptr;
   const std::uint8_t* converged = nullptr;
-  const xtbloom_status_t* system_statuses = nullptr;
+  const vibeqc_xtb_status_t* system_statuses = nullptr;
   std::int64_t scc_elements = 0;
 
   const double* energies = nullptr;
@@ -96,7 +96,7 @@ struct Gfn2InferencePublicationDeviceInput {
   /*
    * Molecular-dipole inputs are stationary, charge-channel multipoles in the
    * same global atom order as plan.atom_offsets. They are required only when
-   * XTBLOOM_COMPUTE_DIPOLE_MOMENTS is requested. positions and
+   * VIBEQC_XTB_COMPUTE_DIPOLE_MOMENTS is requested. positions and
    * atomic_dipoles contain three doubles per atom; atomic_charges is shared
    * with the optional public atomic-charge output above and must therefore be
    * bound when either property is requested.
@@ -120,7 +120,7 @@ struct Gfn2InferencePublicationDeviceResults {
 
   std::int32_t* iterations = nullptr;
   std::uint8_t* converged = nullptr;
-  xtbloom_status_t* system_statuses = nullptr;
+  vibeqc_xtb_status_t* system_statuses = nullptr;
   std::int64_t batch_elements = 0;
   std::uint64_t plan_token = 0u;
 
@@ -176,6 +176,6 @@ cudaError_t publish_gfn2_inference_results_cuda(
     const Gfn2InferencePublicationDeviceDiagnostics& diagnostics,
     cudaStream_t stream = nullptr) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_INFERENCE_PUBLICATION_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_INFERENCE_PUBLICATION_CUH

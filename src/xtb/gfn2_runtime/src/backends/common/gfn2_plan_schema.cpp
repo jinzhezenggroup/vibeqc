@@ -9,7 +9,7 @@
 #include <iterator>
 #include <limits>
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 namespace {
 
 struct AddressRange {
@@ -1633,4 +1633,4 @@ Gfn2PlanSchemaDiagnostic project_gfn2_element_identity_projection_host(
   return success();
 }
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail

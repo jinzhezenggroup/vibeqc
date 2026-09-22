@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_EXTERNAL_POINT_CHARGES_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_EXTERNAL_POINT_CHARGES_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_EXTERNAL_POINT_CHARGES_HPP
+#define VIBEQC_XTB_MODEL_GFN2_EXTERNAL_POINT_CHARGES_HPP
 
 #include <cstdint>
 #include <string>
@@ -10,7 +10,7 @@
 #include "model/gfn2/basis.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 /*
  * Geometry-independent layout and shell hardnesses for GFN2 external point
@@ -47,7 +47,7 @@ struct ExternalPointChargePlan {
  * selecting generated GFN2 hardnesses, this is checked against the basis shell
  * layout so an accidentally mismatched element list fails during setup.
  */
-xtbloom_status_t make_external_point_charge_plan(const BasisPlan& basis,
+vibeqc_xtb_status_t make_external_point_charge_plan(const BasisPlan& basis,
                                                  const std::int32_t* atomic_numbers,
                                                  std::int64_t total_point_charges,
                                                  const std::int64_t* point_charge_offsets,
@@ -63,7 +63,7 @@ xtbloom_status_t make_external_point_charge_plan(const BasisPlan& basis,
  * For zero point sites, all point-site pointers may be NULL and the shell
  * output is still overwritten with zero.
  */
-xtbloom_status_t evaluate_external_point_charge_potential_cpu(
+vibeqc_xtb_status_t evaluate_external_point_charge_potential_cpu(
     const ExternalPointChargePlan& plan, const double* qm_positions, const double* point_positions,
     const double* point_charges, const double* point_hardnesses, double* shell_potentials,
     std::string& error);
@@ -77,7 +77,7 @@ xtbloom_status_t evaluate_external_point_charge_potential_cpu(
  * follow BasisPlan shell order. This routine deliberately consumes the
  * precomputed potential used by SCC instead of recomputing it.
  */
-xtbloom_status_t add_external_point_charge_energy_cpu(const ExternalPointChargePlan& plan,
+vibeqc_xtb_status_t add_external_point_charge_energy_cpu(const ExternalPointChargePlan& plan,
                                                       const double* shell_charges,
                                                       const double* shell_potentials,
                                                       double* energies, std::string& error);
@@ -89,11 +89,11 @@ xtbloom_status_t add_external_point_charge_energy_cpu(const ExternalPointChargeP
  * point-charge term. Coincident QM/site positions are valid for finite
  * positive hardnesses and contribute zero force.
  */
-xtbloom_status_t add_external_point_charge_forces_cpu(
+vibeqc_xtb_status_t add_external_point_charge_forces_cpu(
     const ExternalPointChargePlan& plan, const double* qm_positions, const double* point_positions,
     const double* point_charges, const double* point_hardnesses, const double* shell_charges,
     double* qm_forces, double* point_forces, std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_EXTERNAL_POINT_CHARGES_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_EXTERNAL_POINT_CHARGES_HPP

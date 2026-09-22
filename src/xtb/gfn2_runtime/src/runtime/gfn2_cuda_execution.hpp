@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_RUNTIME_GFN2_CUDA_EXECUTION_HPP
+#ifndef VIBEQC_XTB_RUNTIME_GFN2_CUDA_EXECUTION_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_RUNTIME_GFN2_CUDA_EXECUTION_HPP
+#define VIBEQC_XTB_RUNTIME_GFN2_CUDA_EXECUTION_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -11,7 +11,7 @@
 #include "runtime/request.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 
 /*
  * Opaque identity for one runtime-owned numerical leaf.
@@ -207,7 +207,7 @@ struct Gfn2CudaNativeLatticeTestIdentity {
   bool poisoned = false;
 };
 
-#if defined(XTBLOOM_CUDA_TEST_HOOKS)
+#if defined(VIBEQC_XTB_CUDA_TEST_HOOKS)
 /*
  * Test-only failure points for the context-owned native-lattice staging
  * transaction. Each armed fault is consumed once so a test can exercise the
@@ -276,22 +276,22 @@ void arm_gfn2_cuda_execution_test_fault(Gfn2CudaExecutionTestFault fault) noexce
  * factor, and committed generation.
  */
 struct Gfn2CudaNumericalInputView {
-  xtbloom_const_buffer_t positions{};
-  xtbloom_const_buffer_t point_charge_positions{};
-  xtbloom_const_buffer_t point_charge_values{};
-  xtbloom_const_buffer_t point_charge_gammas{};
-  xtbloom_const_buffer_t atomic_potential_shifts{};
-  xtbloom_const_buffer_t charge_response_matrix{};
+  vibeqc_xtb_const_buffer_t positions{};
+  vibeqc_xtb_const_buffer_t point_charge_positions{};
+  vibeqc_xtb_const_buffer_t point_charge_values{};
+  vibeqc_xtb_const_buffer_t point_charge_gammas{};
+  vibeqc_xtb_const_buffer_t atomic_potential_shifts{};
+  vibeqc_xtb_const_buffer_t charge_response_matrix{};
   /* ABI-v3 interaction metadata remains numerical state: FRESH calls may
    * attach, change, or detach a field without rebuilding the fixed topology.
    * total_interactions is zero for short-prefix callers. */
   std::int64_t total_interactions = 0;
-  xtbloom_const_buffer_t interaction_descriptors{};
-  xtbloom_const_buffer_t interaction_payload{};
-  xtbloom_const_buffer_t requested_mask{};
+  vibeqc_xtb_const_buffer_t interaction_descriptors{};
+  vibeqc_xtb_const_buffer_t interaction_payload{};
+  vibeqc_xtb_const_buffer_t requested_mask{};
 };
 
-#ifdef XTBLOOM_CUDA_TEST_HOOKS
+#ifdef VIBEQC_XTB_CUDA_TEST_HOOKS
 /* White-box construction faults used only by CUDA runtime-owner tests. The
  * next prepared candidate consumes the selected hook and then resets it. */
 enum class Gfn2CudaAdmissionAliasTestHook : std::uint32_t {
@@ -328,20 +328,20 @@ class Gfn2CudaExecutionCache : public RequestCompletion {
   Gfn2CudaExecutionCache(const Gfn2CudaExecutionCache&) = delete;
   Gfn2CudaExecutionCache& operator=(const Gfn2CudaExecutionCache&) = delete;
 
-  [[nodiscard]] xtbloom_status_t prepare_host(const xtbloom_batch_t& batch,
-                                              const xtbloom_compute_options_t& options,
+  [[nodiscard]] vibeqc_xtb_status_t prepare_host(const vibeqc_xtb_batch_t& batch,
+                                              const vibeqc_xtb_compute_options_t& options,
                                               bool& reused, std::string& error);
 
   /* Prepare a plan-owned runtime from topology metadata without reading the
    * caller's numerical buffers. This permits device-resident geometry during
    * plan creation; the first compute refreshes the prepared seed from the real
    * descriptor before executing or publishing results. */
-  [[nodiscard]] xtbloom_status_t prepare_topology_only(const xtbloom_batch_t& batch,
-                                                       const xtbloom_compute_options_t& options,
+  [[nodiscard]] vibeqc_xtb_status_t prepare_topology_only(const vibeqc_xtb_batch_t& batch,
+                                                       const vibeqc_xtb_compute_options_t& options,
                                                        std::string& error);
 
   /* Enqueue one allocation-free fixed-topology numerical transaction. */
-  [[nodiscard]] xtbloom_status_t refresh_numerical_async(const Gfn2CudaNumericalInputView& input,
+  [[nodiscard]] vibeqc_xtb_status_t refresh_numerical_async(const Gfn2CudaNumericalInputView& input,
                                                          std::string& error);
 
   /*
@@ -353,7 +353,7 @@ class Gfn2CudaExecutionCache : public RequestCompletion {
    * still resets the driver-visible terminal trace for the new inference
    * attempt.
    */
-  [[nodiscard]] xtbloom_status_t execute_inference_async(Gfn2CudaSccStartMode mode,
+  [[nodiscard]] vibeqc_xtb_status_t execute_inference_async(Gfn2CudaSccStartMode mode,
                                                          std::string& error);
 
   [[nodiscard]] bool valid() const noexcept;
@@ -363,37 +363,37 @@ class Gfn2CudaExecutionCache : public RequestCompletion {
    * contracts from SCC/request-graph construction. Definitions exist only in
    * test builds, but the declarations remain unconditional so every
    * translation unit sees the same internal class definition. */
-  [[nodiscard]] xtbloom_status_t validate_native_lattice_test_only(const xtbloom_batch_t& batch,
+  [[nodiscard]] vibeqc_xtb_status_t validate_native_lattice_test_only(const vibeqc_xtb_batch_t& batch,
                                                                    std::string& error);
   [[nodiscard]] Gfn2CudaNativeLatticeTestIdentity native_lattice_test_identity() const noexcept;
 
   /* The single-flight cache is its own preallocated completion owner, so
    * publishing it into a reusable request needs no per-enqueue allocation. */
-  [[nodiscard]] xtbloom_status_t probe(bool wait,
+  [[nodiscard]] vibeqc_xtb_status_t probe(bool wait,
                                        RequestCompletionResult& result) noexcept override;
   void settle_noexcept() noexcept override;
 
  private:
-  friend xtbloom_status_t execute_restricted_gfn2_cuda_impl(
-      Gfn2CudaExecutionCache& cache, const xtbloom_batch_t& batch,
-      const xtbloom_compute_options_t& options, xtbloom_batch_result_t& result,
+  friend vibeqc_xtb_status_t execute_restricted_gfn2_cuda_impl(
+      Gfn2CudaExecutionCache& cache, const vibeqc_xtb_batch_t& batch,
+      const vibeqc_xtb_compute_options_t& options, vibeqc_xtb_batch_result_t& result,
       bool require_prepared_topology, std::string& error);
-  friend xtbloom_status_t execute_restricted_gfn2_cuda(Gfn2CudaExecutionCache& cache,
-                                                       const xtbloom_batch_t& batch,
-                                                       const xtbloom_compute_options_t& options,
-                                                       xtbloom_batch_result_t& result,
+  friend vibeqc_xtb_status_t execute_restricted_gfn2_cuda(Gfn2CudaExecutionCache& cache,
+                                                       const vibeqc_xtb_batch_t& batch,
+                                                       const vibeqc_xtb_compute_options_t& options,
+                                                       vibeqc_xtb_batch_result_t& result,
                                                        std::string& error);
-  friend xtbloom_status_t enqueue_restricted_gfn2_cuda_plan(
-      const std::shared_ptr<Gfn2CudaExecutionCache>& cache, const xtbloom_batch_t& batch,
-      const xtbloom_compute_options_t& options, const xtbloom_batch_result_t& result,
+  friend vibeqc_xtb_status_t enqueue_restricted_gfn2_cuda_plan(
+      const std::shared_ptr<Gfn2CudaExecutionCache>& cache, const vibeqc_xtb_batch_t& batch,
+      const vibeqc_xtb_compute_options_t& options, const vibeqc_xtb_batch_result_t& result,
       RequestSubmission& submission, std::string& error);
-  friend xtbloom_status_t enqueue_restricted_gfn2_cuda(
-      const std::shared_ptr<Gfn2CudaExecutionCache>& cache, const xtbloom_batch_t& batch,
-      const xtbloom_compute_options_t& options, const xtbloom_batch_result_t& result,
+  friend vibeqc_xtb_status_t enqueue_restricted_gfn2_cuda(
+      const std::shared_ptr<Gfn2CudaExecutionCache>& cache, const vibeqc_xtb_batch_t& batch,
+      const vibeqc_xtb_compute_options_t& options, const vibeqc_xtb_batch_result_t& result,
       RequestSubmission& submission, std::string& error);
-  friend xtbloom_status_t enqueue_restricted_gfn2_cuda_impl(
-      const std::shared_ptr<Gfn2CudaExecutionCache>& cache, const xtbloom_batch_t& batch,
-      const xtbloom_compute_options_t& options, const xtbloom_batch_result_t& result,
+  friend vibeqc_xtb_status_t enqueue_restricted_gfn2_cuda_impl(
+      const std::shared_ptr<Gfn2CudaExecutionCache>& cache, const vibeqc_xtb_batch_t& batch,
+      const vibeqc_xtb_compute_options_t& options, const vibeqc_xtb_batch_result_t& result,
       bool require_prepared_topology, RequestSubmission& submission, std::string& error);
 
   struct Impl;
@@ -413,37 +413,37 @@ class Gfn2CudaExecutionCache : public RequestCompletion {
  * separate exit boundary and may fail before or after output commit, as
  * documented by the public API.
  */
-[[nodiscard]] xtbloom_status_t execute_restricted_gfn2_cuda(
-    Gfn2CudaExecutionCache& cache, const xtbloom_batch_t& batch,
-    const xtbloom_compute_options_t& options, xtbloom_batch_result_t& result, std::string& error);
+[[nodiscard]] vibeqc_xtb_status_t execute_restricted_gfn2_cuda(
+    Gfn2CudaExecutionCache& cache, const vibeqc_xtb_batch_t& batch,
+    const vibeqc_xtb_compute_options_t& options, vibeqc_xtb_batch_result_t& result, std::string& error);
 
 /* Plan-owned variant of the public transaction. It uses the same pointer and
- * canonical topology staging as xtbloom_compute, but rejects a topology
+ * canonical topology staging as vibeqc_xtb_compute, but rejects a topology
  * candidate before numerical refresh instead of rebuilding the prepared
  * runtime. This is the fixed-topology corruption gate for device descriptors. */
-[[nodiscard]] xtbloom_status_t execute_restricted_gfn2_cuda_plan(
-    Gfn2CudaExecutionCache& cache, const xtbloom_batch_t& batch,
-    const xtbloom_compute_options_t& options, xtbloom_batch_result_t& result, std::string& error);
+[[nodiscard]] vibeqc_xtb_status_t execute_restricted_gfn2_cuda_plan(
+    Gfn2CudaExecutionCache& cache, const vibeqc_xtb_batch_t& batch,
+    const vibeqc_xtb_compute_options_t& options, vibeqc_xtb_batch_result_t& result, std::string& error);
 
 /* Submit one fixed-topology CUDA plan transaction without waiting for
  * inference or caller-output publication. Descriptor structs are copied,
  * every host numerical leaf is snapshotted, host topology is compared before
  * return, and device topology is compared in owner-stream order before the
  * transactional result gate can commit any caller output. */
-[[nodiscard]] xtbloom_status_t enqueue_restricted_gfn2_cuda_plan(
-    const std::shared_ptr<Gfn2CudaExecutionCache>& cache, const xtbloom_batch_t& batch,
-    const xtbloom_compute_options_t& options, const xtbloom_batch_result_t& result,
+[[nodiscard]] vibeqc_xtb_status_t enqueue_restricted_gfn2_cuda_plan(
+    const std::shared_ptr<Gfn2CudaExecutionCache>& cache, const vibeqc_xtb_batch_t& batch,
+    const vibeqc_xtb_compute_options_t& options, const vibeqc_xtb_batch_result_t& result,
     RequestSubmission& submission, std::string& error);
 
 /* Context-owned counterpart that transactionally prepares or reuses the
  * current topology before submitting the same asynchronous inference/result
  * protocol. Topology construction may perform bounded setup waits, but an
  * already prepared topology never waits for inference or caller publication. */
-[[nodiscard]] xtbloom_status_t enqueue_restricted_gfn2_cuda(
-    const std::shared_ptr<Gfn2CudaExecutionCache>& cache, const xtbloom_batch_t& batch,
-    const xtbloom_compute_options_t& options, const xtbloom_batch_result_t& result,
+[[nodiscard]] vibeqc_xtb_status_t enqueue_restricted_gfn2_cuda(
+    const std::shared_ptr<Gfn2CudaExecutionCache>& cache, const vibeqc_xtb_batch_t& batch,
+    const vibeqc_xtb_compute_options_t& options, const vibeqc_xtb_batch_result_t& result,
     RequestSubmission& submission, std::string& error);
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail
 
-#endif  // XTBLOOM_RUNTIME_GFN2_CUDA_EXECUTION_HPP
+#endif  // VIBEQC_XTB_RUNTIME_GFN2_CUDA_EXECUTION_HPP

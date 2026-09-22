@@ -16,7 +16,7 @@
 
 #include "generated_gfn2_electronic_native.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct SccDriverPlanData {
   WavefunctionLayout wavefunction;
@@ -298,16 +298,16 @@ const T* offset_pointer(const void* base, std::size_t offset) {
   return reinterpret_cast<const T*>(static_cast<const unsigned char*>(base) + offset);
 }
 
-xtbloom_status_t validate_plan(const SccDriverPlan& plan, std::string& error) {
+vibeqc_xtb_status_t validate_plan(const SccDriverPlan& plan, std::string& error) {
   if (!plan.sealed() || plan.identity() == nullptr || plan.batch_size() <= 0 ||
       plan.maximum_iterations() == 0u || !std::isfinite(plan.electronic_temperature()) ||
       plan.electronic_temperature() < 0.0 || !std::isfinite(plan.energy_tolerance()) ||
       !(plan.energy_tolerance() > 0.0) || plan.state_size_bytes() == 0u ||
       plan.workspace_size_bytes() == 0u) {
     error = "SCC driver plan is not sealed or has invalid metadata";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 bool same_field_layout(const WavefunctionFieldLayout& first,
@@ -429,7 +429,7 @@ bool same_mixer_plan(const SccMixerPlan& first, const SccMixerPlan& second) {
          first.vector_offsets() == second.vector_offsets();
 }
 
-xtbloom_status_t validate_wavefunction(const SccDriverPlanData& data,
+vibeqc_xtb_status_t validate_wavefunction(const SccDriverPlanData& data,
                                        const WavefunctionView& wavefunction, std::string& error) {
   WavefunctionSystemView ignored;
   return make_wavefunction_system_view(data.wavefunction, wavefunction, 0, ignored, error);
@@ -473,7 +473,7 @@ bool exact_state_binding(const SccDriverPlanData& data, const SccDriverState& st
          state.iterations ==
              offset_pointer<std::uint64_t>(state.workspace_base, data.state_iteration_offset) &&
          state.system_statuses ==
-             offset_pointer<xtbloom_status_t>(state.workspace_base, data.state_status_offset) &&
+             offset_pointer<vibeqc_xtb_status_t>(state.workspace_base, data.state_status_offset) &&
          state.initialized ==
              offset_pointer<std::uint8_t>(state.workspace_base, data.state_initialized_offset) &&
          state.converged ==
@@ -606,7 +606,7 @@ bool exact_workspace_binding(const SccDriverPlanData& data, const SccDriverWorks
            workspace.periodic_embedding_energies ==
                offset_pointer<double>(workspace.workspace_base, data.periodic_energy_offset) &&
            workspace.periodic_system_statuses ==
-               offset_pointer<xtbloom_status_t>(workspace.workspace_base,
+               offset_pointer<vibeqc_xtb_status_t>(workspace.workspace_base,
                                                 data.periodic_status_offset) &&
            workspace.periodic_embedding_workspace.potential_scratch ==
                offset_pointer<double>(workspace.workspace_base, data.periodic_scratch_offset) &&
@@ -624,7 +624,7 @@ bool exact_workspace_binding(const SccDriverPlanData& data, const SccDriverWorks
          workspace.staged_mixer_state.plan_identity == data.mixer.identity() &&
          workspace.mixer_workspace.plan_identity == data.mixer.identity() &&
          workspace.thermodynamics.system_statuses ==
-             offset_pointer<xtbloom_status_t>(workspace.workspace_base,
+             offset_pointer<vibeqc_xtb_status_t>(workspace.workspace_base,
                                               data.thermodynamic_status_offset) &&
          workspace.thermodynamics.chemical_potentials ==
              offset_pointer<double>(workspace.workspace_base, data.chemical_potential_offset) &&
@@ -693,52 +693,52 @@ void commit_system_wavefunction(const WavefunctionLayout& layout, std::size_t sy
                     destination.energy_weighted_density);
 }
 
-xtbloom_status_t validate_iteration_bindings(
+vibeqc_xtb_status_t validate_iteration_bindings(
     const SccDriverPlan& plan, const SccDriverPlanData& data, const SccDriverGeometryView& geometry,
     const CpuLinearAlgebraBackend& backend, const EigensolverOverlapCache& overlap_cache,
     const WavefunctionView& wavefunction, const SccMixerState& mixer_state,
     const SccDriverState& state, const SccDriverWorkspace& workspace, std::string& error);
-xtbloom_status_t prepare_potentials_and_hamiltonian(const SccDriverPlanData& data,
+vibeqc_xtb_status_t prepare_potentials_and_hamiltonian(const SccDriverPlanData& data,
                                                     const SccDriverGeometryView& geometry,
                                                     const SccDriverWorkspace& workspace,
                                                     std::string& error,
                                                     const SccParallelExecutor* parallel);
-xtbloom_status_t prepare_system_potentials_and_hamiltonian(
+vibeqc_xtb_status_t prepare_system_potentials_and_hamiltonian(
     const SccDriverPlanData& data, const SccDriverGeometryView& geometry, std::size_t system,
     const SccDriverWorkspace& workspace, std::string& error, const SccParallelExecutor* parallel);
 void copy_raw_population_system(const WavefunctionLayout& layout, std::size_t system,
                                 const SccDriverWorkspace& workspace);
-xtbloom_status_t rebuild_mixed_atomic_charges(const SccDriverPlanData& data, std::size_t system,
+vibeqc_xtb_status_t rebuild_mixed_atomic_charges(const SccDriverPlanData& data, std::size_t system,
                                               const SccDriverWorkspace& workspace,
                                               std::string& error);
-xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
+vibeqc_xtb_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
                                             const SccDriverGeometryView& geometry,
                                             std::size_t system, const SccDriverWorkspace& workspace,
                                             std::string& error);
 
 }  // namespace
 
-xtbloom_status_t iterate_scc_driver_batch_cpu(
+vibeqc_xtb_status_t iterate_scc_driver_batch_cpu(
     const SccDriverPlan& plan, const SccDriverGeometryView& geometry,
     const CpuLinearAlgebraBackend& backend, const EigensolverOverlapCache& overlap_cache,
     const WavefunctionView& wavefunction, const SccMixerState& mixer_state,
     const SccDriverState& state, const SccDriverWorkspace& workspace, std::string& error,
     const SccParallelExecutor* parallel) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccDriverPlanData& data = *plan.identity();
   status = validate_iteration_bindings(plan, data, geometry, backend, overlap_cache, wavefunction,
                                        mixer_state, state, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
   const std::size_t batch = static_cast<std::size_t>(data.wavefunction.batch_size);
   bool any_active = false;
   for (std::size_t system = 0u; system < batch; ++system) {
-    const bool active = state.system_statuses[system] == XTBLOOM_STATUS_SUCCESS &&
+    const bool active = state.system_statuses[system] == VIBEQC_XTB_STATUS_SUCCESS &&
                         state.converged[system] == 0u &&
                         state.iterations[system] < data.maximum_iterations;
     workspace.active_systems[system] = active ? 1u : 0u;
@@ -746,18 +746,18 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
   }
   if (!any_active) {
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   }
 
   /* Every operation up to the mixer barrier publishes only into workspace. */
   copy_wavefunction(data.wavefunction, wavefunction, workspace.staged_wavefunction);
   status = prepare_potentials_and_hamiltonian(data, geometry, workspace, error, parallel);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
   const double nan = std::numeric_limits<double>::quiet_NaN();
-  std::fill_n(workspace.thermodynamics.system_statuses, batch, XTBLOOM_STATUS_INVALID_ARGUMENT);
+  std::fill_n(workspace.thermodynamics.system_statuses, batch, VIBEQC_XTB_STATUS_INVALID_ARGUMENT);
   std::fill_n(workspace.thermodynamics.chemical_potentials, 2u * batch, nan);
   std::fill_n(workspace.thermodynamics.entropies, batch, nan);
   std::fill_n(workspace.thermodynamics.band_energies, batch, nan);
@@ -774,12 +774,12 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
           geometry.geometry_generation, workspace.hamiltonian + hamiltonian_base,
           data.electronic_temperature, backend, workspace.eigensolver_workspace,
           workspace.staged_wavefunction, workspace.thermodynamics, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) {
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) {
         /* Binding/backend contract failures are whole-call failures; all solved
          * peers still live only in the staged wavefunction at this point. */
         return status;
       }
-      if (workspace.thermodynamics.system_statuses[system] != XTBLOOM_STATUS_SUCCESS) {
+      if (workspace.thermodynamics.system_statuses[system] != VIBEQC_XTB_STATUS_SUCCESS) {
         workspace.active_systems[system] = 2u;
         const std::int64_t density_begin = data.wavefunction.density.system_offsets[system];
         const std::int64_t density_end = data.wavefunction.density.system_offsets[system + 1u];
@@ -812,10 +812,10 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
       status = evaluate_mulliken_population_system_cpu(
           data.mulliken, geometry.integrals, density, population, static_cast<std::int64_t>(system),
           workspace.mulliken_workspace, error, parallel);
-      if (status == XTBLOOM_STATUS_INVALID_ARGUMENT || status == XTBLOOM_STATUS_NOT_SUPPORTED) {
+      if (status == VIBEQC_XTB_STATUS_INVALID_ARGUMENT || status == VIBEQC_XTB_STATUS_NOT_SUPPORTED) {
         return status;
       }
-      if (status != XTBLOOM_STATUS_SUCCESS) {
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) {
         workspace.active_systems[system] = 6u;
       }
     }
@@ -830,10 +830,10 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
       continue;
     }
     status = evaluate_scc_energy_system(data, geometry, system, workspace, error);
-    if (status == XTBLOOM_STATUS_INVALID_ARGUMENT || status == XTBLOOM_STATUS_NOT_SUPPORTED) {
+    if (status == VIBEQC_XTB_STATUS_INVALID_ARGUMENT || status == VIBEQC_XTB_STATUS_NOT_SUPPORTED) {
       return status;
     }
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       workspace.active_systems[system] = 6u;
     }
   }
@@ -859,7 +859,7 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
     status =
         prepare_scc_mixer_system_transaction_cpu(data.mixer, static_cast<std::int64_t>(system),
                                                  mixer_state, workspace.staged_mixer_state, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       /* Defensive, unreachable after validate_iteration_bindings. */
       return status;
     }
@@ -868,13 +868,13 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
     status = mix_scc_broyden_system_cpu(data.mixer, static_cast<std::int64_t>(system),
                                         workspace.staged_wavefunction, workspace.staged_mixer_state,
                                         workspace.mixer_workspace, error);
-    if (status == XTBLOOM_STATUS_INVALID_ARGUMENT) {
+    if (status == VIBEQC_XTB_STATUS_INVALID_ARGUMENT) {
       /* Defensive, unreachable after validate_iteration_bindings. Earlier peers
        * were already committed per system; only the failing system's staged
        * transaction is discarded. */
       return status;
     }
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       /* Publish only the failed status. The system's public history arrays
        * remain byte-identical to the input; its transaction is discarded. */
       mixer_state.system_statuses[system] = workspace.staged_mixer_state.system_statuses[system];
@@ -888,7 +888,7 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
       /* Non-finite convergence history of one active system is data-level:
        * discard this system's staged transaction so successful peers still
        * commit. */
-      workspace.staged_mixer_state.system_statuses[system] = XTBLOOM_STATUS_INTERNAL_ERROR;
+      workspace.staged_mixer_state.system_statuses[system] = VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       mixer_state.system_statuses[system] = workspace.staged_mixer_state.system_statuses[system];
       workspace.active_systems[system] = 3u;
       continue;
@@ -907,12 +907,12 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
       copy_raw_population_system(data.wavefunction, system, workspace);
     }
     status = rebuild_mixed_atomic_charges(data, system, workspace, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       /* Discard this system's staged mixer transaction: its public history
        * never advances ahead of its public wavefunction. This path is expected
        * only for a finite-but-unrepresentable shell reduction, and it is
        * isolated per system so successful peers can still commit. */
-      workspace.staged_mixer_state.system_statuses[system] = XTBLOOM_STATUS_INTERNAL_ERROR;
+      workspace.staged_mixer_state.system_statuses[system] = VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       mixer_state.system_statuses[system] = workspace.staged_mixer_state.system_statuses[system];
       workspace.active_systems[system] = 3u;
       continue;
@@ -921,26 +921,26 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
     status =
         commit_scc_mixer_system_transaction_cpu(data.mixer, static_cast<std::int64_t>(system),
                                                 workspace.staged_mixer_state, mixer_state, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       /* Defensive, unreachable after validate_iteration_bindings. */
       return status;
     }
   }
 
-  xtbloom_status_t first_failure = XTBLOOM_STATUS_SUCCESS;
+  vibeqc_xtb_status_t first_failure = VIBEQC_XTB_STATUS_SUCCESS;
   bool first_failure_was_periodic = false;
   bool first_failure_was_preparation = false;
   for (std::size_t system = 0u; system < batch; ++system) {
     if (workspace.active_systems[system] == 2u || workspace.active_systems[system] == 3u ||
         workspace.active_systems[system] == 5u || workspace.active_systems[system] == 6u ||
         workspace.active_systems[system] == 7u) {
-      const xtbloom_status_t failure =
+      const vibeqc_xtb_status_t failure =
           workspace.active_systems[system] == 2u
-              ? XTBLOOM_STATUS_EIGENSOLVER_FAILED
+              ? VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED
               : (workspace.active_systems[system] == 5u || workspace.active_systems[system] == 7u
-                     ? XTBLOOM_STATUS_INTERNAL_ERROR
+                     ? VIBEQC_XTB_STATUS_INTERNAL_ERROR
                      : (workspace.active_systems[system] == 6u
-                            ? XTBLOOM_STATUS_INTERNAL_ERROR
+                            ? VIBEQC_XTB_STATUS_INTERNAL_ERROR
                             : workspace.staged_mixer_state.system_statuses[system]));
       state.system_statuses[system] = failure;
       state.free_energies[system] = nan;
@@ -964,7 +964,7 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
       if (workspace.active_systems[system] != 5u && workspace.active_systems[system] != 7u) {
         ++state.iterations[system];
       }
-      if (first_failure == XTBLOOM_STATUS_SUCCESS) {
+      if (first_failure == VIBEQC_XTB_STATUS_SUCCESS) {
         first_failure = failure;
         first_failure_was_periodic = workspace.active_systems[system] == 5u;
         first_failure_was_preparation = workspace.active_systems[system] == 7u;
@@ -1005,25 +1005,25 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
     state.iterations[system] = old_iteration + 1u;
     state.converged[system] = converged ? 1u : 0u;
     if (!converged && state.iterations[system] >= data.maximum_iterations) {
-      state.system_statuses[system] = XTBLOOM_STATUS_SCC_NOT_CONVERGED;
-      if (first_failure == XTBLOOM_STATUS_SUCCESS) {
-        first_failure = XTBLOOM_STATUS_SCC_NOT_CONVERGED;
+      state.system_statuses[system] = VIBEQC_XTB_STATUS_SCC_NOT_CONVERGED;
+      if (first_failure == VIBEQC_XTB_STATUS_SUCCESS) {
+        first_failure = VIBEQC_XTB_STATUS_SCC_NOT_CONVERGED;
       }
     } else {
-      state.system_statuses[system] = XTBLOOM_STATUS_SUCCESS;
+      state.system_statuses[system] = VIBEQC_XTB_STATUS_SUCCESS;
     }
   }
 
-  if (first_failure != XTBLOOM_STATUS_SUCCESS) {
-    if (first_failure == XTBLOOM_STATUS_EIGENSOLVER_FAILED) {
+  if (first_failure != VIBEQC_XTB_STATUS_SUCCESS) {
+    if (first_failure == VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED) {
       error = "one or more SCC systems failed during generalized eigensolve";
-    } else if (first_failure == XTBLOOM_STATUS_SCC_NOT_CONVERGED) {
+    } else if (first_failure == VIBEQC_XTB_STATUS_SCC_NOT_CONVERGED) {
       error = "one or more SCC systems reached the maximum iteration count";
     } else if (first_failure_was_periodic) {
       error = "one or more SCC systems failed during periodic charge embedding";
     } else if (first_failure_was_preparation) {
       error = "one or more SCC systems failed during potential or Mulliken preparation";
-    } else if (first_failure == XTBLOOM_STATUS_INTERNAL_ERROR) {
+    } else if (first_failure == VIBEQC_XTB_STATUS_INTERNAL_ERROR) {
       error = "one or more SCC systems failed during energy assembly or mixing";
     } else {
       error = "one or more SCC systems failed during Broyden mixing";
@@ -1031,7 +1031,7 @@ xtbloom_status_t iterate_scc_driver_batch_cpu(
     return first_failure;
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 SccDriverPlan::SccDriverPlan(std::shared_ptr<const SccDriverPlanData> data) noexcept
@@ -1116,7 +1116,7 @@ std::size_t SccDriverPlan::resident_bytes() const noexcept {
 }
 const SccDriverPlanData* SccDriverPlan::identity() const noexcept { return data_.get(); }
 
-xtbloom_status_t make_scc_driver_plan(const WavefunctionLayout& wavefunction,
+vibeqc_xtb_status_t make_scc_driver_plan(const WavefunctionLayout& wavefunction,
                                       const MullikenPlan& mulliken, const ES2Plan& es2,
                                       const ES3Plan& es3, const AES2Plan& aes2,
                                       const EigensolverPlan& eigensolver, const SccMixerPlan& mixer,
@@ -1128,7 +1128,7 @@ xtbloom_status_t make_scc_driver_plan(const WavefunctionLayout& wavefunction,
                               kDefaultSccEnergyTolerance, plan, error);
 }
 
-xtbloom_status_t make_scc_driver_plan(const WavefunctionLayout& wavefunction,
+vibeqc_xtb_status_t make_scc_driver_plan(const WavefunctionLayout& wavefunction,
                                       const MullikenPlan& mulliken, const ES2Plan& es2,
                                       const ES3Plan& es3, const AES2Plan& aes2,
                                       const EigensolverPlan& eigensolver, const SccMixerPlan& mixer,
@@ -1141,7 +1141,7 @@ xtbloom_status_t make_scc_driver_plan(const WavefunctionLayout& wavefunction,
                               electronic_temperature, kDefaultSccEnergyTolerance, plan, error);
 }
 
-xtbloom_status_t make_scc_driver_plan(
+vibeqc_xtb_status_t make_scc_driver_plan(
     const WavefunctionLayout& wavefunction, const MullikenPlan& mulliken, const ES2Plan& es2,
     const ES3Plan& es3, const AES2Plan& aes2, const EigensolverPlan& eigensolver,
     const SccMixerPlan& mixer, const D4Plan* d4, const PeriodicEmbeddingPlan* periodic_embedding,
@@ -1152,7 +1152,7 @@ xtbloom_status_t make_scc_driver_plan(
                               electronic_temperature, kDefaultSccEnergyTolerance, plan, error);
 }
 
-xtbloom_status_t make_scc_driver_plan(
+vibeqc_xtb_status_t make_scc_driver_plan(
     const WavefunctionLayout& wavefunction, const MullikenPlan& mulliken, const ES2Plan& es2,
     const ES3Plan& es3, const AES2Plan& aes2, const EigensolverPlan& eigensolver,
     const SccMixerPlan& mixer, const D4Plan* d4, const PeriodicEmbeddingPlan* periodic_embedding,
@@ -1163,7 +1163,7 @@ xtbloom_status_t make_scc_driver_plan(
                               electronic_temperature, energy_tolerance, plan, error);
 }
 
-xtbloom_status_t make_scc_driver_plan(
+vibeqc_xtb_status_t make_scc_driver_plan(
     const WavefunctionLayout& wavefunction, const MullikenPlan& mulliken, const ES2Plan& es2,
     const ES3Plan& es3, const AES2Plan& aes2, const EigensolverPlan& eigensolver,
     const SccMixerPlan& mixer, const D4Plan* d4, const PeriodicEmbeddingPlan* periodic_embedding,
@@ -1171,9 +1171,9 @@ xtbloom_status_t make_scc_driver_plan(
     double electronic_temperature, double energy_tolerance, SccDriverPlan& plan,
     std::string& error) {
   WavefunctionWarmStartIdentity validated_wavefunction;
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       make_wavefunction_warm_start_identity(wavefunction, 0u, validated_wavefunction, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (!mulliken.sealed() || !es2.sealed() || !aes2.sealed() || !eigensolver.sealed() ||
@@ -1183,7 +1183,7 @@ xtbloom_status_t make_scc_driver_plan(
       (periodic_embedding != nullptr && !periodic_embedding->sealed()) ||
       (native_periodic != nullptr && !native_periodic->sealed())) {
     error = "SCC driver components or numerical policy are invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   /* Rebuild the canonical GFN2 component metadata from one chemical source
    * of truth. Aggregate extents are insufficient: same-sized molecules can
@@ -1203,43 +1203,43 @@ xtbloom_status_t make_scc_driver_plan(
   status = make_basis_plan(wavefunction.batch_size, wavefunction.total_atoms,
                            wavefunction.atom_offsets.data(), wavefunction.atomic_numbers.data(),
                            expected_basis, error);
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     status = make_wavefunction_layout(
         expected_basis, wavefunction.atomic_numbers.data(), wavefunction.molecular_charges.data(),
         wavefunction.unpaired_electrons.data(), wavefunction.spin_channels.data(),
         expected_wavefunction, error);
   }
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     status = make_integral_plan(expected_basis, expected_integrals, error);
   }
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     status = make_mulliken_plan(expected_basis, expected_integrals, expected_wavefunction,
                                 expected_mulliken, error);
   }
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     status = make_es2_plan(expected_basis, wavefunction.atomic_numbers.data(), expected_es2, error);
   }
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     status = make_es3_plan(expected_basis, wavefunction.atomic_numbers.data(), expected_es3, error);
   }
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     status =
         make_aes2_plan(expected_basis, wavefunction.atomic_numbers.data(), expected_aes2, error);
   }
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     status = make_eigensolver_plan(expected_wavefunction, expected_eigensolver, error,
                                    eigensolver.minimum_overlap_rcond());
   }
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     status = make_scc_mixer_plan(expected_wavefunction, mixer.history_size(), mixer.damping(),
                                  mixer.rms_tolerance(), mixer.maximum_tolerance(), expected_mixer,
                                  error);
   }
-  if (status == XTBLOOM_STATUS_SUCCESS) {
+  if (status == VIBEQC_XTB_STATUS_SUCCESS) {
     status =
         make_spin_polarization_plan(expected_basis, expected_wavefunction, expected_spin, error);
   }
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (!same_wavefunction_layout(wavefunction, expected_wavefunction) ||
@@ -1249,7 +1249,7 @@ xtbloom_status_t make_scc_driver_plan(
       !same_mixer_plan(mixer, expected_mixer) ||
       !mixer.matches_wavefunction_layout(expected_wavefunction)) {
     error = "SCC driver components do not share one canonical GFN2 chemical identity and layout";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t batch = static_cast<std::size_t>(wavefunction.batch_size);
@@ -1283,32 +1283,32 @@ xtbloom_status_t make_scc_driver_plan(
       es3.batch_shell_offsets != wavefunction.batch_shell_offsets ||
       es3.shell_gamma3.size() != static_cast<std::size_t>(wavefunction.total_shells)) {
     error = "SCC driver component plans describe different ragged topology";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (periodic_embedding != nullptr &&
       (periodic_embedding->batch_size() != wavefunction.batch_size ||
        periodic_embedding->total_atoms() != wavefunction.total_atoms ||
        periodic_embedding->atom_offsets() != wavefunction.atom_offsets)) {
     error = "SCC driver periodic embedding describes a different ragged atom topology";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (native_periodic != nullptr &&
       (native_periodic->batch_size() != wavefunction.batch_size ||
        native_periodic->total_atoms() != wavefunction.total_atoms ||
        native_periodic->atom_offsets() != wavefunction.atom_offsets)) {
     error = "SCC driver native periodic topology describes a different ragged atom topology";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (d4 != nullptr && (d4->batch_size() != wavefunction.batch_size ||
                         d4->total_atoms() != wavefunction.total_atoms ||
                         d4->atom_offsets() != wavefunction.atom_offsets ||
                         !d4->matches_atomic_numbers(wavefunction.atomic_numbers.data()))) {
     error = "SCC driver D4 plan describes a different chemical identity or ragged topology";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (mixer.vector_offsets().size() != batch + 1u) {
     error = "SCC driver mixer vector partition is malformed";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::int64_t expected_vector_offset = 0;
   for (std::size_t system = 0u; system < batch; ++system) {
@@ -1321,22 +1321,22 @@ xtbloom_status_t make_scc_driver_plan(
     if (qsh <= 0 || dipole <= 0 || quadrupole <= 0 ||
         expected_vector_offset > std::numeric_limits<std::int64_t>::max() - qsh) {
       error = "SCC driver mixed-vector dimensions are invalid";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     expected_vector_offset += qsh;
     if (expected_vector_offset > std::numeric_limits<std::int64_t>::max() - dipole) {
       error = "SCC driver mixed-vector dimensions are invalid";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     expected_vector_offset += dipole;
     if (expected_vector_offset > std::numeric_limits<std::int64_t>::max() - quadrupole) {
       error = "SCC driver mixed-vector dimensions are invalid";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     expected_vector_offset += quadrupole;
     if (mixer.vector_offsets()[system + 1u] != expected_vector_offset) {
       error = "SCC driver mixer was built for a different wavefunction layout";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -1362,7 +1362,7 @@ xtbloom_status_t make_scc_driver_plan(
   std::size_t periodic_scratch_bytes = 0u;
   if (!bytes_for(wavefunction.batch_size, sizeof(double), batch_double_bytes) ||
       !bytes_for(wavefunction.batch_size, sizeof(std::uint64_t), batch_u64_bytes) ||
-      !bytes_for(wavefunction.batch_size, sizeof(xtbloom_status_t), batch_status_bytes) ||
+      !bytes_for(wavefunction.batch_size, sizeof(vibeqc_xtb_status_t), batch_status_bytes) ||
       !bytes_for(wavefunction.batch_size, sizeof(std::uint8_t), batch_byte_bytes) ||
       !bytes_for(wavefunction.density.element_count, sizeof(double), hamiltonian_bytes) ||
       !bytes_for(wavefunction.total_shells, sizeof(double), shell_bytes) ||
@@ -1380,7 +1380,7 @@ xtbloom_status_t make_scc_driver_plan(
       !checked_multiply_size(atom_bytes, 3u, atomic_dipole_bytes) ||
       !checked_multiply_size(atom_bytes, 6u, atomic_quadrupole_bytes)) {
     error = "SCC driver caller-owned storage exceeds addressable memory";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::size_t periodic_state_bytes = periodic_embedding == nullptr ? 0u : batch_double_bytes;
   const std::size_t d4_state_bytes = d4 == nullptr ? 0u : batch_double_bytes;
@@ -1412,10 +1412,10 @@ xtbloom_status_t make_scc_driver_plan(
       created.native_periodic = *native_periodic;
       status = make_periodic_ewald_plan(created.es2, created.native_periodic, created.native_ewald,
                                         error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
       status = make_periodic_multipole_plan(created.aes2, created.native_periodic,
                                             created.native_multipole, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
     }
     created.maximum_iterations = maximum_iterations;
     created.electronic_temperature = electronic_temperature;
@@ -1451,7 +1451,7 @@ xtbloom_status_t make_scc_driver_plan(
                         created.state_internal_energy_offset) ||
         !append_segment(batch_u64_bytes, alignof(std::uint64_t), cursor,
                         created.state_iteration_offset) ||
-        !append_segment(batch_status_bytes, alignof(xtbloom_status_t), cursor,
+        !append_segment(batch_status_bytes, alignof(vibeqc_xtb_status_t), cursor,
                         created.state_status_offset) ||
         !append_segment(batch_byte_bytes, alignof(std::uint8_t), cursor,
                         created.state_initialized_offset) ||
@@ -1459,7 +1459,7 @@ xtbloom_status_t make_scc_driver_plan(
                         created.state_converged_offset) ||
         !align_up(cursor, kSccDriverWorkspaceAlignment, created.state_size_bytes)) {
       error = "SCC driver state layout overflows size_t";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     cursor = 0u;
@@ -1514,7 +1514,7 @@ xtbloom_status_t make_scc_driver_plan(
                         created.periodic_potential_offset) ||
         !append_segment(periodic_energy_bytes, alignof(double), cursor,
                         created.periodic_energy_offset) ||
-        !append_segment(periodic_status_bytes, alignof(xtbloom_status_t), cursor,
+        !append_segment(periodic_status_bytes, alignof(vibeqc_xtb_status_t), cursor,
                         created.periodic_status_offset) ||
         !append_segment(periodic_scratch_bytes, alignof(double), cursor,
                         created.periodic_scratch_offset) ||
@@ -1529,7 +1529,7 @@ xtbloom_status_t make_scc_driver_plan(
                         created.staged_mixer_state_offset) ||
         !append_segment(mixer.workspace_size_bytes(), kSccMixerWorkspaceAlignment, cursor,
                         created.mixer_scratch_offset) ||
-        !append_segment(batch_status_bytes, alignof(xtbloom_status_t), cursor,
+        !append_segment(batch_status_bytes, alignof(vibeqc_xtb_status_t), cursor,
                         created.thermodynamic_status_offset) ||
         !append_segment(chemical_potential_bytes, alignof(double), cursor,
                         created.chemical_potential_offset) ||
@@ -1543,23 +1543,23 @@ xtbloom_status_t make_scc_driver_plan(
                         created.active_system_offset) ||
         !align_up(cursor, kSccDriverWorkspaceAlignment, created.workspace_size_bytes)) {
       error = "SCC driver scratch layout overflows size_t";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
     plan = SccDriverPlan(std::make_shared<const SccDriverPlanData>(std::move(created)));
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate immutable SCC driver metadata";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t bind_scc_driver_state(const SccDriverPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_scc_driver_state(const SccDriverPlan& plan, void* workspace,
                                        std::size_t workspace_size, SccDriverState& state,
                                        std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccDriverPlanData& data = *plan.identity();
@@ -1575,7 +1575,7 @@ xtbloom_status_t bind_scc_driver_state(const SccDriverPlan& plan, void* workspac
       ranges_overlap(storage_range, plan_range) || ranges_overlap(storage_range, state_range) ||
       ranges_overlap(storage_range, error_range) || overlaps_plan_storage(data, storage_range)) {
     error = "SCC driver state storage is invalid or overlaps control storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   SccDriverState created;
@@ -1604,7 +1604,7 @@ xtbloom_status_t bind_scc_driver_state(const SccDriverPlan& plan, void* workspac
   }
   created.internal_energies = offset_pointer<double>(workspace, data.state_internal_energy_offset);
   created.iterations = offset_pointer<std::uint64_t>(workspace, data.state_iteration_offset);
-  created.system_statuses = offset_pointer<xtbloom_status_t>(workspace, data.state_status_offset);
+  created.system_statuses = offset_pointer<vibeqc_xtb_status_t>(workspace, data.state_status_offset);
   created.initialized = offset_pointer<std::uint8_t>(workspace, data.state_initialized_offset);
   created.converged = offset_pointer<std::uint8_t>(workspace, data.state_converged_offset);
   created.plan_identity = &data;
@@ -1630,17 +1630,17 @@ xtbloom_status_t bind_scc_driver_state(const SccDriverPlan& plan, void* workspac
     std::fill_n(created.periodic_embedding_energies, batch, nan);
   }
   std::fill_n(created.internal_energies, batch, nan);
-  std::fill_n(created.system_statuses, batch, XTBLOOM_STATUS_INVALID_ARGUMENT);
+  std::fill_n(created.system_statuses, batch, VIBEQC_XTB_STATUS_INVALID_ARGUMENT);
   state = created;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t bind_scc_driver_workspace(const SccDriverPlan& plan, void* workspace,
+vibeqc_xtb_status_t bind_scc_driver_workspace(const SccDriverPlan& plan, void* workspace,
                                            std::size_t workspace_size, SccDriverWorkspace& view,
                                            std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccDriverPlanData& data = *plan.identity();
@@ -1657,7 +1657,7 @@ xtbloom_status_t bind_scc_driver_workspace(const SccDriverPlan& plan, void* work
       ranges_overlap(storage_range, plan_range) || ranges_overlap(storage_range, view_range) ||
       ranges_overlap(storage_range, error_range) || overlaps_plan_storage(data, storage_range)) {
     error = "SCC driver scratch storage is invalid or overlaps control storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   SccDriverWorkspace created;
@@ -1667,7 +1667,7 @@ xtbloom_status_t bind_scc_driver_workspace(const SccDriverPlan& plan, void* work
   status =
       bind_wavefunction_view(data.wavefunction, staged_base, data.wavefunction.workspace_size_bytes,
                              created.staged_wavefunction, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   created.hamiltonian = offset_pointer<double>(workspace, data.hamiltonian_offset);
@@ -1731,7 +1731,7 @@ xtbloom_status_t bind_scc_driver_workspace(const SccDriverPlan& plan, void* work
     void* d4_base = offset_pointer<void>(workspace, data.d4_scratch_offset);
     status = bind_d4_workspace(data.d4, d4_base, data.d4.workspace_size_bytes(),
                                created.d4_workspace, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       return status;
     }
   }
@@ -1741,7 +1741,7 @@ xtbloom_status_t bind_scc_driver_workspace(const SccDriverPlan& plan, void* work
     created.periodic_embedding_energies =
         offset_pointer<double>(workspace, data.periodic_energy_offset);
     created.periodic_system_statuses =
-        offset_pointer<xtbloom_status_t>(workspace, data.periodic_status_offset);
+        offset_pointer<vibeqc_xtb_status_t>(workspace, data.periodic_status_offset);
     created.periodic_embedding_workspace = {
         offset_pointer<double>(workspace, data.periodic_scratch_offset),
         data.periodic_embedding.maximum_atoms(), data.periodic_embedding.identity()};
@@ -1751,25 +1751,25 @@ xtbloom_status_t bind_scc_driver_workspace(const SccDriverPlan& plan, void* work
   status = bind_eigensolver_worker_workspace(data.eigensolver, eigensolver_base,
                                              data.eigensolver.worker_workspace_size_bytes(),
                                              created.eigensolver_workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   void* staged_mixer_base = offset_pointer<void>(workspace, data.staged_mixer_state_offset);
   status = bind_scc_mixer_state(data.mixer, staged_mixer_base, data.mixer.state_size_bytes(),
                                 created.staged_mixer_state, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   void* mixer_base = offset_pointer<void>(workspace, data.mixer_scratch_offset);
   status = bind_scc_mixer_workspace(data.mixer, mixer_base, data.mixer.workspace_size_bytes(),
                                     created.mixer_workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
   const std::size_t batch = static_cast<std::size_t>(data.wavefunction.batch_size);
   created.thermodynamics = {
-      offset_pointer<xtbloom_status_t>(workspace, data.thermodynamic_status_offset),
+      offset_pointer<vibeqc_xtb_status_t>(workspace, data.thermodynamic_status_offset),
       batch,
       offset_pointer<double>(workspace, data.chemical_potential_offset),
       2u * batch,
@@ -1782,24 +1782,24 @@ xtbloom_status_t bind_scc_driver_workspace(const SccDriverPlan& plan, void* work
   created.plan_identity = &data;
   view = created;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t initialize_scc_driver_state_cpu(const SccDriverPlan& plan,
+vibeqc_xtb_status_t initialize_scc_driver_state_cpu(const SccDriverPlan& plan,
                                                  const WavefunctionView& wavefunction,
                                                  const SccMixerState& mixer_state,
                                                  const SccDriverState& state, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccDriverPlanData& data = *plan.identity();
   if (!exact_state_binding(data, state) || mixer_state.plan_identity != data.mixer.identity()) {
     error = "SCC driver initialization bindings do not belong to the sealed plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_wavefunction(data, wavefunction, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -1816,12 +1816,12 @@ xtbloom_status_t initialize_scc_driver_state_cpu(const SccDriverPlan& plan,
       !make_range(&error, sizeof(error), controls[4]) || !pairwise_disjoint(numerical) ||
       !pairwise_disjoint(controls) || !disjoint_from_controls(data, numerical, controls)) {
     error = "SCC driver initialization storage overlaps numerical, plan, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   /* The mixer validates every raw multipole before publishing its reset. */
   status = initialize_scc_mixer_state_cpu(data.mixer, wavefunction, mixer_state, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -1846,34 +1846,34 @@ xtbloom_status_t initialize_scc_driver_state_cpu(const SccDriverPlan& plan,
     std::fill_n(state.periodic_embedding_energies, batch, nan);
   }
   std::fill_n(state.internal_energies, batch, nan);
-  std::fill_n(state.system_statuses, batch, XTBLOOM_STATUS_SUCCESS);
+  std::fill_n(state.system_statuses, batch, VIBEQC_XTB_STATUS_SUCCESS);
   std::fill_n(state.initialized, batch, static_cast<std::uint8_t>(1u));
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t restart_scc_driver_system_cpu(const SccDriverPlan& plan, std::int64_t system,
+vibeqc_xtb_status_t restart_scc_driver_system_cpu(const SccDriverPlan& plan, std::int64_t system,
                                                const WavefunctionView& wavefunction,
                                                const SccMixerState& mixer_state,
                                                const SccDriverState& state, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const SccDriverPlanData& data = *plan.identity();
   if (!exact_state_binding(data, state) || mixer_state.plan_identity != data.mixer.identity() ||
       system < 0 || system >= data.wavefunction.batch_size) {
     error = "SCC driver restart bindings or system index are invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = validate_wavefunction(data, wavefunction, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const std::size_t index = static_cast<std::size_t>(system);
   if (state.initialized[index] != 1u) {
     error = "SCC driver system must be initialized before restart";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::array<AddressRange, 3> numerical{};
   std::array<AddressRange, 5> controls{};
@@ -1888,10 +1888,10 @@ xtbloom_status_t restart_scc_driver_system_cpu(const SccDriverPlan& plan, std::i
       !make_range(&error, sizeof(error), controls[4]) || !pairwise_disjoint(numerical) ||
       !pairwise_disjoint(controls) || !disjoint_from_controls(data, numerical, controls)) {
     error = "SCC driver restart storage overlaps numerical, plan, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   status = restart_scc_mixer_system_cpu(data.mixer, system, wavefunction, mixer_state, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   const double nan = std::numeric_limits<double>::quiet_NaN();
@@ -1914,15 +1914,15 @@ xtbloom_status_t restart_scc_driver_system_cpu(const SccDriverPlan& plan, std::i
   }
   state.internal_energies[index] = nan;
   state.iterations[index] = 0u;
-  state.system_statuses[index] = XTBLOOM_STATUS_SUCCESS;
+  state.system_statuses[index] = VIBEQC_XTB_STATUS_SUCCESS;
   state.converged[index] = 0u;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 namespace {
 
-xtbloom_status_t validate_iteration_bindings(
+vibeqc_xtb_status_t validate_iteration_bindings(
     const SccDriverPlan& plan, const SccDriverPlanData& data, const SccDriverGeometryView& geometry,
     const CpuLinearAlgebraBackend& backend, const EigensolverOverlapCache& overlap_cache,
     const WavefunctionView& wavefunction, const SccMixerState& mixer_state,
@@ -1931,25 +1931,25 @@ xtbloom_status_t validate_iteration_bindings(
       mixer_state.plan_identity != data.mixer.identity() ||
       overlap_cache.plan_identity != data.eigensolver.identity()) {
     error = "SCC driver runtime bindings do not belong to the sealed plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (data.d4.sealed()) {
     D4Workspace canonical_d4_workspace;
-    xtbloom_status_t d4_status =
+    vibeqc_xtb_status_t d4_status =
         bind_d4_workspace(data.d4, workspace.d4_workspace.workspace_base,
                           data.d4.workspace_size_bytes(), canonical_d4_workspace, error);
-    if (d4_status != XTBLOOM_STATUS_SUCCESS ||
+    if (d4_status != VIBEQC_XTB_STATUS_SUCCESS ||
         !same_d4_workspace_binding(workspace.d4_workspace, canonical_d4_workspace)) {
       error = "SCC driver D4 workspace binding is not canonical";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
-  xtbloom_status_t status = validate_wavefunction(data, wavefunction, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_wavefunction(data, wavefunction, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   status = validate_wavefunction(data, workspace.staged_wavefunction, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (geometry.geometry_generation == 0u ||
@@ -1971,7 +1971,7 @@ xtbloom_status_t validate_iteration_bindings(
       geometry.es2_cache.geometry_generation != geometry.geometry_generation ||
       geometry.aes2_cache.geometry_generation != geometry.geometry_generation) {
     error = "SCC driver geometry view is stale or belongs to different component plans";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (data.d4.sealed()) {
     if (data.native_periodic.sealed()) {
@@ -1981,7 +1981,7 @@ xtbloom_status_t validate_iteration_bindings(
           geometry.native_topology_geometry == nullptr ||
           geometry.native_topology_workspace == nullptr) {
         error = "SCC driver native periodic D4 coordination is stale or malformed";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     } else if (geometry.d4_cache.plan_identity != data.d4.identity() ||
                geometry.d4_cache.geometry_generation != geometry.geometry_generation ||
@@ -1991,7 +1991,7 @@ xtbloom_status_t validate_iteration_bindings(
                !aligned(geometry.d4_cache.pair_data, alignof(double)) ||
                !aligned(geometry.d4_cache.coordination_numbers, alignof(double))) {
       error = "SCC driver D4 cache is stale, malformed, or belongs to another plan";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   } else if (geometry.d4_cache.pair_data != nullptr || geometry.d4_cache.pair_data_elements != 0 ||
              geometry.d4_cache.coordination_numbers != nullptr ||
@@ -1999,25 +1999,25 @@ xtbloom_status_t validate_iteration_bindings(
              geometry.d4_cache.geometry_generation != 0u ||
              geometry.d4_cache.plan_identity != nullptr) {
     error = "SCC driver geometry supplies D4 data to a plan without D4";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!data.native_periodic.sealed() && (geometry.native_d4_coordination_numbers != nullptr ||
                                          geometry.native_d4_coordination_elements != 0 ||
                                          geometry.native_d4_geometry_generation != 0u)) {
     error = "SCC driver geometry supplies native periodic D4 data to a non-native plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!data.d4.sealed() && (geometry.native_d4_coordination_numbers != nullptr ||
                             geometry.native_d4_coordination_elements != 0 ||
                             geometry.native_d4_geometry_generation != 0u)) {
     error = "SCC driver geometry supplies native periodic D4 data to a plan without D4";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (geometry.explicit_point_charge_shell_elements != 0 &&
       (geometry.explicit_point_charge_shell_elements != data.wavefunction.total_shells ||
        !aligned(geometry.explicit_point_charge_shell_potential, alignof(double)))) {
     error = "SCC driver explicit point-charge potential has invalid extent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (data.periodic_embedding.sealed()) {
     if (geometry.periodic_shift_elements != data.periodic_embedding.total_atoms() ||
@@ -2029,7 +2029,7 @@ xtbloom_status_t validate_iteration_bindings(
         geometry.periodic_embedding_generation == 0u ||
         geometry.periodic_plan_identity != data.periodic_embedding.identity()) {
       error = "SCC driver periodic embedding is stale, malformed, or belongs to another plan";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   } else if (geometry.periodic_shifts != nullptr || geometry.periodic_shift_elements != 0 ||
              geometry.periodic_response_matrices != nullptr ||
@@ -2037,7 +2037,7 @@ xtbloom_status_t validate_iteration_bindings(
              geometry.periodic_embedding_generation != 0u ||
              geometry.periodic_plan_identity != nullptr) {
     error = "SCC driver geometry supplies periodic data to a plan without periodic embedding";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const bool native_enabled = data.native_ewald.sealed() || data.native_multipole.sealed();
@@ -2086,7 +2086,7 @@ xtbloom_status_t validate_iteration_bindings(
         !aligned(geometry.native_multipole_strain_derivatives, alignof(double)) ||
         !aligned(geometry.native_multipole_coordination_adjoint, alignof(double))) {
       error = "SCC driver native periodic geometry or output buffers are stale or malformed";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   } else if (geometry.native_positions != nullptr || geometry.native_position_elements != 0 ||
              geometry.native_coordination_numbers != nullptr ||
@@ -2097,7 +2097,7 @@ xtbloom_status_t validate_iteration_bindings(
              geometry.native_multipole_charge_dipole != nullptr ||
              geometry.native_multipole_charge_dipole_elements != 0) {
     error = "SCC driver geometry supplies native periodic data to a molecular plan";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   /* The uniform-field pilot contributes a per-atom scalar potential vat and a
@@ -2111,14 +2111,14 @@ xtbloom_status_t validate_iteration_bindings(
       geometry.field_dipole_potential != nullptr || geometry.field_dipole_potential_elements != 0;
   if (field_atomic_present != field_dipole_present) {
     error = "SCC driver field atomic and dipolar potentials must be supplied together";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (field_atomic_present && (geometry.field_atomic_potential_elements != total_atoms ||
                                geometry.field_dipole_potential_elements != 3 * total_atoms ||
                                !aligned(geometry.field_atomic_potential, alignof(double)) ||
                                !aligned(geometry.field_dipole_potential, alignof(double)))) {
     error = "SCC driver field potentials have invalid extents or alignment";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t batch = static_cast<std::size_t>(data.wavefunction.batch_size);
@@ -2142,7 +2142,7 @@ xtbloom_status_t validate_iteration_bindings(
       !make_range(&error, sizeof(error), controls[8]) || !pairwise_disjoint(principal) ||
       !pairwise_disjoint(controls) || !disjoint_from_controls(data, principal, controls)) {
     error = "SCC driver runtime storage overlaps numerical, plan, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   AddressRange mixer_storage;
@@ -2154,13 +2154,13 @@ xtbloom_status_t validate_iteration_bindings(
       !range_contains(mixer_storage, mixer_initialized) ||
       !range_contains(mixer_storage, mixer_converged)) {
     error = "SCC driver mixer state pointers are outside their caller-owned binding";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::size_t system = 0u; system < batch; ++system) {
     if (state.initialized[system] != 1u || mixer_state.initialized[system] != 1u ||
         state.converged[system] > 1u || mixer_state.converged[system] > 1u) {
       error = "SCC driver requires initialized canonical per-system state";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -2245,7 +2245,7 @@ xtbloom_status_t validate_iteration_bindings(
       !bytes_for(geometry.native_multipole_coordination_elements, sizeof(double),
                  native_multipole_coordination_bytes)) {
     error = "SCC driver geometry storage extents are not representable";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::array<AddressRange, 31> geometry_ranges{};
   if (!make_range(geometry.h0, matrix_bytes, geometry_ranges[0]) ||
@@ -2300,27 +2300,27 @@ xtbloom_status_t validate_iteration_bindings(
       !make_range(geometry.native_multipole_coordination_adjoint,
                   native_multipole_coordination_bytes, geometry_ranges[30])) {
     error = "SCC driver geometry buffers have invalid address ranges";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (const AddressRange& input : geometry_ranges) {
     if (overlaps_plan_storage(data, input)) {
       error = "SCC driver geometry inputs must not overlap immutable plan storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     for (std::size_t output = 0u; output < 4u; ++output) {
       if (ranges_overlap(input, principal[output])) {
         error = "SCC driver geometry inputs must not overlap mutable state or scratch";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
     for (const AddressRange& control : controls) {
       if (ranges_overlap(input, control)) {
         error = "SCC driver geometry inputs must not overlap descriptor storage";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 bool add_finite(double contribution, double& target) {
@@ -2332,7 +2332,7 @@ bool add_finite(double contribution, double& target) {
   return true;
 }
 
-xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
+vibeqc_xtb_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
                                             const SccDriverGeometryView& geometry,
                                             std::size_t system, const SccDriverWorkspace& workspace,
                                             std::string& error) {
@@ -2378,20 +2378,20 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
       if (!::vibeqc::xtb::generated::gfn2_core_energy_update_tensor(
               density_value, h0_value, core_energy, core_energy)) {
         error = "generated SCC driver H0 density contraction overflowed";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
 
   double es2_energy = 0.0;
-  xtbloom_status_t status = XTBLOOM_STATUS_SUCCESS;
+  vibeqc_xtb_status_t status = VIBEQC_XTB_STATUS_SUCCESS;
   if (data.native_ewald.sealed()) {
     status = evaluate_periodic_ewald_cpu(
         data.native_ewald, data.native_periodic, geometry.native_positions, workspace.shell_charges,
         geometry.native_ewald_matrix, geometry.native_ewald_shell_potentials,
         geometry.native_ewald_energies, geometry.native_ewald_gradients,
         geometry.native_ewald_strain_derivatives, error);
-    if (status == XTBLOOM_STATUS_SUCCESS) {
+    if (status == VIBEQC_XTB_STATUS_SUCCESS) {
       es2_energy = geometry.native_ewald_energies[system];
     }
   } else {
@@ -2399,13 +2399,13 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
         add_es2_energy_system_cpu(data.es2, geometry.es2_cache, static_cast<std::int64_t>(system),
                                   workspace.shell_charges, es2_energy, error);
   }
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   double es3_energy = 0.0;
   status = add_es3_energy_system_cpu(make_es3_view(data.es3), static_cast<std::int64_t>(system),
                                      workspace.shell_charges, es3_energy, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   double aes2_energy = 0.0;
@@ -2419,7 +2419,7 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
         geometry.native_multipole_quadrupole_potentials, geometry.native_multipole_energies,
         geometry.native_multipole_gradients, geometry.native_multipole_strain_derivatives,
         geometry.native_multipole_coordination_adjoint, error);
-    if (status == XTBLOOM_STATUS_SUCCESS) {
+    if (status == VIBEQC_XTB_STATUS_SUCCESS) {
       aes2_energy = geometry.native_multipole_energies[system];
     }
   } else {
@@ -2428,7 +2428,7 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
                                         workspace.atomic_dipoles, workspace.atomic_quadrupoles,
                                         aes2_energy, workspace.aes2_workspace, error);
   }
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -2436,7 +2436,7 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
   status = add_spin_polarization_energy_system_cpu(make_spin_polarization_view(data.spin),
                                                    static_cast<std::int64_t>(system),
                                                    workspace.raw_qsh, spin_energy, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -2452,19 +2452,19 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
           geometry.native_d4_coordination_numbers, workspace.atomic_charges,
           workspace.native_d4_atom_energies, workspace.d4_atomic_potentials, workspace.d4_workspace,
           *geometry.native_topology_workspace, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
       d4_energy = 0.0;
       for (std::int64_t atom = atom_begin; atom < atom_end; ++atom) {
         if (!add_finite(workspace.native_d4_atom_energies[atom], d4_energy)) {
           error = "SCC driver periodic D4 two-body energy overflowed";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
       }
     } else {
       status = evaluate_d4_two_body_system_cpu(
           data.d4, geometry.d4_cache, static_cast<std::int64_t>(system), workspace.atomic_charges,
           d4_energy, nullptr, workspace.d4_workspace, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) {
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) {
         return status;
       }
     }
@@ -2480,7 +2480,7 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
                    explicit_pc_energy);
       if (!std::isfinite(explicit_pc_energy)) {
         error = "SCC driver explicit point-charge energy overflowed";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
@@ -2501,7 +2501,7 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
       }
       if (!std::isfinite(contribution)) {
         error = "SCC driver electric-field energy is not finite";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
       field_energy += contribution;
     }
@@ -2525,7 +2525,7 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
     status = evaluate_periodic_embedding_system_cpu(
         data.periodic_embedding, static_cast<std::int64_t>(system), periodic_view,
         workspace.periodic_embedding_workspace, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       return status;
     }
     periodic_energy = workspace.periodic_embedding_energies[system];
@@ -2537,13 +2537,13 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
       !add_finite(d4_energy, internal_energy) || !add_finite(explicit_pc_energy, internal_energy) ||
       !add_finite(field_energy, internal_energy) || !add_finite(periodic_energy, internal_energy)) {
     error = "SCC driver complete internal energy overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   const double entropy = workspace.thermodynamics.entropies[system];
   const double free_energy = std::fma(-data.electronic_temperature, entropy, internal_energy);
   if (!std::isfinite(entropy) || !std::isfinite(free_energy)) {
     error = "SCC driver complete free energy is not finite";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
+    return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
 
   workspace.core_energies[system] = core_energy;
@@ -2558,10 +2558,10 @@ xtbloom_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
   workspace.internal_energies[system] = internal_energy;
   workspace.free_energies[system] = free_energy;
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t gather_mixed_multipoles_system(const SccDriverPlanData& data, std::size_t system,
+vibeqc_xtb_status_t gather_mixed_multipoles_system(const SccDriverPlanData& data, std::size_t system,
                                                 const SccDriverWorkspace& workspace,
                                                 std::string& error) {
   const WavefunctionLayout& layout = data.wavefunction;
@@ -2590,7 +2590,7 @@ xtbloom_status_t gather_mixed_multipoles_system(const SccDriverPlanData& data, s
           qat_base + static_cast<std::int64_t>(channel) * atoms + local_atom)];
       if (!add_finite(charge, atomic_charge)) {
         error = "SCC driver mixed shell-to-atom reduction is not finite";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
@@ -2600,7 +2600,7 @@ xtbloom_status_t gather_mixed_multipoles_system(const SccDriverPlanData& data, s
         workspace.staged_wavefunction.qsh[static_cast<std::size_t>(qsh_base + local_shell)];
     if (!std::isfinite(value)) {
       error = "SCC driver mixed shell charges contain NaN or infinity";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     workspace.shell_charges[static_cast<std::size_t>(shell_begin + local_shell)] = value;
   }
@@ -2610,7 +2610,7 @@ xtbloom_status_t gather_mixed_multipoles_system(const SccDriverPlanData& data, s
         workspace.staged_wavefunction.qat[static_cast<std::size_t>(qat_base + local_atom)];
     if (!std::isfinite(charge)) {
       error = "SCC driver mixed atomic charges contain NaN or infinity";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     workspace.atomic_charges[atom] = charge;
     for (std::size_t component = 0u; component < 3u; ++component) {
@@ -2618,7 +2618,7 @@ xtbloom_status_t gather_mixed_multipoles_system(const SccDriverPlanData& data, s
           dipole_base + local_atom * 3 + static_cast<std::int64_t>(component))];
       if (!std::isfinite(value)) {
         error = "SCC driver mixed atomic dipoles contain NaN or infinity";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
       workspace.atomic_dipoles[atom * 3u + component] = value;
     }
@@ -2627,23 +2627,23 @@ xtbloom_status_t gather_mixed_multipoles_system(const SccDriverPlanData& data, s
           quadrupole_base + local_atom * 6 + static_cast<std::int64_t>(component))];
       if (!std::isfinite(value)) {
         error = "SCC driver mixed atomic quadrupoles contain NaN or infinity";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
       workspace.atomic_quadrupoles[atom * 6u + component] = value;
     }
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t prepare_system_potentials_and_hamiltonian(
+vibeqc_xtb_status_t prepare_system_potentials_and_hamiltonian(
     const SccDriverPlanData& data, const SccDriverGeometryView& geometry, std::size_t system,
     const SccDriverWorkspace& workspace, std::string& error, const SccParallelExecutor* parallel) {
   const WavefunctionLayout& layout = data.wavefunction;
   const double nan = std::numeric_limits<double>::quiet_NaN();
 
-  xtbloom_status_t status = gather_mixed_multipoles_system(data, system, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = gather_mixed_multipoles_system(data, system, workspace, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -2675,7 +2675,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
   status = evaluate_spin_polarization_system_cpu(
       make_spin_polarization_view(data.spin), static_cast<std::int64_t>(system),
       workspace.staged_wavefunction.qsh, spin_energy, workspace.spin_shell_potentials, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   workspace.spin_energies[system] = spin_energy;
@@ -2686,7 +2686,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
         geometry.native_ewald_matrix, geometry.native_ewald_shell_potentials,
         geometry.native_ewald_energies, geometry.native_ewald_gradients,
         geometry.native_ewald_strain_derivatives, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) return status;
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
     for (std::int64_t local_shell = 0; local_shell < shells; ++local_shell) {
       workspace.shell_potentials[static_cast<std::size_t>(qsh_base + local_shell)] =
           geometry
@@ -2696,7 +2696,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
     status = evaluate_es2_potential_system_cpu(
         data.es2, geometry.es2_cache, static_cast<std::int64_t>(system), workspace.shell_charges,
         workspace.component_shell_potential, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       return status;
     }
     for (std::int64_t local_shell = 0; local_shell < shells; ++local_shell) {
@@ -2709,7 +2709,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
   status = evaluate_es3_potential_system_cpu(es3_view, static_cast<std::int64_t>(system),
                                              workspace.shell_charges,
                                              workspace.component_shell_potential, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   for (std::int64_t local_shell = 0; local_shell < shells; ++local_shell) {
@@ -2719,14 +2719,14 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
                 .component_shell_potential[static_cast<std::size_t>(shell_begin + local_shell)],
             target)) {
       error = "SCC driver ES2+ES3 shell potential exceeded floating-point range";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     if (geometry.explicit_point_charge_shell_elements != 0 &&
         !add_finite(geometry.explicit_point_charge_shell_potential[static_cast<std::size_t>(
                         shell_begin + local_shell)],
                     target)) {
       error = "SCC driver explicit point-charge potential is not finite";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
   for (std::size_t element = 0u; element < qsh_slice; ++element) {
@@ -2734,7 +2734,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
     if (!add_finite(workspace.spin_shell_potentials[static_cast<std::size_t>(qsh_base) + element],
                     target)) {
       error = "SCC driver electrostatic+spin shell potential exceeded floating-point range";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
 
@@ -2748,7 +2748,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
         geometry.native_multipole_quadrupole_potentials, geometry.native_multipole_energies,
         geometry.native_multipole_gradients, geometry.native_multipole_strain_derivatives,
         geometry.native_multipole_coordination_adjoint, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) return status;
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
     for (std::int64_t local_atom = 0; local_atom < atoms; ++local_atom) {
       const std::size_t atom = static_cast<std::size_t>(atom_begin + local_atom);
       workspace.component_atomic_potential[atom] =
@@ -2764,7 +2764,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
         workspace.atomic_dipoles, workspace.atomic_quadrupoles,
         workspace.component_atomic_potential, workspace.component_dipole_potential,
         workspace.component_quadrupole_potential, workspace.aes2_workspace, error);
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       return status;
     }
   }
@@ -2775,13 +2775,13 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
           geometry.native_d4_coordination_numbers, workspace.atomic_charges,
           workspace.native_d4_atom_energies, workspace.d4_atomic_potentials, workspace.d4_workspace,
           *geometry.native_topology_workspace, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
     } else {
       status = evaluate_d4_two_body_system_cpu(
           data.d4, geometry.d4_cache, static_cast<std::int64_t>(system), workspace.atomic_charges,
           workspace.d4_two_body_energies[system], workspace.d4_atomic_potentials,
           workspace.d4_workspace, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) {
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) {
         return status;
       }
     }
@@ -2806,10 +2806,10 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
     status = evaluate_periodic_embedding_system_cpu(
         data.periodic_embedding, static_cast<std::int64_t>(system), periodic_view,
         workspace.periodic_embedding_workspace, error);
-    if (status == XTBLOOM_STATUS_INVALID_ARGUMENT) {
+    if (status == VIBEQC_XTB_STATUS_INVALID_ARGUMENT) {
       return status;
     }
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       /* The component guarantees unchanged numerical outputs on failure. Keep
        * an explicit zero potential so the later per-system Mulliken assembly
        * stays finite while successful peers continue. */
@@ -2857,7 +2857,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
       std::fill_n(workspace.periodic_atomic_potentials + atom_begin,
                   static_cast<std::size_t>(atoms), 0.0);
       workspace.periodic_embedding_energies[system] = nan;
-      workspace.periodic_system_statuses[system] = XTBLOOM_STATUS_INTERNAL_ERROR;
+      workspace.periodic_system_statuses[system] = VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       workspace.active_systems[system] = 5u;
     }
   }
@@ -2867,7 +2867,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
       double& target = workspace.atomic_potentials[static_cast<std::size_t>(qat_base + local_atom)];
       if (!add_finite(workspace.d4_atomic_potentials[atom], target)) {
         error = "SCC driver AES2+embedding+D4 atom potential exceeded floating-point range";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
@@ -2880,7 +2880,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
   if (geometry.field_atomic_potential_elements != 0) {
     if (workspace.active_systems[system] != 1u) {
       error.clear();
-      return XTBLOOM_STATUS_SUCCESS;
+      return VIBEQC_XTB_STATUS_SUCCESS;
     }
     for (std::int64_t local_atom = 0; local_atom < atoms; ++local_atom) {
       const std::size_t atom = static_cast<std::size_t>(atom_begin + local_atom);
@@ -2888,14 +2888,14 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
           workspace.atomic_potentials[static_cast<std::size_t>(qat_base + local_atom)];
       if (!add_finite(geometry.field_atomic_potential[atom], scalar_target)) {
         error = "SCC driver electric-field scalar potential is not finite";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
       for (std::size_t component = 0u; component < 3u; ++component) {
         double& dipolar_target = workspace.dipole_potentials[static_cast<std::size_t>(
             dipole_base + local_atom * 3 + static_cast<std::int64_t>(component))];
         if (!add_finite(geometry.field_dipole_potential[atom * 3u + component], dipolar_target)) {
           error = "SCC driver electric-field dipolar potential is not finite";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
       }
     }
@@ -2908,7 +2908,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
   for (std::int64_t element = matrix_begin; element < matrix_end; ++element) {
     if (!std::isfinite(geometry.h0[static_cast<std::size_t>(element)])) {
       error = "SCC driver H0 contains NaN or infinity";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
   }
   for (std::int32_t spin = 0; spin < layout.spin_channels[system]; ++spin) {
@@ -2918,7 +2918,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
   }
   if (workspace.active_systems[system] != 1u) {
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   }
 
   const MullikenPotentialView potential{
@@ -2930,7 +2930,7 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
   status = add_mulliken_hamiltonian_system_cpu(data.mulliken, geometry.integrals, potential,
                                                hamiltonian, static_cast<std::int64_t>(system),
                                                workspace.mulliken_workspace, error, parallel);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
 
@@ -2950,17 +2950,17 @@ xtbloom_status_t prepare_system_potentials_and_hamiltonian(
         const double physical = std::fma(2.0, target - h0, h0);
         if (!std::isfinite(physical)) {
           error = "SCC driver unrestricted Hamiltonian scaling overflowed";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         target = physical;
       }
     }
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t prepare_potentials_and_hamiltonian(const SccDriverPlanData& data,
+vibeqc_xtb_status_t prepare_potentials_and_hamiltonian(const SccDriverPlanData& data,
                                                     const SccDriverGeometryView& geometry,
                                                     const SccDriverWorkspace& workspace,
                                                     std::string& error,
@@ -2970,27 +2970,27 @@ xtbloom_status_t prepare_potentials_and_hamiltonian(const SccDriverPlanData& dat
   const double nan = std::numeric_limits<double>::quiet_NaN();
   if (data.periodic_embedding.sealed()) {
     std::fill_n(workspace.periodic_embedding_energies, batch, nan);
-    std::fill_n(workspace.periodic_system_statuses, batch, XTBLOOM_STATUS_INVALID_ARGUMENT);
+    std::fill_n(workspace.periodic_system_statuses, batch, VIBEQC_XTB_STATUS_INVALID_ARGUMENT);
   }
   for (std::size_t system = 0u; system < batch; ++system) {
     if (workspace.active_systems[system] != 1u) {
       continue;
     }
-    xtbloom_status_t status = prepare_system_potentials_and_hamiltonian(data, geometry, system,
+    vibeqc_xtb_status_t status = prepare_system_potentials_and_hamiltonian(data, geometry, system,
                                                                         workspace, error, parallel);
-    if (status == XTBLOOM_STATUS_INTERNAL_ERROR) {
+    if (status == VIBEQC_XTB_STATUS_INTERNAL_ERROR) {
       /* A target-system numerical failure during classical or Mulliken
        * preparation is data-level: keep every peer running and record the
        * failure so the publication loop reports it without NaN-ing peers. */
       workspace.active_systems[system] = 7u;
       continue;
     }
-    if (status != XTBLOOM_STATUS_SUCCESS) {
+    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
       return status;
     }
   }
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 void copy_raw_population_system(const WavefunctionLayout& layout, std::size_t system,
@@ -3003,7 +3003,7 @@ void copy_raw_population_system(const WavefunctionLayout& layout, std::size_t sy
                     workspace.staged_wavefunction.quadrupole);
 }
 
-xtbloom_status_t rebuild_mixed_atomic_charges(const SccDriverPlanData& data, std::size_t system,
+vibeqc_xtb_status_t rebuild_mixed_atomic_charges(const SccDriverPlanData& data, std::size_t system,
                                               const SccDriverWorkspace& workspace,
                                               std::string& error) {
   const WavefunctionLayout& layout = data.wavefunction;
@@ -3028,13 +3028,13 @@ xtbloom_status_t rebuild_mixed_atomic_charges(const SccDriverPlanData& data, std
           qat_base + static_cast<std::int64_t>(channel) * atoms + local_atom)];
       if (!add_finite(charge, target)) {
         error = "SCC driver mixed atomic charge reconstruction is not finite";
-        return XTBLOOM_STATUS_INTERNAL_ERROR;
+        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 }  // namespace
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

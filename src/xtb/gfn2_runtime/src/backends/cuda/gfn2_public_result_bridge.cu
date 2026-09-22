@@ -9,20 +9,20 @@
 #include "backends/cuda/gfn2_device_admission.cuh"
 #include "backends/cuda/gfn2_public_result_bridge.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
 constexpr int kMaximumCopyBlocks = 256;
 constexpr std::uint32_t kKnownProperties =
-    static_cast<std::uint32_t>(XTBLOOM_COMPUTE_ENERGY) |
-    static_cast<std::uint32_t>(XTBLOOM_COMPUTE_FORCES) |
-    static_cast<std::uint32_t>(XTBLOOM_COMPUTE_ATOMIC_CHARGES) |
-    static_cast<std::uint32_t>(XTBLOOM_COMPUTE_POINT_CHARGE_FORCES) |
-    static_cast<std::uint32_t>(XTBLOOM_COMPUTE_DIPOLE_MOMENTS);
+    static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_ENERGY) |
+    static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_FORCES) |
+    static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES) |
+    static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_POINT_CHARGE_FORCES) |
+    static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_DIPOLE_MOMENTS);
 constexpr std::uint32_t kKnownResultFlags =
-    static_cast<std::uint32_t>(XTBLOOM_RESULT_FORCES_EXCLUDE_EXTERNAL_OPERATOR_DERIVATIVES) |
-    static_cast<std::uint32_t>(XTBLOOM_RESULT_DIPOLE_MOMENTS);
+    static_cast<std::uint32_t>(VIBEQC_XTB_RESULT_FORCES_EXCLUDE_EXTERNAL_OPERATOR_DERIVATIVES) |
+    static_cast<std::uint32_t>(VIBEQC_XTB_RESULT_DIPOLE_MOMENTS);
 
 using BridgeError = Gfn2PublicResultBridgeError;
 using Route = Gfn2PublicResultRoute;
@@ -37,7 +37,7 @@ struct ExpectedExtents {
 };
 
 __host__ __device__ bool property_requested(const Gfn2PublicResultBridgeDevicePlan& plan,
-                                            xtbloom_compute_flag_t property) noexcept {
+                                            vibeqc_xtb_compute_flag_t property) noexcept {
   return (plan.requested_properties & static_cast<std::uint32_t>(property)) != 0u;
 }
 
@@ -61,14 +61,14 @@ __host__ __device__ bool expected_extents(const Gfn2PublicResultBridgeDevicePlan
       !checked_times_three(plan.batch_size, batch_coordinates)) {
     return false;
   }
-  extents.energies = property_requested(plan, XTBLOOM_COMPUTE_ENERGY) ? plan.batch_size : 0;
-  extents.qm_forces = property_requested(plan, XTBLOOM_COMPUTE_FORCES) ? atom_coordinates : 0;
+  extents.energies = property_requested(plan, VIBEQC_XTB_COMPUTE_ENERGY) ? plan.batch_size : 0;
+  extents.qm_forces = property_requested(plan, VIBEQC_XTB_COMPUTE_FORCES) ? atom_coordinates : 0;
   extents.atomic_charges =
-      property_requested(plan, XTBLOOM_COMPUTE_ATOMIC_CHARGES) ? plan.total_atoms : 0;
+      property_requested(plan, VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES) ? plan.total_atoms : 0;
   extents.point_forces =
-      property_requested(plan, XTBLOOM_COMPUTE_POINT_CHARGE_FORCES) ? point_coordinates : 0;
+      property_requested(plan, VIBEQC_XTB_COMPUTE_POINT_CHARGE_FORCES) ? point_coordinates : 0;
   extents.dipole_moments =
-      property_requested(plan, XTBLOOM_COMPUTE_DIPOLE_MOMENTS) ? batch_coordinates : 0;
+      property_requested(plan, VIBEQC_XTB_COMPUTE_DIPOLE_MOMENTS) ? batch_coordinates : 0;
   extents.diagnostics = plan.batch_size;
   return true;
 }
@@ -185,7 +185,7 @@ bool valid_launch_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       structurally_safe_buffer(input.iterations, input.batch_elements, alignof(std::int32_t)) &&
       structurally_safe_buffer(input.converged, input.batch_elements, alignof(std::uint8_t)) &&
       structurally_safe_buffer(input.system_statuses, input.batch_elements,
-                               alignof(xtbloom_status_t)) &&
+                               alignof(vibeqc_xtb_status_t)) &&
       canonical(input.publication_plan_error, 1, alignof(std::uint32_t)) &&
       canonical(input.request_topology_error, 1, alignof(std::uint32_t)) &&
       canonical(input.publication_epoch_snapshot, 1, alignof(std::uint64_t)) &&
@@ -205,7 +205,7 @@ bool valid_launch_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       structurally_safe_buffer(device_staging.converged, device_staging.batch_elements,
                                alignof(std::uint8_t)) &&
       structurally_safe_buffer(device_staging.system_statuses, device_staging.batch_elements,
-                               alignof(xtbloom_status_t)) &&
+                               alignof(vibeqc_xtb_status_t)) &&
       structurally_safe_destination(destinations.energies, alignof(double)) &&
       structurally_safe_destination(destinations.qm_forces, alignof(double)) &&
       structurally_safe_destination(destinations.atomic_charges, alignof(double)) &&
@@ -213,7 +213,7 @@ bool valid_launch_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       structurally_safe_destination(destinations.dipole_moments, alignof(double)) &&
       structurally_safe_destination(destinations.iterations, alignof(std::int32_t)) &&
       structurally_safe_destination(destinations.converged, alignof(std::uint8_t)) &&
-      structurally_safe_destination(destinations.system_statuses, alignof(xtbloom_status_t)) &&
+      structurally_safe_destination(destinations.system_statuses, alignof(vibeqc_xtb_status_t)) &&
       structurally_safe_staging(staging.energies, alignof(double)) &&
       structurally_safe_staging(staging.qm_forces, alignof(double)) &&
       structurally_safe_staging(staging.atomic_charges, alignof(double)) &&
@@ -221,7 +221,7 @@ bool valid_launch_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       structurally_safe_staging(staging.dipole_moments, alignof(double)) &&
       structurally_safe_staging(staging.iterations, alignof(std::int32_t)) &&
       structurally_safe_staging(staging.converged, alignof(std::uint8_t)) &&
-      structurally_safe_staging(staging.system_statuses, alignof(xtbloom_status_t)) &&
+      structurally_safe_staging(staging.system_statuses, alignof(vibeqc_xtb_status_t)) &&
       canonical(staging.control, 1, alignof(Gfn2PublicResultBridgeControl)) &&
       staging.control_elements >= 0 &&
       canonical(staging.pending_result_flags, 1, alignof(std::uint32_t)) &&
@@ -239,7 +239,7 @@ bool valid_launch_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       device_reads.add(input.dipole_moments, input.dipole_moment_elements, sizeof(double)) &&
       device_reads.add(input.iterations, input.batch_elements, sizeof(std::int32_t)) &&
       device_reads.add(input.converged, input.batch_elements, sizeof(std::uint8_t)) &&
-      device_reads.add(input.system_statuses, input.batch_elements, sizeof(xtbloom_status_t)) &&
+      device_reads.add(input.system_statuses, input.batch_elements, sizeof(vibeqc_xtb_status_t)) &&
       device_reads.add(input.publication_plan_error, 1, sizeof(std::uint32_t)) &&
       device_reads.add(input.request_topology_error, 1, sizeof(std::uint32_t)) &&
       device_reads.add(input.publication_epoch_snapshot, 1, sizeof(std::uint64_t)) &&
@@ -258,7 +258,7 @@ bool valid_launch_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       device_writes.add(device_staging.converged, device_staging.batch_elements,
                         sizeof(std::uint8_t)) &&
       device_writes.add(device_staging.system_statuses, device_staging.batch_elements,
-                        sizeof(xtbloom_status_t)) &&
+                        sizeof(vibeqc_xtb_status_t)) &&
       device_writes.add(diagnostics.control, 1, sizeof(Gfn2PublicResultBridgeControl));
   if (!device_ranges_valid || !disjoint_writes(device_reads, device_writes)) return false;
 
@@ -274,7 +274,7 @@ bool valid_launch_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       host_writes.add(staging.iterations.data, staging.iterations.elements, sizeof(std::int32_t)) &&
       host_writes.add(staging.converged.data, staging.converged.elements, sizeof(std::uint8_t)) &&
       host_writes.add(staging.system_statuses.data, staging.system_statuses.elements,
-                      sizeof(xtbloom_status_t)) &&
+                      sizeof(vibeqc_xtb_status_t)) &&
       host_writes.add(staging.control, 1, sizeof(Gfn2PublicResultBridgeControl)) &&
       host_writes.add(staging.pending_result_flags, 1, sizeof(std::uint32_t));
   return host_ranges_valid && pairwise_disjoint(host_writes);
@@ -322,8 +322,8 @@ __host__ __device__ BridgeError static_contract_error(
   if (plan.reserved != 0u || plan.requested_properties == 0u ||
       (plan.requested_properties & ~kKnownProperties) != 0u ||
       (plan.result_flags & ~kKnownResultFlags) != 0u ||
-      property_requested(plan, XTBLOOM_COMPUTE_DIPOLE_MOMENTS) !=
-          ((plan.result_flags & static_cast<std::uint32_t>(XTBLOOM_RESULT_DIPOLE_MOMENTS)) != 0u)) {
+      property_requested(plan, VIBEQC_XTB_COMPUTE_DIPOLE_MOMENTS) !=
+          ((plan.result_flags & static_cast<std::uint32_t>(VIBEQC_XTB_RESULT_DIPOLE_MOMENTS)) != 0u)) {
     return BridgeError::kInvalidFlags;
   }
 
@@ -342,7 +342,7 @@ __host__ __device__ BridgeError static_contract_error(
       input.batch_elements != extents.diagnostics ||
       !canonical(input.iterations, extents.diagnostics, alignof(std::int32_t)) ||
       !canonical(input.converged, extents.diagnostics, alignof(std::uint8_t)) ||
-      !canonical(input.system_statuses, extents.diagnostics, alignof(xtbloom_status_t))) {
+      !canonical(input.system_statuses, extents.diagnostics, alignof(vibeqc_xtb_status_t))) {
     return BridgeError::kInvalidExtents;
   }
   if (!valid_input_buffer(device_staging.energies, device_staging.energy_elements, extents.energies,
@@ -358,30 +358,30 @@ __host__ __device__ BridgeError static_contract_error(
       device_staging.batch_elements != extents.diagnostics ||
       !canonical(device_staging.iterations, extents.diagnostics, alignof(std::int32_t)) ||
       !canonical(device_staging.converged, extents.diagnostics, alignof(std::uint8_t)) ||
-      !canonical(device_staging.system_statuses, extents.diagnostics, alignof(xtbloom_status_t))) {
+      !canonical(device_staging.system_statuses, extents.diagnostics, alignof(vibeqc_xtb_status_t))) {
     return BridgeError::kInvalidExtents;
   }
 
   const bool destinations_valid =
       valid_destination(destinations.energies, staging.energies, extents.energies,
-                        property_requested(plan, XTBLOOM_COMPUTE_ENERGY), alignof(double)) &&
+                        property_requested(plan, VIBEQC_XTB_COMPUTE_ENERGY), alignof(double)) &&
       valid_destination(destinations.qm_forces, staging.qm_forces, extents.qm_forces,
-                        property_requested(plan, XTBLOOM_COMPUTE_FORCES), alignof(double)) &&
+                        property_requested(plan, VIBEQC_XTB_COMPUTE_FORCES), alignof(double)) &&
       valid_destination(destinations.atomic_charges, staging.atomic_charges, extents.atomic_charges,
-                        property_requested(plan, XTBLOOM_COMPUTE_ATOMIC_CHARGES),
+                        property_requested(plan, VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES),
                         alignof(double)) &&
       valid_destination(destinations.point_forces, staging.point_forces, extents.point_forces,
-                        property_requested(plan, XTBLOOM_COMPUTE_POINT_CHARGE_FORCES),
+                        property_requested(plan, VIBEQC_XTB_COMPUTE_POINT_CHARGE_FORCES),
                         alignof(double)) &&
       valid_destination(destinations.dipole_moments, staging.dipole_moments, extents.dipole_moments,
-                        property_requested(plan, XTBLOOM_COMPUTE_DIPOLE_MOMENTS),
+                        property_requested(plan, VIBEQC_XTB_COMPUTE_DIPOLE_MOMENTS),
                         alignof(double)) &&
       valid_destination(destinations.iterations, staging.iterations, extents.diagnostics, true,
                         alignof(std::int32_t)) &&
       valid_destination(destinations.converged, staging.converged, extents.diagnostics, true,
                         alignof(std::uint8_t)) &&
       valid_destination(destinations.system_statuses, staging.system_statuses, extents.diagnostics,
-                        true, alignof(xtbloom_status_t)) &&
+                        true, alignof(vibeqc_xtb_status_t)) &&
       staging.control_elements == 1 && staging.control != nullptr &&
       staging.pending_result_flags != nullptr && diagnostics.control_elements == 1 &&
       diagnostics.control != nullptr;
@@ -443,9 +443,9 @@ __global__ void public_result_preflight_kernel(
      * internal or unknown status is an aggregate execution failure and must
      * gate every caller destination, matching the CPU backend contract. */
     for (std::int64_t system = 0; system < input.batch_elements; ++system) {
-      const xtbloom_status_t status = input.system_statuses[system];
-      if (status != XTBLOOM_STATUS_SUCCESS && status != XTBLOOM_STATUS_SCC_NOT_CONVERGED &&
-          status != XTBLOOM_STATUS_EIGENSOLVER_FAILED) {
+      const vibeqc_xtb_status_t status = input.system_statuses[system];
+      if (status != VIBEQC_XTB_STATUS_SUCCESS && status != VIBEQC_XTB_STATUS_SCC_NOT_CONVERGED &&
+          status != VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED) {
         error = BridgeError::kInternalPublicationFailure;
         break;
       }
@@ -557,8 +557,8 @@ bool valid_commit_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       plan.reserved != 0u || plan.requested_properties == 0u ||
       (plan.requested_properties & ~kKnownProperties) != 0u ||
       (plan.result_flags & ~kKnownResultFlags) != 0u ||
-      property_requested(plan, XTBLOOM_COMPUTE_DIPOLE_MOMENTS) !=
-          ((plan.result_flags & static_cast<std::uint32_t>(XTBLOOM_RESULT_DIPOLE_MOMENTS)) != 0u) ||
+      property_requested(plan, VIBEQC_XTB_COMPUTE_DIPOLE_MOMENTS) !=
+          ((plan.result_flags & static_cast<std::uint32_t>(VIBEQC_XTB_RESULT_DIPOLE_MOMENTS)) != 0u) ||
       device_staging.plan_token != plan.plan_token || destinations.plan_token != plan.plan_token ||
       diagnostics.plan_token != plan.plan_token || diagnostics.control_elements != 1 ||
       !canonical(diagnostics.control, 1, alignof(Gfn2PublicResultBridgeControl)) ||
@@ -576,28 +576,28 @@ bool valid_commit_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       device_staging.batch_elements != extents.diagnostics ||
       !canonical(device_staging.iterations, extents.diagnostics, alignof(std::int32_t)) ||
       !canonical(device_staging.converged, extents.diagnostics, alignof(std::uint8_t)) ||
-      !canonical(device_staging.system_statuses, extents.diagnostics, alignof(xtbloom_status_t)) ||
+      !canonical(device_staging.system_statuses, extents.diagnostics, alignof(vibeqc_xtb_status_t)) ||
       !valid_commit_destination(destinations.energies, extents.energies,
-                                property_requested(plan, XTBLOOM_COMPUTE_ENERGY),
+                                property_requested(plan, VIBEQC_XTB_COMPUTE_ENERGY),
                                 alignof(double)) ||
       !valid_commit_destination(destinations.qm_forces, extents.qm_forces,
-                                property_requested(plan, XTBLOOM_COMPUTE_FORCES),
+                                property_requested(plan, VIBEQC_XTB_COMPUTE_FORCES),
                                 alignof(double)) ||
       !valid_commit_destination(destinations.atomic_charges, extents.atomic_charges,
-                                property_requested(plan, XTBLOOM_COMPUTE_ATOMIC_CHARGES),
+                                property_requested(plan, VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES),
                                 alignof(double)) ||
       !valid_commit_destination(destinations.point_forces, extents.point_forces,
-                                property_requested(plan, XTBLOOM_COMPUTE_POINT_CHARGE_FORCES),
+                                property_requested(plan, VIBEQC_XTB_COMPUTE_POINT_CHARGE_FORCES),
                                 alignof(double)) ||
       !valid_commit_destination(destinations.dipole_moments, extents.dipole_moments,
-                                property_requested(plan, XTBLOOM_COMPUTE_DIPOLE_MOMENTS),
+                                property_requested(plan, VIBEQC_XTB_COMPUTE_DIPOLE_MOMENTS),
                                 alignof(double)) ||
       !valid_commit_destination(destinations.iterations, extents.diagnostics, true,
                                 alignof(std::int32_t)) ||
       !valid_commit_destination(destinations.converged, extents.diagnostics, true,
                                 alignof(std::uint8_t)) ||
       !valid_commit_destination(destinations.system_statuses, extents.diagnostics, true,
-                                alignof(xtbloom_status_t))) {
+                                alignof(vibeqc_xtb_status_t))) {
     return false;
   }
 
@@ -614,7 +614,7 @@ bool valid_commit_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       reads.add(device_staging.iterations, device_staging.batch_elements, sizeof(std::int32_t)) &&
       reads.add(device_staging.converged, device_staging.batch_elements, sizeof(std::uint8_t)) &&
       reads.add(device_staging.system_statuses, device_staging.batch_elements,
-                sizeof(xtbloom_status_t)) &&
+                sizeof(vibeqc_xtb_status_t)) &&
       reads.add(diagnostics.control, 1, sizeof(Gfn2PublicResultBridgeControl)) &&
       writes.add(destinations.energies.device_data, destinations.energies.elements,
                  sizeof(double)) &&
@@ -631,7 +631,7 @@ bool valid_commit_binding(const Gfn2PublicResultBridgeDevicePlan& plan,
       writes.add(destinations.converged.device_data, destinations.converged.elements,
                  sizeof(std::uint8_t)) &&
       writes.add(destinations.system_statuses.device_data, destinations.system_statuses.elements,
-                 sizeof(xtbloom_status_t));
+                 sizeof(vibeqc_xtb_status_t));
   return ranges_valid && disjoint_writes(reads, writes);
 }
 
@@ -716,4 +716,4 @@ cudaError_t commit_gfn2_public_results_cuda(
   return check_launch();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

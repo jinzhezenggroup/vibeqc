@@ -1,13 +1,13 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_REPULSION_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_REPULSION_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_REPULSION_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_REPULSION_CUH
 
 #include <cuda_runtime_api.h>
 
 #include <cstdint>
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /*
  * Semantic input errors found asynchronously by the repulsion kernel. The
@@ -62,6 +62,6 @@ cudaError_t add_gfn2_repulsion_cuda(const Gfn2RepulsionDeviceBatch& batch, doubl
                                     double* forces, std::uint32_t* device_error,
                                     cudaStream_t stream = nullptr) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_REPULSION_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_REPULSION_CUH

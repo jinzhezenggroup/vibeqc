@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_RUNTIME_REQUEST_HPP
+#ifndef VIBEQC_XTB_RUNTIME_REQUEST_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_RUNTIME_REQUEST_HPP
+#define VIBEQC_XTB_RUNTIME_REQUEST_HPP
 
 #include <cstdint>
 #include <memory>
@@ -10,13 +10,13 @@
 
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 
 struct Context;
 
 struct RequestCompletionResult {
   bool complete = false;
-  xtbloom_status_t completion_status = XTBLOOM_STATUS_SUCCESS;
+  vibeqc_xtb_status_t completion_status = VIBEQC_XTB_STATUS_SUCCESS;
   std::uint32_t result_flags = 0u;
   std::string completion_error;
 };
@@ -33,7 +33,7 @@ struct RequestCompletionResult {
 class RequestCompletion {
  public:
   virtual ~RequestCompletion() = default;
-  [[nodiscard]] virtual xtbloom_status_t probe(bool wait,
+  [[nodiscard]] virtual vibeqc_xtb_status_t probe(bool wait,
                                                RequestCompletionResult& result) noexcept = 0;
   virtual void settle_noexcept() noexcept = 0;
 };
@@ -41,7 +41,7 @@ class RequestCompletion {
 struct RequestSubmission {
   std::shared_ptr<RequestCompletion> pending;
   bool completed_inline = false;
-  xtbloom_status_t completion_status = XTBLOOM_STATUS_SUCCESS;
+  vibeqc_xtb_status_t completion_status = VIBEQC_XTB_STATUS_SUCCESS;
   std::uint32_t result_flags = 0u;
   std::string completion_error;
 };
@@ -64,7 +64,7 @@ class Request {
   Request& operator=(const Request&) = delete;
 
   [[nodiscard]] Context* context() const noexcept { return context_; }
-  [[nodiscard]] xtbloom_backend_t backend() const noexcept;
+  [[nodiscard]] vibeqc_xtb_backend_t backend() const noexcept;
 
   /*
    * Reserve an IDLE/COMPLETE handle before backend staging. SUBMITTING is an
@@ -73,32 +73,32 @@ class Request {
    * pre-acceptance failure must call rollback_submission(), preserving an
    * earlier IDLE or COMPLETE snapshot and its diagnostic exactly.
    */
-  [[nodiscard]] xtbloom_status_t reserve_submission(Context& context, std::string& error);
+  [[nodiscard]] vibeqc_xtb_status_t reserve_submission(Context& context, std::string& error);
   void rollback_submission() noexcept;
-  [[nodiscard]] xtbloom_status_t publish_submission(RequestSubmission submission,
+  [[nodiscard]] vibeqc_xtb_status_t publish_submission(RequestSubmission submission,
                                                     std::string& error);
 
   /* Copy a coherent state snapshot without changing the request. */
-  [[nodiscard]] xtbloom_status_t query(bool wait, xtbloom_request_info_t& info, std::string& error);
+  [[nodiscard]] vibeqc_xtb_status_t query(bool wait, vibeqc_xtb_request_info_t& info, std::string& error);
 
   [[nodiscard]] const char* error() const noexcept;
 
  private:
-  void fill_info_locked(xtbloom_request_info_t& info) const noexcept;
-  [[nodiscard]] xtbloom_status_t probe_locked(bool wait, std::string& error);
+  void fill_info_locked(vibeqc_xtb_request_info_t& info) const noexcept;
+  [[nodiscard]] vibeqc_xtb_status_t probe_locked(bool wait, std::string& error);
 
   enum class Lifecycle : std::uint8_t { kStable, kSubmitting, kPending };
 
   Context* context_;
   mutable std::mutex mutex_;
   Lifecycle lifecycle_ = Lifecycle::kStable;
-  xtbloom_request_state_t state_ = XTBLOOM_REQUEST_IDLE;
-  xtbloom_status_t completion_status_ = XTBLOOM_STATUS_SUCCESS;
+  vibeqc_xtb_request_state_t state_ = VIBEQC_XTB_REQUEST_IDLE;
+  vibeqc_xtb_status_t completion_status_ = VIBEQC_XTB_STATUS_SUCCESS;
   std::uint32_t result_flags_ = 0u;
   std::string error_;
   std::shared_ptr<RequestCompletion> completion_;
 };
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail
 
-#endif  // XTBLOOM_RUNTIME_REQUEST_HPP
+#endif  // VIBEQC_XTB_RUNTIME_REQUEST_HPP

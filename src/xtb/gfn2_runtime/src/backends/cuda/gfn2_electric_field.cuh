@@ -1,14 +1,14 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_ELECTRIC_FIELD_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_ELECTRIC_FIELD_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_ELECTRIC_FIELD_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_ELECTRIC_FIELD_CUH
 
 #include <cuda_runtime_api.h>
 
 #include <cstdint>
 #include <type_traits>
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /* Fixed ragged topology shared by uniform-field potential, energy, and force
  * consumers. The runtime normalizes an absent attachment to an exact zero
@@ -96,6 +96,6 @@ cudaError_t refresh_gfn2_electric_field_potentials_cuda(
     const Gfn2ElectricFieldDevicePotentials& potentials, std::uint32_t* system_errors,
     std::uint32_t* plan_error, cudaStream_t stream = nullptr) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_ELECTRIC_FIELD_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_ELECTRIC_FIELD_CUH

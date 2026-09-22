@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#ifndef XTBLOOM_MODEL_GFN2_PERIODIC_TOPOLOGY_HPP
-#define XTBLOOM_MODEL_GFN2_PERIODIC_TOPOLOGY_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_PERIODIC_TOPOLOGY_HPP
+#define VIBEQC_XTB_MODEL_GFN2_PERIODIC_TOPOLOGY_HPP
 
 #include <array>
 #include <cmath>
@@ -17,7 +17,7 @@
 
 #include "model/gfn2/lattice.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 inline constexpr double kPeriodicShortRangeCutoffBohr = 25.0;
 inline constexpr double kPeriodicD4CoordinationCutoffBohr = 30.0;
@@ -69,7 +69,7 @@ class PeriodicShortRangePlan {
   explicit PeriodicShortRangePlan(std::shared_ptr<const PeriodicShortRangePlanData> data) noexcept;
   std::shared_ptr<const PeriodicShortRangePlanData> data_;
 
-  friend xtbloom_status_t make_periodic_short_range_plan(std::int64_t, std::int64_t,
+  friend vibeqc_xtb_status_t make_periodic_short_range_plan(std::int64_t, std::int64_t,
                                                          const std::int64_t*, const double*,
                                                          PeriodicShortRangePlan&, std::string&);
 };
@@ -104,12 +104,12 @@ struct PeriodicShortRangeGeometry {
   const PeriodicShortRangePlanData* plan_identity = nullptr;
 };
 
-xtbloom_status_t make_periodic_short_range_plan(std::int64_t batch_size, std::int64_t total_atoms,
+vibeqc_xtb_status_t make_periodic_short_range_plan(std::int64_t batch_size, std::int64_t total_atoms,
                                                 const std::int64_t* atom_offsets,
                                                 const double* cell_matrices,
                                                 PeriodicShortRangePlan& plan, std::string& error);
 
-xtbloom_status_t bind_periodic_short_range_workspace(const PeriodicShortRangePlan& plan,
+vibeqc_xtb_status_t bind_periodic_short_range_workspace(const PeriodicShortRangePlan& plan,
                                                      void* workspace, std::size_t workspace_size,
                                                      PeriodicShortRangeWorkspace& view,
                                                      std::string& error);
@@ -119,11 +119,11 @@ xtbloom_status_t bind_periodic_short_range_workspace(const PeriodicShortRangePla
  * produced by bind_periodic_short_range_workspace and does not overlap the
  * immutable topology plan. Term evaluators call this before touching scratch.
  */
-xtbloom_status_t validate_periodic_short_range_workspace(
+vibeqc_xtb_status_t validate_periodic_short_range_workspace(
     const PeriodicShortRangePlan& plan, const PeriodicShortRangeWorkspace& workspace,
     std::string& error);
 
-xtbloom_status_t update_periodic_short_range_geometry_cpu(
+vibeqc_xtb_status_t update_periodic_short_range_geometry_cpu(
     const PeriodicShortRangePlan& plan, const double* positions, std::uint64_t geometry_generation,
     const PeriodicShortRangeWorkspace& workspace, PeriodicShortRangeGeometry& geometry,
     std::string& error);
@@ -241,7 +241,7 @@ inline bool within_wigner_seitz_distance_tolerance(double distance_squared,
  *
  * The output is transactional: it remains unchanged on error.
  */
-inline xtbloom_status_t make_wigner_seitz_topology(const Lattice3D& lattice,
+inline vibeqc_xtb_status_t make_wigner_seitz_topology(const Lattice3D& lattice,
                                                    std::int64_t atom_count, const double* positions,
                                                    double cutoff, WignerSeitzPairMode pair_mode,
                                                    std::vector<WignerSeitzImage>& topology,
@@ -253,24 +253,24 @@ inline xtbloom_status_t make_wigner_seitz_topology(const Lattice3D& lattice,
 
   if (!representable_geometry_size(atom_count)) {
     error = "periodic topology atom count is outside the supported host range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (atom_count > 0 && positions == nullptr) {
     error = "periodic topology positions must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (!(cutoff >= 0.0) || !finite(cutoff)) {
     error = "periodic topology cutoff must be finite and nonnegative";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (pair_mode != WignerSeitzPairMode::kUnique && pair_mode != WignerSeitzPairMode::kDirected) {
     error = "periodic topology pair mode is invalid";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const double cutoff_squared = rounded_multiply(cutoff, cutoff);
   if (!finite(cutoff_squared)) {
     error = "periodic topology cutoff squared is outside the binary64 range";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   try {
@@ -278,14 +278,14 @@ inline xtbloom_status_t make_wigner_seitz_topology(const Lattice3D& lattice,
     std::vector<std::array<double, 3>> wrapped;
     if (count > wrapped.max_size()) {
       error = "periodic topology atom count exceeds the wrapped-coordinate vector limit";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     wrapped.resize(count);
     std::string local_error;
     for (std::size_t atom = 0; atom < count; ++atom) {
-      const xtbloom_status_t status =
+      const vibeqc_xtb_status_t status =
           wrap_cartesian(lattice, positions + atom * 3u, wrapped[atom].data(), local_error);
-      if (status != XTBLOOM_STATUS_SUCCESS) {
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) {
         error = std::move(local_error);
         return status;
       }
@@ -297,9 +297,9 @@ inline xtbloom_status_t make_wigner_seitz_topology(const Lattice3D& lattice,
      * trigger potentially large allocation or enumeration work.
      */
     std::vector<LatticeTranslation> translations;
-    const xtbloom_status_t translation_status = make_lattice_translations(
+    const vibeqc_xtb_status_t translation_status = make_lattice_translations(
         lattice, cutoff, LatticeOriginPolicy::kInclude, translations, local_error);
-    if (translation_status != XTBLOOM_STATUS_SUCCESS) {
+    if (translation_status != VIBEQC_XTB_STATUS_SUCCESS) {
       error = std::move(local_error);
       return translation_status;
     }
@@ -324,7 +324,7 @@ inline xtbloom_status_t make_wigner_seitz_topology(const Lattice3D& lattice,
         if (!finite(minimum)) continue;
         if (minimum < kPeriodicTopologyMinimumDistanceSquared) {
           error = "periodic topology is undefined for coincident or near-coincident images";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
 
         const double minimum_distance = rounded_square_root(minimum);
@@ -343,11 +343,11 @@ inline xtbloom_status_t make_wigner_seitz_topology(const Lattice3D& lattice,
         }
         if (multiplicity == 0u) {
           error = "periodic topology lost its closest Wigner-Seitz image";
-          return XTBLOOM_STATUS_INTERNAL_ERROR;
+          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
         }
         if (multiplicity > created.max_size() - created.size()) {
           error = "periodic topology image count exceeds the vector implementation limit";
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
         const double weight = 1.0 / static_cast<double>(multiplicity);
         for (const auto& translation : translations) {
@@ -375,13 +375,13 @@ inline xtbloom_status_t make_wigner_seitz_topology(const Lattice3D& lattice,
 
     topology = std::move(created);
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate periodic Wigner-Seitz topology";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_PERIODIC_TOPOLOGY_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_PERIODIC_TOPOLOGY_HPP

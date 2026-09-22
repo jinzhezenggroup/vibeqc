@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_ES2_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_ES2_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_ES2_HPP
+#define VIBEQC_XTB_MODEL_GFN2_ES2_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -12,7 +12,7 @@
 #include "model/gfn2/basis.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct ES2PlanData;
 
@@ -73,9 +73,9 @@ class ES2Plan {
 
   std::shared_ptr<const ES2PlanData> data_;
 
-  friend xtbloom_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
+  friend vibeqc_xtb_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
                                         ES2Plan& plan, std::string& error);
-  friend xtbloom_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
+  friend vibeqc_xtb_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
                                                             ES2HardnessAverage average,
                                                             const double* shell_hardness,
                                                             std::int64_t shell_hardness_count,
@@ -114,7 +114,7 @@ struct ES2Workspace {
 };
 
 /* Build a reusable GFN2 arithmetic-hardness, gexp=2 ES2 plan. */
-xtbloom_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
+vibeqc_xtb_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomic_numbers,
                                ES2Plan& plan, std::string& error);
 
 /*
@@ -122,7 +122,7 @@ xtbloom_status_t make_es2_plan(const BasisPlan& basis, const std::int32_t* atomi
  * kernel. Model builders remain responsible for validating their own element
  * and shell metadata before calling this lower-level constructor.
  */
-xtbloom_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
+vibeqc_xtb_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
                                                    ES2HardnessAverage average,
                                                    const double* shell_hardness,
                                                    std::int64_t shell_hardness_count, ES2Plan& plan,
@@ -147,7 +147,7 @@ xtbloom_status_t make_es2_plan_from_shell_hardness(const BasisPlan& basis,
  * objects themselves. On failure, matrix_storage and cache are unchanged;
  * workspace scratch contents are unspecified.
  */
-xtbloom_status_t update_es2_geometry_cache_cpu(const ES2Plan& plan, const double* positions,
+vibeqc_xtb_status_t update_es2_geometry_cache_cpu(const ES2Plan& plan, const double* positions,
                                                std::uint64_t geometry_generation,
                                                double* matrix_storage,
                                                std::size_t matrix_storage_elements,
@@ -162,7 +162,7 @@ xtbloom_status_t update_es2_geometry_cache_cpu(const ES2Plan& plan, const double
  * output, cache, and scratch storage must not alias immutable plan storage;
  * active buffers must not alias the plan, cache, or workspace descriptors.
  */
-xtbloom_status_t evaluate_es2_potential_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
+vibeqc_xtb_status_t evaluate_es2_potential_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
                                             const double* shell_charges, double* shell_potentials,
                                             const ES2Workspace& workspace, std::string& error);
 
@@ -179,7 +179,7 @@ xtbloom_status_t evaluate_es2_potential_cpu(const ES2Plan& plan, const ES2Geomet
  * modified, so callers must treat the whole target system as failed and must
  * not consume its slice. No per-call allocation is performed.
  */
-xtbloom_status_t evaluate_es2_potential_system_cpu(const ES2Plan& plan,
+vibeqc_xtb_status_t evaluate_es2_potential_system_cpu(const ES2Plan& plan,
                                                    const ES2GeometryCache& cache,
                                                    std::int64_t system, const double* shell_charges,
                                                    double* shell_potentials, std::string& error);
@@ -194,7 +194,7 @@ xtbloom_status_t evaluate_es2_potential_system_cpu(const ES2Plan& plan,
  * Writable output, cache, and scratch storage must not alias plan storage;
  * active buffers must not alias the plan, cache, or workspace descriptors.
  */
-xtbloom_status_t add_es2_energy_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
+vibeqc_xtb_status_t add_es2_energy_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
                                     const double* shell_charges, double* energies,
                                     const ES2Workspace& workspace, std::string& error);
 
@@ -204,13 +204,13 @@ xtbloom_status_t add_es2_energy_cpu(const ES2Plan& plan, const ES2GeometryCache&
  * outside system's shell slice is neither read nor validated. This permits an
  * SCC worker to commit a healthy member even when a peer contains NaN.
  *
- * Structural and binding failures return XTBLOOM_STATUS_INVALID_ARGUMENT.
+ * Structural and binding failures return VIBEQC_XTB_STATUS_INVALID_ARGUMENT.
  * Invalid target-system numerical data or floating-point range failure returns
- * XTBLOOM_STATUS_INTERNAL_ERROR. In either case accumulated_energy is unchanged.
+ * VIBEQC_XTB_STATUS_INTERNAL_ERROR. In either case accumulated_energy is unchanged.
  * The scalar contribution is staged locally, so this one-system primitive
  * requires no caller scratch and performs no allocation.
  */
-xtbloom_status_t add_es2_energy_system_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
+vibeqc_xtb_status_t add_es2_energy_system_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
                                            std::int64_t system, const double* shell_charges,
                                            double& accumulated_energy, std::string& error);
 
@@ -223,11 +223,11 @@ xtbloom_status_t add_es2_energy_system_cpu(const ES2Plan& plan, const ES2Geometr
  * storage must not alias plan storage; active buffers must not alias the plan,
  * cache, or workspace descriptors. gradients are derivatives, not forces.
  */
-xtbloom_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
+vibeqc_xtb_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCache& cache,
                                       const double* positions, std::uint64_t geometry_generation,
                                       const double* shell_charges, double* gradients,
                                       const ES2Workspace& workspace, std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_ES2_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_ES2_HPP

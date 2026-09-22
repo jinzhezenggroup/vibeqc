@@ -9,7 +9,7 @@
 
 #include "backends/cuda/gfn2_electric_field.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -221,4 +221,4 @@ cudaError_t refresh_gfn2_electric_field_potentials_cuda(
   return cudaGetLastError();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

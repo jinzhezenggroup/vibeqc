@@ -8,7 +8,7 @@
 
 #include "backends/cuda/gfn2_scc_classical_energy.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -517,4 +517,4 @@ cudaError_t evaluate_gfn2_scc_classical_energy_cuda(
   return cudaGetLastError();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

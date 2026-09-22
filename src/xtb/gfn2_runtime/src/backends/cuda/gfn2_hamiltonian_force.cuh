@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_HAMILTONIAN_FORCE_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_HAMILTONIAN_FORCE_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_HAMILTONIAN_FORCE_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_HAMILTONIAN_FORCE_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -11,7 +11,7 @@
 #include "backends/cuda/gfn2_force_common.cuh"
 #include "backends/cuda/gfn2_hamiltonian.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 enum class Gfn2HamiltonianForceDeviceError : std::uint32_t {
   kSuccess = 0u,
@@ -104,6 +104,6 @@ cudaError_t add_gfn2_hamiltonian_integral_adjoints_cuda(
     const Gfn2HamiltonianForceDeviceWorkspace& workspace, std::uint32_t* system_errors,
     std::uint32_t* device_error, cudaStream_t stream = nullptr) noexcept;
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_HAMILTONIAN_FORCE_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_HAMILTONIAN_FORCE_CUH

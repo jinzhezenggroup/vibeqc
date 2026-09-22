@@ -1,14 +1,14 @@
-#ifndef XTBLOOM_MODEL_GFN2_ALPB_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_ALPB_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_ALPB_HPP
+#define VIBEQC_XTB_MODEL_GFN2_ALPB_HPP
 
 #include <cstdint>
 #include <string>
 
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 /* Born interaction kernels implemented by tblite's ALPB/GBSA polar term. */
 enum class AlpbBornKernel : std::int32_t {
@@ -45,7 +45,7 @@ inline constexpr double kAlpbAlpha = 0.571412;
  * GBSA. A zero-atom input is an empty no-op and permits null array pointers.
  * The caller owns all storage and must keep output disjoint from input.
  */
-xtbloom_status_t build_alpb_polar_matrix_cpu(std::int64_t atom_count, const double* positions,
+vibeqc_xtb_status_t build_alpb_polar_matrix_cpu(std::int64_t atom_count, const double* positions,
                                              const double* born_radii, const double* cavity_radii,
                                              const AlpbPolarSettings& settings, double* matrix,
                                              std::string& error);
@@ -56,7 +56,7 @@ xtbloom_status_t build_alpb_polar_matrix_cpu(std::int64_t atom_count, const doub
  * energy is in Hartree. A zero-atom evaluation publishes exactly zero energy
  * and permits null matrix, charge, and potential arrays.
  */
-xtbloom_status_t evaluate_alpb_polar_cpu(std::int64_t atom_count, const double* matrix,
+vibeqc_xtb_status_t evaluate_alpb_polar_cpu(std::int64_t atom_count, const double* matrix,
                                          const double* atomic_charges, double* atomic_potentials,
                                          double* energy, std::string& error);
 
@@ -68,12 +68,12 @@ xtbloom_status_t evaluate_alpb_polar_cpu(std::int64_t atom_count, const double* 
  * derivative is undefined at exact atom coincidence, so this call rejects
  * that geometry even though the corresponding matrix elements remain finite.
  */
-xtbloom_status_t add_alpb_polar_gradient_cpu(std::int64_t atom_count, const double* positions,
+vibeqc_xtb_status_t add_alpb_polar_gradient_cpu(std::int64_t atom_count, const double* positions,
                                              const double* born_radii, const double* cavity_radii,
                                              const double* atomic_charges,
                                              const AlpbPolarSettings& settings, double* gradients,
                                              std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_ALPB_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_ALPB_HPP

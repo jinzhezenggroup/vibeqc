@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_EXTERNAL_POINT_CHARGES_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_EXTERNAL_POINT_CHARGES_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_EXTERNAL_POINT_CHARGES_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_EXTERNAL_POINT_CHARGES_CUH
 
 #include <cuda_runtime_api.h>
 
@@ -10,7 +10,7 @@
 #include "backends/cuda/gfn2_force_common.cuh"
 #include "backends/cuda/gfn2_scc_iteration_control.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /* Semantic input errors detected asynchronously by external point-charge kernels. */
 enum class Gfn2ExternalPointChargeDeviceError : std::uint32_t {
@@ -194,6 +194,6 @@ cudaError_t evaluate_gfn2_external_point_charge_scc_energy_cuda(
  * other valid systems in the failing stage may already have completed.
  */
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_EXTERNAL_POINT_CHARGES_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_EXTERNAL_POINT_CHARGES_CUH

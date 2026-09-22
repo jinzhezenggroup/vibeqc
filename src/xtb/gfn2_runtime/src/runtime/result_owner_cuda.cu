@@ -9,7 +9,7 @@
 
 #include "runtime/result_owner.hpp"
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 namespace {
 
 const char* cuda_error_name(cudaError_t status) {
@@ -43,46 +43,46 @@ void restore_device(int previous_device, int selected_device) noexcept {
 
 }  // namespace
 
-xtbloom_status_t allocate_cuda_result_arena(std::int32_t device_id, std::size_t size_bytes,
+vibeqc_xtb_status_t allocate_cuda_result_arena(std::int32_t device_id, std::size_t size_bytes,
                                             void** data, std::string& error) noexcept {
   if (data == nullptr) {
     error = "CUDA arena output pointer is NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   *data = nullptr;
   if (device_id < 0) {
     error = "CUDA result arena requires a nonnegative device id";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (size_bytes == 0u) {
     error = "CUDA arena byte size must be nonzero";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   int previous_device = -1;
   if (cudaGetDevice(&previous_device) != cudaSuccess) {
     error = "failed to query the current CUDA device before allocating a result arena";
-    return XTBLOOM_STATUS_BACKEND_UNAVAILABLE;
+    return VIBEQC_XTB_STATUS_BACKEND_UNAVAILABLE;
   }
   const bool changed_device = previous_device != device_id;
   if (changed_device && cudaSetDevice(device_id) != cudaSuccess) {
     error = "failed to select CUDA device " + std::to_string(device_id) +
             " before allocating a result arena";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   cudaError_t status = cudaMalloc(data, size_bytes);
-  const xtbloom_status_t result =
+  const vibeqc_xtb_status_t result =
       status == cudaSuccess
-          ? XTBLOOM_STATUS_SUCCESS
-          : (status == cudaErrorMemoryAllocation ? XTBLOOM_STATUS_ALLOCATION_FAILED
-                                                 : XTBLOOM_STATUS_BACKEND_UNAVAILABLE);
+          ? VIBEQC_XTB_STATUS_SUCCESS
+          : (status == cudaErrorMemoryAllocation ? VIBEQC_XTB_STATUS_ALLOCATION_FAILED
+                                                 : VIBEQC_XTB_STATUS_BACKEND_UNAVAILABLE);
   if (status != cudaSuccess) {
     error = std::string("cudaMalloc failed: ") + cuda_error_name(status);
   }
 
   restore_device(previous_device, device_id);
-  if (result != XTBLOOM_STATUS_SUCCESS) {
+  if (result != VIBEQC_XTB_STATUS_SUCCESS) {
     *data = nullptr;
   }
   return result;
@@ -104,4 +104,4 @@ void free_cuda_result_arena(std::int32_t device_id, void* data) noexcept {
   }
 }
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail

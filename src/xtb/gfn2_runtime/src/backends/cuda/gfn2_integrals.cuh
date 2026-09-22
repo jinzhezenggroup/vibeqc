@@ -1,14 +1,14 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_INTEGRALS_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_INTEGRALS_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_INTEGRALS_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_INTEGRALS_CUH
 
 #include <cuda_runtime_api.h>
 
 #include <cstdint>
 #include <type_traits>
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 inline constexpr std::int64_t kGfn2IntegralDipoleComponents = 3;
 inline constexpr std::int64_t kGfn2IntegralQuadrupoleComponents = 6;
@@ -161,6 +161,6 @@ cudaError_t evaluate_gfn2_h0_cuda(const Gfn2IntegralDeviceBatch& batch,
  * discovered by this call are sticky per system and preserve healthy peers.
  */
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_INTEGRALS_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_INTEGRALS_CUH

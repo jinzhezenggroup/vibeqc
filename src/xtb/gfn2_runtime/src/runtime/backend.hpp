@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_RUNTIME_BACKEND_HPP
+#ifndef VIBEQC_XTB_RUNTIME_BACKEND_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_RUNTIME_BACKEND_HPP
+#define VIBEQC_XTB_RUNTIME_BACKEND_HPP
 
 #include <cstdint>
 #include <memory>
@@ -11,7 +11,7 @@
 #include "cpu_dispatch/features.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail {
+namespace vibeqc::xtb::detail {
 
 class Gfn1CpuExecutionCache;
 class Gfn2CpuExecutionCache;
@@ -19,7 +19,7 @@ class Gfn2CudaExecutionCache;
 
 /* Runtime state is opaque at the ABI boundary so backend internals can evolve. */
 struct Context {
-  xtbloom_backend_t backend = XTBLOOM_BACKEND_CPU;
+  vibeqc_xtb_backend_t backend = VIBEQC_XTB_BACKEND_CPU;
   std::int32_t device_id = -1;
   std::int32_t cpu_threads = 0;
   CpuIsa cpu_isa = CpuIsa::kBaseline;
@@ -52,16 +52,16 @@ struct Context {
   std::shared_ptr<Gfn2CudaExecutionCache> gfn2_cuda_execution_cache;
 };
 
-xtbloom_status_t create_context(const xtbloom_context_options_t& options, Context*& context,
+vibeqc_xtb_status_t create_context(const vibeqc_xtb_context_options_t& options, Context*& context,
                                 std::string& error);
 
 /* Call only while holding context.cpu_transaction_mutex. These helpers make
  * first-use cache initialization part of the same transaction as validation,
  * execution, and publication. */
-xtbloom_status_t ensure_gfn1_cpu_execution_cache(Context& context, std::string& error);
-xtbloom_status_t ensure_gfn2_cpu_execution_cache(Context& context, std::string& error);
+vibeqc_xtb_status_t ensure_gfn1_cpu_execution_cache(Context& context, std::string& error);
+vibeqc_xtb_status_t ensure_gfn2_cpu_execution_cache(Context& context, std::string& error);
 
-#if defined(XTBLOOM_HAS_CUDA)
+#if defined(VIBEQC_XTB_HAS_CUDA)
 bool resolve_cuda_device(std::int32_t requested_device, std::int32_t& resolved_device,
                          std::string& error);
 
@@ -75,6 +75,6 @@ std::uint64_t cuda_gfn2_parameter_upload_count(std::int32_t device_id);
 bool cuda_gfn2_parameters_match_host(std::int32_t device_id, std::string& error);
 #endif
 
-}  // namespace xtbloom::detail
+}  // namespace vibeqc::xtb::detail
 
-#endif  // XTBLOOM_RUNTIME_BACKEND_HPP
+#endif  // VIBEQC_XTB_RUNTIME_BACKEND_HPP

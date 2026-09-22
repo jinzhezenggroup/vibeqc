@@ -1,12 +1,12 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_DEVICE_ADMISSION_CUH
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_DEVICE_ADMISSION_CUH
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_DEVICE_ADMISSION_CUH
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_DEVICE_ADMISSION_CUH
 
 #include <cstdint>
 #include <type_traits>
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /* Stream-ordered public request error codes. The public result bridge always
  * reads this scalar, so rejected requests need not execute any numerical or
@@ -42,6 +42,6 @@ static_assert(std::is_standard_layout_v<Gfn2DeviceAdmission>);
   return gfn2_request_admitted(admission);
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_DEVICE_ADMISSION_CUH
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_DEVICE_ADMISSION_CUH

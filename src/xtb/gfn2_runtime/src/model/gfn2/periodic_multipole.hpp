@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#ifndef XTBLOOM_MODEL_GFN2_PERIODIC_MULTIPOLE_HPP
-#define XTBLOOM_MODEL_GFN2_PERIODIC_MULTIPOLE_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_PERIODIC_MULTIPOLE_HPP
+#define VIBEQC_XTB_MODEL_GFN2_PERIODIC_MULTIPOLE_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -14,7 +14,7 @@
 #include "model/gfn2/periodic_topology.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct PeriodicMultipolePlanData;
 
@@ -63,10 +63,10 @@ class PeriodicMultipolePlan {
 
   std::shared_ptr<const PeriodicMultipolePlanData> data_;
 
-  friend xtbloom_status_t make_periodic_multipole_plan(const AES2Plan&,
+  friend vibeqc_xtb_status_t make_periodic_multipole_plan(const AES2Plan&,
                                                        const PeriodicShortRangePlan&,
                                                        PeriodicMultipolePlan&, std::string&);
-  friend xtbloom_status_t evaluate_periodic_multipole_cpu(const PeriodicMultipolePlan&,
+  friend vibeqc_xtb_status_t evaluate_periodic_multipole_cpu(const PeriodicMultipolePlan&,
                                                           const double*, const double*,
                                                           const double*, const double*,
                                                           const double*, double*, double*, double*,
@@ -80,7 +80,7 @@ class PeriodicMultipolePlan {
  * reviewed 100-bohr multipole radius; reciprocal images use the independent
  * multipole cutoff search and the multipole-specific alpha selection.
  */
-xtbloom_status_t make_periodic_multipole_plan(const AES2Plan& aes2,
+vibeqc_xtb_status_t make_periodic_multipole_plan(const AES2Plan& aes2,
                                               const PeriodicShortRangePlan& topology,
                                               PeriodicMultipolePlan& plan, std::string& error);
 
@@ -106,7 +106,7 @@ xtbloom_status_t make_periodic_multipole_plan(const AES2Plan& aes2,
  * deformed together.  All outputs are transactional: no output is changed
  * if validation or arithmetic fails.
  */
-xtbloom_status_t evaluate_periodic_multipole_cpu(
+vibeqc_xtb_status_t evaluate_periodic_multipole_cpu(
     const PeriodicMultipolePlan& plan, const double* positions, const double* coordination_numbers,
     const double* atomic_charges, const double* atomic_dipoles, const double* atomic_quadrupoles,
     double* charge_dipole_matrix, double* dipole_dipole_matrix, double* charge_quadrupole_matrix,
@@ -114,6 +114,6 @@ xtbloom_status_t evaluate_periodic_multipole_cpu(
     double* energies, double* gradients, double* strain_derivatives, double* coordination_adjoint,
     std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_PERIODIC_MULTIPOLE_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_PERIODIC_MULTIPOLE_HPP

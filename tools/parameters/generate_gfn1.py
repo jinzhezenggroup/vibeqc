@@ -264,7 +264,7 @@ def render_header(parameters: dict[str, Any], source_revision: str) -> bytes:
         "#include <cstdint>",
         "#include <type_traits>",
         "",
-        "namespace xtbloom::parameters::gfn1 {",
+        "namespace vibeqc::xtb::parameters::gfn1 {",
         "",
         "inline constexpr std::uint32_t kSchemaVersion = 2u;",
         f"inline constexpr char kSourceRevision[] = {json.dumps(source_revision)};",
@@ -473,7 +473,7 @@ def render_header(parameters: dict[str, Any], source_revision: str) -> bytes:
             "  return kGlobal.pair_scale_default;",
             "}",
             "",
-            "}  // namespace xtbloom::parameters::gfn1",
+            "}  // namespace vibeqc::xtb::parameters::gfn1",
             "",
         )
     )

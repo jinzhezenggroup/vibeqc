@@ -9,7 +9,7 @@
 #include "backends/cuda/gfn2_geometry.cuh"
 #include "generated_gfn2_pair_native.hpp"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -741,4 +741,4 @@ cudaError_t add_gfn2_coordination_vjp_cuda(
                                    system_errors, device_error, stream);
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

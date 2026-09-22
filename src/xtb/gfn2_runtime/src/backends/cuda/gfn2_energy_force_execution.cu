@@ -9,7 +9,7 @@
 
 #include "backends/cuda/gfn2_energy_force_execution.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 128;
@@ -169,7 +169,7 @@ __global__ void gate_after_energy_kernel(std::int64_t batch_size, Gfn2ForceDevic
     return;
   }
   const std::uint8_t converged = scc_state.converged[system];
-  if (converged == 1u && activity.system_statuses[system] == XTBLOOM_STATUS_SUCCESS) {
+  if (converged == 1u && activity.system_statuses[system] == VIBEQC_XTB_STATUS_SUCCESS) {
     success_mask[system] = 1u;
   }
 }
@@ -198,7 +198,7 @@ __global__ void publish_energy_only_kernel(
     return;
   }
   if (scc_state.converged[system] == 1u &&
-      scc_state.system_statuses[system] == XTBLOOM_STATUS_SUCCESS) {
+      scc_state.system_statuses[system] == VIBEQC_XTB_STATUS_SUCCESS) {
     public_energy[system] = staged_energy[system];
   }
 }
@@ -476,7 +476,7 @@ __global__ void publish_execution_results_kernel(
   if (!gfn2_request_admitted(admission)) return;
   if (atomicAdd(const_cast<std::uint32_t*>(plan_failure), 0u) != 0u ||
       energy_errors[system] != 0u || scc_state.converged[system] != 1u ||
-      scc_state.system_statuses[system] != XTBLOOM_STATUS_SUCCESS) {
+      scc_state.system_statuses[system] != VIBEQC_XTB_STATUS_SUCCESS) {
     return;
   }
   if (dynamic_epoch != 0 && (geometry.eligible_mask[system] != 1u ||
@@ -1587,7 +1587,7 @@ cudaError_t execute_gfn2_energy_force_cuda(
                                    &geometry, stream);
 }
 
-#if defined(XTBLOOM_CUDA_TEST_HOOKS)
+#if defined(VIBEQC_XTB_CUDA_TEST_HOOKS)
 cudaError_t test_gate_gfn2_cn_vjp_parity_cuda(
     std::int64_t batch_size, const std::int64_t* atom_offsets, const std::uint8_t* incoming_mask,
     const std::uint32_t* sparse_sequence_active, const std::uint32_t* dense_sequence_active,
@@ -1601,4 +1601,4 @@ cudaError_t test_gate_gfn2_cn_vjp_parity_cuda(
 }
 #endif
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

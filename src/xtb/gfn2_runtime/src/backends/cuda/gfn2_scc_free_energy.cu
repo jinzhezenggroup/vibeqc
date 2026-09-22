@@ -8,7 +8,7 @@
 
 #include "backends/cuda/gfn2_scc_free_energy.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -505,4 +505,4 @@ cudaError_t compose_gfn2_scc_free_energy_cuda(const Gfn2SccFreeEnergyDeviceBatch
   return cudaGetLastError();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

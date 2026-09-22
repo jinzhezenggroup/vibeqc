@@ -11,7 +11,7 @@
 #include "backends/cuda/gfn2_integrals.cuh"
 #include "generated_gfn2_sdq_cuda.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 64;
@@ -1010,7 +1010,7 @@ __device__ bool force_member_is_active(const Gfn2ForceDeviceActivity& activity, 
     }
     return false;
   }
-  return requested == 1u && activity.system_statuses[system] == XTBLOOM_STATUS_SUCCESS &&
+  return requested == 1u && activity.system_statuses[system] == VIBEQC_XTB_STATUS_SUCCESS &&
          system_is_valid(system_errors, system);
 }
 
@@ -1510,7 +1510,7 @@ __global__ void publish_integral_force_kernel(Gfn2IntegralDeviceBatch batch,
                                               const std::uint32_t* system_errors) {
   const std::int64_t system = static_cast<std::int64_t>(blockIdx.x);
   if (!force_sequence_is_active(workspace) || activity.requested_mask[system] != 1u ||
-      activity.system_statuses[system] != XTBLOOM_STATUS_SUCCESS ||
+      activity.system_statuses[system] != VIBEQC_XTB_STATUS_SUCCESS ||
       !system_is_valid(system_errors, system)) {
     return;
   }
@@ -1546,7 +1546,7 @@ cudaError_t validate_integral_force_descriptors(
       input.dipole_adjoint_elements < dipoles || input.quadrupole_adjoint_elements < quadrupoles ||
       output.gradient_elements < coordinates || workspace.gradient_elements < coordinates ||
       !is_aligned(activity.requested_mask, alignof(std::uint8_t)) ||
-      !is_aligned(activity.system_statuses, alignof(xtbloom_status_t)) ||
+      !is_aligned(activity.system_statuses, alignof(vibeqc_xtb_status_t)) ||
       !required_pointer(input.positions, coordinates) ||
       !required_pointer(input.overlap_adjoint, batch.total_matrix_elements) ||
       !required_pointer(input.dipole_adjoint, dipoles) ||
@@ -1648,4 +1648,4 @@ cudaError_t add_gfn2_integral_gradient_cuda(
   return check_launch();
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

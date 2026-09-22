@@ -16,7 +16,7 @@
 
 #include "data/parameters/gfn2.hpp"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 struct PeriodicMultipolePlanData final {
   std::int64_t batch_size = 0;
@@ -302,9 +302,9 @@ double search_reciprocal_cutoff(double alpha, double volume) noexcept {
 bool build_wsc_images(const Lattice3D& lattice, const Vec3& rij, bool self,
                       std::vector<WscImage>& images, std::string& error) {
   std::vector<LatticeTranslation> translations;
-  xtbloom_status_t status = make_lattice_translations(
+  vibeqc_xtb_status_t status = make_lattice_translations(
       lattice, kWignerThreshold, LatticeOriginPolicy::kInclude, translations, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) return false;
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) return false;
 
   struct Candidate {
     Vec3 vector{};
@@ -961,14 +961,14 @@ bool PeriodicMultipolePlan::overlaps_storage(const void* pointer,
          overlaps_vector(data_->multipole_valence_cn);
 }
 
-xtbloom_status_t make_periodic_multipole_plan(const AES2Plan& aes2,
+vibeqc_xtb_status_t make_periodic_multipole_plan(const AES2Plan& aes2,
                                               const PeriodicShortRangePlan& topology,
                                               PeriodicMultipolePlan& plan, std::string& error) {
   if (!aes2.sealed() || !topology.sealed() || aes2.batch_size() != topology.batch_size() ||
       aes2.total_atoms() != topology.total_atoms() ||
       aes2.atom_offsets() != topology.atom_offsets()) {
     error = "periodic multipole plan dimensions do not match AES2 and periodic topology";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   try {
     auto created = std::make_shared<PeriodicMultipolePlanData>();
@@ -992,14 +992,14 @@ xtbloom_status_t make_periodic_multipole_plan(const AES2Plan& aes2,
       created->lattices[system] = topology.lattice(static_cast<std::int64_t>(system));
       if (!finite_lattice(created->lattices[system])) {
         error = "periodic multipole topology contains an invalid lattice";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       const std::int64_t atom_count =
           created->atom_offsets[system + 1u] - created->atom_offsets[system];
       if (atom_count < 0 ||
           (atom_count > 0 && atom_count > std::numeric_limits<std::int64_t>::max() / atom_count)) {
         error = "periodic multipole matrix dimensions overflow";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
       matrix_total += atom_count * atom_count;
       created->matrix_offsets[system + 1u] = matrix_total;
@@ -1007,19 +1007,19 @@ xtbloom_status_t make_periodic_multipole_plan(const AES2Plan& aes2,
       created->alphas[system] = alpha;
       std::vector<LatticeTranslation> direct;
       std::vector<LatticeTranslation> reciprocal;
-      xtbloom_status_t status =
+      vibeqc_xtb_status_t status =
           make_lattice_translations(created->lattices[system], kMultipoleCutoff,
                                     LatticeOriginPolicy::kInclude, direct, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
       Lattice3D reciprocal_lattice;
       status =
           make_lattice_3d(created->lattices[system].reciprocal.data(), reciprocal_lattice, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
       const double reciprocal_cutoff =
           search_reciprocal_cutoff(alpha, created->lattices[system].volume);
       status = make_lattice_translations(reciprocal_lattice, reciprocal_cutoff,
                                          LatticeOriginPolicy::kExclude, reciprocal, error);
-      if (status != XTBLOOM_STATUS_SUCCESS) return status;
+      if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
       created->direct_translation_offsets[system + 1u] =
           created->direct_translation_offsets[system] + static_cast<std::int64_t>(direct.size());
       created->reciprocal_translation_offsets[system + 1u] =
@@ -1033,21 +1033,21 @@ xtbloom_status_t make_periodic_multipole_plan(const AES2Plan& aes2,
     created->matrix_elements = matrix_total;
     plan = PeriodicMultipolePlan(std::move(created));
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate periodic multipole plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t evaluate_periodic_multipole_cpu(
+vibeqc_xtb_status_t evaluate_periodic_multipole_cpu(
     const PeriodicMultipolePlan& plan, const double* positions, const double* coordination_numbers,
     const double* atomic_charges, const double* atomic_dipoles, const double* atomic_quadrupoles,
     double* charge_dipole_matrix, double* dipole_dipole_matrix, double* charge_quadrupole_matrix,
     double* charge_potentials, double* dipole_potentials, double* quadrupole_potentials,
     double* energies, double* gradients, double* strain_derivatives, double* coordination_adjoint,
     std::string& error) {
-  if (!validate_plan(plan, error)) return XTBLOOM_STATUS_INVALID_ARGUMENT;
+  if (!validate_plan(plan, error)) return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms());
   const std::size_t batch_count = static_cast<std::size_t>(plan.batch_size());
   const std::size_t matrix_count = static_cast<std::size_t>(plan.matrix_elements());
@@ -1067,7 +1067,7 @@ xtbloom_status_t evaluate_periodic_multipole_cpu(
       !finite_array(atomic_dipoles, coordinate_count) ||
       !finite_array(atomic_quadrupoles, quadrupole_count)) {
     error = "periodic multipole inputs are malformed or nonfinite";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::vector<MemoryRange> ranges{{positions, coordinate_count * sizeof(double)},
                                   {coordination_numbers, atom_count * sizeof(double)},
@@ -1088,12 +1088,12 @@ xtbloom_status_t evaluate_periodic_multipole_cpu(
   }
   if (!all_disjoint(ranges)) {
     error = "periodic multipole inputs and outputs must not overlap";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (const MemoryRange& range : ranges) {
     if (plan.overlaps_storage(range.data, range.bytes)) {
       error = "periodic multipole buffers overlap immutable plan storage";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -1127,10 +1127,10 @@ xtbloom_status_t evaluate_periodic_multipole_cpu(
       std::vector<Vec3> wrapped(local_atoms);
       std::string local_error;
       for (std::size_t local = 0; local < local_atoms; ++local) {
-        const xtbloom_status_t status = wrap_cartesian(
+        const vibeqc_xtb_status_t status = wrap_cartesian(
             plan.lattice(static_cast<std::int64_t>(system)), positions + (atom_begin + local) * 3u,
             wrapped[local].data(), local_error);
-        if (status != XTBLOOM_STATUS_SUCCESS) {
+        if (status != VIBEQC_XTB_STATUS_SUCCESS) {
           error = local_error;
           return status;
         }
@@ -1142,13 +1142,13 @@ xtbloom_status_t evaluate_periodic_multipole_cpu(
                                 subtract(wrapped[center], wrapped[image]), false,
                                 pair_images[center * local_atoms + image], local_error)) {
             error = local_error;
-            return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
           }
         }
         if (!build_wsc_images(plan.lattice(static_cast<std::int64_t>(system)), Vec3{}, true,
                               pair_images[center * local_atoms + center], local_error)) {
           error = local_error;
-          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
         }
       }
 
@@ -1270,7 +1270,7 @@ xtbloom_status_t evaluate_periodic_multipole_cpu(
         !finite_array(staged_strain.data(), staged_strain.size()) ||
         !finite_array(staged_adjoint.data(), staged_adjoint.size())) {
       error = "periodic multipole arithmetic exceeded floating-point range";
-      return XTBLOOM_STATUS_INTERNAL_ERROR;
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     std::copy(staged_sd.begin(), staged_sd.end(), charge_dipole_matrix);
     std::copy(staged_dd.begin(), staged_dd.end(), dipole_dipole_matrix);
@@ -1285,11 +1285,11 @@ xtbloom_status_t evaluate_periodic_multipole_cpu(
       std::copy(staged_adjoint.begin(), staged_adjoint.end(), coordination_adjoint);
     }
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate periodic multipole evaluation scratch";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2

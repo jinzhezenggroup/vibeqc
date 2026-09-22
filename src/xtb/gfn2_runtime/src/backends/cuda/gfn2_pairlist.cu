@@ -9,7 +9,7 @@
 #include "backends/cuda/gfn2_pairlist.cuh"
 #include "generated_gfn2_pair_native.hpp"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -1954,4 +1954,4 @@ bool gfn2_pairlist_use_sparse_for(std::int64_t atoms_per_system) noexcept {
   return atoms_per_system > kSparseCrossoverAtoms;
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

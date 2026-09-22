@@ -14,11 +14,11 @@
 #include <stdexcept>
 #include <utility>
 
-#if defined(XTBLOOM_INTEGRALS_BASELINE_VARIANT) || defined(XTBLOOM_INTEGRALS_AVX2_FMA_VARIANT)
-#define XTBLOOM_INTEGRALS_KERNEL_VARIANT 1
+#if defined(VIBEQC_XTB_INTEGRALS_BASELINE_VARIANT) || defined(VIBEQC_XTB_INTEGRALS_AVX2_FMA_VARIANT)
+#define VIBEQC_XTB_INTEGRALS_KERNEL_VARIANT 1
 #endif
 
-namespace xtbloom::detail::common {
+namespace vibeqc::xtb::detail::common {
 namespace {
 
 constexpr std::size_t kMaximumCartesianFunctions = kIntegralMaximumCartesianFunctions;
@@ -128,14 +128,14 @@ const SphericalTransform* spherical_transform(std::uint8_t angular_momentum) {
   }
 }
 
-xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
+vibeqc_xtb_status_t validate_basis(const BasisPlan& basis, std::string& error) {
   if (basis.batch_size <= 0 || basis.total_atoms <= 0 || basis.total_shells <= 0 ||
       basis.total_orbitals <= 0 || basis.maximum_angular_momentum > 2u ||
       !representable_as_size(basis.batch_size) || !representable_as_size(basis.total_atoms) ||
       !representable_as_size(basis.total_shells) || !representable_as_size(basis.total_orbitals) ||
       !representable_as_size(basis.total_primitives)) {
     error = "integral basis has unsupported or unrepresentable dimensions";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t batch_count = static_cast<std::size_t>(basis.batch_size);
@@ -153,7 +153,7 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
       basis.primitive_exponents.size() != primitive_count ||
       basis.primitive_coefficients.size() != primitive_count) {
     error = "integral basis is incomplete or internally inconsistent";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (basis.atom_offsets.front() != 0 || basis.atom_offsets.back() != basis.total_atoms ||
       basis.batch_shell_offsets.front() != 0 ||
@@ -169,7 +169,7 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
       basis.shell_primitive_offsets.front() != 0 ||
       basis.shell_primitive_offsets.back() != basis.total_primitives) {
     error = "integral basis offsets do not span their stored dimensions";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   for (std::size_t batch = 0; batch < batch_count; ++batch) {
@@ -179,7 +179,7 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
         basis.batch_shell_offsets[batch] > basis.batch_shell_offsets[batch + 1] ||
         basis.batch_orbital_offsets[batch] > basis.batch_orbital_offsets[batch + 1]) {
       error = "integral basis batch offsets are not a valid ragged partition";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     const std::size_t first_atom = static_cast<std::size_t>(basis.atom_offsets[batch]);
     const std::size_t last_atom = static_cast<std::size_t>(basis.atom_offsets[batch + 1]);
@@ -188,7 +188,7 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
         basis.batch_orbital_offsets[batch] != basis.atom_orbital_offsets[first_atom] ||
         basis.batch_orbital_offsets[batch + 1] != basis.atom_orbital_offsets[last_atom]) {
       error = "integral basis batch offsets disagree with atom offsets";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -196,7 +196,7 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
     if (basis.atom_shell_offsets[atom] > basis.atom_shell_offsets[atom + 1] ||
         basis.atom_orbital_offsets[atom] > basis.atom_orbital_offsets[atom + 1]) {
       error = "integral basis atom offsets are not monotone";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   for (std::size_t shell = 0; shell < shell_count; ++shell) {
@@ -211,7 +211,7 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
         primitive_end > basis.total_primitives || basis.shell_to_atom[shell] < 0 ||
         basis.shell_to_atom[shell] >= basis.total_atoms) {
       error = "integral basis contains an invalid s, p, or d shell";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     for (std::int64_t primitive = primitive_begin; primitive < primitive_end; ++primitive) {
       const std::size_t index = static_cast<std::size_t>(primitive);
@@ -219,17 +219,17 @@ xtbloom_status_t validate_basis(const BasisPlan& basis, std::string& error) {
           !std::isfinite(basis.primitive_exponents[index]) ||
           !std::isfinite(basis.primitive_coefficients[index])) {
         error = "integral basis contains invalid primitive data";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_plan(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t validate_plan(const BasisPlan& basis, const IntegralPlan& plan,
                                std::string& error) {
-  xtbloom_status_t status = validate_basis(basis, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_basis(basis, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (plan.batch_size != basis.batch_size || plan.total_matrix_elements < 0 ||
@@ -242,55 +242,55 @@ xtbloom_status_t validate_plan(const BasisPlan& basis, const IntegralPlan& plan,
       static_cast<std::uint64_t>(plan.total_matrix_elements) >
           std::numeric_limits<std::size_t>::max() / sizeof(double)) {
     error = "integral plan is incomplete or incompatible with the basis";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::int64_t expected = 0;
   for (std::int64_t batch = 0; batch < basis.batch_size; ++batch) {
     if (plan.matrix_offsets[static_cast<std::size_t>(batch)] != expected) {
       error = "integral matrix offsets do not match the basis dimensions";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     const std::int64_t orbitals = basis.batch_orbital_offsets[static_cast<std::size_t>(batch + 1)] -
                                   basis.batch_orbital_offsets[static_cast<std::size_t>(batch)];
     if (!checked_square_add(orbitals, expected)) {
       error = "integral matrix dimensions overflow the supported index range";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   if (expected != plan.total_matrix_elements) {
     error = "integral matrix offsets do not span the packed output";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t validate_evaluation(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t validate_evaluation(const BasisPlan& basis, const IntegralPlan& plan,
                                      const double* positions, const void* workspace,
                                      std::size_t workspace_size, std::string& error) {
-  xtbloom_status_t status = validate_plan(basis, plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_plan(basis, plan, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (positions == nullptr || workspace == nullptr) {
     error = "integral positions and workspace must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   if (workspace_size < plan.workspace_size_bytes ||
       reinterpret_cast<std::uintptr_t>(workspace) % alignof(double) != 0u) {
     error = "integral workspace is too small or not aligned for double";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const std::size_t atom_count = static_cast<std::size_t>(basis.total_atoms);
   if (atom_count > std::numeric_limits<std::size_t>::max() / 3u) {
     error = "integral geometry dimensions exceed host limits";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   const double maximum_coordinate = 0.25 * std::sqrt(std::numeric_limits<double>::max());
   for (std::size_t coordinate = 0; coordinate < atom_count * 3u; ++coordinate) {
     if (!std::isfinite(positions[coordinate])) {
       error = "integral positions contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
     /*
      * Pair vectors and their squared norms/products are formed directly in the
@@ -299,10 +299,10 @@ xtbloom_status_t validate_evaluation(const BasisPlan& basis, const IntegralPlan&
      */
     if (std::abs(positions[coordinate]) > maximum_coordinate) {
       error = "integral positions are too large for finite pair arithmetic";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
 void transform_shell_pair(const SphericalTransform& bra, const SphericalTransform& ket,
@@ -535,9 +535,9 @@ void compute_shell_pair(const BasisPlan& basis, std::size_t bra_shell, std::size
 
 }  // namespace
 
-#if !defined(XTBLOOM_INTEGRALS_KERNEL_VARIANT)
+#if !defined(VIBEQC_XTB_INTEGRALS_KERNEL_VARIANT)
 
-xtbloom_status_t validate_integral_plan(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t validate_integral_plan(const BasisPlan& basis, const IntegralPlan& plan,
                                         std::string& error) {
   return validate_plan(basis, plan, error);
 }
@@ -552,16 +552,16 @@ void compute_shell_pair_cpu(const BasisPlan& basis, std::size_t bra_shell, std::
 #endif
 
 #if defined(_MSC_VER)
-#define XTBLOOM_INTEGRALS_NOINLINE __declspec(noinline)
+#define VIBEQC_XTB_INTEGRALS_NOINLINE __declspec(noinline)
 #elif defined(__GNUC__) || defined(__clang__)
-#define XTBLOOM_INTEGRALS_NOINLINE __attribute__((noinline))
+#define VIBEQC_XTB_INTEGRALS_NOINLINE __attribute__((noinline))
 #else
-#define XTBLOOM_INTEGRALS_NOINLINE
+#define VIBEQC_XTB_INTEGRALS_NOINLINE
 #endif
 
-#if defined(XTBLOOM_INTEGRALS_BASELINE_VARIANT)
+#if defined(VIBEQC_XTB_INTEGRALS_BASELINE_VARIANT)
 
-XTBLOOM_INTEGRALS_NOINLINE void multipole_gradient_shell_pair_baseline(
+VIBEQC_XTB_INTEGRALS_NOINLINE void multipole_gradient_shell_pair_baseline(
     const BasisPlan& basis, std::size_t bra_shell, std::size_t ket_shell, const double* vector,
     double integral_cutoff, void* workspace) noexcept {
   compute_shell_pair<>(basis, bra_shell, ket_shell, vector, integral_cutoff, true, true,
@@ -574,9 +574,9 @@ const IntegralKernelTable& integral_baseline_kernels() noexcept {
   return kernels;
 }
 
-#elif defined(XTBLOOM_INTEGRALS_AVX2_FMA_VARIANT)
+#elif defined(VIBEQC_XTB_INTEGRALS_AVX2_FMA_VARIANT)
 
-XTBLOOM_INTEGRALS_NOINLINE void multipole_gradient_shell_pair_avx2_fma(
+VIBEQC_XTB_INTEGRALS_NOINLINE void multipole_gradient_shell_pair_avx2_fma(
     const BasisPlan& basis, std::size_t bra_shell, std::size_t ket_shell, const double* vector,
     double integral_cutoff, void* workspace) noexcept {
   auto& scratch = *static_cast<IntegralWorkspace*>(workspace);
@@ -634,14 +634,14 @@ const IntegralKernelTable& integral_avx2_fma_kernels() noexcept {
 
 #else
 
-#if !defined(XTBLOOM_HAS_AVX2_FMA_KERNELS)
+#if !defined(VIBEQC_XTB_HAS_AVX2_FMA_KERNELS)
 const IntegralKernelTable& integral_avx2_fma_kernels() noexcept {
   return integral_baseline_kernels();
 }
 #endif
 
 const IntegralKernelTable& integral_kernels_for_cpu_isa(CpuIsa isa) noexcept {
-#if defined(XTBLOOM_HAS_AVX2_FMA_KERNELS)
+#if defined(VIBEQC_XTB_HAS_AVX2_FMA_KERNELS)
   if (isa == CpuIsa::kAvx2Fma) {
     return integral_avx2_fma_kernels();
   }
@@ -653,19 +653,19 @@ const IntegralKernelTable& integral_kernels_for_cpu_isa(CpuIsa isa) noexcept {
 
 #endif
 
-#undef XTBLOOM_INTEGRALS_NOINLINE
+#undef VIBEQC_XTB_INTEGRALS_NOINLINE
 
-#if !defined(XTBLOOM_INTEGRALS_KERNEL_VARIANT)
+#if !defined(VIBEQC_XTB_INTEGRALS_KERNEL_VARIANT)
 
-xtbloom_status_t make_integral_plan(const BasisPlan& basis, IntegralPlan& plan, std::string& error,
+vibeqc_xtb_status_t make_integral_plan(const BasisPlan& basis, IntegralPlan& plan, std::string& error,
                                     double integral_cutoff) {
-  xtbloom_status_t status = validate_basis(basis, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  vibeqc_xtb_status_t status = validate_basis(basis, error);
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (!std::isfinite(integral_cutoff) || !(integral_cutoff > 0.0)) {
     error = "integral cutoff must be finite and positive";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   try {
@@ -683,33 +683,33 @@ xtbloom_status_t make_integral_plan(const BasisPlan& basis, IntegralPlan& plan, 
           static_cast<std::uint64_t>(created.total_matrix_elements) >
               std::numeric_limits<std::size_t>::max() / sizeof(double)) {
         error = "integral matrix dimensions overflow the supported index range";
-        return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
     }
     created.matrix_offsets.back() = created.total_matrix_elements;
     plan = std::move(created);
     error.clear();
-    return XTBLOOM_STATUS_SUCCESS;
+    return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate the integral plan";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   } catch (const std::length_error&) {
     error = "integral plan dimensions exceed host container limits";
-    return XTBLOOM_STATUS_ALLOCATION_FAILED;
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }
 
-xtbloom_status_t evaluate_overlap_cpu(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t evaluate_overlap_cpu(const BasisPlan& basis, const IntegralPlan& plan,
                                       const double* positions, double* overlap, void* workspace,
                                       std::size_t workspace_size, std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_evaluation(basis, plan, positions, workspace, workspace_size, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (overlap == nullptr) {
     error = "overlap output must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   std::fill_n(overlap, static_cast<std::size_t>(plan.total_matrix_elements), 0.0);
@@ -769,28 +769,28 @@ xtbloom_status_t evaluate_overlap_cpu(const BasisPlan& basis, const IntegralPlan
   }
 
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t evaluate_multipole_cpu(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t evaluate_multipole_cpu(const BasisPlan& basis, const IntegralPlan& plan,
                                         const double* positions, double* dipole, double* quadrupole,
                                         void* workspace, std::size_t workspace_size,
                                         std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_evaluation(basis, plan, positions, workspace, workspace_size, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (dipole == nullptr || quadrupole == nullptr) {
     error = "multipole output buffers must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t matrix_elements = static_cast<std::size_t>(plan.total_matrix_elements);
   if (matrix_elements >
       std::numeric_limits<std::size_t>::max() / kQuadrupoleComponents / sizeof(double)) {
     error = "multipole output dimensions exceed host limits";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   std::fill_n(dipole, kDipoleComponents * matrix_elements, 0.0);
   std::fill_n(quadrupole, kQuadrupoleComponents * matrix_elements, 0.0);
@@ -908,40 +908,40 @@ xtbloom_status_t evaluate_multipole_cpu(const BasisPlan& basis, const IntegralPl
   }
 
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_multipole_gradient_cpu(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t add_multipole_gradient_cpu(const BasisPlan& basis, const IntegralPlan& plan,
                                             const double* positions, const double* dE_ddipole,
                                             const double* dE_dquadrupole, double* gradients,
                                             void* workspace, std::size_t workspace_size,
                                             std::string& error, CpuIsa cpu_isa) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_evaluation(basis, plan, positions, workspace, workspace_size, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (dE_ddipole == nullptr || dE_dquadrupole == nullptr || gradients == nullptr) {
     error = "multipole derivatives and gradients must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
 
   const std::size_t matrix_elements = static_cast<std::size_t>(plan.total_matrix_elements);
   if (matrix_elements >
       std::numeric_limits<std::size_t>::max() / kQuadrupoleComponents / sizeof(double)) {
     error = "multipole derivative dimensions exceed host limits";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::size_t element = 0; element < kDipoleComponents * matrix_elements; ++element) {
     if (!std::isfinite(dE_ddipole[element])) {
       error = "dipole derivatives contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
   for (std::size_t element = 0; element < kQuadrupoleComponents * matrix_elements; ++element) {
     if (!std::isfinite(dE_dquadrupole[element])) {
       error = "quadrupole derivatives contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -1056,26 +1056,26 @@ xtbloom_status_t add_multipole_gradient_cpu(const BasisPlan& basis, const Integr
   }
 
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-xtbloom_status_t add_overlap_gradient_cpu(const BasisPlan& basis, const IntegralPlan& plan,
+vibeqc_xtb_status_t add_overlap_gradient_cpu(const BasisPlan& basis, const IntegralPlan& plan,
                                           const double* positions, const double* dE_doverlap,
                                           double* gradients, void* workspace,
                                           std::size_t workspace_size, std::string& error) {
-  xtbloom_status_t status =
+  vibeqc_xtb_status_t status =
       validate_evaluation(basis, plan, positions, workspace, workspace_size, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
+  if (status != VIBEQC_XTB_STATUS_SUCCESS) {
     return status;
   }
   if (dE_doverlap == nullptr || gradients == nullptr) {
     error = "overlap derivatives and gradients must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
   }
   for (std::int64_t element = 0; element < plan.total_matrix_elements; ++element) {
     if (!std::isfinite(dE_doverlap[static_cast<std::size_t>(element)])) {
       error = "overlap derivatives contain NaN or infinity";
-      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
   }
 
@@ -1144,11 +1144,11 @@ xtbloom_status_t add_overlap_gradient_cpu(const BasisPlan& basis, const Integral
   }
 
   error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return VIBEQC_XTB_STATUS_SUCCESS;
 }
 
-#endif  // !defined(XTBLOOM_INTEGRALS_KERNEL_VARIANT)
+#endif  // !defined(VIBEQC_XTB_INTEGRALS_KERNEL_VARIANT)
 
-}  // namespace xtbloom::detail::common
+}  // namespace vibeqc::xtb::detail::common
 
-#undef XTBLOOM_INTEGRALS_KERNEL_VARIANT
+#undef VIBEQC_XTB_INTEGRALS_KERNEL_VARIANT

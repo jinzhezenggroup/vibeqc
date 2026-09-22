@@ -10,7 +10,7 @@
 
 #include "backends/cuda/gfn2_preprocessing.cuh"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
@@ -1056,7 +1056,7 @@ __global__ void commit_pairlist_kernel(Gfn2PairListDeviceBatch pairlist,
   /* The committed consumer view is a const projection; the output arrays are
    * the mutable publication target owned by the caller, so publish through
    * mutable local aliases. */
-  auto* const committed_pairs = const_cast<xtbloom::detail::Gfn2AtomPair*>(committed.pairs);
+  auto* const committed_pairs = const_cast<vibeqc::xtb::detail::Gfn2AtomPair*>(committed.pairs);
   auto* const committed_pair_counts = const_cast<std::int64_t*>(committed.pair_counts);
   auto* const committed_neighbor_counts = const_cast<std::int64_t*>(committed.neighbor_counts);
   auto* const committed_neighbors = const_cast<std::int64_t*>(committed.neighbors);
@@ -1500,4 +1500,4 @@ Gfn2PreprocessingLaunchDiagnostic gate_gfn2_sparse_coordination_cuda(
   return {binding_failure(BindingError::kSuccess, BindingField::kNone), check_launch()};
 }
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda

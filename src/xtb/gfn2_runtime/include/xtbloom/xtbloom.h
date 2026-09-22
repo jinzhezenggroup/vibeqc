@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_XTBLOOM_H
+#ifndef VIBEQC_XTB_RUNTIME_H
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_XTBLOOM_H
+#define VIBEQC_XTB_RUNTIME_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -9,15 +9,15 @@
 #include "xtbloom/version.h"
 
 #if defined(_WIN32)
-#if defined(XTBLOOM_BUILDING_LIBRARY)
-#define XTBLOOM_API __declspec(dllexport)
+#if defined(VIBEQC_XTB_BUILDING_LIBRARY)
+#define VIBEQC_XTB_API __declspec(dllexport)
 #else
-#define XTBLOOM_API __declspec(dllimport)
+#define VIBEQC_XTB_API __declspec(dllimport)
 #endif
 #elif defined(__GNUC__) || defined(__clang__)
-#define XTBLOOM_API __attribute__((visibility("default")))
+#define VIBEQC_XTB_API __attribute__((visibility("default")))
 #else
-#define XTBLOOM_API
+#define VIBEQC_XTB_API
 #endif
 
 #ifdef __cplusplus
@@ -25,35 +25,35 @@ extern "C" {
 #endif
 
 /* Increment this value only when an ABI-incompatible C API change is made. */
-#define XTBLOOM_API_VERSION 1u
+#define VIBEQC_XTB_API_VERSION 1u
 
 /*
  * Electronic temperatures are k_B*T energy scales in Hartree, not kelvin.
  * This conversion matches the pinned xTB/tblite convention used by xtbloom.
  */
-#define XTBLOOM_KELVIN_TO_HARTREE 3.166808578545117e-6
-#define XTBLOOM_DEFAULT_ELECTRONIC_TEMPERATURE (300.0 * XTBLOOM_KELVIN_TO_HARTREE)
+#define VIBEQC_XTB_KELVIN_TO_HARTREE 3.166808578545117e-6
+#define VIBEQC_XTB_DEFAULT_ELECTRONIC_TEMPERATURE (300.0 * VIBEQC_XTB_KELVIN_TO_HARTREE)
 
-typedef struct xtbloom_context xtbloom_context_t;
+typedef struct vibeqc_xtb_context vibeqc_xtb_context_t;
 
-/* Opaque fixed-topology plan handle. See xtbloom_plan_create. */
-typedef struct xtbloom_plan xtbloom_plan_t;
+/* Opaque fixed-topology plan handle. See vibeqc_xtb_plan_create. */
+typedef struct vibeqc_xtb_plan vibeqc_xtb_plan_t;
 
 /*
  * Opaque reusable owner of one native asynchronous submission. See
- * xtbloom_request_create. A request is bound to the context that created it
+ * vibeqc_xtb_request_create. A request is bound to the context that created it
  * and must be destroyed before that context.
  */
-typedef struct xtbloom_request xtbloom_request_t;
+typedef struct vibeqc_xtb_request vibeqc_xtb_request_t;
 
 /*
  * Opaque owner of one xtbloom-allocated result arena. See
- * xtbloom_result_owner_create. A result owner is a ref-counted host or CUDA
+ * vibeqc_xtb_result_owner_create. A result owner is a ref-counted host or CUDA
  * device allocation that outlives the compute context used to fill it, so a
  * DLPack producer can hand the finished bytes to an importing framework
  * without a host round trip and without keeping the context alive.
  */
-typedef struct xtbloom_result_owner xtbloom_result_owner_t;
+typedef struct vibeqc_xtb_result_owner vibeqc_xtb_result_owner_t;
 
 /*
  * ABI tags are explicitly int32_t rather than enum-typed fields. This keeps
@@ -62,107 +62,107 @@ typedef struct xtbloom_result_owner xtbloom_result_owner_t;
  * The named enums below only provide debugger-friendly symbolic constants;
  * callers may pass any int32_t bit pattern and the library validates it.
  */
-typedef int32_t xtbloom_status_t;
-enum xtbloom_status_value {
-  XTBLOOM_STATUS_SUCCESS = 0,
-  XTBLOOM_STATUS_INVALID_ARGUMENT = 1,
-  XTBLOOM_STATUS_BACKEND_UNAVAILABLE = 2,
-  XTBLOOM_STATUS_NOT_SUPPORTED = 3,
-  XTBLOOM_STATUS_ALLOCATION_FAILED = 4,
-  XTBLOOM_STATUS_NOT_IMPLEMENTED = 5,
-  XTBLOOM_STATUS_INTERNAL_ERROR = 6,
+typedef int32_t vibeqc_xtb_status_t;
+enum vibeqc_xtb_status_value {
+  VIBEQC_XTB_STATUS_SUCCESS = 0,
+  VIBEQC_XTB_STATUS_INVALID_ARGUMENT = 1,
+  VIBEQC_XTB_STATUS_BACKEND_UNAVAILABLE = 2,
+  VIBEQC_XTB_STATUS_NOT_SUPPORTED = 3,
+  VIBEQC_XTB_STATUS_ALLOCATION_FAILED = 4,
+  VIBEQC_XTB_STATUS_NOT_IMPLEMENTED = 5,
+  VIBEQC_XTB_STATUS_INTERNAL_ERROR = 6,
   /* Per-system SCC reached max_scc_iterations without satisfying both tolerances. */
-  XTBLOOM_STATUS_SCC_NOT_CONVERGED = 7,
+  VIBEQC_XTB_STATUS_SCC_NOT_CONVERGED = 7,
   /* Per-system generalized eigensolver failed or produced an unusable eigensystem. */
-  XTBLOOM_STATUS_EIGENSOLVER_FAILED = 8
+  VIBEQC_XTB_STATUS_EIGENSOLVER_FAILED = 8
 };
 
-typedef int32_t xtbloom_request_state_t;
-enum xtbloom_request_state_value {
+typedef int32_t vibeqc_xtb_request_state_t;
+enum vibeqc_xtb_request_state_value {
   /* No submission has ever been accepted by this request. */
-  XTBLOOM_REQUEST_IDLE = 0,
+  VIBEQC_XTB_REQUEST_IDLE = 0,
   /* Native work has been accepted and may still access caller-owned buffers. */
-  XTBLOOM_REQUEST_PENDING = 1,
+  VIBEQC_XTB_REQUEST_PENDING = 1,
   /* Native work and result publication have finished, successfully or not. */
-  XTBLOOM_REQUEST_COMPLETE = 2
+  VIBEQC_XTB_REQUEST_COMPLETE = 2
 };
 
-typedef int32_t xtbloom_backend_t;
-enum xtbloom_backend_value {
+typedef int32_t vibeqc_xtb_backend_t;
+enum vibeqc_xtb_backend_value {
   /* Prefer CUDA when it is compiled in and a compatible device is present. */
-  XTBLOOM_BACKEND_AUTO = 0,
-  XTBLOOM_BACKEND_CPU = 1,
-  XTBLOOM_BACKEND_CUDA = 2,
+  VIBEQC_XTB_BACKEND_AUTO = 0,
+  VIBEQC_XTB_BACKEND_CPU = 1,
+  VIBEQC_XTB_BACKEND_CUDA = 2,
   /* Reserved now so adding HIP kernels does not require redesigning the ABI. */
-  XTBLOOM_BACKEND_ROCM = 3
+  VIBEQC_XTB_BACKEND_ROCM = 3
 };
 
-typedef int32_t xtbloom_memory_space_t;
-enum xtbloom_memory_space_value {
-  XTBLOOM_MEMORY_HOST = 0,
-  XTBLOOM_MEMORY_CUDA_DEVICE = 1,
-  XTBLOOM_MEMORY_ROCM_DEVICE = 2
+typedef int32_t vibeqc_xtb_memory_space_t;
+enum vibeqc_xtb_memory_space_value {
+  VIBEQC_XTB_MEMORY_HOST = 0,
+  VIBEQC_XTB_MEMORY_CUDA_DEVICE = 1,
+  VIBEQC_XTB_MEMORY_ROCM_DEVICE = 2
 };
 
-typedef int32_t xtbloom_model_t;
-enum xtbloom_model_value { XTBLOOM_MODEL_GFN1_XTB = 1, XTBLOOM_MODEL_GFN2_XTB = 2 };
+typedef int32_t vibeqc_xtb_model_t;
+enum vibeqc_xtb_model_value { VIBEQC_XTB_MODEL_GFN1_XTB = 1, VIBEQC_XTB_MODEL_GFN2_XTB = 2 };
 
-typedef int32_t xtbloom_scc_start_mode_t;
-enum xtbloom_scc_start_mode_value {
+typedef int32_t vibeqc_xtb_scc_start_mode_t;
+enum vibeqc_xtb_scc_start_mode_value {
   /* Restore the immutable initial electronic state before SCC. */
-  XTBLOOM_SCC_START_FRESH = 1,
+  VIBEQC_XTB_SCC_START_FRESH = 1,
   /* Strictly consume a checkpoint from the latest fully converged compatible batch call. */
-  XTBLOOM_SCC_START_WARM = 2
+  VIBEQC_XTB_SCC_START_WARM = 2
 };
 
-typedef int32_t xtbloom_scc_mixer_t;
-enum xtbloom_scc_mixer_value {
+typedef int32_t vibeqc_xtb_scc_mixer_t;
+enum vibeqc_xtb_scc_mixer_value {
   /* Johnson modified-Broyden mixing used by the GFN2 CPU and CUDA backends. */
-  XTBLOOM_SCC_MIXER_MODIFIED_BROYDEN = 1
+  VIBEQC_XTB_SCC_MIXER_MODIFIED_BROYDEN = 1
 };
 
-typedef int32_t xtbloom_determinism_t;
-enum xtbloom_determinism_value {
+typedef int32_t vibeqc_xtb_determinism_t;
+enum vibeqc_xtb_determinism_value {
   /* Use the production execution policy selected by the backend. */
-  XTBLOOM_DETERMINISM_DEFAULT = 0,
+  VIBEQC_XTB_DETERMINISM_DEFAULT = 0,
   /*
    * Request exact replay for an unchanged build, backend, numerical provider
    * or CUDA toolkit, device architecture, complete descriptors/options,
    * launch/bucket geometry, and FRESH/WARM sequence. This is not a bitwise
    * CPU/CUDA, cross-provider, cross-toolkit, or cross-architecture promise.
    */
-  XTBLOOM_DETERMINISM_REPRODUCIBLE = 1
+  VIBEQC_XTB_DETERMINISM_REPRODUCIBLE = 1
 };
 
-typedef int32_t xtbloom_compute_flag_t;
-enum xtbloom_compute_flag_value {
-  XTBLOOM_COMPUTE_ENERGY = 1 << 0,
-  XTBLOOM_COMPUTE_FORCES = 1 << 1,
-  XTBLOOM_COMPUTE_ATOMIC_CHARGES = 1 << 2,
-  XTBLOOM_COMPUTE_POINT_CHARGE_FORCES = 1 << 3,
+typedef int32_t vibeqc_xtb_compute_flag_t;
+enum vibeqc_xtb_compute_flag_value {
+  VIBEQC_XTB_COMPUTE_ENERGY = 1 << 0,
+  VIBEQC_XTB_COMPUTE_FORCES = 1 << 1,
+  VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES = 1 << 2,
+  VIBEQC_XTB_COMPUTE_POINT_CHARGE_FORCES = 1 << 3,
   /* Reports per-system dipole moments through batch_result.dipole_moments. */
-  XTBLOOM_COMPUTE_DIPOLE_MOMENTS = 1 << 4,
+  VIBEQC_XTB_COMPUTE_DIPOLE_MOMENTS = 1 << 4,
   /* Reports per-system native-periodic dE/d(strain) through
    * batch_result.strain_derivatives. The nine row-major entries form the
    * symmetric derivative with respect to infinitesimal affine strain of the
    * direct-cell rows, in Hartree; each off-diagonal shear value is published
    * in both transposed positions. This output is released for CPU GFN2 XYZ
    * requests; CUDA and molecular requests reject it explicitly. */
-  XTBLOOM_COMPUTE_STRAIN_DERIVATIVES = 1 << 5,
+  VIBEQC_XTB_COMPUTE_STRAIN_DERIVATIVES = 1 << 5,
   /* Bits 16-31 are reserved for future outputs and must be zero on input. */
 };
 
-typedef int32_t xtbloom_result_flag_t;
-enum xtbloom_result_flag_value {
+typedef int32_t vibeqc_xtb_result_flag_t;
+enum vibeqc_xtb_result_flag_value {
   /*
    * Set when atomic_potential_shifts or charge_response_matrix was supplied.
    * Forces then exclude coordinate derivatives of those caller-owned fields.
    */
-  XTBLOOM_RESULT_FORCES_EXCLUDE_EXTERNAL_OPERATOR_DERIVATIVES = 1 << 0,
+  VIBEQC_XTB_RESULT_FORCES_EXCLUDE_EXTERNAL_OPERATOR_DERIVATIVES = 1 << 0,
   /* Set when the requested per-system dipole moments were published. */
-  XTBLOOM_RESULT_DIPOLE_MOMENTS = 1 << 4,
+  VIBEQC_XTB_RESULT_DIPOLE_MOMENTS = 1 << 4,
   /* Set when native-periodic per-system strain derivatives were published. */
-  XTBLOOM_RESULT_STRAIN_DERIVATIVES = 1 << 5,
+  VIBEQC_XTB_RESULT_STRAIN_DERIVATIVES = 1 << 5,
   /* Bits 16-31 are reserved; xtbloom-produced result flags are zero there. */
 };
 
@@ -171,28 +171,28 @@ enum xtbloom_result_flag_value {
  * Tag values are intentionally spread over family ranges so future additions
  * never renumber an existing value. Both GFN2 backends implement the uniform
  * electric field; every other tag remains reserved and returns
- * XTBLOOM_STATUS_NOT_IMPLEMENTED. XTBLOOM_INTERACTION_NONE is not a valid
+ * VIBEQC_XTB_STATUS_NOT_IMPLEMENTED. VIBEQC_XTB_INTERACTION_NONE is not a valid
  * attachment.
  */
-typedef int32_t xtbloom_interaction_type_t;
-enum xtbloom_interaction_type_value {
-  XTBLOOM_INTERACTION_NONE = 0,
+typedef int32_t vibeqc_xtb_interaction_type_t;
+enum vibeqc_xtb_interaction_type_value {
+  VIBEQC_XTB_INTERACTION_NONE = 0,
   /* External potentials (0x01xx). */
-  XTBLOOM_INTERACTION_ELECTRIC_FIELD = 0x0101,
-  XTBLOOM_INTERACTION_ELECTRIC_FIELD_GRADIENT = 0x0102,
-  XTBLOOM_INTERACTION_POINT_CHARGES_MULTIPOLE = 0x0103,
-  XTBLOOM_INTERACTION_ATOMIC_POTENTIAL_GRID = 0x0104,
+  VIBEQC_XTB_INTERACTION_ELECTRIC_FIELD = 0x0101,
+  VIBEQC_XTB_INTERACTION_ELECTRIC_FIELD_GRADIENT = 0x0102,
+  VIBEQC_XTB_INTERACTION_POINT_CHARGES_MULTIPOLE = 0x0103,
+  VIBEQC_XTB_INTERACTION_ATOMIC_POTENTIAL_GRID = 0x0104,
   /* Self-consistent solvation models (0x02xx). */
-  XTBLOOM_INTERACTION_ALPB_SOLVATION = 0x0201,
-  XTBLOOM_INTERACTION_GBSA_SOLVATION = 0x0202,
-  XTBLOOM_INTERACTION_GB_SOLVATION = 0x0203,
-  XTBLOOM_INTERACTION_GBE_SOLVATION = 0x0204,
-  XTBLOOM_INTERACTION_DDX_SOLVATION = 0x0205,
+  VIBEQC_XTB_INTERACTION_ALPB_SOLVATION = 0x0201,
+  VIBEQC_XTB_INTERACTION_GBSA_SOLVATION = 0x0202,
+  VIBEQC_XTB_INTERACTION_GB_SOLVATION = 0x0203,
+  VIBEQC_XTB_INTERACTION_GBE_SOLVATION = 0x0204,
+  VIBEQC_XTB_INTERACTION_DDX_SOLVATION = 0x0205,
   /* Dispersion models (0x03xx). */
-  XTBLOOM_INTERACTION_D3_DISPERSION = 0x0301,
-  XTBLOOM_INTERACTION_D4_VARIANT_DISPERSION = 0x0302,
+  VIBEQC_XTB_INTERACTION_D3_DISPERSION = 0x0301,
+  VIBEQC_XTB_INTERACTION_D4_VARIANT_DISPERSION = 0x0302,
   /* Structure-correction models (0x04xx). */
-  XTBLOOM_INTERACTION_HALOGEN_BOND = 0x0401
+  VIBEQC_XTB_INTERACTION_HALOGEN_BOND = 0x0401
 };
 
 /*
@@ -203,14 +203,14 @@ enum xtbloom_interaction_type_value {
  * This release accepts NONE for a molecular batch item and XYZ for a native
  * three-dimensional periodic item. Partial masks are not implemented.
  */
-typedef int32_t xtbloom_periodic_axes_t;
-enum xtbloom_periodic_axes_value {
-  XTBLOOM_PERIODIC_AXES_NONE = 0,
-  XTBLOOM_PERIODIC_AXIS_X = 1 << 0,
-  XTBLOOM_PERIODIC_AXIS_Y = 1 << 1,
-  XTBLOOM_PERIODIC_AXIS_Z = 1 << 2,
-  XTBLOOM_PERIODIC_AXES_XYZ =
-      XTBLOOM_PERIODIC_AXIS_X | XTBLOOM_PERIODIC_AXIS_Y | XTBLOOM_PERIODIC_AXIS_Z
+typedef int32_t vibeqc_xtb_periodic_axes_t;
+enum vibeqc_xtb_periodic_axes_value {
+  VIBEQC_XTB_PERIODIC_AXES_NONE = 0,
+  VIBEQC_XTB_PERIODIC_AXIS_X = 1 << 0,
+  VIBEQC_XTB_PERIODIC_AXIS_Y = 1 << 1,
+  VIBEQC_XTB_PERIODIC_AXIS_Z = 1 << 2,
+  VIBEQC_XTB_PERIODIC_AXES_XYZ =
+      VIBEQC_XTB_PERIODIC_AXIS_X | VIBEQC_XTB_PERIODIC_AXIS_Y | VIBEQC_XTB_PERIODIC_AXIS_Z
 };
 
 /*
@@ -225,63 +225,63 @@ enum xtbloom_periodic_axes_value {
  * 32 bytes: int32_t version, int32_t reserved (zero), three finite doubles
  * holding the field vector in Hartree per elementary charge per bohr.
  */
-typedef struct xtbloom_interaction {
-  xtbloom_interaction_type_t type;
+typedef struct vibeqc_xtb_interaction {
+  vibeqc_xtb_interaction_type_t type;
   uint32_t flags;
   int64_t system_index;
   uint64_t payload_offset;
   uint64_t payload_size;
-} xtbloom_interaction_t;
+} vibeqc_xtb_interaction_t;
 
-#define XTBLOOM_INTERACTION_V1_SIZE \
-  (offsetof(xtbloom_interaction_t, payload_size) + sizeof(uint64_t))
+#define VIBEQC_XTB_INTERACTION_V1_SIZE \
+  (offsetof(vibeqc_xtb_interaction_t, payload_size) + sizeof(uint64_t))
 
 /*
  * Keep all public ABI tag and flag aliases at their specified width.
  */
 #if defined(__cplusplus)
-static_assert(sizeof(xtbloom_status_t) == sizeof(int32_t), "xtbloom_status_t must be 32-bit");
-static_assert(sizeof(xtbloom_request_state_t) == sizeof(int32_t),
-              "xtbloom_request_state_t must be 32-bit");
-static_assert(sizeof(xtbloom_backend_t) == sizeof(int32_t), "xtbloom_backend_t must be 32-bit");
-static_assert(sizeof(xtbloom_memory_space_t) == sizeof(int32_t),
-              "xtbloom_memory_space_t must be 32-bit");
-static_assert(sizeof(xtbloom_model_t) == sizeof(int32_t), "xtbloom_model_t must be 32-bit");
-static_assert(sizeof(xtbloom_scc_start_mode_t) == sizeof(int32_t),
-              "xtbloom_scc_start_mode_t must be 32-bit");
-static_assert(sizeof(xtbloom_scc_mixer_t) == sizeof(int32_t), "xtbloom_scc_mixer_t must be 32-bit");
-static_assert(sizeof(xtbloom_determinism_t) == sizeof(int32_t),
-              "xtbloom_determinism_t must be 32-bit");
-static_assert(sizeof(xtbloom_compute_flag_t) == sizeof(int32_t),
-              "xtbloom_compute_flag_t must be 32-bit");
-static_assert(sizeof(xtbloom_result_flag_t) == sizeof(int32_t),
-              "xtbloom_result_flag_t must be 32-bit");
-static_assert(sizeof(xtbloom_interaction_type_t) == sizeof(int32_t),
-              "xtbloom_interaction_type_t must be 32-bit");
-static_assert(sizeof(xtbloom_periodic_axes_t) == sizeof(int32_t),
-              "xtbloom_periodic_axes_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_status_t) == sizeof(int32_t), "vibeqc_xtb_status_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_request_state_t) == sizeof(int32_t),
+              "vibeqc_xtb_request_state_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_backend_t) == sizeof(int32_t), "vibeqc_xtb_backend_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_memory_space_t) == sizeof(int32_t),
+              "vibeqc_xtb_memory_space_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_model_t) == sizeof(int32_t), "vibeqc_xtb_model_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_scc_start_mode_t) == sizeof(int32_t),
+              "vibeqc_xtb_scc_start_mode_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_scc_mixer_t) == sizeof(int32_t), "vibeqc_xtb_scc_mixer_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_determinism_t) == sizeof(int32_t),
+              "vibeqc_xtb_determinism_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_compute_flag_t) == sizeof(int32_t),
+              "vibeqc_xtb_compute_flag_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_result_flag_t) == sizeof(int32_t),
+              "vibeqc_xtb_result_flag_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_interaction_type_t) == sizeof(int32_t),
+              "vibeqc_xtb_interaction_type_t must be 32-bit");
+static_assert(sizeof(vibeqc_xtb_periodic_axes_t) == sizeof(int32_t),
+              "vibeqc_xtb_periodic_axes_t must be 32-bit");
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(xtbloom_status_t) == sizeof(int32_t), "xtbloom_status_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_request_state_t) == sizeof(int32_t),
-               "xtbloom_request_state_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_backend_t) == sizeof(int32_t), "xtbloom_backend_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_memory_space_t) == sizeof(int32_t),
-               "xtbloom_memory_space_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_model_t) == sizeof(int32_t), "xtbloom_model_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_scc_start_mode_t) == sizeof(int32_t),
-               "xtbloom_scc_start_mode_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_scc_mixer_t) == sizeof(int32_t),
-               "xtbloom_scc_mixer_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_determinism_t) == sizeof(int32_t),
-               "xtbloom_determinism_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_compute_flag_t) == sizeof(int32_t),
-               "xtbloom_compute_flag_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_result_flag_t) == sizeof(int32_t),
-               "xtbloom_result_flag_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_interaction_type_t) == sizeof(int32_t),
-               "xtbloom_interaction_type_t must be 32-bit");
-_Static_assert(sizeof(xtbloom_periodic_axes_t) == sizeof(int32_t),
-               "xtbloom_periodic_axes_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_status_t) == sizeof(int32_t), "vibeqc_xtb_status_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_request_state_t) == sizeof(int32_t),
+               "vibeqc_xtb_request_state_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_backend_t) == sizeof(int32_t), "vibeqc_xtb_backend_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_memory_space_t) == sizeof(int32_t),
+               "vibeqc_xtb_memory_space_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_model_t) == sizeof(int32_t), "vibeqc_xtb_model_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_scc_start_mode_t) == sizeof(int32_t),
+               "vibeqc_xtb_scc_start_mode_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_scc_mixer_t) == sizeof(int32_t),
+               "vibeqc_xtb_scc_mixer_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_determinism_t) == sizeof(int32_t),
+               "vibeqc_xtb_determinism_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_compute_flag_t) == sizeof(int32_t),
+               "vibeqc_xtb_compute_flag_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_result_flag_t) == sizeof(int32_t),
+               "vibeqc_xtb_result_flag_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_interaction_type_t) == sizeof(int32_t),
+               "vibeqc_xtb_interaction_type_t must be 32-bit");
+_Static_assert(sizeof(vibeqc_xtb_periodic_axes_t) == sizeof(int32_t),
+               "vibeqc_xtb_periodic_axes_t must be 32-bit");
 #endif
 
 /*
@@ -290,36 +290,36 @@ _Static_assert(sizeof(xtbloom_periodic_axes_t) == sizeof(int32_t),
  * lets newer and older libraries initialize only the structure prefix known to
  * both sides and reject accidental ABI mismatches.
  */
-typedef struct xtbloom_context_options {
+typedef struct vibeqc_xtb_context_options {
   uint32_t struct_size;
   uint32_t api_version;
-  xtbloom_backend_t backend;
+  vibeqc_xtb_backend_t backend;
   int32_t device_id;
   /* CPU batch parallelism: zero selects automatic, one disables parallelism. */
   int32_t cpu_threads;
   uint32_t reserved;
   /* Native cudaStream_t or hipStream_t cast to void*. NULL selects the default. */
   void* stream;
-} xtbloom_context_options_t;
+} vibeqc_xtb_context_options_t;
 
-#define XTBLOOM_CONTEXT_OPTIONS_V1_SIZE \
-  (offsetof(xtbloom_context_options_t, stream) + sizeof(void*))
+#define VIBEQC_XTB_CONTEXT_OPTIONS_V1_SIZE \
+  (offsetof(vibeqc_xtb_context_options_t, stream) + sizeof(void*))
 
 /* A byte-sized view of caller-owned input memory. xtbloom never takes ownership. */
-typedef struct xtbloom_const_buffer {
+typedef struct vibeqc_xtb_const_buffer {
   const void* data;
   size_t size_bytes;
-  xtbloom_memory_space_t memory_space;
+  vibeqc_xtb_memory_space_t memory_space;
   uint32_t reserved;
-} xtbloom_const_buffer_t;
+} vibeqc_xtb_const_buffer_t;
 
 /* A byte-sized view of caller-owned output memory. xtbloom never takes ownership. */
-typedef struct xtbloom_buffer {
+typedef struct vibeqc_xtb_buffer {
   void* data;
   size_t size_bytes;
-  xtbloom_memory_space_t memory_space;
+  vibeqc_xtb_memory_space_t memory_space;
   uint32_t reserved;
-} xtbloom_buffer_t;
+} vibeqc_xtb_buffer_t;
 
 /*
  * Pointer-bearing ABI images are architecture-local. A wasm32/native ILP32
@@ -329,94 +329,94 @@ typedef struct xtbloom_buffer {
  * compiler or packing change fails at build time instead of corrupting views.
  */
 #if UINTPTR_MAX == UINT64_MAX
-#define XTBLOOM_DETAIL_EXPECTED_CONTEXT_OPTIONS_V1_SIZE 32u
-#define XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE 24u
-#define XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE_BYTES_OFFSET 8u
-#define XTBLOOM_DETAIL_EXPECTED_BUFFER_MEMORY_SPACE_OFFSET 16u
-#define XTBLOOM_DETAIL_EXPECTED_BUFFER_RESERVED_OFFSET 20u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_V1_SIZE 328u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_V2_SIZE 352u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_TOTAL_INTERACTIONS_OFFSET 352u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_INTERACTION_DESCRIPTORS_OFFSET 360u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_INTERACTION_PAYLOAD_OFFSET 384u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_V3_SIZE 408u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_CELL_MATRICES_OFFSET 408u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_PERIODIC_AXES_OFFSET 432u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_V4_SIZE 456u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V1_SIZE 184u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_DIPOLE_OFFSET 184u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_QUADRUPOLE_OFFSET 208u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_WIBERG_OFFSET 232u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_SPIN_OFFSET 256u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V2_SIZE 280u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_STRAIN_OFFSET 280u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V3_SIZE 304u
-#define XTBLOOM_DETAIL_EXPECTED_DLPACK_SHAPE_OFFSET 40u
-#define XTBLOOM_DETAIL_EXPECTED_DLPACK_VIEW_V1_SIZE 48u
+#define VIBEQC_XTB_DETAIL_EXPECTED_CONTEXT_OPTIONS_V1_SIZE 32u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE 24u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE_BYTES_OFFSET 8u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_MEMORY_SPACE_OFFSET 16u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_RESERVED_OFFSET 20u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V1_SIZE 328u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V2_SIZE 352u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_TOTAL_INTERACTIONS_OFFSET 352u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_INTERACTION_DESCRIPTORS_OFFSET 360u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_INTERACTION_PAYLOAD_OFFSET 384u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V3_SIZE 408u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_CELL_MATRICES_OFFSET 408u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_PERIODIC_AXES_OFFSET 432u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V4_SIZE 456u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V1_SIZE 184u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_DIPOLE_OFFSET 184u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_QUADRUPOLE_OFFSET 208u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_WIBERG_OFFSET 232u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_SPIN_OFFSET 256u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V2_SIZE 280u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_STRAIN_OFFSET 280u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V3_SIZE 304u
+#define VIBEQC_XTB_DETAIL_EXPECTED_DLPACK_SHAPE_OFFSET 40u
+#define VIBEQC_XTB_DETAIL_EXPECTED_DLPACK_VIEW_V1_SIZE 48u
 #elif UINTPTR_MAX == UINT32_MAX
-#define XTBLOOM_DETAIL_EXPECTED_CONTEXT_OPTIONS_V1_SIZE 28u
-#define XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE 16u
-#define XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE_BYTES_OFFSET 4u
-#define XTBLOOM_DETAIL_EXPECTED_BUFFER_MEMORY_SPACE_OFFSET 8u
-#define XTBLOOM_DETAIL_EXPECTED_BUFFER_RESERVED_OFFSET 12u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_V1_SIZE 232u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_V2_SIZE 248u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_TOTAL_INTERACTIONS_OFFSET 248u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_INTERACTION_DESCRIPTORS_OFFSET 256u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_INTERACTION_PAYLOAD_OFFSET 272u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_V3_SIZE 288u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_CELL_MATRICES_OFFSET 288u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_PERIODIC_AXES_OFFSET 304u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_V4_SIZE 320u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V1_SIZE 128u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_DIPOLE_OFFSET 128u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_QUADRUPOLE_OFFSET 144u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_WIBERG_OFFSET 160u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_SPIN_OFFSET 176u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V2_SIZE 192u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_STRAIN_OFFSET 192u
-#define XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V3_SIZE 208u
-#define XTBLOOM_DETAIL_EXPECTED_DLPACK_SHAPE_OFFSET 36u
-#define XTBLOOM_DETAIL_EXPECTED_DLPACK_VIEW_V1_SIZE 40u
+#define VIBEQC_XTB_DETAIL_EXPECTED_CONTEXT_OPTIONS_V1_SIZE 28u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE 16u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE_BYTES_OFFSET 4u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_MEMORY_SPACE_OFFSET 8u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_RESERVED_OFFSET 12u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V1_SIZE 232u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V2_SIZE 248u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_TOTAL_INTERACTIONS_OFFSET 248u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_INTERACTION_DESCRIPTORS_OFFSET 256u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_INTERACTION_PAYLOAD_OFFSET 272u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V3_SIZE 288u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_CELL_MATRICES_OFFSET 288u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_PERIODIC_AXES_OFFSET 304u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V4_SIZE 320u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V1_SIZE 128u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_DIPOLE_OFFSET 128u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_QUADRUPOLE_OFFSET 144u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_WIBERG_OFFSET 160u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_SPIN_OFFSET 176u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V2_SIZE 192u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_STRAIN_OFFSET 192u
+#define VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V3_SIZE 208u
+#define VIBEQC_XTB_DETAIL_EXPECTED_DLPACK_SHAPE_OFFSET 36u
+#define VIBEQC_XTB_DETAIL_EXPECTED_DLPACK_VIEW_V1_SIZE 40u
 #endif
 
 #if defined(__cplusplus)
-#define XTBLOOM_DETAIL_ABI_ASSERT(condition, message) static_assert((condition), message)
+#define VIBEQC_XTB_DETAIL_ABI_ASSERT(condition, message) static_assert((condition), message)
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-#define XTBLOOM_DETAIL_ABI_ASSERT(condition, message) _Static_assert((condition), message)
+#define VIBEQC_XTB_DETAIL_ABI_ASSERT(condition, message) _Static_assert((condition), message)
 #endif
 
-#if defined(XTBLOOM_DETAIL_ABI_ASSERT) && defined(XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE)
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_context_options_t, stream) == 24u,
-                          "xtbloom_context_options_t stream must start at byte 24");
-XTBLOOM_DETAIL_ABI_ASSERT(XTBLOOM_CONTEXT_OPTIONS_V1_SIZE ==
-                              XTBLOOM_DETAIL_EXPECTED_CONTEXT_OPTIONS_V1_SIZE,
-                          "xtbloom_context_options_t image must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(sizeof(xtbloom_context_options_t) == XTBLOOM_CONTEXT_OPTIONS_V1_SIZE,
-                          "xtbloom_context_options_t must not add trailing ABI padding");
-XTBLOOM_DETAIL_ABI_ASSERT(sizeof(xtbloom_const_buffer_t) == XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE,
-                          "xtbloom_const_buffer_t image must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(sizeof(xtbloom_buffer_t) == XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE,
-                          "xtbloom_buffer_t image must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_const_buffer_t, size_bytes) ==
-                              XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE_BYTES_OFFSET,
-                          "xtbloom_const_buffer_t size must follow its target-width pointer");
-XTBLOOM_DETAIL_ABI_ASSERT(
-    offsetof(xtbloom_const_buffer_t, memory_space) ==
-        XTBLOOM_DETAIL_EXPECTED_BUFFER_MEMORY_SPACE_OFFSET,
-    "xtbloom_const_buffer_t memory tag offset must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(
-    offsetof(xtbloom_const_buffer_t, reserved) == XTBLOOM_DETAIL_EXPECTED_BUFFER_RESERVED_OFFSET,
-    "xtbloom_const_buffer_t reserved offset must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_buffer_t, size_bytes) ==
-                              XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE_BYTES_OFFSET,
-                          "xtbloom_buffer_t size must follow its target-width pointer");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_buffer_t, memory_space) ==
-                              XTBLOOM_DETAIL_EXPECTED_BUFFER_MEMORY_SPACE_OFFSET,
-                          "xtbloom_buffer_t memory tag offset must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_buffer_t, reserved) ==
-                              XTBLOOM_DETAIL_EXPECTED_BUFFER_RESERVED_OFFSET,
-                          "xtbloom_buffer_t reserved offset must match the target pointer width");
+#if defined(VIBEQC_XTB_DETAIL_ABI_ASSERT) && defined(VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE)
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_context_options_t, stream) == 24u,
+                          "vibeqc_xtb_context_options_t stream must start at byte 24");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(VIBEQC_XTB_CONTEXT_OPTIONS_V1_SIZE ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_CONTEXT_OPTIONS_V1_SIZE,
+                          "vibeqc_xtb_context_options_t image must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(sizeof(vibeqc_xtb_context_options_t) == VIBEQC_XTB_CONTEXT_OPTIONS_V1_SIZE,
+                          "vibeqc_xtb_context_options_t must not add trailing ABI padding");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(sizeof(vibeqc_xtb_const_buffer_t) == VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE,
+                          "vibeqc_xtb_const_buffer_t image must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(sizeof(vibeqc_xtb_buffer_t) == VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE,
+                          "vibeqc_xtb_buffer_t image must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_const_buffer_t, size_bytes) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE_BYTES_OFFSET,
+                          "vibeqc_xtb_const_buffer_t size must follow its target-width pointer");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(
+    offsetof(vibeqc_xtb_const_buffer_t, memory_space) ==
+        VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_MEMORY_SPACE_OFFSET,
+    "vibeqc_xtb_const_buffer_t memory tag offset must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(
+    offsetof(vibeqc_xtb_const_buffer_t, reserved) == VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_RESERVED_OFFSET,
+    "vibeqc_xtb_const_buffer_t reserved offset must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_buffer_t, size_bytes) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE_BYTES_OFFSET,
+                          "vibeqc_xtb_buffer_t size must follow its target-width pointer");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_buffer_t, memory_space) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_MEMORY_SPACE_OFFSET,
+                          "vibeqc_xtb_buffer_t memory tag offset must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_buffer_t, reserved) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_RESERVED_OFFSET,
+                          "vibeqc_xtb_buffer_t reserved offset must match the target pointer width");
 #endif
 
 /*
@@ -447,45 +447,45 @@ XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_buffer_t, reserved) ==
  * packed consecutively in charge_response_matrix. Derivatives of b and A with
  * respect to coordinates are outside xtbloom and are not included in forces.
  */
-typedef struct xtbloom_batch {
+typedef struct vibeqc_xtb_batch {
   uint32_t struct_size;
   uint32_t api_version;
   int64_t batch_size;
   int64_t total_atoms;
   int64_t total_point_charges;
   int64_t total_charge_response_elements;
-  xtbloom_const_buffer_t atom_offsets;
-  xtbloom_const_buffer_t atomic_numbers;
-  xtbloom_const_buffer_t positions;
-  xtbloom_const_buffer_t molecular_charges;
-  xtbloom_const_buffer_t unpaired_electrons;
-  xtbloom_const_buffer_t point_charge_offsets;
-  xtbloom_const_buffer_t point_charge_positions;
-  xtbloom_const_buffer_t point_charge_values;
-  xtbloom_const_buffer_t point_charge_gammas;
-  xtbloom_const_buffer_t atomic_potential_shifts;
-  xtbloom_const_buffer_t charge_response_offsets;
-  xtbloom_const_buffer_t charge_response_matrix;
+  vibeqc_xtb_const_buffer_t atom_offsets;
+  vibeqc_xtb_const_buffer_t atomic_numbers;
+  vibeqc_xtb_const_buffer_t positions;
+  vibeqc_xtb_const_buffer_t molecular_charges;
+  vibeqc_xtb_const_buffer_t unpaired_electrons;
+  vibeqc_xtb_const_buffer_t point_charge_offsets;
+  vibeqc_xtb_const_buffer_t point_charge_positions;
+  vibeqc_xtb_const_buffer_t point_charge_values;
+  vibeqc_xtb_const_buffer_t point_charge_gammas;
+  vibeqc_xtb_const_buffer_t atomic_potential_shifts;
+  vibeqc_xtb_const_buffer_t charge_response_offsets;
+  vibeqc_xtb_const_buffer_t charge_response_matrix;
   /* ABI v2 optional suffix; NULL selects one restricted channel per system. */
-  xtbloom_const_buffer_t spin_channels;
+  vibeqc_xtb_const_buffer_t spin_channels;
   /* ABI v3 optional suffix: generic external-interaction attachments.
    *
-   * total_interactions counts xtbloom_interaction_t entries in
+   * total_interactions counts vibeqc_xtb_interaction_t entries in
    * interaction_descriptors, each attaching one caller-owned payload block in
    * interaction_payload to one batch item. The suffix may carry any mix of
    * host and CUDA-device storage and may be present with zero interactions,
    * preserving ABI-v1/v2 behavior for callers that never use it. See
-   * xtbloom_interaction_type_t for the reserved tag set and payload contract. */
+   * vibeqc_xtb_interaction_type_t for the reserved tag set and payload contract. */
   int64_t total_interactions;
-  xtbloom_const_buffer_t interaction_descriptors;
-  xtbloom_const_buffer_t interaction_payload;
+  vibeqc_xtb_const_buffer_t interaction_descriptors;
+  vibeqc_xtb_const_buffer_t interaction_payload;
   /* ABI v4 optional suffix: native lattice/PBC descriptors.
    *
    * When either buffer is active, both are required. cell_matrices contains
    * batch_size row-major 3x3 direct-cell matrices in bohr. The three rows are
    * the a, b, and c lattice vectors, so a fractional row vector u maps to the
    * Cartesian vector u[0]*a + u[1]*b + u[2]*c. periodic_axes contains
-   * batch_size xtbloom_periodic_axes_t values. NONE requires the corresponding
+   * batch_size vibeqc_xtb_periodic_axes_t values. NONE requires the corresponding
    * nine cell entries to be exactly zero; XYZ requires a finite, right-handed,
    * nonsingular cell. Partial-axis masks are reserved but not implemented.
    *
@@ -495,22 +495,22 @@ typedef struct xtbloom_batch {
    * XYZ energy/force/charge requests and the additive strain-derivative result
    * suffix. GFN1 and CUDA native XYZ execution remain explicitly refused until
    * their periodic physics is connected. */
-  xtbloom_const_buffer_t cell_matrices;
-  xtbloom_const_buffer_t periodic_axes;
-} xtbloom_batch_t;
+  vibeqc_xtb_const_buffer_t cell_matrices;
+  vibeqc_xtb_const_buffer_t periodic_axes;
+} vibeqc_xtb_batch_t;
 
-#define XTBLOOM_BATCH_V1_SIZE \
-  (offsetof(xtbloom_batch_t, charge_response_matrix) + sizeof(xtbloom_const_buffer_t))
-#define XTBLOOM_BATCH_V2_SIZE \
-  (offsetof(xtbloom_batch_t, spin_channels) + sizeof(xtbloom_const_buffer_t))
-#define XTBLOOM_BATCH_V3_SIZE \
-  (offsetof(xtbloom_batch_t, interaction_payload) + sizeof(xtbloom_const_buffer_t))
-#define XTBLOOM_BATCH_V4_SIZE \
-  (offsetof(xtbloom_batch_t, periodic_axes) + sizeof(xtbloom_const_buffer_t))
+#define VIBEQC_XTB_BATCH_V1_SIZE \
+  (offsetof(vibeqc_xtb_batch_t, charge_response_matrix) + sizeof(vibeqc_xtb_const_buffer_t))
+#define VIBEQC_XTB_BATCH_V2_SIZE \
+  (offsetof(vibeqc_xtb_batch_t, spin_channels) + sizeof(vibeqc_xtb_const_buffer_t))
+#define VIBEQC_XTB_BATCH_V3_SIZE \
+  (offsetof(vibeqc_xtb_batch_t, interaction_payload) + sizeof(vibeqc_xtb_const_buffer_t))
+#define VIBEQC_XTB_BATCH_V4_SIZE \
+  (offsetof(vibeqc_xtb_batch_t, periodic_axes) + sizeof(vibeqc_xtb_const_buffer_t))
 
 /*
  * electronic_temperature is k_B*T in Hartree. Bindings that accept kelvin
- * should multiply by XTBLOOM_KELVIN_TO_HARTREE before populating this struct.
+ * should multiply by VIBEQC_XTB_KELVIN_TO_HARTREE before populating this struct.
  *
  * The ABI-v2 scc_start_mode suffix is a strict per-call policy. FRESH restores
  * the immutable initial electronic state. WARM consumes the checkpoint from
@@ -528,17 +528,17 @@ typedef struct xtbloom_batch {
  * for the new coordinates and reconverges. A WARM request with no such
  * compatible fully converged predecessor (first call, changed topology or
  * policy, or a preceding non-converged batch) is rejected with
- * XTBLOOM_STATUS_INVALID_ARGUMENT before any caller output is modified.
+ * VIBEQC_XTB_STATUS_INVALID_ARGUMENT before any caller output is modified.
  *
  * An accepted FRESH attempt consumes the preceding compatible checkpoint
  * before execution starts. If that attempt later fails, including a CUDA
  * failure discovered in stream order after enqueue, no stale checkpoint from
  * an older call survives; a subsequent strict WARM request is rejected.
  */
-typedef struct xtbloom_compute_options {
+typedef struct vibeqc_xtb_compute_options {
   uint32_t struct_size;
   uint32_t api_version;
-  xtbloom_model_t model;
+  vibeqc_xtb_model_t model;
   uint32_t flags;
   int32_t max_scc_iterations;
   uint32_t reserved;
@@ -546,113 +546,113 @@ typedef struct xtbloom_compute_options {
   double energy_tolerance;
   double electronic_temperature;
   /* ABI v2 optional suffix; absent suffix preserves strict FRESH semantics. */
-  xtbloom_scc_start_mode_t scc_start_mode;
+  vibeqc_xtb_scc_start_mode_t scc_start_mode;
   uint32_t reserved_v2;
   /*
    * ABI v3 optional suffix. A caller must provide the complete suffix or the
    * library uses modified-Broyden history 8, damping 0.4, and default
    * execution. Partial v3 suffixes are ignored as a unit.
    */
-  /* Currently only XTBLOOM_SCC_MIXER_MODIFIED_BROYDEN is accepted. */
-  xtbloom_scc_mixer_t scc_mixer;
+  /* Currently only VIBEQC_XTB_SCC_MIXER_MODIFIED_BROYDEN is accepted. */
+  vibeqc_xtb_scc_mixer_t scc_mixer;
   /* Modified-Broyden history depth in [1, 64]. */
   int32_t scc_mixer_history;
   /* Linear damping factor, finite and in (0, 1]. */
   double scc_mixer_damping;
-  /* XTBLOOM_DETERMINISM_DEFAULT or XTBLOOM_DETERMINISM_REPRODUCIBLE. */
-  xtbloom_determinism_t determinism;
+  /* VIBEQC_XTB_DETERMINISM_DEFAULT or VIBEQC_XTB_DETERMINISM_REPRODUCIBLE. */
+  vibeqc_xtb_determinism_t determinism;
   uint32_t reserved_v3;
-} xtbloom_compute_options_t;
+} vibeqc_xtb_compute_options_t;
 
-#define XTBLOOM_COMPUTE_OPTIONS_V1_SIZE \
-  (offsetof(xtbloom_compute_options_t, electronic_temperature) + sizeof(double))
-#define XTBLOOM_COMPUTE_OPTIONS_V2_SIZE \
-  (offsetof(xtbloom_compute_options_t, reserved_v2) + sizeof(uint32_t))
-#define XTBLOOM_COMPUTE_OPTIONS_V3_SIZE \
-  (offsetof(xtbloom_compute_options_t, reserved_v3) + sizeof(uint32_t))
+#define VIBEQC_XTB_COMPUTE_OPTIONS_V1_SIZE \
+  (offsetof(vibeqc_xtb_compute_options_t, electronic_temperature) + sizeof(double))
+#define VIBEQC_XTB_COMPUTE_OPTIONS_V2_SIZE \
+  (offsetof(vibeqc_xtb_compute_options_t, reserved_v2) + sizeof(uint32_t))
+#define VIBEQC_XTB_COMPUTE_OPTIONS_V3_SIZE \
+  (offsetof(vibeqc_xtb_compute_options_t, reserved_v3) + sizeof(uint32_t))
 
 #if defined(__cplusplus)
-static_assert(offsetof(xtbloom_compute_options_t, scc_start_mode) == 48u,
-              "xtbloom_compute_options_t ABI-v2 suffix must start at byte 48");
-static_assert(XTBLOOM_COMPUTE_OPTIONS_V1_SIZE == 48u,
-              "xtbloom_compute_options_t ABI-v1 prefix must remain 48 bytes");
-static_assert(XTBLOOM_COMPUTE_OPTIONS_V2_SIZE == 56u,
-              "xtbloom_compute_options_t ABI-v2 image must remain 56 bytes");
-static_assert(offsetof(xtbloom_compute_options_t, scc_mixer) == 56u,
-              "xtbloom_compute_options_t ABI-v3 mixer must start at byte 56");
-static_assert(offsetof(xtbloom_compute_options_t, scc_mixer_history) == 60u,
-              "xtbloom_compute_options_t ABI-v3 history must start at byte 60");
-static_assert(offsetof(xtbloom_compute_options_t, scc_mixer_damping) == 64u,
-              "xtbloom_compute_options_t ABI-v3 damping must start at byte 64");
-static_assert(offsetof(xtbloom_compute_options_t, determinism) == 72u,
-              "xtbloom_compute_options_t ABI-v3 determinism must start at byte 72");
-static_assert(offsetof(xtbloom_compute_options_t, reserved_v3) == 76u,
-              "xtbloom_compute_options_t ABI-v3 reserved field must start at byte 76");
-static_assert(XTBLOOM_COMPUTE_OPTIONS_V3_SIZE == 80u,
-              "xtbloom_compute_options_t ABI-v3 image must remain 80 bytes");
-static_assert(sizeof(xtbloom_compute_options_t) == XTBLOOM_COMPUTE_OPTIONS_V3_SIZE,
-              "xtbloom_compute_options_t must not add trailing ABI padding");
+static_assert(offsetof(vibeqc_xtb_compute_options_t, scc_start_mode) == 48u,
+              "vibeqc_xtb_compute_options_t ABI-v2 suffix must start at byte 48");
+static_assert(VIBEQC_XTB_COMPUTE_OPTIONS_V1_SIZE == 48u,
+              "vibeqc_xtb_compute_options_t ABI-v1 prefix must remain 48 bytes");
+static_assert(VIBEQC_XTB_COMPUTE_OPTIONS_V2_SIZE == 56u,
+              "vibeqc_xtb_compute_options_t ABI-v2 image must remain 56 bytes");
+static_assert(offsetof(vibeqc_xtb_compute_options_t, scc_mixer) == 56u,
+              "vibeqc_xtb_compute_options_t ABI-v3 mixer must start at byte 56");
+static_assert(offsetof(vibeqc_xtb_compute_options_t, scc_mixer_history) == 60u,
+              "vibeqc_xtb_compute_options_t ABI-v3 history must start at byte 60");
+static_assert(offsetof(vibeqc_xtb_compute_options_t, scc_mixer_damping) == 64u,
+              "vibeqc_xtb_compute_options_t ABI-v3 damping must start at byte 64");
+static_assert(offsetof(vibeqc_xtb_compute_options_t, determinism) == 72u,
+              "vibeqc_xtb_compute_options_t ABI-v3 determinism must start at byte 72");
+static_assert(offsetof(vibeqc_xtb_compute_options_t, reserved_v3) == 76u,
+              "vibeqc_xtb_compute_options_t ABI-v3 reserved field must start at byte 76");
+static_assert(VIBEQC_XTB_COMPUTE_OPTIONS_V3_SIZE == 80u,
+              "vibeqc_xtb_compute_options_t ABI-v3 image must remain 80 bytes");
+static_assert(sizeof(vibeqc_xtb_compute_options_t) == VIBEQC_XTB_COMPUTE_OPTIONS_V3_SIZE,
+              "vibeqc_xtb_compute_options_t must not add trailing ABI padding");
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(offsetof(xtbloom_compute_options_t, scc_start_mode) == 48u,
-               "xtbloom_compute_options_t ABI-v2 suffix must start at byte 48");
-_Static_assert(XTBLOOM_COMPUTE_OPTIONS_V1_SIZE == 48u,
-               "xtbloom_compute_options_t ABI-v1 prefix must remain 48 bytes");
-_Static_assert(XTBLOOM_COMPUTE_OPTIONS_V2_SIZE == 56u,
-               "xtbloom_compute_options_t ABI-v2 image must remain 56 bytes");
-_Static_assert(offsetof(xtbloom_compute_options_t, scc_mixer) == 56u,
-               "xtbloom_compute_options_t ABI-v3 mixer must start at byte 56");
-_Static_assert(offsetof(xtbloom_compute_options_t, scc_mixer_history) == 60u,
-               "xtbloom_compute_options_t ABI-v3 history must start at byte 60");
-_Static_assert(offsetof(xtbloom_compute_options_t, scc_mixer_damping) == 64u,
-               "xtbloom_compute_options_t ABI-v3 damping must start at byte 64");
-_Static_assert(offsetof(xtbloom_compute_options_t, determinism) == 72u,
-               "xtbloom_compute_options_t ABI-v3 determinism must start at byte 72");
-_Static_assert(offsetof(xtbloom_compute_options_t, reserved_v3) == 76u,
-               "xtbloom_compute_options_t ABI-v3 reserved field must start at byte 76");
-_Static_assert(XTBLOOM_COMPUTE_OPTIONS_V3_SIZE == 80u,
-               "xtbloom_compute_options_t ABI-v3 image must remain 80 bytes");
-_Static_assert(sizeof(xtbloom_compute_options_t) == XTBLOOM_COMPUTE_OPTIONS_V3_SIZE,
-               "xtbloom_compute_options_t must not add trailing ABI padding");
+_Static_assert(offsetof(vibeqc_xtb_compute_options_t, scc_start_mode) == 48u,
+               "vibeqc_xtb_compute_options_t ABI-v2 suffix must start at byte 48");
+_Static_assert(VIBEQC_XTB_COMPUTE_OPTIONS_V1_SIZE == 48u,
+               "vibeqc_xtb_compute_options_t ABI-v1 prefix must remain 48 bytes");
+_Static_assert(VIBEQC_XTB_COMPUTE_OPTIONS_V2_SIZE == 56u,
+               "vibeqc_xtb_compute_options_t ABI-v2 image must remain 56 bytes");
+_Static_assert(offsetof(vibeqc_xtb_compute_options_t, scc_mixer) == 56u,
+               "vibeqc_xtb_compute_options_t ABI-v3 mixer must start at byte 56");
+_Static_assert(offsetof(vibeqc_xtb_compute_options_t, scc_mixer_history) == 60u,
+               "vibeqc_xtb_compute_options_t ABI-v3 history must start at byte 60");
+_Static_assert(offsetof(vibeqc_xtb_compute_options_t, scc_mixer_damping) == 64u,
+               "vibeqc_xtb_compute_options_t ABI-v3 damping must start at byte 64");
+_Static_assert(offsetof(vibeqc_xtb_compute_options_t, determinism) == 72u,
+               "vibeqc_xtb_compute_options_t ABI-v3 determinism must start at byte 72");
+_Static_assert(offsetof(vibeqc_xtb_compute_options_t, reserved_v3) == 76u,
+               "vibeqc_xtb_compute_options_t ABI-v3 reserved field must start at byte 76");
+_Static_assert(VIBEQC_XTB_COMPUTE_OPTIONS_V3_SIZE == 80u,
+               "vibeqc_xtb_compute_options_t ABI-v3 image must remain 80 bytes");
+_Static_assert(sizeof(vibeqc_xtb_compute_options_t) == VIBEQC_XTB_COMPUTE_OPTIONS_V3_SIZE,
+               "vibeqc_xtb_compute_options_t must not add trailing ABI padding");
 #endif
 
-#if defined(XTBLOOM_DETAIL_ABI_ASSERT) && defined(XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE)
-XTBLOOM_DETAIL_ABI_ASSERT(XTBLOOM_BATCH_V1_SIZE == XTBLOOM_DETAIL_EXPECTED_BATCH_V1_SIZE,
-                          "xtbloom_batch_t ABI-v1 prefix must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(XTBLOOM_BATCH_V2_SIZE == XTBLOOM_DETAIL_EXPECTED_BATCH_V2_SIZE,
-                          "xtbloom_batch_t ABI-v2 image must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_batch_t, total_interactions) ==
-                              XTBLOOM_DETAIL_EXPECTED_BATCH_TOTAL_INTERACTIONS_OFFSET,
-                          "xtbloom_batch_t ABI-v3 suffix must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_batch_t, interaction_descriptors) ==
-                              XTBLOOM_DETAIL_EXPECTED_BATCH_INTERACTION_DESCRIPTORS_OFFSET,
-                          "xtbloom_batch_t descriptors must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_batch_t, interaction_payload) ==
-                              XTBLOOM_DETAIL_EXPECTED_BATCH_INTERACTION_PAYLOAD_OFFSET,
-                          "xtbloom_batch_t payload must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(XTBLOOM_BATCH_V3_SIZE == XTBLOOM_DETAIL_EXPECTED_BATCH_V3_SIZE,
-                          "xtbloom_batch_t ABI-v3 image must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_batch_t, cell_matrices) ==
-                              XTBLOOM_DETAIL_EXPECTED_BATCH_CELL_MATRICES_OFFSET,
-                          "xtbloom_batch_t cell matrices must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_batch_t, periodic_axes) ==
-                              XTBLOOM_DETAIL_EXPECTED_BATCH_PERIODIC_AXES_OFFSET,
-                          "xtbloom_batch_t periodic axes must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(XTBLOOM_BATCH_V4_SIZE == XTBLOOM_DETAIL_EXPECTED_BATCH_V4_SIZE,
-                          "xtbloom_batch_t ABI-v4 image must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(sizeof(xtbloom_batch_t) == XTBLOOM_BATCH_V4_SIZE,
-                          "xtbloom_batch_t must not add trailing ABI padding");
-XTBLOOM_DETAIL_ABI_ASSERT(XTBLOOM_INTERACTION_V1_SIZE == 32u,
-                          "xtbloom_interaction_t image must remain 32 bytes");
-XTBLOOM_DETAIL_ABI_ASSERT(sizeof(xtbloom_interaction_t) == XTBLOOM_INTERACTION_V1_SIZE,
-                          "xtbloom_interaction_t must not add trailing ABI padding");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_interaction_t, flags) == 4u,
-                          "xtbloom_interaction_t flags must start at byte 4");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_interaction_t, system_index) == 8u,
-                          "xtbloom_interaction_t system index must start at byte 8");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_interaction_t, payload_offset) == 16u,
-                          "xtbloom_interaction_t payload offset must start at byte 16");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_interaction_t, payload_size) == 24u,
-                          "xtbloom_interaction_t payload size must start at byte 24");
+#if defined(VIBEQC_XTB_DETAIL_ABI_ASSERT) && defined(VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE)
+VIBEQC_XTB_DETAIL_ABI_ASSERT(VIBEQC_XTB_BATCH_V1_SIZE == VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V1_SIZE,
+                          "vibeqc_xtb_batch_t ABI-v1 prefix must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(VIBEQC_XTB_BATCH_V2_SIZE == VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V2_SIZE,
+                          "vibeqc_xtb_batch_t ABI-v2 image must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_batch_t, total_interactions) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_BATCH_TOTAL_INTERACTIONS_OFFSET,
+                          "vibeqc_xtb_batch_t ABI-v3 suffix must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_batch_t, interaction_descriptors) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_BATCH_INTERACTION_DESCRIPTORS_OFFSET,
+                          "vibeqc_xtb_batch_t descriptors must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_batch_t, interaction_payload) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_BATCH_INTERACTION_PAYLOAD_OFFSET,
+                          "vibeqc_xtb_batch_t payload must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(VIBEQC_XTB_BATCH_V3_SIZE == VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V3_SIZE,
+                          "vibeqc_xtb_batch_t ABI-v3 image must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_batch_t, cell_matrices) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_BATCH_CELL_MATRICES_OFFSET,
+                          "vibeqc_xtb_batch_t cell matrices must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_batch_t, periodic_axes) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_BATCH_PERIODIC_AXES_OFFSET,
+                          "vibeqc_xtb_batch_t periodic axes must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(VIBEQC_XTB_BATCH_V4_SIZE == VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V4_SIZE,
+                          "vibeqc_xtb_batch_t ABI-v4 image must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(sizeof(vibeqc_xtb_batch_t) == VIBEQC_XTB_BATCH_V4_SIZE,
+                          "vibeqc_xtb_batch_t must not add trailing ABI padding");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(VIBEQC_XTB_INTERACTION_V1_SIZE == 32u,
+                          "vibeqc_xtb_interaction_t image must remain 32 bytes");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(sizeof(vibeqc_xtb_interaction_t) == VIBEQC_XTB_INTERACTION_V1_SIZE,
+                          "vibeqc_xtb_interaction_t must not add trailing ABI padding");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_interaction_t, flags) == 4u,
+                          "vibeqc_xtb_interaction_t flags must start at byte 4");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_interaction_t, system_index) == 8u,
+                          "vibeqc_xtb_interaction_t system index must start at byte 8");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_interaction_t, payload_offset) == 16u,
+                          "vibeqc_xtb_interaction_t payload offset must start at byte 16");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_interaction_t, payload_size) == 24u,
+                          "vibeqc_xtb_interaction_t payload size must start at byte 24");
 #endif
 
 /*
@@ -668,83 +668,83 @@ XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_interaction_t, payload_size) == 24u,
  * per_system_status store batch_size int32_t values, while scc_converged stores
  * batch_size uint8_t values.
  *
- * A XTBLOOM_STATUS_SUCCESS return means every diagnostic entry was committed,
+ * A VIBEQC_XTB_STATUS_SUCCESS return means every diagnostic entry was committed,
  * not necessarily that every system converged. per_system_status is SUCCESS,
  * SCC_NOT_CONVERGED, or EIGENSOLVER_FAILED; scc_converged is exactly one only
  * for SUCCESS. A failed system's requested floating-point property slices are
  * filled with quiet NaNs and never contain a partially evaluated result.
  */
-typedef struct xtbloom_batch_result {
+typedef struct vibeqc_xtb_batch_result {
   uint32_t struct_size;
   uint32_t api_version;
   uint32_t flags;
   uint32_t reserved;
-  xtbloom_buffer_t energies;
-  xtbloom_buffer_t forces;
-  xtbloom_buffer_t atomic_charges;
-  xtbloom_buffer_t point_charge_forces;
-  xtbloom_buffer_t scc_iterations;
-  xtbloom_buffer_t scc_converged;
-  xtbloom_buffer_t per_system_status;
+  vibeqc_xtb_buffer_t energies;
+  vibeqc_xtb_buffer_t forces;
+  vibeqc_xtb_buffer_t atomic_charges;
+  vibeqc_xtb_buffer_t point_charge_forces;
+  vibeqc_xtb_buffer_t scc_iterations;
+  vibeqc_xtb_buffer_t scc_converged;
+  vibeqc_xtb_buffer_t per_system_status;
   /* ABI v2 optional suffix; absent suffix preserves ABI-v1 behavior.
    *
    * dipole_moments holds batch_size * 3 doubles (atomic units) and is filled
-   * when XTBLOOM_COMPUTE_DIPOLE_MOMENTS is requested. The remaining outputs
+   * when VIBEQC_XTB_COMPUTE_DIPOLE_MOMENTS is requested. The remaining outputs
    * are ABI-reserved: their shape contract is unpublished, their buffers must
    * be NULL until the matching output is released, and requesting them is
    * rejected before execution. */
-  xtbloom_buffer_t dipole_moments;
-  xtbloom_buffer_t quadrupole_moments;
-  xtbloom_buffer_t wiberg_orders;
-  xtbloom_buffer_t spin_populations;
+  vibeqc_xtb_buffer_t dipole_moments;
+  vibeqc_xtb_buffer_t quadrupole_moments;
+  vibeqc_xtb_buffer_t wiberg_orders;
+  vibeqc_xtb_buffer_t spin_populations;
   /* ABI v3 optional suffix. strain_derivatives contains batch_size * 9
    * row-major doubles in Hartree. The matrix is symmetric by the public
    * infinitesimal-strain convention, with duplicated off-diagonal entries.
    * It is valid only when
-   * XTBLOOM_COMPUTE_STRAIN_DERIVATIVES is requested for an all-native XYZ
+   * VIBEQC_XTB_COMPUTE_STRAIN_DERIVATIVES is requested for an all-native XYZ
    * CPU GFN2 batch. Older result images remain valid and never expose this
    * member. */
-  xtbloom_buffer_t strain_derivatives;
-} xtbloom_batch_result_t;
+  vibeqc_xtb_buffer_t strain_derivatives;
+} vibeqc_xtb_batch_result_t;
 
-#define XTBLOOM_BATCH_RESULT_V1_SIZE \
-  (offsetof(xtbloom_batch_result_t, per_system_status) + sizeof(xtbloom_buffer_t))
-#define XTBLOOM_BATCH_RESULT_V2_SIZE \
-  (offsetof(xtbloom_batch_result_t, spin_populations) + sizeof(xtbloom_buffer_t))
-#define XTBLOOM_BATCH_RESULT_V3_SIZE \
-  (offsetof(xtbloom_batch_result_t, strain_derivatives) + sizeof(xtbloom_buffer_t))
+#define VIBEQC_XTB_BATCH_RESULT_V1_SIZE \
+  (offsetof(vibeqc_xtb_batch_result_t, per_system_status) + sizeof(vibeqc_xtb_buffer_t))
+#define VIBEQC_XTB_BATCH_RESULT_V2_SIZE \
+  (offsetof(vibeqc_xtb_batch_result_t, spin_populations) + sizeof(vibeqc_xtb_buffer_t))
+#define VIBEQC_XTB_BATCH_RESULT_V3_SIZE \
+  (offsetof(vibeqc_xtb_batch_result_t, strain_derivatives) + sizeof(vibeqc_xtb_buffer_t))
 
-#if defined(XTBLOOM_DETAIL_ABI_ASSERT) && defined(XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE)
-XTBLOOM_DETAIL_ABI_ASSERT(
-    XTBLOOM_BATCH_RESULT_V1_SIZE == XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V1_SIZE,
-    "xtbloom_batch_result_t ABI-v1 prefix must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(
-    offsetof(xtbloom_batch_result_t, dipole_moments) ==
-        XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_DIPOLE_OFFSET,
-    "xtbloom_batch_result_t ABI-v2 suffix must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(
-    offsetof(xtbloom_batch_result_t, quadrupole_moments) ==
-        XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_QUADRUPOLE_OFFSET,
-    "xtbloom_batch_result_t quadrupole outlet must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(
-    offsetof(xtbloom_batch_result_t, wiberg_orders) ==
-        XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_WIBERG_OFFSET,
-    "xtbloom_batch_result_t Wiberg outlet must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_batch_result_t, spin_populations) ==
-                              XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_SPIN_OFFSET,
-                          "xtbloom_batch_result_t spin outlet must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(
-    XTBLOOM_BATCH_RESULT_V2_SIZE == XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V2_SIZE,
-    "xtbloom_batch_result_t ABI-v2 image must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(
-    offsetof(xtbloom_batch_result_t, strain_derivatives) ==
-        XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_STRAIN_OFFSET,
-    "xtbloom_batch_result_t strain outlet must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(
-    XTBLOOM_BATCH_RESULT_V3_SIZE == XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V3_SIZE,
-    "xtbloom_batch_result_t ABI-v3 image must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(sizeof(xtbloom_batch_result_t) == XTBLOOM_BATCH_RESULT_V3_SIZE,
-                          "xtbloom_batch_result_t must not add trailing ABI padding");
+#if defined(VIBEQC_XTB_DETAIL_ABI_ASSERT) && defined(VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE)
+VIBEQC_XTB_DETAIL_ABI_ASSERT(
+    VIBEQC_XTB_BATCH_RESULT_V1_SIZE == VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V1_SIZE,
+    "vibeqc_xtb_batch_result_t ABI-v1 prefix must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(
+    offsetof(vibeqc_xtb_batch_result_t, dipole_moments) ==
+        VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_DIPOLE_OFFSET,
+    "vibeqc_xtb_batch_result_t ABI-v2 suffix must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(
+    offsetof(vibeqc_xtb_batch_result_t, quadrupole_moments) ==
+        VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_QUADRUPOLE_OFFSET,
+    "vibeqc_xtb_batch_result_t quadrupole outlet must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(
+    offsetof(vibeqc_xtb_batch_result_t, wiberg_orders) ==
+        VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_WIBERG_OFFSET,
+    "vibeqc_xtb_batch_result_t Wiberg outlet must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_batch_result_t, spin_populations) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_SPIN_OFFSET,
+                          "vibeqc_xtb_batch_result_t spin outlet must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(
+    VIBEQC_XTB_BATCH_RESULT_V2_SIZE == VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V2_SIZE,
+    "vibeqc_xtb_batch_result_t ABI-v2 image must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(
+    offsetof(vibeqc_xtb_batch_result_t, strain_derivatives) ==
+        VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_STRAIN_OFFSET,
+    "vibeqc_xtb_batch_result_t strain outlet must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(
+    VIBEQC_XTB_BATCH_RESULT_V3_SIZE == VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V3_SIZE,
+    "vibeqc_xtb_batch_result_t ABI-v3 image must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(sizeof(vibeqc_xtb_batch_result_t) == VIBEQC_XTB_BATCH_RESULT_V3_SIZE,
+                          "vibeqc_xtb_batch_result_t must not add trailing ABI padding");
 #endif
 
 /*
@@ -752,9 +752,9 @@ XTBLOOM_DETAIL_ABI_ASSERT(sizeof(xtbloom_batch_result_t) == XTBLOOM_BATCH_RESULT
  *
  * compute_flags is an input carrying the properties the caller plans to
  * request on the fixed topology and policy. It must equal the flags supplied
- * to xtbloom_plan_create. host_required_bytes / host_required_alignment
+ * to vibeqc_xtb_plan_create. host_required_bytes / host_required_alignment
  * and device_required_bytes / device_required_alignment are outputs describing
- * the reusable plan-owned workspace xtbloom_plan_compute reserves in host and
+ * the reusable plan-owned workspace vibeqc_xtb_plan_compute reserves in host and
  * device memory. A backend that uses no device workspace reports zero device
  * bytes with alignment one. Sizes can differ between backends and between
  * property sets; the returned values cover one steady-state plan compute.
@@ -766,7 +766,7 @@ XTBLOOM_DETAIL_ABI_ASSERT(sizeof(xtbloom_batch_result_t) == XTBLOOM_BATCH_RESULT
  * staging storage. Opaque CUDA provider and Graph bookkeeping is not caller
  * workspace and is intentionally outside these byte counts.
  */
-typedef struct xtbloom_workspace_query {
+typedef struct vibeqc_xtb_workspace_query {
   uint32_t struct_size;
   uint32_t api_version;
   uint32_t compute_flags;
@@ -776,29 +776,29 @@ typedef struct xtbloom_workspace_query {
   uint64_t device_required_bytes;
   uint32_t device_required_alignment;
   uint32_t reserved_v2;
-} xtbloom_workspace_query_t;
+} vibeqc_xtb_workspace_query_t;
 
-#define XTBLOOM_WORKSPACE_QUERY_V1_SIZE \
-  (offsetof(xtbloom_workspace_query_t, reserved_v2) + sizeof(uint32_t))
+#define VIBEQC_XTB_WORKSPACE_QUERY_V1_SIZE \
+  (offsetof(vibeqc_xtb_workspace_query_t, reserved_v2) + sizeof(uint32_t))
 
 #if defined(__cplusplus)
-static_assert(offsetof(xtbloom_workspace_query_t, host_required_bytes) == 16u,
-              "xtbloom_workspace_query_t host byte count must start at byte 16");
-static_assert(offsetof(xtbloom_workspace_query_t, device_required_bytes) == 32u,
-              "xtbloom_workspace_query_t device byte count must start at byte 32");
-static_assert(XTBLOOM_WORKSPACE_QUERY_V1_SIZE == 48u,
-              "xtbloom_workspace_query_t ABI-v1 image must remain 48 bytes");
-static_assert(sizeof(xtbloom_workspace_query_t) == XTBLOOM_WORKSPACE_QUERY_V1_SIZE,
-              "xtbloom_workspace_query_t must not add trailing ABI padding");
+static_assert(offsetof(vibeqc_xtb_workspace_query_t, host_required_bytes) == 16u,
+              "vibeqc_xtb_workspace_query_t host byte count must start at byte 16");
+static_assert(offsetof(vibeqc_xtb_workspace_query_t, device_required_bytes) == 32u,
+              "vibeqc_xtb_workspace_query_t device byte count must start at byte 32");
+static_assert(VIBEQC_XTB_WORKSPACE_QUERY_V1_SIZE == 48u,
+              "vibeqc_xtb_workspace_query_t ABI-v1 image must remain 48 bytes");
+static_assert(sizeof(vibeqc_xtb_workspace_query_t) == VIBEQC_XTB_WORKSPACE_QUERY_V1_SIZE,
+              "vibeqc_xtb_workspace_query_t must not add trailing ABI padding");
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(offsetof(xtbloom_workspace_query_t, host_required_bytes) == 16u,
-               "xtbloom_workspace_query_t host byte count must start at byte 16");
-_Static_assert(offsetof(xtbloom_workspace_query_t, device_required_bytes) == 32u,
-               "xtbloom_workspace_query_t device byte count must start at byte 32");
-_Static_assert(XTBLOOM_WORKSPACE_QUERY_V1_SIZE == 48u,
-               "xtbloom_workspace_query_t ABI-v1 image must remain 48 bytes");
-_Static_assert(sizeof(xtbloom_workspace_query_t) == XTBLOOM_WORKSPACE_QUERY_V1_SIZE,
-               "xtbloom_workspace_query_t must not add trailing ABI padding");
+_Static_assert(offsetof(vibeqc_xtb_workspace_query_t, host_required_bytes) == 16u,
+               "vibeqc_xtb_workspace_query_t host byte count must start at byte 16");
+_Static_assert(offsetof(vibeqc_xtb_workspace_query_t, device_required_bytes) == 32u,
+               "vibeqc_xtb_workspace_query_t device byte count must start at byte 32");
+_Static_assert(VIBEQC_XTB_WORKSPACE_QUERY_V1_SIZE == 48u,
+               "vibeqc_xtb_workspace_query_t ABI-v1 image must remain 48 bytes");
+_Static_assert(sizeof(vibeqc_xtb_workspace_query_t) == VIBEQC_XTB_WORKSPACE_QUERY_V1_SIZE,
+               "vibeqc_xtb_workspace_query_t must not add trailing ABI padding");
 #endif
 
 /*
@@ -809,76 +809,76 @@ _Static_assert(sizeof(xtbloom_workspace_query_t) == XTBLOOM_WORKSPACE_QUERY_V1_S
  * publication have finished. completion_status is meaningful in COMPLETE and
  * reports the submitted computation's final status; query/wait themselves
  * return a separate status describing whether the snapshot operation worked.
- * result_flags is the asynchronous counterpart of xtbloom_batch_result_t.flags:
+ * result_flags is the asynchronous counterpart of vibeqc_xtb_batch_result_t.flags:
  * enqueue functions take a const result descriptor and never modify that
  * descriptor object.
  */
-typedef struct xtbloom_request_info {
+typedef struct vibeqc_xtb_request_info {
   uint32_t struct_size;
   uint32_t api_version;
-  xtbloom_request_state_t state;
-  xtbloom_status_t completion_status;
+  vibeqc_xtb_request_state_t state;
+  vibeqc_xtb_status_t completion_status;
   uint32_t result_flags;
   uint32_t reserved;
-} xtbloom_request_info_t;
+} vibeqc_xtb_request_info_t;
 
-#define XTBLOOM_REQUEST_INFO_V1_SIZE (offsetof(xtbloom_request_info_t, reserved) + sizeof(uint32_t))
+#define VIBEQC_XTB_REQUEST_INFO_V1_SIZE (offsetof(vibeqc_xtb_request_info_t, reserved) + sizeof(uint32_t))
 
 #if defined(__cplusplus)
-static_assert(offsetof(xtbloom_request_info_t, state) == 8u,
-              "xtbloom_request_info_t state must start at byte 8");
-static_assert(offsetof(xtbloom_request_info_t, completion_status) == 12u,
-              "xtbloom_request_info_t completion status must start at byte 12");
-static_assert(offsetof(xtbloom_request_info_t, result_flags) == 16u,
-              "xtbloom_request_info_t result flags must start at byte 16");
-static_assert(XTBLOOM_REQUEST_INFO_V1_SIZE == 24u,
-              "xtbloom_request_info_t ABI-v1 image must remain 24 bytes");
-static_assert(sizeof(xtbloom_request_info_t) == XTBLOOM_REQUEST_INFO_V1_SIZE,
-              "xtbloom_request_info_t must not add trailing ABI padding");
+static_assert(offsetof(vibeqc_xtb_request_info_t, state) == 8u,
+              "vibeqc_xtb_request_info_t state must start at byte 8");
+static_assert(offsetof(vibeqc_xtb_request_info_t, completion_status) == 12u,
+              "vibeqc_xtb_request_info_t completion status must start at byte 12");
+static_assert(offsetof(vibeqc_xtb_request_info_t, result_flags) == 16u,
+              "vibeqc_xtb_request_info_t result flags must start at byte 16");
+static_assert(VIBEQC_XTB_REQUEST_INFO_V1_SIZE == 24u,
+              "vibeqc_xtb_request_info_t ABI-v1 image must remain 24 bytes");
+static_assert(sizeof(vibeqc_xtb_request_info_t) == VIBEQC_XTB_REQUEST_INFO_V1_SIZE,
+              "vibeqc_xtb_request_info_t must not add trailing ABI padding");
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(offsetof(xtbloom_request_info_t, state) == 8u,
-               "xtbloom_request_info_t state must start at byte 8");
-_Static_assert(offsetof(xtbloom_request_info_t, completion_status) == 12u,
-               "xtbloom_request_info_t completion status must start at byte 12");
-_Static_assert(offsetof(xtbloom_request_info_t, result_flags) == 16u,
-               "xtbloom_request_info_t result flags must start at byte 16");
-_Static_assert(XTBLOOM_REQUEST_INFO_V1_SIZE == 24u,
-               "xtbloom_request_info_t ABI-v1 image must remain 24 bytes");
-_Static_assert(sizeof(xtbloom_request_info_t) == XTBLOOM_REQUEST_INFO_V1_SIZE,
-               "xtbloom_request_info_t must not add trailing ABI padding");
+_Static_assert(offsetof(vibeqc_xtb_request_info_t, state) == 8u,
+               "vibeqc_xtb_request_info_t state must start at byte 8");
+_Static_assert(offsetof(vibeqc_xtb_request_info_t, completion_status) == 12u,
+               "vibeqc_xtb_request_info_t completion status must start at byte 12");
+_Static_assert(offsetof(vibeqc_xtb_request_info_t, result_flags) == 16u,
+               "vibeqc_xtb_request_info_t result flags must start at byte 16");
+_Static_assert(VIBEQC_XTB_REQUEST_INFO_V1_SIZE == 24u,
+               "vibeqc_xtb_request_info_t ABI-v1 image must remain 24 bytes");
+_Static_assert(sizeof(vibeqc_xtb_request_info_t) == VIBEQC_XTB_REQUEST_INFO_V1_SIZE,
+               "vibeqc_xtb_request_info_t must not add trailing ABI padding");
 #endif
 
-XTBLOOM_API const char* xtbloom_version_string(void);
-XTBLOOM_API const char* xtbloom_status_string(xtbloom_status_t status);
+VIBEQC_XTB_API const char* vibeqc_xtb_version_string(void);
+VIBEQC_XTB_API const char* vibeqc_xtb_status_string(vibeqc_xtb_status_t status);
 
 /* Returns a thread-local diagnostic for the most recent failing API call. */
-XTBLOOM_API const char* xtbloom_get_last_error(void);
+VIBEQC_XTB_API const char* vibeqc_xtb_get_last_error(void);
 
-XTBLOOM_API xtbloom_status_t xtbloom_context_options_init(xtbloom_context_options_t* options,
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_context_options_init(vibeqc_xtb_context_options_t* options,
                                                           size_t struct_size);
-XTBLOOM_API xtbloom_status_t xtbloom_batch_init(xtbloom_batch_t* batch, size_t struct_size);
-XTBLOOM_API xtbloom_status_t xtbloom_compute_options_init(xtbloom_compute_options_t* options,
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_batch_init(vibeqc_xtb_batch_t* batch, size_t struct_size);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_compute_options_init(vibeqc_xtb_compute_options_t* options,
                                                           size_t struct_size);
-XTBLOOM_API xtbloom_status_t xtbloom_batch_result_init(xtbloom_batch_result_t* result,
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_batch_result_init(vibeqc_xtb_batch_result_t* result,
                                                        size_t struct_size);
-XTBLOOM_API xtbloom_status_t xtbloom_workspace_query_init(xtbloom_workspace_query_t* query,
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_workspace_query_init(vibeqc_xtb_workspace_query_t* query,
                                                           size_t struct_size);
-XTBLOOM_API xtbloom_status_t xtbloom_request_info_init(xtbloom_request_info_t* info,
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_request_info_init(vibeqc_xtb_request_info_t* info,
                                                        size_t struct_size);
 
-XTBLOOM_API xtbloom_status_t xtbloom_context_create(const xtbloom_context_options_t* options,
-                                                    xtbloom_context_t** context);
-XTBLOOM_API void xtbloom_context_destroy(xtbloom_context_t* context);
-XTBLOOM_API xtbloom_backend_t xtbloom_context_get_backend(const xtbloom_context_t* context);
-XTBLOOM_API int32_t xtbloom_context_get_device_id(const xtbloom_context_t* context);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_context_create(const vibeqc_xtb_context_options_t* options,
+                                                    vibeqc_xtb_context_t** context);
+VIBEQC_XTB_API void vibeqc_xtb_context_destroy(vibeqc_xtb_context_t* context);
+VIBEQC_XTB_API vibeqc_xtb_backend_t vibeqc_xtb_context_get_backend(const vibeqc_xtb_context_t* context);
+VIBEQC_XTB_API int32_t vibeqc_xtb_context_get_device_id(const vibeqc_xtb_context_t* context);
 
 /*
  * Create a backend-neutral reusable request bound to context. Creating a
  * request is supported for CPU and CUDA contexts, but asynchronous enqueue is
  * currently CUDA-only. The request must be destroyed before its context.
  */
-XTBLOOM_API xtbloom_status_t xtbloom_request_create(xtbloom_context_t* context,
-                                                    xtbloom_request_t** request);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_request_create(vibeqc_xtb_context_t* context,
+                                                    vibeqc_xtb_request_t** request);
 
 /*
  * Query without blocking, or wait until the current submission finishes.
@@ -889,23 +889,23 @@ XTBLOOM_API xtbloom_status_t xtbloom_request_create(xtbloom_context_t* context,
  * describes the query/wait operation; inspect info.completion_status only
  * when info.state is COMPLETE for the submitted compute status.
  */
-XTBLOOM_API xtbloom_status_t xtbloom_request_query(xtbloom_request_t* request,
-                                                   xtbloom_request_info_t* info);
-XTBLOOM_API xtbloom_status_t xtbloom_request_wait(xtbloom_request_t* request,
-                                                  xtbloom_request_info_t* info);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_request_query(vibeqc_xtb_request_t* request,
+                                                   vibeqc_xtb_request_info_t* info);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_request_wait(vibeqc_xtb_request_t* request,
+                                                  vibeqc_xtb_request_info_t* info);
 
 /*
  * Return the request-owned diagnostic for its completed submission. The
  * returned pointer remains valid until the next accepted enqueue or request
  * destruction. It is empty for IDLE, PENDING, and successful completion;
- * invalid handles return NULL and set xtbloom_get_last_error().
+ * invalid handles return NULL and set vibeqc_xtb_get_last_error().
  * Do not concurrently reuse, query, wait on, or destroy the same request while
  * retaining this pointer.
  */
-XTBLOOM_API const char* xtbloom_request_get_error(const xtbloom_request_t* request);
+VIBEQC_XTB_API const char* vibeqc_xtb_request_get_error(const vibeqc_xtb_request_t* request);
 
 /* A NULL request is a harmless no-op. Destroying PENDING waits for completion. */
-XTBLOOM_API void xtbloom_request_destroy(xtbloom_request_t* request);
+VIBEQC_XTB_API void vibeqc_xtb_request_destroy(vibeqc_xtb_request_t* request);
 
 /*
  * Performs a synchronous batched inference. Host buffers are accepted by both
@@ -914,19 +914,19 @@ XTBLOOM_API void xtbloom_request_destroy(xtbloom_request_t* request);
  * The complete request is validated before execution. Any failure detected
  * before the final caller-output commit begins leaves result flags and all
  * result buffers unchanged. Once a CUDA caller-output commit has begun, a
- * later catastrophic failure returns XTBLOOM_STATUS_INTERNAL_ERROR and results
+ * later catastrophic failure returns VIBEQC_XTB_STATUS_INTERNAL_ERROR and results
  * may already have been modified. CUDA attempts to restore the caller's current
  * device on every exit; restoration failure also returns INTERNAL_ERROR and
  * may leave that device selection changed, independently of whether output
- * commit began. xtbloom_get_last_error identifies the failed boundary.
+ * commit began. vibeqc_xtb_get_last_error identifies the failed boundary.
  * Per-system SCC or eigensolver failures are data-level results: the function
  * returns SUCCESS and records them in per_system_status so one bad batch item
  * does not discard successful peers.
  */
-XTBLOOM_API xtbloom_status_t xtbloom_compute(xtbloom_context_t* context,
-                                             const xtbloom_batch_t* batch,
-                                             const xtbloom_compute_options_t* options,
-                                             xtbloom_batch_result_t* result);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_compute(vibeqc_xtb_context_t* context,
+                                             const vibeqc_xtb_batch_t* batch,
+                                             const vibeqc_xtb_compute_options_t* options,
+                                             vibeqc_xtb_batch_result_t* result);
 
 /*
  * Submit one CUDA computation on the context stream without waiting for
@@ -942,8 +942,8 @@ XTBLOOM_API xtbloom_status_t xtbloom_compute(xtbloom_context_t* context,
  *
  * The result descriptor is copied during submission and is never retained or
  * modified. In particular, result->flags is not an asynchronous publication
- * channel; completed flags are returned in xtbloom_request_info_t.result_flags.
- * CPU contexts return XTBLOOM_STATUS_NOT_SUPPORTED before descriptor validation
+ * channel; completed flags are returned in vibeqc_xtb_request_info_t.result_flags.
+ * CPU contexts return VIBEQC_XTB_STATUS_NOT_SUPPORTED before descriptor validation
  * and leave all result bytes and the request state unchanged. CUDA context
  * enqueue prepares or reuses the context-owned topology cache. A new or changed
  * topology may perform bounded setup and topology-validation waits before the
@@ -953,18 +953,18 @@ XTBLOOM_API xtbloom_status_t xtbloom_compute(xtbloom_context_t* context,
  * immutable bytes in stream order; a mismatch completes the request with
  * INVALID_ARGUMENT rather than rebuilding it. Use a changed shape/policy or a
  * synchronous convenience call to establish a new device topology. Use
- * xtbloom_plan_compute_enqueue when topology is fixed and allocation-free
+ * vibeqc_xtb_plan_compute_enqueue when topology is fixed and allocation-free
  * admission is required. ABI-v2 strict WARM consumes the latest compatible
  * fully converged checkpoint on the same context cache and never falls back to
  * FRESH. Missing or host-visible incompatible state is rejected before
  * admission; a stream-ordered device-topology mismatch completes the accepted
  * request with INVALID_ARGUMENT and invalidates the consumed checkpoint.
  */
-XTBLOOM_API xtbloom_status_t xtbloom_compute_enqueue(xtbloom_context_t* context,
-                                                     const xtbloom_batch_t* batch,
-                                                     const xtbloom_compute_options_t* options,
-                                                     const xtbloom_batch_result_t* result,
-                                                     xtbloom_request_t* request);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_compute_enqueue(vibeqc_xtb_context_t* context,
+                                                     const vibeqc_xtb_batch_t* batch,
+                                                     const vibeqc_xtb_compute_options_t* options,
+                                                     const vibeqc_xtb_batch_result_t* result,
+                                                     vibeqc_xtb_request_t* request);
 
 /*
  * Create a fixed-topology plan from one already-validated-shaped batch
@@ -975,33 +975,33 @@ XTBLOOM_API xtbloom_status_t xtbloom_compute_enqueue(xtbloom_context_t* context,
  * and determinism) to the context backend and reserves its reusable
  * host/device workspace. Geometry (positions and
  * point-charge positions/values) is intentionally not part of the plan and
- * may change per xtbloom_plan_compute call.
+ * may change per vibeqc_xtb_plan_compute call.
  *
  * The plan is a setup-with-allocation-permitted path: creating it performs
- * validation and workspace reservation that xtbloom_compute would otherwise
- * repeat on every call. Calling xtbloom_plan_compute repeatedly for the same
+ * validation and workspace reservation that vibeqc_xtb_compute would otherwise
+ * repeat on every call. Calling vibeqc_xtb_plan_compute repeatedly for the same
  * fixed topology must not allocate steady-state workspace on either backend.
  *
  * A plan is bound to the creating context; it must be destroyed with
- * xtbloom_plan_destroy before the context. Passing a plan whose topology does
- * not match the batch on xtbloom_plan_compute, or a plan created for a
+ * vibeqc_xtb_plan_destroy before the context. Passing a plan whose topology does
+ * not match the batch on vibeqc_xtb_plan_compute, or a plan created for a
  * different context, fails before any caller output is modified.
  */
-XTBLOOM_API xtbloom_status_t xtbloom_plan_create(xtbloom_context_t* context,
-                                                 const xtbloom_batch_t* batch,
-                                                 const xtbloom_compute_options_t* options,
-                                                 xtbloom_plan_t** plan);
-XTBLOOM_API void xtbloom_plan_destroy(xtbloom_plan_t* plan);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_plan_create(vibeqc_xtb_context_t* context,
+                                                 const vibeqc_xtb_batch_t* batch,
+                                                 const vibeqc_xtb_compute_options_t* options,
+                                                 vibeqc_xtb_plan_t** plan);
+VIBEQC_XTB_API void vibeqc_xtb_plan_destroy(vibeqc_xtb_plan_t* plan);
 
 /*
- * Query the reusable plan-owned workspace xtbloom_plan_compute reserves on the
+ * Query the reusable plan-owned workspace vibeqc_xtb_plan_compute reserves on the
  * plan's backend for its requested properties. On return query.compute_flags
  * is preserved and must match the plan policy; the four sizing fields are populated as documented
- * on xtbloom_workspace_query_t. Callers that want device sizing must use a CUDA plan; CPU plans
+ * on vibeqc_xtb_workspace_query_t. Callers that want device sizing must use a CUDA plan; CPU plans
  * always report zero device bytes.
  */
-XTBLOOM_API xtbloom_status_t xtbloom_plan_query_workspace(const xtbloom_plan_t* plan,
-                                                          xtbloom_workspace_query_t* query);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_plan_query_workspace(const vibeqc_xtb_plan_t* plan,
+                                                          vibeqc_xtb_workspace_query_t* query);
 
 /*
  * Execute one synchronous batched inference on a fixed-topology plan.
@@ -1009,18 +1009,18 @@ XTBLOOM_API xtbloom_status_t xtbloom_plan_query_workspace(const xtbloom_plan_t* 
  * geometry-only descriptors: positions and point-charge positions/values may
  * change between calls, but the immutable topology and creation-time compute
  * policy must match the plan exactly or the call fails with
- * XTBLOOM_STATUS_INVALID_ARGUMENT before any caller output is modified.
- * Otherwise semantics match xtbloom_compute: complete
+ * VIBEQC_XTB_STATUS_INVALID_ARGUMENT before any caller output is modified.
+ * Otherwise semantics match vibeqc_xtb_compute: complete
  * validation before execution, per-system SCC/eigensolver failures recorded in
  * per_system_status, and failed systems' floating-point slices filled with
  * quiet NaNs.
  */
-XTBLOOM_API xtbloom_status_t xtbloom_plan_compute(xtbloom_plan_t* plan,
-                                                  const xtbloom_batch_t* batch,
-                                                  const xtbloom_compute_options_t* options,
-                                                  xtbloom_batch_result_t* result);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_plan_compute(vibeqc_xtb_plan_t* plan,
+                                                  const vibeqc_xtb_batch_t* batch,
+                                                  const vibeqc_xtb_compute_options_t* options,
+                                                  vibeqc_xtb_batch_result_t* result);
 
-/* Fixed-topology counterpart of xtbloom_compute_enqueue with identical request,
+/* Fixed-topology counterpart of vibeqc_xtb_compute_enqueue with identical request,
  * result-descriptor, buffer-lifetime, and CPU NOT_SUPPORTED semantics. Host
  * topology is compared before return; CUDA-device topology is compared in
  * stream order, and a mismatch completes with INVALID_ARGUMENT without
@@ -1032,29 +1032,29 @@ XTBLOOM_API xtbloom_status_t xtbloom_plan_compute(xtbloom_plan_t* plan,
  * request retains the plan's execution cache and the plan handle may be
  * destroyed before completion (the creating context must still outlive the
  * request). */
-XTBLOOM_API xtbloom_status_t xtbloom_plan_compute_enqueue(xtbloom_plan_t* plan,
-                                                          const xtbloom_batch_t* batch,
-                                                          const xtbloom_compute_options_t* options,
-                                                          const xtbloom_batch_result_t* result,
-                                                          xtbloom_request_t* request);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_plan_compute_enqueue(vibeqc_xtb_plan_t* plan,
+                                                          const vibeqc_xtb_batch_t* batch,
+                                                          const vibeqc_xtb_compute_options_t* options,
+                                                          const vibeqc_xtb_batch_result_t* result,
+                                                          vibeqc_xtb_request_t* request);
 
 /*
  * xtbloom-owned result arenas and their DLPack export.
  *
- * A xtbloom_result_owner_t is a ref-counted allocation (host memory or CUDA
+ * A vibeqc_xtb_result_owner_t is a ref-counted allocation (host memory or CUDA
  * device memory) that xtbloom itself allocates, fills through a normal compute
  * call, and can hand to an importing framework through the DLPack producer
  * protocol without copying data.
  *
  * Lifetime model:
- * - xtbloom_result_owner_create produces one arena with an initial reference.
- *   xtbloom_result_owner_buffer exposes that arena as a caller-owned
- *   xtbloom_buffer_t view so the caller can bind output slices and run compute.
- * - xtbloom_result_owner_retain / xtbloom_result_owner_release manage the
+ * - vibeqc_xtb_result_owner_create produces one arena with an initial reference.
+ *   vibeqc_xtb_result_owner_buffer exposes that arena as a caller-owned
+ *   vibeqc_xtb_buffer_t view so the caller can bind output slices and run compute.
+ * - vibeqc_xtb_result_owner_retain / vibeqc_xtb_result_owner_release manage the
  *   reference count. The arena allocation is freed exactly once, when the
  *   last reference is released. release(NULL) is a no-op; otherwise every
  *   release must correspond to exactly one prior create or retain.
- * - xtbloom_result_owner_export_dltensor retains the arena for one exported
+ * - vibeqc_xtb_result_owner_export_dltensor retains the arena for one exported
  *   managed tensor. When the importing framework releases that tensor it
  *   invokes a native deleter that frees the managed tensor (and its shape
  *   storage) and releases the arena reference. The owner therefore remains
@@ -1067,27 +1067,27 @@ XTBLOOM_API xtbloom_status_t xtbloom_plan_compute_enqueue(xtbloom_plan_t* plan,
  * native deleter is immune to the importing framework outliving the Python
  * wrapper: it never calls back into Python.
  *
- * xtbloom's public CUDA compute is synchronous: when xtbloom_compute returns,
+ * xtbloom's public CUDA compute is synchronous: when vibeqc_xtb_compute returns,
  * the requested result bytes are fully committed on the context stream and a
  * producer export needs no additional device-wide synchronization or hidden
  * host polling.
  */
 
 /* Options for allocating one result arena. */
-typedef struct xtbloom_result_owner_options {
+typedef struct vibeqc_xtb_result_owner_options {
   uint32_t struct_size;
   uint32_t api_version;
-  /* XTBLOOM_MEMORY_HOST or XTBLOOM_MEMORY_CUDA_DEVICE. */
-  xtbloom_memory_space_t memory_space;
+  /* VIBEQC_XTB_MEMORY_HOST or VIBEQC_XTB_MEMORY_CUDA_DEVICE. */
+  vibeqc_xtb_memory_space_t memory_space;
   /* CUDA device ordinal for CUDA arenas; -1 for host arenas. */
   int32_t device_id;
   /* Byte extent of the arena. Must be nonzero. */
   uint64_t size_bytes;
   uint32_t reserved;
-} xtbloom_result_owner_options_t;
+} vibeqc_xtb_result_owner_options_t;
 
-#define XTBLOOM_RESULT_OWNER_OPTIONS_V1_SIZE \
-  (offsetof(xtbloom_result_owner_options_t, reserved) + sizeof(uint32_t))
+#define VIBEQC_XTB_RESULT_OWNER_OPTIONS_V1_SIZE \
+  (offsetof(vibeqc_xtb_result_owner_options_t, reserved) + sizeof(uint32_t))
 
 /*
  * Describes one compact C-contiguous slice of a result arena to export as a
@@ -1101,7 +1101,7 @@ typedef struct xtbloom_result_owner_options {
  * struct layout mirrors the pinned DLPack 1.0 specification (see
  * src/runtime/dlpack_layout.hpp for the byte-exact mirrors and provenance).
  */
-typedef struct xtbloom_dlpack_view {
+typedef struct vibeqc_xtb_dlpack_view {
   uint32_t struct_size;
   uint32_t api_version;
   /* Byte offset of the slice inside the arena. Must keep dtype alignment. */
@@ -1112,58 +1112,58 @@ typedef struct xtbloom_dlpack_view {
   int32_t ndim; /* 0..8 */
   uint32_t reserved;
   const int64_t* shape; /* ndim int64 values; copied by xtbloom */
-} xtbloom_dlpack_view_t;
+} vibeqc_xtb_dlpack_view_t;
 
-#define XTBLOOM_DLPACK_MAX_NDIM 8
-#define XTBLOOM_DLPACK_VIEW_V1_SIZE \
-  (offsetof(xtbloom_dlpack_view_t, shape) + sizeof(const int64_t*))
+#define VIBEQC_XTB_DLPACK_MAX_NDIM 8
+#define VIBEQC_XTB_DLPACK_VIEW_V1_SIZE \
+  (offsetof(vibeqc_xtb_dlpack_view_t, shape) + sizeof(const int64_t*))
 
-#if defined(XTBLOOM_DETAIL_ABI_ASSERT) && defined(XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE)
-XTBLOOM_DETAIL_ABI_ASSERT(offsetof(xtbloom_dlpack_view_t, shape) ==
-                              XTBLOOM_DETAIL_EXPECTED_DLPACK_SHAPE_OFFSET,
-                          "xtbloom_dlpack_view_t shape must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(XTBLOOM_DLPACK_VIEW_V1_SIZE ==
-                              XTBLOOM_DETAIL_EXPECTED_DLPACK_VIEW_V1_SIZE,
-                          "xtbloom_dlpack_view_t image must match the target pointer width");
-XTBLOOM_DETAIL_ABI_ASSERT(sizeof(xtbloom_dlpack_view_t) == XTBLOOM_DLPACK_VIEW_V1_SIZE,
-                          "xtbloom_dlpack_view_t must not add trailing ABI padding");
+#if defined(VIBEQC_XTB_DETAIL_ABI_ASSERT) && defined(VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE)
+VIBEQC_XTB_DETAIL_ABI_ASSERT(offsetof(vibeqc_xtb_dlpack_view_t, shape) ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_DLPACK_SHAPE_OFFSET,
+                          "vibeqc_xtb_dlpack_view_t shape must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(VIBEQC_XTB_DLPACK_VIEW_V1_SIZE ==
+                              VIBEQC_XTB_DETAIL_EXPECTED_DLPACK_VIEW_V1_SIZE,
+                          "vibeqc_xtb_dlpack_view_t image must match the target pointer width");
+VIBEQC_XTB_DETAIL_ABI_ASSERT(sizeof(vibeqc_xtb_dlpack_view_t) == VIBEQC_XTB_DLPACK_VIEW_V1_SIZE,
+                          "vibeqc_xtb_dlpack_view_t must not add trailing ABI padding");
 #endif
 
-#undef XTBLOOM_DETAIL_ABI_ASSERT
-#undef XTBLOOM_DETAIL_EXPECTED_CONTEXT_OPTIONS_V1_SIZE
-#undef XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE
-#undef XTBLOOM_DETAIL_EXPECTED_BUFFER_SIZE_BYTES_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BUFFER_MEMORY_SPACE_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BUFFER_RESERVED_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_V1_SIZE
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_V2_SIZE
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_TOTAL_INTERACTIONS_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_INTERACTION_DESCRIPTORS_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_INTERACTION_PAYLOAD_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_V3_SIZE
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_CELL_MATRICES_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_PERIODIC_AXES_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_V4_SIZE
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V1_SIZE
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_DIPOLE_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_QUADRUPOLE_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_WIBERG_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_SPIN_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V2_SIZE
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_STRAIN_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_BATCH_RESULT_V3_SIZE
-#undef XTBLOOM_DETAIL_EXPECTED_DLPACK_SHAPE_OFFSET
-#undef XTBLOOM_DETAIL_EXPECTED_DLPACK_VIEW_V1_SIZE
+#undef VIBEQC_XTB_DETAIL_ABI_ASSERT
+#undef VIBEQC_XTB_DETAIL_EXPECTED_CONTEXT_OPTIONS_V1_SIZE
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_SIZE_BYTES_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_MEMORY_SPACE_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BUFFER_RESERVED_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V1_SIZE
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V2_SIZE
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_TOTAL_INTERACTIONS_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_INTERACTION_DESCRIPTORS_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_INTERACTION_PAYLOAD_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V3_SIZE
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_CELL_MATRICES_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_PERIODIC_AXES_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_V4_SIZE
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V1_SIZE
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_DIPOLE_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_QUADRUPOLE_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_WIBERG_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_SPIN_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V2_SIZE
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_STRAIN_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_BATCH_RESULT_V3_SIZE
+#undef VIBEQC_XTB_DETAIL_EXPECTED_DLPACK_SHAPE_OFFSET
+#undef VIBEQC_XTB_DETAIL_EXPECTED_DLPACK_VIEW_V1_SIZE
 
-XTBLOOM_API xtbloom_status_t
-xtbloom_result_owner_options_init(xtbloom_result_owner_options_t* options, size_t struct_size);
-XTBLOOM_API xtbloom_status_t xtbloom_result_owner_create(
-    const xtbloom_result_owner_options_t* options, xtbloom_result_owner_t** owner);
+VIBEQC_XTB_API vibeqc_xtb_status_t
+vibeqc_xtb_result_owner_options_init(vibeqc_xtb_result_owner_options_t* options, size_t struct_size);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_result_owner_create(
+    const vibeqc_xtb_result_owner_options_t* options, vibeqc_xtb_result_owner_t** owner);
 /* Copies the whole arena into buffer as a caller-owned borrowed view. */
-XTBLOOM_API xtbloom_status_t xtbloom_result_owner_buffer(const xtbloom_result_owner_t* owner,
-                                                         xtbloom_buffer_t* buffer);
-XTBLOOM_API void xtbloom_result_owner_retain(xtbloom_result_owner_t* owner);
-XTBLOOM_API void xtbloom_result_owner_release(xtbloom_result_owner_t* owner);
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_result_owner_buffer(const vibeqc_xtb_result_owner_t* owner,
+                                                         vibeqc_xtb_buffer_t* buffer);
+VIBEQC_XTB_API void vibeqc_xtb_result_owner_retain(vibeqc_xtb_result_owner_t* owner);
+VIBEQC_XTB_API void vibeqc_xtb_result_owner_release(vibeqc_xtb_result_owner_t* owner);
 /*
  * Export one arena slice as a heap-allocated DLManagedTensorVersioned (when
  * version != 0) or legacy DLManagedTensor (when version == 0). On success
@@ -1172,12 +1172,12 @@ XTBLOOM_API void xtbloom_result_owner_release(xtbloom_result_owner_t* owner);
  * On failure *out_managed is set to NULL, no arena reference is taken, and
  * the arena reference counting is untouched.
  */
-XTBLOOM_API xtbloom_status_t xtbloom_result_owner_export_dltensor(
-    const xtbloom_result_owner_t* owner, const xtbloom_dlpack_view_t* view, int version,
+VIBEQC_XTB_API vibeqc_xtb_status_t vibeqc_xtb_result_owner_export_dltensor(
+    const vibeqc_xtb_result_owner_t* owner, const vibeqc_xtb_dlpack_view_t* view, int version,
     void** out_managed);
 
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
 
-#endif /* XTBLOOM_XTBLOOM_H */
+#endif /* VIBEQC_XTB_RUNTIME_H */

@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_MODEL_GFN2_COORDINATION_HPP
+#ifndef VIBEQC_XTB_MODEL_GFN2_COORDINATION_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_MODEL_GFN2_COORDINATION_HPP
+#define VIBEQC_XTB_MODEL_GFN2_COORDINATION_HPP
 
 #include <cstdint>
 #include <string>
@@ -9,7 +9,7 @@
 
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::gfn2 {
+namespace vibeqc::xtb::detail::gfn2 {
 
 class PeriodicShortRangePlan;
 struct PeriodicShortRangeGeometry;
@@ -28,7 +28,7 @@ struct CoordinationPlan {
 };
 
 /* Build a reusable ragged-batch plan from atomic numbers and molecule offsets. */
-xtbloom_status_t make_coordination_plan(std::int64_t batch_size, std::int64_t total_atoms,
+vibeqc_xtb_status_t make_coordination_plan(std::int64_t batch_size, std::int64_t total_atoms,
                                         const std::int64_t* atom_offsets,
                                         const std::int32_t* atomic_numbers, CoordinationPlan& plan,
                                         std::string& error);
@@ -38,7 +38,7 @@ xtbloom_status_t make_coordination_plan(std::int64_t batch_size, std::int64_t to
  * layout in bohr. The output contains total_atoms values and is overwritten.
  * A successful steady-state call does not allocate.
  */
-xtbloom_status_t evaluate_coordination_cpu(const CoordinationPlan& plan, const double* positions,
+vibeqc_xtb_status_t evaluate_coordination_cpu(const CoordinationPlan& plan, const double* positions,
                                            double* coordination_numbers, std::string& error);
 
 /*
@@ -50,7 +50,7 @@ xtbloom_status_t evaluate_coordination_cpu(const CoordinationPlan& plan, const d
  * an O(n_atom^2) Jacobian. Gradients are dE/dR (not forces), in atom-major xyz
  * layout, and are accumulated into the caller-owned buffer.
  */
-xtbloom_status_t add_coordination_gradient_cpu(const CoordinationPlan& plan,
+vibeqc_xtb_status_t add_coordination_gradient_cpu(const CoordinationPlan& plan,
                                                const double* positions, const double* dE_dcn,
                                                double* gradients, std::string& error);
 
@@ -60,18 +60,18 @@ xtbloom_status_t add_coordination_gradient_cpu(const CoordinationPlan& plan,
  * strain derivatives are accumulated transactionally; strain is row-major
  * dE/d epsilon with nine Hartree values per system.
  */
-xtbloom_status_t evaluate_periodic_coordination_cpu(const CoordinationPlan& plan,
+vibeqc_xtb_status_t evaluate_periodic_coordination_cpu(const CoordinationPlan& plan,
                                                     const PeriodicShortRangePlan& periodic_plan,
                                                     const PeriodicShortRangeGeometry& geometry,
                                                     double* coordination_numbers,
                                                     const PeriodicShortRangeWorkspace& workspace,
                                                     std::string& error);
 
-xtbloom_status_t add_periodic_coordination_gradient_cpu(
+vibeqc_xtb_status_t add_periodic_coordination_gradient_cpu(
     const CoordinationPlan& plan, const PeriodicShortRangePlan& periodic_plan,
     const PeriodicShortRangeGeometry& geometry, const double* dE_dcn, double* gradients,
     double* strain_derivatives, const PeriodicShortRangeWorkspace& workspace, std::string& error);
 
-}  // namespace xtbloom::detail::gfn2
+}  // namespace vibeqc::xtb::detail::gfn2
 
-#endif  // XTBLOOM_MODEL_GFN2_COORDINATION_HPP
+#endif  // VIBEQC_XTB_MODEL_GFN2_COORDINATION_HPP

@@ -1,7 +1,7 @@
-#ifndef XTBLOOM_BACKENDS_CUDA_GFN2_SCC_SETUP_TOPOLOGY_HPP
+#ifndef VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_SETUP_TOPOLOGY_HPP
 // xtbloom's CUDA/MKL additional permission is in CUDA_MKL_LINKING_EXCEPTION.
 
-#define XTBLOOM_BACKENDS_CUDA_GFN2_SCC_SETUP_TOPOLOGY_HPP
+#define VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_SETUP_TOPOLOGY_HPP
 
 #include <cuda_runtime_api.h>
 
@@ -17,7 +17,7 @@
 #include "model/gfn2/wavefunction.hpp"
 #include "xtbloom/xtbloom.h"
 
-namespace xtbloom::detail::cuda {
+namespace vibeqc::xtb::detail::cuda {
 
 /* Setup failures are synchronous; device semantic validation remains in the
  * existing common-schema diagnostic returned by bind_gfn2_topology_cuda. */
@@ -48,7 +48,7 @@ enum class Gfn2SccSetupTopologyField : std::uint32_t {
 /* Rich internal diagnostic suitable for translating into the public C status
  * plus a human-readable last-error string at the eventual API boundary. */
 struct Gfn2SccSetupTopologyDiagnostic {
-  xtbloom_status_t status = XTBLOOM_STATUS_SUCCESS;
+  vibeqc_xtb_status_t status = VIBEQC_XTB_STATUS_SUCCESS;
   Gfn2SccSetupTopologyError error = Gfn2SccSetupTopologyError::kSuccess;
   Gfn2SccSetupTopologyField field = Gfn2SccSetupTopologyField::kNone;
   std::int64_t index = -1;
@@ -57,7 +57,7 @@ struct Gfn2SccSetupTopologyDiagnostic {
   Gfn2PlanSchemaDiagnostic schema{};
 
   [[nodiscard]] bool success() const noexcept {
-    return status == XTBLOOM_STATUS_SUCCESS && error == Gfn2SccSetupTopologyError::kSuccess;
+    return status == VIBEQC_XTB_STATUS_SUCCESS && error == Gfn2SccSetupTopologyError::kSuccess;
   }
 };
 
@@ -130,6 +130,6 @@ class Gfn2SccSetupTopology {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace xtbloom::detail::cuda
+}  // namespace vibeqc::xtb::detail::cuda
 
-#endif  // XTBLOOM_BACKENDS_CUDA_GFN2_SCC_SETUP_TOPOLOGY_HPP
+#endif  // VIBEQC_XTB_BACKENDS_CUDA_GFN2_SCC_SETUP_TOPOLOGY_HPP
