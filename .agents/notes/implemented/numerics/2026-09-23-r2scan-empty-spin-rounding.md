@@ -66,3 +66,11 @@ Replacing `1 +/- zeta` by density ratios might improve conditioning, but changes
 the explicitly retained Libxc boundary values; that requires a separate
 scientific compatibility decision and independent high-precision qualification.
 Revisit the same-input test if that boundary contract is deliberately replaced.
+
+## Superseding conditioning repair
+
+The [stable spin-fraction decision](2026-09-23-scan-stable-spin-fractions.md)
+removes the cancellation before differentiation. The same-input diagnostic
+above remains, alongside the restored complete CPU/GPU minority-potential
+gate. Original double fixtures are preserved as diagnostics and independently
+qualified with the original Libxc formulas evaluated in 113-bit arithmetic.
