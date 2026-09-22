@@ -77,7 +77,6 @@ def test_executed_solver_region_binds_real_implicit_vjp_plan() -> None:
         == response.derivative_plan_identity
     )
 
-
     stale = BoundCCSDResponse(bound, lam)
     assert stale.solver_region is not None
     stale_region = replace(
