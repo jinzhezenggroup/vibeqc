@@ -555,6 +555,7 @@ CudaCosxMolecularDerivativeDiagnostic cuda_cosx_molecular_derivative_diagnostic(
   add_double(mul(tile, basis.nao));                                // symmetric projection
   add_double(mul(tile, basis.nao));                                // potential
   add_double(mul(tile, basis.nao));                                // left potential
+  add_double(tile);                                                // device weights
   add_double(tile);                                                // weight sensitivity
   add_double(coordinates);                                         // nuclear gradient
   extra_bytes = add(extra_bytes, mul(tile, sizeof(std::size_t)));  // owners
