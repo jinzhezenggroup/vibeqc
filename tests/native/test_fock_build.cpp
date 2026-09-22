@@ -471,8 +471,14 @@ void verify_cosx_provider_semantics() {
 
   auto derivative = spec;
   derivative.derivative_order = 1;
-  require_rejected([&] { (void)resolve_fock_build(derivative, FockBackend::Cuda); },
-                   "COSX silently inherited first-derivative capability");
+  const auto resolved_derivative = resolve_fock_build(derivative, FockBackend::Cuda);
+  require(resolved_derivative.spec == derivative &&
+              resolved_derivative.schedule == FockSchedule::CudaIndependent,
+          "COSX first-derivative capability was not preserved by resolution");
+  auto second_derivative = spec;
+  second_derivative.derivative_order = 2;
+  require_rejected([&] { (void)resolve_fock_build(second_derivative, FockBackend::Cuda); },
+                   "COSX silently inherited unsupported second-derivative capability");
 
   auto coulomb_cosx = spec;
   coulomb_cosx.coulomb.approximation = FockApproximation::SeminumericalCosx;
