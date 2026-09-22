@@ -250,7 +250,6 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_native_eri_order3.cuh",
             "cuda/direct_native_eri_order4.cuh",
             "cuda/direct_native_gradient_types.cuh",
-            "cuda/direct_native_high_order_coulomb.cuh",
             "cuda/direct_native_order2_gradient.cuh",
             "cuda/direct_native_order2_shell.cuh",
             "cuda/direct_native_order3_gradient.cuh",
