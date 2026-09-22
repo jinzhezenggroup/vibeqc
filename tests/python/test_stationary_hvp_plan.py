@@ -3,10 +3,13 @@
 import typing
 from dataclasses import replace
 from fractions import Fraction
+from types import MappingProxyType
 
 import numpy as np
 import pytest
+import vibeqc_compiler.method.stationary_hvp as stationary_hvp_module
 from vibeqc_compiler.method import (
+    ExactExchangePrimitive,
     MethodSpec,
     SemilocalXCPrimitive,
     StationaryHVPPlan,
@@ -93,6 +96,76 @@ def test_unqualified_exchange_primitives_fail_closed(method: typing.Any) -> None
         plan(method)
 
 
+def test_primitive_rule_registration_extends_plan_without_method_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    exchange_source = stationary_hvp_module.HVPSource(
+        "exact_exchange",
+        "exact_exchange",
+        ("density-response", "first-integral-direction", "second-integral-hvp"),
+        ("density_left", "density_right"),
+    )
+    exchange_rule = stationary_hvp_module.HVPPrimitiveRule(
+        "test-full-range-exchange-v1",
+        ExactExchangePrimitive,
+        "exact_exchange",
+        ("energy", "fock", "eri-first-derivative"),
+        (),
+        (exchange_source,),
+    )
+    monkeypatch.setattr(
+        stationary_hvp_module,
+        "_PRIMITIVE_HVP_RULES",
+        MappingProxyType(
+            {
+                **dict(stationary_hvp_module._PRIMITIVE_HVP_RULES),
+                ExactExchangePrimitive: exchange_rule,
+            }
+        ),
+    )
+
+    hybrid = plan("PBE0")
+    assert "exact_exchange" in hybrid.source_names
+    assert [rule.identifier for rule in hybrid.primitive_rules] == [
+        "semilocal-rho-sigma-v1",
+        "test-full-range-exchange-v1",
+    ]
+    block = hybrid.integral_block("exact_exchange", terms=2)
+    assert block.response_inputs == ("density_left", "density_right")
+
+
+def test_primitive_rule_cannot_collide_with_envelope_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    colliding_rule = stationary_hvp_module.HVPPrimitiveRule(
+        "test-colliding-exchange-v1",
+        ExactExchangePrimitive,
+        "exact_exchange",
+        ("energy", "fock", "eri-first-derivative"),
+        (),
+        (
+            stationary_hvp_module.HVPSource(
+                "nuclear",
+                "exact_exchange",
+                ("second-integral-hvp",),
+                ("density_left", "density_right"),
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        stationary_hvp_module,
+        "_PRIMITIVE_HVP_RULES",
+        MappingProxyType(
+            {
+                **dict(stationary_hvp_module._PRIMITIVE_HVP_RULES),
+                ExactExchangePrimitive: colliding_rule,
+            }
+        ),
+    )
+    with pytest.raises(UnsupportedMethod, match="duplicate source names"):
+        plan("PBE0")
+
+
 def test_tau_meta_gga_fails_closed_until_tau_response_is_registered() -> None:
     with pytest.raises(UnsupportedMethod, match="ingredients"):
         plan("R2SCAN")
@@ -120,7 +193,7 @@ def test_missing_feature_hessian_rule_rejects_every_semilocal_method(
         "derivative_capabilities",
         property(lambda self: ("energy-density", "feature-gradient")),
     )
-    with pytest.raises(UnsupportedMethod, match="second-order feature derivative"):
+    with pytest.raises(UnsupportedMethod, match="derivative capabilities"):
         plan("PBE")
 
 
@@ -136,7 +209,10 @@ def test_compiler_plan_does_not_publish_native_hvp_capability() -> None:
 def test_payload_is_explicit_about_capability_and_active_ingredients() -> None:
     p = plan("PBE", "polarized")
     payload = p.to_payload()
-    assert payload["schema"] == "stationary-hvp-plan-v1"
+    assert payload["schema"] == "stationary-hvp-plan-v2"
+    assert [rule["identifier"] for rule in payload["primitive_rules"]] == [
+        "semilocal-rho-sigma-v1"
+    ]
     assert payload["active_ingredients"] == ["rho", "sigma"]
     assert payload["method"]["spin"] == "polarized"
     assert payload["mean_field"]["coulomb"] == "direct-full-range"

@@ -5,9 +5,11 @@ name: Python wheels
 # Linux runtime dependencies, and the installed-wheel test proves lazy provider
 # resolution through a CUDA-backed native call.
 on:
+  # Wheel construction is release/package qualification rather than a routine
+  # pull-request correctness gate. Master still builds every merged state, and
+  # any branch can be qualified explicitly with workflow_dispatch.
   push:
     branches: [master]
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -37,8 +39,9 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/ccache
-          key: ccache-wheel-v2-manylinux_x86_64-${{ hashFiles('CMakeLists.txt', 'cmake/**', 'include/**', 'src/**', 'python/vibeqc_compiler/**', 'tools/**', 'pyproject.toml') }}
+          key: ccache-wheel-v3-manylinux_x86_64-${{ hashFiles('CMakeLists.txt', 'cmake/**', 'include/**', 'src/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'tools/**', 'pyproject.toml', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
           restore-keys: |
+            ccache-wheel-v3-manylinux_x86_64-
             ccache-wheel-v2-manylinux_x86_64-
 
       - name: Restore cibuildwheel tool cache

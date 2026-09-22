@@ -29,13 +29,15 @@ bool valid_model(const KsFinalStateIdentity& identity) {
       (fock.spec.spin == scf::FockSpin::Restricted ? 1U : 2U) != model.spins ||
       fock.precision != scf::FockPrecision::Float64 || fock.spec.derivative_order != 0 ||
       !fock.spec.coulomb.present || fock.spec.coulomb.coefficient != 1.0 ||
-      fock.spec.coulomb.approximation != scf::FockApproximation::Exact ||
+      (fock.spec.coulomb.approximation != scf::FockApproximation::Exact &&
+       fock.spec.coulomb.approximation != scf::FockApproximation::DensityFitted) ||
       fock.spec.coulomb.op != scf::FockOperator::FullRange ||
       !std::isfinite(model.semilocal_exchange_scale) || model.semilocal_exchange_scale < 0 ||
       !std::isfinite(model.semilocal_correlation_scale) || model.semilocal_correlation_scale < 0 ||
       (fock.spec.exchange.present &&
        (fock.spec.exchange.op != scf::FockOperator::FullRange ||
-        fock.spec.exchange.approximation != scf::FockApproximation::Exact ||
+        (fock.spec.exchange.approximation != scf::FockApproximation::Exact &&
+         fock.spec.exchange.approximation != scf::FockApproximation::DensityFitted) ||
         fock.spec.exchange.coefficient >= 0)) ||
       (!b3lyp && !wb97mv && (model.functional != 1 || fock.backend == scf::FockBackend::Cuda) &&
        (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||

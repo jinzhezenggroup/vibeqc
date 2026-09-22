@@ -149,6 +149,7 @@ CUDA_ALLOWED["cuda_df_runtime"] = tuple(
     "scf/cuda/final_validation_kernels.",
     "scf/cuda/scf_diis_kernels.",
     "scf/cuda_density_fitting.hpp",
+    "scf/cuda_density_fitting_device.hpp",
     "scf/cuda_df_gradient.hpp",
     "scf/cuda_density_fitting_eigen.hpp",
     "scf/cuda_density_fitting_final_state.hpp",
