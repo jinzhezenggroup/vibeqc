@@ -399,8 +399,9 @@ def ks_resource_request(
                 kind="persistent",
             )
         )
-    # Setup/SCF/XC and force staging are serialized phases of one prepared
-    # owner. Charge their maximum transient host excess, never their sum.
+    # CPU force workspaces are transient. The prepared CUDA force owner is
+    # retained across calls and overlaps the next setup/SCF replay; reserve it
+    # separately rather than treating serialized execution as retired storage.
     host_phase_peak = max(max(x["setup_workspace"], x["scf_workspace"]) for x in host)
     if cpu_forces:
         host_phase_peak = max(host_phase_peak, CPU_FORCE_HOST_CAP)
@@ -408,7 +409,16 @@ def ks_resource_request(
             "force JIT/compiler processes, loaded code, BLAS/runtime internal storage",
         )
     if backend == "cuda":
-        host_phase_peak = max(host_phase_peak, 256 << 20)
+        estimates.append(
+            ResourceEstimate(
+                "retained generated KS force host staging cap",
+                256 << 20,
+                "pageable",
+                first_phase,
+                last_phase,
+                kind="persistent",
+            )
+        )
     estimates.append(
         ResourceEstimate(
             "serialized KS transient host phase peak",
@@ -490,16 +500,26 @@ def ks_resource_request(
                 max(0, x["setup"] - sum(x[k] for k in ("state", "xc", "coulomb")))
                 for x in device
             )
-            # Setup and force are serialized around the retained KS owner.
-            # Both coexist with persistent state, but never with each other,
-            # so the additional device charge is their maximum excess.
+            # The prepared force arena remains live during a later SCF replay.
+            # Keep its reservation persistent and add only actual setup excess
+            # to the transient phase model; preserve resident execution reuse.
             estimates.append(
                 ResourceEstimate(
                     "serialized KS transient device phase peak",
-                    max(extra, 512 << 20),
+                    extra,
                     f"device:{device_id}",
                     first_phase,
                     last_phase,
+                )
+            )
+            estimates.append(
+                ResourceEstimate(
+                    "retained generated KS force device staging cap",
+                    512 << 20,
+                    f"device:{device_id}",
+                    first_phase,
+                    last_phase,
+                    kind="persistent",
                 )
             )
     except (NotImplementedError, RuntimeError, OSError) as error:
@@ -521,7 +541,7 @@ def ks_resource_request(
             ),
             (
                 "transient_phase_accounting",
-                "serialized setup/SCF/XC/force workspaces charge their maximum excess",
+                "transient phase maxima plus retained CUDA force owners across replays",
             ),
         ),
     )

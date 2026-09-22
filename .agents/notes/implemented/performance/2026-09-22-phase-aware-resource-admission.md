@@ -61,3 +61,9 @@ excess before composition.
 - #890
 - #940
 - `python/vibeqc_compiler/common/resources.py`
+
+## Retained force-owner correction
+
+The CUDA force lifetime assumption is superseded by
+[retained KS force overlap](2026-09-22-retained-ks-force-overlap.md).
+The CPU transient-max and separate DF admission decisions remain unchanged.
