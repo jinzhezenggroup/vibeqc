@@ -151,9 +151,11 @@ def compile_capabilities(
 
     ``compilable`` means that the public compiler can lower the requested
     TensorIR program under the supplied resource bounds. It does not claim that
-    a suitable host compiler is installed. Arbitrary user programs are also not
-    promoted to VibeQC's independently validated or built-in production domains
-    merely because source lowering succeeds.
+    a suitable host compiler is installed. Successful lowering also reports the
+    exact source/program identity that :func:`compile` will bind for the same
+    request, before toolchain-specific artifact identity is added. Arbitrary
+    user programs are not promoted to VibeQC's independently validated or
+    built-in production domains merely because source lowering succeeds.
     """
     if not isinstance(program, Program):
         raise TypeError("tensor compilation capability query requires Program")
@@ -163,6 +165,7 @@ def compile_capabilities(
         "target": target,
         "mode": mode,
         "logical_hash": program.logical_hash,
+        "identity": None,
         "represented": True,
         "compilable": False,
         "lowering_validated": False,
@@ -184,21 +187,27 @@ def compile_capabilities(
     # This is an explicit compiler query, but it remains toolchain-free: emit_cpu
     # performs semantic/resource lowering only and never creates an adapter,
     # probes an executable, starts a subprocess, or creates a cache artifact.
+    # Use the production entry symbol so the reported identity is exactly the
+    # identity NativeTensorProgram binds for the same compile request.
+    from vibeqc_compiler.common.provenance import canonical_hash
     from vibeqc_compiler.tensor.cpu import emit_cpu
 
     try:
-        _, resources = emit_cpu(
+        source, resources = emit_cpu(
             program,
             max_bytes=max_bytes,
             max_work=max_work,
             max_nodes=max_nodes,
-            symbol="vibeqc_extension_capability",
+            symbol="tensor_cpu",
         )
     except (TypeError, ValueError) as error:
         report["reason"] = str(error)
         return report
     report["compilable"] = True
     report["lowering_validated"] = True
+    report["identity"] = canonical_hash(
+        {"program": program.to_payload(), "source": source}
+    )
     report["resources"] = copy.deepcopy(resources)
     return report
 

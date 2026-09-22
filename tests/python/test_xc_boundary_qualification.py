@@ -125,8 +125,24 @@ def test_r2scan_zero_minority_boundary_status_is_machine_readable(
     assert reference["functional"] == "R2SCAN"
     assert reference["spin"] == "polarized"
 
-    features = np.asarray([p["features"] for p in reference["points"]])
-    expected = np.asarray([p["expected"] for p in reference["points"]])
+    # The original nine binary64 diagnostics remain unchanged and retain their
+    # independent Libxc replay below. After the qualified spin-conditioning
+    # repair, production acceptance uses the original Libxc algebra evaluated
+    # in 113-bit arithmetic, not its cancellation-sensitive binary64 values.
+    assert reference["acceptance_semantics"] == "direct-spin-fractions/v1"
+    acceptance = json.loads(
+        (ROOT / reference["acceptance_reference"]).read_text(encoding="utf-8")
+    )
+    assert acceptance["schema"] == "vibeqc.r2scan-tail-reference/v1"
+    oracle = acceptance["oracle"]
+    assert (
+        oracle["source"] == "Libxc 7.0.0 original Maple 2022 generated polarized E/vxc"
+    )
+    assert oracle["arithmetic"] == "GCC __float128/libquadmath, 113 significand bits"
+    assert oracle["tolerance"] == {"rtol": 5e-12, "atol": 1e-12}
+    assert len(acceptance["points"]) >= 50
+    features = np.asarray([p["inputs"] for p in acceptance["points"]])
+    expected = np.asarray([p["reference"] for p in acceptance["points"]])
     # A spin permutation is an independent symmetry of the physical contract.
     features = np.concatenate((features, features[:, [1, 0, 4, 3, 2, 6, 5]]))
     expected = np.concatenate((expected, expected[:, [0, 2, 1, 5, 4, 3, 7, 6]]))
@@ -134,9 +150,7 @@ def test_r2scan_zero_minority_boundary_status_is_machine_readable(
     passed = (
         actual.shape == expected.shape
         and np.isfinite(actual).all()
-        and np.allclose(
-            actual, expected, rtol=reference["rtol"], atol=reference["atol"]
-        )
+        and np.allclose(actual, expected, **oracle["tolerance"])
     )
 
     status = "pass" if passed else "fail"

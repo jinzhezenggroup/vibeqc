@@ -110,6 +110,12 @@ def test_explicit_cpu_jit_compiles_and_executes_real_program(tmp_path: Path) -> 
         pytest.skip("no C++ compiler available for explicit JIT integration test")
 
     program = _program()
+    capability = tensor.compile_capabilities(
+        program,
+        max_bytes=4096,
+        max_work=4096,
+        max_nodes=32,
+    )
     compiled = tensor.compile(
         program,
         compiler=compiler,
@@ -122,6 +128,7 @@ def test_explicit_cpu_jit_compiles_and_executes_real_program(tmp_path: Path) -> 
     result = compiled.execute({"x": feed})
 
     np.testing.assert_array_equal(result["value"], feed)
+    assert capability["identity"] == compiled.identity
     artifact = compiled.artifact
     assert Path(artifact["library"]).is_file()
     assert artifact["metadata"]["key"]

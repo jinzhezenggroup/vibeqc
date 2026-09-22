@@ -9,6 +9,7 @@ import pytest
 import vibeqc_compiler.tensor.cpu as tensor_cpu
 from vibeqc.extensions import tensor
 from vibeqc_compiler.common import cpp_adapter
+from vibeqc_compiler.common.provenance import canonical_hash
 
 
 def _program() -> tensor.Program:
@@ -40,12 +41,22 @@ def test_compile_capabilities_reports_lowering_without_toolchain_activation(
         max_work=4096,
         max_nodes=32,
     )
+    source, _ = tensor_cpu.emit_cpu(
+        program,
+        max_bytes=4096,
+        max_work=4096,
+        max_nodes=32,
+        symbol="tensor_cpu",
+    )
 
     assert report["extension_api_version"] == tensor.API_VERSION
     assert report["kind"] == "tensor-compile-capabilities"
     assert report["logical_hash"] == program.logical_hash
     assert report["target"] == "cpu"
     assert report["mode"] == "jit"
+    assert report["identity"] == canonical_hash(
+        {"program": program.to_payload(), "source": source}
+    )
     assert report["represented"] is True
     assert report["compilable"] is True
     assert report["lowering_validated"] is True
@@ -55,6 +66,19 @@ def test_compile_capabilities_reports_lowering_without_toolchain_activation(
     assert report["reason"] is None
     assert report["resources"]["required_bytes"] > 0
     assert report["resources"]["scalar_work"] > 0
+
+
+def test_compile_capability_identity_is_deterministic_and_semantic() -> None:
+    program = _program()
+    first = tensor.compile_capabilities(program)
+    replay = tensor.compile_capabilities(program)
+    doubled = tensor.Program(
+        {"value": tensor.multiply(program.outputs["value"], program.outputs["value"])}
+    )
+    changed = tensor.compile_capabilities(doubled)
+
+    assert first["identity"] == replay["identity"]
+    assert first["identity"] != changed["identity"]
 
 
 @pytest.mark.parametrize(
@@ -75,6 +99,7 @@ def test_compile_capabilities_reports_unsupported_target_or_mode(
     assert report["validated"] is False
     assert report["production_promoted"] is False
     assert report["toolchain_checked"] is False
+    assert report["identity"] is None
     assert report["resources"] is None
     assert message in report["reason"]
 
@@ -90,6 +115,7 @@ def test_compile_capabilities_reports_unsupported_ir_without_promotion() -> None
     assert report["lowering_validated"] is False
     assert report["validated"] is False
     assert report["production_promoted"] is False
+    assert report["identity"] is None
     assert report["resources"] is None
     assert "unsupported CPU primitive" in report["reason"]
 
@@ -99,6 +125,7 @@ def test_compile_capabilities_applies_requested_resource_bounds() -> None:
 
     assert report["represented"] is True
     assert report["compilable"] is False
+    assert report["identity"] is None
     assert report["resources"] is None
     assert "budget" in report["reason"]
 
