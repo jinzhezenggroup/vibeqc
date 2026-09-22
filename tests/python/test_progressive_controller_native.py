@@ -148,3 +148,38 @@ def test_projection_memory_budget_rejection_falls_back_to_target() -> None:
     assert "maximum_host_bytes" in run.diagnostics["projection"]["reason"]
     assert run.target.converged and run.target.restart_origin == "cold"
     assert run.verification.target_established
+
+
+@pytest.mark.parametrize("fitted", [False, True])
+@pytest.mark.parametrize("provider_limit", [False, True])
+def test_verification_budget_rejects_before_fock_rebuild(
+    fitted: bool, provider_limit: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import vibeqc.progressive_controller as controller
+
+    source, target = calculators(fitted=fitted)
+    problem = TargetProblem.from_calculator(target, ATOMS)
+    # The provider alone fits its own peak, but the additional audit buffers
+    # must also fit. This exercises real planning, not only the one-byte guard.
+    limit = (
+        target.estimate_resources([ATOMS]).peak_bytes["host"] if provider_limit else 1
+    )
+    plan = make_deterministic_hf_plan(
+        problem,
+        source,
+        target,
+        ATOMS,
+        budget=ProgressiveBudget(maximum_verification_host_bytes=limit),
+    )
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        pytest.fail("verification Fock rebuilt despite exhausted workspace budget")
+
+    monkeypatch.setattr(controller, "FockPlan", forbidden)
+    run = run_progressive_hf(plan, source, target, ATOMS)
+    assert run.target.converged
+    assert run.verification.status == "budget_exhausted"
+    assert not run.verification.target_established
+    assert not run.succeeded
+    assert run.diagnostics["physical_residual_audit"]["status"] == "unavailable"
+    assert "budget" in run.diagnostics["physical_residual_audit"]["reason"]

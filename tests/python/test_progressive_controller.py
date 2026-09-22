@@ -213,10 +213,12 @@ def verify(
 
 def test_target_problem_and_stage_plan_are_immutable_and_identity_stable() -> None:
     before = PROBLEM.identity
-    with pytest.raises(FrozenInstanceError):
-        PROBLEM.provider_identity = "x" * 64  # type: ignore[misc]
-    with pytest.raises(FrozenInstanceError):
-        stages()[0].allowed_next_stages = ()  # type: ignore[misc]
+    for owner, attribute, value in (
+        (PROBLEM, "provider_identity", "x" * 64),
+        (stages()[0], "allowed_next_stages", ()),
+    ):
+        with pytest.raises(FrozenInstanceError):
+            setattr(owner, attribute, value)
     assert PROBLEM.identity == before
 
 
@@ -411,3 +413,74 @@ def test_unverifiable_fock_budget_fails_closed() -> None:
     )
     assert final.status == "budget_exhausted"
     assert any("could not be verified" in item for item in final.reasons)
+
+
+@pytest.mark.parametrize("maximum_bytes", [1, 32, 128])
+def test_physical_audit_rejects_workspace_before_native_owners(
+    monkeypatch: pytest.MonkeyPatch, maximum_bytes: int
+) -> None:
+    import vibeqc.progressive_controller as controller
+    from vibeqc_compiler import dft
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        pytest.fail("native Fock/basis work started before verification admission")
+
+    monkeypatch.setattr(dft, "NativeAO", forbidden)
+    monkeypatch.setattr(controller, "FockPlan", forbidden)
+    calculator = SimpleNamespace(
+        _density_fitting_mode=0, _basis="sto-3g", _representation_name="cartesian"
+    )
+    with pytest.raises(MemoryError, match="verification"):
+        controller._audit_target_physical_residual(
+            PROBLEM,
+            calculator,
+            (),
+            np.eye(2)[None, :, :],
+            -1.0,
+            charge=0,
+            multiplicity=1,
+            maximum_host_bytes=maximum_bytes,
+        )
+
+
+def test_physical_audit_admits_provider_and_workspace_before_native_owners(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import vibeqc.progressive_controller as controller
+    from vibeqc_compiler import dft
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        pytest.fail("native Fock/basis work started before provider admission")
+
+    def estimate(systems: object, **kwargs: object) -> SimpleNamespace:
+        from vibeqc_compiler.common.resources import ResourceBudget
+
+        budget = kwargs["budget"]
+        assert isinstance(budget, ResourceBudget)
+        assert budget.host_bytes == 4096
+        assert budget.host_reserve_bytes > 8 * 2 * 2
+
+        def reject() -> None:
+            raise MemoryError("verification provider allocation exceeds budget")
+
+        return SimpleNamespace(require_feasible=reject)
+
+    monkeypatch.setattr(dft, "NativeAO", forbidden)
+    monkeypatch.setattr(controller, "FockPlan", forbidden)
+    calculator = SimpleNamespace(
+        _density_fitting_mode=0,
+        _basis="sto-3g",
+        _representation_name="cartesian",
+        estimate_resources=estimate,
+    )
+    with pytest.raises(MemoryError, match="verification provider"):
+        controller._audit_target_physical_residual(
+            PROBLEM,
+            calculator,
+            (),
+            np.eye(2)[None, :, :],
+            -1.0,
+            charge=0,
+            multiplicity=1,
+            maximum_host_bytes=4096,
+        )

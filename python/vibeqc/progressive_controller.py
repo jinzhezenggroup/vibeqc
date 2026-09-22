@@ -26,6 +26,9 @@ from .profiles import canonical_hash
 from .progressive import _retained_density, initialize_from
 from .projection import ProjectionPolicy, ProjectionRejected
 
+if typing.TYPE_CHECKING:
+    from .batch import BatchItemResult
+
 _SCHEMA_VERSION = 1
 
 
@@ -657,6 +660,7 @@ def finalize_hf_verification(
     accuracy: AccuracyAssessment | None = None,
     physical_audit: HFPhysicalResidualAudit | None = None,
     physical_audit_error: str | None = None,
+    physical_audit_budget_exhausted: bool = False,
 ) -> FinalVerification:
     """Derive a fail-closed final record; serialized status is never trusted."""
     if (
@@ -667,6 +671,8 @@ def finalize_hf_verification(
     actual_provider_identity = result.basis_metadata.get("model_identity", "")
     target_reasons: list[str] = []
     budget_reasons: list[str] = []
+    if physical_audit_budget_exhausted:
+        budget_reasons.append("physical verification host budget was exhausted")
     if actual_model.identity != problem.model.identity:
         target_reasons.append("executed scientific model differs from TargetProblem")
     if actual_provider_identity != problem.provider_identity:
@@ -824,8 +830,8 @@ def finalize_hf_verification(
 
 @dataclass(frozen=True)
 class ProgressiveHFResult:
-    target: object
-    source: object
+    target: BatchItemResult
+    source: BatchItemResult
     plan: DeterministicHFPlan
     executions: tuple[StageExecution, ...]
     verification: FinalVerification
@@ -849,10 +855,30 @@ def _audit_target_physical_residual(
     maximum_host_bytes: int,
 ) -> HFPhysicalResidualAudit:
     """Rebuild the exact target Fock once and audit FDS-SDF at its final density."""
+    from vibeqc_compiler.common.resources import ResourceBudget
     from vibeqc_compiler.dft import NativeAO
 
     started = time.perf_counter()
     unrestricted = problem.model.method == "uhf"
+    if type(maximum_host_bytes) is not int or maximum_host_bytes < 1:
+        raise ValueError("maximum verification host bytes must be positive")
+    # Reserve the controller's density/Fock snapshots, overlap, commutator
+    # products and immutable/hash copies in addition to the provider envelope.
+    # The full HF inventory is deliberately conservative for a fixed-D audit;
+    # do not create NativeAO/Fock owners first and check only the final overlap.
+    n = density.shape[-1]
+    spin_channels = 2 if unrestricted else 1
+    workspace_bytes = 8 * n * n * (12 * spin_channels + 8)
+    if workspace_bytes > maximum_host_bytes:
+        raise MemoryError("physical verification workspace exceeds host budget")
+    calculator.estimate_resources(
+        [atoms],
+        charges=[charge],
+        multiplicities=[multiplicity],
+        budget=ResourceBudget(
+            host_bytes=maximum_host_bytes, host_reserve_bytes=workspace_bytes
+        ),
+    ).require_feasible()
     fitted = calculator._density_fitting_mode != _native.DENSITY_FITTING_NONE
     approximation = "density_fitted" if fitted else "exact"
     with ExitStack() as stack:
@@ -979,6 +1005,7 @@ def run_progressive_hf(
     target_density = None
     physical_audit = None
     physical_audit_error = None
+    physical_audit_budget_exhausted = False
     source_setup_started = time.perf_counter()
     with source_calculator.prepare_batch(
         [atoms], charges=[charge], multiplicities=[multiplicity]
@@ -1066,9 +1093,13 @@ def run_progressive_hf(
                 multiplicity=multiplicity,
                 maximum_host_bytes=plan.budget.maximum_verification_host_bytes,
             )
+        except MemoryError as error:
+            physical_audit_error = (
+                f"physical verification host budget exhausted: {error}"
+            )
+            physical_audit_budget_exhausted = True
         except (
             ArithmeticError,
-            MemoryError,
             NotImplementedError,
             RuntimeError,
             ValueError,
@@ -1119,6 +1150,7 @@ def run_progressive_hf(
         accuracy=accuracy,
         physical_audit=physical_audit,
         physical_audit_error=physical_audit_error,
+        physical_audit_budget_exhausted=physical_audit_budget_exhausted,
     )
     diagnostics = {
         "schema": "vibeqc.progressive_hf",

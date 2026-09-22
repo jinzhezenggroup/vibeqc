@@ -77,7 +77,13 @@ Stage count, source iterations, total configured iterations, host projection
 workspace, optional Fock builds and optional estimated cost have explicit
 budgets. A plan whose configured maximum work exceeds its budget is rejected
 before execution. Projection and final-verification host work have separate
-bounds. Failed source work remains in the execution record and total work count.
+bounds. Before creating the verification AO/Fock owners, the controller reserves
+its dense audit matrices/copies and checks the existing HF provider inventory
+against the remaining host capacity. The full HF inventory is a conservative
+admission bound for this fixed-density operation; it is not a measured process
+or driver-memory peak. An unavailable inventory fails closed. Exhausting either
+part returns `budget_exhausted` without starting the verification Fock rebuild.
+Failed source work remains in the execution record and total work count.
 Diagnostics separately report source/target setup and execution, projection,
 final verification and context cleanup, while `total_seconds` covers the complete
 endpoint.
