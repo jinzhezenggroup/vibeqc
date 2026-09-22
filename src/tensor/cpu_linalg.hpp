@@ -74,6 +74,16 @@ void cpu_symm(char side, char uplo, std::size_t m, std::size_t n, const double* 
 void cpu_syrk(char uplo, char trans, std::size_t n, std::size_t k, const double* a, double* c,
               double alpha = 1.0, double beta = 0.0, const CpuLinalgPlan& plan = {});
 
+/** Symmetric rank-2k update of the selected triangle.
+ * `trans == 'N'` consumes n-by-k row-major A/B and computes
+ * C := alpha * A * B^T + alpha * B * A^T + beta * C.
+ * `trans == 'T'` consumes k-by-n A/B and computes the transposed-form update.
+ * Only the triangle selected by `uplo` is read from or written to in C.
+ */
+void cpu_syr2k(char uplo, char trans, std::size_t n, std::size_t k, const double* a,
+               const double* b, double* c, double alpha = 1.0, double beta = 0.0,
+               const CpuLinalgPlan& plan = {});
+
 /** Solve a triangular matrix equation in place using row-major storage.
  * `side == 'L'` computes B := alpha * op(A)^-1 * B and requires an m-by-m A.
  * `side == 'R'` computes B := alpha * B * op(A)^-1 and requires an n-by-n A.
