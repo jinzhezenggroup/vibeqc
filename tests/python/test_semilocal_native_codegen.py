@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import re
-import runpy
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -22,13 +23,32 @@ def _identity(source: str, name: str) -> str:
     return match.group(1)
 
 
-def test_r2scan_cpu_cuda_wrappers_share_expression_identity() -> None:
-    cpu = runpy.run_path(str(ROOT / "tools/generate_xc_cpu.py"))[
-        "emit_r2scan_polarized"
-    ]()
-    cuda = runpy.run_path(str(ROOT / "tools/generate_xc_r2scan_cuda.py"))[
-        "emit_r2scan_device"
-    ]()
+def test_r2scan_cpu_cuda_wrappers_share_expression_identity(tmp_path: Path) -> None:
+    cpu_path = tmp_path / "xc_cpu.hpp"
+    cuda_path = tmp_path / "r2scan_device.cuh"
+    subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            str(ROOT / "tools/generate_xc_cpu.py"),
+            "--output",
+            str(cpu_path),
+        ],
+        check=True,
+        cwd=tmp_path,
+    )
+    subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            str(ROOT / "tools/generate_xc_r2scan_cuda.py"),
+            "--output",
+            str(cuda_path),
+        ],
+        check=True,
+        cwd=tmp_path,
+    )
+    cpu, cuda = cpu_path.read_text(), cuda_path.read_text()
 
     assert _identity(cpu, "kR2scanPolarizedExpressionIdentity") == _identity(
         cuda, "kR2scanDeviceExpressionIdentity"
