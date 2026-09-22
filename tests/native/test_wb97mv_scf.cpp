@@ -45,10 +45,21 @@ core::System input_system(unsigned kind) {
 }
 
 vibeqc_ks_options options(bool unrestricted) {
+  static const std::array<vibeqc_ks_semilocal_component, 2> components{
+      {{"MGGA_X_WB97M_V", 1.0}, {"MGGA_C_WB97M_V", 1.0}}};
+  static const std::array<vibeqc_ks_exchange_term, 2> restricted_exchange{{
+      {VIBEQC_KS_EXCHANGE_SHORT_RANGE, 0.15, 0.3, -0.075},
+      {VIBEQC_KS_EXCHANGE_LONG_RANGE, 1.0, 0.3, -0.5},
+  }};
+  static const std::array<vibeqc_ks_exchange_term, 2> unrestricted_exchange{{
+      {VIBEQC_KS_EXCHANGE_SHORT_RANGE, 0.15, 0.3, -0.15},
+      {VIBEQC_KS_EXCHANGE_LONG_RANGE, 1.0, 0.3, -1.0},
+  }};
+  const auto& exchange = unrestricted ? unrestricted_exchange : restricted_exchange;
   vibeqc_ks_options ks{};
   ks.struct_size = sizeof(ks);
   ks.abi_version = VIBEQC_ABI_VERSION;
-  ks.scf_domain_version = 3;
+  ks.scf_domain = "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
   ks.grid_version = 1;
   ks.radial_points = 12;
   ks.angular_polar = 4;
@@ -56,24 +67,19 @@ vibeqc_ks_options options(bool unrestricted) {
   ks.partition_iterations = 3;
   ks.coincident_tolerance = 1e-12;
   ks.tile_points = 64;
-  ks.composition_version = 1;
-  ks.semilocal_exchange_scale = 1.0;
-  ks.semilocal_correlation_scale = 1.0;
-  ks.fock_exchange_coefficient = unrestricted ? -0.15 : -0.075;
   ks.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
-  ks.execution_plan_version = 1;
   ks.spin_channels = unrestricted ? 2 : 1;
-  ks.semilocal_family = 4;
-  ks.nonlocal_correlation_version = 1;
+  ks.semilocal_components = components.data();
+  ks.semilocal_component_count = components.size();
+  ks.semilocal_range_omega = 0.3;
+  ks.exchange_terms = exchange.data();
+  ks.exchange_term_count = exchange.size();
+  ks.has_nonlocal_correlation = 1;
   ks.nonlocal_variant = VIBEQC_NONLOCAL_VV10;
   ks.nonlocal_b = 6.0;
   ks.nonlocal_c = 0.01;
   ks.nonlocal_coefficient = 1.0;
   ks.nonlocal_maximum_bytes = 1 << 24;
-  ks.range_exchange_version = 1;
-  ks.short_range_exchange = 0.15;
-  ks.long_range_exchange = 1.0;
-  ks.range_omega = 0.3;
   return ks;
 }
 
@@ -304,7 +310,8 @@ void run_case(unsigned kind, bool unrestricted, std::ostream* output) {
     dump(*output, name, input, grid, unrestricted, result, state);
   }
   // Pointees have been snapshotted; replay must not observe caller mutation.
-  ks.range_omega = 9.0;
+  ks.exchange_terms = nullptr;
+  ks.exchange_term_count = 0;
   ks.nonlocal_b = 9.0;
   const auto warm = plan->execute(false);
   require(warm.convergence.converged && warm.ks_diagnostic->initial_density_used &&
@@ -326,15 +333,21 @@ void run_case(unsigned kind, bool unrestricted, std::ostream* output) {
   // Invalid or incomplete compositions must never execute a partial method.
   for (unsigned failure = 0; failure < 9; ++failure) {
     ks = options(unrestricted);
+    std::array<vibeqc_ks_exchange_term, 2> exchange{ks.exchange_terms[0], ks.exchange_terms[1]};
+    std::array<vibeqc_ks_semilocal_component, 2> components{ks.semilocal_components[0],
+                                                            ks.semilocal_components[1]};
+    ks.exchange_terms = exchange.data();
+    ks.semilocal_components = components.data();
     switch (failure) {
       case 0:
-        ks.range_exchange_version = 0;
+        ks.exchange_terms = nullptr;
+        ks.exchange_term_count = 0;
         break;
       case 1:
-        ks.nonlocal_correlation_version = 0;
+        ks.has_nonlocal_correlation = 0;
         break;
       case 2:
-        ks.range_omega = 0.4;
+        exchange[0].omega = 0.4;
         break;
       case 3:
         ks.nonlocal_b = 5.9;
@@ -343,13 +356,13 @@ void run_case(unsigned kind, bool unrestricted, std::ostream* output) {
         ks.nonlocal_variant = VIBEQC_NONLOCAL_RVV10;
         break;
       case 5:
-        ks.long_range_exchange = 0.8;
+        exchange[1].coefficient = 0.8;
         break;
       case 6:
-        ks.semilocal_exchange_scale = 0.9;
+        components[0].coefficient = 0.9;
         break;
       case 7:
-        ks.scf_domain_version = 1;
+        ks.scf_domain = "semilocal-scaled-v1/pbe-spin-c2-1e-18";
         break;
       case 8:
         ks.nonlocal_maximum_bytes = 1;

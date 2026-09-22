@@ -145,19 +145,27 @@ def test_wb97mv_internal_projection_preserves_all_primitives_and_domain(
         "threshold": "1/100000000",
         "active_comparison": ">=",
     }
-    native = native_ks_options(options, version=6)
-    assert native.semilocal_family == 4
-    assert native.scf_domain_version == 3
+    from vibeqc import _native
+
+    native = native_ks_options(options)
+    assert native.scf_domain.decode() == WB97MV_SCF_DOMAIN
     assert native.spin_channels == (1 if spin == "unpolarized" else 2)
-    assert native.range_omega == pytest.approx(0.3)
-    assert native.short_range_exchange == pytest.approx(0.15)
-    assert native.long_range_exchange == pytest.approx(1.0)
+    assert {
+        native.semilocal_components[i].component_id.decode()
+        for i in range(native.semilocal_component_count)
+    } == {"MGGA_X_WB97M_V", "MGGA_C_WB97M_V"}
+    assert native.semilocal_range_omega == pytest.approx(0.3)
+    terms = {
+        native.exchange_terms[i].operator_kind: native.exchange_terms[i]
+        for i in range(native.exchange_term_count)
+    }
+    assert terms[_native.KS_EXCHANGE_SHORT_RANGE].coefficient == pytest.approx(0.15)
+    assert terms[_native.KS_EXCHANGE_LONG_RANGE].coefficient == pytest.approx(1.0)
+    assert terms[_native.KS_EXCHANGE_SHORT_RANGE].omega == pytest.approx(0.3)
+    assert native.has_nonlocal_correlation == 1
     assert native.nonlocal_variant == 1
     assert native.nonlocal_b == pytest.approx(6.0)
     assert native.nonlocal_c == pytest.approx(0.01)
-    for version in (4, 5):
-        with pytest.raises(NotImplementedError):
-            native_ks_options(options, version=version)
     # Internal transport is not permission to activate a public method selector.
     with pytest.raises(ValueError, match="supported native"):
         resolve_ks_method("wb97m-v")

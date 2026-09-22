@@ -5,7 +5,7 @@ Date: 2026-09-22
 
 ## Problem
 
-The v6 boundary could carry SR/LR exchange and VV10, and the production
+The semantic KS execution-plan boundary carries SR/LR exchange and VV10, and the production
 B97M evaluator existed, but only the PBE family consumed the two-Fock route.
 Accepting B97M as PBE or appending a post-SCF VV10 energy would change the
 Hamiltonian without changing its advertised MethodIR.

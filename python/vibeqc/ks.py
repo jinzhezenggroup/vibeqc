@@ -112,19 +112,19 @@ class KsOptions:
         return ks_coefficients(self.method_ir)
 
     @property
-    def requires_composition_v2(self) -> bool:
+    def has_nondefault_composition(self) -> bool:
         return self.coefficients != (1.0, 1.0, 0.0)
 
     @property
-    def requires_schedule_v3(self) -> bool:
+    def uses_host_xc_schedule(self) -> bool:
         return self.xc_schedule != "device_fused"
 
     @property
-    def requires_nonlocal_v5(self) -> bool:
+    def has_nonlocal_correlation(self) -> bool:
         return self.execution_plan.nonlocal_correlation is not None
 
     @property
-    def requires_range_exchange_v6(self) -> bool:
+    def has_range_exchange(self) -> bool:
         return any(
             term.operator in ("short-range", "long-range")
             for term in self.execution_plan.exchange
@@ -612,8 +612,12 @@ def profiled_ks_options(
     ).options
 
 
-def native_ks_options(options: typing.Any, *, version: int = 6) -> typing.Any:
-    """Pack a short-lived C descriptor; ctypes retains its radius-array owner."""
+def native_ks_options(options: typing.Any) -> typing.Any:
+    """Lower one compiler KS execution plan into the current semantic C ABI.
+
+    The ABI carries MethodIR primitives directly.  No named-method/family code
+    and no historical suffix version is selected here.
+    """
     import ctypes
 
     from . import _native
@@ -627,41 +631,48 @@ def native_ks_options(options: typing.Any, *, version: int = 6) -> typing.Any:
         radii = (ctypes.c_double * 119)(*[fill] * 119)
         for z, radius in grid.element_radii:
             radii[z] = radius
-    if version not in (1, 2, 3, 4, 5, 6):
-        raise ValueError("native KS options version must be 1, 2, 3, 4, 5, or 6")
-    if version == 1 and options.requires_composition_v2:
-        raise NotImplementedError(
-            "native KS options v1 cannot serialize composition options v2"
-        )
-    if version < 3 and options.requires_schedule_v3:
-        raise NotImplementedError(
-            f"native KS options v{version} cannot serialize execution schedules v3"
-        )
-    if version < 5 and options.requires_nonlocal_v5:
-        raise NotImplementedError(
-            f"native KS options v{version} cannot serialize nonlocal correlation v5"
-        )
-    if version < 6 and options.requires_range_exchange_v6:
-        raise NotImplementedError(
-            f"native KS options v{version} cannot serialize range-separated exchange v6"
-        )
-    size = (
-        _native.KsOptionsDescriptor.composition_version.offset
-        if version == 1
-        else _native.KsOptionsDescriptor.xc_execution_schedule.offset
-        if version == 2
-        else _native.KsOptionsDescriptor.execution_plan_version.offset
-        if version == 3
-        else _native.KsOptionsDescriptor.nonlocal_correlation_version.offset
-        if version == 4
-        else _native.KsOptionsDescriptor.range_exchange_version.offset
-        if version == 5
-        else ctypes.sizeof(_native.KsOptionsDescriptor)
+
+    if _is_pbe_d4_composition(options.method_ir):
+        semilocal = typing.cast("SemilocalXCPrimitive", options.method_ir.primitives[0])
+        exchange = ()
+        nonlocal_primitive = None
+    else:
+        plan = _native_execution_plan(options.method_ir)
+        semilocal = plan.semilocal
+        exchange = plan.exchange
+        nonlocal_primitive = plan.nonlocal_correlation
+
+    component_ids = tuple(
+        name.encode("ascii") for name, _ in semilocal.functional.components
     )
-    spin_channels = 1 if options.method_ir.spin == "unpolarized" else 2
-    semilocal_family = _native_semilocal_family(options.method_ir)
-    nonlocal_primitive = options.execution_plan.nonlocal_correlation
-    nonlocal_version = 1 if version >= 5 and nonlocal_primitive is not None else 0
+    component_type = _native.KsSemilocalComponentDescriptor * len(component_ids)
+    components = component_type(
+        *(
+            _native.KsSemilocalComponentDescriptor(component_id, float(coefficient))
+            for component_id, (_, coefficient) in zip(
+                component_ids, semilocal.functional.components, strict=True
+            )
+        )
+    )
+
+    operators = {
+        "full-range": _native.KS_EXCHANGE_FULL_RANGE,
+        "short-range": _native.KS_EXCHANGE_SHORT_RANGE,
+        "long-range": _native.KS_EXCHANGE_LONG_RANGE,
+    }
+    exchange_type = _native.KsExchangeTermDescriptor * len(exchange)
+    exchange_terms = exchange_type(
+        *(
+            _native.KsExchangeTermDescriptor(
+                operators[term.operator],
+                float(term.coefficient),
+                float(term.omega),
+                float(term.fock_coefficient),
+            )
+            for term in exchange
+        )
+    )
+
     variants = {"vv10": _native.NONLOCAL_VV10, "rvv10": _native.NONLOCAL_RVV10}
     if nonlocal_primitive is not None:
         try:
@@ -676,18 +687,12 @@ def native_ks_options(options: typing.Any, *, version: int = 6) -> typing.Any:
     else:
         nonlocal_variant = 0
         nonlocal_b = nonlocal_c = nonlocal_coefficient = 0.0
-    range_exchange = ks_range_exchange_parameters(options.method_ir)
-    range_exchange_version = 1 if version >= 6 and range_exchange is not None else 0
-    if range_exchange is None:
-        short_range_exchange = long_range_exchange = range_omega = 0.0
-    else:
-        short_range_exchange, long_range_exchange, range_omega = range_exchange
-    return _native.KsOptionsDescriptor(
-        size,
+
+    domain = options.scf_domain.encode("ascii")
+    descriptor = _native.KsOptionsDescriptor(
+        ctypes.sizeof(_native.KsOptionsDescriptor),
         _native.ABI_VERSION,
-        3
-        if options.scf_domain == WB97MV_SCF_DOMAIN
-        else (2 if options.scf_domain == B3LYP_SCF_DOMAIN else 1),
+        domain,
         grid.version,
         grid.radial_points,
         grid.angular_polar,
@@ -697,26 +702,27 @@ def native_ks_options(options: typing.Any, *, version: int = 6) -> typing.Any:
         options.tile_points,
         radii,
         119 if radii is not None else 0,
-        0,
-        1,
-        *options.coefficients,
         _native.XC_EXECUTION_DEVICE_FUSED
         if options.xc_schedule == "device_fused"
         else _native.XC_EXECUTION_HOST_UNFUSED,
-        0,
-        1 if version >= 4 else 0,
-        spin_channels if version >= 4 else 0,
-        semilocal_family if version >= 4 else 0,
-        0,
-        nonlocal_version,
-        nonlocal_variant if nonlocal_version else 0,
-        nonlocal_b if nonlocal_version else 0.0,
-        nonlocal_c if nonlocal_version else 0.0,
-        nonlocal_coefficient if nonlocal_version else 0.0,
-        options.nonlocal_memory_budget_bytes if nonlocal_version else 0,
-        range_exchange_version,
-        0,
-        short_range_exchange if range_exchange_version else 0.0,
-        long_range_exchange if range_exchange_version else 0.0,
-        range_omega if range_exchange_version else 0.0,
+        1 if options.method_ir.spin == "unpolarized" else 2,
+        components,
+        len(components),
+        float(semilocal.functional.range_omega),
+        exchange_terms if exchange_terms else None,
+        len(exchange_terms),
+        1 if nonlocal_primitive is not None else 0,
+        nonlocal_variant,
+        nonlocal_b,
+        nonlocal_c,
+        nonlocal_coefficient,
+        options.nonlocal_memory_budget_bytes if nonlocal_primitive is not None else 0,
     )
+    # ctypes pointer fields do not own their pointees.  Retain every borrowed
+    # object for exactly as long as the short-lived descriptor is alive.
+    descriptor._domain_owner = domain
+    descriptor._component_ids_owner = component_ids
+    descriptor._components_owner = components
+    descriptor._exchange_owner = exchange_terms
+    descriptor._radii_owner = radii
+    return descriptor

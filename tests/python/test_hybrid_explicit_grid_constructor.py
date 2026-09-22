@@ -11,7 +11,7 @@ def test_named_hybrid_calculator_accepts_explicit_grid(method: str) -> None:
     grid = GridSpec(radial_points=10, angular_polar=6, angular_azimuth=12)
     calculator = Calculator(method=method, ks_options=KsOptions(grid=grid))
     assert calculator.ks_options.grid == grid
-    assert calculator.ks_options.requires_composition_v2
+    assert calculator.ks_options.has_nondefault_composition
 
 
 @pytest.mark.parametrize("method", ("pbe0-rks", "pbe0-uks"))
@@ -21,7 +21,7 @@ def test_named_hybrid_still_requires_explicit_grid(method: str) -> None:
 
 
 @pytest.mark.parametrize("method", ("pbe0-rks", "pbe0-uks"))
-@pytest.mark.parametrize("version", (None, 0, 1))
+@pytest.mark.parametrize("version", (None, 0, 6))
 def test_legacy_library_rejects_explicit_hybrid_without_resolving_default(
     method: str, version: int | None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -29,7 +29,7 @@ def test_legacy_library_rejects_explicit_hybrid_without_resolving_default(
     if version is not None:
         library.vibeqc_ks_options_version = lambda: version
     monkeypatch.setattr(_native, "load_library", lambda **kwargs: library)
-    with pytest.raises(NotImplementedError, match="native library does not support KS"):
+    with pytest.raises(NotImplementedError, match="semantic KS execution-plan ABI"):
         Calculator(method=method, ks_options=KsOptions(grid=GridSpec()))
 
 
