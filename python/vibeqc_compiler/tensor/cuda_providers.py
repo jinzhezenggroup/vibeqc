@@ -37,6 +37,15 @@ CUBLAS_PROVIDER = ProviderDescriptor(
 )
 
 
+CUDA_RUNTIME_PROVIDER = ProviderDescriptor(
+    name="nvidia.cuda_runtime",
+    kind="runtime",
+    implementation="cuda-runtime",
+    required_features=("cuda-runtime",),
+    provenance=(("version_source", "runtime-probe"),),
+)
+
+
 def _site_hash(plan: TensorPlan, index: int) -> str:
     step = plan.steps[index]
     contract = gemm_contract(step.node)
@@ -65,8 +74,8 @@ def resolved_lowering_candidates(plan: TensorPlan) -> tuple[LoweringCandidate, .
 
     GEMM is a composite lowering: cuBLAS owns the contraction, while generated
     CUDA owns packing/scatter and/or the checked coefficient epilogue.  Empty-K
-    contractions use the generated zero-fill path and therefore do not claim a
-    cuBLAS provider.
+    contractions use the CUDA runtime zero-fill path and therefore do not claim
+    a generated kernel or cuBLAS provider.
     """
 
     if not isinstance(plan, TensorPlan):
@@ -77,16 +86,16 @@ def resolved_lowering_candidates(plan: TensorPlan) -> tuple[LoweringCandidate, .
         if step.virtual or node.op in ("input", "constant") or not node.spec.size:
             continue
         contract = gemm_contract(node)
-        if step.gemm != "none" and contract is not None and contract.k > 0:
-            uses_cublas = True
+        is_gemm = step.gemm != "none" and contract is not None
+        uses_cublas = is_gemm and contract.k > 0
+        if is_gemm:
             shape = (contract.batch, contract.m, contract.n, contract.k)
         else:
-            uses_cublas = False
             shape = tuple(node.spec.shape)
         value_precision = plan.precision_by_node.get(node)
         request = LoweringRequest(
             consumer="tensor.cuda",
-            operation="gemm" if uses_cublas else node.op,
+            operation="gemm" if is_gemm else node.op,
             backend="cuda",
             dtype=node.spec.dtype,
             accumulation_dtype=(
@@ -100,19 +109,19 @@ def resolved_lowering_candidates(plan: TensorPlan) -> tuple[LoweringCandidate, .
                 ("site_hash", _site_hash(plan, index)),
             ),
         )
-        providers = (
-            (CUBLAS_PROVIDER, GENERATED_CUDA_PROVIDER)
-            if uses_cublas
-            else (GENERATED_CUDA_PROVIDER,)
-        )
+        if uses_cublas:
+            providers = (CUBLAS_PROVIDER, GENERATED_CUDA_PROVIDER)
+            implementation = f"tensor-gemm-{step.gemm}"
+        elif is_gemm:
+            providers = (CUDA_RUNTIME_PROVIDER,)
+            implementation = "tensor-gemm-zero-fill"
+        else:
+            providers = (GENERATED_CUDA_PROVIDER,)
+            implementation = f"tensor-generated-{node.op}"
         candidates.append(
             LoweringCandidate(
                 request=request,
-                implementation=(
-                    f"tensor-gemm-{step.gemm}"
-                    if uses_cublas
-                    else f"tensor-generated-{node.op}"
-                ),
+                implementation=implementation,
                 providers=providers,
                 status="ready",
                 numerical_mode=_numerical_mode(plan, index),
