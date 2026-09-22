@@ -56,9 +56,7 @@ def test_failed_arming_closes_pipes_and_disarms_started_watchdog(
     if failure == "start":
         watchdog.start.side_effect = OSError("start failed")
     else:
-        monkeypatch.setattr(
-            progress, "emit", Mock(side_effect=OSError("begin failed"))
-        )
+        monkeypatch.setattr(progress, "emit", Mock(side_effect=OSError("begin failed")))
     with pytest.raises(OSError, match=f"{failure} failed"), progress.measure("cold"):
         pytest.fail("must not start the solve")
     receiver.close.assert_called_once()
