@@ -17,7 +17,7 @@ def invalidation_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     directory = tmp_path_factory.mktemp("compiled-invalidation")
     source = directory / "probe.cpp"
     source.write_text(
-        r'''
+        r"""
 #include <cstdlib>
 #include <exception>
 #include <new>
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
   if (!region.bound() || !region.warmed() || region.failed()) return 9;
   return 0;
 }
-''',
+""",
         encoding="utf-8",
     )
     executable = directory / "probe"
