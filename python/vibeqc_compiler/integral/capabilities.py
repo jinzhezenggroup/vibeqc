@@ -418,6 +418,8 @@ def _check_force_derivative_order(
     spec: ShellClassSpec,
     order: int,
     target: CudaTargetInfo,
+    *,
+    checked_first: CapabilityCheck | None = None,
 ) -> CapabilityCheck:
     """Report one force derivative order without widening the CUDA ABI.
 
@@ -444,6 +446,8 @@ def _check_force_derivative_order(
                 ("CUDA force result ABI currently exposes only order-one derivatives"),
             ),
         )
+    if checked_first is not None:
+        return checked_first
     return _check_recurrence(spec, "subset_wick", target)
 
 
@@ -505,11 +509,16 @@ def build_capability_report(
             (name, _check_recurrence(spec, name, target))
             for name in ("subset_wick", "rys2", "rys3", "rys4", "rys5")
         )
+        generic = dict(recurrence_rows)["subset_wick"]
         derivative_rows = tuple(
-            (order, _check_force_derivative_order(spec, order, target))
+            (
+                order,
+                _check_force_derivative_order(
+                    spec, order, target, checked_first=generic
+                ),
+            )
             for order in (1, 2)
         )
-        generic = dict(recurrence_rows)["subset_wick"]
         production_row = production.get(
             spec.name,
             _production_gap_payload(),
