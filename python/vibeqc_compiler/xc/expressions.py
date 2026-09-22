@@ -18,6 +18,7 @@ from fractions import Fraction as F
 from vibeqc_compiler.integral.expr import Graph
 
 from .pbe_maple import pbe_correlation, pbe_exchange
+from .pw_maple import pw_correlation
 from .scan_maple import scan_component
 
 _PW_PARAMETERS = {
