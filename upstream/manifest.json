@@ -131,13 +131,13 @@
         "tools/libxc_method_metadata.py": "74617e950ab38dea5487566a4757f819c9442d35512b07bcbc09f252c0468b99"
       },
       "generator": "tools/generate_libxc_methods.py",
-      "generator_sha256": "d3a4dc49d3eb94eaf4ab6e513ccd6a494feb705f5ecba11f0da7da8123a9670a",
+      "generator_sha256": "df7d2a5b43708285ab915b9d45e148e41428c478cb1843cf8919d6d73dc19384",
       "input_identity_sha256": "aa1ecae5abc04565a754de95c16772f0e73b93eed2a695103ee3a6950313887b",
       "inputs": [
         "libxc-7.0.0"
       ],
       "outputs": {
-        "python/vibeqc_compiler/method/_generated_libxc_methods.py": "7cc4139d496101afa37d5b26369c32c52747b4fdd90d1a3917bfd06bfb53d83b"
+        "python/vibeqc_compiler/method/_generated_libxc_methods.py": "5865e441c7be6500cb0ac3636cc8771138ded3f48f5da06745ef1cfb623327d2"
       }
     },
     "libxc-xc-admission": {
