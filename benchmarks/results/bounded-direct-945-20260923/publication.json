@@ -67,10 +67,10 @@
       "sha256": "c265a340de1f20039fb59da59d9da6fd548d064bd459e12a58774a76f27a06d8"
     },
     {
-      "bytes": 3250,
+      "bytes": 3251,
       "path": "uhf-aligned-oracle.json",
       "role": "samples",
-      "sha256": "cce3d0cf05c799f6955c47c49a14f736dfe6f400332c78a45da07b7fa59c959f"
+      "sha256": "c881d8fd8322a5a7ede16c0a3d24112405dbd50286e1fa07561d127a80bb2660"
     }
   ],
   "reproduction": {
