@@ -21,6 +21,7 @@ source emission alone does not select a production route.
 | Bounded direct psss force | Lossless paged exact-class consumer | `VIBEQC_BOUNDED_DIRECT_STREAMING=force` or topology limits; uses the same weighted expression, retains page traversal |
 | Direct HF ssss force | Generated force-only weighted-ERI expression over the native primitive-pair cache | Generated mathematics is the unconditional production path; the qualified bounded/packed native scheduler remains, while the superseded handwritten ssss derivative body and runtime selector are deleted |
 | Direct HF psps/ppss | Common generated production kernels | Already migrated before this issue; manifest, signature policies and queues are retained |
+| Direct HF PPPS/DSPS/DPSS/FSSS force | Generated force-only Weighted IntegralIR over the existing compact order-three queue | Compiler-generated mathematics is unconditional for the native order-three route; generated-AOT mask ownership remains disjoint, while screening, density folding and atom scatter stay native |
 | Other direct HF classes | Manifest-selected generated kernels plus validated native fallbacks | Registry selects by architecture, consumer and class; no manifest rows added here |
 | External psss weights | Generated precontracted Hermite DAG | One primitive record carries all x/y/z weights; optional independent fallback |
 | External unmigrated s/p/d/f weights | Unscreened Hermite/Dual3 primitive fallback | One explicit component per record, with the caller's actual external weight |

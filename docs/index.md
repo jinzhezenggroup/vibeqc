@@ -15,6 +15,8 @@ declared properties; method-specific backend and model constraints fail closed.
   strict scientific compatibility, corruption handling and per-item restore.
 - [Cross-basis HF initialization](basis_projection.md): rectangular overlaps,
   occupied-space projection and complete source-plus-target cost accounting.
+- [Deterministic progressive HF](progressive_hf.md): immutable target problems,
+  typed two-stage plans, bounded fallback and fail-closed final verification.
 - [External basis data](external_basis.md): offline input, provenance, element/ECP
   bookkeeping, per-operator limits and prepared-state identities.
 - [Scalar Gaussian ECPs](ecp.md): local/nonlocal integrals, complete direct HF

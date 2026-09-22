@@ -10,6 +10,7 @@
     "src/backends/cuda/gfn2_repulsion.cu": "Consume compiler-generated TensorIR/AD repulsion pair science; retain CUDA reduction and error ownership.",
     "src/backends/cuda/gfn2_repulsion.cuh": "Add explicit generated-pair nonfinite arithmetic status.",
     "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored.",
+    "src/backends/cuda/gfn2_h0_force.cu": "Consume compiler-generated TensorIR H0 Pulay seed, Cartesian distance/pullback, pair factors, CN/radial reverse response, and AO contraction arithmetic while retaining CUDA topology, validation, reductions, atomics, thresholds, and failure semantics.",
     "src/backends/cuda/gfn2_integrals.cu": "Consume compiler-generated S/D/Q primitive values and coordinate derivatives; retain CUDA screening, contraction, spherical transforms, translation, reduction, and publication ownership.",
     "src/backends/cuda/gfn2_es2.cu": "Consume compiler-generated TensorIR/AD ES2 scalar science and coordinate-VJP algebra; retain CUDA topology, validation, reductions, cache/publication, and error ownership."
   },
@@ -224,9 +225,9 @@
       "vendored_sha256": "2790a8a1f2c40fcda3f5b0359e5a458cb5970945420c6b29099a2b93599d6f87"
     },
     "src/backends/cuda/gfn2_h0_force.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "ffccf6543aefc02feba9c23913bff8c544f6389a67956535d9e2372f1b50176a",
-      "vendored_sha256": "ffccf6543aefc02feba9c23913bff8c544f6389a67956535d9e2372f1b50176a"
+      "vendored_sha256": "4e11ca6b2f2da2085f481e3e6c147edce34ff61cf5b3ae5b8377cb82f42cefec"
     },
     "src/backends/cuda/gfn2_h0_force.cuh": {
       "adapted": false,
