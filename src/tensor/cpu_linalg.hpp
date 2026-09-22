@@ -55,6 +55,10 @@ void cpu_gemm(char a_trans, char b_trans, std::size_t m, std::size_t n, std::siz
 void cpu_gemv(char trans, std::size_t m, std::size_t n, const double* a, const double* x, double* y,
               double alpha = 1.0, double beta = 0.0, const CpuLinalgPlan& plan = {});
 
+/** Rank-1 update of a row-major m-by-n matrix: A := alpha * x * y^T + A. */
+void cpu_ger(std::size_t m, std::size_t n, const double* x, const double* y, double* a,
+             double alpha = 1.0, const CpuLinalgPlan& plan = {});
+
 /** Symmetric matrix-matrix product with row-major storage.
  * `side == 'L'` computes C := alpha * A * B + beta * C with m-by-m symmetric A.
  * `side == 'R'` computes C := alpha * B * A + beta * C with n-by-n symmetric A.
@@ -76,6 +80,14 @@ void cpu_syrk(char uplo, char trans, std::size_t n, std::size_t k, const double*
  * `diag == 'U'` treats the diagonal as unit and does not read it.
  */
 void cpu_trsm(char side, char uplo, char trans, char diag, std::size_t m, std::size_t n,
+              const double* a, double* b, double alpha = 1.0, const CpuLinalgPlan& plan = {});
+
+/** Multiply a general matrix by a triangular matrix in place using row-major storage.
+ * `side == 'L'` computes B := alpha * op(A) * B and requires an m-by-m A.
+ * `side == 'R'` computes B := alpha * B * op(A) and requires an n-by-n A.
+ * `diag == 'U'` treats the diagonal as unit and does not read it.
+ */
+void cpu_trmm(char side, char uplo, char trans, char diag, std::size_t m, std::size_t n,
               const double* a, double* b, double alpha = 1.0, const CpuLinalgPlan& plan = {});
 
 /** In-place lower Cholesky factorization. Returns LAPACK-style info:

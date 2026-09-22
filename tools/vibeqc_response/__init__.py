@@ -38,6 +38,7 @@ from .problem import (
     RotationLayout,
 )
 from .resident_cuda import CudaResidentRHFResponse
+from .resident_uhf_cuda import CudaResidentUHFResponse
 from .spin_cuda import CudaSpinJKBackend
 from .uhf import (
     UHFReferenceSnapshot,
@@ -53,6 +54,7 @@ __all__ = [
     "CudaDFJKBackend",
     "CudaDirectJKBackend",
     "CudaResidentRHFResponse",
+    "CudaResidentUHFResponse",
     "CudaSpinJKBackend",
     "DenseAOResponseBackend",
     "DenseMatrixResponseOperator",

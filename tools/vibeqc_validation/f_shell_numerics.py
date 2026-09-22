@@ -19,12 +19,11 @@ from itertools import product
 from math import exp, prod, sqrt
 
 import numpy as np
+from vibeqc_compiler.common.evidence import block_error, canonical_hash
 from vibeqc_compiler.integral.shell_spec import (
     FUSED_SHELL_SPEC_BY_NAME,
     cartesian_components,
 )
-
-from .schema import block_error, canonical_hash
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
@@ -418,15 +417,20 @@ def numerical_matrix(
     subset. Existing GPU visibility is passed through without modification.
     """
     import pyscf
-    from vibeqc_compiler.integral.cuda_adapter import (
+    from vibeqc_compiler.common.cuda_adapter import (
         CudaBenchmarkExecutor,
         CudaCompilerAdapter,
     )
-    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
+    from vibeqc_compiler.common.evidence import (
+        file_hash,
+        new_evidence,
+        outcome,
+        validate_evidence,
+    )
 
     from .f_shell import ROOT, source_audit
     from .f_shell_cuda import emit_numerical_driver
-    from .schema import file_hash, new_evidence, outcome, validate_evidence
 
     report = json.loads(json.dumps(report))
     compiler = CudaCompilerAdapter(

@@ -3,7 +3,7 @@
 import ctypes
 import typing
 
-from .resources import ResourceAllocationError, _account
+from vibeqc_compiler.common.resources import ResourceAllocationError, _account
 
 
 def observe_method_call(
@@ -22,7 +22,7 @@ def observe_method_call(
     survive subsequent execution scopes and failures, while each replay resets
     the ledger peak to the buffers still owned by the prepared calculation.
     """
-    from .resources import CpuResourceObservation
+    from vibeqc_compiler.common.resources import CpuResourceObservation
 
     observed = CpuResourceObservation(library, cpu_workers=1, ledger=ledger)
     diagnostics = dict(previous or {})

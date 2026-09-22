@@ -5,11 +5,12 @@
     "src/backends/cuda/gfn2_geometry.cu": "Consume compiler-generated TensorIR/AD coordination pair science; retain CUDA geometry/topology ownership.",
     "src/backends/cuda/gfn2_hamiltonian.cu": "Consume compiler-generated fixed-state TensorIR S/D/Q pair Hamiltonian for both spin layouts.",
     "src/backends/cuda/gfn2_hamiltonian_force.cu": "Consume the matching compiler-generated S/D/Q reverse-mode pair adjoints, including spin overlap.",
-    "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references.",
+    "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references. Consume the same compiler-generated TensorIR/AD coordination pair helper as dense geometry, preserving bitwise CN admission and canonical neighbor accumulation.",
     "src/backends/cuda/gfn2_preprocessing.cu": "Backport xTBloom #487: pass committed pair-list CUDA kernel descriptors by value for GPUs without pageable host-memory access.",
     "src/backends/cuda/gfn2_repulsion.cu": "Consume compiler-generated TensorIR/AD repulsion pair science; retain CUDA reduction and error ownership.",
     "src/backends/cuda/gfn2_repulsion.cuh": "Add explicit generated-pair nonfinite arithmetic status.",
     "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored.",
+    "src/backends/cuda/gfn2_integrals.cu": "Consume compiler-generated S/D/Q primitive values and coordinate derivatives; retain CUDA screening, contraction, spherical transforms, translation, reduction, and publication ownership.",
     "src/backends/cuda/gfn2_es2.cu": "Consume compiler-generated TensorIR/AD ES2 scalar science and coordinate-VJP algebra; retain CUDA topology, validation, reductions, cache/publication, and error ownership."
   },
   "backports": {
@@ -268,9 +269,9 @@
       "vendored_sha256": "463d2cbe0dac409c676e4e7af14e2648a27f597eaa70cc86b320b33b7ff7de6d"
     },
     "src/backends/cuda/gfn2_integrals.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "8da9042b184a7c81650cf9e7f4dbcc4b183cffeee0bf0eab6596b5adb18f99d6",
-      "vendored_sha256": "8da9042b184a7c81650cf9e7f4dbcc4b183cffeee0bf0eab6596b5adb18f99d6"
+      "vendored_sha256": "afa85509e2c9e8e929c099cace0754943e2c8d0c7f7b597796b29c5c53fcf503"
     },
     "src/backends/cuda/gfn2_integrals.cuh": {
       "adapted": false,
@@ -300,7 +301,7 @@
     "src/backends/cuda/gfn2_pairlist.cu": {
       "adapted": true,
       "upstream_sha256": "4eadf7ae80179453ba3543a6354b9430228efe25575dedf41629b8b94aa8be13",
-      "vendored_sha256": "e934221e547997528fe21cf0287fa1f095d3acf7114857f578846ccccfc5d41b"
+      "vendored_sha256": "1dee9292facbb9d8f5331344e84a3d5083253ffa2ab9ca6987195c46f28eeae0"
     },
     "src/backends/cuda/gfn2_pairlist.cuh": {
       "adapted": false,

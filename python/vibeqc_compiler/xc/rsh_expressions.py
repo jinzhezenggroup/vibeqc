@@ -1,7 +1,7 @@
 # Copyright (C) 2017 M.A.L. Marques
 # Copyright (C) 2026 VibeQC contributors
 # This Source Code Form is subject to the terms of the Mozilla Public License,
-# v. 2.0. See external/libxc-7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
+# v. 2.0. See upstream/libxc/7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
 """Audited Libxc 7.0 extended GGA/hybrid scalar expressions."""
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from fractions import Fraction as F
 
 from vibeqc_compiler.integral.expr import Expr, Graph
 
+from . import ityh_maple
 from .b88_vwn_maple import b88_exchange as maple_b88_exchange
 from .b88_vwn_maple import vwn_correlation as maple_vwn_correlation
 from .p86_pz_maple import p86_correlation, pz_correlation
@@ -241,7 +242,7 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
             if production
             else maple_b88_exchange(graph, spec, variables)
         ),
-        "GGA_X_ITYH": lambda: b88_exchange(True),
+        "GGA_X_ITYH": lambda: ityh_maple.ityh_exchange(graph, spec, variables),
         "GGA_X_PW91": lambda: imported_pw91_exchange(graph, spec, variables),
         "LDA_C_PW": pw92_correlation,
         "GGA_C_PW91": lambda: imported_pw91_correlation(graph, spec, variables),

@@ -11,6 +11,7 @@ from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
 from .b88_vwn_maple import b88_vwn_maple_provenance
+from .ityh_maple import ityh_maple_provenance
 from .p86_pz_maple import p86_pz_maple_provenance
 from .pbe_maple import pbe_maple_provenance
 from .pw91_maple import pw91_maple_provenance
@@ -167,6 +168,7 @@ class FunctionalSpec:
             record
             for record in (
                 pbe_maple_provenance(self.components),
+                ityh_maple_provenance(self.components, self.range_omega),
                 pw_maple_provenance(self.components),
                 pw91_maple_provenance(self.components),
                 p86_pz_maple_provenance(self.components),
@@ -202,7 +204,7 @@ class FunctionalSpec:
             "energy": "hartree/bohr^3; e_xc=(rho_a+rho_b)*epsilon_xc",
             "license": "MPL-2.0",
             "source_manifest_sha256": file_hash(
-                asset_path(f"external/libxc-7.0.0/{manifest}")
+                asset_path(f"manifests/libxc/7.0.0/{manifest}")
             ),
             "expression_source_sha256": file_hash(
                 Path(__file__).with_name(expression_source)

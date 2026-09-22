@@ -20,9 +20,9 @@ import numpy as np
 from vibeqc import Atom, Primitive, Shell
 from vibeqc.calculator import _named_basis_shells
 from vibeqc.profiles import canonical_hash
+from vibeqc_compiler.dft.grid import GridSpec, MolecularGrid
 
 from tools.generate_validation_references import pyscf_molecule
-from tools.vibeqc_dft.grid import GridSpec, MolecularGrid
 
 
 def generate(directory: typing.Any) -> typing.Any:

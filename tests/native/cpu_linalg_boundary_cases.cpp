@@ -52,6 +52,19 @@ int main(int argc, char** argv) {
     }
     return 1;
   }
+  if (mode == "ger_alpha_zero") {
+    cpu_ger(2, 3, &nan, &nan, nullptr, 0.0, plan);
+    return 0;
+  }
+  if (mode == "ger_extent") {
+    try {
+      cpu_ger(std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, nullptr, nullptr, 0.0,
+              plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
   if (mode == "symm_alpha_zero") {
     double output[2]{2.0, -3.0};
     cpu_symm('L', 'U', 1, 2, &nan, &nan, output, 0.0, 4.0, plan);
@@ -90,6 +103,22 @@ int main(int argc, char** argv) {
   if (mode == "trsm_extent") {
     try {
       cpu_trsm('L', 'L', 'N', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, &c,
+               0.0, plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
+  if (mode == "trmm_alpha_zero") {
+    double matrix[4]{nan, nan, nan, nan};
+    cpu_trmm('L', 'L', 'N', 'N', 2, 2, &nan, matrix, 0.0, plan);
+    for (double value : matrix)
+      if (value != 0.0) return 1;
+    return 0;
+  }
+  if (mode == "trmm_extent") {
+    try {
+      cpu_trmm('L', 'L', 'N', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, &c,
                0.0, plan);
     } catch (const std::length_error&) {
       return 0;

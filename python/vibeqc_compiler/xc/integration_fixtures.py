@@ -8,7 +8,8 @@ from pathlib import Path
 import numpy as np
 
 from vibeqc_compiler.common.paths import source_root
-from vibeqc_compiler.common.provenance import canonical_hash, file_hash
+from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.reference_sources import reference_source_matches
 from vibeqc_compiler.dft import ExplicitGrid
 
 CASES = ("h2", "water", "f_cartesian", "f_spherical")
@@ -39,7 +40,7 @@ def load_integration_fixture(
         ("exporter_sha256", "tools/generate_xc_integration_references.py"),
         ("basis_adapter_sha256", "tools/generate_validation_references.py"),
     ):
-        if meta["reference"][field] != file_hash(root / path):
+        if not reference_source_matches(root, path, meta["reference"][field]):
             raise ValueError("XC integration reference source mismatch")
     with np.load(directory / f"{name}.npz", allow_pickle=False) as archive:
         arrays = dict(archive)

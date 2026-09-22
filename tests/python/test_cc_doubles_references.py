@@ -45,8 +45,9 @@ def test_pinned_doubles_and_each_shared_intermediate(case: typing.Any) -> None:
 def test_full_evidence_fixes_oracle_and_execution_identity(
     tmp_path: typing.Any,
 ) -> None:
+    from vibeqc_compiler.common.evidence import file_hash
+
     from tools.validate_ccsd import run
-    from tools.vibeqc_validation.schema import file_hash
 
     records = run(tmp_path)
     assert len(records) == 5

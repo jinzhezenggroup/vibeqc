@@ -6,7 +6,7 @@ import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "external/r2scan3c/gcp-r2scan3c-h-ar.json"
+SOURCE = ROOT / "tools/parameters/r2scan3c_gcp.json"
 OUTPUT = ROOT / "src/dft/dispersion/gcp_r2scan3c_data.hpp"
 
 

@@ -41,13 +41,24 @@ directional source inventory, while their active `rho`/`sigma` features come
 from the method graph.
 
 The planner binds the shared #179 CPKS contract, #161/#236 XC feature-Hessian
-action and #178 weighted second-integral HVP contract without executing any of
-them. It fails closed when an active primitive adds physics whose second-order
-rule is not registered. Therefore full/range-separated exchange, `tau`,
-nonlocal correlation, DF and ECP do not inherit Hessian support merely from
-energy or gradient support. Adding another functional inside an already
-qualified LDA/GGA primitive family must not add Hessian-specific scientific
-source code.
+action and #178 weighted second-integral HVP contract. Its integral blocks
+execute only the bounded source algebra; native CPKS and XC/grid consumers
+remain separate owners. It fails closed when an active primitive adds physics
+whose second-order rule is not registered. Therefore full/range-separated
+exchange, `tau`, nonlocal correlation, DF and ECP do not inherit Hessian
+support merely from energy or gradient support. Adding another functional
+inside an already qualified LDA/GGA primitive family must not add
+Hessian-specific scientific source code.
+
+The plan now exposes bounded `integral_block` programs for the one-electron,
+Coulomb and overlap/Pulay sources. Each block reuses the stationary-gradient
+source energy and derives its fixed integral weights, then generates an exact
+TensorIR JVP for a supplied
+density or weighted-density response, and contracts that response with the
+first-integral directional tile plus #178's fixed-weight second-integral HVP
+vector. This is an executable source-level algebra slice for both RKS and UKS;
+native shell/center recovery, shared CPKS execution, XC/grid/partition motion
+and molecular assembly remain owned by their qualified consumers.
 
 The closed-shell nuclear-perturbation consumer follows the same rule. It
 depends on a response operator's method-specific `induced_fock(delta_density)`

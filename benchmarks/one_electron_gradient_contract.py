@@ -24,13 +24,13 @@ except ModuleNotFoundError:
     from _retention import raw_output_path
 from vibeqc import Calculator, Primitive, Shell
 from vibeqc.autotune import source_identity
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
 
 from benchmarks._cases import benchmark_cases
 from tools.vibeqc_validation.one_electron_gradient import (
     execute_gradient,
     reference_matrices,
 )
-from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
 def main() -> None:

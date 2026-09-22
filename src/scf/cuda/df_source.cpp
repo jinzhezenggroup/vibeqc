@@ -328,6 +328,18 @@ bool cuda_density_fitting_integral_source_matches(const CudaDensityFittingIntegr
          implementation->public_nbf == nbf && implementation->public_naux == naux;
 }
 
+bool cuda_density_fitting_integral_source_geometry_matches(
+    const CudaDensityFittingIntegralSource* source, std::size_t system, const core::System& orbital,
+    const core::System& auxiliary) noexcept {
+  if (!source || !source->implementation) return false;
+  const auto& owner =
+      *static_cast<const CudaDensityFittingIntegralSourceImpl*>(source->implementation);
+  return system < owner.batch_size && system < owner.orbital_identities.size() &&
+         system < owner.auxiliary_identities.size() &&
+         owner.orbital_identities[system].matches(orbital) &&
+         owner.auxiliary_identities[system].matches(auxiliary);
+}
+
 vibeqc_status generate_cuda_density_fitting_transformed_tile(
     CudaDensityFittingIntegralSource* source, std::size_t system, std::size_t pair_begin,
     std::size_t pair_count, std::size_t auxiliary_begin, std::size_t auxiliary_count,

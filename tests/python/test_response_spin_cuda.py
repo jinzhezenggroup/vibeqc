@@ -8,6 +8,7 @@ independently of the response density/action implementation.
 
 import os
 import typing
+from collections import Counter
 from dataclasses import replace
 
 import numpy as np
@@ -212,6 +213,56 @@ def test_native_spin_reference_actions_and_shared_multirhs(
             np.testing.assert_allclose(result.solution, expected, atol=2e-7, rtol=2e-8)
             assert np.max(np.abs(explicit @ result.solution - rhs)) < 1e-9
             assert max(item.residual_norm for item in result.results) < 1e-9
+        if approximation == "exact":
+            # The unrestricted resident owner keeps both spin blocks and every
+            # Krylov vector on the CUDA stream. Only scalar reductions and the
+            # final published solution may cross back to the host.
+            with backend.resident_response(
+                problem, vector_slots=256, device_budget_bytes=128 << 20
+            ) as resident:
+                operator._krylov_engine = resident
+                with monkeypatch.context() as patch:
+                    patch.setattr(resident, "stack_host", _no_cpu)
+                    patch.setattr(operator, "apply", _no_cpu)
+                    patch.setattr(backend, "spin_coulomb_exchange", _no_cpu)
+                    calls: Counter = Counter()
+                    native_call = resident._call
+
+                    def count(name: str, *args: typing.Any) -> None:
+                        calls[name] += 1
+                        native_call(name, *args)
+
+                    patch.setattr(resident, "_call", count)
+                    for strategy in ("blocked", "recycled"):
+                        calls.clear()
+                        before = resident.diagnostics
+                        result = solve_many(
+                            operator,
+                            rhs,
+                            strategy=strategy,
+                            options=options,
+                            collect_basis=False,
+                        )
+                        after = resident.diagnostics
+                        assert result.converged
+                        np.testing.assert_allclose(
+                            result.solution, expected, atol=2e-7, rtol=2e-8
+                        )
+                        assert np.max(np.abs(explicit @ result.solution - rhs)) < 1e-9
+                        assert not resident._live and not resident._retained
+                        assert calls["upload"] == rhs.shape[1]
+                        assert calls["download"] == rhs.shape[1]
+                        assert calls["apply"] == result.operator_actions
+                        assert after["h2d_bytes"] - before["h2d_bytes"] == rhs.nbytes
+                        assert after["d2h_bytes"] - before["d2h_bytes"] == (
+                            result.solution.nbytes
+                            + 8 * (calls["dot"] + calls["norm"])
+                            + 4 * calls["apply"]
+                        )
+                        assert (
+                            after["owned_device_bytes"] == before["owned_device_bytes"]
+                        )
+                del operator._krylov_engine
         before = backend.statistics["actions"]
         limited = solve(operator, vector, options=GMRESOptions(max_workspace_bytes=1))
         assert not limited.converged and limited.reason == "workspace_limit"

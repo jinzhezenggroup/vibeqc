@@ -7,6 +7,7 @@
 #include <limits>
 
 #include "backends/cuda/gfn2_pairlist.cuh"
+#include "generated_gfn2_pair_native.hpp"
 
 namespace xtbloom::detail::cuda {
 namespace {
@@ -98,22 +99,6 @@ __device__ void record_system_error(std::uint32_t* system_errors, std::int64_t s
   }
 }
 
-/* Stable logistic form of 1/(1+exp(-argument)), matching the CPU reference. */
-__device__ double logistic(double argument) {
-  if (argument >= 0.0) {
-    const double exponential = exp(-argument);
-    return 1.0 / (1.0 + exponential);
-  }
-  const double exponential = exp(argument);
-  return exponential / (1.0 + exponential);
-}
-
-/*
- * One pair's shared physical values used by the coordination consumer.  The
- * pair cache stores indices only; consumers recompute the distance quantities
- * from positions, so this module keeps one canonical evaluation that exactly
- * mirrors the reference (CPU and dense geometry) pair evaluation.
- */
 struct PairValues {
   double distance;
   double inverse_distance;
@@ -142,19 +127,13 @@ __device__ bool evaluate_pair(double dx, double dy, double dz, double radius, Pa
   }
   constexpr double kCutoffSquaredBohr = kDefaultCutoffBohr * kDefaultCutoffBohr;
   if (isfinite(radius) && radius > 0.0 && distance_squared <= kCutoffSquaredBohr) {
-    constexpr double kFirstSteepness = 10.0;
-    constexpr double kSecondSteepness = 20.0;
-    constexpr double kSecondRadiusShiftBohr = 2.0;
-    const double inverse_distance_squared = values->inverse_distance * values->inverse_distance;
-    const double shifted_radius = radius + kSecondRadiusShiftBohr;
-    const double first = logistic(kFirstSteepness * (radius * values->inverse_distance - 1.0));
-    const double second =
-        logistic(kSecondSteepness * (shifted_radius * values->inverse_distance - 1.0));
-    values->count = first * second;
-    const double derivative = -inverse_distance_squared *
-                              (kFirstSteepness * radius * first * (1.0 - first) * second +
-                               kSecondSteepness * shifted_radius * second * (1.0 - second) * first);
-    values->derivative_over_distance = derivative * values->inverse_distance;
+    // The preprocessing gate requires bitwise agreement with dense geometry.
+    // Both routes must consume the same compiler-owned primal and adjoint.
+    vibeqc::xtb::generated::Gfn2CoordinationPairResult pair{};
+    if (!vibeqc::xtb::generated::evaluate_gfn2_coordination_pair(values->distance, radius, pair))
+      return false;
+    values->count = pair.value;
+    values->derivative_over_distance = pair.distance_derivative * values->inverse_distance;
     return values->count >= 0.0 && values->count <= 1.0 && isfinite(values->count) &&
            isfinite(values->derivative_over_distance);
   }
@@ -829,11 +808,13 @@ __global__ void publish_kernel(Gfn2PairListDeviceBatch batch, std::uint64_t pair
  * Neighbor lists are canonical (ascending) so the per-atom accumulation order
  * matches the dense geometry cache exactly for retained pairs.
  */
-__global__ void evaluate_coordination_kernel(
-    Gfn2PairListDeviceBatch batch, const double* positions, const double* covalent_radii,
-    std::uint64_t scalar_generation, Gfn2PairListDeviceCache cache, double* coordination,
-    const std::uint32_t* sequence_active, std::uint32_t* system_errors,
-    std::uint32_t* device_error) {
+__global__ void evaluate_coordination_kernel(Gfn2PairListDeviceBatch batch, const double* positions,
+                                             const double* covalent_radii,
+                                             std::uint64_t scalar_generation,
+                                             Gfn2PairListDeviceCache cache, double* coordination,
+                                             const std::uint32_t* sequence_active,
+                                             std::uint32_t* system_errors,
+                                             std::uint32_t* device_error) {
   const std::int64_t system = static_cast<std::int64_t>(blockIdx.x);
   __shared__ SystemRanges ranges;
   __shared__ int valid;

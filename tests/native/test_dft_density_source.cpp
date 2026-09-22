@@ -177,6 +177,10 @@ void fixed_density() {
 }
 
 void native_scf() {
+  bool saw_periodic_rebuild = false;
+  bool saw_drift_rebuild = false;
+  bool saw_noise_rebuild = false;
+  std::uint64_t previous_h2_incremental_identity = 0;
   for (const auto system : {hydrogens(2), hydrogens(2, 0.17), water()}) {
     const dft::AoBasis basis(system);
     const dft::MolecularGrid grid(system, {1, 16, 8, 16, 3, 1e-12});
@@ -196,6 +200,77 @@ void native_scf() {
                   d.xc_density_diagnostic.orbital_calls == 0 &&
                   d.xc_density_diagnostic.packed_coefficient_elements == 0,
               "default native D candidate changed or failed");
+      if (run == scf::run_pbe_rks) {
+        options.experimental_incremental_xc = true;
+        options.incremental_xc_max_updates = 1;
+        options.incremental_xc_max_density_rms = 1.0e6;
+        options.incremental_xc_noise_density_rms = 0.0;
+        const auto incremental = run(plan, basis, grid, options, nullptr);
+        const auto& inc = incremental.dft_diagnostic.incremental_xc;
+        require(
+            incremental.converged && inc.enabled && inc.model_identity != 0 &&
+                inc.full_builds >= 3 && inc.incremental_updates >= 1 &&
+                inc.strict_final_builds >= inc.strict_refinement_iterations + inc.final_audits &&
+                inc.strict_refinement_iterations >= 2 && inc.final_audits >= 1 &&
+                inc.audit_failures == 0 && inc.anchor_generation >= 1 &&
+                inc.retained_anchor_bytes == 0 && inc.peak_update_buffer_bytes != 0 &&
+                inc.peak_replacement_overlap_bytes != 0 &&
+                std::abs(incremental.energy - d.energy) < 2e-10 &&
+                scf::reference::density_rms(incremental.density, d.density) < 2e-8 &&
+                incremental.physical_residual_rms < options.density_tolerance,
+            "incremental PBE SCF/rebuild/final-verification parity failed");
+        if (basis.nao == 2) {
+          if (previous_h2_incremental_identity != 0)
+            require(previous_h2_incremental_identity != inc.model_identity,
+                    "same-shaped changed geometry reused incremental XC model identity");
+          previous_h2_incremental_identity = inc.model_identity;
+        }
+        saw_periodic_rebuild = saw_periodic_rebuild || inc.periodic_rebuilds != 0;
+
+        options.incremental_xc_max_updates = 1000;
+        options.incremental_xc_max_density_rms = 1.0e-20;
+        const auto drift_rebuild = run(plan, basis, grid, options, nullptr);
+        require(drift_rebuild.converged &&
+                    drift_rebuild.dft_diagnostic.incremental_xc.final_audits >= 1 &&
+                    std::abs(drift_rebuild.energy - d.energy) < 2e-10,
+                "incremental PBE drift-policy run changed the strict endpoint");
+        saw_drift_rebuild =
+            saw_drift_rebuild || drift_rebuild.dft_diagnostic.incremental_xc.drift_rebuilds != 0;
+
+        options.incremental_xc_max_density_rms = 1.0e6;
+        options.incremental_xc_noise_density_rms = 1.0e6;
+        const auto noise_rebuild = run(plan, basis, grid, options, nullptr);
+        require(noise_rebuild.converged &&
+                    noise_rebuild.dft_diagnostic.incremental_xc.final_audits >= 1 &&
+                    std::abs(noise_rebuild.energy - d.energy) < 2e-10,
+                "incremental PBE noise-policy run changed the strict endpoint");
+        saw_noise_rebuild =
+            saw_noise_rebuild || noise_rebuild.dft_diagnostic.incremental_xc.noise_rebuilds != 0;
+
+        options.incremental_xc_noise_density_rms = 0.0;
+        options.incremental_xc_max_updates = 4;
+        options.incremental_xc_max_density_rms = 5.0e-2;
+        options.strict_initial_density = true;
+        const auto warm_incremental = run(plan, basis, grid, options, &d.density);
+        options.strict_initial_density = false;
+        require(warm_incremental.converged && warm_incremental.initial_density_used &&
+                    warm_incremental.dft_diagnostic.incremental_xc.model_identity !=
+                        inc.model_identity &&
+                    warm_incremental.dft_diagnostic.incremental_xc.final_audits >= 1 &&
+                    std::abs(warm_incremental.energy - d.energy) < 2e-10,
+                "incremental PBE warm replay reused stale anchor state");
+
+        options.max_iterations = 1;
+        const auto failed_incremental = run(plan, basis, grid, options, nullptr);
+        options.max_iterations = 150;
+        require(!failed_incremental.converged &&
+                    failed_incremental.dft_diagnostic.incremental_xc.model_identity !=
+                        warm_incremental.dft_diagnostic.incremental_xc.model_identity &&
+                    failed_incremental.dft_diagnostic.incremental_xc.retained_anchor_bytes == 0 &&
+                    failed_incremental.dft_diagnostic.incremental_xc.final_audits == 0,
+                "failed incremental PBE solve published or retained stale anchor state");
+        options.experimental_incremental_xc = false;
+      }
       options.xc_density_route = XcDensityRoute::OccupiedOrbitals;
       runtime::cpu_resource_observation = {.active = true};
       const auto c = run(plan, basis, grid, options, nullptr);
@@ -246,6 +321,9 @@ void native_scf() {
                 << " C residual=" << c.xc_density_diagnostic.physical_residual << '\n';
     }
   }
+  require(saw_periodic_rebuild, "incremental PBE fixtures never exercised periodic rebuild");
+  require(saw_drift_rebuild, "incremental PBE fixtures never exercised drift rebuild");
+  require(saw_noise_rebuild, "incremental PBE fixtures never exercised noise rebuild");
 }
 }  // namespace
 

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "dft/dispersion/d4_reference.hpp"
 #include "model/gfn2/d4.hpp"
 
 using namespace xtbloom::detail::gfn2;
@@ -78,6 +79,72 @@ int main(int argc, char** argv) {
                                   f.workspace, f.error) != 0,
               "coincident later system admitted");
       require(f.energy == original, "earlier energy published before later failure");
+    } else if (test == "hotloop_shared_parity") {
+      std::vector<double> cached_energy(2, 0.0);
+      std::vector<double> cached_dq(4, 0.0);
+      require(evaluate_d4_two_body_cpu(f.plan, f.cache, f.charges.data(), cached_energy.data(),
+                                       cached_dq.data(), f.workspace, f.error) == 0,
+              "cached two-body evaluation failed");
+      namespace shared = vibeqc::dft::dispersion;
+      auto parameters = shared::gfn2_d4_parameters();
+      parameters.s9 = 0.0;
+      for (int system = 0; system < 2; ++system) {
+        constexpr int count = 2;
+        const int begin = 2 * system;
+        std::vector<double> scratch(shared::d4_unbounded_workspace_elements(count));
+        std::vector<double> gradient(3 * count, 0.0);
+        std::vector<double> dq(count, 0.0);
+        double energy[2] = {};
+        require(
+            shared::evaluate_d4_fixed_charge_unbounded_cpu(
+                count, f.numbers.data() + begin, f.xyz.data() + 3 * begin, f.charges.data() + begin,
+                parameters, shared::gfn2_d4_host_tables(), scratch.data(), scratch.size(), energy,
+                gradient.data(), dq.data()) == shared::D4Status::success,
+            "shared two-body evaluation failed");
+        require(std::abs(cached_energy[system] - energy[0]) < 1.0e-13,
+                "cached/shared two-body energy mismatch");
+        for (int atom = 0; atom < count; ++atom)
+          require(std::abs(cached_dq[begin + atom] - dq[atom]) < 1.0e-13,
+                  "cached/shared dE/dq mismatch");
+      }
+    } else if (test == "per_system_cache_replay") {
+      f.charges = {0.1, -0.2, 0.35, -0.25};
+      const auto original_pairs = f.pairs, original_cn = f.cn;
+      for (int replay = 0; replay < 2; ++replay) {
+        std::vector<double> all_energy(2, 0.0), all_dq(4, 0.0);
+        require(evaluate_d4_two_body_cpu(f.plan, f.cache, f.charges.data(), all_energy.data(),
+                                         all_dq.data(), f.workspace, f.error) == 0,
+                "cached batch reference failed");
+        std::vector<double> dq(4, 91.0);
+        double energy = 123.0;
+        require(evaluate_d4_two_body_system_cpu(f.plan, f.cache, 1, f.charges.data(), energy,
+                                                dq.data(), f.workspace, f.error) == 0,
+                "cached single-system execution failed");
+        require(std::isfinite(energy) && std::abs(energy - all_energy[1]) < 1e-14,
+                "single-system cached energy mismatch");
+        require(dq[0] == 91.0 && dq[1] == 91.0, "single-system call changed a peer output");
+        for (unsigned atom = 2; atom < 4; ++atom)
+          require(std::isfinite(dq[atom]) && std::abs(dq[atom] - all_dq[atom]) < 1e-14,
+                  "single-system cached potential mismatch");
+        require(evaluate_d4_two_body_system_cpu(f.plan, f.cache, 1, f.charges.data(), energy,
+                                                nullptr, f.workspace, f.error) == 0,
+                "energy-only cached execution failed");
+        require(std::isfinite(energy) && std::abs(energy - all_energy[1]) < 1e-14,
+                "optional-potential cached energy mismatch");
+        require(f.pairs == original_pairs && f.cn == original_cn,
+                "cached charge replay changed geometry or coordination cache");
+        f.charges[2] += 0.2;
+        f.charges[3] -= 0.2;
+      }
+    } else if (test == "per_system_failure_atomic") {
+      std::vector<double> dq(4, 91.0);
+      double energy = 123.0;
+      f.charges[2] = std::numeric_limits<double>::quiet_NaN();
+      require(evaluate_d4_two_body_system_cpu(f.plan, f.cache, 1, f.charges.data(), energy,
+                                              dq.data(), f.workspace, f.error) != 0,
+              "nonfinite cached charges were accepted");
+      require(energy == 123.0 && dq == std::vector<double>(4, 91.0),
+              "failed single-system call published caller output");
     } else if (test == "success") {
       const auto original = f.gradient;
       require(f.run() == 0, "valid gradient failed");

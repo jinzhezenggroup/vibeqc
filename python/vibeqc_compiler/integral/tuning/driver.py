@@ -15,12 +15,20 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, replace
 from pathlib import Path
 
+from vibeqc_compiler.common.cuda_adapter import (
+    CudaBenchmarkExecutor,
+    CudaCompilerAdapter,
+)
+from vibeqc_compiler.common.cuda_target import (
+    CudaTargetInfo,
+    cuda_target_info,
+    normalize_cuda_architecture,
+)
 from vibeqc_compiler.common.gpu_profitability import (
     ENDPOINT_NOISE_FRACTION,
     GpuProfitability,
 )
 
-from ..cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
 from ..cuda_schedule import (
     AlgebraForm,
     AlgebraFusion,
@@ -28,11 +36,6 @@ from ..cuda_schedule import (
     AlgebraPlacement,
     ScheduleIR,
     ScheduleKind,
-)
-from ..cuda_target import (
-    CudaTargetInfo,
-    cuda_target_info,
-    normalize_cuda_architecture,
 )
 from ..ir import KernelConsumer
 from .emission import (

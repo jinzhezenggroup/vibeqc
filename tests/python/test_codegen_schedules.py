@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 from codegen_fixtures import factored_dppp_variables, sample_variables
+from vibeqc_compiler.common.backend import TargetInfo, TargetScheduleShape
 from vibeqc_compiler.integral import (
     DDDD_SPEC,
     DDPS_SPEC,
@@ -64,7 +65,6 @@ from vibeqc_compiler.integral.autotune import (
     supported_schedule_trials,
     update_manifest_payload,
 )
-from vibeqc_compiler.integral.backend import TargetInfo, TargetScheduleShape
 from vibeqc_compiler.integral.benchmark import (
     emit_dppp_benchmark_cuda,
     emit_shell_class_benchmark_cuda,

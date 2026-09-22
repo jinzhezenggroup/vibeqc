@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 
 from tools.vibeqc_response.implicit import (
     ImplicitSolveError,
@@ -22,7 +23,6 @@ from tools.vibeqc_response.implicit import (
 )
 from tools.vibeqc_response.krylov import _vector_norm
 from tools.vibeqc_response.problem import ResponseCompatibilityError
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .complete_gradient import BoundCCSDOrbitalResponse, CCSDGradientOptions
 from .gradient_equations import build_fock_weight_program

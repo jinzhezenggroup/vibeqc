@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from vibeqc_compiler.array_api import capabilities, trace
 from vibeqc_compiler.array_api import namespace as xp
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,

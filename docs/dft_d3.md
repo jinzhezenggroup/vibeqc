@@ -230,7 +230,8 @@ Its existence does not expand the public D3 capability matrix and retiring the n
 owner requires its own future evidence for per-item failure isolation, energy-only
 execution, resource bounds, changed-topology replay and matched endpoint performance.
 
-See [data provenance](../external/xtbloom-d3/README.md), the
+See the [pinned source registry](source_registry.md), the audited
+[`manifests/xtbloom-d3.json`](../manifests/xtbloom-d3.json), the
 [baseline migration decision](../.agents/notes/implemented/architecture/2026-09-19-d3-xtbloom-baseline.md),
 and the
 [production runtime decision](../.agents/notes/implemented/architecture/2026-09-19-d3-production-runtime.md).

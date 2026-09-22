@@ -7,8 +7,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("VIBEQC_CC_CUDA_TEST") != "1",

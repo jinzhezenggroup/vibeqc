@@ -28,7 +28,7 @@ from hashlib import sha256
 from pathlib import Path
 
 import numpy as np
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
 
 from tools.vibeqc_posthf.reference import ReferenceSnapshot, immutable

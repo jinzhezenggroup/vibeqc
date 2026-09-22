@@ -13,7 +13,10 @@ from dataclasses import asdict, dataclass, field, fields
 from itertools import combinations, islice, product
 from math import prod
 
-from vibeqc_compiler.common.gpu_profitability import GpuProfitability
+from vibeqc_compiler.common.gpu_profitability import (
+    GpuProfitability,
+    scalar_reduction_promotion_rejection,
+)
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.schedule import (
     ScheduleContract,
@@ -259,6 +262,57 @@ def _fp64_accumulation_terms(plan: TensorPlan) -> int:
     return total
 
 
+def _scalar_reduction_promotion_rejections(plan: TensorPlan) -> tuple[str, ...]:
+    """Flag low-parallelism generated reductions with an existing legal alternative.
+
+    The ordinary generated path remains executable as a correctness/oracle
+    fallback. These diagnostics are consumed only by schedule-search promotion.
+    """
+
+    reasons: list[str] = []
+    for index, step in enumerate(plan.steps):
+        if (
+            step.virtual
+            or step.gemm != "none"
+            or cooperative_reduction_provider(plan, index) is not None
+        ):
+            continue
+        node = step.node
+        alternative: str | None = None
+        output_elements = node.spec.size
+        reduction_elements = 0
+        if node.op == "reduce":
+            reduction_elements = prod(
+                node.inputs[0].spec.shape[axis] for axis in node.attrs["axes"]
+            )
+            if (
+                node.spec.dtype in ("float32", "float64")
+                and plan.target.warp_size == 32
+                and reduction_elements >= plan.target.warp_size
+            ):
+                alternative = "cooperative-reduction"
+        elif node.op == "einsum":
+            contract = gemm_contract(node)
+            precision = plan.precision_by_node[node]
+            if (
+                contract is not None
+                and contract.k
+                and precision.compute_dtype == precision.accumulation_dtype
+            ):
+                output_elements = contract.batch * contract.m * contract.n
+                reduction_elements = contract.k
+                alternative = "GEMM"
+        rejection = scalar_reduction_promotion_rejection(
+            output_elements=output_elements,
+            reduction_elements=reduction_elements,
+            parallel_width=plan.target.warp_size,
+            alternative=alternative,
+        )
+        if rejection is not None:
+            reasons.append(f"step {index} ({node.op}): {rejection}")
+    return tuple(reasons)
+
+
 def estimate_schedule(plan: TensorPlan) -> dict:
     """Reuse exact capacity accounting and expose bounded, calibratable cost proxies."""
     live_values, registers = [], 0
@@ -291,6 +345,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     occupancy = resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
     launches = estimated_cuda_launches(plan)
     widened_accumulation_terms = _fp64_accumulation_terms(plan)
+    promotion_rejections = _scalar_reduction_promotion_rejections(plan)
     profitability = GpuProfitability(
         semantic_traffic_bytes=traffic["total_bytes"],
         estimated_registers_per_thread=registers,
@@ -380,6 +435,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "generated_source_bytes": source_bytes,
         "generated_static_data_bytes": plan.static_data_bytes,
         "profitability": profitability.to_payload(),
+        "static_promotion_rejections": list(promotion_rejections),
         "schedule_contract": contract.to_payload(),
         "compile_cost_proxy": "generated_source_bytes calibrated against compiler-reported seconds; immutable static payload is external and is not parsed by NVCC",
     }
@@ -524,7 +580,7 @@ def plan_schedule_search(
                     )
                 )
                 continue
-            reasons = []
+            reasons = list(estimates["static_promotion_rejections"])
             if estimates["generated_source_bytes"] > limits.maximum_source_bytes:
                 reasons.append("generated source exceeds compile-cost budget")
             if estimates["estimated_registers_per_thread"] > min(

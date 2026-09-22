@@ -52,6 +52,8 @@ except ModuleNotFoundError:
     from _retention import raw_output_path
 from vibeqc import Calculator
 
+from benchmarks.issue206_resident_sentinel import validate_response_record
+
 CASES = (
     "water-tetramer-def2-svp-spherical",
     "water-octamer-s4-def2-svp-spherical",
@@ -184,6 +186,7 @@ def _traced_sample(
     path: Path,
     *,
     memory_budget_bytes: int = 0,
+    expected_response_policy: str = "auto",
 ) -> dict:
     """Keep per-solve traces separate and reject missing force instrumentation.
 
@@ -226,7 +229,16 @@ def _traced_sample(
             raise ValueError("missing executed DF/one-electron force components")
     elif force_roots:
         raise ValueError("unexpected force trace in energy-only sample")
+    response_invariants = [
+        validate_response_record(
+            response,
+            expected_policy=expected_response_policy,
+        )
+        for response in force_roots
+        if response["operation"] == "force_response"
+    ]
     sample["components"] = {**aggregate(records), "raw_trace": trace_identity(path)}
+    sample["response_invariants"] = response_invariants
     sample["host_components"] = {
         **aggregate_host(read_host_trace(host_path)),
         "raw_trace": trace_identity(host_path),
@@ -249,6 +261,12 @@ def main() -> None:
         "--component-trace-dir",
         type=Path,
         help="diagnostic traces with added event/synchronization overhead; use a fresh directory",
+    )
+    parser.add_argument(
+        "--expected-response-policy",
+        choices=("auto", "resident", "streamed", "fallback"),
+        default="auto",
+        help="optional structural route gate for traced force responses",
     )
     parser.add_argument(
         "--output",
@@ -302,6 +320,7 @@ def main() -> None:
                     library,
                     args.component_trace_dir / f"{case_name}-{repeat}-energy.jsonl",
                     **sample_options,
+                    expected_response_policy=args.expected_response_policy,
                 )
                 energy_force = _traced_sample(
                     case_name,
@@ -309,6 +328,7 @@ def main() -> None:
                     library,
                     args.component_trace_dir / f"{case_name}-{repeat}-force.jsonl",
                     **sample_options,
+                    expected_response_policy=args.expected_response_policy,
                 )
             validation = _validate_pair(energy, energy_force)
             records.append(

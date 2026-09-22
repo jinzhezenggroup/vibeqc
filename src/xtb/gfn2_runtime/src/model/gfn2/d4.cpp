@@ -50,7 +50,6 @@ namespace {
 
 namespace d4_data = ::vibeqc::dft::dispersion::data;
 using D4ElementData = d4_data::D4ElementData;
-using D4ReferenceData = d4_data::D4ReferenceData;
 
 constexpr double kCoordinationCutoff = 30.0;
 constexpr double kTwoBodyCutoff = 50.0;
@@ -61,9 +60,6 @@ constexpr double kCoordinationSteepness = 7.5;
 constexpr double kEnK4 = 4.10451;
 constexpr double kEnK5 = 19.08857;
 constexpr double kEnK6 = 2.0 * 11.28174 * 11.28174;
-constexpr double kChargeScalingHeight = 3.0;
-constexpr double kChargeScalingSteepness = 2.0;
-constexpr double kReferenceWeightFactor = 6.0;
 constexpr double kAtmExponent = 16.0;
 
 static_assert(d4_data::kElementCount == parameters::gfn2::kElementCount,
@@ -362,11 +358,6 @@ const D4ElementData& element(const D4PlanData& data, std::int64_t atom) {
   return d4_data::kElements[data.element_indices[static_cast<std::size_t>(atom)]];
 }
 
-const D4ReferenceData& reference(const D4ElementData& element_data, std::size_t local_reference) {
-  return d4_data::kReferences[static_cast<std::size_t>(element_data.reference_offset) +
-                              local_reference];
-}
-
 std::size_t pair_index(const D4PlanData& data, std::int64_t batch, std::int64_t first,
                        std::int64_t second) {
   const std::int64_t begin = data.atom_offsets[static_cast<std::size_t>(batch)];
@@ -376,89 +367,19 @@ std::size_t pair_index(const D4PlanData& data, std::int64_t batch, std::int64_t 
                                   local_second * (local_second - 1) / 2 + local_first);
 }
 
-double charge_scale(double a, double c, double qref, double qmod) {
-  if (qmod < 0.0) {
-    return std::exp(a);
-  }
-  return std::exp(a * (1.0 - std::exp(c * (1.0 - qref / qmod))));
-}
-
-double charge_scale_derivative(double a, double c, double qref, double qmod) {
-  if (qmod < 0.0) {
-    return 0.0;
-  }
-  const double inner = std::exp(c * (1.0 - qref / qmod));
-  return -a * c * inner * charge_scale(a, c, qref, qmod) * qref / (qmod * qmod);
-}
-
-void prepare_weight_slice(const D4PlanData& data, const double* coordination, const double* charges,
-                          std::int64_t atom_begin, std::int64_t atom_end, bool derivatives,
+void prepare_weight_slice(const D4PlanData& data, const double* coordination,
+                          const double* charges, std::int64_t atom_begin,
+                          std::int64_t atom_end, bool /* derivatives */,
                           const D4Workspace& workspace) {
-  const std::size_t weight_begin = static_cast<std::size_t>(atom_begin) * kD4MaximumReferences;
-  const std::size_t weight_count =
-      static_cast<std::size_t>(atom_end - atom_begin) * kD4MaximumReferences;
-  std::fill_n(workspace.weights + weight_begin, weight_count, 0.0);
-  if (derivatives) {
-    std::fill_n(workspace.weight_cn_derivatives + weight_begin, weight_count, 0.0);
-    std::fill_n(workspace.weight_charge_derivatives + weight_begin, weight_count, 0.0);
-  }
-  constexpr double minimum_norm =
-      std::numeric_limits<double>::min() > 0.0 ? 1.4916681462400413e-154 : 0.0;
-  for (std::int64_t atom_index = atom_begin; atom_index < atom_end; ++atom_index) {
-    const D4ElementData& element_data = element(data, atom_index);
-    const std::size_t output_offset = static_cast<std::size_t>(atom_index) * kD4MaximumReferences;
-    const double cn = coordination[atom_index];
-    double normalization = 0.0;
-    double normalization_derivative = 0.0;
-    double maximum_reference_cn = -std::numeric_limits<double>::infinity();
-    for (std::size_t local = 0; local < element_data.reference_count; ++local) {
-      const D4ReferenceData& ref = reference(element_data, local);
-      maximum_reference_cn = std::max(maximum_reference_cn, ref.coordination_number);
-      for (std::size_t gaussian = 1; gaussian <= ref.gaussian_count; ++gaussian) {
-        const double factor = static_cast<double>(gaussian) * kReferenceWeightFactor;
-        const double delta = cn - ref.coordination_number;
-        const double value = std::exp(-factor * delta * delta);
-        normalization += value;
-        normalization_derivative += 2.0 * factor * (ref.coordination_number - cn) * value;
-      }
-    }
-    const double inverse_normalization =
-        std::abs(normalization) > minimum_norm ? 1.0 / normalization : 0.0;
-    const double qmod = charges[atom_index] + element_data.effective_charge;
-    const double charge_steepness = element_data.hardness * kChargeScalingSteepness;
-
-    for (std::size_t local = 0; local < element_data.reference_count; ++local) {
-      const D4ReferenceData& ref = reference(element_data, local);
-      double numerator = 0.0;
-      double numerator_derivative = 0.0;
-      for (std::size_t gaussian = 1; gaussian <= ref.gaussian_count; ++gaussian) {
-        const double factor = static_cast<double>(gaussian) * kReferenceWeightFactor;
-        const double delta = cn - ref.coordination_number;
-        const double value = std::exp(-factor * delta * delta);
-        numerator += value;
-        numerator_derivative += 2.0 * factor * (ref.coordination_number - cn) * value;
-      }
-      double cn_weight = numerator * inverse_normalization;
-      if (!std::isfinite(cn_weight) || inverse_normalization == 0.0) {
-        cn_weight = std::abs(maximum_reference_cn - ref.coordination_number) < 1.0e-12 ? 1.0 : 0.0;
-      }
-      double cn_derivative =
-          inverse_normalization *
-          (numerator_derivative - numerator * normalization_derivative * inverse_normalization);
-      if (!std::isfinite(cn_derivative) || inverse_normalization == 0.0) {
-        cn_derivative = 0.0;
-      }
-
-      const double qref = ref.charge + element_data.effective_charge;
-      const double scaling = charge_scale(kChargeScalingHeight, charge_steepness, qref, qmod);
-      workspace.weights[output_offset + local] = cn_weight * scaling;
-      if (derivatives) {
-        workspace.weight_cn_derivatives[output_offset + local] = cn_derivative * scaling;
-        workspace.weight_charge_derivatives[output_offset + local] =
-            cn_weight * charge_scale_derivative(kChargeScalingHeight, charge_steepness, qref, qmod);
-      }
-    }
-  }
+  namespace shared = ::vibeqc::dft::dispersion;
+  const int count = static_cast<int>(atom_end - atom_begin);
+  const std::size_t weight_begin =
+      static_cast<std::size_t>(atom_begin) * kD4MaximumReferences;
+  shared::prepare_d4_cached_weights(
+      count, data.atomic_numbers.data() + atom_begin, coordination + atom_begin,
+      charges + atom_begin, shared::gfn2_d4_parameters(), shared::gfn2_d4_host_tables(),
+      workspace.weights + weight_begin, workspace.weight_cn_derivatives + weight_begin,
+      workspace.weight_charge_derivatives + weight_begin);
 }
 
 xtbloom_status_t prepare_weights(const D4PlanData& data, const double* coordination,
@@ -473,52 +394,16 @@ xtbloom_status_t prepare_weights(const D4PlanData& data, const double* coordinat
   return XTBLOOM_STATUS_SUCCESS;
 }
 
-struct PairCoefficient {
-  double c6 = 0.0;
-  double first_cn = 0.0;
-  double second_cn = 0.0;
-  double first_charge = 0.0;
-  double second_charge = 0.0;
-};
+using PairCoefficient = ::vibeqc::dft::dispersion::D4CachedPairCoefficient;
 
-double reference_c6(std::size_t first, std::size_t second) noexcept {
-  const std::size_t high = std::max(first, second);
-  const std::size_t low = std::min(first, second);
-  return d4_data::kReferenceC6[high * (high + 1u) / 2u + low];
-}
-
-PairCoefficient pair_coefficient(const D4PlanData& data, std::int64_t first, std::int64_t second,
-                                 const D4Workspace& workspace, bool derivatives) {
-  const D4ElementData& first_element = element(data, first);
-  const D4ElementData& second_element = element(data, second);
-  const std::size_t first_weight = static_cast<std::size_t>(first) * kD4MaximumReferences;
-  const std::size_t second_weight = static_cast<std::size_t>(second) * kD4MaximumReferences;
-  PairCoefficient result;
-  for (std::size_t first_ref = 0; first_ref < first_element.reference_count; ++first_ref) {
-    const std::size_t global_first =
-        static_cast<std::size_t>(first_element.reference_offset) + first_ref;
-    const double first_value = workspace.weights[first_weight + first_ref];
-    for (std::size_t second_ref = 0; second_ref < second_element.reference_count; ++second_ref) {
-      const std::size_t global_second =
-          static_cast<std::size_t>(second_element.reference_offset) + second_ref;
-      const double pair_reference_c6 = reference_c6(global_first, global_second);
-      const double second_value = workspace.weights[second_weight + second_ref];
-      result.c6 += first_value * second_value * pair_reference_c6;
-      if (derivatives) {
-        result.first_cn += workspace.weight_cn_derivatives[first_weight + first_ref] *
-                           second_value * pair_reference_c6;
-        result.second_cn += first_value *
-                            workspace.weight_cn_derivatives[second_weight + second_ref] *
-                            pair_reference_c6;
-        result.first_charge += workspace.weight_charge_derivatives[first_weight + first_ref] *
-                               second_value * pair_reference_c6;
-        result.second_charge += first_value *
-                                workspace.weight_charge_derivatives[second_weight + second_ref] *
-                                pair_reference_c6;
-      }
-    }
-  }
-  return result;
+PairCoefficient pair_coefficient(const D4PlanData& data, std::int64_t first,
+                                 std::int64_t second, const D4Workspace& workspace,
+                                 bool /* derivatives */) {
+  namespace shared = ::vibeqc::dft::dispersion;
+  return shared::d4_cached_pair_coefficient(
+      static_cast<int>(first), static_cast<int>(second), data.atomic_numbers.data(),
+      shared::gfn2_d4_host_tables(), workspace.weights, workspace.weight_cn_derivatives,
+      workspace.weight_charge_derivatives);
 }
 
 xtbloom_status_t evaluate_shared_molecular_d4_component(

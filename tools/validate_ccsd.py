@@ -16,12 +16,7 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
-from vibeqc_compiler.tensor import execute
-
-from tools.validate_cc import load_references
-from tools.vibeqc_cc.doubles import DEFINITIONS, build_ccsd_program
-from tools.vibeqc_cc.oracle import DeterminantOracle, dense_feeds, random_case
-from tools.vibeqc_validation.schema import (
+from vibeqc_compiler.common.evidence import (
     block_error,
     canonical_hash,
     file_hash,
@@ -29,6 +24,11 @@ from tools.vibeqc_validation.schema import (
     outcome,
     write_evidence,
 )
+from vibeqc_compiler.tensor import execute
+
+from tools.validate_cc import load_references
+from tools.vibeqc_cc.doubles import DEFINITIONS, build_ccsd_program
+from tools.vibeqc_cc.oracle import DeterminantOracle, dense_feeds, random_case
 
 ROOT = Path(__file__).resolve().parents[1]
 
