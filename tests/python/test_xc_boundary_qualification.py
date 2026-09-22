@@ -18,9 +18,7 @@ from vibeqc_compiler.xc.boundary import (
 
 ROOT = Path(__file__).resolve().parents[2]
 R2SCAN_REFERENCE = ROOT / "tests/data/xc/r2scan-tail-reference.json"
-R2SCAN_BINARY64_DIAGNOSTIC = (
-    ROOT / "tests/data/xc/boundary/r2scan-zero-minority.json"
-)
+R2SCAN_BINARY64_DIAGNOSTIC = ROOT / "tests/data/xc/boundary/r2scan-zero-minority.json"
 
 
 @pytest.mark.parametrize("family", ("lda", "gga", "mgga"))
