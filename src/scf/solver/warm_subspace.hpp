@@ -40,9 +40,10 @@ struct WarmSubspaceResidual {
  * Non-finite numerical input is returned as finite=false so callers can take
  * the strict dense fallback without relying on exception handling.
  */
-WarmSubspaceResidual inspect_warm_occupied_subspace(
-    const std::vector<double>& orthonormal_fock,
-    const std::vector<double>& previous_orbitals, std::size_t n, std::size_t occupied);
+WarmSubspaceResidual
+inspect_warm_occupied_subspace(const std::vector<double> &orthonormal_fock,
+                               const std::vector<double> &previous_orbitals,
+                               std::size_t n, std::size_t occupied);
 
 /**
  * Apply an explicit pre-solver gate to finite residual evidence.
@@ -51,10 +52,11 @@ WarmSubspaceResidual inspect_warm_occupied_subspace(
  * resulting orbitals must still pass the ordinary eigenframe and SCF
  * convergence checks, and finalization retains the strict dense fallback.
  */
-bool accept_warm_occupied_subspace(const WarmSubspaceResidual& diagnostic,
-                                   double maximum_tolerance, double scaled_tolerance,
-                                   std::string& detail);
+bool accept_warm_occupied_subspace(const WarmSubspaceResidual &diagnostic,
+                                   double maximum_tolerance,
+                                   double scaled_tolerance,
+                                   std::string &detail);
 
-}  // namespace vibeqc::scf::solver
+} // namespace vibeqc::scf::solver
 
 #endif
