@@ -137,7 +137,7 @@
         "python/vibeqc_compiler/xc/scan_maple.py": "4d0078a8148e5be8435660b7677c685a55ee27360f4c84efaf15581e82b46e1b",
         "python/vibeqc_compiler/xc/spec.py": "5dd1388d38fded89e69344c2b6a5e060206b5e96b2f9d33e57cec11993ffe41e",
         "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d",
-        "python/vibeqc_compiler/xc/wb97mv_maple.py": "06dfb995607107499f8eaea497650f9be6ca158cd0e855c35da288d25cfa3748"
+        "python/vibeqc_compiler/xc/wb97mv_maple.py": "8b3c3da5cf9f0bb94e0b163eec4b26f7f953c3892faf518ce68ba92fd27c36f4"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
       "generator_sha256": "721b2492beddf6fa5cf97671b374258c4c2771b7a5b8459900bb2f49fe65890a",
