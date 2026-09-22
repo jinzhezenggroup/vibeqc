@@ -14,7 +14,8 @@ from vibeqc_compiler.xc.boundary import (
     bulk_feature_names,
     semilocal_boundary_probes,
 )
-from vibeqc_compiler.xc.expressions import energy_expression
+
+from tools.generate_xc_cpu import build_roots
 
 ROOT = Path(__file__).resolve().parents[2]
 R2SCAN_REFERENCE = ROOT / "tests/data/xc/boundary/r2scan-zero-minority.json"
@@ -57,8 +58,8 @@ def test_zero_minority_probe_is_the_issue_1028_physical_endpoint() -> None:
 
 def _r2scan_production_values(features: list[float]) -> np.ndarray | None:
     spec = functional("R2SCAN", spin="polarized")
-    graph, energy, variables = energy_expression(spec, production=True)
-    roots = (energy, *(graph.differentiate(energy, value) for value in variables))
+    outputs = ((), *((index,) for index in range(len(spec.features))))
+    graph, roots, _identity = build_roots(spec, outputs, production=True)
     inputs = {
         name: np.asarray([value], dtype=np.float64)
         for name, value in zip(spec.features, features, strict=True)
