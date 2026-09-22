@@ -130,6 +130,7 @@ def _geometry_feature_direction(
         )
         if family == "lda":
             continue
+        assert gradient is not None
         for axis in range(3):
             row = axis + 1
             pk, dpk = jets[row], directional_jets[row]
@@ -143,6 +144,7 @@ def _geometry_feature_direction(
             )
     result = {"rho": immutable(rho)}
     if family == "gga":
+        assert gradient is not None
         result["gradient"] = immutable(gradient)
         base_gradient = reference["gradient"]
         pairs = ((0, 0), (0, 1), (1, 1))
