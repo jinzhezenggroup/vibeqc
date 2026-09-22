@@ -75,8 +75,8 @@ are transported by this controller.
 Stage count, source iterations, total configured iterations, host projection
 workspace, optional Fock builds and optional estimated cost have explicit
 budgets. A plan whose configured maximum work exceeds its budget is rejected
-before execution. Failed source work remains in the execution record and total
-work count.
+before execution. Projection and final-verification host work have separate
+bounds. Failed source work remains in the execution record and total work count.
 
 A failed source solve or rejected/out-of-budget projection skips the proposal
 and executes the unchanged target from its ordinary cold guess. The target stage
@@ -90,6 +90,14 @@ relaxing tolerances.
 identity, basis mathematical/source hashes, native success/convergence,
 energy/density gates, physical SCF residual, requested energy/force capabilities,
 effective final FP64 arithmetic and complete execution budgets. It distinguishes:
+
+Legacy HF results do not export the optional public physical-residual field. The
+controller therefore performs one explicit fixed-density rebuild with the exact
+target basis, direct/DF operator, screening, metric and arithmetic policy. It
+records the Fock execution identity, density/overlap hashes, RMS and maximum
+`FDS-SDF`, and fixed-density energy agreement. This audit is included in target
+time and counts as one target Fock build; its failure makes target verification
+fail closed. It is a state audit, not an observable-error certificate.
 
 - `verified`: exact target gates passed and an independent #173 assessment has
   status `observed_met`;

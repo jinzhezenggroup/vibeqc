@@ -9,15 +9,19 @@ from __future__ import annotations
 import math
 import time
 import typing
+from contextlib import ExitStack
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from enum import Enum
+from hashlib import sha256
 
 import numpy as np
 
 from . import _native
 from .accuracy import AccuracyAssessment, ErrorEvidence, ResolvedModel, TargetAccuracy
 from .calculator import Atom
+from .fock import FockBuildSpec, FockPlan
+from .overlap import cross_overlap
 from .profiles import canonical_hash
 from .progressive import _retained_density, initialize_from
 from .projection import ProjectionPolicy, ProjectionRejected
@@ -306,6 +310,7 @@ class ProgressiveBudget:
     maximum_source_iterations: int = 100
     maximum_total_iterations: int = 200
     maximum_host_bytes: int = 256 << 20
+    maximum_verification_host_bytes: int = 256 << 20
     maximum_total_fock_builds: int | None = None
     maximum_estimated_cost_units: float | None = None
 
@@ -315,6 +320,7 @@ class ProgressiveBudget:
             "maximum_source_iterations",
             "maximum_total_iterations",
             "maximum_host_bytes",
+            "maximum_verification_host_bytes",
         ):
             value = getattr(self, name)
             if type(value) is not int or value < 1:
@@ -564,6 +570,46 @@ class StageExecution:
 
 
 @dataclass(frozen=True)
+class HFPhysicalResidualAudit:
+    """Independent fixed-density target Fock/overlap residual and provenance."""
+
+    model_identity: str
+    provider_identity: str
+    operator_identity: str
+    execution_identity: str
+    density_sha256: str
+    overlap_sha256: str
+    maximum_commutator: float
+    rms_commutator: float
+    fixed_density_energy: float
+    energy_difference: float
+    seconds: float
+
+    def __post_init__(self) -> None:
+        for name in (
+            "model_identity",
+            "provider_identity",
+            "operator_identity",
+            "execution_identity",
+            "density_sha256",
+            "overlap_sha256",
+        ):
+            _identity(getattr(self, name), name, digest=True)
+        for name in (
+            "maximum_commutator",
+            "rms_commutator",
+            "energy_difference",
+            "seconds",
+        ):
+            value = float(getattr(self, name))
+            if not math.isfinite(value) or value < 0:
+                raise ValueError(f"{name} must be finite and nonnegative")
+            object.__setattr__(self, name, value)
+        if not math.isfinite(self.fixed_density_energy):
+            raise ValueError("fixed-density audit energy must be finite")
+
+
+@dataclass(frozen=True)
 class FinalVerification:
     """Exact-target, state, arithmetic, budget and accuracy-audit disposition."""
 
@@ -577,7 +623,11 @@ class FinalVerification:
     requested_provider_hashes: tuple[tuple[str, str], ...]
     actual_provider_hashes: tuple[tuple[str, str], ...]
     physical_residual_rms: float | None
+    physical_residual_max: float | None
     physical_residual_tolerance: float
+    physical_residual_source: str
+    physical_audit_identity: str | None
+    fixed_density_energy_difference: float | None
     accuracy_status: str
     capabilities: tuple[str, ...]
     total_iterations: int
@@ -600,6 +650,8 @@ def finalize_hf_verification(
     executions: tuple[StageExecution, ...],
     *,
     accuracy: AccuracyAssessment | None = None,
+    physical_audit: HFPhysicalResidualAudit | None = None,
+    physical_audit_error: str | None = None,
 ) -> FinalVerification:
     """Derive a fail-closed final record; serialized status is never trusted."""
     if (
@@ -630,9 +682,38 @@ def finalize_hf_verification(
     ):
         target_reasons.append("target density tolerance is unmet")
     residual = result.physical_residual_rms
+    residual_max = None
+    residual_source = "native_result" if residual is not None else "unavailable"
+    audit_identity = None
+    energy_difference = None
+    if physical_audit is not None:
+        if not isinstance(physical_audit, HFPhysicalResidualAudit):
+            raise TypeError("physical audit must be an HFPhysicalResidualAudit")
+        if (
+            physical_audit.model_identity != problem.model.identity
+            or physical_audit.provider_identity != problem.provider_identity
+        ):
+            target_reasons.append(
+                "physical residual audit changed the requested target"
+            )
+        residual = physical_audit.rms_commutator
+        residual_max = physical_audit.maximum_commutator
+        residual_source = "fixed_density_target_audit"
+        audit_identity = physical_audit.operator_identity
+        energy_difference = physical_audit.energy_difference
+        if energy_difference > max(1.0e-10, problem.convergence.energy_change):
+            target_reasons.append(
+                "fixed-density audit energy differs from target result"
+            )
+    elif physical_audit_error is not None:
+        target_reasons.append(
+            f"target physical residual audit failed: {physical_audit_error}"
+        )
     if residual is None or not math.isfinite(float(residual)):
         target_reasons.append("target physical residual is unavailable")
-    elif residual > typing.cast("float", problem.convergence.physical_residual_rms):
+    elif (residual_max if residual_max is not None else residual) > typing.cast(
+        "float", problem.convergence.physical_residual_rms
+    ):
         target_reasons.append("target physical residual tolerance is unmet")
     requested_observables = {item.observable for item in problem.accuracy.observables}
     capabilities = {"energy"}
@@ -713,9 +794,13 @@ def finalize_hf_verification(
         requested_provider_hashes=problem.provider_hashes,
         actual_provider_hashes=actual_hashes,
         physical_residual_rms=residual,
+        physical_residual_max=residual_max,
         physical_residual_tolerance=typing.cast(
             "float", problem.convergence.physical_residual_rms
         ),
+        physical_residual_source=residual_source,
+        physical_audit_identity=audit_identity,
+        fixed_density_energy_difference=energy_difference,
         accuracy_status=accuracy_status,
         capabilities=tuple(sorted(capabilities)),
         total_iterations=total_iterations,
@@ -738,6 +823,105 @@ class ProgressiveHFResult:
     @property
     def succeeded(self) -> bool:
         return self.verification.succeeded
+
+
+def _audit_target_physical_residual(
+    problem: TargetProblem,
+    calculator: typing.Any,
+    atoms: tuple[Atom, ...],
+    density: np.ndarray,
+    target_energy: float,
+    *,
+    charge: int,
+    multiplicity: int,
+    maximum_host_bytes: int,
+) -> HFPhysicalResidualAudit:
+    """Rebuild the exact target Fock once and audit FDS-SDF at its final density."""
+    from vibeqc_compiler.dft import NativeAO
+
+    started = time.perf_counter()
+    unrestricted = problem.model.method == "uhf"
+    fitted = calculator._density_fitting_mode != _native.DENSITY_FITTING_NONE
+    approximation = "density_fitted" if fitted else "exact"
+    with ExitStack() as stack:
+        basis = stack.enter_context(
+            NativeAO(
+                atoms,
+                calculator._basis,
+                representation=calculator._representation_name,
+                charge=charge,
+                multiplicity=multiplicity,
+            )
+        )
+        auxiliary = None
+        if fitted:
+            if calculator._auxiliary_basis is None:
+                raise ValueError(
+                    "density-fitted target has no resolved auxiliary basis"
+                )
+            auxiliary = stack.enter_context(
+                NativeAO(
+                    atoms,
+                    calculator._auxiliary_basis,
+                    representation=calculator._representation_name,
+                    charge=charge,
+                    multiplicity=multiplicity,
+                )
+            )
+        fock_plan = stack.enter_context(
+            FockPlan(
+                basis,
+                FockBuildSpec.hf(
+                    "unrestricted" if unrestricted else "restricted",
+                    coulomb=approximation,
+                    exchange=approximation,
+                    derivative_order=0,
+                ),
+                auxiliary=auxiliary,
+                device=calculator._device_name,
+                device_id=calculator._device_id,
+                screening_tolerance=calculator._screening_tolerance,
+                metric_relative_threshold=(
+                    calculator._density_fitting_relative_threshold
+                ),
+                device_budget_bytes=calculator._density_fitting_memory_budget_bytes,
+            )
+        )
+        evaluated_density = density if unrestricted else density[0]
+        evaluation = fock_plan.evaluate(evaluated_density)
+        operator_identity = fock_plan.identity
+        execution_identity = fock_plan.execution_identity
+    overlap = cross_overlap(
+        calculator,
+        calculator,
+        atoms,
+        charge=charge,
+        multiplicity=multiplicity,
+        maximum_bytes=maximum_host_bytes,
+    )
+    densities = density if unrestricted else density[:1]
+    focks = evaluation.fock if unrestricted else evaluation.fock[None, :, :]
+    residuals = np.asarray(
+        [
+            fock @ state @ overlap - overlap @ state @ fock
+            for fock, state in zip(focks, densities, strict=True)
+        ]
+    )
+    maximum = float(np.max(np.abs(residuals)))
+    rms = float(np.sqrt(np.mean(residuals * residuals)))
+    return HFPhysicalResidualAudit(
+        model_identity=problem.model.identity,
+        provider_identity=problem.provider_identity,
+        operator_identity=operator_identity,
+        execution_identity=execution_identity,
+        density_sha256=sha256(density.tobytes()).hexdigest(),
+        overlap_sha256=sha256(overlap.tobytes()).hexdigest(),
+        maximum_commutator=maximum,
+        rms_commutator=rms,
+        fixed_density_energy=evaluation.energy,
+        energy_difference=abs(evaluation.energy - target_energy),
+        seconds=time.perf_counter() - started,
+    )
 
 
 def run_progressive_hf(
@@ -780,6 +964,8 @@ def run_progressive_hf(
         "reason": None,
     }
     target_density = None
+    physical_audit = None
+    physical_audit_error = None
     with source_calculator.prepare_batch(
         [atoms], charges=[charge], multiplicities=[multiplicity]
     ) as source_batch:
@@ -842,24 +1028,56 @@ def run_progressive_hf(
             target_seconds = time.perf_counter() - target_started
             if target_result.succeeded and target_result.converged:
                 target_density = _retained_density(target_batch)
-            executions.append(
-                StageExecution(
-                    plan.stages[1].stage_id,
-                    StageRole.TARGET,
-                    "succeeded" if target_result.succeeded else "failed",
-                    target_calculator.resolved_model(
-                        atoms, charge=charge, multiplicity=multiplicity
-                    ).identity,
-                    target_result.basis_metadata["model_identity"],
-                    target_result.iterations,
-                    target_result.fock_builds,
-                    target_seconds,
-                    target_result.physical_residual_rms,
-                    "none",
-                    target_result.restart_origin,
-                    target_result.status_message,
-                )
+    verification_started = time.perf_counter()
+    if target_density is not None:
+        try:
+            physical_audit = _audit_target_physical_residual(
+                plan.problem,
+                target_calculator,
+                atoms,
+                target_density,
+                target_result.energy,
+                charge=charge,
+                multiplicity=multiplicity,
+                maximum_host_bytes=plan.budget.maximum_verification_host_bytes,
             )
+        except (
+            ArithmeticError,
+            MemoryError,
+            NotImplementedError,
+            RuntimeError,
+            ValueError,
+        ) as error:
+            physical_audit_error = str(error)
+    verification_seconds = time.perf_counter() - verification_started
+    target_fock_builds = target_result.fock_builds
+    if physical_audit is not None and target_fock_builds is not None:
+        target_fock_builds += 1
+    elif physical_audit_error is not None:
+        target_fock_builds = None
+    target_residual = (
+        physical_audit.rms_commutator
+        if physical_audit is not None
+        else target_result.physical_residual_rms
+    )
+    executions.append(
+        StageExecution(
+            plan.stages[1].stage_id,
+            StageRole.TARGET,
+            "succeeded" if target_result.succeeded else "failed",
+            target_calculator.resolved_model(
+                atoms, charge=charge, multiplicity=multiplicity
+            ).identity,
+            target_result.basis_metadata["model_identity"],
+            target_result.iterations,
+            target_fock_builds,
+            target_seconds + verification_seconds,
+            target_residual,
+            "none",
+            target_result.restart_origin,
+            target_result.status_message,
+        )
+    )
     actual_model = target_calculator.resolved_model(
         atoms, charge=charge, multiplicity=multiplicity
     )
@@ -874,6 +1092,8 @@ def run_progressive_hf(
         plan.budget,
         execution_tuple,
         accuracy=accuracy,
+        physical_audit=physical_audit,
+        physical_audit_error=physical_audit_error,
     )
     diagnostics = {
         "schema": "vibeqc.progressive_hf",
@@ -881,9 +1101,16 @@ def run_progressive_hf(
         "plan_identity": plan.identity,
         "source_seconds": executions[0].seconds,
         "projection_seconds": projection.get("seconds", 0.0),
+        "target_execution_seconds": target_seconds,
+        "final_verification_seconds": verification_seconds,
         "target_seconds": executions[1].seconds,
         "total_seconds": time.perf_counter() - started,
         "projection": deepcopy(projection),
+        "physical_residual_audit": (
+            asdict(physical_audit)
+            if physical_audit is not None
+            else {"status": "unavailable", "reason": physical_audit_error}
+        ),
         "verification_status": verification.status,
     }
     return ProgressiveHFResult(

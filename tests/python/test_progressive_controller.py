@@ -17,6 +17,7 @@ from vibeqc.progressive_controller import (
     DeterministicHFPlan,
     FinalVerification,
     HFConvergence,
+    HFPhysicalResidualAudit,
     ProgressiveBudget,
     StageExecution,
     StagePlan,
@@ -282,6 +283,39 @@ def test_missing_physical_residual_and_auto_cleanup_are_unmet() -> None:
     )
     final = verify(no_cleanup, selected_plan=auto_plan)
     assert final.status == "unmet" and final.strict_cleanup == "missing"
+
+
+def test_fixed_density_target_audit_supplies_missing_public_hf_residual() -> None:
+    output = result(accuracy=assessment(observed=True))
+    output.physical_residual_rms = None
+    selected = plan()
+    audit = HFPhysicalResidualAudit(
+        model_identity=TARGET_MODEL.identity,
+        provider_identity=PROBLEM.provider_identity,
+        operator_identity="f" * 64,
+        execution_identity="e" * 64,
+        density_sha256="d" * 64,
+        overlap_sha256="c" * 64,
+        maximum_commutator=2.0e-12,
+        rms_commutator=1.0e-12,
+        fixed_density_energy=-1.0,
+        energy_difference=0.0,
+        seconds=0.01,
+    )
+    final = finalize_hf_verification(
+        PROBLEM,
+        selected.stages[1],
+        output,
+        TARGET_MODEL,
+        TARGET_HASHES,
+        selected.budget,
+        (execution(StageRole.INITIALIZATION), execution(StageRole.TARGET)),
+        physical_audit=audit,
+    )
+    assert final.status == "verified"
+    assert final.target_established
+    assert final.physical_residual_source == "fixed_density_target_audit"
+    assert final.physical_residual_max == 2.0e-12
 
 
 def test_unverifiable_fock_budget_fails_closed() -> None:

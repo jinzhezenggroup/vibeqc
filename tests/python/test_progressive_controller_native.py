@@ -57,6 +57,8 @@ def test_typed_plan_reaches_exact_target_without_fabricating_accuracy() -> None:
     assert run.verification.target_established
     assert run.verification.status == "unverified"
     assert run.verification.accuracy_status == "unverified"
+    assert run.verification.physical_residual_source == "fixed_density_target_audit"
+    assert run.verification.physical_residual_max is not None
     assert run.verification.actual_model_identity == problem.model.identity
     assert run.verification.actual_provider_identity == problem.provider_identity
     assert run.verification.physical_residual_rms is not None
@@ -65,6 +67,7 @@ def test_typed_plan_reaches_exact_target_without_fabricating_accuracy() -> None:
         <= run.verification.physical_residual_tolerance
     )
     assert run.diagnostics["projection"]["status"] == "accepted"
+    assert run.diagnostics["physical_residual_audit"]["maximum_commutator"] < 1e-10
     assert run.target_density is not None and not run.target_density.flags.writeable
 
 

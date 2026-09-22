@@ -21,6 +21,12 @@ record independently compares scientific identity, prepared-provider identity,
 basis provider hashes, solver state, physical residual, requested capabilities,
 final arithmetic and work budgets.
 
+Because the legacy HF result ABI intentionally leaves its optional physical
+residual absent, the controller rebuilds the exact target Fock once at the final
+density and evaluates the target overlap commutator. The audit has explicit
+operator/density/overlap identities, time and Fock-work accounting; it does not
+reuse density-update RMS as a substitute.
+
 Exact target convergence and #173 observable-accuracy evidence are separate
 outcomes. The controller may report that the target state is established while
 the accuracy status remains `unverified`; only independent observed evidence can
@@ -46,6 +52,8 @@ produce overall `verified` status.
 - A source or transfer failure never changes target physics or tolerances.
 - Grid/local/CC/rank adapters require separate typed plans and validation.
 - No successful accuracy claim follows from SCF residual alone.
+- A missing native HF residual requires an exact fixed-density target audit; the
+  extra Fock build and elapsed time remain part of endpoint work.
 
 ## Evidence
 
