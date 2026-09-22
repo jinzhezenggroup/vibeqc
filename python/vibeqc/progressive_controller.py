@@ -967,18 +967,24 @@ def run_progressive_hf(
     target_density = None
     physical_audit = None
     physical_audit_error = None
+    source_setup_started = time.perf_counter()
     with source_calculator.prepare_batch(
         [atoms], charges=[charge], multiplicities=[multiplicity]
     ) as source_batch:
+        source_setup_seconds = time.perf_counter() - source_setup_started
         source_started = time.perf_counter()
         source_result = source_batch.execute(
             strict=False, properties=("energy",)
         ).items[0]
-        source_seconds = time.perf_counter() - source_started
+        source_execution_seconds = time.perf_counter() - source_started
+        target_setup_started = time.perf_counter()
         with target_calculator.prepare_batch(
             [atoms], charges=[charge], multiplicities=[multiplicity]
         ) as target_batch:
+            target_setup_seconds = time.perf_counter() - target_setup_started
+            projection_seconds = 0.0
             if source_result.succeeded:
+                projection_started = time.perf_counter()
                 try:
                     projection = initialize_from(
                         target_batch,
@@ -998,6 +1004,7 @@ def run_progressive_hf(
                         "status": "rejected",
                         "reason": str(error),
                     }
+                projection_seconds = time.perf_counter() - projection_started
             else:
                 projection["status"] = "skipped_failed_source"
                 projection["reason"] = source_result.status_message
@@ -1012,7 +1019,7 @@ def run_progressive_hf(
                     source_result.basis_metadata["model_identity"],
                     source_result.iterations,
                     source_result.fock_builds,
-                    source_seconds,
+                    source_setup_seconds + source_execution_seconds,
                     source_result.physical_residual_rms,
                     projection["status"],
                     source_result.restart_origin,
@@ -1029,6 +1036,11 @@ def run_progressive_hf(
             target_seconds = time.perf_counter() - target_started
             if target_result.succeeded and target_result.converged:
                 target_density = _retained_density(target_batch)
+            target_cleanup_started = time.perf_counter()
+        target_cleanup_seconds = time.perf_counter() - target_cleanup_started
+        source_cleanup_started = time.perf_counter()
+    source_cleanup_seconds = time.perf_counter() - source_cleanup_started
+    cleanup_seconds = target_cleanup_seconds + source_cleanup_seconds
     verification_started = time.perf_counter()
     if target_density is not None:
         try:
@@ -1072,7 +1084,7 @@ def run_progressive_hf(
             target_result.basis_metadata["model_identity"],
             target_result.iterations,
             target_fock_builds,
-            target_seconds + verification_seconds,
+            target_setup_seconds + target_seconds + verification_seconds,
             target_residual,
             "none",
             target_result.restart_origin,
@@ -1101,9 +1113,13 @@ def run_progressive_hf(
         "version": 1,
         "plan_identity": plan.identity,
         "source_seconds": executions[0].seconds,
-        "projection_seconds": projection.get("seconds", 0.0),
+        "source_setup_seconds": source_setup_seconds,
+        "source_execution_seconds": source_execution_seconds,
+        "projection_seconds": projection_seconds,
+        "target_setup_seconds": target_setup_seconds,
         "target_execution_seconds": target_seconds,
         "final_verification_seconds": verification_seconds,
+        "cleanup_seconds": cleanup_seconds,
         "target_seconds": executions[1].seconds,
         "total_seconds": time.perf_counter() - started,
         "projection": deepcopy(projection),

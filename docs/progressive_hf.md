@@ -77,6 +77,9 @@ workspace, optional Fock builds and optional estimated cost have explicit
 budgets. A plan whose configured maximum work exceeds its budget is rejected
 before execution. Projection and final-verification host work have separate
 bounds. Failed source work remains in the execution record and total work count.
+Diagnostics separately report source/target setup and execution, projection,
+final verification and context cleanup, while `total_seconds` covers the complete
+endpoint.
 
 A failed source solve or rejected/out-of-budget projection skips the proposal
 and executes the unchanged target from its ordinary cold guess. The target stage
