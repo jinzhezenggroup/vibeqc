@@ -94,9 +94,7 @@ def test_bulk_capability_lookup_is_case_insensitive_and_fail_closed() -> None:
 
 
 def test_pointwise_lda_gga_components_are_automatically_representable() -> None:
-    represented = libxc_bulk_capabilities.claimable_components(
-        families=("lda", "gga")
-    )
+    represented = libxc_bulk_capabilities.claimable_components(families=("lda", "gga"))
     assert represented
     assert "GGA_X_PBE_SOL" in represented
     assert set(represented) <= set(COMPONENTS)

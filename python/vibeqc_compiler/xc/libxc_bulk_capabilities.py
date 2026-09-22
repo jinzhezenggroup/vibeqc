@@ -128,7 +128,9 @@ def claimable_components(
     allowed = frozenset(("lda", "gga", "mgga"))
     requested = frozenset(families)
     if not requested or not requested <= allowed:
-        raise ValueError("bulk component families must be a nonempty lda/gga/mgga subset")
+        raise ValueError(
+            "bulk component families must be a nonempty lda/gga/mgga subset"
+        )
     return tuple(
         capability.name
         for capability in available_capabilities()

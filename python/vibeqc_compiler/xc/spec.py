@@ -12,8 +12,8 @@ from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
 from . import libxc_bulk
 from .b88_vwn_maple import b88_vwn_maple_provenance
-from .libxc_bulk_capabilities import claimable_components, functional_capability
 from .ityh_maple import ityh_maple_provenance
+from .libxc_bulk_capabilities import claimable_components, functional_capability
 from .p86_pz_maple import p86_pz_maple_provenance
 from .pbe_maple import pbe_maple_provenance
 from .pw91_maple import pw91_maple_provenance
@@ -47,7 +47,9 @@ PW91_COMPONENTS = ("GGA_X_PW91", "GGA_C_PW91")
 P86_COMPONENTS = ("LDA_C_PZ", "GGA_C_P86")
 WB97MV_COMPONENTS = ("MGGA_X_WB97M_V", "MGGA_C_WB97M_V")
 SPECIAL_EXPRESSION_COMPONENTS = RSH_COMPONENTS + PW91_COMPONENTS + P86_COMPONENTS
-CURATED_COMPONENTS = PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS + WB97MV_COMPONENTS
+CURATED_COMPONENTS = (
+    PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS + WB97MV_COMPONENTS
+)
 POINTWISE_BULK_COMPONENTS = claimable_components(families=("lda", "gga"))
 AUTO_BULK_COMPONENTS = tuple(
     name for name in POINTWISE_BULK_COMPONENTS if name not in CURATED_COMPONENTS
@@ -157,7 +159,9 @@ class FunctionalSpec:
         payload["components"] = [[n, str(c)] for n, c in self.components]
         for name in ("exact_exchange", "range_omega", "long_range_exchange"):
             payload[name] = str(getattr(self, name))
-        active_names = tuple(name for name, coefficient in self.components if coefficient)
+        active_names = tuple(
+            name for name, coefficient in self.components if coefficient
+        )
         bulk_only = tuple(name for name in active_names if name in AUTO_BULK_COMPONENTS)
         if bulk_only:
             if any(name not in POINTWISE_BULK_COMPONENTS for name in active_names):
