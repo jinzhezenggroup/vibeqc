@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "core/types.hpp"
@@ -31,10 +32,15 @@ struct GridSpec {
 /** Pure prescription validation, shared by preparation and materialization. */
 void validate_grid_spec(const GridSpec& spec);
 
-/** Materialized CPU reference grid in atom-radial-polar-azimuth order. */
+/** Owned molecular grid in atom-radial-polar-azimuth order. The ordinary
+ * constructor is the independent CPU reference; CUDA preparation uses the
+ * generated, bounded factory and retains the same host export contract. */
 class MolecularGrid {
  public:
   explicit MolecularGrid(const core::System& system, GridSpec spec = {});
+  /** Materialize with compiler-generated CUDA kernels. No CPU partition
+   * fallback; throws on unsupported input, allocation or normalization error. */
+  static MolecularGrid from_cuda(const core::System& system, GridSpec spec, int device);
 
   const GridSpec& spec() const noexcept { return spec_; }
   const core::System& system() const noexcept { return system_; }
@@ -53,12 +59,18 @@ class MolecularGrid {
   std::vector<double> contract_weight_derivative(std::span<const double> weight_sensitivity) const;
 
  private:
+  struct Deferred {};
+  MolecularGrid(const core::System& system, GridSpec spec, Deferred);
+  static std::pair<std::vector<double>, std::vector<double>> legendre_rule(std::size_t count);
   core::System system_;
   GridSpec spec_;
   std::vector<double> points_;
   std::vector<double> weights_;
   std::vector<std::uint32_t> owners_;
 };
+
+/** Pure shape query for all temporary CUDA quadrature allocations. */
+std::size_t cuda_quadrature_bytes(std::size_t atoms, std::size_t points);
 
 }  // namespace vibeqc::dft
 
