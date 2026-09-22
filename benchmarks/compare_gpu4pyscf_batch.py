@@ -562,13 +562,16 @@ def _configure_reference_scf(
     gradient_tolerance: float,
     max_iterations: int,
     full_fock: bool = False,
+    density_fitting: bool = False,
 ) -> None:
-    """Keep optional full-density rebuilding confined to the stock reference."""
+    """Set strict reference gates and the Fock policy supported by its provider."""
     engine.conv_tol = energy_tolerance
     engine.conv_tol_grad = gradient_tolerance
     engine.direct_scf_tol = 1.0e-14
     engine.max_cycle = max_iterations
-    engine.direct_scf = not full_fock
+    # GPU4PySCF DF builds the full density and its gradient explicitly rejects
+    # direct_scf. Do not overwrite density_fit's policy with direct-HF defaults.
+    engine.direct_scf = not (full_fock or density_fitting)
 
 
 def main() -> None:
@@ -776,6 +779,7 @@ def main() -> None:
             gradient_tolerance=args.reference_gradient_tolerance,
             max_iterations=args.max_iterations,
             full_fock=args.reference_full_fock,
+            density_fitting=args.density_fitting == "cuda",
         )
         gpu_objects.append(engine)
 
@@ -1027,7 +1031,7 @@ def main() -> None:
                 "energy_tolerance": args.energy_tolerance,
                 "density_tolerance": args.density_tolerance,
                 "reference_gradient_tolerance": args.reference_gradient_tolerance,
-                "reference_incremental_fock": not args.reference_full_fock,
+                "reference_incremental_fock": bool(gpu_objects[0].direct_scf),
                 "max_iterations": args.max_iterations,
                 "vibeqc_screening_tolerance": args.screening_tolerance,
                 "direct_scf_tolerance": 1.0e-14,
