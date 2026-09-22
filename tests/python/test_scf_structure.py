@@ -255,7 +255,7 @@ def test_shared_numerics_cannot_import_operator_contractions(
 
 
 @pytest.mark.parametrize(
-    "owner", ["direct_native_cartesian.cuh", "direct_native_order3_gradient.cuh"]
+    "owner", ["direct_native_cartesian.cuh", "direct_native_order456_gradient.cuh"]
 )
 @pytest.mark.parametrize(
     "dependency", ["direct_constants.hpp", "direct_angular_fock.hpp", "resources.hpp"]

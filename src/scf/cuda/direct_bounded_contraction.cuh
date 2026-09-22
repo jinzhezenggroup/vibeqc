@@ -68,7 +68,6 @@ __device__ inline __noinline__ void contract_bounded_direct_force_subtile(
   // tasks before generic bounded dispatch. Do not reinstantiate retired math.
   switch (angular_order) {
     VIBEQC_BOUNDED_FORCE_CASE(2);
-    VIBEQC_BOUNDED_FORCE_CASE(3);
     VIBEQC_BOUNDED_FORCE_CASE(4);
     VIBEQC_BOUNDED_FORCE_CASE(5);
     VIBEQC_BOUNDED_FORCE_CASE(6);
