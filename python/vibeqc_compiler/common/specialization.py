@@ -68,12 +68,12 @@ class _TypedRecord:
     def __eq__(self, other: object) -> bool:
         if type(self) is not type(other):
             return NotImplemented
-        return canonical_hash(asdict(cast(Any, self))) == canonical_hash(
-            asdict(cast(Any, other))
+        return canonical_hash(asdict(cast("Any", self))) == canonical_hash(
+            asdict(cast("Any", other))
         )
 
     def __hash__(self) -> int:
-        return hash((type(self), canonical_hash(asdict(cast(Any, self)))))
+        return hash((type(self), canonical_hash(asdict(cast("Any", self)))))
 
 
 @dataclass(frozen=True, slots=True, eq=False)

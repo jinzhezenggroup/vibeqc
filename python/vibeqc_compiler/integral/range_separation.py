@@ -75,7 +75,7 @@ def reference_moments(
         )
     if not isinstance(kernel, CoulombKernel):
         raise TypeError("expected explicit CoulombKernel semantics")
-    quad = getattr(importlib.import_module("scipy.integrate"), "quad")
+    quad = importlib.import_module("scipy.integrate").quad
 
     radius = math.hypot(kernel.omega, math.sqrt(rho))
     boundary = kernel.omega / radius

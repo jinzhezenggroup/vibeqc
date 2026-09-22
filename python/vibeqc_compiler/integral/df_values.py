@@ -168,7 +168,7 @@ def build_df_component_kernel(
         ):
             continue
         orders = typing.cast(
-            tuple[int, int, int],
+            "tuple[int, int, int]",
             tuple(a + b for a, b in zip(left_orders, right_orders)),
         )
         if orders not in states:
