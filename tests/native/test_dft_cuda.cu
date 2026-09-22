@@ -119,6 +119,10 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
              const std::vector<double>& d) {
   fixture.submit(d);
   const auto result = fixture.scalars();
+  if (result.error != 0)
+    std::cerr << "XC failure: functional=" << fixture.layout.functional
+              << " spins=" << fixture.layout.spins << " points=" << grid.point_count()
+              << " error=" << result.error << "\n";
   require(result.error == 0, "valid density failed device XC evaluation");
   const auto v = fixture.potential();
   const auto& l = fixture.layout;
