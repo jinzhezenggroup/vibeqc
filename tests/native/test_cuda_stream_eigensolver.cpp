@@ -86,17 +86,21 @@ void verify(int n) {
         const auto* column = v.data() + spin * matrix + std::size_t(j) * n;
         long double uv = 0, duv = 0, length = 0, overlap = 0;
         for (int i = 0; i < n; ++i) {
-          uv += u[i] * column[i];
-          duv += u[i] * d[i] * column[i];
-          length += column[i] * column[i];
-          overlap += column[i] * ((i == j ? 1.0 : 0.0) - 2 * u[i] * u[j]);
+          // Promote before multiplication so the independent residual oracle
+          // retains extended precision throughout, not only in its sums.
+          const long double ui = u[i], vi = column[i], di = d[i], uj = u[j];
+          uv += ui * vi;
+          duv += ui * di * vi;
+          length += vi * vi;
+          overlap += vi * ((i == j ? 1.0L : 0.0L) - 2 * ui * uj);
         }
         require(std::abs(length - 1) < 2e-11 && std::abs(std::abs(overlap) - 1) < 2e-10,
                 "independent normalized eigenvector mismatch");
         for (int i = 0; i < n; ++i) {
-          const auto av = d[i] * column[i] + u[i] * ((4 * ud - 2 * d[i]) * uv - 2 * duv);
-          require(std::abs(av - w[spin * n + j] * column[i]) < 2e-11,
-                  "independent eigen residual mismatch");
+          const long double ui = u[i], vi = column[i], di = d[i], wi = w[spin * n + j];
+          const auto av =
+              di * vi + ui * ((4 * static_cast<long double>(ud) - 2 * di) * uv - 2 * duv);
+          require(std::abs(av - wi * vi) < 2e-11, "independent eigen residual mismatch");
         }
       }
     }

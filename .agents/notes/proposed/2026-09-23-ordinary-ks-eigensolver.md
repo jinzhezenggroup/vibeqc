@@ -1,6 +1,6 @@
 # Candidate: ordinary KS must not force graph-native diagonalization
 
-Status: proposed (implementation present; GPU qualification pending)
+Status: proposed (independent GPU solver test passed; endpoint qualification incomplete)
 Date: 2026-09-23
 
 ## Problem and evidence
@@ -47,3 +47,23 @@ workspace bounds and explicit capture rejection. Public RKS/UKS energy,
 final-state, warm/changed-geometry and resource-ledger tests remain required.
 Complete bounded PBE/r²SCAN endpoints must pass unchanged numerical and
 convergence gates before promotion; keep #1077 open until larger sizes pass.
+
+## Allocated GPU evidence
+
+The independent 7/24/192/768-AO test passed on RTX 5090 (Slurm 11272),
+including two matrices, replay, inactive NaNs, budget bounds and capture
+rejection. The integration binary also includes PRs #1073, #1076, #1086 and
+#1089 on an older master; this is not an exact PR-head qualification.
+
+The same integration completed PBE24 (192 AOs): cold 30.744 seconds / 18
+iterations, warm 3.436 and 3.440 seconds / 2 iterations. The identically
+discretized GPU4PySCF endpoint took 5.645 seconds / 12 iterations cold and
+0.752 and 0.753 seconds / 1 iteration warm. These branches are not iteration
+matched. Maximum all-sample energy error was 6.296e-8 Hartree, failing the
+unchanged 1e-8 gate despite tightly converged densities. The numerical source
+is still under investigation; these are diagnostic timings, not accepted
+benchmark results or a claim that #1077 is fixed.
+
+Local evidence: `ks-solver-v4.log` and `pbe24-solver-v4.json` under the
+integration checkout's ignored `.artifacts/gpu-blocker-fixes/`; binary SHA256
+`e7759a605546ca82020f0c618bce4b2dada57dc6549e2e4442391f9db2cfb29e`.
