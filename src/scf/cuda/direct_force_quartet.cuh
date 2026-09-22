@@ -11,9 +11,9 @@
 
 #include "generated_direct_high_order_pair_gradient.cuh"
 #include "scf/cuda/direct_force_density.cuh"
+#include "scf/cuda/direct_force_order2.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_native_gradient_types.cuh"
-#include "scf/cuda/direct_native_order2_gradient.cuh"
 #include "scf/cuda/direct_native_source_contraction.cuh"
 #include "scf/cuda/direct_queue_index.cuh"
 #include "scf/cuda/matrix_index.cuh"
@@ -125,7 +125,7 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
     if constexpr (AngularOrder == 2U || (AngularOrder >= 4U && AngularOrder <= 6U)) {
       CartesianQuartetGradient explicit_gradient{};
       if constexpr (AngularOrder == 2) {
-        explicit_gradient = contracted_eri_cartesian_source_order2_gradient(
+        explicit_gradient = contracted_eri_cartesian_source_order2_generated_gradient(
             batch, system, static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
             static_cast<std::int32_t>(k), static_cast<std::int32_t>(l));
       } else if constexpr (AngularOrder == 4) {
