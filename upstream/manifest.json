@@ -127,17 +127,18 @@
     },
     "libxc-xc-admission": {
       "canonical_inputs": {
+        "python/vibeqc_compiler/xc/b3lyp_production_policy.py": "db1d270221b644941824968adc2e5178c457bd4fedc8a9dc13d4177c7e6ff15d",
         "python/vibeqc_compiler/xc/b88_vwn_maple.py": "12eb65668224ede9508afff5ceb6b7e9db623e6569f4ceab712e5000956a6786",
-        "python/vibeqc_compiler/xc/expressions.py": "61e27426ca68fd5a04f566ec976fdaecad50c314f194f16c542aa8f6b9e97a84",
         "python/vibeqc_compiler/xc/ityh_maple.py": "d12d432724ca5b0bb0853a0a8ccbd1cb3b7eeaee70bed0a28e96c72879fe22f7",
         "python/vibeqc_compiler/xc/p86_pz_maple.py": "4cb700ca356e337ddcce108268d0afe7f4b0c31c807a319b7b3758129d1ee652",
         "python/vibeqc_compiler/xc/pbe_maple.py": "439726631d73a0841529c72f1577dec3c8a5aca14a1ae41a7dd3cf7c46f2d5ae",
         "python/vibeqc_compiler/xc/production_policy.py": "6bd0881c34614854e16a2378e20b17b3917c669ff6e91e71411b1410fe8c22bd",
         "python/vibeqc_compiler/xc/pw91_maple.py": "282a7420b517ad30a99f318895501839a2ff0a322e8e31c72a53cdc95ad3d313",
-        "python/vibeqc_compiler/xc/rsh_expressions.py": "91993aef91bb6b5043a23577876af8e4674d5a84545850350d79a4fe3a963eda",
+        "python/vibeqc_compiler/xc/rsh_expressions.py": "640d749a6b7ec8002dbfc2e8f8a6f793eb8a2db6f219d19d1810e7446df6ed75",
         "python/vibeqc_compiler/xc/rsh_maple.py": "5afea731e52fe76a047a6ff175387930fb0a7f57e31f7d7738ac89a3ee73b609",
         "python/vibeqc_compiler/xc/scan_maple.py": "8d5cf605925c86cc82cbaa3b817415a561d43541cf312fcc9c3bc993a640ee93",
-        "python/vibeqc_compiler/xc/spec.py": "85a6e5c12dfce5b8eb571f37adf037903ff20ce6727bd19e58d6c6175fdf56a0",
+        "python/vibeqc_compiler/xc/semilocal_family.py": "61e27426ca68fd5a04f566ec976fdaecad50c314f194f16c542aa8f6b9e97a84",
+        "python/vibeqc_compiler/xc/spec.py": "bba35a1eae1a38caf46e40e2cc6f3d18daa1a5fbb0ed44f1e7f17eb9a601e4b2",
         "python/vibeqc_compiler/xc/wb97mv_maple.py": "7433cd82cd04aef3d2f015e514cbc54406b05dd9e84f4934411415d90b4e9b27"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
