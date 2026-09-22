@@ -36,7 +36,7 @@ Reusing the direct KS resource estimate would give a false allocation contract.
 
 `tests/python/test_dft_df_public.py` covers independent PySCF energies, CUDA
 residency diagnostics, warm replay, moved auxiliary centers, and failure gates.
-See `docs/dft_density_fitting.md` for the explicit scientific acceptance limits.
+See `docs/user/dft_density_fitting.md` for the explicit scientific acceptance limits.
 
 ## Revisit when
 

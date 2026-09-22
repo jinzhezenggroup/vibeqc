@@ -15,6 +15,7 @@
 #include "dft/cuda_ks_kernels.hpp"
 #include "dft/cuda_xc.hpp"
 #include "dft/xc.hpp"
+#include "runtime/compiled_execution_region.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "runtime/solver_region_cuda.cuh"
 #include "scf/cuda/eigensolver.hpp"
@@ -177,6 +178,16 @@ struct CudaKsPlan::Impl : KsStateStorage {
   unsigned pending_iterations{};
   std::array<std::uint64_t, kCudaKsChunkCapacity> pending_generations{};
   runtime::SolverRegionCudaExecutor solver_region_executor;
+  runtime::CompiledExecutionRegion device_chunk_region;
+
+  runtime::CompiledExecutionBinding device_chunk_binding() const {
+    return {"cuda-ks-device-chunk-v1:" + std::to_string(n) + ":" + std::to_string(spins) + ":" +
+                std::to_string(functional) + ":" + std::to_string(history) + ":" +
+                std::to_string(xc_layout.tile_points),
+            // The prepared facade owns provider lifetime and replay identity;
+            // device chunks are admitted only for its direct-Fock binding.
+            device, stream, arena, fock_binding.source_identity};
+  }
 
   void current_device() const {
     // Prepared owners select their bound device on every entry, as the common
@@ -398,6 +409,15 @@ struct CudaKsPlan::Impl : KsStateStorage {
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused &&
         !fitted && !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
         configured_chunk_width() == kCudaKsChunkCapacity;
+    if (device_chunk_mode) {
+      const auto binding = device_chunk_binding();
+      if (!device_chunk_region.matches(binding))
+        device_chunk_region.bind(binding);
+      else if (device_chunk_region.failed())
+        device_chunk_region.recover();
+    } else if (device_chunk_region.bound()) {
+      device_chunk_region.invalidate();
+    }
     try {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
       check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
@@ -420,6 +440,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     } catch (...) {
       cudaStreamSynchronize(stream);
       is_failed = true;
+      if (device_chunk_mode && device_chunk_region.bound())
+        device_chunk_region.mark_failure("CUDA KS device region preparation failed");
       throw;
     }
     previous_energy = std::numeric_limits<double>::infinity();
@@ -530,6 +552,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       is_pending = is_active = false;
       is_failed = true;
       pending_iterations = 0;
+      device_chunk_region.mark_failure("CUDA KS device chunk submission failed");
       throw;
     }
   }
@@ -552,6 +575,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       is_pending = is_active = false;
       is_failed = true;
       pending_iterations = 0;
+      device_chunk_region.mark_failure("CUDA KS device chunk completion failed");
       throw;
     }
     movement.scalar_d2h_bytes += submitted * sizeof(physical[0]) + sizeof(device_control);
@@ -564,6 +588,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       is_pending = is_active = false;
       is_failed = true;
       pending_iterations = 0;
+      device_chunk_region.mark_failure("CUDA KS device chunk returned an invalid iteration count");
       throw std::runtime_error("CUDA KS device chunk returned an invalid iteration count");
     }
     const unsigned completed = device_control.iterations - output.iterations;
@@ -596,6 +621,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
       final_state_ready = true;
       final_generation = pending_generations[completed - 1U];
     }
+    if (is_failed)
+      device_chunk_region.mark_failure("CUDA KS device control reported failure");
+    else
+      device_chunk_region.mark_success();
     return is_active;
   }
 
@@ -1118,6 +1147,12 @@ vibeqc_status CudaKsPlan::read_final_state(const CudaKsFinalStateToken& expected
 const CudaKsResources& CudaKsPlan::resources() const noexcept { return impl_->resource; }
 CudaKsTransfers CudaKsPlan::transfers() const noexcept {
   auto out = impl_->movement;
+  const auto& region = impl_->device_chunk_region.metrics();
+  out.execution_region_bindings = region.bindings;
+  out.execution_region_invalidations = region.invalidations;
+  out.execution_region_executions = region.executions;
+  out.execution_region_failures = region.failures;
+  out.execution_region_recoveries = region.recoveries;
   if (impl_->xc) {
     const auto& xc = impl_->xc->transfers();
     out.setup_h2d_bytes += xc.setup_h2d_bytes;

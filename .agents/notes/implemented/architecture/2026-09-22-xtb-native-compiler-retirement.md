@@ -71,7 +71,7 @@ admission, status publication and SCC policy remain native.
 The compiler and shared-native structure checks, generated spin matrix/AD/FMA
 and ragged-publication tests, independent xTB/tblite endpoint goldens, force
 finite differences and CUDA source ownership inventory are the acceptance
-gates. See `docs/xtb_native_ownership.md` for maintained reproduction entry
+gates. See `docs/developer/xtb_native_ownership.md` for maintained reproduction entry
 points. Local test artifacts live under the worktree's ignored `.artifacts/`.
 
 Qualification after pruning and rebasing onto master `fbaa162a`:
@@ -120,4 +120,4 @@ independent oracle, precision/range, derivative and complete endpoint gates.
 - #560: production GFN2 runtime and compiler replacement boundary.
 - #1045: initial identifier-only de-bootstrap proposal.
 - #953: existing compiler H0 factor and adjoint graphs reused here.
-- `docs/xtb_native_ownership.md`.
+- `docs/developer/xtb_native_ownership.md`.

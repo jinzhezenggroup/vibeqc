@@ -8,7 +8,7 @@
 
 // The CPU and ordinary-stream CUDA consumers use this same point contract.
 // Parameters/composition follow xc/expressions.py and the vendored Libxc 7
-// sources. See docs/xc_scf_domain.md for the algebra and boundary policy.
+// sources. See docs/developer/xc_scf_domain.md for the algebra and boundary policy.
 #if defined(__CUDACC__)
 #define VIBEQC_XC_HD __host__ __device__
 #else
