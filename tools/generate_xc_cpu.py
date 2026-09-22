@@ -66,9 +66,7 @@ def build_roots(
 ) -> tuple[Any, Any, str]:
     """Build derivative roots and the exact emitted-expression identity."""
 
-    graph, energy, variables = build_energy_expression(
-        spec, production=production
-    )
+    graph, energy, variables = build_energy_expression(spec, production=production)
     derivatives = {(): energy}
     for output in outputs:
         for depth in range(1, len(output) + 1):

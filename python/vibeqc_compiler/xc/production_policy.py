@@ -314,5 +314,3 @@ def pbe_exchange_reciprocal_expression() -> typing.Any:
         (energy, rho, *gradient),
         (rho_cuberoot, rho_four_thirds, reciprocal_reduced, *direction),
     )
-
-
