@@ -36,9 +36,7 @@ def main() -> None:
     args = parser.parse_args()
 
     manifest_path = (
-        Path(__file__).resolve().parents[1]
-        / "provenance"
-        / "external_references.toml"
+        Path(__file__).resolve().parents[1] / "provenance" / "external_references.toml"
     )
     repositories = tomllib.loads(manifest_path.read_text())["repository"]
     selected = set(args.name)
