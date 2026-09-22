@@ -56,16 +56,16 @@ def test_compile_capabilities_reports_lowering_without_toolchain_activation(
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "message"),
+    ("target", "mode", "message"),
     [
-        ({"mode": "aot"}, "mode='jit'"),
-        ({"target": "cuda"}, "target='cpu'"),
+        ("cpu", "aot", "mode='jit'"),
+        ("cuda", "jit", "target='cpu'"),
     ],
 )
 def test_compile_capabilities_reports_unsupported_target_or_mode(
-    kwargs: dict[str, str], message: str
+    target: str, mode: str, message: str
 ) -> None:
-    report = tensor.compile_capabilities(_program(), **kwargs)
+    report = tensor.compile_capabilities(_program(), target=target, mode=mode)
 
     assert report["represented"] is True
     assert report["compilable"] is False
