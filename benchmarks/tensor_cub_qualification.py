@@ -11,9 +11,14 @@ promotion decision for the measured target and shape.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import os
 import re
+import shutil
+import subprocess
 import sys
-from pathlib import Path
+import tarfile
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,15 +57,120 @@ ATOL = 1e-11
 RTOL = 1e-10
 
 
-def _verified_archive_digest(path: Path, expected: str) -> str:
-    """Bind the extracted snapshot to the caller's reviewed archive bytes."""
+def _sha256_stream(stream: Any) -> str:
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _verified_source_snapshot(
+    path: Path, expected_digest: str, expected_revision: str, root: Path
+) -> dict[str, Any]:
+    """Bind the current execution tree to one exact Git archive revision."""
 
     if not path.is_file():
         raise ValueError("source archive is unavailable")
     actual = file_hash(path)
-    if actual != expected:
+    if actual != expected_digest:
         raise ValueError("source archive SHA-256 mismatch")
-    return actual
+    archived_paths: set[str] = set()
+    file_count = 0
+    total_bytes = 0
+    with tarfile.open(path, "r:*") as archive:
+        revision = archive.pax_headers.get("comment")
+        if revision != expected_revision:
+            raise ValueError("source archive Git revision mismatch")
+        for member in archive.getmembers():
+            relative = PurePosixPath(member.name)
+            if relative.is_absolute() or not relative.parts or ".." in relative.parts:
+                raise ValueError("source archive contains an unsafe path")
+            normalized = relative.as_posix()
+            if normalized in archived_paths:
+                raise ValueError("source archive contains a duplicate path")
+            archived_paths.add(normalized)
+            local = root.joinpath(*relative.parts)
+            if member.isdir():
+                if not local.is_dir():
+                    raise ValueError("execution tree differs from source archive")
+            elif member.isfile():
+                if not local.is_file() or local.is_symlink():
+                    raise ValueError("execution tree differs from source archive")
+                archived = archive.extractfile(member)
+                if archived is None:
+                    raise ValueError("source archive member is unreadable")
+                with archived, local.open("rb") as current:
+                    if _sha256_stream(archived) != _sha256_stream(current):
+                        raise ValueError("execution tree differs from source archive")
+                file_count += 1
+                total_bytes += member.size
+            elif member.issym():
+                if not local.is_symlink() or os.readlink(local) != member.linkname:
+                    raise ValueError("execution tree differs from source archive")
+            else:
+                raise ValueError("source archive contains an unsupported member type")
+    extras = []
+    for candidate in root.rglob("*"):
+        if candidate.is_dir():
+            continue
+        relative = candidate.relative_to(root)
+        if (
+            relative.parts[0] in {".artifacts", ".git", ".pytest_cache", ".ruff_cache"}
+            or "__pycache__" in relative.parts
+            or candidate.suffix == ".pyc"
+        ):
+            continue
+        if relative.as_posix() not in archived_paths:
+            extras.append(relative.as_posix())
+    if extras:
+        raise ValueError("execution tree contains files outside the source archive")
+    return {
+        "archive_sha256": actual,
+        "git_revision": revision,
+        "verified_files": file_count,
+        "verified_bytes": total_bytes,
+        "execution_root": str(root.resolve()),
+    }
+
+
+def _nvidia_smi_metadata(device: int, probed: dict[str, Any]) -> dict[str, Any]:
+    """Record and cross-check the scheduler-visible NVIDIA device."""
+
+    executable = shutil.which("nvidia-smi")
+    if executable is None:
+        raise ValueError("nvidia-smi is unavailable")
+    result = subprocess.run(
+        (
+            executable,
+            f"--id={device}",
+            "--query-gpu=name,uuid,driver_version,memory.total",
+            "--format=csv,noheader,nounits",
+        ),
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    rows = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    if len(rows) != 1:
+        raise ValueError("nvidia-smi did not identify exactly one device")
+    fields = [value.strip() for value in rows[0].split(",")]
+    if len(fields) != 4:
+        raise ValueError("nvidia-smi metadata is incomplete")
+    name, uuid, driver, memory_mib = fields
+    normalized = uuid.removeprefix("GPU-").replace("-", "").lower()
+    if normalized != str(probed.get("uuid", "")).lower():
+        raise ValueError("nvidia-smi UUID differs from the executed CUDA device")
+    try:
+        memory = int(memory_mib)
+    except ValueError as error:
+        raise ValueError("nvidia-smi memory size is invalid") from error
+    return {
+        "name": name,
+        "uuid": uuid,
+        "driver_version": driver,
+        "memory_total_mib": memory,
+    }
 
 
 def qualification_case(
@@ -140,8 +250,8 @@ def _validation_record(
     tuning: dict[str, Any],
     candidate: dict[str, Any],
     allocation_id: str,
-    source_revision: str,
-    source_archive_sha256: str,
+    source_snapshot: dict[str, Any],
+    nvidia_smi: dict[str, Any],
 ) -> dict[str, Any]:
     fixture_identity = [
         {
@@ -167,7 +277,7 @@ def _validation_record(
         inputs_hash=inputs_hash,
     )
     record.update(
-        revision=source_revision,
+        revision=source_snapshot["git_revision"],
         hashes={
             "equation": program.logical_hash,
             "ir": canonical_hash(program.to_payload()),
@@ -185,7 +295,7 @@ def _validation_record(
             "comparison_kind": "kernel",
             "fixed_state_hash": inputs_hash,
             "allocation_id": allocation_id,
-            "source_archive_sha256": source_archive_sha256,
+            "source_snapshot": source_snapshot,
             "precision": "float64->float64",
             "rows": rows,
             "inner": inner,
@@ -207,6 +317,7 @@ def _validation_record(
             allocation_id=allocation_id,
             target=tuning["baseline_plan"]["target"],
             device=tuning["device"],
+            nvidia_smi=nvidia_smi,
             execution_environment=environment,
         ),
         timings=_flatten_samples(candidate),
@@ -308,8 +419,11 @@ def main() -> None:
     if not re.fullmatch(r"[0-9a-f]{64}", args.source_archive_sha256):
         parser.error("--source-archive-sha256 must be a lowercase SHA-256")
     try:
-        source_archive_sha256 = _verified_archive_digest(
-            args.source_archive.resolve(), args.source_archive_sha256
+        source_snapshot = _verified_source_snapshot(
+            args.source_archive.resolve(),
+            args.source_archive_sha256,
+            args.source_revision,
+            ROOT,
         )
     except ValueError as error:
         parser.error(str(error))
@@ -351,6 +465,7 @@ def main() -> None:
         device=args.device,
     )
     candidate = _cub_candidate(selection.evidence)
+    nvidia_smi = _nvidia_smi_metadata(args.device, selection.evidence["device"])
     record = _validation_record(
         program=program,
         fixtures=fixtures,
@@ -358,19 +473,20 @@ def main() -> None:
         tuning=selection.evidence,
         candidate=candidate,
         allocation_id=args.allocation_id,
-        source_revision=args.source_revision,
-        source_archive_sha256=source_archive_sha256,
+        source_snapshot=source_snapshot,
+        nvidia_smi=nvidia_smi,
     )
     write_evidence(output / "evidence.json", record)
-    detailed = selection.evidence_path.relative_to(output)
+    write_result(output / "tuning-evidence.json", selection.evidence)
     summary = {
         "schema": SCHEMA,
-        "revision": args.source_revision,
-        "source_archive_sha256": source_archive_sha256,
+        "revision": source_snapshot["git_revision"],
+        "source_snapshot": source_snapshot,
         "allocation_id": args.allocation_id,
         "equation": program.logical_hash,
         "target": selection.evidence["baseline_plan"]["target"],
         "device": selection.evidence["device"],
+        "nvidia_smi": nvidia_smi,
         "generated_default_retained": True,
         "candidate_status": candidate["status"],
         "selected_schedule": selection.evidence["selected_schedule"],
@@ -379,7 +495,7 @@ def main() -> None:
         "cub_artifact": candidate["artifact"],
         "endpoint_gates": candidate["gates"],
         "shared_gates": candidate["shared_gates"],
-        "detailed_tuning_evidence": detailed.as_posix(),
+        "detailed_tuning_evidence": "tuning-evidence.json",
         "decision": (
             "CUB remains opt-in; this single-shape qualification does not change "
             "the generated-CUDA production default"

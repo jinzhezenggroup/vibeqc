@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import tarfile
 from typing import TYPE_CHECKING
 
 import pytest
-from vibeqc_compiler.common.evidence import canonical_hash, validate_evidence
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash, validate_evidence
 
 from benchmarks.tensor_cub_qualification import (
     _cub_candidate,
+    _nvidia_smi_metadata,
     _validation_record,
-    _verified_archive_digest,
+    _verified_source_snapshot,
     qualification_case,
 )
 
@@ -48,12 +50,47 @@ def test_cub_candidate_requires_complete_endpoint_evidence() -> None:
         _cub_candidate({"candidates": [incomplete]})
 
 
-def test_source_archive_digest_fails_closed(tmp_path: Path) -> None:
+def test_source_snapshot_binds_revision_and_execution_tree(tmp_path: Path) -> None:
+    root = tmp_path / "source"
+    root.mkdir()
+    (root / "tracked.txt").write_text("reviewed source")
     path = tmp_path / "source.tar.gz"
-    path.write_bytes(b"reviewed source")
-    digest = canonical_hash("not the file bytes")
-    with pytest.raises(ValueError, match="mismatch"):
-        _verified_archive_digest(path, digest)
+    revision = "a" * 40
+    with tarfile.open(
+        path, "w:gz", format=tarfile.PAX_FORMAT, pax_headers={"comment": revision}
+    ) as archive:
+        archive.add(root / "tracked.txt", arcname="tracked.txt")
+    digest = file_hash(path)
+
+    snapshot = _verified_source_snapshot(path, digest, revision, root)
+    assert snapshot["git_revision"] == revision
+    assert snapshot["verified_files"] == 1
+
+    with pytest.raises(ValueError, match="Git revision"):
+        _verified_source_snapshot(path, digest, "b" * 40, root)
+    (root / "untracked.txt").write_text("not in archive")
+    with pytest.raises(ValueError, match="outside"):
+        _verified_source_snapshot(path, digest, revision, root)
+
+
+def test_nvidia_smi_uuid_must_match_executed_device(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    completed = type(
+        "Completed",
+        (),
+        {
+            "stdout": "NVIDIA H200, GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee, 570.1, 143771\n"
+        },
+    )()
+    monkeypatch.setattr("subprocess.run", lambda *args, **kwargs: completed)
+    metadata = _nvidia_smi_metadata(0, {"uuid": "aaaaaaaabbbbccccddddeeeeeeeeeeee"})
+    assert metadata["name"] == "NVIDIA H200"
+    assert metadata["driver_version"] == "570.1"
+    assert metadata["memory_total_mib"] == 143771
+    with pytest.raises(ValueError, match="UUID differs"):
+        _nvidia_smi_metadata(0, {"uuid": "f" * 32})
 
 
 def test_validation_wrapper_is_a_publishable_nonpromotion_record() -> None:
@@ -138,11 +175,22 @@ def test_validation_wrapper_is_a_publishable_nonpromotion_record() -> None:
         tuning=tuning,
         candidate=candidate,
         allocation_id="unit-allocation",
-        source_revision="c" * 40,
-        source_archive_sha256="d" * 64,
+        source_snapshot={
+            "archive_sha256": "d" * 64,
+            "git_revision": "c" * 40,
+            "verified_files": 1,
+            "verified_bytes": 1,
+            "execution_root": "/source",
+        },
+        nvidia_smi={
+            "name": "NVIDIA H200",
+            "uuid": "GPU-unit",
+            "driver_version": "570.1",
+            "memory_total_mib": 143771,
+        },
     )
 
     validate_evidence(record)
     assert record["stages"]["production"]["status"] == "not-run"
     assert record["performance"]["status"] == "not-run"
-    assert record["settings"]["source_archive_sha256"] == "d" * 64
+    assert record["settings"]["source_snapshot"]["archive_sha256"] == "d" * 64
