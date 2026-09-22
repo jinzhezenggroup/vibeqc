@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import typing
 from dataclasses import asdict, dataclass
-from typing import Protocol, runtime_checkable
 
 from vibeqc_compiler.common.evidence import canonical_hash
 
@@ -235,36 +234,3 @@ class UnsupportedLibraryProvider:
         raise UnsupportedBackendFeature(
             f"{self.backend} {request.operation}: {self.reason}"
         )
-
-
-@runtime_checkable
-class AcceleratorRuntime(Protocol):
-    """Ownership-aware memory, streams/events, compilation and launch boundary.
-
-    Buffer/program/event handles must belong to the runtime's own context.
-    Implementations check byte bounds before transfers and release resources
-    deterministically; asynchronous submissions retain their input resources
-    until completion. Graph/device-enqueue APIs are optional capabilities.
-    """
-
-    def capabilities(self) -> RuntimeCapabilities: ...
-    def create_stream(self) -> object: ...
-    def allocate(self, nbytes: int) -> object: ...
-    def release(self, resource: object) -> None: ...
-    def write(self, buffer: object, data: bytes, *, offset: int = 0) -> None: ...
-    def read(self, buffer: object, nbytes: int, *, offset: int = 0) -> bytes: ...
-    def compile(self, source: str, *, options: tuple[str, ...] = ()) -> object: ...
-    def link(self, programs: tuple[object, ...]) -> object: ...
-    def launch(
-        self,
-        program: object,
-        kernel: str,
-        arguments: tuple[object, ...],
-        *,
-        items: int,
-        shape: ExecutionShape,
-    ) -> object: ...
-    def wait(self, event: object) -> None: ...
-    def reduce_sum(
-        self, buffer: object, count: int, *, workgroup: int = 64
-    ) -> object: ...

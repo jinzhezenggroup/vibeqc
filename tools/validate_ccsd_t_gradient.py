@@ -18,10 +18,10 @@ from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 
 from tools.cc_gradient_fixtures import inputs
 from tools.generate_validation_references import pyscf_molecule
-from tools.vibeqc_validation.schema import canonical_hash
 
 PYSCF_VERSION = "2.14.0"
 CASES = ("h2o", "nh3")

@@ -8,6 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.evidence import validate_evidence
 from vibeqc_compiler.integral.blocks import (
     BlockRequest,
     RawBlock,
@@ -34,8 +35,6 @@ from vibeqc_compiler.tensor import (
     execute,
     input_tensor,
 )
-
-from tools.vibeqc_validation.schema import validate_evidence
 
 
 def test_cli_exports_replayable_examples_and_shared_evidence(

@@ -15,11 +15,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 
 from tools.vibeqc_cc.solver import SolverOptions, solve
 from tools.vibeqc_posthf import MOBlock, ReferenceSnapshot
 from tools.vibeqc_posthf.providers import BlockResult, ConventionalProvider
-from tools.vibeqc_validation.schema import canonical_hash
 
 
 class _SavedProvider(ConventionalProvider):

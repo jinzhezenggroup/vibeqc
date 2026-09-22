@@ -1,5 +1,16 @@
 """Thin Python interface to the versioned native VIBEQC ABI."""
 
+from vibeqc_compiler.common.resources import (
+    ResourceAllocationError,
+    ResourceBudget,
+    ResourceCandidate,
+    ResourceEstimate,
+    ResourceIdentity,
+    ResourcePlan,
+    ResourceRequest,
+    ResourceSession,
+    plan_resources,
+)
 from vibeqc_compiler.dft.grid import GridPolicy, GridProfile, GridSpec
 
 from ._cuda_runtime import install_native_loader as _install_native_loader
@@ -104,17 +115,6 @@ from .projection import (
     project_occupied,
 )
 from .r2scan3c import load_r2scan3c_basis
-from .resources import (
-    ResourceAllocationError,
-    ResourceBudget,
-    ResourceCandidate,
-    ResourceEstimate,
-    ResourceIdentity,
-    ResourcePlan,
-    ResourceRequest,
-    ResourceSession,
-    plan_resources,
-)
 from .resources_hf import estimate_hf_resources
 from .resources_ks import estimate_ks_resources
 

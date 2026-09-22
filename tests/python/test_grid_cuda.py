@@ -7,14 +7,13 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.dft import GridSpec, NativeAO
 from vibeqc_compiler.dft.cuda import CudaGrid, compile_cuda
 from vibeqc_compiler.dft.fixtures import NAMES, basis_arguments, load_fixture
 from vibeqc_compiler.dft.prepared import PreparedGrid, PreparedGridBatch
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
-
-from tools.vibeqc_validation.schema import block_error
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("VIBEQC_GRID_CUDA_TEST") != "1", reason="opt-in Slurm CUDA gate"

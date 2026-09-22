@@ -8,11 +8,11 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.benchmark import (
     emit_ppps_resident_bra_benchmark_cuda,
     emit_shell_class_benchmark_cuda,
 )
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.fused_schedule import build_fused_shell_plan
 from vibeqc_compiler.integral.production import load_production_kernel_selections
 from vibeqc_compiler.integral.shell_spec import FUSED_SHELL_SPEC_BY_NAME

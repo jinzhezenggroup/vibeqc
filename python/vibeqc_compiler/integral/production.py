@@ -5,6 +5,11 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from vibeqc_compiler.common.cuda_target import (
+    cuda_target_info,
+    normalize_cuda_architecture,
+)
+
 from . import production_cost as _production_cost
 from . import production_profile as _production_profile
 from . import production_registry as _production_registry
@@ -17,7 +22,6 @@ from .capabilities import (
 from .cuda_emitter import emit_shell_class_fused_cuda
 from .cuda_lowering import emit_ppps_resident_bra_rys3_cuda
 from .cuda_schedule import ScheduleIR, ScheduleKind
-from .cuda_target import cuda_target_info, normalize_cuda_architecture
 from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer
 from .production_selection import KernelSelection, _selection_integral

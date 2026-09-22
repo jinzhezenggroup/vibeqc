@@ -6,6 +6,7 @@ import typing
 from pathlib import Path
 
 import pytest
+from vibeqc_compiler.common.evidence import block_error, new_evidence, outcome
 
 from tools.vibeqc_validation.publication import publish, validate_publication
 from tools.vibeqc_validation.retention import (
@@ -16,7 +17,6 @@ from tools.vibeqc_validation.retention import (
     inventory,
     tracked_blobs,
 )
-from tools.vibeqc_validation.schema import block_error, new_evidence, outcome
 
 ROOT = Path(__file__).resolve().parents[2]
 

@@ -5,9 +5,10 @@ import typing
 from copy import deepcopy
 from pathlib import Path
 
+from vibeqc_compiler.common.evidence import canonical_hash
+
 from tools.cc_endpoint_fixtures import load as load_endpoint
 from tools.cc_endpoint_fixtures import source_arguments as endpoint_source_arguments
-from tools.vibeqc_validation.schema import canonical_hash
 
 ROOT = Path(__file__).resolve().parents[1] / "tests/reference_data/cc/gradients"
 CASES = ("h2", "h2_shifted", "h2o", "nh3", "ch4", "h2_d_cartesian", "h2_d_spherical")

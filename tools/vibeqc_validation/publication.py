@@ -12,9 +12,10 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
+from vibeqc_compiler.common.evidence import validate_evidence
+
 from .record import decode_record
 from .retention import MAX_TRACKED_BYTES, RESULT_ROOT, classify, digest, safe_relative
-from .schema import validate_evidence
 
 SCHEMA = "vibeqc.benchmark-publication.v1"
 MANIFEST = "publication.json"

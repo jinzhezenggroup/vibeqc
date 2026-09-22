@@ -81,7 +81,6 @@ wheel.py-api = "py3"
 "src/scf/weighted_eri_runtime.hpp" = "vibeqc_compiler/assets/src/scf/weighted_eri_runtime.hpp"
 "include/vibeqc/vibeqc.h" = "vibeqc_compiler/assets/include/vibeqc/vibeqc.h"
 "include/vibeqc/generated_method_ids.h" = "vibeqc_compiler/assets/include/vibeqc/generated_method_ids.h"
-"external/libxc-7.0.0" = "vibeqc_compiler/assets/external/libxc-7.0.0"
 "upstream/libxc/7.0.0" = "vibeqc_compiler/assets/upstream/libxc/7.0.0"
 "upstream/libxc-fulltree/7.0.0" = "vibeqc_compiler/assets/upstream/libxc-fulltree/7.0.0"
 "external/xtbloom-d3" = "vibeqc_compiler/assets/external/xtbloom-d3"
@@ -117,7 +116,7 @@ relative_files = true
 source = ["python/vibeqc"]
 
 [tool.ruff]
-extend-exclude = ["upstream", "external/libxc-7.0.0", "cmake/3rdparty/implib", "benchmarks/results"]
+extend-exclude = ["upstream", "cmake/3rdparty/implib", "benchmarks/results"]
 
 [tool.ruff.lint]
 extend-select = [

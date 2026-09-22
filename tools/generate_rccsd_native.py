@@ -96,12 +96,12 @@ for _name, _value in {
 }.items():
     setattr(_tensor_package, _name, _value)
 
-# The CC equation modules only need canonical_hash from the validation facade;
+# The CC equation modules only need canonical_hash from the canonical evidence module;
 # providing it here avoids importing NumPy-backed evidence comparison helpers.
 import hashlib
 import json
 
-_validation_schema = types.ModuleType("tools.vibeqc_validation.schema")
+_validation_schema = types.ModuleType("vibeqc_compiler.common.evidence")
 
 
 def _canonical_hash(value: typing.Any) -> str:
@@ -110,7 +110,10 @@ def _canonical_hash(value: typing.Any) -> str:
 
 
 _validation_schema.canonical_hash = _canonical_hash
-sys.modules["tools.vibeqc_validation.schema"] = _validation_schema
+import vibeqc_compiler.common as _common_package
+
+_common_package.evidence = _validation_schema
+sys.modules["vibeqc_compiler.common.evidence"] = _validation_schema
 
 _cc_path = Path(__file__).resolve().parent / "vibeqc_cc"
 _cc_package = types.ModuleType("tools.vibeqc_cc")

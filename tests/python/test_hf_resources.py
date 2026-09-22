@@ -16,7 +16,7 @@ def test_singlepoint_native_detail_preserves_structured_resource_error(
 ) -> None:
     """Adding context detail must retain the exception's retry/evidence payload."""
     from vibeqc import resources_native
-    from vibeqc.resources import ResourceAllocationError
+    from vibeqc_compiler.common.resources import ResourceAllocationError
 
     calculator = Calculator(resource_budget=ResourceBudget(host_bytes=1 << 30))
     failure = (
@@ -136,7 +136,7 @@ def test_prepared_cpu_budget_gates_before_native_context_and_preserves_results(
 
 
 def test_bounded_fleet_samples_every_serial_item_and_restores_thread_scope() -> None:
-    from vibeqc.resources import CpuResourceObservation
+    from vibeqc_compiler.common.resources import CpuResourceObservation
 
     calculator = Calculator(resource_budget=ResourceBudget(host_bytes=10**6))
     with calculator.prepare_batch([H2] * 4) as batch:

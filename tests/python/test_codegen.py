@@ -325,9 +325,6 @@ def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility() -> 
     emitter = (
         REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "cuda_emitter.py"
     ).read_text(encoding="utf-8")
-    compatibility = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "dppp_dispatch.py"
-    ).read_text(encoding="utf-8")
     production = (
         REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
     ).read_text(encoding="utf-8")
@@ -336,8 +333,9 @@ def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility() -> 
     ).read_text(encoding="utf-8")
     assert "from . import cuda_lowering as _implementation" in emitter
     assert "dppp_dispatch" not in emitter
-    assert "from .cuda_lowering import" in compatibility
-    assert "emit_shell_class_fused_cuda" not in compatibility
+    assert not (
+        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "dppp_dispatch.py"
+    ).exists()
     assert "from .dppp_dispatch import" not in production
     assert "from .dppp_dispatch import" not in benchmark
 
@@ -5648,7 +5646,7 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         "vibeqc_compiler.integral.tuning.driver._compile_trial", successful_compile
     )
     monkeypatch.setattr(
-        "vibeqc_compiler.integral.cuda_adapter.CudaCompilerAdapter.link",
+        "vibeqc_compiler.common.cuda_adapter.CudaCompilerAdapter.link",
         lambda *args, **kwargs: subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
         ),
@@ -5664,7 +5662,7 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         "fused_ms": 1.0,
     }
     monkeypatch.setattr(
-        "vibeqc_compiler.integral.cuda_adapter.CudaBenchmarkExecutor.run",
+        "vibeqc_compiler.common.cuda_adapter.CudaBenchmarkExecutor.run",
         lambda *args, **kwargs: subprocess.CompletedProcess(
             args=[],
             returncode=0,

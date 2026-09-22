@@ -54,7 +54,7 @@ module = import_maple_file(root, 'gga_c_pbe.mpl', defines={'gga_c_pbe_params'}, 
 graph = Graph()
 energy = module.call(graph, 'f', graph.constant(1), graph.constant(0), graph.constant(0), 0, 0)
 assert -1 < graph.evaluate(energy, {}) < 0
-assert asset_path('external/libxc-7.0.0/manifest.json').is_file()
+assert asset_path('upstream/libxc/7.0.0/manifest.json').is_file()
 """
     completed = subprocess.run(
         [sys.executable, "-S", "-c", script],

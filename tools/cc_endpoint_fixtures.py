@@ -6,10 +6,10 @@ from pathlib import Path
 
 import numpy as np
 from vibeqc import Atom
+from vibeqc_compiler.common.evidence import canonical_hash
 
 from tools.vibeqc_posthf import ReferenceSnapshot
 from tools.vibeqc_validation.fixtures import calculator_inputs, molecular_inputs
-from tools.vibeqc_validation.schema import canonical_hash
 
 ROOT = Path(__file__).resolve().parents[1] / "tests/reference_data/cc/endpoints"
 

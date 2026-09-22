@@ -127,7 +127,7 @@ def emit_lda_xc_pw() -> str:
     emitter = ScalarCEmitter(graph, {"rho_sixth_root": "x"})
     emitter.emit(roots)
     lines = [
-        "// Generated from audited MPL-2.0 expressions; see external/libxc-7.0.0/COPYING.",
+        "// Generated from audited MPL-2.0 expressions; see upstream/libxc/7.0.0/COPYING.",
         "#pragma once",
         "#include <cmath>",
         "#include <cfloat>",
