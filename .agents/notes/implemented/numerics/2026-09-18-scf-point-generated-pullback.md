@@ -105,5 +105,5 @@ molecular gradients require a different ownership boundary.
 - Issue #162: native LDA/PBE RKS/UKS SCF ownership.
 - Issue #163, slice A: stationary XC geometry contract.
 - PR #455: SCF point bridge plus generated Cartesian pullback.
-- [Current method status](../../../../docs/methods.md).
+- [Current method status](../../../../docs/user/methods.md).
 - [Prior live-native handoff decision](2026-09-16-stationary-native-handoff.md).

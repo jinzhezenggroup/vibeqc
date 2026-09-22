@@ -109,7 +109,7 @@ separate work. Arbitrary higher derivatives are not authorized by this first rul
 
 ## References
 
-#465, #193, #179, #151, #293; [current contract](../../../../docs/implicit_response.md).
+#465, #193, #179, #151, #293; [current contract](../../../../docs/developer/implicit_response.md).
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
