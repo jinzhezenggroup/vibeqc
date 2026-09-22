@@ -99,6 +99,7 @@ endfunction()
 function(vibeqc_add_integrals_scf_sources target)
   target_sources(${target} PRIVATE
     src/integrals/s_integrals.cpp
+    src/integrals/density_fitting_metric.cpp
     src/integrals/generated_df_cpu.cpp
     src/integrals/ecp.cpp
     src/methods/hf_method.cpp
