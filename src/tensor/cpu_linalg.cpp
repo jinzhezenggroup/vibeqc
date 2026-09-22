@@ -93,6 +93,30 @@ bool trsm_unit_diagonal(char value) {
   throw std::invalid_argument("CPU TRSM diagonal must be U or N");
 }
 
+bool trmm_left_side(char value) {
+  if (value == 'L' || value == 'l') return true;
+  if (value == 'R' || value == 'r') return false;
+  throw std::invalid_argument("CPU TRMM side must be L or R");
+}
+
+bool trmm_upper_triangle(char value) {
+  if (value == 'U' || value == 'u') return true;
+  if (value == 'L' || value == 'l') return false;
+  throw std::invalid_argument("CPU TRMM triangle must be U or L");
+}
+
+bool trmm_transpose(char value) {
+  if (value == 'N' || value == 'n') return false;
+  if (value == 'T' || value == 't') return true;
+  throw std::invalid_argument("CPU TRMM transpose must be N or T");
+}
+
+bool trmm_unit_diagonal(char value) {
+  if (value == 'U' || value == 'u') return true;
+  if (value == 'N' || value == 'n') return false;
+  throw std::invalid_argument("CPU TRMM diagonal must be U or N");
+}
+
 void validate_plan(const CpuLinalgPlan& plan) {
   if (plan.provider_threads < 1)
     throw std::invalid_argument("CPU linear algebra thread count must be positive");
@@ -224,6 +248,30 @@ void scalar_trsm(bool left, bool upper, bool trans, bool unit_diagonal, std::siz
       }
       if (!unit_diagonal) value /= a_value(column, column);
       b[row * n + column] = value;
+    }
+  }
+}
+
+void scalar_trmm(bool left, bool upper, bool trans, bool unit_diagonal, std::size_t m,
+                 std::size_t n, const double* a, double* b, double alpha) {
+  const std::size_t order = left ? m : n;
+  const auto a_value = [&](std::size_t row, std::size_t column) {
+    if (row == column && unit_diagonal) return 1.0;
+    const std::size_t stored_row = trans ? column : row;
+    const std::size_t stored_column = trans ? row : column;
+    const bool stored = upper ? stored_column >= stored_row : stored_column <= stored_row;
+    return stored ? a[stored_row * order + stored_column] : 0.0;
+  };
+  const std::vector<double> input(b, b + m * n);
+  for (std::size_t i = 0; i < m; ++i) {
+    for (std::size_t j = 0; j < n; ++j) {
+      double sum = 0.0;
+      if (left) {
+        for (std::size_t p = 0; p < m; ++p) sum += a_value(i, p) * input[p * n + j];
+      } else {
+        for (std::size_t p = 0; p < n; ++p) sum += input[i * n + p] * a_value(p, j);
+      }
+      b[i * n + j] = alpha * sum;
     }
   }
 }
@@ -507,6 +555,26 @@ void openblas_trsm(bool left, bool upper, bool trans, bool unit_diagonal, std::s
                     static_cast<int>(n), alpha, a, order, b, static_cast<int>(n));
 #else
   cblas_dtrsm(CblasRowMajor, side, triangle, transpose_a, diagonal, static_cast<int>(m),
+              static_cast<int>(n), alpha, a, order, b, static_cast<int>(n));
+#endif
+}
+
+void openblas_trmm(bool left, bool upper, bool trans, bool unit_diagonal, std::size_t m,
+                   std::size_t n, const double* a, double* b, double alpha,
+                   const CpuLinalgPlan& plan) {
+  const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  if (m > limit || n > limit) throw std::length_error("OpenBLAS TRMM dimensions exceed int range");
+  OpenBlasThreadGuard guard(plan);
+  const auto side = left ? CblasLeft : CblasRight;
+  const auto triangle = upper ? CblasUpper : CblasLower;
+  const auto transpose_a = trans ? CblasTrans : CblasNoTrans;
+  const auto diagonal = unit_diagonal ? CblasUnit : CblasNonUnit;
+  const int order = static_cast<int>(left ? m : n);
+#if VIBEQC_OPENBLAS_SCIPY_PREFIX
+  scipy_cblas_dtrmm(CblasRowMajor, side, triangle, transpose_a, diagonal, static_cast<int>(m),
+                    static_cast<int>(n), alpha, a, order, b, static_cast<int>(n));
+#else
+  cblas_dtrmm(CblasRowMajor, side, triangle, transpose_a, diagonal, static_cast<int>(m),
               static_cast<int>(n), alpha, a, order, b, static_cast<int>(n));
 #endif
 }
@@ -842,6 +910,40 @@ void cpu_trsm(char side, char uplo, char trans, char diag, std::size_t m, std::s
   }
 #endif
   scalar_trsm(left, upper, transposed, unit_diagonal, m, n, a, b, alpha);
+}
+
+void cpu_trmm(char side, char uplo, char trans, char diag, std::size_t m, std::size_t n,
+              const double* a, double* b, double alpha, const CpuLinalgPlan& plan) {
+  const bool left = trmm_left_side(side);
+  const bool upper = trmm_upper_triangle(uplo);
+  const bool transposed = trmm_transpose(trans);
+  const bool unit_diagonal = trmm_unit_diagonal(diag);
+  validate_plan(plan);
+  if (!m || !n) return;
+  const auto elements = checked_matrix_elements(m, n);
+  if (!b) throw std::invalid_argument("CPU TRMM received null output storage");
+  if (alpha == 0.0) {
+    std::fill(b, b + elements, 0.0);
+    return;
+  }
+  const std::size_t order = left ? m : n;
+  checked_matrix_elements(order, order);
+  if (!a) throw std::invalid_argument("CPU TRMM received null triangular storage");
+
+  CpuLinalgProvider provider = plan.provider;
+  if (provider == CpuLinalgProvider::automatic) {
+    provider =
+        fits_openblas(m, n, order) ? resolve_cpu_linalg_provider(plan) : CpuLinalgProvider::scalar;
+  } else {
+    provider = resolve_cpu_linalg_provider(plan);
+  }
+#if VIBEQC_HAS_OPENBLAS
+  if (provider == CpuLinalgProvider::openblas) {
+    openblas_trmm(left, upper, transposed, unit_diagonal, m, n, a, b, alpha, plan);
+    return;
+  }
+#endif
+  scalar_trmm(left, upper, transposed, unit_diagonal, m, n, a, b, alpha);
 }
 
 int cpu_cholesky_lower(double* matrix, std::size_t n, const CpuLinalgPlan& plan) {
