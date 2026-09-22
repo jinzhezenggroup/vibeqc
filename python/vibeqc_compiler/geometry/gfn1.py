@@ -1,9 +1,8 @@
-"""Compiler-owned GFN1-xTB coordination and repulsion equations (#837).
+"""Compiler-owned GFN1-xTB short-range geometry equations (#837, #853).
 
 Only pure geometry science lives here. SCC iteration, occupations, eigensolvers,
-and convergence policy remain runtime-owned. The GFN1 halogen correction is
-intentionally excluded from this pair-only slice because its
-donor-neighbor-acceptor angular term requires a triplet/angle topology.
+and convergence policy remain runtime-owned. The halogen correction uses the
+generic role-ordered TripletIR graph; no handwritten derivative lives here.
 """
 
 from __future__ import annotations
@@ -32,6 +31,8 @@ from ._gfn1_data import (
     GFN1_COORDINATION_STEEPNESS,
     GFN1_CUTOFF_BOHR,
     GFN1_GEOMETRY_ELEMENT_ROWS,
+    GFN1_HALOGEN_DAMPING,
+    GFN1_HALOGEN_RADIUS_SCALE,
     GFN1_MINIMUM_DISTANCE_SQUARED_BOHR2,
     GFN1_PARAMETER_JSON_SHA256,
     GFN1_REPULSION_KEXP,
@@ -46,6 +47,13 @@ from .ir import (
     pair_to_atom,
     pair_to_system,
 )
+from .triplet import (
+    TripletProgram,
+    TripletTensorContext,
+    TripletTopology,
+    build_triplet_program,
+    lower_triplet_geometry,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -57,6 +65,14 @@ if TYPE_CHECKING:
 
 GFN1_SHORT_RANGE_VERSION = "gfn1-short-range-ir-v1"
 GFN1_XTBLOOM_REVISION = "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+GFN1_HALOGEN_VERSION = "gfn1-halogen-triplet-ir-v1"
+GFN1_HALOGEN_CUTOFF_BOHR = 20.0
+GFN1_HALOGEN_DONOR_ELEMENTS = (17, 35, 53, 85)
+GFN1_HALOGEN_ACCEPTOR_ELEMENTS = (7, 8, 15, 16)
+GFN1_TBLITE_REVISION = "fa8a4416e8fe093d0075bc10ac875494c2a449a9"
+GFN1_TBLITE_HALOGEN_SHA256 = (
+    "ed3469a1e07d95d75bb09b1a4615616a9416aff425c9cc46ae057dca450ad449"
+)
 
 
 @dataclass(frozen=True)
@@ -99,6 +115,41 @@ GFN1_SHORT_RANGE_PARAMETER_IDENTITY = canonical_hash(
                 "covalent_radius_bohr": float(element.covalent_radius_bohr).hex(),
                 "arep": float(element.arep).hex(),
                 "zeff": float(element.zeff).hex(),
+                "atomic_radius_bohr": float(element.atomic_radius_bohr).hex(),
+                "xbond": float(element.xbond).hex(),
+            }
+            for element in GFN1_GEOMETRY_ELEMENTS.values()
+        ],
+    }
+)
+
+GFN1_HALOGEN_PARAMETER_IDENTITY = canonical_hash(
+    {
+        "version": GFN1_HALOGEN_VERSION,
+        "xtbloom_revision": GFN1_XTBLOOM_REVISION,
+        "gfn1_parameter_json_sha256": GFN1_PARAMETER_JSON_SHA256,
+        "tblite_revision": GFN1_TBLITE_REVISION,
+        "tblite_halogen_source": {
+            "path": "src/tblite/classical/halogen.f90",
+            "sha256": GFN1_TBLITE_HALOGEN_SHA256,
+        },
+        "roles": {
+            "triplet": ("nearest-neighbor", "halogen-donor", "acceptor"),
+            "center": "halogen-donor",
+            "donor_elements": GFN1_HALOGEN_DONOR_ELEMENTS,
+            "acceptor_elements": GFN1_HALOGEN_ACCEPTOR_ELEMENTS,
+            "nearest_neighbor_tie_break": "lowest-atom-index",
+            "degenerate_neighbor_acceptor": "omitted-identically-zero",
+        },
+        "cutoff_bohr": float(GFN1_HALOGEN_CUTOFF_BOHR).hex(),
+        "cutoff_inclusive": True,
+        "damping": float(GFN1_HALOGEN_DAMPING).hex(),
+        "radius_scale": float(GFN1_HALOGEN_RADIUS_SCALE).hex(),
+        "angular_exponent": 6,
+        "radial_exponents": (6, 12),
+        "elements": [
+            {
+                "z": element.atomic_number,
                 "atomic_radius_bohr": float(element.atomic_radius_bohr).hex(),
                 "xbond": float(element.xbond).hex(),
             }
@@ -335,7 +386,212 @@ def build_gfn1_short_range_program(
             "parameter_identity": GFN1_SHORT_RANGE_PARAMETER_IDENTITY,
             "xtbloom_revision": GFN1_XTBLOOM_REVISION,
             "topology": topology.to_payload(),
-            "halogen_lowering": "requires-triplet-ir",
+            "separate_halogen_lowering_version": GFN1_HALOGEN_VERSION,
         },
     )
     return Gfn1ShortRangeProgram(geometry, topology, program)
+
+
+def build_gfn1_halogen_topology(
+    geometry: GeometryIR,
+    coordinates: ArrayLike,
+) -> TripletTopology:
+    """Build pinned nonperiodic ``(neighbor, donor, acceptor)`` triplets.
+
+    tblite enumerates every halogen-donor/acceptor pair within an inclusive
+    20-bohr cutoff, then chooses the donor's closest positive-distance atom.
+    The strict nearest-neighbor comparison makes the lowest atom index the tie
+    break. If that neighbor is the acceptor, the angular factor is identically
+    zero, so the repeated-role term is omitted rather than violating the
+    three-distinct-atom TripletIR contract.
+    """
+
+    if not isinstance(geometry, GeometryIR):
+        raise TypeError("geometry must be GeometryIR")
+    if geometry.parameter_identity != GFN1_SHORT_RANGE_PARAMETER_IDENTITY:
+        raise ValueError(
+            "geometry is not bound to the canonical GFN1 parameter identity"
+        )
+    coordinates = _validated_coordinates(geometry, coordinates)
+    triplets: list[tuple[int, int, int]] = []
+    for donor, donor_element in enumerate(geometry.elements):
+        if donor_element not in GFN1_HALOGEN_DONOR_ELEMENTS:
+            continue
+        acceptors = []
+        for acceptor, acceptor_element in enumerate(geometry.elements):
+            if acceptor_element not in GFN1_HALOGEN_ACCEPTOR_ELEMENTS:
+                continue
+            distance = float(np.linalg.norm(coordinates[acceptor] - coordinates[donor]))
+            if distance == 0.0:
+                raise ValueError("GFN1 halogen donor/acceptor coincidence is undefined")
+            if distance <= GFN1_HALOGEN_CUTOFF_BOHR:
+                acceptors.append(acceptor)
+        if not acceptors:
+            continue
+
+        nearest = None
+        nearest_distance = np.inf
+        for candidate in range(geometry.atom_count):
+            distance = float(
+                np.linalg.norm(coordinates[candidate] - coordinates[donor])
+            )
+            if distance > 0.0 and distance < nearest_distance:
+                nearest = candidate
+                nearest_distance = distance
+        if nearest is None:
+            raise ValueError("GFN1 halogen donor has no positive-distance neighbor")
+
+        triplets.extend(
+            (nearest, donor, acceptor) for acceptor in acceptors if acceptor != nearest
+        )
+    return TripletTopology(geometry.atom_count, tuple(sorted(triplets)))
+
+
+def _require_gfn1_halogen_topology(
+    geometry: GeometryIR, topology: TripletTopology
+) -> None:
+    if not isinstance(topology, TripletTopology):
+        raise TypeError("topology must be TripletTopology")
+    if geometry.atom_count != topology.atom_count:
+        raise ValueError("GFN1 geometry/topology atom counts disagree")
+    donor_acceptors: set[tuple[int, int]] = set()
+    for _neighbor, donor, acceptor in topology.triplets:
+        if geometry.elements[donor] not in GFN1_HALOGEN_DONOR_ELEMENTS:
+            raise ValueError("GFN1 halogen topology center must be a halogen donor")
+        if geometry.elements[acceptor] not in GFN1_HALOGEN_ACCEPTOR_ELEMENTS:
+            raise ValueError("GFN1 halogen topology third role must be an acceptor")
+        pair = (donor, acceptor)
+        if pair in donor_acceptors:
+            raise ValueError("GFN1 halogen topology repeats a donor/acceptor pair")
+        donor_acceptors.add(pair)
+
+
+def _triplet_constant(context: TripletTensorContext, values: Iterable[float]) -> Node:
+    literals = tuple(repr(float(value)) for value in values)
+    if len(literals) != len(context.topology.triplets):
+        raise ValueError("GFN1 halogen parameter length disagrees with topology")
+    return constant(
+        literals,
+        TensorSpec(
+            (context.triplet_index,),
+            dtype=context.geometry.dtype,
+            role="constant",
+        ),
+    )
+
+
+def _gfn1_halogen_triplet_energy(context: TripletTensorContext) -> Node:
+    parameters = [
+        (
+            gfn1_element_parameters(donor),
+            gfn1_element_parameters(acceptor),
+        )
+        for _neighbor, donor, acceptor in context.triplet_elements
+    ]
+    count = len(parameters)
+    one = _triplet_constant(context, (1.0,) * count)
+    half = _triplet_constant(context, (0.5,) * count)
+    damping = _triplet_constant(context, (GFN1_HALOGEN_DAMPING,) * count)
+    strength = _triplet_constant(
+        context, (donor.xbond for donor, _acceptor in parameters)
+    )
+    radius = _triplet_constant(
+        context,
+        (
+            GFN1_HALOGEN_RADIUS_SCALE
+            * (donor.atomic_radius_bohr + acceptor.atomic_radius_bohr)
+            for donor, acceptor in parameters
+        ),
+    )
+
+    angular_base = add(half, multiply(half, context.cosine), coefficients=(1, -1))
+    angular_squared = multiply(angular_base, angular_base)
+    angular = multiply(angular_squared, multiply(angular_squared, angular_squared))
+    radius_ratio = divide(radius, context.third_distance)
+    ratio_six = power(radius_ratio, 6)
+    ratio_twelve = multiply(ratio_six, ratio_six)
+    radial = divide(
+        add(ratio_twelve, multiply(damping, ratio_six), coefficients=(1, -1)),
+        add(one, ratio_twelve),
+    )
+    return multiply(multiply(angular, strength), radial)
+
+
+@dataclass(frozen=True)
+class Gfn1HalogenGeometryProgram:
+    """GFN1 halogen energy and generated Cartesian derivatives for one topology."""
+
+    geometry: GeometryIR
+    topology: TripletTopology
+    triplet_program: TripletProgram
+    parameter_identity: str = GFN1_HALOGEN_PARAMETER_IDENTITY
+    version: str = GFN1_HALOGEN_VERSION
+
+    def __post_init__(self) -> None:
+        if self.parameter_identity != GFN1_HALOGEN_PARAMETER_IDENTITY:
+            raise ValueError("canonical GFN1 halogen parameter identity required")
+        if self.geometry.parameter_identity != GFN1_SHORT_RANGE_PARAMETER_IDENTITY:
+            raise ValueError("GFN1 halogen geometry parameter identity mismatch")
+        _require_gfn1_halogen_topology(self.geometry, self.topology)
+        if self.triplet_program.geometry != self.geometry:
+            raise ValueError("GFN1 halogen TripletIR geometry mismatch")
+        if self.triplet_program.topology != self.topology:
+            raise ValueError("GFN1 halogen TripletIR topology mismatch")
+        if self.triplet_program.parameter_identity != self.parameter_identity:
+            raise ValueError("GFN1 halogen TripletIR parameter identity mismatch")
+        if self.triplet_program.triplet_kind != "gfn1-halogen-neighbor-donor-acceptor":
+            raise ValueError("GFN1 halogen TripletIR kind mismatch")
+        if self.version != GFN1_HALOGEN_VERSION:
+            raise ValueError("unsupported GFN1 halogen compiler version")
+
+    @property
+    def program(self) -> Program:
+        return self.triplet_program.program
+
+    @property
+    def identity(self) -> str:
+        return canonical_hash(
+            {
+                "version": self.version,
+                "triplet_program": self.triplet_program.to_payload(),
+                "parameter_identity": self.parameter_identity,
+            }
+        )
+
+    def validate_execution_identity(self, identity: str) -> None:
+        if identity != self.identity:
+            raise ValueError("stale GFN1 halogen compiler execution state")
+
+    def validate_coordinates(self, coordinates: ArrayLike) -> None:
+        expected = build_gfn1_halogen_topology(self.geometry, coordinates)
+        if expected.identity != self.topology.identity:
+            raise ValueError("stale GFN1 halogen topology for changed coordinates")
+
+    def coordinate_jvp(self) -> object:
+        return self.triplet_program.coordinate_jvp()
+
+    def coordinate_vjp(self) -> object:
+        return self.triplet_program.coordinate_vjp()
+
+
+def build_gfn1_halogen_geometry_program(
+    geometry: GeometryIR,
+    topology: TripletTopology,
+) -> Gfn1HalogenGeometryProgram:
+    """Lower the pinned GFN1 halogen scalar expression through TripletIR."""
+
+    if not isinstance(geometry, GeometryIR):
+        raise TypeError("geometry must be GeometryIR")
+    if geometry.parameter_identity != GFN1_SHORT_RANGE_PARAMETER_IDENTITY:
+        raise ValueError(
+            "geometry is not bound to the canonical GFN1 parameter identity"
+        )
+    _require_gfn1_halogen_topology(geometry, topology)
+    context = lower_triplet_geometry(geometry, topology)
+    triplet_program = build_triplet_program(
+        context,
+        _gfn1_halogen_triplet_energy(context),
+        parameter_identity=GFN1_HALOGEN_PARAMETER_IDENTITY,
+        triplet_kind="gfn1-halogen-neighbor-donor-acceptor",
+    )
+    return Gfn1HalogenGeometryProgram(geometry, topology, triplet_program)
