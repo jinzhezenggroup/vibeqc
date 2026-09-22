@@ -1,6 +1,7 @@
 # User-local CUDA autotuning
 
-Untuned GPUs use `portable_cuda` and the generic CUDA implementation immediately.
+Builds for untuned GPUs must opt into `portable_cuda` explicitly; `auto`
+never hides a missing tuned profile behind the generic CUDA implementation.
 Autotuning is optional and never runs during installation. A local profile
 contains a validated native library and its evidence, so later calculations can
 use the generated kernels without rebuilding them.

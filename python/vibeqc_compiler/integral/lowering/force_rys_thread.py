@@ -47,8 +47,9 @@ def _emit_rys_thread_force_consumer_cuda(
         raise ValueError(
             "direct Rys thread lowering requires a two- or three-root plan"
         )
-    if plan.schedule.block_threads != 32:
-        raise ValueError("direct Rys thread tasks currently use one CUDA warp")
+    lane_count = plan.schedule.warp_size
+    if plan.schedule.block_threads != lane_count:
+        raise ValueError("direct Rys thread tasks require exactly one target warp")
 
     recovered_atomic_lines = []
     for recovered_index, center in enumerate(program.recovered_derivative_centers):
@@ -136,7 +137,9 @@ def _emit_rys_thread_force_consumer_cuda(
         integral=plan.kernel.integral,
     )
     fourth_atomic_code = recovered_atomic_code
-    kernel_qualifier = f"__launch_bounds__(32, {minimum_blocks_per_sm})"
+    kernel_qualifier = (
+        f"__launch_bounds__({plan.schedule.block_threads}, {minimum_blocks_per_sm})"
+    )
     # Start from the shared DPPP skeleton so shell specialization also renames
     # this helper.  A PPPS-specific global symbol collides as soon as a second
     # scalar Rys shell is emitted into another production shard.
@@ -164,7 +167,7 @@ template <bool Unrestricted>
 __device__ __noinline__ bool generated_dppp_rys3_fill_weights(
     const GeneratedDpppShellTask& task,
     const GeneratedDpppRysThreadContext& context,
-    double (&component_weights)[kGeneratedDpppComponentCount][32]) {{
+    double (&component_weights)[kGeneratedDpppComponentCount][{lane_count}]) {{
   const unsigned lane = threadIdx.x;
   bool any_component = false;
 {weight_code}
@@ -175,8 +178,8 @@ template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_rys3_force_task(
     const GeneratedDpppRysThreadContext& context,
     std::size_t task_index,
-    double (&component_weights)[kGeneratedDpppComponentCount][32],
-    double (&roots_weights)[{2 * program.nroots}][32]) {{
+    double (&component_weights)[kGeneratedDpppComponentCount][{lane_count}],
+    double (&roots_weights)[{2 * program.nroots}][{lane_count}]) {{
   const GeneratedDpppShellTask& task = context.tasks[task_index];
   if (!generated_dppp_rys3_fill_weights<Unrestricted>(
           task, context, component_weights)) {{
@@ -240,7 +243,7 @@ __device__ __forceinline__ void generated_dppp_rys3_force_task(
       const double rho = p * q / (p + q);
       generated_dppp_rys3_roots(
           rho * (dx * dx + dy * dy + dz * dz),
-          &roots_weights[0][lane], 32U);
+          &roots_weights[0][lane], {lane_count}U);
       const double primitive_prefactor =
           -34.986836655249725 * first_pair.weighted_coefficient *
           second_pair.weighted_coefficient / (p * q * sqrt(p + q));
@@ -285,8 +288,8 @@ __device__ __forceinline__ void generated_dppp_rys3_force_persistent(
     std::uint32_t* task_head) {{
   __shared__ std::uint32_t task_base;
   __shared__ GeneratedDpppRysThreadContext context;
-  __shared__ double component_weights[kGeneratedDpppComponentCount][32];
-  __shared__ double roots_weights[{2 * program.nroots}][32];
+  __shared__ double component_weights[kGeneratedDpppComponentCount][{lane_count}];
+  __shared__ double roots_weights[{2 * program.nroots}][{lane_count}];
   if (threadIdx.x == 0U) {{
     context.tasks = tasks;
     context.primitive_pairs = primitive_pairs;
@@ -300,7 +303,7 @@ __device__ __forceinline__ void generated_dppp_rys3_force_persistent(
   }}
   __syncthreads();
   while (true) {{
-    if (threadIdx.x == 0U) task_base = atomicAdd(task_head, 32U);
+    if (threadIdx.x == 0U) task_base = atomicAdd(task_head, {lane_count}U);
     __syncthreads();
     if (task_base >= *task_count) return;
     const std::uint32_t task_index = task_base + threadIdx.x;
