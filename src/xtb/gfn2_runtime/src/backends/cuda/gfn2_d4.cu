@@ -8,30 +8,22 @@
 
 #include "backends/cuda/cuda_atomics.cuh"
 #include "backends/cuda/gfn2_d4.cuh"
+#include "dft/dispersion/d4_math.hpp"
 
 namespace xtbloom::detail::cuda {
 namespace {
 
 constexpr int kThreadsPerBlock = 256;
-constexpr double kChargeScalingHeight = 3.0;
-constexpr double kChargeScalingSteepness = 2.0;
-constexpr double kReferenceWeightFactor = 6.0;
-constexpr double kMinimumWeightNorm = 1.4916681462400413e-154;
+struct Gfn2D4MethodPolicy {
+  double s6, s8, s9, a1, a2, ga, gc;
+};
+inline constexpr Gfn2D4MethodPolicy kD4MethodParameters{1.0, 2.7, 5.0, 0.52, 5.0, 3.0, 2.0};
+namespace d4_math = ::vibeqc::dft::dispersion::math;
 constexpr double kCoordinationCutoffSquared =
     kGfn2D4CoordinationCutoffBohr * kGfn2D4CoordinationCutoffBohr;
 constexpr double kTwoBodyCutoffSquared = kGfn2D4TwoBodyCutoffBohr * kGfn2D4TwoBodyCutoffBohr;
 constexpr double kAtmCutoffSquared = kGfn2D4AtmCutoffBohr * kGfn2D4AtmCutoffBohr;
 constexpr double kMinimumDistanceSquared = 1.0e-12;
-constexpr double kCoordinationSteepness = 7.5;
-constexpr double kEnK4 = 4.10451;
-constexpr double kEnK5 = 19.08857;
-constexpr double kEnK6 = 2.0 * 11.28174 * 11.28174;
-constexpr double kInverseSqrtPi = 0.5641895835477562869480794515607726;
-constexpr double kDispersionS6 = 1.0;
-constexpr double kDispersionS8 = 2.7;
-constexpr double kDispersionA1 = 0.52;
-constexpr double kDispersionA2 = 5.0;
-constexpr double kDispersionS9 = 5.0;
 constexpr double kAtmExponent = 16.0;
 constexpr std::int64_t kMaximumInt64 = 9223372036854775807LL;
 
@@ -173,21 +165,6 @@ __device__ bool packed_pair_count(std::int64_t atoms, std::int64_t& pairs) {
   return true;
 }
 
-__device__ double charge_scale(double a, double c, double qref, double qmod) {
-  if (qmod < 0.0) {
-    return exp(a);
-  }
-  return exp(a * (1.0 - exp(c * (1.0 - qref / qmod))));
-}
-
-__device__ double charge_scale_derivative(double a, double c, double qref, double qmod) {
-  if (qmod < 0.0) {
-    return 0.0;
-  }
-  const double inner = exp(c * (1.0 - qref / qmod));
-  return -a * c * inner * charge_scale(a, c, qref, qmod) * qref / (qmod * qmod);
-}
-
 /* Scalar generations support ordinary launches; a stable device pointer is
  * used by the replay-safe overloads so CUDA Graph capture never freezes an
  * old host epoch. */
@@ -232,22 +209,13 @@ __device__ bool evaluate_d4_pair_geometry(Gfn2D4DeviceBatch batch,
   values->damping = 0.0;
   values->damping_derivative = 0.0;
   if (values->distance_squared <= kTwoBodyCutoffSquared) {
-    const Gfn2D4DeviceElementData first_element =
-        parameters.elements[batch.atomic_numbers[first] - 1];
-    const Gfn2D4DeviceElementData second_element =
-        parameters.elements[batch.atomic_numbers[second] - 1];
-    const double rrij = 3.0 * first_element.r4r2 * second_element.r4r2;
-    const double r0 = kDispersionA1 * sqrt(rrij) + kDispersionA2;
-    const double r2_squared = values->distance_squared * values->distance_squared;
-    const double r2_cubed = r2_squared * values->distance_squared;
-    const double r0_squared = r0 * r0;
-    const double r0_fourth = r0_squared * r0_squared;
-    const double r0_sixth = r0_fourth * r0_squared;
-    const double t6 = 1.0 / (r2_cubed + r0_sixth);
-    const double t8 = 1.0 / (r2_squared * r2_squared + r0_fourth * r0_fourth);
-    values->damping = kDispersionS6 * t6 + kDispersionS8 * rrij * t8;
-    values->damping_derivative = kDispersionS6 * (-6.0 * r2_squared * t6 * t6) +
-                                 kDispersionS8 * rrij * (-8.0 * r2_cubed * t8 * t8);
+    const auto damping = d4_math::pair_damping(
+        parameters.elements[batch.atomic_numbers[first] - 1],
+        parameters.elements[batch.atomic_numbers[second] - 1], values->distance_squared,
+        kD4MethodParameters.s6, kD4MethodParameters.s8, kD4MethodParameters.a1,
+        kD4MethodParameters.a2);
+    values->damping = damping.value;
+    values->damping_derivative = damping.derivative;
   }
   return isfinite(values->damping) && isfinite(values->damping_derivative) &&
          values->damping >= 0.0;
@@ -428,19 +396,19 @@ __global__ void d4_pairlist_role_preflight_kernel(
   }
 }
 
+__device__ d4_math::CoordinationPair d4_coordination_pair(Gfn2D4DeviceParameters parameters,
+                                                          Gfn2D4DeviceBatch batch,
+                                                          std::int64_t first, std::int64_t second,
+                                                          double distance_squared) {
+  return d4_math::coordination_pair(parameters.elements[batch.atomic_numbers[first] - 1],
+                                    parameters.elements[batch.atomic_numbers[second] - 1],
+                                    sqrt(distance_squared));
+}
+
 __device__ double d4_coordination_count(Gfn2D4DeviceParameters parameters, Gfn2D4DeviceBatch batch,
                                         std::int64_t first, std::int64_t second,
                                         double distance_squared) {
-  const Gfn2D4DeviceElementData first_element =
-      parameters.elements[batch.atomic_numbers[first] - 1];
-  const Gfn2D4DeviceElementData second_element =
-      parameters.elements[batch.atomic_numbers[second] - 1];
-  const double radius = first_element.covalent_radius + second_element.covalent_radius;
-  const double en_delta = fabs(first_element.electronegativity - second_element.electronegativity);
-  const double en_factor = kEnK4 * exp(-((en_delta + kEnK5) * (en_delta + kEnK5)) / kEnK6);
-  const double distance = sqrt(distance_squared);
-  const double exponent = kCoordinationSteepness * (distance - radius) / radius;
-  return 0.5 * en_factor * (1.0 + erf(-exponent));
+  return d4_coordination_pair(parameters, batch, first, second, distance_squared).value;
 }
 
 __global__ void build_d4_pairlist_coordination_kernel(Gfn2D4DeviceBatch batch,
@@ -625,18 +593,11 @@ __global__ void build_d4_geometry_pairs_kernel(Gfn2D4DeviceBatch batch,
       if (distance_squared <= kTwoBodyCutoffSquared) {
         const Gfn2D4DeviceElementData first_element =
             parameters.elements[batch.atomic_numbers[first] - 1];
-        const double rrij = 3.0 * first_element.r4r2 * second_element.r4r2;
-        const double r0 = kDispersionA1 * sqrt(rrij) + kDispersionA2;
-        const double r2_squared = distance_squared * distance_squared;
-        const double r2_cubed = r2_squared * distance_squared;
-        const double r0_squared = r0 * r0;
-        const double r0_fourth = r0_squared * r0_squared;
-        const double r0_sixth = r0_fourth * r0_squared;
-        const double t6 = 1.0 / (r2_cubed + r0_sixth);
-        const double t8 = 1.0 / (r2_squared * r2_squared + r0_fourth * r0_fourth);
-        damping = kDispersionS6 * t6 + kDispersionS8 * rrij * t8;
-        damping_derivative = kDispersionS6 * (-6.0 * r2_squared * t6 * t6) +
-                             kDispersionS8 * rrij * (-8.0 * r2_cubed * t8 * t8);
+        const auto pair_damping = d4_math::pair_damping(
+            first_element, second_element, distance_squared, kD4MethodParameters.s6,
+            kD4MethodParameters.s8, kD4MethodParameters.a1, kD4MethodParameters.a2);
+        damping = pair_damping.value;
+        damping_derivative = pair_damping.derivative;
       }
       if (!isfinite(damping) || !isfinite(damping_derivative)) {
         record_system_error(workspace, system, Gfn2D4DeviceError::kNonfiniteGeometryArithmetic);
@@ -692,13 +653,8 @@ __global__ void build_d4_coordination_kernel(Gfn2D4DeviceBatch batch,
       if (distance_squared <= kCoordinationCutoffSquared) {
         const Gfn2D4DeviceElementData peer_element =
             parameters.elements[batch.atomic_numbers[peer] - 1];
-        const double radius = atom_element.covalent_radius + peer_element.covalent_radius;
-        const double en_delta =
-            fabs(atom_element.electronegativity - peer_element.electronegativity);
-        const double en_factor = kEnK4 * exp(-((en_delta + kEnK5) * (en_delta + kEnK5)) / kEnK6);
-        const double distance = sqrt(distance_squared);
-        const double exponent = kCoordinationSteepness * (distance - radius) / radius;
-        coordination += 0.5 * en_factor * (1.0 + erf(-exponent));
+        coordination +=
+            d4_math::coordination_pair(atom_element, peer_element, sqrt(distance_squared)).value;
       }
       if (!isfinite(coordination)) {
         record_system_error(workspace, system, Gfn2D4DeviceError::kNonfiniteGeometryArithmetic);
@@ -973,9 +929,7 @@ __device__ void prepare_atom_weights(Gfn2D4DeviceBatch batch, Gfn2D4DeviceParame
                                      bool write_cn_derivatives, bool write_charge_derivatives,
                                      std::int64_t system, std::int64_t atom,
                                      Gfn2D4DeviceWorkspace workspace, std::uint32_t* device_error) {
-  if (!system_is_valid(workspace, system)) {
-    return;
-  }
+  if (!system_is_valid(workspace, system)) return;
   const double coordination = coordination_numbers[atom];
   const double charge = zero_charges ? 0.0 : atomic_charges[atom];
   if (!isfinite(coordination)) {
@@ -999,93 +953,31 @@ __device__ void prepare_atom_weights(Gfn2D4DeviceBatch batch, Gfn2D4DeviceParame
     record_error(device_error, Gfn2D4DeviceError::kInvalidParameterData);
     return;
   }
-
-  const std::int64_t output_offset = atom * kGfn2D4MaximumReferences;
-  for (std::int64_t local = 0; local < kGfn2D4MaximumReferences; ++local) {
-    workspace.weights[output_offset + local] = 0.0;
-    if (write_cn_derivatives) {
-      workspace.weight_cn_derivatives[output_offset + local] = 0.0;
-    }
-    if (write_charge_derivatives) {
-      workspace.weight_charge_derivatives[output_offset + local] = 0.0;
-    }
-  }
-
-  double normalization = 0.0;
-  double normalization_derivative = 0.0;
-  double maximum_reference_cn = -1.7976931348623157e308;
   for (std::int64_t local = 0; local < element.reference_count; ++local) {
-    const Gfn2D4DeviceReferenceData reference =
+    const auto reference =
         parameters.references[static_cast<std::int64_t>(element.reference_offset) + local];
     if (reference.gaussian_count == 0 || !isfinite(reference.coordination_number) ||
         !isfinite(reference.charge)) {
       record_error(device_error, Gfn2D4DeviceError::kInvalidParameterData);
       return;
     }
-    maximum_reference_cn = fmax(maximum_reference_cn, reference.coordination_number);
-    for (std::int64_t gaussian = 1; gaussian <= reference.gaussian_count; ++gaussian) {
-      const double factor = static_cast<double>(gaussian) * kReferenceWeightFactor;
-      const double delta = coordination - reference.coordination_number;
-      const double value = exp(-factor * delta * delta);
-      normalization += value;
-      if (write_cn_derivatives) {
-        normalization_derivative +=
-            2.0 * factor * (reference.coordination_number - coordination) * value;
-      }
-    }
   }
-  const double inverse_normalization =
-      fabs(normalization) > kMinimumWeightNorm ? 1.0 / normalization : 0.0;
-  const double qmod = charge + element.effective_charge;
-  const double charge_steepness = element.hardness * kChargeScalingSteepness;
+
+  const std::int64_t output_offset = atom * kGfn2D4MaximumReferences;
+  double* const cn_derivatives =
+      write_cn_derivatives ? workspace.weight_cn_derivatives + output_offset : nullptr;
+  double* const charge_derivatives =
+      write_charge_derivatives ? workspace.weight_charge_derivatives + output_offset : nullptr;
+  d4_math::atom_weights(element, parameters.references, coordination, charge, zero_charges,
+                        kD4MethodParameters.ga, kD4MethodParameters.gc,
+                        workspace.weights + output_offset, cn_derivatives, charge_derivatives);
 
   for (std::int64_t local = 0; local < element.reference_count; ++local) {
-    const Gfn2D4DeviceReferenceData reference =
-        parameters.references[static_cast<std::int64_t>(element.reference_offset) + local];
-    double numerator = 0.0;
-    double numerator_derivative = 0.0;
-    for (std::int64_t gaussian = 1; gaussian <= reference.gaussian_count; ++gaussian) {
-      const double factor = static_cast<double>(gaussian) * kReferenceWeightFactor;
-      const double delta = coordination - reference.coordination_number;
-      const double value = exp(-factor * delta * delta);
-      numerator += value;
-      if (write_cn_derivatives) {
-        numerator_derivative +=
-            2.0 * factor * (reference.coordination_number - coordination) * value;
-      }
-    }
-    double cn_weight = numerator * inverse_normalization;
-    if (!isfinite(cn_weight) || inverse_normalization == 0.0) {
-      cn_weight = fabs(maximum_reference_cn - reference.coordination_number) < 1.0e-12 ? 1.0 : 0.0;
-    }
-    double cn_derivative = 0.0;
-    if (write_cn_derivatives) {
-      cn_derivative =
-          inverse_normalization *
-          (numerator_derivative - numerator * normalization_derivative * inverse_normalization);
-      if (!isfinite(cn_derivative) || inverse_normalization == 0.0) {
-        cn_derivative = 0.0;
-      }
-    }
-    const double qref = reference.charge + element.effective_charge;
-    const double scaling = charge_scale(kChargeScalingHeight, charge_steepness, qref, qmod);
-    const double derivative =
-        write_charge_derivatives ? cn_weight * charge_scale_derivative(kChargeScalingHeight,
-                                                                       charge_steepness, qref, qmod)
-                                 : 0.0;
-    const double weight = cn_weight * scaling;
-    const double cn_scaled_derivative = cn_derivative * scaling;
-    if (!isfinite(weight) || (write_charge_derivatives && !isfinite(derivative)) ||
-        (write_cn_derivatives && !isfinite(cn_scaled_derivative))) {
+    if (!isfinite(workspace.weights[output_offset + local]) ||
+        (cn_derivatives != nullptr && !isfinite(cn_derivatives[local])) ||
+        (charge_derivatives != nullptr && !isfinite(charge_derivatives[local]))) {
       record_system_error(workspace, system, Gfn2D4DeviceError::kNonfiniteArithmetic);
       return;
-    }
-    workspace.weights[output_offset + local] = weight;
-    if (write_cn_derivatives) {
-      workspace.weight_cn_derivatives[output_offset + local] = cn_scaled_derivative;
-    }
-    if (write_charge_derivatives) {
-      workspace.weight_charge_derivatives[output_offset + local] = derivative;
     }
   }
 }
@@ -1165,47 +1057,24 @@ __global__ void pairlist_prepare_weights_kernel(
   }
 }
 
-struct PairCoefficient {
-  double c6;
-  double first_cn;
-  double second_cn;
-  double first_charge;
-  double second_charge;
-};
+using PairCoefficient = d4_math::Coefficient;
 
 __device__ PairCoefficient pair_coefficient(Gfn2D4DeviceBatch batch,
                                             Gfn2D4DeviceParameters parameters,
                                             Gfn2D4DeviceWorkspace workspace, std::int64_t first,
                                             std::int64_t second) {
-  const Gfn2D4DeviceElementData first_element =
-      parameters.elements[batch.atomic_numbers[first] - 1];
-  const Gfn2D4DeviceElementData second_element =
-      parameters.elements[batch.atomic_numbers[second] - 1];
+  const auto first_element = parameters.elements[batch.atomic_numbers[first] - 1];
+  const auto second_element = parameters.elements[batch.atomic_numbers[second] - 1];
   const std::int64_t first_weight = first * kGfn2D4MaximumReferences;
   const std::int64_t second_weight = second * kGfn2D4MaximumReferences;
-  PairCoefficient result{0.0, 0.0, 0.0, 0.0, 0.0};
-  for (std::int64_t first_ref = 0; first_ref < first_element.reference_count; ++first_ref) {
-    const std::int64_t global_first = first_element.reference_offset + first_ref;
-    const double first_value = workspace.weights[first_weight + first_ref];
-    const double first_cn_derivative = workspace.weight_cn_derivatives[first_weight + first_ref];
-    const double first_derivative = workspace.weight_charge_derivatives[first_weight + first_ref];
-    for (std::int64_t second_ref = 0; second_ref < second_element.reference_count; ++second_ref) {
-      const std::int64_t global_second = second_element.reference_offset + second_ref;
-      const double reference_c6 =
-          parameters.reference_c6[global_first * parameters.reference_count + global_second];
-      const double second_value = workspace.weights[second_weight + second_ref];
-      const double second_cn_derivative =
-          workspace.weight_cn_derivatives[second_weight + second_ref];
-      const double second_derivative =
-          workspace.weight_charge_derivatives[second_weight + second_ref];
-      result.c6 += first_value * second_value * reference_c6;
-      result.first_cn += first_cn_derivative * second_value * reference_c6;
-      result.second_cn += first_value * second_cn_derivative * reference_c6;
-      result.first_charge += first_derivative * second_value * reference_c6;
-      result.second_charge += first_value * second_derivative * reference_c6;
-    }
-  }
-  return result;
+  return d4_math::coefficient(
+      first_element, second_element,
+      d4_math::DenseReferenceC6{parameters.reference_c6,
+                                static_cast<std::size_t>(parameters.reference_count)},
+      workspace.weights + first_weight, workspace.weight_cn_derivatives + first_weight,
+      workspace.weight_charge_derivatives + first_weight, workspace.weights + second_weight,
+      workspace.weight_cn_derivatives + second_weight,
+      workspace.weight_charge_derivatives + second_weight);
 }
 
 struct PairChargeDerivative {
@@ -1213,58 +1082,39 @@ struct PairChargeDerivative {
   double second;
 };
 
-/* SCC potential mode deliberately reads no CN-derivative workspace. */
 __device__ PairChargeDerivative pair_charge_derivative(Gfn2D4DeviceBatch batch,
                                                        Gfn2D4DeviceParameters parameters,
                                                        Gfn2D4DeviceWorkspace workspace,
                                                        std::int64_t first, std::int64_t second) {
-  const Gfn2D4DeviceElementData first_element =
-      parameters.elements[batch.atomic_numbers[first] - 1];
-  const Gfn2D4DeviceElementData second_element =
-      parameters.elements[batch.atomic_numbers[second] - 1];
+  const auto first_element = parameters.elements[batch.atomic_numbers[first] - 1];
+  const auto second_element = parameters.elements[batch.atomic_numbers[second] - 1];
   const std::int64_t first_weight = first * kGfn2D4MaximumReferences;
   const std::int64_t second_weight = second * kGfn2D4MaximumReferences;
-  PairChargeDerivative result{0.0, 0.0};
-  for (std::int64_t first_ref = 0; first_ref < first_element.reference_count; ++first_ref) {
-    const std::int64_t global_first = first_element.reference_offset + first_ref;
-    const double first_value = workspace.weights[first_weight + first_ref];
-    const double first_derivative = workspace.weight_charge_derivatives[first_weight + first_ref];
-    for (std::int64_t second_ref = 0; second_ref < second_element.reference_count; ++second_ref) {
-      const std::int64_t global_second = second_element.reference_offset + second_ref;
-      const double reference_c6 =
-          parameters.reference_c6[global_first * parameters.reference_count + global_second];
-      const double second_value = workspace.weights[second_weight + second_ref];
-      const double second_derivative =
-          workspace.weight_charge_derivatives[second_weight + second_ref];
-      result.first += first_derivative * second_value * reference_c6;
-      result.second += first_value * second_derivative * reference_c6;
-    }
-  }
-  return result;
+  const auto coefficient = d4_math::coefficient(
+      first_element, second_element,
+      d4_math::DenseReferenceC6{parameters.reference_c6,
+                                static_cast<std::size_t>(parameters.reference_count)},
+      workspace.weights + first_weight, nullptr, workspace.weight_charge_derivatives + first_weight,
+      workspace.weights + second_weight, nullptr,
+      workspace.weight_charge_derivatives + second_weight);
+  return {coefficient.first_charge, coefficient.second_charge};
 }
 
 /* SCC energy mode reads only charge-dependent weights and immutable tables. */
 __device__ double pair_c6_coefficient(Gfn2D4DeviceBatch batch, Gfn2D4DeviceParameters parameters,
                                       Gfn2D4DeviceWorkspace workspace, std::int64_t first,
                                       std::int64_t second) {
-  const Gfn2D4DeviceElementData first_element =
-      parameters.elements[batch.atomic_numbers[first] - 1];
-  const Gfn2D4DeviceElementData second_element =
-      parameters.elements[batch.atomic_numbers[second] - 1];
+  const auto first_element = parameters.elements[batch.atomic_numbers[first] - 1];
+  const auto second_element = parameters.elements[batch.atomic_numbers[second] - 1];
   const std::int64_t first_weight = first * kGfn2D4MaximumReferences;
   const std::int64_t second_weight = second * kGfn2D4MaximumReferences;
-  double c6 = 0.0;
-  for (std::int64_t first_ref = 0; first_ref < first_element.reference_count; ++first_ref) {
-    const std::int64_t global_first = first_element.reference_offset + first_ref;
-    const double first_value = workspace.weights[first_weight + first_ref];
-    for (std::int64_t second_ref = 0; second_ref < second_element.reference_count; ++second_ref) {
-      const std::int64_t global_second = second_element.reference_offset + second_ref;
-      const double reference_c6 =
-          parameters.reference_c6[global_first * parameters.reference_count + global_second];
-      c6 += first_value * workspace.weights[second_weight + second_ref] * reference_c6;
-    }
-  }
-  return c6;
+  return d4_math::coefficient(
+             first_element, second_element,
+             d4_math::DenseReferenceC6{parameters.reference_c6,
+                                       static_cast<std::size_t>(parameters.reference_count)},
+             workspace.weights + first_weight, nullptr, nullptr, workspace.weights + second_weight,
+             nullptr, nullptr)
+      .c6;
 }
 
 __global__ void scc_potential_kernel(Gfn2D4DeviceBatch batch, Gfn2D4DeviceParameters parameters,
@@ -1529,12 +1379,9 @@ __device__ std::int64_t pair_index(Gfn2D4DeviceBatch batch, std::int64_t system,
 
 __device__ double pair_damping_radius(Gfn2D4DeviceBatch batch, Gfn2D4DeviceParameters parameters,
                                       std::int64_t first, std::int64_t second) {
-  const Gfn2D4DeviceElementData first_element =
-      parameters.elements[batch.atomic_numbers[first] - 1];
-  const Gfn2D4DeviceElementData second_element =
-      parameters.elements[batch.atomic_numbers[second] - 1];
-  const double rrij = 3.0 * first_element.r4r2 * second_element.r4r2;
-  return kDispersionA1 * sqrt(rrij) + kDispersionA2;
+  return d4_math::damping_radius(parameters.elements[batch.atomic_numbers[first] - 1],
+                                 parameters.elements[batch.atomic_numbers[second] - 1],
+                                 kD4MethodParameters.a1, kD4MethodParameters.a2);
 }
 
 __global__ void pairlist_two_body_potential_kernel(
@@ -1704,18 +1551,10 @@ __global__ void pairlist_two_body_gradient_kernel(Gfn2D4DeviceBatch batch,
         }
       }
       if (pair.distance_squared <= kCoordinationCutoffSquared) {
-        const Gfn2D4DeviceElementData first_element =
-            parameters.elements[batch.atomic_numbers[first] - 1];
-        const Gfn2D4DeviceElementData second_element =
-            parameters.elements[batch.atomic_numbers[second] - 1];
-        const double radius = first_element.covalent_radius + second_element.covalent_radius;
-        const double en_delta =
-            fabs(first_element.electronegativity - second_element.electronegativity);
-        const double en_factor = kEnK4 * exp(-((en_delta + kEnK5) * (en_delta + kEnK5)) / kEnK6);
         const double distance = sqrt(pair.distance_squared);
-        const double exponent = kCoordinationSteepness * (distance - radius) / radius;
-        const double derivative = -en_factor * kCoordinationSteepness * exp(-exponent * exponent) *
-                                  kInverseSqrtPi / radius;
+        const double derivative =
+            d4_coordination_pair(parameters, batch, first, second, pair.distance_squared)
+                .derivative;
         const double scale =
             sign * derivative *
             (workspace.coordination_adjoints[first] + workspace.coordination_adjoints[second]) /
@@ -1803,18 +1642,9 @@ __global__ void two_body_gradient_kernel(Gfn2D4DeviceBatch batch, Gfn2D4DevicePa
 
       const double distance_squared = pair[0] * pair[0] + pair[1] * pair[1] + pair[2] * pair[2];
       if (distance_squared <= kCoordinationCutoffSquared) {
-        const Gfn2D4DeviceElementData first_element =
-            parameters.elements[batch.atomic_numbers[first] - 1];
-        const Gfn2D4DeviceElementData second_element =
-            parameters.elements[batch.atomic_numbers[second] - 1];
-        const double radius = first_element.covalent_radius + second_element.covalent_radius;
-        const double en_delta =
-            fabs(first_element.electronegativity - second_element.electronegativity);
-        const double en_factor = kEnK4 * exp(-((en_delta + kEnK5) * (en_delta + kEnK5)) / kEnK6);
         const double distance = sqrt(distance_squared);
-        const double exponent = kCoordinationSteepness * (distance - radius) / radius;
-        const double derivative = -en_factor * kCoordinationSteepness * exp(-exponent * exponent) *
-                                  kInverseSqrtPi / radius;
+        const double derivative =
+            d4_coordination_pair(parameters, batch, first, second, distance_squared).derivative;
         const double scale =
             sign * derivative *
             (workspace.coordination_adjoints[first] + workspace.coordination_adjoints[second]) /
@@ -1884,7 +1714,7 @@ __global__ void atm_energy_kernel(Gfn2D4DeviceBatch batch, Gfn2D4DeviceParameter
         const double angle = 0.375 * (r2ij + r2jk - r2ik) * (r2ij - r2jk + r2ik) *
                                  (-r2ij + r2jk + r2ik) / r5_product +
                              1.0 / r3_product;
-        const double c9 = -kDispersionS9 * sqrt(fabs(c6ij.c6 * c6ik.c6 * c6jk.c6));
+        const double c9 = -kD4MethodParameters.s9 * sqrt(fabs(c6ij.c6 * c6ik.c6 * c6jk.c6));
         energy -= angle * damping * c9;
       }
     }
@@ -1946,18 +1776,9 @@ __device__ void atm_distance_gradient(double target, double other_first, double 
                                       const double* vector, double r5_product, double c9,
                                       double angle, double damping, double damping_derivative,
                                       double* output) {
-  const double angle_derivative =
-      -0.375 *
-      (target * target * target + target * target * (other_first + other_second) +
-       target * (3.0 * other_first * other_first + 2.0 * other_first * other_second +
-                 3.0 * other_second * other_second) -
-       5.0 * (other_first - other_second) * (other_first - other_second) *
-           (other_first + other_second)) /
-      r5_product;
-  const double scale = c9 * (-angle_derivative * damping + angle * damping_derivative) / target;
-  for (int axis = 0; axis < 3; ++axis) {
-    output[axis] = scale * vector[axis];
-  }
+  const double scale = d4_math::atm_radial(target, other_first, other_second, r5_product, damping,
+                                           angle, damping_derivative, c9);
+  for (int axis = 0; axis < 3; ++axis) output[axis] = scale * vector[axis];
 }
 
 __global__ void atm_gradient_kernel(Gfn2D4DeviceBatch batch, Gfn2D4DeviceParameters parameters,
@@ -2013,7 +1834,7 @@ __global__ void atm_gradient_kernel(Gfn2D4DeviceBatch batch, Gfn2D4DeviceParamet
         const double angle = 0.375 * (r2ij + r2jk - r2ik) * (r2ij - r2jk + r2ik) *
                                  (-r2ij + r2jk + r2ik) / r5_product +
                              1.0 / r3_product;
-        const double c9 = -kDispersionS9 * sqrt(c6ij.c6 * c6ik.c6 * c6jk.c6);
+        const double c9 = -kD4MethodParameters.s9 * sqrt(c6ij.c6 * c6ik.c6 * c6jk.c6);
         const double rr = angle * damping;
         const double damping_derivative = -2.0 * kAtmExponent * ratio_power * damping * damping;
         double dgij[3];
@@ -2137,7 +1958,7 @@ __global__ void atm_energy_split_kernel(Gfn2D4DeviceBatch batch, Gfn2D4DevicePar
       const double angle =
           0.375 * (r2ij + r2jk - r2ik) * (r2ij - r2jk + r2ik) * (-r2ij + r2jk + r2ik) / r5_product +
           1.0 / r3_product;
-      const double c9 = -kDispersionS9 * sqrt(fabs(c6ij.c6 * c6ik.c6 * c6jk.c6));
+      const double c9 = -kD4MethodParameters.s9 * sqrt(fabs(c6ij.c6 * c6ik.c6 * c6jk.c6));
       energy -= angle * damping * c9;
     }
   }
@@ -2262,7 +2083,7 @@ __global__ void atm_gradient_split_kernel(Gfn2D4DeviceBatch batch,
       const double angle =
           0.375 * (r2ij + r2jk - r2ik) * (r2ij - r2jk + r2ik) * (-r2ij + r2jk + r2ik) / r5_product +
           1.0 / r3_product;
-      const double c9 = -kDispersionS9 * sqrt(c6ij.c6 * c6ik.c6 * c6jk.c6);
+      const double c9 = -kD4MethodParameters.s9 * sqrt(c6ij.c6 * c6ik.c6 * c6jk.c6);
       const double rr = angle * damping;
       const double damping_derivative = -2.0 * kAtmExponent * ratio_power * damping * damping;
       double dgij[3];
@@ -2389,7 +2210,7 @@ __global__ void pairlist_atm_energy_kernel(
               (ij.distance_squared - jk.distance_squared + ik.distance_squared) *
               (-ij.distance_squared + jk.distance_squared + ik.distance_squared) / r5_product +
           1.0 / r3_product;
-      const double c9 = -kDispersionS9 * sqrt(fabs(c6ij.c6 * c6ik.c6 * c6jk.c6));
+      const double c9 = -kD4MethodParameters.s9 * sqrt(fabs(c6ij.c6 * c6ik.c6 * c6jk.c6));
       energy -= angle * damping * c9;
       if (!isfinite(energy)) {
         record_system_error(workspace, system, Gfn2D4DeviceError::kNonfiniteArithmetic);
@@ -2501,7 +2322,7 @@ __global__ void pairlist_atm_gradient_kernel(
               (ij.distance_squared - jk.distance_squared + ik.distance_squared) *
               (-ij.distance_squared + jk.distance_squared + ik.distance_squared) / r5_product +
           1.0 / r3_product;
-      const double c9 = -kDispersionS9 * sqrt(c6ij.c6 * c6ik.c6 * c6jk.c6);
+      const double c9 = -kD4MethodParameters.s9 * sqrt(c6ij.c6 * c6ik.c6 * c6jk.c6);
       const double rr = angle * damping;
       const double damping_derivative = -2.0 * kAtmExponent * ratio_power * damping * damping;
       double dgij[3];
@@ -2566,18 +2387,9 @@ __global__ void pairlist_d4_coordination_vjp_kernel(Gfn2D4DeviceBatch batch,
       if (pair.distance_squared > kCoordinationCutoffSquared) {
         continue;
       }
-      const Gfn2D4DeviceElementData first_element =
-          parameters.elements[batch.atomic_numbers[first] - 1];
-      const Gfn2D4DeviceElementData second_element =
-          parameters.elements[batch.atomic_numbers[second] - 1];
-      const double radius = first_element.covalent_radius + second_element.covalent_radius;
-      const double en_delta =
-          fabs(first_element.electronegativity - second_element.electronegativity);
-      const double en_factor = kEnK4 * exp(-((en_delta + kEnK5) * (en_delta + kEnK5)) / kEnK6);
       const double distance = sqrt(pair.distance_squared);
-      const double exponent = kCoordinationSteepness * (distance - radius) / radius;
       const double derivative =
-          -en_factor * kCoordinationSteepness * exp(-exponent * exponent) * kInverseSqrtPi / radius;
+          d4_coordination_pair(parameters, batch, first, second, pair.distance_squared).derivative;
       const double scale =
           sign * derivative *
           (workspace.coordination_adjoints[first] + workspace.coordination_adjoints[second]) /
@@ -2622,18 +2434,9 @@ __global__ void coordination_vjp_kernel(Gfn2D4DeviceBatch batch, Gfn2D4DevicePar
       if (distance_squared > kCoordinationCutoffSquared) {
         continue;
       }
-      const Gfn2D4DeviceElementData first_element =
-          parameters.elements[batch.atomic_numbers[first] - 1];
-      const Gfn2D4DeviceElementData second_element =
-          parameters.elements[batch.atomic_numbers[second] - 1];
-      const double radius = first_element.covalent_radius + second_element.covalent_radius;
-      const double en_delta =
-          fabs(first_element.electronegativity - second_element.electronegativity);
-      const double en_factor = kEnK4 * exp(-((en_delta + kEnK5) * (en_delta + kEnK5)) / kEnK6);
       const double distance = sqrt(distance_squared);
-      const double exponent = kCoordinationSteepness * (distance - radius) / radius;
       const double derivative =
-          -en_factor * kCoordinationSteepness * exp(-exponent * exponent) * kInverseSqrtPi / radius;
+          d4_coordination_pair(parameters, batch, first, second, distance_squared).derivative;
       const double scale =
           sign * derivative *
           (workspace.coordination_adjoints[first] + workspace.coordination_adjoints[second]) /

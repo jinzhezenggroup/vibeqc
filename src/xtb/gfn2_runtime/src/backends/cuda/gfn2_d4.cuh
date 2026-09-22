@@ -11,6 +11,7 @@
 #include "backends/common/gfn2_plan_schema.hpp"
 #include "backends/cuda/gfn2_geometry.cuh"
 #include "backends/cuda/gfn2_scc_iteration_control.cuh"
+#include "dft/dispersion/d4_types.hpp"
 
 namespace xtbloom::detail::cuda {
 
@@ -20,22 +21,10 @@ inline constexpr double kGfn2D4CoordinationCutoffBohr = 30.0;
 inline constexpr double kGfn2D4TwoBodyCutoffBohr = 50.0;
 inline constexpr double kGfn2D4AtmCutoffBohr = 25.0;
 
-/* Device copies of the pinned dftd4 parameter records. */
-struct Gfn2D4DeviceElementData {
-  std::uint16_t reference_offset;
-  std::uint8_t reference_count;
-  double covalent_radius;
-  double electronegativity;
-  double effective_charge;
-  double hardness;
-  double r4r2;
-};
-
-struct Gfn2D4DeviceReferenceData {
-  double coordination_number;
-  double charge;
-  std::uint8_t gaussian_count;
-};
+/* Reuse the canonical D4 table record ABI; the GFN2 CUDA path owns only
+ * scheduling/cache policy, not a parallel scientific table schema. */
+using Gfn2D4DeviceElementData = ::vibeqc::dft::dispersion::data::D4ElementData;
+using Gfn2D4DeviceReferenceData = ::vibeqc::dft::dispersion::data::D4ReferenceData;
 
 /*
  * Non-owning device view of the immutable D4 tables. Large reference-C6 data

@@ -12,6 +12,7 @@
 #include <cstdint>
 
 #include "dft/dispersion/d4_data.hpp"
+#include "dft/dispersion/d4_math.hpp"
 #include "generated_method_parameters.hpp"
 
 #if defined(__CUDACC__)
@@ -105,50 +106,17 @@ VIBEQC_D4_HD inline bool valid_parameters(const D4Parameters& p) {
 // formed 0/0 here; evaluating the limit also avoids a 0*inf near the boundary.
 VIBEQC_D4_HD inline void charge_scale(double a, double c, double qref, double qmod, double& value,
                                       double& derivative) {
-  value = exp(a);
-  derivative = 0.0;
-  if (qmod <= 0.0) return;
-  const double inner = exp(c * (1.0 - qref / qmod));
-  value = exp(a * (1.0 - inner));
-  if (inner != 0.0 && value != 0.0) derivative = -a * c * inner * value * (qref / qmod) / qmod;
+  const auto result = math::charge_scale(a, c, qref, qmod);
+  value = result.value;
+  derivative = result.derivative;
 }
 
 VIBEQC_D4_HD inline void weights(int n, const std::int32_t* z, const double* cn, const double* q,
                                  const D4Parameters& p, D4Tables t, double* w, double* wc,
                                  double* wq) {
-  for (int i = 0; i < 7 * n; ++i) w[i] = wc[i] = wq[i] = 0.0;
   for (int i = 0; i < n; ++i) {
-    const auto e = t.elements[z[i] - 1];
-    double norm = 0.0, dnorm = 0.0, maxcn = -DBL_MAX;
-    for (int j = 0; j < e.reference_count; ++j) {
-      const auto r = t.references[e.reference_offset + j];
-      if (r.coordination_number > maxcn) maxcn = r.coordination_number;
-      const double delta = cn[i] - r.coordination_number;
-      for (int g = 1; g <= r.gaussian_count; ++g) {
-        const double v = exp(-6.0 * g * delta * delta);
-        norm += v;
-        dnorm -= 12.0 * g * delta * v;
-      }
-    }
-    const double inv = norm > 1.4916681462400413e-154 ? 1.0 / norm : 0.0;
-    for (int j = 0; j < e.reference_count; ++j) {
-      const auto r = t.references[e.reference_offset + j];
-      const double delta = cn[i] - r.coordination_number;
-      double num = 0.0, dnum = 0.0;
-      for (int g = 1; g <= r.gaussian_count; ++g) {
-        const double v = exp(-6.0 * g * delta * delta);
-        num += v;
-        dnum -= 12.0 * g * delta * v;
-      }
-      const double gw = inv ? num * inv : (fabs(maxcn - r.coordination_number) < 1e-12 ? 1.0 : 0.0);
-      const double gc = inv ? inv * (dnum - num * dnorm * inv) : 0.0;
-      double scale, ds;
-      charge_scale(p.ga, p.gc * e.hardness, r.charge + e.effective_charge,
-                   (q ? q[i] : 0.0) + e.effective_charge, scale, ds);
-      w[7 * i + j] = gw * scale;
-      wc[7 * i + j] = gc * scale;
-      wq[7 * i + j] = gw * ds;
-    }
+    math::atom_weights(t.elements[z[i] - 1], t.references, cn[i], q ? q[i] : 0.0, q == nullptr,
+                       p.ga, p.gc, w + 7 * i, wc + 7 * i, wq + 7 * i);
   }
 }
 
@@ -157,21 +125,10 @@ struct Coefficient {
 };
 VIBEQC_D4_HD inline Coefficient coefficient(int i, int j, const std::int32_t* z, D4Tables t,
                                             const double* w, const double* wc, const double* wq) {
-  const auto ei = t.elements[z[i] - 1], ej = t.elements[z[j] - 1];
-  Coefficient c{};
-  for (int a = 0; a < ei.reference_count; ++a) {
-    for (int b = 0; b < ej.reference_count; ++b) {
-      const int ia = ei.reference_offset + a, ib = ej.reference_offset + b;
-      const int hi = ia > ib ? ia : ib, lo = ia > ib ? ib : ia;
-      const double ref = t.reference_c6[hi * (hi + 1) / 2 + lo];
-      c.c6 += w[7 * i + a] * w[7 * j + b] * ref;
-      c.ci += wc[7 * i + a] * w[7 * j + b] * ref;
-      c.cj += w[7 * i + a] * wc[7 * j + b] * ref;
-      c.qi += wq[7 * i + a] * w[7 * j + b] * ref;
-      c.qj += w[7 * i + a] * wq[7 * j + b] * ref;
-    }
-  }
-  return c;
+  const auto shared = math::coefficient(t.elements[z[i] - 1], t.elements[z[j] - 1],
+                                        math::PackedReferenceC6{t.reference_c6}, w + 7 * i,
+                                        wc + 7 * i, wq + 7 * i, w + 7 * j, wc + 7 * j, wq + 7 * j);
+  return {shared.c6, shared.first_cn, shared.second_cn, shared.first_charge, shared.second_charge};
 }
 
 VIBEQC_D4_HD inline double distance2(const double* xyz, int i, int j, double* v) {
@@ -184,17 +141,13 @@ VIBEQC_D4_HD inline double distance2(const double* xyz, int i, int j, double* v)
 }
 VIBEQC_D4_HD inline double radius(int i, int j, const std::int32_t* z, D4Tables t,
                                   const D4Parameters& p) {
-  return p.a1 * sqrt(3.0 * t.elements[z[i] - 1].r4r2 * t.elements[z[j] - 1].r4r2) + p.a2;
+  return math::damping_radius(t.elements[z[i] - 1], t.elements[z[j] - 1], p.a1, p.a2);
 }
 VIBEQC_D4_HD inline void cn_pair(int i, int j, const std::int32_t* z, D4Tables t, double r,
                                  double& cn, double& dcdr) {
-  const auto a = t.elements[z[i] - 1], b = t.elements[z[j] - 1];
-  const double rc = a.covalent_radius + b.covalent_radius;
-  const double den = fabs(a.electronegativity - b.electronegativity) + 19.08857;
-  const double en = 4.10451 * exp(-den * den / (2.0 * 11.28174 * 11.28174));
-  const double x = 7.5 * (r - rc) / rc;
-  cn = en * 0.5 * (1.0 + erf(-x));
-  dcdr = -en * 7.5 * exp(-x * x) * 0.5641895835477562869480794515607726 / rc;
+  const auto pair = math::coordination_pair(t.elements[z[i] - 1], t.elements[z[j] - 1], r);
+  cn = pair.value;
+  dcdr = pair.derivative;
 }
 VIBEQC_D4_HD inline void add_pair_gradient(int i, int j, const double* v, double scale,
                                            double* grad) {
@@ -205,11 +158,7 @@ VIBEQC_D4_HD inline void add_pair_gradient(int i, int j, const double* v, double
 }
 VIBEQC_D4_HD inline double atm_radial(double x, double y, double z, double r5, double damp,
                                       double angle, double ddamp, double c9) {
-  const double da = -0.375 *
-                    (x * x * x + x * x * (y + z) + x * (3 * y * y + 2 * y * z + 3 * z * z) -
-                     5 * (y - z) * (y - z) * (y + z)) /
-                    r5;
-  return c9 * (-da * damp + angle * ddamp) / x;
+  return math::atm_radial(x, y, z, r5, damp, angle, ddamp, c9);
 }
 }  // namespace d4_detail
 
