@@ -11,6 +11,7 @@ from vibeqc_compiler.tensor.cpu import NativeTensorProgram, emit_cpu
 
 from tools.vibeqc_cc.gradient_equations import build_hamiltonian_programs
 from tools.vibeqc_cc.lambda_equations import build_lambda_programs
+from tools.vibeqc_cc.native_tensor_cpu import NativeCCTensorExecutor
 from tools.vibeqc_cc.oracle import dense_feeds, random_case
 from tools.vibeqc_cc.triples_response import build_tile_triples_vjp
 
@@ -119,3 +120,36 @@ def test_qualified_nh3_triples_tile_uses_explicit_extended_node_budget() -> None
     assert "tensor_cpu" in source
     assert resources["required_bytes"] > 0
     assert resources["scalar_work"] > 0
+
+
+def test_cc_executor_prewarm_aggregates_exact_lambda_lifecycle(tmp_path: Path) -> None:
+    shared = build_lambda_programs(1, 1)
+    independent = build_lambda_programs(1, 1, form="expanded")
+    programs = (
+        independent.primal,
+        shared.energy_vjp.program,
+        shared.residual_vjp.program,
+        independent.energy_vjp.program,
+        independent.residual_vjp.program,
+    )
+    cache = tmp_path / "cc-response"
+    executor = NativeCCTensorExecutor(max_bytes=256 << 20, cache=cache)
+    executor.prewarm(programs)
+
+    unique_program_count = len({program.logical_hash for program in programs})
+    assert unique_program_count == 4
+    assert executor.compiled_program_count == unique_program_count
+    assert executor.bundled_program_count == unique_program_count
+    assert executor.artifact_count == 1
+    assert executor.binary_bytes > 0
+    assert executor.compile_seconds >= 0.0
+    artifact = executor.artifact_libraries
+
+    executor.prewarm(programs)
+    assert executor.artifact_count == 1
+
+    replay = NativeCCTensorExecutor(max_bytes=256 << 20, cache=cache)
+    replay.prewarm(programs)
+    assert replay.artifact_libraries == artifact
+    assert replay.compiled_program_count == unique_program_count
+    assert replay.artifact_count == 1

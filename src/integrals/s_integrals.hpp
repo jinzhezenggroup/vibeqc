@@ -70,6 +70,14 @@ struct EspProbeDerivativeData {
   std::vector<double> probe_derivative;
 };
 
+/** Direct contraction of one ESP matrix cotangent with molecular-center and
+ * explicit-probe derivatives. This bounded reference/oracle path never forms
+ * a coordinate-major ESP derivative tensor. */
+struct EspContractedGeometryDerivative {
+  std::vector<double> nuclear_derivative;
+  std::array<double, 3> probe_derivative{};
+};
+
 /**
  * Evaluate normalized, contracted Cartesian or real-spherical integrals.
  *
@@ -97,6 +105,12 @@ EspIntegralData build_esp_integrals(const core::System& system, std::span<const 
 /** Evaluate AO ESP matrices and analytic explicit-probe coordinate derivatives. */
 EspProbeDerivativeData build_esp_integrals_with_probe_derivatives(
     const core::System& system, std::span<const double> points_xyz);
+
+/** Contract arbitrary public-AO ESP weights with analytic basis-center and
+ * probe-coordinate derivatives at one explicit point. */
+EspContractedGeometryDerivative contract_weighted_esp_geometry_derivative(
+    const core::System& system, std::span<const double> point_xyz,
+    std::span<const double> matrix_weights);
 
 /** Contract one ordered public-AO shell quartet with arbitrary weights.
  *
@@ -154,6 +168,22 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
 std::vector<double> contract_weighted_density_fitting_derivative(
     const core::System& orbital_system, const core::System& auxiliary_system,
     std::span<const double> metric_weights, std::span<const double> three_center_weights);
+
+/** Directly contract raw density-fitting A/M weights with nuclear derivatives.
+ *
+ * The returned vector is the positive energy derivative in atom/xyz order.
+ * Public spherical weights are pulled back to Cartesian integral components,
+ * but no coordinate-major three-center or metric derivative tensor is formed.
+ * maximum_bytes bounds the explicit Cartesian weight staging plus the O(3N)
+ * result; integral-recurrence scalar scratch follows the normal host contract.
+ * Only generated s/p/d/f coverage is admitted; the unbudgeted high-l full-tensor
+ * fallback is deliberately unavailable through this bounded entry.
+ */
+std::vector<double> contract_weighted_density_fitting_derivative(
+    const core::System& orbital_system, const core::System& auxiliary_system,
+    std::span<const double> three_center_weights, std::span<const double> metric_weights,
+    std::size_t maximum_bytes);
+
 /**
  * Transform Cartesian density-fitting tensors into the public AO
  * representations selected by the two systems.

@@ -250,7 +250,6 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_native_eri_order3.cuh",
             "cuda/direct_native_eri_order4.cuh",
             "cuda/direct_native_gradient_types.cuh",
-            "cuda/direct_native_order2_gradient.cuh",
             "cuda/direct_native_order2_shell.cuh",
             "cuda/direct_native_pair_order2.cuh",
             "cuda/direct_native_pair_order2_gradient.cuh",
@@ -1687,6 +1686,50 @@ def test_bounded_force_registry_gaps_use_exact_runtime_fallback() -> None:
     assert "return cudaErrorNotSupported;" not in source[dispatch:dispatch_end]
 
 
+def test_bounded_fock_registry_gaps_use_exact_runtime_fallback() -> None:
+    """Keep high-l bounded Fock correct without an unbounded descriptor arena."""
+
+    source = _direct_cuda_source()
+    fallback = source.index("const auto launch_bounded_generic_fock")
+    dispatch = source.index("const auto launch_bounded_generated_fock", fallback)
+    dispatch_end = source.index(
+        "// The exact provider is resolved/validated by run_hf_cuda_bucket_cached.",
+        dispatch,
+    )
+    assert fallback < dispatch < dispatch_end
+    assert "host_uncovered_fock_shell_class_mask == 0U" in source[fallback:dispatch]
+    assert (
+        "launch_bounded_direct_fock_shell_quartet_kernel" in source[fallback:dispatch]
+    )
+    assert "host_generated_fock_shell_class_mask" in source[fallback:dispatch]
+    assert "launch_bounded_generic_fock" in source[dispatch:dispatch_end]
+    assert "return cudaErrorNotSupported;" not in source[dispatch:dispatch_end]
+
+    fallback_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_fallback.cu"
+    ).read_text()
+    fock_wrapper = fallback_source.index(
+        "void launch_bounded_direct_fock_shell_quartet_kernel("
+    )
+    assert (
+        "bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, false>"
+        in fallback_source[fock_wrapper:]
+    )
+    assert (
+        "bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Fock, false>"
+        in fallback_source[fock_wrapper:]
+    )
+    # The older force fallback may use Fock screening while still writing forces.
+    # Do not conflate screening purpose with the scientific consumer again.
+    force_wrapper = fallback_source.index(
+        "void launch_bounded_direct_shell_quartet_kernel("
+    )
+    assert (
+        "bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, true>"
+        in fallback_source[force_wrapper:fock_wrapper]
+    )
+
+
 def test_production_manifest_drives_generated_registry_and_shards(
     tmp_path: Path,
 ) -> None:
@@ -2485,6 +2528,15 @@ def test_order2_force_retires_handwritten_gradient_bodies() -> None:
         assert f"generated_weighted_eri::{name}_force" in source
         assert f"direct_native_{name}_gradient.cuh" not in source
         assert f"contracted_eri_cartesian_source_{name}_weighted_gradient" not in source
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order2_gradient.cuh"
+    ).exists()
+    assert "contracted_eri_cartesian_source_order2_generated_gradient" in source
+    quartet_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh"
+    ).read_text(encoding="utf-8")
+    assert "direct_native_order2_gradient.cuh" not in quartet_source
+    assert "contracted_eri_cartesian_source_order2_generated_gradient" in quartet_source
     assert "generated_weighted_eri::Geometry geometry;" in source
     assert "generated_weighted_eri::Geometry geometry{};" not in source
 

@@ -145,3 +145,76 @@ def test_metadata_applies_setter_assignments_in_source_order() -> None:
     )
     assert row["status"] == "generated"
     assert row["components"][:2] == [["LDA_X", "2/25"], ["GGA_X_B88", "18/25"]]
+
+
+@pytest.mark.parametrize(
+    "statement",
+    (
+        "unknown_update(p);",
+        "p->cam_alpha = 0.3;",
+        "p->nlc_b *= 2.0;",
+        "p->params = unknown_allocator();",
+    ),
+)
+def test_metadata_rejects_uninterpreted_initializer_semantics(statement: str) -> None:
+    text = (LIBXC / "hyb_mgga_xc_wb97mv.c").read_text()
+    changed = text.replace("p->nlc_b = 6.0;", "p->nlc_b = 6.0;\n" + statement)
+    (row,) = extract_method_registrations(changed)
+    assert row["status"] == "blocked"
+    assert "initializer statement" in row["reason"]
+
+
+def test_metadata_rejects_mix_array_mutation_before_initialization() -> None:
+    text = (LIBXC / "hyb_gga_xc_b3lyp.c").read_text()
+    old = "xc_mix_init(p, 5, funcs_id, funcs_coef);"
+    changed = text.replace(old, "funcs_coef[0] = 0.9;\n" + old)
+    row = next(
+        row
+        for row in extract_method_registrations(changed)
+        if row["registration"] == "HYB_GGA_XC_B3P86_NWCHEM"
+    )
+    assert row["status"] == "blocked"
+    assert "initializer statement" in row["reason"]
+
+
+def test_generated_metadata_component_sequences_are_immutable() -> None:
+    components = LIBXC_METHODS["B3LYP"]["components"]
+    assert isinstance(components, tuple)
+    assert all(isinstance(item, tuple) for item in components)
+    with pytest.raises(TypeError):
+        components[0][1] = "1/2"
+
+
+@pytest.mark.parametrize("identifier", sorted(LIBXC_METHODS))
+def test_generated_exchange_and_vv10_match_independent_libxc(identifier: str) -> None:
+    """Compare parsed C text with the separately compiled Libxc default state."""
+    libxc = pytest.importorskip("pyscf.dft.libxc")
+    if libxc.__version__ != "7.0.0":
+        pytest.skip("metadata oracle requires the pinned Libxc 7.0.0 semantics")
+    record = LIBXC_METHODS[identifier]
+    # Numeric IDs bypass PySCF aliases (notably the configurable B3LYP alias).
+    code = record["libxc_id"]
+    omega, alpha, beta = libxc.rsh_coeff(code)
+
+    def number(field: str) -> float:
+        return float(Fraction(record[field]))
+
+    assert number("range_omega") == pytest.approx(omega, rel=0, abs=2e-15)
+    if omega:
+        assert number("short_range_exchange") == pytest.approx(
+            alpha + beta, rel=0, abs=2e-15
+        )
+        assert number("long_range_exchange") == pytest.approx(alpha, rel=0, abs=2e-15)
+    else:
+        for spin in (0, 1):
+            assert number("exact_exchange") == pytest.approx(
+                libxc.hybrid_coeff(code, spin), rel=0, abs=2e-15
+            )
+    if record["nonlocal_variant"]:
+        ((parameters, weight),) = libxc.nlc_coeff(code)
+        assert weight == 1
+        assert (number("nlc_b"), number("nlc_c")) == pytest.approx(
+            parameters, rel=0, abs=2e-15
+        )
+    else:
+        assert not libxc.nlc_coeff(code)

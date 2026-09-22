@@ -2,7 +2,7 @@
   "current_default": "Generated compiler-owned S/T/V weighted gradient with nucleus-cooperative scheduling; cooperative ownership is projected into the shared compiler schedule/profile contract. Native/reference and legacy tensor controls are explicit diagnostics only.",
   "evidence": [
     "benchmarks/results/one-electron-derivatives-rtx5090/validation-summary.json",
-    "docs/one_electron_derivatives.md",
+    "docs/developer/one_electron_derivatives.md",
     ".agents/notes/implemented/performance/2026-09-20-generated-nucleus-cooperative-one-electron-default.md",
     ".agents/notes/implemented/performance/2026-09-22-one-electron-derivative-schedule-contract.md"
   ],

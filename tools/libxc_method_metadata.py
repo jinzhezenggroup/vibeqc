@@ -312,9 +312,43 @@ def _setter_state(
     return mix, alpha, beta, omega
 
 
+def _validate_initializer(init_body: str) -> None:
+    """Reject every initializer statement outside the modeled metadata subset.
+
+    Searching only for known calls is insufficient: an unmodeled helper or array
+    write could change the mixture after the recognized initializer. Allocation
+    of the direct MGGA parameter block is the sole non-metadata operation admitted
+    here; its values are populated by the separately audited default setter.
+    """
+    patterns = (
+        (
+            rf"(?:static\s+)?(?:const\s+)?(?:int|double)\s+{_IDENTIFIER}"
+            r"\s*\[\s*[^\]]*\s*\]\s*=\s*\{[^{}]*\}"
+        ),
+        (
+            rf"xc_mix_init\s*\(\s*p\s*,\s*[^,]+,\s*{_IDENTIFIER}"
+            rf"\s*,\s*{_IDENTIFIER}\s*\)"
+        ),
+        r"xc_hyb_init_hybrid\s*\(\s*p\s*,\s*[^()]+\)",
+        r"xc_hyb_init_cam\s*\(\s*p\s*,\s*[^,()]+,\s*[^,()]+,\s*[^,()]+\)",
+        r"p->nlc_(?:b|C)\s*=\s*[^;]+",
+        r"assert\s*\(\s*p->params\s*==\s*NULL\s*\)",
+        rf"p->params\s*=\s*libxc_malloc\s*\(\s*sizeof\s*\(\s*{_IDENTIFIER}\s*\)\s*\)",
+    )
+    for raw in init_body.split(";"):
+        statement = raw.strip()
+        if statement and not any(
+            re.fullmatch(pattern, statement, re.DOTALL) for pattern in patterns
+        ):
+            raise MethodMetadataError(
+                f"unsupported hybrid initializer statement: {statement}"
+            )
+
+
 def _init_state(
     init_body: str, definitions: dict[str, str | None]
 ) -> tuple[Fraction, Fraction, Fraction, Fraction | None, Fraction | None]:
+    _validate_initializer(init_body)
     alpha = beta = omega = Fraction(0)
     global_calls = list(
         re.finditer(r"xc_hyb_init_hybrid\s*\(\s*p\s*,\s*([^)]*)\)", init_body)

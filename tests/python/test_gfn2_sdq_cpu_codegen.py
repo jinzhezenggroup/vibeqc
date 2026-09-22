@@ -45,9 +45,7 @@ def test_gfn2_sdq_cuda_emitter_is_device_generated_math() -> None:
 
 def test_cuda_integral_consumer_has_no_handwritten_primitive_recurrence() -> None:
     root = Path(__file__).resolve().parents[2]
-    source = (
-        root / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_integrals.cu"
-    ).read_text()
+    source = (root / "src/xtb/native/src/backends/cuda/gfn2_integrals.cu").read_text()
     assert '#include "generated_gfn2_sdq_cuda.cuh"' in source
     assert "evaluate_gfn2_sdq_values_primitive" in source
     assert "evaluate_gfn2_sdq_primitive" in source

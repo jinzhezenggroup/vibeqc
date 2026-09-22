@@ -940,7 +940,15 @@ _RAW_LIBXC_METHODS: dict[str, dict[str, object]] = json.loads(
 }"""
 )
 LIBXC_METHODS = MappingProxyType(
-    {name: MappingProxyType(record) for name, record in _RAW_LIBXC_METHODS.items()}
+    {
+        name: MappingProxyType(
+            {
+                **record,
+                "components": tuple(tuple(item) for item in record["components"]),
+            }
+        )
+        for name, record in _RAW_LIBXC_METHODS.items()
+    }
 )
 
 _RAW_BLOCKED_LIBXC_METHODS: dict[str, str] = json.loads(

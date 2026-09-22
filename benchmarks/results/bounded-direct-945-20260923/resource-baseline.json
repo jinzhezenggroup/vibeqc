@@ -1,0 +1,1283 @@
+{
+  "slurm_job": "11267",
+  "source": "auto-945-uhf.json",
+  "intrusive": true,
+  "first_bounded_kernel_ns": 164772309370,
+  "automatic_kernel_launches": 4630,
+  "device_peak_allocation_bytes_whole_process": 1268335848,
+  "largest_device_allocation_bytes": 1183012792,
+  "kernels": [
+    {
+      "name": "void vibeqc::scf::cuda_execution::bounded_direct_shell_quartet_kernel<(bool)1, (vibeqc::scf::cuda_execution::DirectScreeningPurpose)1, (bool)1>(vibeqc::scf::cuda_execution::DeviceBatch, double, const double *, const vibeqc::scf::cuda_execution::ShellPairDensityBounds *, const unsigned int *, const double *, const double *, const unsigned long *, unsigned long, const unsigned int *, const double *, const double *, const unsigned char *, double *, unsigned long long *, vibeqc::scf::cuda_execution::DeviceShellClassProfileEntry *)",
+      "launches": 1,
+      "seconds": 12.450027245,
+      "registers": 255,
+      "static_shared_bytes": 3084,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "void vibeqc::scf::cuda_execution::bounded_direct_shell_quartet_kernel<(bool)1, (vibeqc::scf::cuda_execution::DirectScreeningPurpose)0, (bool)0>(vibeqc::scf::cuda_execution::DeviceBatch, double, const double *, const vibeqc::scf::cuda_execution::ShellPairDensityBounds *, const unsigned int *, const double *, const double *, const unsigned long *, unsigned long, const unsigned int *, const double *, const double *, const unsigned char *, double *, unsigned long long *, vibeqc::scf::cuda_execution::DeviceShellClassProfileEntry *)",
+      "launches": 1,
+      "seconds": 2.615973285,
+      "registers": 254,
+      "static_shared_bytes": 3084,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_fpps_shell_class_force_uhf_persistent_kernel",
+      "launches": 2,
+      "seconds": 0.057064326,
+      "registers": 156,
+      "static_shared_bytes": 1720,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "void vibeqc::scf::cuda_execution::contract_bounded_exact_low_order_force_page_kernel<(bool)1, (vibeqc::scf::cuda_execution::DirectScreeningPurpose)1>(vibeqc::scf::cuda_execution::DeviceBatch, const vibeqc::scf::detail::GeneratedShellPairStream *, unsigned int, unsigned int, unsigned int, double, unsigned long, unsigned int, unsigned int, unsigned int, bool, const double *, const double *, double *, unsigned int *, vibeqc::scf::cuda_execution::DeviceShellClassProfileEntry *)",
+      "launches": 2,
+      "seconds": 0.038415656,
+      "registers": 254,
+      "static_shared_bytes": 4,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dppp_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.01557612,
+      "registers": 168,
+      "static_shared_bytes": 41216,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ppps_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.015392701,
+      "registers": 126,
+      "static_shared_bytes": 36616,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_pppp_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.013900142,
+      "registers": 252,
+      "static_shared_bytes": 26888,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ddds_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.013793795,
+      "registers": 238,
+      "static_shared_bytes": 26176,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ppps_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.013229244,
+      "registers": 160,
+      "static_shared_bytes": 36096,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "void vibeqc::scf::cuda_execution::bounded_direct_dddd_streaming_kernel<(bool)1, (vibeqc::scf::cuda_execution::DirectScreeningPurpose)0, (bool)0>(vibeqc::scf::cuda_execution::DeviceBatch, const vibeqc::scf::detail::GeneratedShellPairStream *, double, const double *, const double *, const unsigned char *, double *, unsigned int *, vibeqc::scf::cuda_execution::DeviceShellClassProfileEntry *, unsigned long long *)",
+      "launches": 1,
+      "seconds": 0.01216376,
+      "registers": 178,
+      "static_shared_bytes": 28,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpps_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.011985902,
+      "registers": 162,
+      "static_shared_bytes": 24064,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_psss_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.011711626,
+      "registers": 133,
+      "static_shared_bytes": 15112,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_psps_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.01151028,
+      "registers": 160,
+      "static_shared_bytes": 16392,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dsps_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.010851713,
+      "registers": 136,
+      "static_shared_bytes": 33792,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dppp_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.01057934,
+      "registers": 255,
+      "static_shared_bytes": 27400,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ppss_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.009718308,
+      "registers": 246,
+      "static_shared_bytes": 3408,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_pppp_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.00883972,
+      "registers": 168,
+      "static_shared_bytes": 13760,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dsss_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.008727559,
+      "registers": 168,
+      "static_shared_bytes": 16392,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_psps_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.008461815,
+      "registers": 246,
+      "static_shared_bytes": 3408,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpds_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.008313666,
+      "registers": 168,
+      "static_shared_bytes": 34304,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dspp_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.008190081,
+      "registers": 166,
+      "static_shared_bytes": 24064,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ddds_shell_class_force_uhf_persistent_kernel",
+      "launches": 2,
+      "seconds": 0.008160595,
+      "registers": 252,
+      "static_shared_bytes": 1032,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ppss_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.008148769,
+      "registers": 160,
+      "static_shared_bytes": 16392,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dsds_shell_class_force_uhf_persistent_kernel",
+      "launches": 2,
+      "seconds": 0.007845744,
+      "registers": 166,
+      "static_shared_bytes": 656,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpdp_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.007497881,
+      "registers": 247,
+      "static_shared_bytes": 33088,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "vibeqc::scf::<unnamed>::nucleus_cooperative_gradient(vibeqc::scf::OneElectronDeviceView, const int *, const int *, unsigned long, vibeqc::scf::OneElectronWeightView, const unsigned char *, double, double *)",
+      "launches": 1,
+      "seconds": 0.007309931,
+      "registers": 255,
+      "static_shared_bytes": 576,
+      "max_grid_blocks": 7439
+    },
+    {
+      "name": "generated_sm120_ddss_shell_class_force_uhf_persistent_kernel",
+      "launches": 2,
+      "seconds": 0.007096233,
+      "registers": 166,
+      "static_shared_bytes": 656,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dsps_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.006902983,
+      "registers": 252,
+      "static_shared_bytes": 6224,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dspp_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.006889254,
+      "registers": 242,
+      "static_shared_bytes": 26888,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpps_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.006812197,
+      "registers": 220,
+      "static_shared_bytes": 26888,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ssss_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.006647375,
+      "registers": 109,
+      "static_shared_bytes": 13832,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpss_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.006525165,
+      "registers": 136,
+      "static_shared_bytes": 33792,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpss_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.006063902,
+      "registers": 252,
+      "static_shared_bytes": 6224,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ddpp_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.006011111,
+      "registers": 167,
+      "static_shared_bytes": 1544,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dddp_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.005596259,
+      "registers": 248,
+      "static_shared_bytes": 28224,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ddps_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.005574338,
+      "registers": 166,
+      "static_shared_bytes": 34304,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpdp_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.004787505,
+      "registers": 255,
+      "static_shared_bytes": 37128,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::profile_bounded_generated_tasks_kernel(vibeqc::scf::cuda_execution::DeviceBatch, const vibeqc::scf::detail::GeneratedShellTask *, const unsigned int *, const unsigned int *, vibeqc::scf::cuda_execution::DeviceShellClassProfileEntry *)",
+      "launches": 24,
+      "seconds": 0.004462446,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ddpp_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.004226347,
+      "registers": 255,
+      "static_shared_bytes": 37128,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dsss_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.004008937,
+      "registers": 240,
+      "static_shared_bytes": 2640,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpds_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.004004169,
+      "registers": 254,
+      "static_shared_bytes": 37128,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dsds_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.003179461,
+      "registers": 136,
+      "static_shared_bytes": 21760,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ddps_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.002998014,
+      "registers": 254,
+      "static_shared_bytes": 37128,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dddp_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.002326935,
+      "registers": 255,
+      "static_shared_bytes": 37640,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ddss_shell_class_fock_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.002296923,
+      "registers": 136,
+      "static_shared_bytes": 21760,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "void vibeqc::scf::cuda_execution::compact_bounded_exact_class_force_wave_kernel<(bool)1, (vibeqc::scf::cuda_execution::DirectScreeningPurpose)0>(vibeqc::scf::cuda_execution::DeviceBatch, const vibeqc::scf::detail::GeneratedShellPairStream *, unsigned int, unsigned int, unsigned int, double, unsigned long, unsigned int, unsigned int, unsigned int, bool, vibeqc::scf::detail::GeneratedShellTask *, unsigned int *, unsigned int *, const unsigned int *, bool, unsigned int *, const unsigned int *)",
+      "launches": 20,
+      "seconds": 0.002266264,
+      "registers": 60,
+      "static_shared_bytes": 4,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_nn_align1>(T1::Params)",
+      "launches": 32,
+      "seconds": 0.001926838,
+      "registers": 80,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 24
+    },
+    {
+      "name": "void vibeqc::scf::cuda_execution::compact_bounded_exact_class_force_wave_kernel<(bool)1, (vibeqc::scf::cuda_execution::DirectScreeningPurpose)1>(vibeqc::scf::cuda_execution::DeviceBatch, const vibeqc::scf::detail::GeneratedShellPairStream *, unsigned int, unsigned int, unsigned int, double, unsigned long, unsigned int, unsigned int, unsigned int, bool, vibeqc::scf::detail::GeneratedShellTask *, unsigned int *, unsigned int *, const unsigned int *, bool, unsigned int *, const unsigned int *)",
+      "launches": 32,
+      "seconds": 0.001731667,
+      "registers": 70,
+      "static_shared_bytes": 4,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "void gemvNSP_kernel<double, double, double, double, (int)1, (int)32, (int)4, (int)1024, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T10)",
+      "launches": 582,
+      "seconds": 0.001191405,
+      "registers": 32,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 16
+    },
+    {
+      "name": "generated_sm120_dddd_shell_class_force_uhf_persistent_kernel",
+      "launches": 1,
+      "seconds": 0.001144908,
+      "registers": 255,
+      "static_shared_bytes": 37640,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "void cuds_symv_lo_direct_kernel<double, (int)4, (int)1>(long, const T1 *, long, long, const T1 *, long, long, const T1 *, const T1 *, T1, T1, int, T1 *, long, long)",
+      "launches": 384,
+      "seconds": 0.001025192,
+      "registers": 40,
+      "static_shared_bytes": 2176,
+      "max_grid_blocks": 11
+    },
+    {
+      "name": "std::enable_if<!T7, void>::type internal::gemvx::kernel<int, int, double, double, double, double, (bool)0, (bool)1, (bool)0, (bool)0, (int)7, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)",
+      "launches": 468,
+      "seconds": 0.000930282,
+      "registers": 170,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 21
+    },
+    {
+      "name": "void vibeqc::scf::cuda_execution::update_uhf_convergence_kernel<(bool)1>(int, int, double, double, bool, const double *, double *, const double *, double *, unsigned char *, unsigned char *, unsigned int *, double *, double *, const double *, const unsigned int *)",
+      "launches": 1,
+      "seconds": 0.000894186,
+      "registers": 35,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 2
+    },
+    {
+      "name": "std::enable_if<!T7, void>::type internal::gemvx::kernel<int, int, double, double, double, double, (bool)0, (bool)1, (bool)1, (bool)0, (int)7, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)",
+      "launches": 486,
+      "seconds": 0.00087614,
+      "registers": 168,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 21
+    },
+    {
+      "name": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_64x32_16x4_tn_align1>(T1::Params)",
+      "launches": 14,
+      "seconds": 0.000873898,
+      "registers": 88,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 24
+    },
+    {
+      "name": "void vibeqc::scf::cuda_execution::update_diis_kernel<(bool)0>(int, int, int, unsigned int, const double *, const double *, const unsigned char *, double *, double *, double *, double *, unsigned int *, unsigned int *, double *, bool, const double *, unsigned long)",
+      "launches": 1,
+      "seconds": 0.000773033,
+      "registers": 56,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 2
+    },
+    {
+      "name": "void laed2_par<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 0.000760904,
+      "registers": 56,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "void sytrd4_cta<sytrd_params<double, (int)16, (int)16, (int)64, (int)32, (int)0, (int)1, (int)2>, (int)1>(int, T1::data_type *, int, int, T1::pod_type *, int, T1::pod_type *, int, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 0.000732457,
+      "registers": 94,
+      "static_shared_bytes": 9856,
+      "max_grid_blocks": 4
+    },
+    {
+      "name": "void latrd_compute_w_kernel<double, (int)8, (int)1>(const T1 *, long, long, const T1 *, long, const T1 *, long, T1 *, long)",
+      "launches": 384,
+      "seconds": 0.000678445,
+      "registers": 18,
+      "static_shared_bytes": 2048,
+      "max_grid_blocks": 4
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::compute_uhf_energy_kernel(int, int, const double *, const double *, const double *, const double *, const unsigned char *, double *)",
+      "launches": 2,
+      "seconds": 0.000667368,
+      "registers": 36,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 2
+    },
+    {
+      "name": "void larfg_kernel_fast<double, double, (int)7>(long, T1 *, long, T1 *, long, long, T1 *, long)",
+      "launches": 192,
+      "seconds": 0.000611945,
+      "registers": 39,
+      "static_shared_bytes": 1024,
+      "max_grid_blocks": 4
+    },
+    {
+      "name": "void larfg_kernel_fast<double, double, (int)8>(long, T1 *, long, T1 *, long, long, T1 *, long)",
+      "launches": 129,
+      "seconds": 0.00060138,
+      "registers": 39,
+      "static_shared_bytes": 2048,
+      "max_grid_blocks": 4
+    },
+    {
+      "name": "void laed4_par<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "launches": 3,
+      "seconds": 0.000586855,
+      "registers": 92,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 256
+    },
+    {
+      "name": "std::enable_if<!T7, void>::type internal::gemvx::kernel<int, int, double, double, double, double, (bool)0, (bool)1, (bool)0, (bool)0, (int)5, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)",
+      "launches": 276,
+      "seconds": 0.000486053,
+      "registers": 170,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 37
+    },
+    {
+      "name": "std::enable_if<!T7, void>::type internal::gemvx::kernel<int, int, double, double, double, double, (bool)0, (bool)1, (bool)1, (bool)0, (int)6, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)",
+      "launches": 270,
+      "seconds": 0.000441539,
+      "registers": 168,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 32
+    },
+    {
+      "name": "void laed2_par<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 0.00037802,
+      "registers": 56,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 2
+    },
+    {
+      "name": "void latrd_trans_kernel<double, (int)8>(long, const T1 *, long, long, T1 *, long, const T1 *, long, long, T1 *, long)",
+      "launches": 381,
+      "seconds": 0.000368004,
+      "registers": 20,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "void laed4_par<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "launches": 3,
+      "seconds": 0.000346276,
+      "registers": 92,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 128
+    },
+    {
+      "name": "void steqr_ker<stedc_params_<double2, double, (int)8, (int)16, (int)128>, double, (int)0>(long, T1::data_type *, T1::data_type *, T2 *, long, int *, int *, long, long, T1::data_type, T1::data_type, int *, int)",
+      "launches": 3,
+      "seconds": 0.000328003,
+      "registers": 62,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 22
+    },
+    {
+      "name": "std::enable_if<!T7, void>::type internal::gemvx::kernel<int, int, double, double, double, double, (bool)0, (bool)1, (bool)0, (bool)0, (int)6, (bool)0, cublasGemvParamsEx<int, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double>>(T13)",
+      "launches": 192,
+      "seconds": 0.000321475,
+      "registers": 170,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 20
+    },
+    {
+      "name": "void latrd_copy_E_from_A_kernel<double, double>(T1 *, long, T2 *, long, int)",
+      "launches": 384,
+      "seconds": 0.00029885,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "void laed4_par<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "launches": 3,
+      "seconds": 0.000244323,
+      "registers": 96,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 64
+    },
+    {
+      "name": "void vibeqc::scf::cuda_execution::compact_bounded_generated_tasks_kernel<(bool)1, (vibeqc::scf::cuda_execution::DirectScreeningPurpose)1, (bool)1>(vibeqc::scf::cuda_execution::DeviceBatch, double, const double *, const vibeqc::scf::cuda_execution::ShellPairDensityBounds *, const unsigned int *, const double *, const double *, const unsigned char *, const unsigned long *, unsigned long, unsigned long, const unsigned int *, const unsigned int *, unsigned long long *, vibeqc::scf::detail::GeneratedShellTask *, unsigned int *, const unsigned int *, unsigned int *)",
+      "launches": 2,
+      "seconds": 0.000240418,
+      "registers": 72,
+      "static_shared_bytes": 8,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::build_orthogonalizer_kernel(int, int, const double *, const double *, const unsigned char *, double *, unsigned char *)",
+      "launches": 1,
+      "seconds": 0.000231683,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1849
+    },
+    {
+      "name": "void laed4_par<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "launches": 3,
+      "seconds": 0.000212899,
+      "registers": 98,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 32
+    },
+    {
+      "name": "void laed4_par<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int, int *, int)",
+      "launches": 3,
+      "seconds": 0.000201443,
+      "registers": 98,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 16
+    },
+    {
+      "name": "void laed2_par<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 0.000186146,
+      "registers": 56,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 3
+    },
+    {
+      "name": "void larfg_kernel_fast<double, double, (int)6>(long, T1 *, long, T1 *, long, long, T1 *, long)",
+      "launches": 63,
+      "seconds": 0.000175235,
+      "registers": 39,
+      "static_shared_bytes": 512,
+      "max_grid_blocks": 4
+    },
+    {
+      "name": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_32x32_16x5_nt_align1>(T1::Params)",
+      "launches": 6,
+      "seconds": 0.000167555,
+      "registers": 52,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 4
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::prefix_bounded_force_signature_blocks_kernel(unsigned int *, unsigned int *, unsigned int *)",
+      "launches": 16,
+      "seconds": 0.000163297,
+      "registers": 32,
+      "static_shared_bytes": 1184,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::nuclear_force_kernel(vibeqc::scf::cuda_execution::DeviceBatch, const unsigned char *, double *)",
+      "launches": 1,
+      "seconds": 9.8273e-05,
+      "registers": 52,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 3
+    },
+    {
+      "name": "void laed2_par<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 9.3889e-05,
+      "registers": 68,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 6
+    },
+    {
+      "name": "void cutlass::Kernel2<cutlass_80_tensorop_d884gemm_32x32_16x5_nn_align1>(T1::Params)",
+      "launches": 6,
+      "seconds": 8.8001e-05,
+      "registers": 56,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 4
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::transform_density_to_direct_left_kernel(int, int, int, int, const double *, const double *, const unsigned char *, double *)",
+      "launches": 2,
+      "seconds": 8.5153e-05,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 4608
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::transform_density_to_direct_right_kernel(int, int, int, int, const double *, const double *, const unsigned char *, double *)",
+      "launches": 2,
+      "seconds": 8.0321e-05,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 4128
+    },
+    {
+      "name": "void larft_T_64_batch<double>(int, T1 *, int, long, const T1 *, long)",
+      "launches": 3,
+      "seconds": 7.7985e-05,
+      "registers": 34,
+      "static_shared_bytes": 16896,
+      "max_grid_blocks": 2
+    },
+    {
+      "name": "void larft_T_64<double>(int, T1 *, int, long, const T1 *, long)",
+      "launches": 3,
+      "seconds": 7.6449e-05,
+      "registers": 34,
+      "static_shared_bytes": 16896,
+      "max_grid_blocks": 4
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::reduce_bounded_system_density_bounds_kernel(vibeqc::scf::cuda_execution::DeviceBatch, const vibeqc::scf::cuda_execution::ShellPairDensityBounds *, double *, double *)",
+      "launches": 2,
+      "seconds": 6.1025e-05,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 2
+    },
+    {
+      "name": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "launches": 3,
+      "seconds": 5.037e-05,
+      "registers": 34,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 257
+    },
+    {
+      "name": "void laed2_par<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, T1::data_type *, T1::data_type *, int *, int *, int *, int *, int *, T1::data_type *, int *, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 4.9249e-05,
+      "registers": 69,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 11
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::build_nuclear_repulsion_kernel(vibeqc::scf::cuda_execution::DeviceBatch, double *)",
+      "launches": 1,
+      "seconds": 4.4096e-05,
+      "registers": 48,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)256, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 4.368e-05,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 256
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::transform_direct_fock_left_kernel(int, int, int, int, const double *, const double *, const unsigned char *, double *)",
+      "launches": 1,
+      "seconds": 3.9617e-05,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 4128
+    },
+    {
+      "name": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "launches": 3,
+      "seconds": 3.8113e-05,
+      "registers": 34,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 129
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::transform_direct_fock_right_kernel(int, int, int, int, const double *, const double *, const double *, const unsigned char *, double *)",
+      "launches": 1,
+      "seconds": 3.68e-05,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 3698
+    },
+    {
+      "name": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)128, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 2.7521e-05,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 128
+    },
+    {
+      "name": "void vibeqc::scf::cuda_execution::reduce_shell_pair_density_bounds_kernel<(bool)1>(vibeqc::scf::cuda_execution::DeviceBatch, const double *, const unsigned char *, vibeqc::scf::cuda_execution::ShellPairDensityBounds *)",
+      "launches": 2,
+      "seconds": 2.0192e-05,
+      "registers": 44,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 5852
+    },
+    {
+      "name": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "launches": 3,
+      "seconds": 2.0128e-05,
+      "registers": 34,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 65
+    },
+    {
+      "name": "void laed2_copy<double2, double, (int)128>(int, int, T2 *, int, int *, int *, T2 *, int, int)",
+      "launches": 15,
+      "seconds": 1.7792e-05,
+      "registers": 36,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 512
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::scan_bounded_force_signature_counts_kernel(unsigned int *, unsigned int *, unsigned int *)",
+      "launches": 16,
+      "seconds": 1.5649e-05,
+      "registers": 29,
+      "static_shared_bytes": 1184,
+      "max_grid_blocks": 67
+    },
+    {
+      "name": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)64, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 1.5041e-05,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 64
+    },
+    {
+      "name": "void gemmk1_kernel<int, double, (int)256, (int)5, (bool)0, (bool)0, (bool)0, (bool)0, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<const double>, cublasGemvTensorStridedBatched<double>, double, (int)0>(cublasGemmk1Params<T2, T9, T10, T11, T12, biasType<T11::value_type, T12>::type>)",
+      "launches": 12,
+      "seconds": 1.4816e-05,
+      "registers": 26,
+      "static_shared_bytes": 2048,
+      "max_grid_blocks": 6
+    },
+    {
+      "name": "void scale_max<double, (int)32, (int)32, (int)1>(long, long, T1 *, T1 *, T1 *, int *)",
+      "launches": 3,
+      "seconds": 1.472e-05,
+      "registers": 48,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::build_spin_density_kernel(int, int, int, const int *, const double *, const unsigned char *, double *)",
+      "launches": 2,
+      "seconds": 1.28e-05,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 3698
+    },
+    {
+      "name": "void setup_vhat_l_kernel<double, (int)16>(long, long, const T1 *, long, long, T1 *, long, long)",
+      "launches": 12,
+      "seconds": 1.056e-05,
+      "registers": 18,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 11
+    },
+    {
+      "name": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 1.0272e-05,
+      "registers": 50,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 32
+    },
+    {
+      "name": "void laed3_epi2<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, int, int *, T1::data_type *, int *, T1::data_type *, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 9.536e-06,
+      "registers": 50,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 16
+    },
+    {
+      "name": "void lansy_M_stage1<double, double, (int)8>(long, const T1 *, long, long, T2 *, long, int)",
+      "launches": 3,
+      "seconds": 9.056e-06,
+      "registers": 40,
+      "static_shared_bytes": 2048,
+      "max_grid_blocks": 172
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::prepare_bounded_generated_retry_kernel(unsigned int, const unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, bool)",
+      "launches": 1,
+      "seconds": 8.48e-06,
+      "registers": 36,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)32, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "launches": 3,
+      "seconds": 7.872e-06,
+      "registers": 33,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 33
+    },
+    {
+      "name": "void lansy_M_stage2<double, (int)8>(T1, T1, long, T1 *, long, T1 *, T1 *)",
+      "launches": 3,
+      "seconds": 6.528e-06,
+      "registers": 40,
+      "static_shared_bytes": 2048,
+      "max_grid_blocks": 4
+    },
+    {
+      "name": "void gemmcn_skinny_kernel<double, (int)2, (int)4>(int, int, int, const T1 *, long, long, const T1 *, long, long, T1 *, long, long)",
+      "launches": 3,
+      "seconds": 6.144e-06,
+      "registers": 37,
+      "static_shared_bytes": 4096,
+      "max_grid_blocks": 11
+    },
+    {
+      "name": "void laed3_epi1<stedc_params_<double2, double, (int)8, (int)16, (int)256>>(int, int, int, int *, T1::data_type *, T1::data_type *, int, T1::data_type *, int *, int *, T1::data_type *, T1::data_type *, T1::data_type *, int *, int, int)",
+      "launches": 3,
+      "seconds": 5.856e-06,
+      "registers": 33,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 17
+    },
+    {
+      "name": "copy_info_kernel(int, int *)",
+      "launches": 9,
+      "seconds": 5.664e-06,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "void epilogue<sytrd_params<double, (int)32, (int)8, (int)512, (int)32, (int)16, (int)1, (int)2>, (int)128, (int)1, (int)1>(int, int, T1::data_type *, int, int, T1::pod_type *, int, T1::pod_type *, int, T1::data_type *, int, T1::data_type *, int, int)",
+      "launches": 3,
+      "seconds": 5.632e-06,
+      "registers": 20,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 8
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::copy_selected_matrices_kernel(int, int, int, const unsigned char *, const double *, double *)",
+      "launches": 2,
+      "seconds": 5.12e-06,
+      "registers": 20,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 3698
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::copy_matrix_kernel(unsigned long, const double *, double *)",
+      "launches": 2,
+      "seconds": 3.872e-06,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 3698
+    },
+    {
+      "name": "void merge_ker<double, double, (int)128, (int)0, (int)1>(long, long, T2 *, T2 *, long, int *, T2 *, T2 *, long, int, int)",
+      "launches": 3,
+      "seconds": 3.84e-06,
+      "registers": 18,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 232
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::sum_uhf_spin_matrices_kernel(int, int, const double *, const unsigned char *, double *)",
+      "launches": 2,
+      "seconds": 3.584e-06,
+      "registers": 20,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1849
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::tail_rhf_loop_kernel(int, unsigned int, const unsigned char *, const unsigned int *)",
+      "launches": 1,
+      "seconds": 3.456e-06,
+      "registers": 31,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "void lacpy_kernel<double, double, (int)5, (int)3>(long, long, const T1 *, long, long, T2 *, long, long, int, int, long)",
+      "launches": 3,
+      "seconds": 3.168e-06,
+      "registers": 18,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 6
+    },
+    {
+      "name": "void copy_trdiag_block<double, double>(T1 *, long, long, T2 *, long, T2 *, long, long, int)",
+      "launches": 3,
+      "seconds": 3.136e-06,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "void scale_max<double, (int)32, (int)128, (int)0>(long, long, T1 *, T1 *, T1 *, int *)",
+      "launches": 3,
+      "seconds": 3.104e-06,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 2
+    },
+    {
+      "name": "void merge_ker<double, double, (int)128, (int)1, (int)1>(long, long, T2 *, T2 *, long, int *, T2 *, T2 *, long, int, int)",
+      "launches": 3,
+      "seconds": 3.072e-06,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 232
+    },
+    {
+      "name": "void lascl_kernel<double, double, (int)8>(long, long, T1 *, long, long, T2 *, int, int)",
+      "launches": 3,
+      "seconds": 2.976e-06,
+      "registers": 40,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 172
+    },
+    {
+      "name": "generated_sm120_ddpp_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 2.912e-06,
+      "registers": 127,
+      "static_shared_bytes": 1736,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::clear_active_matrices_kernel(int, int, int, const unsigned char *, double *)",
+      "launches": 1,
+      "seconds": 2.624e-06,
+      "registers": 20,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 4608
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::broadcast_spin_matrix_kernel(int, int, int, const double *, const unsigned char *, double *)",
+      "launches": 1,
+      "seconds": 2.56e-06,
+      "registers": 22,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 3698
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::<unnamed>::sanitize_inactive_solver_input_kernel(int, int, const unsigned char *, double *, int *, unsigned int, const unsigned int *, vibeqc::scf::cuda_execution::DeviceInactiveEigensolverProfileEntry *)",
+      "launches": 3,
+      "seconds": 2.464e-06,
+      "registers": 34,
+      "static_shared_bytes": 8,
+      "max_grid_blocks": 4
+    },
+    {
+      "name": "void cuds_scal_batch_kernel<double, (int)256>(int, const T1 *, T1 *, long long, int)",
+      "launches": 3,
+      "seconds": 2.4e-06,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::subtract_matrix_batches_kernel(int, int, int, const double *, const unsigned char *, double *)",
+      "launches": 1,
+      "seconds": 2.368e-06,
+      "registers": 20,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 3698
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::inspect_solver_kernel(int, const int *, unsigned char *, unsigned char *, unsigned char *)",
+      "launches": 2,
+      "seconds": 2.112e-06,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "generated_sm120_dpdp_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 2.112e-06,
+      "registers": 245,
+      "static_shared_bytes": 34660,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "xx_set_info_ker(int, int *, int)",
+      "launches": 3,
+      "seconds": 1.92e-06,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "generated_sm120_ppps_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.92e-06,
+      "registers": 220,
+      "static_shared_bytes": 42372,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dsps_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.92e-06,
+      "registers": 160,
+      "static_shared_bytes": 40068,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpss_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.92e-06,
+      "registers": 128,
+      "static_shared_bytes": 40068,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dppp_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.92e-06,
+      "registers": 255,
+      "static_shared_bytes": 44356,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpds_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.92e-06,
+      "registers": 251,
+      "static_shared_bytes": 37444,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ddps_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.92e-06,
+      "registers": 190,
+      "static_shared_bytes": 37444,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::reduce_bounded_shell_pair_block_bounds_kernel(vibeqc::scf::cuda_execution::DeviceBatch, const unsigned int *, const double *, double *)",
+      "launches": 1,
+      "seconds": 1.76e-06,
+      "registers": 24,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 184
+    },
+    {
+      "name": "generated_sm120_ssss_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.76e-06,
+      "registers": 136,
+      "static_shared_bytes": 19972,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dsss_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.728e-06,
+      "registers": 254,
+      "static_shared_bytes": 22532,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dsds_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.664e-06,
+      "registers": 134,
+      "static_shared_bytes": 24900,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ddds_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.632e-06,
+      "registers": 168,
+      "static_shared_bytes": 27748,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dddp_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.632e-06,
+      "registers": 168,
+      "static_shared_bytes": 29012,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dspp_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.6e-06,
+      "registers": 168,
+      "static_shared_bytes": 27204,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_dpps_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.6e-06,
+      "registers": 168,
+      "static_shared_bytes": 27204,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ddss_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.6e-06,
+      "registers": 134,
+      "static_shared_bytes": 24900,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_pppp_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.568e-06,
+      "registers": 128,
+      "static_shared_bytes": 15332,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_ppss_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.536e-06,
+      "registers": 175,
+      "static_shared_bytes": 22532,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::mix_open_shell_guess_kernel(int, int, const int *, const unsigned char *, double *)",
+      "launches": 1,
+      "seconds": 1.472e-06,
+      "registers": 18,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 11
+    },
+    {
+      "name": "generated_sm120_psss_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.408e-06,
+      "registers": 126,
+      "static_shared_bytes": 4,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "generated_sm120_psps_shell_class_fock_uhf_streaming_kernel",
+      "launches": 1,
+      "seconds": 1.376e-06,
+      "registers": 168,
+      "static_shared_bytes": 4,
+      "max_grid_blocks": 1360
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::select_converged_kernel(int, const unsigned char *, const unsigned char *, unsigned char *)",
+      "launches": 1,
+      "seconds": 1.28e-06,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::extract_matrix_diagonals_kernel(int, int, int, const unsigned char *, const double *, double *)",
+      "launches": 1,
+      "seconds": 1.216e-06,
+      "registers": 24,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 22
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::normalize_bounded_generated_task_counts_kernel(const unsigned int *, unsigned int *, unsigned int *, unsigned int *, bool)",
+      "launches": 1,
+      "seconds": 9.92e-07,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 2
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::inspect_spin_solver_kernel(int, int, const int *, unsigned char *, unsigned char *, unsigned char *)",
+      "launches": 1,
+      "seconds": 8.96e-07,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    },
+    {
+      "name": "vibeqc::scf::cuda_execution::expand_spin_active_kernel(int, int, const unsigned char *, unsigned char *)",
+      "launches": 1,
+      "seconds": 7.68e-07,
+      "registers": 16,
+      "static_shared_bytes": 0,
+      "max_grid_blocks": 1
+    }
+  ]
+}

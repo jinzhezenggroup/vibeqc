@@ -58,7 +58,7 @@ not mechanically deleting by extension or size.
 ## References
 
 - #238: durable evidence versus transient artifacts.
-- [Current policy](../../../docs/evidence_retention.md).
+- [Current policy](../../../docs/maintainer/evidence_retention.md).
 - [Archive and recovery](../../../benchmarks/results/retention-checkout/README.md).
 
 Agent: ChatGPT

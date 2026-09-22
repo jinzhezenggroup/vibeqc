@@ -40,6 +40,7 @@ def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     runtime = source.index('#include "cuda_grid.cu"')
     for scientific in (
         "__global__ void ao_kernel",
+        "__global__ void ao_kernel_fp32",
         "__global__ void feature_kernel",
         "__device__ vibeqc::dft::point::Value evaluate_xc_point",
         "__global__ void xc_local_potential_kernel",
@@ -87,6 +88,9 @@ def test_method_composition_is_above_xc_and_dft(tmp_path: typing.Any) -> None:
     method.mkdir()
     (method / "ok.py").write_text(
         "from vibeqc_compiler.xc.spec import FunctionalSpec\n"
+    )
+    (method / "geometry_ok.py").write_text(
+        "from vibeqc_compiler.geometry.ir import GeometryIR\n"
     )
     assert audit_structure(tmp_path)["errors"] == []
 

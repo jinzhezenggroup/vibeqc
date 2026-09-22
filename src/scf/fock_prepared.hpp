@@ -86,6 +86,9 @@ class PreparedFockPlan {
    * device consumer. Null means that this prepared strategy has no such
    * source. The PreparedFockPlan still owns selection, lifetime and resources. */
   CudaDirectJkPlan* cuda_direct_source() const noexcept;
+  /** Borrow the fitted CUDA source on its own stream. Null for CPU/exact
+   * sources; the immutable preparation and memory budget remain owned here. */
+  CudaDensityFittingJkPlan* cuda_fitted_source() const noexcept;
   /** Exact normalized scientific identity, independent of execution budget. */
   bool matches_system(const core::System& system) const noexcept;
   DirectJkMatrices build(const std::vector<double>& density,

@@ -247,7 +247,7 @@ def main() -> None:
         # Generated values are the sole native definition. The independent
         # Libcint/NumPy oracle above validates every mapping; historical native
         # A/B reproduction belongs to the archived promotion source checkout.
-        for mapping in ("auxiliary", "component", "primitive"):
+        for mapping in ("auto", "auxiliary", "component", "primitive"):
             for pair_tile, aux_tile in ((nbf * nbf, naux), (7, 3)):
                 name = f"{case}-{mapping}-p{pair_tile}-a{aux_tile}"
                 prefix = directory / name
