@@ -54,6 +54,30 @@ FockBuildSpec make_rsh_correction_fock_spec(FockSpin spin, double short_range_ex
   return spec;
 }
 
+void require_wb97mv_composition(const ResolvedFockBuild& primary,
+                                const ResolvedFockBuild& correction,
+                                const dft::nlc::Vv10Parameters& nonlocal) {
+  validate_resolved_fock_build(primary);
+  validate_resolved_fock_build(correction);
+  const auto spin = primary.spec.spin;
+  const auto expected_primary =
+      resolve_fock_build(make_rsh_primary_fock_spec(spin, dft::generated::kWb97mvShortExchange),
+                         FockBackend::Cpu, primary.screening_tolerance);
+  const auto expected_correction =
+      resolve_fock_build(make_rsh_correction_fock_spec(spin, dft::generated::kWb97mvShortExchange,
+                                                       dft::generated::kWb97mvLongExchange,
+                                                       dft::generated::kWb97mvOmega),
+                         FockBackend::Cpu, primary.screening_tolerance);
+  if (primary.backend != FockBackend::Cpu || correction.backend != FockBackend::Cpu ||
+      primary != expected_primary || correction != expected_correction ||
+      nonlocal.variant != dft::nlc::Vv10Variant::vv10 ||
+      nonlocal.b != dft::generated::kWb97mvNonlocalB ||
+      nonlocal.c != dft::generated::kWb97mvNonlocalC ||
+      nonlocal.coefficient != dft::generated::kWb97mvNonlocalCoefficient)
+    throw std::invalid_argument(
+        "WB97M-V composition disagrees with the generated B97M/RSH/VV10 manifest");
+}
+
 namespace {
 
 using initial_guess::prepare_initial_density;
@@ -128,6 +152,15 @@ dft::XcIntegral evaluate_b3lyp_xc_rks(const dft::AoBasis& basis, const dft::Mole
   return dft::integrate_b3lyp_rks(basis, grid, density, tile, source);
 }
 
+dft::XcIntegral evaluate_wb97mv_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                                       const Matrix& density, dft::XcDensitySource source,
+                                       std::size_t tile, double exchange_scale,
+                                       double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled WB97M-V semilocal execution is not qualified");
+  return dft::integrate_wb97mv_rks(basis, grid, density, tile, source);
+}
+
 dft::XcIntegral evaluate_cam_b3lyp_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                           const Matrix& density, dft::XcDensitySource source,
                                           std::size_t tile, double exchange_scale,
@@ -143,7 +176,8 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
                            RksXcEvaluator evaluate_xc, const char* method_name,
                            dft::XcDensitySource source, std::size_t retained_capacity,
                            std::size_t tile, double exchange_scale, double correlation_scale,
-                           dft::nlc::Vv10Plan* nonlocal_correlation) {
+                           dft::nlc::Vv10Plan* nonlocal_correlation,
+                           dft::nlc::Vv10DensityDomain nonlocal_domain) {
   const auto& strategy = plan.strategy();
   const auto& ints = plan.one_electron();
   const auto jk = plan.build(density);
@@ -168,7 +202,8 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
   result.density_diagnostic = xc.density_diagnostic;
   dft::nlc::Vv10Integral nonlocal;
   if (nonlocal_correlation)
-    nonlocal = dft::nlc::integrate_vv10_rks(basis, grid, density, *nonlocal_correlation, tile);
+    nonlocal = dft::nlc::integrate_vv10_rks(basis, grid, density, *nonlocal_correlation, tile, {},
+                                            nonlocal_domain);
   // The semilocal/nonlocal AO tiles and potentials are live together with
   // these J/Fock buffers. Their reported peaks exclude borrowed D/factors.
   const auto scientific_peak =
@@ -197,11 +232,12 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
   return result;
 }
 
-ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_range_correction,
-                  const dft::AoBasis& basis, const dft::MolecularGrid& grid,
-                  const ScfOptions& options, const std::vector<double>* initial_density,
-                  RksXcEvaluator evaluate_xc, const char* method_name,
-                  dft::nlc::Vv10Plan* nonlocal_correlation) {
+ScfResult run_rks(
+    const PreparedFockPlan& plan, const PreparedFockPlan* long_range_correction,
+    const dft::AoBasis& basis, const dft::MolecularGrid& grid, const ScfOptions& options,
+    const std::vector<double>* initial_density, RksXcEvaluator evaluate_xc, const char* method_name,
+    dft::nlc::Vv10Plan* nonlocal_correlation,
+    dft::nlc::Vv10DensityDomain nonlocal_domain = dft::nlc::Vv10DensityDomain::StrictPositive) {
   if (options.xc_density_route != dft::XcDensityRoute::DensityMatrix &&
       options.xc_density_route != dft::XcDensityRoute::OccupiedOrbitals)
     throw std::invalid_argument("unsupported RKS XC density route");
@@ -274,7 +310,9 @@ ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_ran
   ks.grid_points = grid.point_count();
   ks.tile_points = std::min(options.xc_tile_points, grid.point_count());
   ks.ao_order = std::string_view(method_name) == "LDA" ? 0 : 1;
-  ks.scf_domain_version = std::string_view(method_name) == "B3LYP" ? 2U : 1U;
+  ks.scf_domain_version = std::string_view(method_name) == "WB97M-V"
+                              ? 3U
+                              : (std::string_view(method_name) == "B3LYP" ? 2U : 1U);
   auto& diagnostic = result.xc_density_diagnostic;
   diagnostic.physical_residual = std::numeric_limits<double>::infinity();
   std::shared_ptr<const OccupiedDensityFactor> factor;
@@ -327,7 +365,7 @@ ScfResult run_rks(const PreparedFockPlan& plan, const PreparedFockPlan* long_ran
                      method_name, {options.xc_density_route, factor.get(), identity},
                      runtime::add_capacity(retained_capacity(current_density), extra_live_bytes),
                      options.xc_tile_points, options.semilocal_exchange_scale,
-                     options.semilocal_correlation_scale, nonlocal_correlation);
+                     options.semilocal_correlation_scale, nonlocal_correlation, nonlocal_domain);
     const auto& record = physical.density_diagnostic;
     if (record.executed == dft::XcDensityRoute::OccupiedOrbitals)
       ++diagnostic.orbital_calls;
@@ -481,6 +519,15 @@ ScfResult run_pbe_rks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis&
                  &nonlocal_correlation);
 }
 
+ScfResult run_pbe_rsh_rks(const PreparedFockPlan& primary,
+                          const PreparedFockPlan& long_range_correction, const dft::AoBasis& basis,
+                          const dft::MolecularGrid& grid, const ScfOptions& options,
+                          const std::vector<double>* initial_density,
+                          dft::nlc::Vv10Plan* nonlocal_correlation) {
+  return run_rks(primary, &long_range_correction, basis, grid, options, initial_density,
+                 evaluate_pbe_xc_rks, "PBE-RSH", nonlocal_correlation);
+}
+
 ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density) {
@@ -498,6 +545,19 @@ ScfResult run_b3lyp_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
     throw std::invalid_argument("B3LYP plan does not match the generated MethodIR composition");
   return run_rks(plan, nullptr, basis, grid, options, initial_density, evaluate_b3lyp_xc_rks,
                  "B3LYP", nullptr);
+}
+
+ScfResult run_wb97mv_rks(const PreparedFockPlan& primary, const PreparedFockPlan& correction,
+                         const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                         const ScfOptions& options, dft::nlc::Vv10Plan& nonlocal,
+                         const std::vector<double>* initial_density) {
+  require_wb97mv_composition(primary.strategy(), correction.strategy(), nonlocal.parameters());
+  if (nonlocal.backend() != VIBEQC_BACKEND_CPU_REFERENCE ||
+      nonlocal.resources().point_count != grid.point_count())
+    throw std::invalid_argument("WB97M-V nonlocal owner is incompatible with the KS grid/backend");
+  return run_rks(primary, &correction, basis, grid, options, initial_density,
+                 evaluate_wb97mv_xc_rks, "WB97M-V", &nonlocal,
+                 dft::nlc::Vv10DensityDomain::MolecularV1);
 }
 
 ScfResult run_cam_b3lyp_rks(const PreparedFockPlan& primary,

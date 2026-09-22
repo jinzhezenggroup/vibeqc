@@ -909,28 +909,9 @@ class Calculator:
                 self._ks_options_version = query()
             from .ks import resolve_ks_options
 
-            if self._ks_options_version == 0:
-                if (
-                    self._ks_options.requires_composition_v2
-                    or self._ks_options != resolve_ks_options(self._method_name)
-                ):
-                    raise NotImplementedError(
-                        "native library does not support KS model options"
-                    )
-            elif (
-                self._ks_options_version == 1
-                and self._ks_options.requires_composition_v2
-            ):
+            if self._ks_options_version != 1:
                 raise NotImplementedError(
-                    "native library does not support KS composition options v2"
-                )
-            elif self._ks_options_version < 3 and self._ks_options.requires_schedule_v3:
-                raise NotImplementedError(
-                    "native library does not support KS execution schedules v3"
-                )
-            elif self._ks_options_version < 5 and self._ks_options.requires_nonlocal_v5:
-                raise NotImplementedError(
-                    "native library does not support KS nonlocal correlation v5"
+                    "native library does not support the current semantic KS execution-plan ABI"
                 )
 
         available = ctypes.c_int32()
@@ -1110,12 +1091,7 @@ class Calculator:
         if active_ks_options is not None and self._ks_options_version >= 1:
             from .ks import native_ks_options
 
-            descriptor.ks_options = ctypes.pointer(
-                native_ks_options(
-                    active_ks_options,
-                    version=min(self._ks_options_version, 5),
-                )
-            )
+            descriptor.ks_options = ctypes.pointer(native_ks_options(active_ks_options))
         if self._method in _COUPLED_CLUSTER_METHODS:
             descriptor.ccsd_max_iterations = self._ccsd_max_iterations
             descriptor.ccsd_diis_history = self._ccsd_diis_history
@@ -1769,16 +1745,11 @@ class Calculator:
             multiplicities=multiplicities,
         )
         if selection.options is not None:
-            if self._ks_options_version == 0:
-                if selection.options != self._ks_options:
-                    raise NotImplementedError(
-                        "native library does not support profile-selected KS model options"
-                    )
-            else:
-                native_ks_options(
-                    selection.options,
-                    version=min(self._ks_options_version, 5),
+            if self._ks_options_version != 1:
+                raise NotImplementedError(
+                    "native library does not support the current semantic KS execution-plan ABI"
                 )
+            native_ks_options(selection.options)
         return selection
 
     def _effective_ks_options(
