@@ -235,10 +235,11 @@ DfResolvedBudget resolve_df_budget_for_workload(DfBudgetWorkload workload, int d
 DfResolvedBudget resolve_df_budget_for_system(const core::System& orbital,
                                               const core::System& auxiliary, int device_id,
                                               std::size_t requested, bool forces,
-                                              std::size_t batch = 1U, unsigned diis_history = 0U) {
+                                              std::size_t batch = 1U, unsigned diis_history = 0U,
+                                              bool unrestricted = false) {
   auto workload = df_budget_workload(orbital, auxiliary, batch, diis_history, forces);
-  if (!requested && batch == 1U && orbital.electron_count > 0 && orbital.electron_count % 2 == 0 &&
-      orbital.multiplicity == 1) {
+  if (!unrestricted && !requested && batch == 1U && orbital.electron_count > 0 &&
+      orbital.electron_count % 2 == 0 && orbital.multiplicity == 1) {
     const auto occupied = static_cast<std::size_t>(orbital.electron_count / 2);
     workload.preferred_value_peak_bytes =
         preferred_automatic_resident_df_value_peak(workload, occupied, false);
@@ -370,7 +371,7 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
   DensityFittingScfData data;
   data.resolved_budget =
       resolve_df_budget_for_system(system, auxiliary_system, cuda_device_id, output_budget_bytes,
-                                   include_derivatives, 1U, diis_history);
+                                   include_derivatives, 1U, diis_history, unrestricted);
   trace_df_resolved_budget(data.resolved_budget);
 #if !VIBEQC_HAS_CUDA
   (void)output_budget_bytes;
