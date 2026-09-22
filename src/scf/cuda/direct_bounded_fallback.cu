@@ -266,4 +266,30 @@ void launch_bounded_direct_shell_quartet_kernel(
   }
 }
 
+void launch_bounded_direct_fock_shell_quartet_kernel(
+    bool unrestricted, dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream,
+    DeviceBatch batch, double screening_tolerance, const double* shell_pair_bounds,
+    const ShellPairDensityBounds* shell_pair_density_bounds, const std::uint32_t* shell_pair_order,
+    const double* shell_pair_block_bounds, const double* system_density_bounds,
+    const std::uint64_t* enabled_mask_pointer, std::uint64_t enabled_mask,
+    const std::uint32_t* bounded_generated_overflow, const double* schwarz_bounds,
+    const double* density, const std::uint8_t* active, double* fock,
+    unsigned long long* global_cursor) {
+  if (unrestricted) {
+    bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, false>
+        <<<grid, block, shared_bytes, stream>>>(
+            batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
+            shell_pair_order, shell_pair_block_bounds, system_density_bounds, enabled_mask_pointer,
+            enabled_mask, bounded_generated_overflow, schwarz_bounds, density, active, fock,
+            global_cursor, nullptr);
+  } else {
+    bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Fock, false>
+        <<<grid, block, shared_bytes, stream>>>(
+            batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
+            shell_pair_order, shell_pair_block_bounds, system_density_bounds, enabled_mask_pointer,
+            enabled_mask, bounded_generated_overflow, schwarz_bounds, density, active, fock,
+            global_cursor, nullptr);
+  }
+}
+
 }  // namespace vibeqc::scf::cuda_execution
