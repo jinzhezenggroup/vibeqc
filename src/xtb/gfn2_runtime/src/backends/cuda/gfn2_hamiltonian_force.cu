@@ -7,6 +7,7 @@
 #include <limits>
 
 #include "backends/cuda/gfn2_hamiltonian_force.cuh"
+#include "generated_gfn2_electronic_native.cuh"
 
 namespace xtbloom::detail::cuda {
 namespace {
@@ -285,28 +286,48 @@ __global__ void contract_kernel(Gfn2HamiltonianDeviceBatch batch, Gfn2ForceDevic
     const std::int64_t reverse = matrix_begin + local_column * orbitals + local_row;
     const double pair_density =
         input.density[forward] + (forward == reverse ? 0.0 : input.density[reverse]);
-    const double scalar_factor = -0.5 * (input.shell_scalar_potentials[row_shell] +
-                                         input.shell_scalar_potentials[column_shell]);
-    const double overlap_contribution = pair_density * scalar_factor;
-    const double charge_overlap_updated =
-        workspace.overlap_adjoint_scratch[forward] + overlap_contribution;
-    bool finite = isfinite(pair_density) && isfinite(scalar_factor) &&
-                  isfinite(overlap_contribution) && isfinite(charge_overlap_updated);
+    vibeqc::xtb::generated::Gfn2ElectronicPairPotentials pair_potentials{};
+    pair_potentials.row_scalar = input.shell_scalar_potentials[row_shell];
+    pair_potentials.column_scalar = input.shell_scalar_potentials[column_shell];
+    for (int component = 0; component < kGfn2HamiltonianDipoleComponents; ++component) {
+      pair_potentials.dipole_row[component] =
+          input.atomic_dipole_potentials[row_atom * kGfn2HamiltonianDipoleComponents + component];
+      pair_potentials.dipole_column[component] =
+          input
+              .atomic_dipole_potentials[column_atom * kGfn2HamiltonianDipoleComponents + component];
+    }
+    for (int component = 0; component < kGfn2HamiltonianQuadrupoleComponents; ++component) {
+      pair_potentials.quadrupole_row[component] =
+          input.atomic_quadrupole_potentials[row_atom * kGfn2HamiltonianQuadrupoleComponents +
+                                             component];
+      pair_potentials.quadrupole_column[component] =
+          input.atomic_quadrupole_potentials[column_atom * kGfn2HamiltonianQuadrupoleComponents +
+                                             component];
+    }
+
+    vibeqc::xtb::generated::Gfn2ElectronicPairAdjoint pair_adjoint{};
+    bool finite = vibeqc::xtb::generated::evaluate_gfn2_electronic_pair_vjp(
+        pair_density, pair_potentials, pair_adjoint);
     if (finite) {
-      /* Match the CPU composer order: charge response is accumulated first,
-       * followed by the independent magnetization overlap response. */
-      workspace.overlap_adjoint_scratch[forward] = charge_overlap_updated;
-      if (input.spin_density != nullptr) {
-        const double pair_spin_density =
-            input.spin_density[forward] + (forward == reverse ? 0.0 : input.spin_density[reverse]);
-        const double spin_scalar_factor = -0.5 * (input.spin_shell_scalar_potentials[row_shell] +
-                                                  input.spin_shell_scalar_potentials[column_shell]);
-        const double spin_overlap_contribution = pair_spin_density * spin_scalar_factor;
-        const double spin_overlap_updated = charge_overlap_updated + spin_overlap_contribution;
-        finite = isfinite(pair_spin_density) && isfinite(spin_scalar_factor) &&
-                 isfinite(spin_overlap_contribution) && isfinite(spin_overlap_updated);
+      const double updated = workspace.overlap_adjoint_scratch[forward] + pair_adjoint.overlap;
+      finite = isfinite(updated);
+      if (finite) {
+        workspace.overlap_adjoint_scratch[forward] = updated;
+      }
+    }
+
+    if (finite && input.spin_density != nullptr) {
+      const double pair_spin_density =
+          input.spin_density[forward] + (forward == reverse ? 0.0 : input.spin_density[reverse]);
+      double spin_overlap_adjoint = 0.0;
+      finite = vibeqc::xtb::generated::evaluate_gfn2_electronic_overlap_vjp(
+          pair_spin_density, input.spin_shell_scalar_potentials[row_shell],
+          input.spin_shell_scalar_potentials[column_shell], spin_overlap_adjoint);
+      if (finite) {
+        const double updated = workspace.overlap_adjoint_scratch[forward] + spin_overlap_adjoint;
+        finite = isfinite(updated);
         if (finite) {
-          workspace.overlap_adjoint_scratch[forward] = spin_overlap_updated;
+          workspace.overlap_adjoint_scratch[forward] = updated;
         }
       }
     }
@@ -314,27 +335,18 @@ __global__ void contract_kernel(Gfn2HamiltonianDeviceBatch batch, Gfn2ForceDevic
     for (int component = 0; component < kGfn2HamiltonianDipoleComponents && finite; ++component) {
       const std::int64_t forward_index = component * total_matrix + forward;
       const std::int64_t reverse_index = component * total_matrix + reverse;
-      const double forward_contribution =
-          -0.5 * pair_density *
-          input
-              .atomic_dipole_potentials[column_atom * kGfn2HamiltonianDipoleComponents + component];
-      const double reverse_contribution =
-          -0.5 * pair_density *
-          input.atomic_dipole_potentials[row_atom * kGfn2HamiltonianDipoleComponents + component];
       const double forward_updated =
-          workspace.dipole_adjoint_scratch[forward_index] + forward_contribution;
+          workspace.dipole_adjoint_scratch[forward_index] + pair_adjoint.dipole_forward[component];
       if (forward_index == reverse_index) {
-        const double diagonal_updated = forward_updated + reverse_contribution;
-        finite = isfinite(forward_contribution) && isfinite(reverse_contribution) &&
-                 isfinite(forward_updated) && isfinite(diagonal_updated);
+        const double diagonal_updated = forward_updated + pair_adjoint.dipole_reverse[component];
+        finite = isfinite(forward_updated) && isfinite(diagonal_updated);
         if (finite) {
           workspace.dipole_adjoint_scratch[forward_index] = diagonal_updated;
         }
       } else {
-        const double reverse_updated =
-            workspace.dipole_adjoint_scratch[reverse_index] + reverse_contribution;
-        finite = isfinite(forward_contribution) && isfinite(reverse_contribution) &&
-                 isfinite(forward_updated) && isfinite(reverse_updated);
+        const double reverse_updated = workspace.dipole_adjoint_scratch[reverse_index] +
+                                       pair_adjoint.dipole_reverse[component];
+        finite = isfinite(forward_updated) && isfinite(reverse_updated);
         if (finite) {
           workspace.dipole_adjoint_scratch[forward_index] = forward_updated;
           workspace.dipole_adjoint_scratch[reverse_index] = reverse_updated;
@@ -345,28 +357,19 @@ __global__ void contract_kernel(Gfn2HamiltonianDeviceBatch batch, Gfn2ForceDevic
          ++component) {
       const std::int64_t forward_index = component * total_matrix + forward;
       const std::int64_t reverse_index = component * total_matrix + reverse;
-      const double forward_contribution =
-          -0.5 * pair_density *
-          input.atomic_quadrupole_potentials[column_atom * kGfn2HamiltonianQuadrupoleComponents +
-                                             component];
-      const double reverse_contribution =
-          -0.5 * pair_density *
-          input.atomic_quadrupole_potentials[row_atom * kGfn2HamiltonianQuadrupoleComponents +
-                                             component];
-      const double forward_updated =
-          workspace.quadrupole_adjoint_scratch[forward_index] + forward_contribution;
+      const double forward_updated = workspace.quadrupole_adjoint_scratch[forward_index] +
+                                     pair_adjoint.quadrupole_forward[component];
       if (forward_index == reverse_index) {
-        const double diagonal_updated = forward_updated + reverse_contribution;
-        finite = isfinite(forward_contribution) && isfinite(reverse_contribution) &&
-                 isfinite(forward_updated) && isfinite(diagonal_updated);
+        const double diagonal_updated =
+            forward_updated + pair_adjoint.quadrupole_reverse[component];
+        finite = isfinite(forward_updated) && isfinite(diagonal_updated);
         if (finite) {
           workspace.quadrupole_adjoint_scratch[forward_index] = diagonal_updated;
         }
       } else {
-        const double reverse_updated =
-            workspace.quadrupole_adjoint_scratch[reverse_index] + reverse_contribution;
-        finite = isfinite(forward_contribution) && isfinite(reverse_contribution) &&
-                 isfinite(forward_updated) && isfinite(reverse_updated);
+        const double reverse_updated = workspace.quadrupole_adjoint_scratch[reverse_index] +
+                                       pair_adjoint.quadrupole_reverse[component];
+        finite = isfinite(forward_updated) && isfinite(reverse_updated);
         if (finite) {
           workspace.quadrupole_adjoint_scratch[forward_index] = forward_updated;
           workspace.quadrupole_adjoint_scratch[reverse_index] = reverse_updated;
