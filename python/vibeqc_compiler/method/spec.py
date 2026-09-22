@@ -527,6 +527,36 @@ class MethodIR:
         return canonical_hash(self.to_payload())
 
 
+def _generated_fraction(value: object, field: str) -> Fraction:
+    if not isinstance(value, str):
+        raise UnsupportedMethod(f"generated Libxc {field} must be an exact string")
+    try:
+        return Fraction(value)
+    except (ValueError, ZeroDivisionError) as error:
+        raise UnsupportedMethod(
+            f"generated Libxc {field} is not an exact fraction"
+        ) from error
+
+
+def _generated_components(
+    record: typing.Mapping[str, object],
+) -> tuple[tuple[str, Fraction], ...]:
+    raw = record["components"]
+    if not isinstance(raw, (list, tuple)):
+        raise UnsupportedMethod("generated Libxc components must be a sequence")
+    result: list[tuple[str, Fraction]] = []
+    for item in raw:
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            raise UnsupportedMethod(
+                "generated Libxc component must be a name/coefficient pair"
+            )
+        name, coefficient = item
+        if not isinstance(name, str):
+            raise UnsupportedMethod("generated Libxc component name must be a string")
+        result.append((name, _generated_fraction(coefficient, "component coefficient")))
+    return tuple(result)
+
+
 def _generated_libxc_method_specs() -> dict[str, MethodSpec]:
     """Materialize representable pinned-Libxc hybrids as backend-neutral specs.
 
@@ -536,16 +566,25 @@ def _generated_libxc_method_specs() -> dict[str, MethodSpec]:
     """
     result: dict[str, MethodSpec] = {}
     for identifier, record in LIBXC_METHODS.items():
-        if record["metadata_semantics"] != LIBXC_METHOD_METADATA_SEMANTICS:
+        semantics = record["metadata_semantics"]
+        if (
+            not isinstance(semantics, str)
+            or semantics != LIBXC_METHOD_METADATA_SEMANTICS
+        ):
             raise UnsupportedMethod(
                 "generated Libxc method metadata needs regeneration"
             )
-        components = tuple(
-            (name, Fraction(coefficient)) for name, coefficient in record["components"]
-        )
+        components = _generated_components(record)
         direct_stem = record["direct_semilocal_stem"]
         if direct_stem is not None:
-            family = {"hyb_gga": "GGA", "hyb_mgga": "MGGA"}.get(record["family"])
+            if not isinstance(direct_stem, str):
+                raise UnsupportedMethod(
+                    "generated Libxc direct semilocal stem must be a string"
+                )
+            family_value = record["family"]
+            if not isinstance(family_value, str):
+                raise UnsupportedMethod("generated Libxc family must be a string")
+            family = {"hyb_gga": "GGA", "hyb_mgga": "MGGA"}.get(family_value)
             if family is None:
                 continue
             components = (
@@ -557,18 +596,31 @@ def _generated_libxc_method_specs() -> dict[str, MethodSpec]:
         nonlocal_correlation = None
         variant = record["nonlocal_variant"]
         if variant is not None:
-            if variant != "vv10" or record["nlc_b"] is None or record["nlc_c"] is None:
+            if not isinstance(variant, str):
+                raise UnsupportedMethod(
+                    "generated Libxc nonlocal variant must be a string"
+                )
+            b, c = record["nlc_b"], record["nlc_c"]
+            if variant != "vv10" or b is None or c is None:
                 continue
             nonlocal_correlation = NonlocalCorrelationSpec(
-                variant, Fraction(record["nlc_b"]), Fraction(record["nlc_c"])
+                variant,
+                _generated_fraction(b, "VV10 b"),
+                _generated_fraction(c, "VV10 c"),
             )
         result[identifier] = MethodSpec(
             identifier,
             components,
-            exact_exchange=Fraction(record["exact_exchange"]),
-            short_range_exchange=Fraction(record["short_range_exchange"]),
-            long_range_exchange=Fraction(record["long_range_exchange"]),
-            range_omega=Fraction(record["range_omega"]),
+            exact_exchange=_generated_fraction(
+                record["exact_exchange"], "exact exchange"
+            ),
+            short_range_exchange=_generated_fraction(
+                record["short_range_exchange"], "short-range exchange"
+            ),
+            long_range_exchange=_generated_fraction(
+                record["long_range_exchange"], "long-range exchange"
+            ),
+            range_omega=_generated_fraction(record["range_omega"], "range omega"),
             nonlocal_correlation=nonlocal_correlation,
         )
     return result
