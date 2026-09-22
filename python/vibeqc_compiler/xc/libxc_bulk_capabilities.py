@@ -105,7 +105,34 @@ def functional_capability(name: str) -> BulkFunctionalCapability:
 def available_capabilities() -> tuple[BulkFunctionalCapability, ...]:
     """Return every automatically claimable bulk functional, deterministically."""
     return tuple(
-        functional_capability(name) for name in libxc_bulk.available_functionals()
+        BulkFunctionalCapability(
+            name=record["name"],
+            family=record["family"],
+            libxc_id=record["id"],
+            entry=record["entry"],
+            owner=record["owner"],
+        )
+        for record in libxc_bulk.read_catalog()["registrations"]
+        if record["graph_status"] == "imported"
+    )
+
+
+def claimable_components(
+    *, families: tuple[str, ...] = ("lda", "gga")
+) -> tuple[str, ...]:
+    """Return pointwise-qualified component IDs representable by selected families.
+
+    This is a representation/admission helper only.  It does not promote
+    production-domain evaluation, molecular SCF, forces, or public methods.
+    """
+    allowed = frozenset(("lda", "gga", "mgga"))
+    requested = frozenset(families)
+    if not requested or not requested <= allowed:
+        raise ValueError("bulk component families must be a nonempty lda/gga/mgga subset")
+    return tuple(
+        capability.name
+        for capability in available_capabilities()
+        if capability.family in requested
     )
 
 
