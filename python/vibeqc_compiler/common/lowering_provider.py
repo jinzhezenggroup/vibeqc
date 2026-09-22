@@ -71,7 +71,7 @@ class _TypedRecord:
         if type(self) is not type(other):
             return NotImplemented
         return canonical_hash(asdict(self)) == canonical_hash(
-            asdict(typing.cast(typing.Any, other))
+            asdict(typing.cast("typing.Any", other))
         )
 
     def __hash__(self) -> int:
