@@ -92,6 +92,19 @@ def test_typed_plan_reaches_exact_target_without_fabricating_accuracy(
     )
     assert run.diagnostics["projection"]["status"] == "accepted"
     assert run.diagnostics["physical_residual_audit"]["maximum_commutator"] < 1e-10
+    timed_parts = (
+        "source_setup_seconds",
+        "source_execution_seconds",
+        "projection_seconds",
+        "target_setup_seconds",
+        "target_execution_seconds",
+        "final_verification_seconds",
+        "cleanup_seconds",
+    )
+    assert all(run.diagnostics[name] >= 0 for name in timed_parts)
+    assert run.diagnostics["total_seconds"] >= sum(
+        run.diagnostics[name] for name in timed_parts
+    )
     assert run.target_density is not None and not run.target_density.flags.writeable
 
 
