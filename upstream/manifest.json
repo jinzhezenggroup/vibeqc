@@ -138,7 +138,7 @@
         "python/vibeqc_compiler/xc/rsh_maple.py": "5afea731e52fe76a047a6ff175387930fb0a7f57e31f7d7738ac89a3ee73b609",
         "python/vibeqc_compiler/xc/scan_maple.py": "ecf6efcdc57ec7f207a616abfb178d59442e55d0c91c93713e50ba001b456be3",
         "python/vibeqc_compiler/xc/semilocal_family.py": "61e27426ca68fd5a04f566ec976fdaecad50c314f194f16c542aa8f6b9e97a84",
-        "python/vibeqc_compiler/xc/spec.py": "c6c842cbb37634eb680315f77a498deb1e1ce9e6adabde66d404bf3887133167",
+        "python/vibeqc_compiler/xc/spec.py": "bba35a1eae1a38caf46e40e2cc6f3d18daa1a5fbb0ed44f1e7f17eb9a601e4b2",
         "python/vibeqc_compiler/xc/wb97mv_maple.py": "7433cd82cd04aef3d2f015e514cbc54406b05dd9e84f4934411415d90b4e9b27"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",

@@ -10,8 +10,10 @@ from pathlib import Path
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
+from . import libxc_bulk
 from .b88_vwn_maple import b88_vwn_maple_provenance
 from .ityh_maple import ityh_maple_provenance
+from .libxc_bulk_capabilities import claimable_components, functional_capability
 from .p86_pz_maple import p86_pz_maple_provenance
 from .pbe_maple import pbe_maple_provenance
 from .pw91_maple import pw91_maple_provenance
@@ -45,7 +47,17 @@ PW91_COMPONENTS = ("GGA_X_PW91", "GGA_C_PW91")
 P86_COMPONENTS = ("LDA_C_PZ", "GGA_C_P86")
 WB97MV_COMPONENTS = ("MGGA_X_WB97M_V", "MGGA_C_WB97M_V")
 SPECIAL_EXPRESSION_COMPONENTS = RSH_COMPONENTS + PW91_COMPONENTS + P86_COMPONENTS
-COMPONENTS = PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS + WB97MV_COMPONENTS
+CURATED_COMPONENTS = (
+    PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS + WB97MV_COMPONENTS
+)
+POINTWISE_BULK_COMPONENTS = claimable_components(
+    families=("lda", "gga", "mgga"),
+    supported_ingredients=("rho", "sigma", "tau"),
+)
+AUTO_BULK_COMPONENTS = tuple(
+    name for name in POINTWISE_BULK_COMPONENTS if name not in CURATED_COMPONENTS
+)
+COMPONENTS = CURATED_COMPONENTS + AUTO_BULK_COMPONENTS
 CATALOG = {
     **{name: ((name, Fraction(1)),) for name in PUBLIC_COMPONENTS},
     "LDA_XC_PW": (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
@@ -150,6 +162,39 @@ class FunctionalSpec:
         payload["components"] = [[n, str(c)] for n, c in self.components]
         for name in ("exact_exchange", "range_omega", "long_range_exchange"):
             payload[name] = str(getattr(self, name))
+        active_names = tuple(
+            name for name, coefficient in self.components if coefficient
+        )
+        bulk_only = tuple(name for name in active_names if name in AUTO_BULK_COMPONENTS)
+        if bulk_only:
+            if any(name not in POINTWISE_BULK_COMPONENTS for name in active_names):
+                raise UnsupportedXC(
+                    "automatic bulk components cannot mix with a separately-owned "
+                    "XC family"
+                )
+            capabilities = tuple(
+                functional_capability(name).to_payload() for name in active_names
+            )
+            return {
+                **payload,
+                "ingredients": self.ingredients,
+                "features": self.features,
+                "derivative_orders": [0, 1, 2],
+                "energy": "hartree/bohr^3; e_xc=(rho_a+rho_b)*epsilon_xc",
+                "license": "MPL-2.0",
+                "source_manifest_sha256": file_hash(libxc_bulk.CATALOG_PATH),
+                "expression_source_sha256": file_hash(Path(libxc_bulk.__file__)),
+                "expression_provenance": {
+                    "kind": "libxc-bulk-pointwise",
+                    "bulk_semantics": libxc_bulk.BULK_SEMANTICS,
+                    "components": {
+                        capability["name"]: capability for capability in capabilities
+                    },
+                },
+                "domain": libxc_bulk.BULK_SEMANTICS,
+                "qualification": "pointwise-validated",
+                "production_admitted": False,
+            }
         special = any(
             name in SPECIAL_EXPRESSION_COMPONENTS and coefficient
             for name, coefficient in self.components
@@ -235,7 +280,9 @@ class FunctionalSpec:
 
 
 def functional(identifier: typing.Any, *, spin: typing.Any = "polarized") -> typing.Any:
-    """Resolve only explicit audited catalog names; unknown aliases fail closed."""
-    if identifier not in CATALOG:
-        raise UnsupportedXC(f"unknown functional {identifier!r}")
-    return FunctionalSpec(identifier, CATALOG[identifier], spin)
+    """Resolve curated names or automatically represented pointwise bulk components."""
+    if identifier in CATALOG:
+        return FunctionalSpec(identifier, CATALOG[identifier], spin)
+    if identifier in AUTO_BULK_COMPONENTS:
+        return FunctionalSpec(identifier, ((identifier, Fraction(1)),), spin)
+    raise UnsupportedXC(f"unknown functional {identifier!r}")

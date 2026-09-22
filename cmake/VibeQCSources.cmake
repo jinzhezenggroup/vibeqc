@@ -168,6 +168,7 @@ function(vibeqc_add_integrals_scf_sources target)
       src/scf/cuda/nuclear_kernels.cu
       src/scf/cuda/direct_pair_cache.cu
       src/scf/cuda/direct_jk.cpp
+      src/scf/cuda_fock_execution.cpp
       src/scf/cuda/one_electron_view.cpp
       src/scf/cuda/one_electron_export.cpp
       src/scf/cuda/one_electron_export_batch.cpp
