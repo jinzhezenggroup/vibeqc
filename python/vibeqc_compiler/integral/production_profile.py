@@ -12,7 +12,7 @@ import math
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from .capabilities import normalize_capabilities
 from .cuda_schedule import (
@@ -30,6 +30,7 @@ from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer, build_integral_ir
 from .production_selection import _SUPPORTED_RECURRENCES, KernelSelection
 from .shell_spec import FUSED_SHELL_SPEC_BY_NAME, ShellClassSpec
+from .specialize import specialize_fock_integral
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -118,7 +119,7 @@ def _resolve_profile_payload(
     architecture: str,
     requested_profile: str,
 ) -> tuple[str, dict[str, object], ProfileMatch]:
-    """Resolve exact, compatible, portable, then synthetic generic fallback."""
+    """Resolve explicit portable requests or fail-closed tuned profiles."""
 
     architectures = payload.get("architectures")
     if not isinstance(architectures, dict):
@@ -171,12 +172,10 @@ def _resolve_profile_payload(
         )
     if compatible:
         return compatible[0][0], compatible[0][1], ProfileMatch.COMPATIBLE
-    portable = _portable_profile(architectures)
-    if portable is not None:
-        return portable[0], portable[1], ProfileMatch.PORTABLE
-    # An empty synthetic portable profile is the final safe fallback. It emits
-    # no generated class mask, leaving the validated generic CUDA path active.
-    return "portable_cuda", {"kind": "portable", "kernels": []}, ProfileMatch.PORTABLE
+    raise ValueError(
+        f"no tuned or compatible production profile for {architecture}; "
+        "request 'portable_cuda' explicitly to use the generic CUDA path"
+    )
 
 
 def _validate_measured_target(
@@ -188,7 +187,7 @@ def _validate_measured_target(
     """Reject stale exact-profile capability or generator-ABI metadata."""
 
     generator_abi = profile.get("generator_abi", target.generator_abi)
-    if int(generator_abi) != target.generator_abi:
+    if int(cast("str | int | float", generator_abi)) != target.generator_abi:
         raise ValueError(
             f"profile {profile_name!r} uses generator ABI {generator_abi}, "
             f"expected {target.generator_abi}"
@@ -313,15 +312,6 @@ def _recurrence_from_row(
             f"{name} has unsupported recurrence {recurrence!r}; "
             f"expected one of {supported}"
         )
-    if (
-        recurrence == "rys3"
-        and name == "ppps"
-        and KernelConsumer.FOCK in consumers
-        and row.get("fock_schedule") is None
-    ):
-        raise ValueError(
-            "ppps recurrence 'rys3' with a Fock consumer requires fock_schedule"
-        )
     # Construct the mathematical IR at the manifest boundary so an incorrect
     # fixed-root count or force/Fock combination fails independently of CUDA
     # scheduling and without a shell-name eligibility table.
@@ -440,18 +430,22 @@ def _selections_from_rows(
         fock_schedule_payload = row.get("fock_schedule")
         if fock_schedule_payload is None:
             if (
-                recurrence == "rys2"
-                and KernelConsumer.FOCK in consumers
+                KernelConsumer.FOCK in consumers
                 and schedule.kind == ScheduleKind.THREAD_TASKS
             ):
-                # The accepted low-order force path uses scalar Rys2, while
-                # its value consumer remains the compact subset/Wick mapping.
-                # Derive that companion through the same compiler scheduler
-                # instead of repeating an identical Fock table per class.
+                # A force-owned thread mapping may need a distinct value-only
+                # companion.  Derive that companion from the shared IntegralIR
+                # specialization contract instead of spelling out a recurrence
+                # pair in production-profile parsing.
+                shared_integral = build_integral_ir(
+                    spec,
+                    consumers,
+                    recurrence=recurrence,
+                )
+                fock_integral = specialize_fock_integral(shared_integral)
                 fock_schedule = build_fused_shell_plan(
                     spec,
-                    consumers=(KernelConsumer.FOCK,),
-                    recurrence="subset_wick",
+                    integral=fock_integral,
                     target=target,
                 ).schedule
             else:
@@ -460,14 +454,18 @@ def _selections_from_rows(
             if KernelConsumer.FOCK not in consumers:
                 raise ValueError(f"{name} fock_schedule requires a Fock consumer")
             fock_schedule = _schedule_from_payload(fock_schedule_payload)
-            # A fixed-root force promotion may use a very different execution
-            # geometry. Validate the retained value path independently so the
-            # manifest cannot silently retune Fock or inherit force recurrence.
+            # Validate the retained value route through the same specialization
+            # used by emission; the profile layer does not own recurrence policy.
+            shared_integral = build_integral_ir(
+                spec,
+                consumers,
+                recurrence=recurrence,
+            )
+            fock_integral = specialize_fock_integral(shared_integral)
             build_fused_shell_plan(
                 spec,
-                consumers=(KernelConsumer.FOCK,),
                 schedule=fock_schedule,
-                recurrence="subset_wick",
+                integral=fock_integral,
                 target=target,
             )
 
@@ -489,8 +487,14 @@ def _selections_from_rows(
                 compile_seconds=_optional_nonnegative_number(
                     name, row, "compile_seconds"
                 ),
-                source_bytes=_optional_nonnegative_number(name, row, "source_bytes"),
-                object_bytes=_optional_nonnegative_number(name, row, "object_bytes"),
+                source_bytes=cast(
+                    "int | None",
+                    _optional_nonnegative_number(name, row, "source_bytes"),
+                ),
+                object_bytes=cast(
+                    "int | None",
+                    _optional_nonnegative_number(name, row, "object_bytes"),
+                ),
             )
         )
         seen.add(name)
@@ -502,7 +506,7 @@ def resolve_production_profile(
     architecture: str | None = None,
     profile: str = "auto",
 ) -> ResolvedProductionProfile:
-    """Resolve one target through exact, compatible, and portable profiles."""
+    """Resolve one target; generic CUDA requires an explicit portable request."""
 
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -528,10 +532,7 @@ def resolve_production_profile(
             if isinstance(accepted_architecture, str)
             else "sm_120"
         )
-        if selected_architecture != accepted_architecture or profile in (
-            "portable",
-            "portable_cuda",
-        ):
+        if profile in ("portable", "portable_cuda"):
             return ResolvedProductionProfile(
                 target=target,
                 profile="portable_cuda",
@@ -540,6 +541,13 @@ def resolve_production_profile(
                 selections=(),
                 cuda_toolkit="",
             )
+        if selected_architecture != accepted_architecture:
+            raise ValueError(
+                f"no tuned production profile for {selected_architecture}; "
+                "request 'portable_cuda' explicitly to use the generic CUDA path"
+            )
+        if profile not in ("auto", accepted_architecture):
+            raise ValueError(f"production manifest has no profile {profile!r}")
         rows = [
             {"shell_class": name, "consumers": [KernelConsumer.FORCE.value]}
             for name in names

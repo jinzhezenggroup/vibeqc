@@ -21,13 +21,18 @@ from vibeqc_compiler.common.schedule import (
     ScheduleTopology,
 )
 
-from .cuda_emit import cooperative_reduction_shared_bytes, emit_cuda
+from .cuda_emit import emit_cuda
 from .cuda_gemm import gemm_contract
 from .cuda_plan import (
     TensorPlan,
     TensorSchedule,
     estimated_cuda_launches,
     plan_cuda,
+)
+from .cuda_providers import tensor_lowering_diagnostics
+from .cuda_reduction import (
+    cooperative_reduction_provider,
+    cooperative_reduction_shared_bytes,
 )
 from .precision import describe_precision
 from .program import Program
@@ -48,6 +53,8 @@ class TensorScheduleSpace:
     # Qualification-only by default: #783 evidence shows a memory win but a
     # runtime/compile regression before cooperative reduction lowering lands.
     stream_reductions: tuple[bool, ...] = field(default=(False,), kw_only=True)
+    # Qualification-only CUB/CCCL pilot; production/default remains generated.
+    reduction_provider: tuple[str, ...] = field(default=("generated",), kw_only=True)
     # Qualification-only until complete-endpoint evidence promotes donation.
     inplace_donation: tuple[bool, ...] = field(default=(False,), kw_only=True)
     direct_gemm: tuple[bool, ...] = (True, False)
@@ -186,6 +193,14 @@ def execution_key(plan: TensorPlan) -> str:
         if any(step.node.op in ("reduce", "einsum") for step in generic_steps)
         else None
     )
+    payload["reduction_provider"] = (
+        plan.schedule.reduction_provider
+        if any(
+            cooperative_reduction_provider(plan, index) is not None
+            for index in range(len(plan.steps))
+        )
+        else None
+    )
     payload["staging_width"] = plan.schedule.staging_width if packed_steps else None
     payload["packing_tiles"] = [
         tuple(
@@ -275,14 +290,23 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     traffic = plan.semantic_traffic
     occupancy = resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
     launches = estimated_cuda_launches(plan)
+    widened_accumulation_terms = _fp64_accumulation_terms(plan)
     profitability = GpuProfitability(
         semantic_traffic_bytes=traffic["total_bytes"],
         estimated_registers_per_thread=registers,
         estimated_occupancy_upper_bound=occupancy,
         launch_count=launches,
         source_bytes=source_bytes,
+        precision_cast_read_bytes=traffic["precision_cast_read_bytes"],
+        precision_cast_write_bytes=traffic["precision_cast_write_bytes"],
+        precision_cast_simultaneous_bytes=traffic["precision_cast_simultaneous_bytes"],
+        precision_widened_accumulation_terms=widened_accumulation_terms,
     )
     batch = plan.batch_schedule
+    lowering = tensor_lowering_diagnostics(plan)
+    lowering_providers = (
+        ",".join(typing.cast("list[str]", lowering["providers"])) or "none"
+    )
     contract = ScheduleContract(
         consumer="tensor.cuda",
         schedule_hash=canonical_hash(
@@ -312,7 +336,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
             workspace_bytes=plan.allocation_bytes,
             peak_live_values=max(live_values, default=0),
             registers_per_thread=registers,
-            shared_bytes=0,
+            shared_bytes=shared_bytes,
             resident_workgroups=resident,
             source_bytes=source_bytes,
         ),
@@ -320,6 +344,8 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         provenance=(
             ("batch_schedule_identity", canonical_hash(batch.to_payload())),
             ("layout_identity", plan.layout_identity),
+            ("lowering_identity", typing.cast("str", lowering["identity"])),
+            ("lowering_providers", lowering_providers),
             ("plan_identity", plan.identity),
         ),
     )
@@ -343,7 +369,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "estimated_endpoint_semantic_traffic_bytes": traffic["total_bytes"],
         "traffic_scope": traffic["scope"],
         "estimated_flops": plan.estimated_flops,
-        "estimated_fp64_accumulation_terms": _fp64_accumulation_terms(plan),
+        "estimated_fp64_accumulation_terms": widened_accumulation_terms,
         "estimated_registers_per_thread": registers,
         "estimated_shared_bytes": shared_bytes,
         "estimated_local_bytes": None,

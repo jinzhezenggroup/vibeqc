@@ -73,7 +73,9 @@ class TensorLayout:
     @property
     def storage_elements(self) -> int:
         """Include padding in the required allocation size."""
-        return 1 + sum((n - 1) * s for n, s in zip(self.shape, self.strides))
+        strides = self.strides
+        assert strides is not None  # normalized by __post_init__
+        return 1 + sum((n - 1) * s for n, s in zip(self.shape, strides))
 
     @property
     def storage_bytes(self) -> int:
@@ -82,15 +84,19 @@ class TensorLayout:
 
     def offsets(self) -> typing.Any:
         """Iterate logical row-major coordinates through this physical layout."""
+        strides = self.strides
+        assert strides is not None  # normalized by __post_init__
         for coordinate in product(*(range(n) for n in self.shape)):
-            yield sum(i * s for i, s in zip(coordinate, self.strides))
+            yield sum(i * s for i, s in zip(coordinate, strides))
 
     def to_payload(self) -> dict[str, object]:
         """Expose ordering, extents, element strides, and fixed scalar type."""
+        strides = self.strides
+        assert strides is not None  # normalized by __post_init__
         return {
             "indices": list(self.indices),
             "shape": list(self.shape),
-            "strides": list(self.strides),
+            "strides": list(strides),
             "dtype": "float64",
         }
 
@@ -343,7 +349,10 @@ class BlockRequest:
 
     @property
     def consumer(self) -> RawBlock | WeightedDerivative:
-        return self.integral.contractions[self.consumer_index]
+        consumer = self.integral.contractions[self.consumer_index]
+        if not isinstance(consumer, (RawBlock, WeightedDerivative)):
+            raise TypeError("bounded blocks require raw_block or weighted_derivative")
+        return consumer
 
     @property
     def output_layout(self) -> TensorLayout:
@@ -354,13 +363,25 @@ class BlockRequest:
         )
 
     @property
+    def center_atoms(self) -> tuple[tuple[int, int], ...]:
+        """Expose the complete center map already validated at construction."""
+        bindings = self.center_bindings
+        assert bindings is not None
+        pairs: list[tuple[int, int]] = []
+        for binding in bindings:
+            atom = binding.atom_index
+            assert atom is not None
+            pairs.append((binding.center, atom))
+        return tuple(pairs)
+
+    @property
     def atom_indices(self) -> tuple[int, ...]:
         """Local atomic-output rows for the selected derivative parameters."""
         selected = (
             self.integral.requested_derivative_centers or self.integral.operator.centers
         )
         return tuple(
-            sorted({b.atom_index for b in self.center_bindings if b.center in selected})
+            sorted({atom for center, atom in self.center_atoms if center in selected})
         )
 
     @property
@@ -400,8 +421,8 @@ class BlockRequest:
                 "shape": list(self.tile.shape),
             },
             "center_bindings": [
-                {"center": b.center, "atom_index": b.atom_index}
-                for b in self.center_bindings
+                {"center": center, "atom_index": atom}
+                for center, atom in self.center_atoms
             ],
             "required_bytes": self.required_bytes,
             "shell_indices": None
@@ -436,7 +457,7 @@ class BlockResponse:
 
     @property
     def center_atoms(self) -> tuple[tuple[int, int], ...]:
-        return tuple((b.center, b.atom_index) for b in self.request.center_bindings)
+        return self.request.center_atoms
 
     @property
     def atom_indices(self) -> tuple[int, ...]:
@@ -564,7 +585,7 @@ def contract_weighted_derivative(
     count = prod(request.tile.shape)
     scale = consumer.output_sign * consumer.weights.sign * consumer.weights.prefactor
     centers = request.integral.requested_derivative_centers
-    center_atoms = {b.center: b.atom_index for b in request.center_bindings}
+    center_atoms = dict(request.center_atoms)
     rows = request.atom_indices if consumer.output == "atomic_force" else centers
 
     def results() -> typing.Any:

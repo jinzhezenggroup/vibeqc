@@ -4,7 +4,7 @@
 The generated JSON is intentionally data-only: the native engine still owns
 normalization, validation, and all scientific execution. Regenerate it only
 from the pinned Basis Set Exchange revision recorded in
-``references/manifest.toml`` and review any numerical diff.
+``tools/reference_sources.toml`` and review any numerical diff.
 """
 
 from __future__ import annotations

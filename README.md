@@ -79,19 +79,23 @@ cmake --build --preset cuda-dev-fast
 ```
 
 CUDA 12.9 can also build portable generic binaries for `80`, `86`, `89`, and
-`90`. Only `sm_120` currently has a measured generated-shell profile; other
-targets automatically keep the validated generic CUDA kernels. A distributable
-fat binary can be configured with:
+`90`. Only `sm_120` currently has a measured generated-shell profile. `auto` is
+fail-closed: a target without a tuned or explicitly compatible profile is a
+configuration error rather than an implicit generic fallback. A distributable
+fat binary can opt into portable kernels for untuned targets while overriding
+`sm_120` with its measured profile:
 
 ```bash
 cmake -S . -B build -G Ninja \
   -DCMAKE_CUDA_COMPILER=/path/to/cuda/bin/nvcc \
   -DVIBEQC_CUDA_ARCHITECTURES="80;90;120" \
+  -DVIBEQC_AOT_PROFILE=portable \
   -DVIBEQC_AOT_PROFILES="sm_120"
 ```
 
-Use `-DVIBEQC_ENABLE_AOT_SHELLS=OFF` to omit generated shell bundles entirely,
-or `-DVIBEQC_AOT_PROFILE=portable` to retain an explicit empty portable profile.
+Use `-DVIBEQC_ENABLE_AOT_SHELLS=OFF` to omit generated shell bundles entirely.
+Use `-DVIBEQC_AOT_PROFILE=portable` only when the validated generic CUDA path is
+an intentional build choice.
 Builds automatically use `sccache` or `ccache` when either is on `PATH`;
 override this with `-DVIBEQC_COMPILER_CACHE=off` or an explicit executable.
 Generated CUDA is split into eight stable shards by default.  Tune this with
@@ -142,6 +146,25 @@ driver remains system-owned. Runtime JIT/autotuning still requires the documente
 NVCC/PTXAS developer toolchain. The provider boundary
 and fallback rationale are recorded in the
 [CUDA wheel decision note](.agents/notes/implemented/architecture/2026-09-18-provider-free-cuda-wheels.md).
+
+## Methods
+
+The canonical native method names and declared capabilities are generated from
+`manifests/public_methods.json`. Run `vibeqc methods` or see the
+[public method table](docs/public_methods.md) for the current list.
+
+DFT selectors exposed through `Calculator(method=...)` currently include
+`lda-rks`, `lda-uks`, `pbe-rks`, `pbe-uks`, `r2scan-rks`,
+`r2scan-uks`, `pbe0-rks`, `pbe0-uks`, `b3lyp-rks`, `b3lyp-uks`,
+and `pbe-d4-rks`. The Python API also accepts the composite selectors
+`r2scan-3c`, `r2scan-3c-rks`, and `r2scan-3c-uks`. Some methods require
+method-specific KS options such as an explicit grid, and unsupported
+backend/model combinations fail closed rather than silently changing methods.
+
+```bash
+vibeqc methods
+vibeqc methods --json
+```
 
 ## Python API
 

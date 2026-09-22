@@ -1,0 +1,7 @@
+{
+  "name": "gfn2_es3",
+  "outputs": [
+    "generated/generated_gfn2_es3_native.cuh"
+  ],
+  "owner": "python/vibeqc_compiler/method/gfn2_es3_runtime.py"
+}

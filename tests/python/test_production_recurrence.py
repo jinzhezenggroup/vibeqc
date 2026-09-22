@@ -188,16 +188,25 @@ def test_force_only_rys3_manifest_reaches_every_production_emitter(
     assert "generated_sm120_ppps_rys3_force_task" in profile_shard
 
 
-def test_rys3_rejects_a_fock_consumer_at_manifest_boundary(
+def test_scalar_rys3_derives_a_value_companion_without_manifest_hardcoding(
     tmp_path: Path,
 ) -> None:
-    """Reject unsupported mixed Rys/Fock rows before CUDA source generation."""
+    """Derive mixed scalar-Rys Fock geometry through value specialization."""
 
     manifest = tmp_path / "rys3_fock.json"
     _rys3_manifest(manifest, ["fock", "force"])
 
-    with pytest.raises(ValueError, match="requires fock_schedule"):
-        load_production_kernel_selections(manifest, "sm_120")
+    selections = load_production_kernel_selections(manifest, "sm_120")
+    assert len(selections) == 1
+    selection = selections[0]
+    assert selection.schedule.kind.value == "thread_tasks"
+    assert selection.fock_schedule is not None
+    assert selection.fock_schedule.kind.value == "component_lanes"
+    assert selection.fock_schedule.block_threads == TEST_CUDA_TARGET.warp_size
+
+    shard = emit_production_shard(selections)
+    assert "generated_ppps_rys3_force_task" in shard
+    assert "generated_ppps_shell_class_fock_rhf_kernel" in shard
 
 
 def test_mixed_dppp_rys4_manifest_emits_rys_force_and_existing_fock(
