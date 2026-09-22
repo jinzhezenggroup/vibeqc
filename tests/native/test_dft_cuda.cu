@@ -12,6 +12,7 @@
 #include "dft/cuda_xc.hpp"
 #include "dft/xc.hpp"
 #include "molecule/basis.hpp"
+#include "runtime/cuda_resources.cuh"
 
 namespace {
 using namespace vibeqc::dft;
@@ -57,15 +58,18 @@ struct Fixture {
   std::unique_ptr<CudaXcPlan> plan;
   std::uint64_t generation{};
   Fixture(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional, bool uks,
-          std::size_t tile)
+          std::size_t tile, bool response = false)
       : layout(cuda_xc_layout(basis, grid, functional, uks, tile)) {
     try {
+      if (response)
+        layout = cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
+                                      functional, uks, tile, true);
       check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
       check(cudaMalloc(&arena, layout.device_bytes + 64));
       check(cudaMemset(static_cast<char*>(arena) + layout.device_bytes, 0x5a, 64));
       check(cudaMalloc(&density, layout.spins * layout.nao * layout.nao * sizeof(double)));
-      plan = std::make_unique<CudaXcPlan>(basis, grid, functional, uks, tile, arena,
-                                          layout.device_bytes, stream);
+      plan = std::make_unique<CudaXcPlan>(layout, basis.packed, grid.points(), grid.weights(),
+                                          arena, layout.device_bytes, stream);
     } catch (...) {
       cleanup();
       throw;
@@ -247,6 +251,45 @@ void graph_capture(const AoBasis& basis, const MolecularGrid& grid, std::size_t 
   check(cudaGraphExecDestroy(executable));
   check(cudaGraphDestroy(graph));
 }
+/** Signed density directions reuse AO panels before potential prepacking.
+ * Compare the complete device response to independent CPU potential differences,
+ * so a premature overwrite of work cannot pass a primal-only energy test. */
+void matrix_response_case(const AoBasis& basis, const MolecularGrid& grid, unsigned functional) {
+  Fixture response(basis, grid, functional, true, 19, true);
+  auto d = density(basis.nao, 2);
+  std::vector<double> direction(d.size());
+  const auto n = basis.nao, matrix = n * n;
+  for (unsigned spin = 0; spin < 2; ++spin) {
+    direction[spin * matrix] = -0.013 * (spin + 1);
+    direction[spin * matrix + 1] = direction[spin * matrix + n] = 0.007 * (spin + 1);
+  }
+  vibeqc::runtime::OwnedCudaBuffer<double> device_direction(0, d.size(), response.stream);
+  check(cudaMemcpy(response.density, d.data(), d.size() * sizeof(double), cudaMemcpyHostToDevice));
+  check(cudaMemcpy(device_direction.get(), direction.data(), d.size() * sizeof(double),
+                   cudaMemcpyHostToDevice));
+  response.plan->enqueue_response(response.density, device_direction.get(), d.size(),
+                                  ++response.generation);
+  require(response.scalars().error == 0, "signed matrix response was rejected");
+  const auto actual = response.potential();
+  const auto independent = [&](double step) {
+    auto perturbed = d;
+    for (std::size_t i = 0; i < d.size(); ++i) perturbed[i] += step * direction[i];
+    const std::vector<double> a(perturbed.begin(), perturbed.begin() + matrix),
+        b(perturbed.begin() + matrix, perturbed.end());
+    return functional ? integrate_pbe_uks(basis, grid, a, b, 23)
+                      : integrate_lda_xc_pw_uks(basis, grid, a, b, 23);
+  };
+  for (double step : {1e-4, 3e-5}) {
+    const auto plus = independent(step), minus = independent(-step);
+    for (unsigned spin = 0; spin < 2; ++spin)
+      for (std::size_t i = 0; i < matrix; ++i)
+        close(actual[spin * matrix + i],
+              (plus.potential[spin][i] - minus.potential[spin][i]) / (2 * step),
+              "signed matrix response versus independent potential difference", 1e-7);
+  }
+  response.canary();
+}
+
 void matrix_schedule_cases() {
   // Cross the generated matrix-tile boundary with two distinct f shells.
   // Cartesian/spherical shapes and partial point tiles exercise both matrix
@@ -266,6 +309,7 @@ void matrix_schedule_cases() {
           compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
         }
     graph_capture(large_basis, large_grid, 33);
+    for (unsigned functional : {0U, 1U}) matrix_response_case(large_basis, large_grid, functional);
     for (std::uint32_t functional : {0U, 1U, 2U})
       variational_and_state(large_basis, large_grid, functional, 17);
   }

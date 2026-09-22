@@ -112,3 +112,23 @@ preceding setup/grid/source repairs and are not standalone PR-head results.
 Neither grid, convergence tolerances nor density-fitting settings were changed.
 Both cold solves retain 16 iterations. These improvements qualify small full
 energy endpoints, not full 48/96 endpoints or force performance.
+
+Slurm 11385 additionally passes signed LDA/PBE density-response actions against
+two independently rebuilt CPU potential differences (1e-7 absolute gate), with
+nontrivial spin coupling and partial point/AO blocks. This directly checks that
+potential prepacking waits until directional features have consumed work.
+
+Full water48 / 384-AO PBE qualification, all four reference pairs admitted:
+
+| Path / Slurm | Preparation s | Cold execute s / iterations | Warm samples s | Max error Eh |
+| --- | ---: | --- | --- | ---: |
+| Direct / 11384 | 0.952830119 | 83.546013499 / 21 | 11.924645068 / 11.970010264 | 7.1623e-11 |
+| DF / 11386 | 3.165835626 | 58.986216210 / 21 | 8.428240424 / 8.431483759 | 4.3656e-11 |
+
+Every preparation/solve retained the 120 s watchdog. The former direct water48
+cold solve exceeded that limit; these candidates finish and pass accuracy. No
+full 96-atom SCF claim is made. Preserved v10 binary SHA-256:
+`36b15fc1e9aba3f76c710132195978da1d8eaefc2c48829c782303b440a32873`;
+source-overlay archive SHA-256:
+`2baf846f1a06e658f7406e86965e5a6526e9e7d99e8e37485d720c140e92b1eb`.
+The independently reproduced n=2 r2SCAN tail discrepancy is issue #1105.
