@@ -55,6 +55,28 @@ def _direction(spec: typing.Any, seed: typing.Any = 152) -> typing.Any:
     return direction / np.linalg.norm(direction)
 
 
+def test_executed_solver_region_binds_real_implicit_vjp_plan() -> None:
+    snapshot, _, cc, bound, _, response, _ = _state()
+    primal = bound.primal_solver_region
+    region = response.solver_region
+    assert primal is not None and region is not None
+    assert primal.identity == cc.provenance["solver_region_identity"]
+    assert primal.derivative_policy == "unsupported"
+    assert region.derivative_policy == "custom"
+    rule = region.derivative_rule("implicit_vjp")
+    assert rule.identity == response.derivative_plan_identity
+    assert region.identity != primal.identity
+    with pytest.raises(NotImplementedError, match="not registered"):
+        region.derivative_rule("stationary_vjp")
+    weight = response.weight("foo", reference_identity=snapshot.identity)
+    assert weight.provenance["solver_region_primal_identity"] == primal.identity
+    assert weight.provenance["solver_region_bound_identity"] == region.identity
+    assert (
+        weight.provenance["solver_region_derivative_identity"]
+        == response.derivative_plan_identity
+    )
+
+
 def _resolved_correlation(
     snapshot: typing.Any, provider: typing.Any, cc: typing.Any, changes: typing.Any
 ) -> typing.Any:
