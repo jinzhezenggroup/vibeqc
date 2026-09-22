@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 import typing
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Literal
 
 from .provenance import canonical_hash
@@ -67,15 +67,17 @@ class _TypedRecord:
 
     __slots__ = ()
 
+    def to_payload(self) -> dict[str, typing.Any]:
+        raise NotImplementedError
+
     def __eq__(self, other: object) -> bool:
         if type(self) is not type(other):
             return NotImplemented
-        return canonical_hash(asdict(self)) == canonical_hash(
-            asdict(typing.cast("typing.Any", other))
-        )
+        peer = typing.cast("_TypedRecord", other)
+        return canonical_hash(self.to_payload()) == canonical_hash(peer.to_payload())
 
     def __hash__(self) -> int:
-        return hash((type(self), canonical_hash(asdict(self))))
+        return hash((type(self), canonical_hash(self.to_payload())))
 
 
 @dataclass(frozen=True, slots=True, eq=False)
