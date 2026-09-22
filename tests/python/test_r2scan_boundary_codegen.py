@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
-import runpy
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -92,16 +92,22 @@ REFERENCE = (
 )
 
 
+def _generate(script: str, output: Path) -> None:
+    """Exercise the actual AOT entry point without changing pytest imports."""
+    subprocess.run(
+        [sys.executable, "-I", str(ROOT / "tools" / script), "--output", str(output)],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+
 @pytest.mark.skipif(CPP is None, reason="C++ compiler unavailable")
 def test_generated_r2scan_matches_zero_minority_spin_libxc(tmp_path: Path) -> None:
-    namespace = runpy.run_path(str(ROOT / "tools/generate_xc_cpu.py"))
-    body = namespace["emit_r2scan_polarized"]()
-    header = tmp_path / "r2scan.hpp"
-    header.write_text(
-        "#include <cmath>\nnamespace vibeqc::dft::generated {\n"
-        + body
-        + "\n}  // namespace vibeqc::dft::generated\n"
-    )
+    # Generator bootstrapping installs compiler-only package stubs. Keep it in
+    # a child process so later runtime endpoint tests see the real packages.
+    _generate("generate_xc_cpu.py", tmp_path / "r2scan.hpp")
 
     calls = []
     for values, _ in REFERENCE:
@@ -152,8 +158,7 @@ def test_generated_cuda_r2scan_zero_minority_spin_libxc(tmp_path: Path) -> None:
     assert os.environ.get("SLURM_JOB_ID")
     compiler = shutil.which("nvcc")
     assert compiler is not None, "allocated CUDA qualification requires nvcc"
-    namespace = runpy.run_path(str(ROOT / "tools/generate_xc_r2scan_cuda.py"))
-    (tmp_path / "r2scan.cuh").write_text(namespace["emit_r2scan_device"]())
+    _generate("generate_xc_r2scan_cuda.py", tmp_path / "r2scan.cuh")
     # Spin exchange permutes rho/sigma/tau channels without another oracle or
     # any dependence on the generated implementation's own mathematics.
     inputs = [values for values, _ in REFERENCE]
