@@ -82,4 +82,4 @@ without obscuring ABI ownership or diagnostics.
 ## References
 
 - Issue #352.
-- [Current Fock build contract](../../../../docs/fock_build.md).
+- [Current Fock build contract](../../../../docs/developer/fock_build.md).

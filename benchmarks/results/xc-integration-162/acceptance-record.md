@@ -75,14 +75,14 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
 - Existing #285 CPU RKS and #214 identical-grid XC integrator/oracles retained.
 - Shared CPU/CUDA LDA/PBE point evaluator with stable positive-density PBE
   algebra, no LDA tail substitution, and explicit C2 spin endpoint identity.
-  See [the numerical domain](../../../docs/xc_scf_domain.md).
+  See [the numerical domain](../../../docs/developer/xc_scf_domain.md).
 - Independent 97-point E/V fixture: Libxc 7 interior and 450-digit mpmath
   original-formula tail/spin derivatives. CPU and RTX 5090 point tests pass.
 - Native ordinary-stream device-buffer XC now reuses the generated AO kernel,
   minimal D/gradient ingredients and shared point coefficients. It consumes a
   method-owned exact-size arena and uploads host quadrature once; iteration
   enqueue has no bulk staging, allocation or synchronization. See
-  [the device contract](../../../docs/xc_native_cuda.md).
+  [the device contract](../../../docs/developer/xc_native_cuda.md).
 - RTX 5090 fixed-density CPU/CUDA RKS/UKS E/V, spin finite differences,
   Cartesian/spherical f shells, empty-spin/vacuum tails, device-produced
   density, stale generation/grid rejection, failure isolation and arena
@@ -206,7 +206,7 @@ per-element radial scales and XC tile capacity are copied by native prepare
 and included in both model identity and the shared resource request. A changed
 model cannot execute an existing Python prepared owner. The additive C method
 option respects legacy descriptor size; unsupported families/domains fail
-before constructing scientific owners. See [the public contract](../../../docs/ks_options.md).
+before constructing scientific owners. See [the public contract](../../../docs/user/ks_options.md).
 
 Validation of the model implementation:
 
@@ -282,7 +282,7 @@ preserves legacy result-array strides, and cannot expose an earlier item's
 record after a failed or invalid replay. Python snapshots contain immutable
 dataclasses/tuples and survive later execution unchanged. The adapter moves
 the exported native history to the C handle rather than copying it at each
-layer. See [the public contract](../../../docs/ks_diagnostics.md).
+layer. See [the public contract](../../../docs/developer/ks_diagnostics.md).
 
 CPU validation: 25/25 native tests; seven initial diagnostic tests plus
 the explicit cold-retry case; 93 selected KS/HF resource, calculator, model,

@@ -4,6 +4,7 @@
 #include <cusolverDn.h>
 
 #include <cstddef>
+#include <vector>
 
 #include "scf/cuda/eigensolver_types.hpp"
 #include "scf/cuda_batch.hpp"
@@ -42,5 +43,31 @@ vibeqc_status launch_solver(const EigensolverResources& resources, CudaEigensolv
 
 /** Whether this family requires provider input sanitization and cuSOLVER workspace. */
 bool provider_eigensolver(CudaEigensolverFamily family);
+
+/** Prepared ordinary-stream eigensolver with explicit numeric workspace.
+ * Borrows its owner's stream and matrix/eigenvalue buffers. Small matrices
+ * retain the native path; larger matrices reuse the existing Xsyevd dispatch.
+ * Graph capture is rejected explicitly instead of silently substituting an
+ * unbounded maximum-pivot solve. Construction queries and charges workspace
+ * once; repeated solves and serialized spin states allocate no numeric buffers.
+ */
+class OrdinaryStreamEigensolver {
+ public:
+  OrdinaryStreamEigensolver(cudaStream_t stream, int n, const double* matrix,
+                            const double* eigenvalues);
+  ~OrdinaryStreamEigensolver();
+  OrdinaryStreamEigensolver(const OrdinaryStreamEigensolver&) = delete;
+  OrdinaryStreamEigensolver& operator=(const OrdinaryStreamEigensolver&) = delete;
+  vibeqc_status launch(int batch, double* matrices, double* native_workspace, double* eigenvalues,
+                       int* info, const std::uint8_t* active) const;
+  std::size_t device_bytes() const noexcept { return resources_.solver_workspace_bytes_; }
+  std::size_t host_bytes() const noexcept { return host_workspace_.capacity(); }
+
+ private:
+  void cleanup() noexcept;
+  int n_{}, device_{};
+  EigensolverResources resources_{};
+  std::vector<unsigned char> host_workspace_;
+};
 
 }  // namespace vibeqc::scf::cuda_execution

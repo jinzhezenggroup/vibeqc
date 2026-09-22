@@ -159,5 +159,5 @@ All five ECP kernels retain their register, stack, shared-memory and local-memor
 counts. The AO kernel's second constant-memory bank grows from 184 to 248 bytes;
 it retains 56 registers, 64 stack bytes and zero reported local-memory bytes.
 
-See the [current contract](../../../docs/ecp.md) and
+See the [current contract](../../../docs/user/ecp.md) and
 [decision](../../../.agents/notes/implemented/numerics/2026-09-17-ecp-orbital-f.md).

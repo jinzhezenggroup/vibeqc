@@ -32,7 +32,7 @@ records two traceable generations of all 12 references with identical data
 hashes. The independent NH3 `(T)` correction is `-1.122922812723688e-4 Eh`.
 
 Reproduce the HF records with the commands in the
-[protocol documentation](../../../docs/validation.md). To reproduce the small
+[protocol documentation](../../../docs/maintainer/validation.md). To reproduce the small
 compile smoke without introducing another CUDA compiler driver, emit source
 through the existing generator, then use the shared command wrapper:
 
