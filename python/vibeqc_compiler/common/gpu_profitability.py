@@ -9,7 +9,7 @@ Missing evidence is kept explicit and ranks behind comparable measured evidence.
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 ENDPOINT_NOISE_FRACTION = 0.01
 
@@ -45,10 +45,10 @@ class GpuProfitability:
     estimated_occupancy_upper_bound: float | None = None
     launch_count: int | None = None
     source_bytes: int | None = None
-    precision_cast_read_bytes: int | None = None
-    precision_cast_write_bytes: int | None = None
-    precision_cast_simultaneous_bytes: int | None = None
-    precision_widened_accumulation_terms: int | None = None
+    precision_cast_read_bytes: int | None = field(default=None, kw_only=True)
+    precision_cast_write_bytes: int | None = field(default=None, kw_only=True)
+    precision_cast_simultaneous_bytes: int | None = field(default=None, kw_only=True)
+    precision_widened_accumulation_terms: int | None = field(default=None, kw_only=True)
     compiled_registers_per_thread: int | None = None
     spill_store_bytes: int | None = None
     spill_load_bytes: int | None = None

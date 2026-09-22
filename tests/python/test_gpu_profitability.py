@@ -171,3 +171,12 @@ def test_invalid_profitability_evidence_fails_closed(
 ) -> None:
     with pytest.raises((TypeError, ValueError)):
         GpuProfitability(**options)
+
+
+def test_precision_fields_preserve_positional_compiled_registers() -> None:
+    facts = GpuProfitability(None, None, None, None, None, None, None, None, 64)
+    assert facts.compiled_registers_per_thread == 64
+    assert facts.precision_cast_read_bytes is None
+    assert facts.precision_cast_write_bytes is None
+    assert facts.precision_cast_simultaneous_bytes is None
+    assert facts.precision_widened_accumulation_terms is None
