@@ -102,3 +102,69 @@ def test_native_cubin_gate_rejects_ptx_only_package(
 
     with pytest.raises(ValueError, match="lda_rks"):
         audit.assert_native_cubin_path(ptx_only)
+
+
+def test_package_audit_cli_runs_from_uninstalled_checkout(tmp_path: Path) -> None:
+    import os
+    import subprocess
+    import sys
+
+    root = Path(__file__).resolve().parents[2]
+    env = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+    result = subprocess.run(
+        [sys.executable, str(root / "tools/audit_stationary_aot_package.py"), "--help"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "--require-native-cubin" in result.stdout
+
+
+def test_package_audit_rejects_real_loader_integrity_failures(tmp_path: Path) -> None:
+    import json
+
+    from vibeqc_compiler.common.provenance import file_hash
+    from vibeqc_compiler.method.stationary_cuda import stationary_aot_contract_identity
+
+    root = tmp_path / "actual-loader"
+    root.mkdir()
+    for functional, spin, name in audit.QUALIFIED_STATIONARY_AOT:
+        library = root / f"libvibeqc_stationary_{name}.so"
+        # These bytes are hashed only, never loaded or executed as native code.
+        library.write_bytes(f"opaque audit fixture {name}".encode())
+        metadata = {
+            "schema": "vibeqc.stationary-cuda-aot.v2",
+            "functional": functional,
+            "spin": spin,
+            "plan_identity": audit._qualified_aot_plan(functional, spin).identity,
+            "partition_iterations": 3,
+            "architectures": ["sm_120"],
+            "code_objects": [{"architecture": "sm_120", "kind": "cubin"}],
+            "contract_identity": stationary_aot_contract_identity(
+                functional, spin=spin
+            ),
+            "source_identity": f"opaque-fixture-{name}",
+            "binary_sha256": file_hash(library),
+            "binary_bytes": library.stat().st_size,
+            "compile_contract": {"fp64": True, "fmad": False},
+        }
+        (root / f"vibeqc_stationary_{name}.json").write_text(json.dumps(metadata))
+    result = audit.audit_stationary_aot_directory(root, architecture="sm_120")
+    assert len(result.artifacts) == 6
+    audit.assert_native_cubin_path(result)
+    library = root / "libvibeqc_stationary_pbe_uks.so"
+    original = library.read_bytes()
+    library.write_bytes(original + b"tampered")
+    with pytest.raises(ValueError, match="binary integrity"):
+        audit.audit_stationary_aot_directory(root, architecture="sm_120")
+    library.write_bytes(original)
+    manifest = root / "vibeqc_stationary_pbe_uks.json"
+    metadata = json.loads(manifest.read_text())
+    metadata["contract_identity"] = "foreign-contract"
+    manifest.write_text(json.dumps(metadata))
+    with pytest.raises(ValueError, match="contract_identity"):
+        audit.audit_stationary_aot_directory(root, architecture="sm_120")

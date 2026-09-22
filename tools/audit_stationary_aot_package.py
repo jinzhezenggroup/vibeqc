@@ -8,6 +8,15 @@ installed/wheel directory byte-for-byte.
 
 from __future__ import annotations
 
+# Source-tree CLI bootstrap; installed dependencies remain ordinary imports.
+import sys as _compiler_sys
+from pathlib import Path as _CompilerPath
+
+if __package__ in (None, ""):
+    _compiler_sys.path.insert(
+        0, str(_CompilerPath(__file__).resolve().parents[1] / "python")
+    )
+
 import argparse
 import json
 from dataclasses import asdict, dataclass
