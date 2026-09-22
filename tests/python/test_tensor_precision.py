@@ -129,6 +129,11 @@ def test_precision_schedule_and_cuda_cost_identity_include_casts() -> None:
     estimate = estimate_schedule(plan)
     assert estimate["precision_schedule_identity"] == precision.identity
     assert estimate["estimated_precision_cast_simultaneous_bytes"] == 48
+    static_cost = estimate["profitability"]["static"]
+    assert static_cost["precision_cast_read_bytes"] == precision.cast_read_bytes
+    assert static_cost["precision_cast_write_bytes"] == precision.cast_write_bytes
+    assert static_cost["precision_cast_simultaneous_bytes"] == 48
+    assert static_cost["precision_widened_accumulation_terms"] == 0
 
     source = emit_cuda(plan)
     assert "__double2float_rn" in source
@@ -240,6 +245,11 @@ def test_qualified_fp32_reduce_uses_fp64_accumulation_reference_oracle() -> None
     assert expected == 2.0
     assert np.float64(fp32_oracle) != expected
     assert execute(lowered, {"x": values}).outputs["out"] == expected
+    estimate = estimate_schedule(plan_cuda(lowered, cuda_target_info("sm_80")))
+    assert estimate["estimated_fp64_accumulation_terms"] == 4
+    assert (
+        estimate["profitability"]["static"]["precision_widened_accumulation_terms"] == 4
+    )
 
     full_fp32 = lower_precision(
         program,

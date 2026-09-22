@@ -246,6 +246,27 @@ def check(
         return result
 
 
+def test_cub_block_reduce_matches_interpreter(
+    compiler: typing.Any, cache: typing.Any
+) -> None:
+    i = Index("cub_rows", IndexSpace("cub_rows", "batch", 65))
+    k = Index("cub_inner", IndexSpace("cub_inner", "batch", 4097))
+    x = input_tensor("x", TensorSpec((i, k), role="input"))
+    program = Program({"result": reduce_sum(x, (1,))})
+    feeds = {"x": np.linspace(-0.25, 0.75, 65 * 4097).reshape(65, 4097)}
+    result = check(
+        program,
+        feeds,
+        compiler,
+        cache,
+        schedule=TensorSchedule(
+            stream_reductions=True,
+            reduction_provider="cub",
+        ),
+    )
+    assert result.metrics["kernel_ms"] >= 0.0
+
+
 def test_inplace_donation_executes_alias_safe_elementwise_chain(
     compiler: typing.Any, cache: typing.Any
 ) -> None:

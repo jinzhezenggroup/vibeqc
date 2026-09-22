@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "data/parameters/gfn2.hpp"
+#include "generated_gfn2_es2_native.hpp"
 
 namespace xtbloom::detail::gfn2 {
 
@@ -209,13 +210,12 @@ std::size_t matrix_index(const ES2Plan& plan, std::size_t batch, std::int64_t ro
 }
 
 double arithmetic_hardness(double first_hardness, double second_hardness) {
-  const double sum = first_hardness + second_hardness;
-  if (std::isfinite(sum)) {
-    /* Add-before-half preserves positive subnormal averages. */
-    return 0.5 * sum;
+  double average = std::numeric_limits<double>::quiet_NaN();
+  if (!vibeqc::xtb::generated::evaluate_gfn2_es2_arithmetic_hardness(
+          first_hardness, second_hardness, average)) {
+    return std::numeric_limits<double>::quiet_NaN();
   }
-  /* Half-before-add is only needed when the positive finite sum overflows. */
-  return 0.5 * first_hardness + 0.5 * second_hardness;
+  return average;
 }
 
 double harmonic_hardness(double first_hardness, double second_hardness) {
@@ -235,13 +235,8 @@ template <ES2HardnessAverage Average>
 bool softened_kernel(double dx, double dy, double dz, double first_hardness, double second_hardness,
                      double& value) {
   const double pair_hardness = average_hardness<Average>(first_hardness, second_hardness);
-  const double inverse_average_hardness = 1.0 / pair_hardness;
-  const double softened_distance =
-      std::hypot(std::hypot(dx, dy), std::hypot(dz, inverse_average_hardness));
-  value = 1.0 / softened_distance;
-  return pair_hardness > 0.0 && std::isfinite(pair_hardness) &&
-         std::isfinite(inverse_average_hardness) && softened_distance > 0.0 &&
-         std::isfinite(softened_distance) && value > 0.0 && std::isfinite(value);
+  return vibeqc::xtb::generated::evaluate_gfn2_es2_kernel_from_hardness(
+      dx, dy, dz, pair_hardness, value);
 }
 
 template <ES2HardnessAverage Average>
@@ -312,13 +307,11 @@ bool calculate_potential_row(const ES2Plan& plan, const ES2GeometryCache& cache,
   potential = 0.0;
   for (std::int64_t column_shell = shell_begin; column_shell < shell_end; ++column_shell) {
     const double kernel = cache.coulomb_matrix[matrix_index(plan, batch, row_shell, column_shell)];
-    const double contribution = kernel * shell_charges[static_cast<std::size_t>(column_shell)];
-    const double updated = potential + contribution;
-    if (!(kernel > 0.0) || !std::isfinite(kernel) || !std::isfinite(contribution) ||
-        !std::isfinite(updated)) {
+    if (!(kernel > 0.0) || !std::isfinite(kernel) ||
+        !vibeqc::xtb::generated::accumulate_gfn2_es2_potential(
+            kernel, shell_charges[static_cast<std::size_t>(column_shell)], potential)) {
       return false;
     }
-    potential = updated;
   }
   return true;
 }
@@ -333,12 +326,10 @@ bool calculate_batch_energy(const ES2Plan& plan, const ES2GeometryCache& cache,
     if (!calculate_potential_row(plan, cache, shell_charges, batch, shell, potential)) {
       return false;
     }
-    const double contribution = 0.5 * shell_charges[static_cast<std::size_t>(shell)] * potential;
-    const double updated = energy + contribution;
-    if (!std::isfinite(contribution) || !std::isfinite(updated)) {
+    if (!vibeqc::xtb::generated::accumulate_gfn2_es2_energy(
+            shell_charges[static_cast<std::size_t>(shell)], potential, energy)) {
       return false;
     }
-    energy = updated;
   }
   return true;
 }
@@ -1084,22 +1075,31 @@ xtbloom_status_t add_es2_gradient_cpu(const ES2Plan& plan, const ES2GeometryCach
                ++second_shell) {
             const double kernel =
                 cache.coulomb_matrix[matrix_index(plan, batch_index, first_shell, second_shell)];
-            double shell_contribution =
-                shell_charges[static_cast<std::size_t>(first_shell)] * kernel;
-            shell_contribution *= shell_charges[static_cast<std::size_t>(second_shell)];
-            shell_contribution *= kernel;
-            shell_contribution *= kernel;
-            const double updated = weighted_kernel_derivative + shell_contribution;
-            if (!(kernel > 0.0) || !std::isfinite(kernel) || !std::isfinite(shell_contribution) ||
-                !std::isfinite(updated)) {
+            double shell_weight = 0.0;
+            if (!(kernel > 0.0) || !std::isfinite(kernel) ||
+                !vibeqc::xtb::generated::evaluate_gfn2_es2_cached_gradient_weight(
+                    kernel, shell_charges[static_cast<std::size_t>(first_shell)],
+                    shell_charges[static_cast<std::size_t>(second_shell)], shell_weight)) {
+              error = "ES2 coordinate VJP arithmetic exceeded floating-point range";
+              return XTBLOOM_STATUS_INVALID_ARGUMENT;
+            }
+            const double updated = weighted_kernel_derivative + shell_weight;
+            if (!std::isfinite(updated)) {
               error = "ES2 coordinate VJP arithmetic exceeded floating-point range";
               return XTBLOOM_STATUS_INVALID_ARGUMENT;
             }
             weighted_kernel_derivative = updated;
           }
         }
+        double pair_gradient[3]{};
+        if (!vibeqc::xtb::generated::project_gfn2_es2_gradient(
+                weighted_kernel_derivative, displacement[0], displacement[1], displacement[2],
+                pair_gradient[0], pair_gradient[1], pair_gradient[2])) {
+          error = "ES2 coordinate VJP arithmetic exceeded floating-point range";
+          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        }
         for (std::size_t axis = 0; axis < 3u; ++axis) {
-          const double pair_contribution = -weighted_kernel_derivative * displacement[axis];
+          const double pair_contribution = pair_gradient[axis];
           const std::size_t first_coordinate = first_index * 3u + axis;
           const std::size_t second_coordinate = second_index * 3u + axis;
           const double updated_first =

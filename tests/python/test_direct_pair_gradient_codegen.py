@@ -20,7 +20,10 @@ def test_high_order_pair_gradient_header_is_compiler_owned() -> None:
     assert "first_pair | second_pair | third_pair, 3U" in source
     assert "term.first_center[geometry.axes[differentiated]] += derivative;" in source
     assert "__device__ inline void primitive_eri_order456_gradient(" in source
+    assert "HighOrderCoulombWorkspace" in source
+    assert "axis_wick_multiplicity" in source
     assert "high_order_coulomb<CoulombOrder>" in source
+    assert "direct_native_high_order_coulomb.cuh" not in source
     assert "gradient[3][coordinate] =" in source
 
 
@@ -32,6 +35,10 @@ def test_order456_consumer_is_fully_compiler_owned() -> None:
 
     native = REPOSITORY_ROOT / "src/scf/cuda/direct_native_order456_gradient.cuh"
     assert not native.exists()
+    native_coulomb = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_high_order_coulomb.cuh"
+    )
+    assert not native_coulomb.exists()
 
     force = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh").read_text(
         encoding="utf-8"
@@ -45,4 +52,5 @@ def test_order456_consumer_is_fully_compiler_owned() -> None:
     cuda = (REPOSITORY_ROOT / "cmake/VibeQCCuda.cmake").read_text(encoding="utf-8")
     assert "VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER" in generated
     assert "generate_direct_pair_gradient.py" in generated
+    assert "coulomb_recurrence_cuda.py" in generated
     assert cuda.count("VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER") == 2
