@@ -167,7 +167,6 @@ output-format = "github"
 include = [
   "python/vibeqc_compiler/common/resources.py",
   "python/vibeqc_compiler/integral/batch_benchmark.py",
-  "python/vibeqc_compiler/integral/blocks.py",
   "python/vibeqc_compiler/integral/capabilities.py",
   "python/vibeqc_compiler/integral/df_rys_shell.py",
   "python/vibeqc_compiler/integral/expr.py",
