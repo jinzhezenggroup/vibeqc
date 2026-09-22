@@ -132,13 +132,13 @@
         "python/vibeqc_compiler/xc/pbe_maple.py": "439726631d73a0841529c72f1577dec3c8a5aca14a1ae41a7dd3cf7c46f2d5ae",
         "python/vibeqc_compiler/xc/production_policy.py": "6bd0881c34614854e16a2378e20b17b3917c669ff6e91e71411b1410fe8c22bd",
         "python/vibeqc_compiler/xc/pw91_maple.py": "282a7420b517ad30a99f318895501839a2ff0a322e8e31c72a53cdc95ad3d313",
-        "python/vibeqc_compiler/xc/rsh_expressions.py": "bf3eabf02300abfcf62368369dfc57a4e8290296a97d46f510e1ce3f5e740709",
+        "python/vibeqc_compiler/xc/rsh_expressions.py": "640d749a6b7ec8002dbfc2e8f8a6f793eb8a2db6f219d19d1810e7446df6ed75",
         "python/vibeqc_compiler/xc/rsh_maple.py": "5afea731e52fe76a047a6ff175387930fb0a7f57e31f7d7738ac89a3ee73b609",
         "python/vibeqc_compiler/xc/scan_maple.py": "ecf6efcdc57ec7f207a616abfb178d59442e55d0c91c93713e50ba001b456be3",
         "python/vibeqc_compiler/xc/spec.py": "0261428972bed8b9cbba9d74b203cec7157878efa0a89f6e8e542e42ebd37fe1",
         "python/vibeqc_compiler/xc/wb97mv_maple.py": "7433cd82cd04aef3d2f015e514cbc54406b05dd9e84f4934411415d90b4e9b27",
         "python/vibeqc_compiler/xc/semilocal_family.py": "61e27426ca68fd5a04f566ec976fdaecad50c314f194f16c542aa8f6b9e97a84",
-        "python/vibeqc_compiler/xc/b3lyp_production_policy.py": "2029cfe9b74a59c0b8888aca7e5516b1c6e4b006a05daa880255237506032559"
+        "python/vibeqc_compiler/xc/b3lyp_production_policy.py": "0bf8bc337cc01067d3b3844202c8a14fe60ad5f78ff4104f59ce5f64700fb10a"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
       "generator_sha256": "b629f749fd71fbbf6b85b98a614fb26977975351c96da29ba43de16ab44fbaf9",
