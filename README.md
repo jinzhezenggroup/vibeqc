@@ -214,15 +214,14 @@ HF: RHF direct J/K on an RTX 5090; warm energy-plus-force replay from
 
 ## Documentation
 
-Choose the path that matches your task:
+Choose the path that matches what you are trying to do:
 
-- [Learn quantum chemistry](docs/learn/index.md) — minimal background for newcomers.
-- [User Guide](docs/user/index.md) — installation and calculations.
+- [Learn quantum chemistry](docs/learn/index.md) — the minimum background needed to use VibeQC correctly.
+- [User Guide](docs/user/index.md) — install VibeQC and run calculations.
 - [Reference](docs/reference/index.md) — methods, capabilities, units, and lookup material.
-- [Developer Guide](docs/developer/index.md) — architecture and implementation.
-- [Maintainer Guide](docs/maintainer/index.md) — validation, performance, evidence, and project health.
-- [Agent Guide](docs/agent/index.md) — workflow for coding agents; repository `AGENTS.md` files remain normative.
-- [Benchmark results](benchmarks/results/README.md) — protocol, gates, and reproducible artifacts.
+- [Developer Guide](docs/developer/index.md) — architecture, implementation, and extension points.
+- [Maintainer Guide](docs/maintainer/index.md) — validation, performance qualification, generated artifacts, and project operations.
+- [Agent Guide](docs/agent/index.md) — workflow for coding agents; normative repository rules remain in [AGENTS.md](AGENTS.md).
 
 ## License
 
