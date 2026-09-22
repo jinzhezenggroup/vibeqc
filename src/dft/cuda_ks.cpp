@@ -832,7 +832,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
     const bool converged = output.iterations > 1 &&
                            output.energy_change < options.energy_tolerance &&
                            physical.density_change < options.density_tolerance &&
-                           physical.residual < std::min(1e-9, options.density_tolerance);
+                           physical.residual < std::min(1e-9, options.density_tolerance) &&
+                           physical.maximum_residual < std::min(1e-9, options.density_tolerance);
+    // Keep the existing RMS diagnostic, but do not publish an energy-only state
+    // that the shared final-state validator will reject on the AO maximum norm.
     const bool strict_final_closure = spins == 2 || !provider.system().ecp_terms.empty();
     const bool mixed_stage = mixed_j && !strict_refinement;
     const bool enter_strict_refinement =

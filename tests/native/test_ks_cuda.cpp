@@ -246,7 +246,7 @@ void run_hydroxyl(bool pbe) {
   std::cout << "KS OH pbe=" << pbe << " iterations=" << cold.iterations << '\n';
 }
 
-void run_case(unsigned atoms, bool restricted, bool functional) {
+void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
   const auto system = hydrogens(atoms, restricted);
   const dft::AoBasis basis(system);
   const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};

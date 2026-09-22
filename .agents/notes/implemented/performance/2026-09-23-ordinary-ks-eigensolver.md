@@ -1,6 +1,6 @@
-# Candidate: ordinary KS must not force graph-native diagonalization
+# Decision: ordinary KS uses prepared ordinary-stream diagonalization
 
-Status: proposed (independent GPU solver test passed; endpoint qualification incomplete)
+Status: implemented (ordinary owner qualified; larger complete endpoint scaling remains open)
 Date: 2026-09-23
 
 ## Problem and evidence
@@ -97,3 +97,24 @@ queries and rejected allocation cleanup. Its SCF ledger probes explicitly
 request energy, separating provider allocations from optional force consumers;
 retained/rebuild allocations are compared to actual observations while the
 shape query remains a conservative bound.
+
+## Independent review qualification
+
+The reviewed integration includes master and the independently qualified #1054
+r2SCAN boundary fixes. A source-matched RTX 5090 Release build passes the
+independent 7/24/192/768-AO spectrum/residual/replay/capture test and the full
+native LDA/PBE/r2SCAN suite. Slurm 11345 also passes 13 public endpoint/resource
+cases: 24-AO PBE and r2SCAN in both spins, RKS with two-iteration submissions,
+plus seven allocation/cleanup/rebuild/shape-query cases. The endpoint tests
+retain absolute-only 1e-8 Hartree PySCF gates, cold/warm/changed geometry and
+validated final-state export.
+
+Only PBE uses the existing public whole-method resource estimator in those
+endpoint tests. That estimator does not admit r2SCAN; the test does not add an
+implicit resource claim. The independent native solver bounds apply to the
+shared owner used by both families.
+
+The expanded r2SCAN export test exposed a convergence norm mismatch, repaired
+without changing the export threshold or public RMS diagnostic; see the
+[maximum-residual decision](../numerics/2026-09-23-ks-final-residual-norm.md).
+No isolated-solver or 24-AO result qualifies complete 96-atom endpoint scaling.
