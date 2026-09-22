@@ -32,7 +32,7 @@ def test_aes2_cuda_uses_device_callable_constants(
         text=True,
         timeout=60,
     )
-    runtime = ROOT / "src/xtb/gfn2_runtime"
+    runtime = ROOT / "src/xtb/native"
     source = runtime / "src/backends/cuda/gfn2_aes2.cu"
     if not consumer:
         source = tmp_path / "header.cu"

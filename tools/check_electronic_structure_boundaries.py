@@ -57,10 +57,16 @@ KNOWN_POSTHF_SCF_EDGES = {
     ("posthf/ri_mp2_cuda.hpp", "scf/mean_field.hpp"),
 }
 
-# Host DIIS and its dense solve moved to src/solver in #922. Their zero ceilings
-# prevent the retired CC owners from returning. The method-specific CUDA DIIS
-# loop remains explicit debt until it has a justified shared device contract.
+# Host bounded iteration, DIIS, and its dense solve moved to src/solver in
+# #920/#922. Their zero ceilings prevent the retired CC owners from returning.
+# The method-specific CUDA DIIS loop remains explicit debt until it has a
+# justified shared device contract.
 DUPLICATE_POLICIES = {
+    "cc_host_bounded_iteration_owner": {
+        "kind": "function",
+        "name": "run_bounded_iterations",
+        "allowed_locations": (),
+    },
     "cc_cpu_diis_owner": {
         "kind": "type",
         "name": "Diis",

@@ -4,6 +4,7 @@
 
 #include "scf/cuda_batch.hpp"
 #include "scf/rhf.hpp"
+#include "vibeqc/vibeqc.hpp"
 
 namespace vibeqc::scf {
 
@@ -25,6 +26,11 @@ ScfResult run_rhf_cuda(const core::System& system, const ScfOptions& options, in
   if (status == VIBEQC_STATUS_INVALID_ARGUMENT) {
     throw std::invalid_argument("CUDA RHF received invalid arguments");
   }
+  // Preserve the structural-only diagnostic status through the single-system
+  // adapter; translating it to runtime_error would turn it into INTERNAL_ERROR.
+  if (status == VIBEQC_STATUS_NOT_IMPLEMENTED) {
+    throw Error(status, "CUDA RHF numerical endpoint is unavailable in this mode");
+  }
   if (status != VIBEQC_STATUS_SUCCESS && status != VIBEQC_STATUS_SCF_NOT_CONVERGED) {
     throw std::runtime_error("CUDA RHF execution failed");
   }
@@ -44,6 +50,9 @@ ScfResult run_uhf_cuda(const core::System& system, const ScfOptions& options, in
   const vibeqc_status status = result.front().status;
   if (status == VIBEQC_STATUS_INVALID_ARGUMENT) {
     throw std::invalid_argument("CUDA UHF received invalid arguments");
+  }
+  if (status == VIBEQC_STATUS_NOT_IMPLEMENTED) {
+    throw Error(status, "CUDA UHF numerical endpoint is unavailable in this mode");
   }
   if (status != VIBEQC_STATUS_SUCCESS && status != VIBEQC_STATUS_SCF_NOT_CONVERGED) {
     throw std::runtime_error("CUDA UHF execution failed");
