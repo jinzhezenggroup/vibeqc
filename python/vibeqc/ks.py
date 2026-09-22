@@ -312,11 +312,7 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
 def scf_domain_for_method(method: typing.Any) -> str:
     """Return the exact native point-domain identity for one public KS method."""
     method_ir, _ = resolve_ks_method(method)
-    return (
-        B3LYP_SCF_DOMAIN
-        if _native_semilocal_family(method_ir) == 3
-        else SCF_DOMAIN
-    )
+    return B3LYP_SCF_DOMAIN if _native_semilocal_family(method_ir) == 3 else SCF_DOMAIN
 
 
 def native_xc_functional_code(method: typing.Any) -> int:
