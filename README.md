@@ -35,11 +35,11 @@ independent references, and performance claims require reproducible gates.
   separate gates.
 - Ragged batches, per-system failure isolation, and density warm starts.
 - Contracted Cartesian and real-spherical Gaussian bases: `s` through `g` on
-  CPU, `s` through `f` on CUDA. See [higher angular momentum](docs/high_angular_momentum.md).
+  CPU, `s` through `f` on CUDA. See [higher angular momentum](docs/user/high_angular_momentum.md).
 - Bundled STO-3G, def2-SVP, and def2-TZVP basis data for H-Ar.
-- [Offline local/custom basis input](docs/external_basis.md) with provenance,
+- [Offline local/custom basis input](docs/user/external_basis.md) with provenance,
   H–Og element identities, and explicit rejection of unsupported high-l execution.
-  [Scalar Gaussian ECPs](docs/ecp.md) support bounded CPU/CUDA direct RHF/UHF
+  [Scalar Gaussian ECPs](docs/user/ecp.md) support bounded CPU/CUDA direct RHF/UHF
   values and complete first nuclear derivatives for orbital s/p/d.
 - Python, C, and C++ interfaces; optional PyTorch analytic backward.
 
@@ -214,10 +214,15 @@ HF: RHF direct J/K on an RTX 5090; warm energy-plus-force replay from
 
 ## Documentation
 
-- [Documentation index](docs/index.md) — methods, batching, architecture, and
-  implementation roadmap.
-- [Benchmark results](benchmarks/results/README.md) — protocol, gates, and
-  reproducible artifacts.
+Choose the path that matches your task:
+
+- [Learn quantum chemistry](docs/learn/index.md) — minimal background for newcomers.
+- [User Guide](docs/user/index.md) — installation and calculations.
+- [Reference](docs/reference/index.md) — methods, capabilities, units, and lookup material.
+- [Developer Guide](docs/developer/index.md) — architecture and implementation.
+- [Maintainer Guide](docs/maintainer/index.md) — validation, performance, evidence, and project health.
+- [Agent Guide](docs/agent/index.md) — workflow for coding agents; repository `AGENTS.md` files remain normative.
+- [Benchmark results](benchmarks/results/README.md) — protocol, gates, and reproducible artifacts.
 
 ## License
 
