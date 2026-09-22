@@ -72,8 +72,8 @@ struct SmallHfProfitabilityPolicy {
   double cublas_matrix_nanoseconds{};
 };
 
-SmallHfAnalyticEstimate estimate_small_hf_workload(
-    const runtime::CudaTargetInfo& target, const SmallHfWorkload& workload) noexcept;
+SmallHfAnalyticEstimate estimate_small_hf_workload(const runtime::CudaTargetInfo& target,
+                                                   const SmallHfWorkload& workload) noexcept;
 
 SmallHfProfitabilityPolicy resolve_small_hf_profitability(
     const runtime::CudaTargetInfo& target, const SmallHfWorkload& workload,
