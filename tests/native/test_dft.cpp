@@ -382,6 +382,64 @@ int main() {
       for (std::size_t i = 0; i < r2scan.potential.size(); ++i)
         require(std::abs(r2scan_uks.potential[spin][i] - r2scan.potential[i]) < 2.0e-11,
                 "r2SCAN generic-semilo equal-spin UKS potential differs from RKS");
+    // Unequal spins exercise the independent vtau/2 channels and ragged AO tiles.
+    for (std::size_t i = 0; i < reference_density.size(); ++i) {
+      r2scan_alpha[i] = 0.7 * reference_density[i];
+      r2scan_beta[i] = 0.3 * reference_density[i];
+    }
+    const auto open_r2scan =
+        vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, r2scan_alpha, r2scan_beta, 3);
+    const auto whole_r2scan = vibeqc::dft::integrate_r2scan_uks(
+        basis, cam_interior_grid, r2scan_alpha, r2scan_beta, cam_interior_grid.point_count());
+    require(std::abs(open_r2scan.energy - whole_r2scan.energy) < 2.0e-13,
+            "r2SCAN semilocal energy depends on AO tile partition");
+    for (unsigned spin = 0; spin < 2; ++spin)
+      for (std::size_t i = 0; i < reference_density.size(); ++i)
+        require(
+            std::abs(open_r2scan.potential[spin][i] - whole_r2scan.potential[spin][i]) < 2.0e-12,
+            "r2SCAN unequal-spin potential depends on AO tile partition");
+    for (double step : {1.0e-5, 3.0e-6}) {
+      auto ap = r2scan_alpha, am = r2scan_alpha, bp = r2scan_beta, bm = r2scan_beta;
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i) {
+        ap[i] += step * direction[i];
+        am[i] -= step * direction[i];
+        bp[i] -= 0.4 * step * direction[i];
+        bm[i] += 0.4 * step * direction[i];
+        trace += (open_r2scan.potential[0][i] - 0.4 * open_r2scan.potential[1][i]) * direction[i];
+      }
+      const double difference =
+          (vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, ap, bp, 3).energy -
+           vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, am, bm, 3).energy) /
+          (2.0 * step);
+      require(std::isfinite(difference) && std::abs(difference - trace) < 3.0e-6,
+              "r2SCAN unequal-spin potential violates delta E = Tr(Va dDa + Vb dDb)");
+    }
+
+    // A genuine unequal-spin perturbation must use both independent Vxc blocks.
+    for (std::size_t i = 0; i < reference_density.size(); ++i) {
+      pw91_alpha[i] = 0.7 * reference_density[i];
+      pw91_beta[i] = 0.3 * reference_density[i];
+    }
+    const auto open_pw91 =
+        vibeqc::dft::integrate_pw91_uks(basis, cam_interior_grid, pw91_alpha, pw91_beta, 3);
+    for (double step : {1.0e-5, 3.0e-6}) {
+      auto ap = pw91_alpha, am = pw91_alpha, bp = pw91_beta, bm = pw91_beta;
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i) {
+        ap[i] += step * direction[i];
+        am[i] -= step * direction[i];
+        bp[i] -= 0.4 * step * direction[i];
+        bm[i] += 0.4 * step * direction[i];
+        trace += (open_pw91.potential[0][i] - 0.4 * open_pw91.potential[1][i]) * direction[i];
+      }
+      const double difference =
+          (vibeqc::dft::integrate_pw91_uks(basis, cam_interior_grid, ap, bp, 3).energy -
+           vibeqc::dft::integrate_pw91_uks(basis, cam_interior_grid, am, bm, 3).energy) /
+          (2.0 * step);
+      require(std::isfinite(difference) && std::abs(difference - trace) < 3.0e-6,
+              "PW91 unequal-spin potential violates delta E = Tr(Va dDa + Vb dDb)");
+    }
 
     const auto cam =
         vibeqc::dft::integrate_cam_b3lyp_rks(basis, cam_interior_grid, reference_density, 7);

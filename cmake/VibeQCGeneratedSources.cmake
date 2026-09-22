@@ -442,6 +442,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     OUTPUTS "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/coulomb_recurrence_cuda.py"
     ARGS --output "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}"
     COMMENT "Generating compiler-owned Direct-HF high-order pair-gradient helper")
 

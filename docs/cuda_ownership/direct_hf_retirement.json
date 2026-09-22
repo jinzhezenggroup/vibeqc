@@ -98,21 +98,21 @@
     {
       "id": "native-high-order-force",
       "status": "performance-exception",
-      "capability": "Order-4/5/6 Direct force canonicalization, primitive contraction, pair algebra and complete primitive ERI-gradient composition are compiler-generated. Shared high-order Coulomb recurrence support remains native pending common recurrence/spec retirement.",
-      "current_selector": "Production order-4/5/6 force directly includes the build-time generated consumer for canonicalization, primitive contraction and primitive gradients while retaining the existing queue/runtime schedule and selector semantics.",
-      "generated_alternative": "The compiler emits the complete order-4/5/6 force-side consumer: source canonicalization, primitive contraction, pair-term sharing, Coulomb derivative composition, Gaussian decay derivatives, and translational center recovery. The remaining native mathematical dependency is the shared high-order Coulomb recurrence helper.",
+      "capability": "Order-4/5/6 Direct force canonicalization, primitive contraction, pair algebra, complete primitive ERI-gradient composition, and the bounded high-order Coulomb recurrence are compiler-generated.",
+      "current_selector": "Production order-4/5/6 force directly includes the build-time generated consumer and its compiler-emitted high-order Coulomb recurrence while retaining the existing queue/runtime schedule and selector semantics.",
+      "generated_alternative": "The compiler emits the complete order-4/5/6 force-side consumer together with its shared high-order Coulomb workspace and recurrence support; no native high-order Coulomb mathematical owner remains.",
       "schedule_requirements": "Use common multi-root sharing, live-range shortening, pressure-aware rematerialization/fission, and bounded pair-term storage; do not add an order-specific Direct optimizer.",
       "resource_profile": "High register/stack pressure and repeated combinatorial traversal are the critical measured risks; peak workspace and actual recurrence walks must be reported with endpoint timing.",
       "evidence": [
         "docs/second_integral_derivatives.md",
         "docs/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json",
-        "python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py"
+        "python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py",
+        "python/vibeqc_compiler/integral/coulomb_recurrence_cuda.py"
       ],
       "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
-      "retirement_condition": "The order-4/5/6 consumer body is retired. Remaining work for this family is to move shared high-order Coulomb recurrence/spec ownership under the common recurrence compiler once all dependent consumers can preserve the qualified resource and endpoint envelope.",
+      "retirement_condition": "The order-4/5/6 consumer body and high-order Coulomb recurrence are retired from native scientific ownership. Remaining pair/source helpers stay tracked separately until their other production consumers have qualified generated replacements.",
       "files": [
-        "src/scf/cuda/direct_native_high_order_coulomb.cuh",
         "src/scf/cuda/direct_native_pair_order2_gradient.cuh",
         "src/scf/cuda/direct_native_pair_order3_gradient.cuh",
         "src/scf/cuda/direct_native_source_contraction.cuh"
