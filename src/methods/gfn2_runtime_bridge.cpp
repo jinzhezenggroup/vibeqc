@@ -18,13 +18,14 @@ namespace {
 
 template <typename T>
 vibeqc_xtb_const_buffer_t input_buffer(std::span<const T> values) {
-  return {values.empty() ? nullptr : values.data(), values.size_bytes(), VIBEQC_XTB_MEMORY_HOST, 0u};
+  return {values.empty() ? nullptr : values.data(), values.size_bytes(), VIBEQC_XTB_MEMORY_HOST,
+          0u};
 }
 
 template <typename T>
 vibeqc_xtb_buffer_t output_buffer(std::vector<T>& values) {
-  return {values.empty() ? nullptr : values.data(), values.size() * sizeof(T), VIBEQC_XTB_MEMORY_HOST,
-          0u};
+  return {values.empty() ? nullptr : values.data(), values.size() * sizeof(T),
+          VIBEQC_XTB_MEMORY_HOST, 0u};
 }
 
 Gfn2RuntimeStatus map_status(vibeqc_xtb_status_t status) noexcept {
@@ -57,7 +58,8 @@ struct Gfn2RuntimeBridge::Impl {
       : backend(requested_backend), cpu_cache(1) {
 #if defined(VIBEQC_HAS_GFN2_CUDA)
     if (backend == Gfn2RuntimeBackend::kCuda)
-      cuda_cache = std::make_unique<vibeqc::xtb::detail::Gfn2CudaExecutionCache>(device_id, nullptr);
+      cuda_cache =
+          std::make_unique<vibeqc::xtb::detail::Gfn2CudaExecutionCache>(device_id, nullptr);
 #else
     (void)device_id;
 #endif
