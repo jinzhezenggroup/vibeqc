@@ -67,3 +67,46 @@ excess before composition.
 The CUDA force lifetime assumption is superseded by
 [retained KS force overlap](2026-09-22-retained-ks-force-overlap.md).
 The CPU transient-max and separate DF admission decisions remain unchanged.
+
+## Device acceptance and obsolete test assumptions
+
+The integrated scientific source `06aec739` passed independent PySCF cold/warm
+energy and complete-force gates at 96, 192, 384 and 768 AO on an allocated RTX
+5090 with CUDA 12.9.86. Explicit 24/32/64 MiB energy/force/energy replay also
+passed with both one-electron derivative providers. Every traced value peak
+and response scratch allocation fit its resolved allowance, and those
+allowances summed to the unchanged public budget. At 24 MiB, force replay
+actually streamed values while energy replay retained them.
+
+The older property-budget test still assumed a 50/50 split and a 32 MiB
+streaming transition. Both the integrated head and base `9d6d4423` fail those
+assertions because the accepted resource policy already allocates by workload.
+The test now verifies the public total, actual phase allowances, independently
+referenced forces, and a real 24 MiB resident/streamed transition. No production
+policy or scientific tolerance changed to make these assertions pass.
+
+Response-panel comparison must first prime the occupied owner and freeze its
+density. Comparing a first dense response with later occupied responses mixes
+different workspace demands. The existing 4/16/4 MiB limits remain checked;
+panel counts must be stable when returning to the same allowance and must not
+increase with a larger allowance. A strict decrease is inappropriate when one
+occupied panel already fits both limits.
+
+Matched performance comparisons must likewise control the warm density.
+Repeatedly updating each implementation's own density produced different SCF
+iteration counts and apparent warm regressions. Importing the same checkpoint
+bytes and freezing updates isolates the owner change without altering SCF
+tolerances. Checkpoint physical validation is explicit benchmark preparation
+outside endpoint timing; it is not an implicit production CPU reference.
+Retain the initial evolving-density samples alongside the controlled replay,
+rather than deleting the first observation or treating it as equivalent work.
+
+Detailed numerical, work-count, timing and sampled-memory evidence is attached
+to PR #970. Machine-local raw data and runners are retained under
+`/home/jzzeng/codes/vibeqc-ready-20260922/evidence/`.
+
+A separate 512 KiB diagnostic response-override probe reported 604,384 scratch
+bytes on both `9d6d4423` and `06aec739`. That pre-existing override-accounting
+issue is recorded in the acceptance discussion; this PR does not claim to fix
+or qualify that smaller diagnostic limit. It is distinct from the public
+positive-budget replay gates and the retained 4/16/4 MiB response test.
