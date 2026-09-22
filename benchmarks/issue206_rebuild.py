@@ -401,8 +401,13 @@ def main() -> None:
     def paired(
         left: list[dict[str, Any]], right: list[dict[str, Any]]
     ) -> list[dict[str, float]]:
+        """Validate every replay pair, rejecting missing samples on either side."""
         return [_paired_errors(a, b) for a, b in zip(left, right, strict=True)]
 
+    # Cold construction can select a different source/owner from warm replay.
+    # A correct retained state must not hide an inaccurate cold endpoint in a
+    # result advertised as cold/warm/changed qualification.
+    cold_pair = _paired_errors(native_cold, stock_cold)
     warm_pairs = paired(native_warm, stock_warm)
     changed_pairs = paired(native_changed, stock_changed)
     package_versions = {}
@@ -413,12 +418,12 @@ def main() -> None:
             package_versions[package] = None
     payload = {
         "schema": "vibeqc.issue206.rebuild",
-        "version": 2,
+        "version": 3,
         "status": "pass"
         if all(
             pair["maximum_energy_error_hartree"] <= args.maximum_energy_error
             and pair["maximum_force_error_hartree_per_bohr"] <= args.maximum_force_error
-            for pair in (*warm_pairs, *changed_pairs)
+            for pair in (cold_pair, *warm_pairs, *changed_pairs)
         )
         else "numerical-gate-failed",
         "source_identity": build["probe"]["source_identity"],
@@ -470,6 +475,7 @@ def main() -> None:
             "changed_summary": _summary(stock_changed),
         },
         "accuracy": {
+            "cold_pair": cold_pair,
             "warm_pairs": warm_pairs,
             "changed_pairs": changed_pairs,
             "maximum_warm_energy_error_hartree": max(
