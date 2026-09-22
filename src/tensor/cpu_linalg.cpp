@@ -228,8 +228,12 @@ void scalar_syr2(bool upper, std::size_t n, const double* x, const double* y, do
   for (std::size_t i = 0; i < n; ++i) {
     const std::size_t first_column = upper ? i : 0;
     const std::size_t last_column = upper ? n : i + 1;
+    // Scale first, as in DSYR2: unscaled products can overflow or underflow
+    // even when the requested rank update is representable in binary64.
+    const double scaled_x = alpha * x[i];
+    const double scaled_y = alpha * y[i];
     for (std::size_t j = first_column; j < last_column; ++j)
-      a[i * n + j] += alpha * (x[i] * y[j] + y[i] * x[j]);
+      a[i * n + j] = a[i * n + j] + scaled_x * y[j] + scaled_y * x[j];
   }
 }
 

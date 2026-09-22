@@ -220,6 +220,23 @@ bool check_syr2(CpuLinalgProvider provider,
       if (!selected && !std::isnan(a[i])) return false;
     }
   }
+  // Exact powers of two expose premature product overflow and underflow.
+  for (int exponent : {-600, 600}) {
+    const double scale = std::ldexp(1.0, exponent);
+    const std::array<double, 2> xx{scale, -scale}, yy{scale, 2.0 * scale};
+    const std::array<double, 4> expected{2.0 * scale, scale, scale, -4.0 * scale};
+    for (char uplo : {'L', 'U'}) {
+      std::array<double, 4> a{};
+      a[uplo == 'U' ? 2 : 1] = poison;
+      vibeqc::tensor::cpu_syr2(uplo, 2, xx.data(), yy.data(), a.data(), std::ldexp(1.0, -exponent),
+                               plan);
+      for (std::size_t i = 0; i < a.size(); ++i) {
+        const bool selected = uplo == 'U' ? i / 2 <= i % 2 : i / 2 >= i % 2;
+        if (selected && (!std::isfinite(a[i]) || a[i] != expected[i])) return false;
+        if (!selected && !std::isnan(a[i])) return false;
+      }
+    }
+  }
   vibeqc::tensor::cpu_syr2('L', 2, &poison, &poison, nullptr, 0.0, plan);
   vibeqc::tensor::cpu_syr2('U', 0, nullptr, nullptr, nullptr, 1.0, plan);
   return true;

@@ -91,6 +91,13 @@ int main(int argc, char** argv) {
     }
     return 1;
   }
+  if (mode == "syr2_scaled_overflow" || mode == "syr2_scaled_underflow") {
+    const int exponent = mode == "syr2_scaled_overflow" ? 600 : -600;
+    const double x = std::ldexp(1.0, exponent);
+    double a = 0.0;
+    cpu_syr2('U', 1, &x, &x, &a, std::ldexp(1.0, -exponent), plan);
+    return std::isfinite(a) && a == std::ldexp(1.0, exponent + 1) ? 0 : 1;
+  }
   if (mode == "syr2_alpha_zero") {
     cpu_syr2('U', 2, &nan, &nan, nullptr, 0.0, plan);
     return 0;
