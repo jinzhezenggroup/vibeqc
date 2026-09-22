@@ -321,7 +321,10 @@ def emit_polarized_semilocal(
             "generic polarized semilocal lowering requires rho/sigma or rho/sigma/tau FunctionalSpec"
         )
 
-    outputs = ((), *((i,) for i in range(len(spec.features))))
+    # FunctionalSpec retains canonical tau slots for GGA graphs too. The
+    # evaluator ABI and expression identity include only active ingredients.
+    feature_count = 5 if spec.ingredients == ("rho", "sigma") else 7
+    outputs = ((), *((i,) for i in range(feature_count)))
     graph, roots, expression_hash = build_roots(spec, outputs, production=production)
     emitter = ScalarCEmitter(graph, {name: name for name in spec.features})
     emitter.emit(roots)
@@ -330,7 +333,7 @@ def emit_polarized_semilocal(
         [
             f"struct {value_type} {{",
             "  double energy_density;",
-            f"  double feature_derivative[{len(spec.features)}];",
+            f"  double feature_derivative[{feature_count}];",
             "};",
             f'inline constexpr const char* {identity_constant} = "{expression_hash}";',
             *declarations,

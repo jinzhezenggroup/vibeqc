@@ -7,6 +7,7 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 #include "dft/ao_grid.hpp"
@@ -24,6 +25,16 @@ extern "C" int grid_cuda_create_v1(int, int, int, const std::size_t*, const doub
 #endif
 
 namespace {
+// Canonical graph features include tau even for GGA. Lowering must preserve
+// the five-derivative GGA ABI while MGGA exposes all seven active derivatives.
+using namespace vibeqc::dft::generated;
+static_assert(std::extent_v<decltype(B3lypPolarizedValue::feature_derivative)> == 5);
+static_assert(std::extent_v<decltype(CamB3lypPolarizedValue::feature_derivative)> == 5);
+static_assert(std::extent_v<decltype(Pw91PolarizedValue::feature_derivative)> == 5);
+static_assert(std::extent_v<decltype(ScanPolarizedValue::feature_derivative)> == 7);
+static_assert(std::extent_v<decltype(R2scanPolarizedValue::feature_derivative)> == 7);
+static_assert(std::extent_v<decltype(Wb97mvPolarizedValue::feature_derivative)> == 7);
+
 void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
