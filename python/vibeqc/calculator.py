@@ -648,14 +648,24 @@ class Calculator:
                 self._device_name == "cuda"
                 or (self._device_name == "cpu" and qualified_basis(self._basis))
             )
-            and not (
-                self._device_name == "cuda"
-                and isinstance(self._basis, BasisSet)
-                and any(element.ecp_core_electrons for element in self._basis.elements)
-                and any(
-                    shell.angular_momentum > 1
-                    for element in self._basis.elements
-                    for shell in element.shells
+            and (
+                self._device_name != "cuda"
+                or not isinstance(self._basis, BasisSet)
+                or (
+                    any(element.ecp_core_electrons for element in self._basis.elements)
+                    and all(
+                        shell.angular_momentum <= 2
+                        for element in self._basis.elements
+                        for shell in element.shells
+                    )
+                )
+                or (
+                    not any(element.ecp_core_electrons for element in self._basis.elements)
+                    and all(
+                        shell.angular_momentum <= 1
+                        for element in self._basis.elements
+                        for shell in element.shells
+                    )
                 )
             )
             and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
@@ -663,9 +673,10 @@ class Calculator:
             # Python public capability layered on the native KS prepared owner
             # plus the backend's compiled stationary gradient consumer.
             # Keep the backend-neutral C registry conservative.
-            # ECP promotion admits s/p/d on CPU and s/p on CUDA, in both layouts. The shared
+            # ECP promotion admits s/p/d on CPU and CUDA, in both layouts. The shared
             # nine-source consumer also enforces shape, byte and work caps;
-            # higher-angular ECP domains remain energy-only.
+            # higher-angular ECP domains remain energy-only. All-electron CUDA
+            # forces retain the existing s/p boundary.
             self._capabilities = replace(
                 self._capabilities,
                 supported_properties=self._capabilities.supported_properties

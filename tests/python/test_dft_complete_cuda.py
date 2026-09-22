@@ -522,7 +522,7 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
             # is copied, and reset clears previous successful accumulation.
             records = np.ones((2, 26))
             records[-1, -1] = np.nan
-            maps = np.zeros((2, 4), dtype=np.int64)
+            maps = np.zeros((2, 12), dtype=np.int64)
             with pytest.raises(RuntimeError, match="invalid stationary CUDA"):
                 sources._call(
                     "stationary_records",

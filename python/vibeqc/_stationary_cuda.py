@@ -5,6 +5,8 @@ CUDA SCF exports its verified D/W frame to the host. Python enumerates primitive
 records and gathers TensorIR inputs; all derivative/normalization/contraction,
 AO/features/XC work, atom scatter and final source reduction execute on CUDA.
 No CPU derivative or interpreter fallback is available.
+The bounded scalar-ECP route admits Cartesian and real-spherical s/p/d records;
+all-electron force use remains limited to s/p.
 """
 
 from __future__ import annotations
@@ -30,6 +32,10 @@ from vibeqc_compiler.dft.cuda import (
 )
 from vibeqc_compiler.dft.plan import plan_tiles
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cuda
+from vibeqc_compiler.integral.first_derivative_schedule import (
+    derivative_binding,
+    derivative_requests,
+)
 from vibeqc_compiler.method.stationary_cuda import compile_stationary_cuda
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
@@ -76,25 +82,33 @@ def _checked(
 
 def _layout(basis: typing.Any) -> typing.Any:
     """Read the native normalized basis records without evaluating integrals."""
-    if any(s.angular_momentum > 1 for s in basis.shells):
-        raise NotImplementedError("CUDA gradient diagnostic admits s/p bases only")
+    if any(s.angular_momentum > 2 for s in basis.shells):
+        raise NotImplementedError("CUDA gradient diagnostic admits s/p/d bases only")
     start = 3 * basis.natom
     primitives = basis.packed[start : start + 2 * basis.nprimitive].reshape(-1, 2)
     aos = basis.packed[start + 2 * basis.nprimitive :].reshape(-1, 16)
-    if any(int(r[3]) != 1 for r in aos):
-        raise NotImplementedError("CUDA diagnostic requires single-component AOs")
-    components = tuple("".join(a * int(l) for a, l in zip("xyz", r[4:7])) for r in aos)
-    domain = sorted(set(components))
-    requests = tuple(
-        [
-            (op, c)
-            for op in ("overlap", "kinetic", "nuclear_attraction")
-            for c in product(domain, repeat=2)
-        ]
-        + [("four_center_eri", c) for c in product(domain, repeat=4)]
-        + [("nuclear", ())]
+    if any(int(r[3]) not in (1, 2, 3) for r in aos):
+        raise NotImplementedError(
+            "CUDA diagnostic requires one to three Cartesian AO components"
+        )
+    expansions = tuple(
+        tuple(
+            (
+                "".join(
+                    axis * int(power)
+                    for axis, power in zip("xyz", row[4 + 4 * t : 7 + 4 * t])
+                ),
+                float(row[7 + 4 * t]),
+            )
+            for t in range(int(row[3]))
+        )
+        for row in aos
     )
-    return primitives, aos, components, requests
+    domain = tuple(sorted({c for expansion in expansions for c, _ in expansion}))
+    # Canonical derivative bindings remove axis/center permutations while the
+    # runtime map preserves those permutations for every derivative slot.
+    requests = derivative_requests(domain)
+    return primitives, aos, expansions, requests
 
 
 class _CudaSources:
@@ -117,7 +131,7 @@ class _CudaSources:
         self.library = lib = ct.CDLL(str(artifact.library))
         self.natom, self.nao, self.point_capacity = basis.natom, basis.nao, points
         self.buffer = np.ones((records, 26))
-        self.maps = np.full((records, 4), -1, dtype=np.int64)
+        self.maps = np.full((records, 12), -1, dtype=np.int64)
         self.used = 0
         self.pending = None
         self.device = device
@@ -126,7 +140,7 @@ class _CudaSources:
             basis.packed[: 3 * basis.natom].reshape(-1, 3)
         )
         self.ao_atoms = np.ascontiguousarray(_native_ao_atoms(basis), dtype=np.int64)
-        self.primitives, self.aos, self.components, requests = _layout(basis)
+        self.primitives, self.aos, self.expansions, requests = _layout(basis)
         self.kinds = {key: i for i, key in enumerate(requests)}
         tail = [ct.c_char_p, ct.c_size_t]
         lib.stationary_create.argtypes = (
@@ -212,29 +226,48 @@ class _CudaSources:
         Host work is discrete record enumeration. CUDA multiplies every
         normalization factor and performs the weighted derivative/scatter.
         """
-        key = self.kinds[operator, tuple(self.components[i] for i in indices)], source
-        if key != self.pending:
-            self.flush()
-            self.pending = key
         rows = self.aos[list(indices)]
         owners = [int(r[0]) for r in rows]
         if nucleus is not None:
             owners.append(nucleus)
         ranges = [range(int(r[1]), int(r[1] + r[2])) for r in rows]
-        for ids in product(*ranges):
-            r, m = self.buffer[self.used], self.maps[self.used]
-            r.fill(1)
-            m.fill(-1)
-            primitives = self.primitives[list(ids)]
-            r[: len(ids)] = primitives[:, 0]
-            r[4 : 4 + 3 * len(owners)] = self.centers[owners].reshape(-1)
-            r[16 : 16 + len(ids)] = primitives[:, 1]
-            r[20 : 20 + len(ids)] = rows[:, 7]
-            r[24], r[25] = weight, charge
-            m[: len(owners)] = owners
-            self.used += 1
-            if self.used == len(self.buffer):
+        for terms in product(*(self.expansions[i] for i in indices)):
+            binding = derivative_binding(operator, tuple(c for c, _ in terms))
+            key = (self.kinds[binding.request], source)
+            if key != self.pending:
                 self.flush()
+                self.pending = key
+            mapped_owners = [owners[i] for i in binding.centers]
+            for ids in product(*ranges):
+                r, m = self.buffer[self.used], self.maps[self.used]
+                r.fill(1)
+                m.fill(-1)
+                primitives = self.primitives[list(ids)]
+                primitive_slots = list(binding.centers[: len(ids)])
+                r[: len(ids)] = primitives[primitive_slots, 0]
+                r[4 : 4 + 3 * len(mapped_owners)] = self.centers[
+                    mapped_owners
+                ].reshape(-1)
+                r[16 : 16 + len(ids)] = primitives[primitive_slots, 1]
+                m[: 3 * len(mapped_owners)] = np.asarray(
+                    [
+                        mapped_owners[center] * 3 + binding.axes[axis]
+                        for center in range(len(mapped_owners))
+                        for axis in range(3)
+                    ],
+                    dtype=np.int64,
+                )
+                # Packed AO component coefficients are carried by the record
+                # weight below; primitive coefficients already include shell
+                # normalization in the native primitive table.
+                r[20 : 20 + len(ids)] = 1.0
+                r[24], r[25] = (
+                    weight * np.prod([coefficient for _, coefficient in terms]),
+                    charge,
+                )
+                self.used += 1
+                if self.used == len(self.buffer):
+                    self.flush()
 
     def nuclear(self, a: typing.Any, b: typing.Any, charges: typing.Any) -> None:
         self.flush()
@@ -244,7 +277,7 @@ class _CudaSources:
         m.fill(-1)
         r[:2] = charges[[a, b]]
         r[4:10] = self.centers[[a, b]].reshape(-1)
-        m[:2] = a, b
+        m[:6] = (a * 3, a * 3 + 1, a * 3 + 2, b * 3, b * 3 + 1, b * 3 + 2)
         self.used = 1
 
     def geometry(
@@ -355,7 +388,8 @@ def complete_rks_cuda_gradient_diagnostic(
     Scalar-ECP v5 adds generated CUDA local/nonlocal derivatives and effective
     charges (nine sources). Its small dense export is separately budgeted and
     preserves the checked native two-grid gate. The public wrapper restricts ECP
-    force capability to Cartesian/real-spherical s/p records.
+    force capability to Cartesian/real-spherical s/p/d records for scalar ECP;
+    all-electron CUDA forces retain the s/p boundary.
     """
     started = perf_counter()
     contract = StationaryDerivativeContract(state.identity)
@@ -397,7 +431,7 @@ def complete_rks_cuda_gradient_diagnostic(
     if not 1 <= na <= 32 or not 1 <= n <= 128:
         raise ValueError("CUDA diagnostic small-domain atom/AO cap exceeded")
     _, aos, _, requests = _layout(basis)
-    primitive_sum = sum(int(r[2]) for r in aos)
+    primitive_sum = sum(int(r[2]) * int(r[3]) for r in aos)
     records = primitive_sum**4 + (na + 2) * primitive_sum**2 + na * (na - 1) // 2
     pair_visits = (1 + 2 * len(state.grid.points)) * na * (na - 1) // 2
     if records > max_primitive_records:
@@ -439,7 +473,7 @@ def complete_rks_cuda_gradient_diagnostic(
         budget_bytes=max_device_bytes,
     )
     source_bytes = (
-        8 * (42 * primitive_tile + 24 * na + 3 * tile_points + 576 * na + n) + 256
+        8 * (50 * primitive_tile + 24 * na + 3 * tile_points + 576 * na + n) + 256
     )
     available = max_device_bytes - grid_plan.peak_bytes - source_bytes
     if available <= 0:
@@ -463,7 +497,7 @@ def complete_rks_cuda_gradient_diagnostic(
         grid_plan.host_bytes
         + 8
         * (
-            30 * primitive_tile
+            34 * primitive_tile
             + 4 * plan.spin_blocks * n * n
             + 120 * na
             + 26 * integral_terms

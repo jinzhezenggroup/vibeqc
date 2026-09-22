@@ -26,7 +26,7 @@ size_t allocation(size_t na, size_t n, size_t np, size_t nr) {
   if (!na || na > 32 || !n || n > 128 || !np || np > 4096 || !nr || nr > 4096)
     throw std::invalid_argument("stationary CUDA shape exceeds small-domain caps");
   return 8 * (record_stride * nr + 12 * nr + 3 * na + 2 * np + workers * 9 * na + workers * 9 * na +
-              21 * na + 4 * nr + n + np) +
+              21 * na + 12 * nr + n + np) +
          256;
 }
 template <class F>
@@ -112,7 +112,10 @@ int stationary_create(int device, int major, int minor, size_t na, size_t n, siz
     p->partial = take(workers * 9 * na);
     p->scratch = take(workers * 9 * na);
     p->sources = take(21 * na);
-    p->maps = reinterpret_cast<int64_t*>(take(4 * nr));
+    // Each primitive center has three destination axis/atom entries. This
+    // preserves canonical derivative bindings for multicomponent AOs without
+    // materializing a host derivative tensor.
+    p->maps = reinterpret_cast<int64_t*>(take(12 * nr));
     p->ao_atoms = reinterpret_cast<int64_t*>(take(n));
     p->point_atoms = reinterpret_cast<int64_t*>(take(np));
     *output = p.release();
@@ -149,7 +152,7 @@ int stationary_records(void* pointer, unsigned kind, unsigned source, const doub
     check(*p);
     auto stream = p->context.stream;
     upload(*p, p->record, records, count * record_stride, stream);
-    upload(*p, p->maps, maps, count * 4, stream);
+    upload(*p, p->maps, maps, count * 12, stream);
     primitive_kernel<<<blocks(count, 64), 64, 0, stream>>>(kind, p->record, count, p->primitive,
                                                            p->context.error);
     primitive_reduce<<<blocks(3 * p->atoms, 64), 64, 0, stream>>>(

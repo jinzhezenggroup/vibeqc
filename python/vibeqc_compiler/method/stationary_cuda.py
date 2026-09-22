@@ -55,14 +55,15 @@ __global__ void primitive_reduce(const double* input, const int64_t* maps, size_
   if (coord >= 3 * na) return;
   double sum = 0;
   for (size_t i = 0; i < count; ++i)
-    for (size_t center = 0; center < 4; ++center) {
-      const auto atom = maps[4 * i + center];
-      if (atom < -1 || atom >= int64_t(na)) {
-        atomicExch(error, 1);
-        return;
+    for (size_t center = 0; center < 4; ++center)
+      for (size_t axis = 0; axis < 3; ++axis) {
+        const auto mapped = maps[12 * i + 3 * center + axis];
+        if (mapped < -1 || mapped >= int64_t(3 * na)) {
+          atomicExch(error, 1);
+          return;
+        }
+        if (mapped == int64_t(coord)) sum += input[12 * i + 3 * center + axis];
       }
-      if (atom == int64_t(coord / 3)) sum += input[12 * i + 3 * center + coord % 3];
-    }
   output[coord] = finite(output[coord] + sum, error, 0);
 }
 __global__ void validate_centers(const double* centers, size_t na, double tolerance, int* error) {
