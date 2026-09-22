@@ -46,7 +46,7 @@ double max_error(const std::vector<double>& first, const std::vector<double>& se
 }
 
 vibeqc::scf::ResolvedFockBuild mixed_strategy(vibeqc::scf::FockSpin spin,
-                                               unsigned derivative_order = 0) {
+                                              unsigned derivative_order = 0) {
   using namespace vibeqc::scf;
   auto spec = make_hf_fock_spec(spin);
   spec.derivative_order = derivative_order;
@@ -150,9 +150,9 @@ void verify_restricted(const vibeqc::core::System& system, int device) {
 
   auto scaled_spec = force_strategy.spec;
   scaled_spec.exchange.coefficient *= 0.5;
-  const auto scaled_strategy = scf::resolve_fock_build(
-      scaled_spec, scf::FockBackend::Cuda, force_strategy.screening_tolerance,
-      force_strategy.metric_relative_threshold);
+  const auto scaled_strategy = scf::resolve_fock_build(scaled_spec, scf::FockBackend::Cuda,
+                                                       force_strategy.screening_tolerance,
+                                                       force_strategy.metric_relative_threshold);
   dft::PreparedCosxFockPlan scaled_gpu(system, &system, scaled_strategy, 7, device);
   scf::PreparedFockPlan scaled_cpu_j(system, &system, cpu_j_strategy(scaled_strategy));
   auto scaled_expected = scaled_cpu_j.energy_derivative(density);
@@ -205,8 +205,8 @@ void verify_unrestricted(const vibeqc::core::System& system, int device) {
   const auto beta_reference = dft::build_cosx_molecular_derivative_reference(
       force_gpu.grid(), beta, dft::CosxDensityConvention::spin_resolved);
   for (std::size_t coordinate = 0; coordinate < expected_derivative.size(); ++coordinate)
-    expected_derivative[coordinate] += alpha_reference.nuclear_gradient[coordinate] +
-                                       beta_reference.nuclear_gradient[coordinate];
+    expected_derivative[coordinate] +=
+        alpha_reference.nuclear_gradient[coordinate] + beta_reference.nuclear_gradient[coordinate];
   require(max_error(force_gpu.energy_derivative(alpha, beta), expected_derivative) < 3.0e-8,
           "prepared RI-J/COSX-K UHF derivative differs from independent J/K oracles");
 }

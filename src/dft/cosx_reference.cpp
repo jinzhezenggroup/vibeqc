@@ -201,8 +201,8 @@ CosxPointDerivativeResult build_cosx_point_derivative_reference(
 }
 
 CosxMolecularDerivativeResult build_cosx_molecular_derivative_reference(
-    const MolecularGrid& grid, std::span<const double> density,
-    CosxDensityConvention convention, CosxReferenceSpec spec) {
+    const MolecularGrid& grid, std::span<const double> density, CosxDensityConvention convention,
+    CosxReferenceSpec spec) {
   const auto& system = grid.system();
   CosxMolecularDerivativeResult result;
   result.value =
@@ -230,12 +230,12 @@ CosxMolecularDerivativeResult build_cosx_molecular_derivative_reference(
         molecule::ao_expansions(shell.angular_momentum, system.basis_representation);
     for (std::size_t ao = 0; ao < expansions.size(); ++ao) ao_atoms.push_back(shell.atom_index);
   }
-  if (ao_atoms.size() != nbf)
-    throw std::logic_error("COSX molecular AO ownership is inconsistent");
+  if (ao_atoms.size() != nbf) throw std::logic_error("COSX molecular AO ownership is inconsistent");
 
   result.nuclear_gradient.assign(ncoord, 0.0);
-  std::vector<double> projected(nbf), symmetric_projection(nbf), potential(nbf), left_potential(nbf),
-      phi_cotangent(nbf), esp_cotangent(matrix_size), weight_sensitivity(npoint);
+  std::vector<double> projected(nbf), symmetric_projection(nbf), potential(nbf),
+      left_potential(nbf), phi_cotangent(nbf), esp_cotangent(matrix_size),
+      weight_sensitivity(npoint);
   const double energy_factor = convention == CosxDensityConvention::rhf_spin_summed ? -0.25 : -0.5;
 
   for (std::size_t point = 0; point < npoint; ++point) {
@@ -246,8 +246,7 @@ CosxMolecularDerivativeResult build_cosx_molecular_derivative_reference(
     for (std::size_t i = 0; i < nbf; ++i) {
       for (std::size_t j = 0; j < nbf; ++j) {
         projected[j] += phi[i] * density[i * nbf + j];
-        symmetric_projection[j] +=
-            0.5 * phi[i] * (density[i * nbf + j] + density[j * nbf + i]);
+        symmetric_projection[j] += 0.5 * phi[i] * (density[i * nbf + j] + density[j * nbf + i]);
       }
     }
     std::fill(potential.begin(), potential.end(), 0.0);
@@ -273,8 +272,7 @@ CosxMolecularDerivativeResult build_cosx_molecular_derivative_reference(
     }
     for (std::size_t j = 0; j < nbf; ++j)
       for (std::size_t l = 0; l < nbf; ++l)
-        esp_cotangent[j * nbf + l] =
-            weighted_factor * symmetric_projection[j] * projected[l];
+        esp_cotangent[j * nbf + l] = weighted_factor * symmetric_projection[j] * projected[l];
 
     const std::size_t owner = grid.owners()[point];
     if (owner >= system.atoms.size())

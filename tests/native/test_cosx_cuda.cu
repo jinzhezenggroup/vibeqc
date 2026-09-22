@@ -194,7 +194,8 @@ int main() {
                 "CUDA COSX molecular derivative changed with tile partition");
       const auto info = vibeqc::dft::cuda_cosx_molecular_derivative_diagnostic(grid, tile);
       require(info.nbf == 2 && info.natom == system.atoms.size() &&
-                  info.npoint == grid.point_count() && info.tile_points == std::min(tile, grid.point_count()) &&
+                  info.npoint == grid.point_count() &&
+                  info.tile_points == std::min(tile, grid.point_count()) &&
                   info.device_bytes == info.grid_device_bytes + info.derivative_device_bytes &&
                   info.esp_tile_elements == info.tile_points * info.nbf * info.nbf &&
                   info.ao_jet_elements == 4 * info.tile_points * info.nbf &&
@@ -216,8 +217,8 @@ int main() {
     auto changed_system = system;
     changed_system.atoms[1].position[0] += 0.07;
     changed_system.atoms[1].position[2] -= 0.05;
-    const vibeqc::dft::MolecularGrid changed_grid(
-        changed_system, vibeqc::dft::GridSpec{1, 12, 8, 16, 3, 1.0e-12});
+    const vibeqc::dft::MolecularGrid changed_grid(changed_system,
+                                                  vibeqc::dft::GridSpec{1, 12, 8, 16, 3, 1.0e-12});
     const auto changed_cpu = vibeqc::dft::build_cosx_molecular_derivative_reference(
         changed_grid, density, vibeqc::dft::CosxDensityConvention::rhf_spin_summed);
     const auto changed_gpu = vibeqc::dft::cuda_cosx_molecular_energy_derivative(

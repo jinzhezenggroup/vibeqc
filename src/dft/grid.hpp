@@ -50,8 +50,7 @@ class MolecularGrid {
    * the exact materialized Becke weights. Grid points translate with their
    * owner atoms; this routine differentiates only the partition weights, not
    * point coordinates or the element/radial/angular atomic measure. */
-  std::vector<double> contract_weight_derivative(
-      std::span<const double> weight_sensitivity) const;
+  std::vector<double> contract_weight_derivative(std::span<const double> weight_sensitivity) const;
 
  private:
   core::System system_;

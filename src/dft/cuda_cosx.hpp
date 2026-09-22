@@ -52,9 +52,10 @@ CudaCosxMolecularDerivativeDiagnostic cuda_cosx_molecular_derivative_diagnostic(
  * contracted on the host from one scalar sensitivity per already-materialized
  * grid point. No coordinate-major ESP or point-derivative tensor is retained.
  */
-std::vector<double> cuda_cosx_molecular_energy_derivative(
-    const MolecularGrid& grid, std::span<const double> density,
-    CosxDensityConvention convention, std::size_t tile_points, int device);
+std::vector<double> cuda_cosx_molecular_energy_derivative(const MolecularGrid& grid,
+                                                          std::span<const double> density,
+                                                          CosxDensityConvention convention,
+                                                          std::size_t tile_points, int device);
 
 class CudaCosxStagingPlan {
  public:

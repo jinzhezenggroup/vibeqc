@@ -105,14 +105,15 @@ struct PreparedCosxFockPlan::Impl {
     diagnostic.derivative = derivative_resources;
     diagnostic.device_bytes =
         add_size(diagnostic.coulomb.device_bytes, diagnostic.exchange.device_bytes);
-    diagnostic.derivative_peak_device_bytes = strategy.spec.derivative_order == 1
-                                                  ? add_size(diagnostic.device_bytes,
-                                                             diagnostic.derivative.device_bytes)
-                                                  : diagnostic.device_bytes;
+    diagnostic.derivative_peak_device_bytes =
+        strategy.spec.derivative_order == 1
+            ? add_size(diagnostic.device_bytes, diagnostic.derivative.device_bytes)
+            : diagnostic.device_bytes;
     diagnostic.device_budget_bytes = available;
     diagnostic.tile_points = diagnostic.exchange.tile_points;
     if (diagnostic.device_bytes > available || diagnostic.derivative_peak_device_bytes > available)
-      throw std::runtime_error("prepared COSX providers exceed admitted value/derivative device budget");
+      throw std::runtime_error(
+          "prepared COSX providers exceed admitted value/derivative device budget");
   }
 
   scf::DirectJkMatrices build(const std::vector<double>& density, const std::vector<double>& beta) {
@@ -154,11 +155,11 @@ struct PreparedCosxFockPlan::Impl {
     if (strategy.spec.coulomb.present) {
       result = coulomb->energy_derivative(density, beta);
       if (result.size() != 3 * orbital.atoms.size())
-        throw std::runtime_error("prepared Coulomb derivative returned an invalid coordinate count");
+        throw std::runtime_error(
+            "prepared Coulomb derivative returned an invalid coordinate count");
     }
 
-    const double standard_exchange =
-        strategy.spec.spin == scf::FockSpin::Restricted ? -0.5 : -1.0;
+    const double standard_exchange = strategy.spec.spin == scf::FockSpin::Restricted ? -0.5 : -1.0;
     const double exchange_scale = strategy.spec.exchange.coefficient / standard_exchange;
     if (strategy.spec.spin == scf::FockSpin::Restricted) {
       const auto response = cuda_cosx_molecular_energy_derivative(
@@ -167,9 +168,9 @@ struct PreparedCosxFockPlan::Impl {
       for (std::size_t coordinate = 0; coordinate < result.size(); ++coordinate)
         result[coordinate] += exchange_scale * response[coordinate];
     } else {
-      const auto alpha = cuda_cosx_molecular_energy_derivative(
-          cosx_grid, density, CosxDensityConvention::spin_resolved, diagnostic.tile_points,
-          device_id);
+      const auto alpha = cuda_cosx_molecular_energy_derivative(cosx_grid, density,
+                                                               CosxDensityConvention::spin_resolved,
+                                                               diagnostic.tile_points, device_id);
       const auto beta_response = cuda_cosx_molecular_energy_derivative(
           cosx_grid, beta, CosxDensityConvention::spin_resolved, diagnostic.tile_points, device_id);
       for (std::size_t coordinate = 0; coordinate < result.size(); ++coordinate)
@@ -202,8 +203,8 @@ scf::DirectJkMatrices PreparedCosxFockPlan::build(const std::vector<double>& den
                                                   const std::vector<double>& beta) {
   return impl_->build(density, beta);
 }
-std::vector<double> PreparedCosxFockPlan::energy_derivative(
-    const std::vector<double>& density, const std::vector<double>& beta) {
+std::vector<double> PreparedCosxFockPlan::energy_derivative(const std::vector<double>& density,
+                                                            const std::vector<double>& beta) {
   return impl_->energy_derivative(density, beta);
 }
 

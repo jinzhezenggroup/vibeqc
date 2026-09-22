@@ -8,8 +8,8 @@
 #include <tuple>
 #include <utility>
 
-#include "scf/initial_guess/density.hpp"
 #include "scf/gradient/hf_gradient.hpp"
+#include "scf/initial_guess/density.hpp"
 #include "scf/reference/linalg.hpp"
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
@@ -89,8 +89,8 @@ void finalize_rhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& options, st
   result.energy = final_energy;
   if (options.compute_forces) {
     const Matrix weighted = energy_weighted_density(orbitals.vectors, orbitals.values, n, occupied);
-    result.forces = scf::gradient::analytic_forces(
-        ints, density, weighted, plan.energy_derivative(density));
+    result.forces =
+        scf::gradient::analytic_forces(ints, density, weighted, plan.energy_derivative(density));
   }
   result.converged = result.energy_change < options.energy_tolerance &&
                      result.density_rms < options.density_tolerance &&
@@ -125,8 +125,7 @@ void finalize_uhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& options,
     const Matrix beta_weighted =
         energy_weighted_density(cb.vectors, cb.values, n, beta_occupied, 1.0);
     result.forces = scf::gradient::analytic_uhf_forces(
-        ints, alpha, beta, alpha_weighted, beta_weighted,
-        plan.energy_derivative(alpha, beta));
+        ints, alpha, beta, alpha_weighted, beta_weighted, plan.energy_derivative(alpha, beta));
   }
   result.converged = result.energy_change < options.energy_tolerance &&
                      result.density_rms < options.density_tolerance &&

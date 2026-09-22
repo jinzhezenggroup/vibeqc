@@ -42,7 +42,7 @@ vibeqc::core::System hydrogen_dimer(int charge, int multiplicity) {
 }
 
 vibeqc::scf::ResolvedFockBuild mixed_strategy(vibeqc::scf::FockSpin spin,
-                                               unsigned derivative_order = 0) {
+                                              unsigned derivative_order = 0) {
   using namespace vibeqc::scf;
   auto spec = make_hf_fock_spec(spin);
   spec.derivative_order = derivative_order;
@@ -164,8 +164,8 @@ void verify_rhf(int device) {
   const auto displaced_energy = [&](double displacement) {
     auto displaced = system;
     displaced.atoms[1].position[2] += displacement;
-    dft::PreparedCosxFockPlan displaced_plan(
-        displaced, &displaced, mixed_strategy(scf::FockSpin::Restricted), 16, device);
+    dft::PreparedCosxFockPlan displaced_plan(displaced, &displaced,
+                                             mixed_strategy(scf::FockSpin::Restricted), 16, device);
     const auto endpoint = dft::run_cosx_rhf(displaced_plan, control);
     require(endpoint.converged, "displaced COSX RHF finite-difference endpoint did not converge");
     return endpoint.energy;

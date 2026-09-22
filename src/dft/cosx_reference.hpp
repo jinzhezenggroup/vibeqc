@@ -83,7 +83,7 @@ CosxPointDerivativeResult build_cosx_point_derivative_reference(
 /** Independent CPU oracle for the complete fixed-density molecular COSX
  * derivative of one materialized MolecularGrid. */
 CosxMolecularDerivativeResult build_cosx_molecular_derivative_reference(
-    const MolecularGrid& grid, std::span<const double> density,
-    CosxDensityConvention convention, CosxReferenceSpec spec = {});
+    const MolecularGrid& grid, std::span<const double> density, CosxDensityConvention convention,
+    CosxReferenceSpec spec = {});
 
 }  // namespace vibeqc::dft

@@ -1443,8 +1443,8 @@ EspProbeDerivativeData build_esp_integrals_with_probe_derivatives(
 EspContractedGeometryDerivative contract_weighted_esp_geometry_derivative(
     const core::System& system, std::span<const double> point_xyz,
     std::span<const double> matrix_weights) {
-  if (point_xyz.size() != 3 ||
-      !std::all_of(point_xyz.begin(), point_xyz.end(), [](double value) { return std::isfinite(value); }))
+  if (point_xyz.size() != 3 || !std::all_of(point_xyz.begin(), point_xyz.end(),
+                                            [](double value) { return std::isfinite(value); }))
     throw std::invalid_argument("contracted ESP derivative requires one finite xyz probe");
 
   const auto cartesian_aos = expand_cartesian_aos(system);
@@ -1456,8 +1456,7 @@ EspContractedGeometryDerivative contract_weighted_esp_geometry_derivative(
                    [](double value) { return std::isfinite(value); }))
     throw std::invalid_argument("contracted ESP derivative weights do not match the AO basis");
 
-  const auto cartesian_weights =
-      pullback_matrix_weights(matrix_weights, cartesian_nbf, public_aos);
+  const auto cartesian_weights = pullback_matrix_weights(matrix_weights, cartesian_nbf, public_aos);
   const std::size_t ncoord = checked_product(system.atoms.size(), std::size_t{3});
   const std::size_t derivative_count = checked_sum(ncoord, std::size_t{3});
   std::vector<Vec3> centers(system.atoms.size());
@@ -1482,11 +1481,11 @@ EspContractedGeometryDerivative contract_weighted_esp_geometry_derivative(
           first.component_normalization * second.component_normalization;
       for (const auto& p : first.shell->primitives)
         for (const auto& q : second.shell->primitives)
-          contracted = contracted +
-                       external * angular_normalization * p.coefficient * q.coefficient *
-                           primitive_coulomb_potential_cartesian(
-                               p.exponent, first_center, first.angular, q.exponent, second_center,
-                               second.angular, probe);
+          contracted = contracted + external * angular_normalization * p.coefficient *
+                                        q.coefficient *
+                                        primitive_coulomb_potential_cartesian(
+                                            p.exponent, first_center, first.angular, q.exponent,
+                                            second_center, second.angular, probe);
     }
   }
   if (!std::isfinite(contracted.value) ||

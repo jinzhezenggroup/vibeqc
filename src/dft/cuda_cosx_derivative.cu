@@ -197,10 +197,9 @@ __global__ void esp_probe_derivative_kernel(const double* basis, std::size_t nat
   }
 }
 
-__global__ void esp_value_kernel(const double* basis, std::size_t natom,
-                                 std::size_t nprimitive, std::size_t nao,
-                                 const double* points, std::size_t npoint, double* esp,
-                                 int* error) {
+__global__ void esp_value_kernel(const double* basis, std::size_t natom, std::size_t nprimitive,
+                                 std::size_t nao, const double* points, std::size_t npoint,
+                                 double* esp, int* error) {
   namespace one = vibeqc::scf::generated_one_electron;
   const double* primitives = basis + 3 * natom;
   const double* records = primitives + 2 * nprimitive;
@@ -238,12 +237,13 @@ __global__ void esp_value_kernel(const double* basis, std::size_t natom,
               static_cast<unsigned>(first[4 + 4 * ti]), static_cast<unsigned>(first[5 + 4 * ti]),
               static_cast<unsigned>(first[6 + 4 * ti]));
           for (unsigned tj = 0; tj < second_terms; ++tj) {
-            const unsigned second_component = one::component_index(
-                static_cast<unsigned>(second[4 + 4 * tj]), static_cast<unsigned>(second[5 + 4 * tj]),
-                static_cast<unsigned>(second[6 + 4 * tj]));
+            const unsigned second_component =
+                one::component_index(static_cast<unsigned>(second[4 + 4 * tj]),
+                                     static_cast<unsigned>(second[5 + 4 * tj]),
+                                     static_cast<unsigned>(second[6 + 4 * tj]));
             const double factor = primitive_weight * first[7 + 4 * ti] * second[7 + 4 * tj];
-            value -= factor * one::attraction(pair, first_component, second_component,
-                                              c[0], c[1], c[2]);
+            value -=
+                factor * one::attraction(pair, first_component, second_component, c[0], c[1], c[2]);
           }
         }
       }
@@ -360,8 +360,8 @@ __global__ void contract_point_derivative_kernel(const double* ao, const double*
 }
 
 __global__ void project_symmetric_density_kernel(const double* ao, const double* density,
-                                                  std::size_t npoint, std::size_t nbf,
-                                                  double* projected, int* error) {
+                                                 std::size_t npoint, std::size_t nbf,
+                                                 double* projected, int* error) {
   const std::size_t total = npoint * nbf;
   for (std::size_t index = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; index < total;
        index += std::size_t(blockDim.x) * gridDim.x) {
@@ -369,8 +369,8 @@ __global__ void project_symmetric_density_kernel(const double* ao, const double*
     const std::size_t column = index % nbf;
     double value = 0.0;
     for (std::size_t row = 0; row < nbf; ++row)
-      value += ao[point * nbf + row] *
-               0.5 * (density[row * nbf + column] + density[column * nbf + row]);
+      value +=
+          ao[point * nbf + row] * 0.5 * (density[row * nbf + column] + density[column * nbf + row]);
     projected[index] = finite_or_flag(value, error);
   }
 }
@@ -397,11 +397,13 @@ __global__ void apply_esp_bidirectional_kernel(const double* esp, const double* 
   }
 }
 
-__global__ void contract_molecular_ao_kernel(
-    const double* basis, std::size_t natom, std::size_t nprimitive, const double* ao,
-    const double* density, const double* weights, const std::size_t* owners,
-    const double* potential, const double* left_potential, std::size_t npoint,
-    std::size_t nbf, double energy_factor, double* nuclear_gradient, int* error) {
+__global__ void contract_molecular_ao_kernel(const double* basis, std::size_t natom,
+                                             std::size_t nprimitive, const double* ao,
+                                             const double* density, const double* weights,
+                                             const std::size_t* owners, const double* potential,
+                                             const double* left_potential, std::size_t npoint,
+                                             std::size_t nbf, double energy_factor,
+                                             double* nuclear_gradient, int* error) {
   const double* records = basis + 3 * natom + 2 * nprimitive;
   const std::size_t total = npoint * nbf;
   const std::size_t jet_stride = npoint * nbf;
@@ -417,14 +419,12 @@ __global__ void contract_molecular_ao_kernel(
     }
     double from_left = 0.0, from_right = 0.0;
     for (std::size_t column = 0; column < nbf; ++column) {
-      from_left += 0.5 * (density[orbital * nbf + column] +
-                          density[column * nbf + orbital]) *
+      from_left += 0.5 * (density[orbital * nbf + column] + density[column * nbf + orbital]) *
                    potential[point * nbf + column];
-      from_right += density[orbital * nbf + column] *
-                    left_potential[point * nbf + column];
+      from_right += density[orbital * nbf + column] * left_potential[point * nbf + column];
     }
-    const double cotangent = finite_or_flag(
-        energy_factor * weights[point] * (from_left + from_right), error);
+    const double cotangent =
+        finite_or_flag(energy_factor * weights[point] * (from_left + from_right), error);
     for (unsigned axis = 0; axis < 3; ++axis) {
       const double spatial = ao[(axis + 1) * jet_stride + point * nbf + orbital];
       const double response = finite_or_flag(cotangent * spatial, error);
@@ -434,11 +434,13 @@ __global__ void contract_molecular_ao_kernel(
   }
 }
 
-__global__ void contract_molecular_esp_kernel(
-    const double* basis, std::size_t natom, std::size_t nprimitive, std::size_t nao,
-    const double* points, const double* weights, const std::size_t* owners,
-    const double* projected, const double* symmetric_projection, std::size_t npoint,
-    double energy_factor, double* nuclear_gradient, int* error) {
+__global__ void contract_molecular_esp_kernel(const double* basis, std::size_t natom,
+                                              std::size_t nprimitive, std::size_t nao,
+                                              const double* points, const double* weights,
+                                              const std::size_t* owners, const double* projected,
+                                              const double* symmetric_projection,
+                                              std::size_t npoint, double energy_factor,
+                                              double* nuclear_gradient, int* error) {
   namespace derivative = vibeqc::scf::generated_one_electron_derivatives;
   const double* primitives = basis + 3 * natom;
   const double* records = primitives + 2 * nprimitive;
@@ -478,8 +480,8 @@ __global__ void contract_molecular_esp_kernel(
       const std::size_t ia = first_begin + pa;
       for (std::size_t pb = 0; pb < second_count; ++pb) {
         const std::size_t ib = second_begin + pb;
-        const auto pair = derivative::make_pair(primitives[2 * ia], primitives[2 * ib],
-                                                a[0], a[1], a[2], b[0], b[1], b[2]);
+        const auto pair = derivative::make_pair(primitives[2 * ia], primitives[2 * ib], a[0], a[1],
+                                                a[2], b[0], b[1], b[2]);
         const double primitive_weight = primitives[2 * ia + 1] * primitives[2 * ib + 1];
         for (unsigned ti = 0; ti < first_terms; ++ti) {
           const unsigned first_component = vibeqc::scf::generated_one_electron::component_index(
@@ -487,11 +489,12 @@ __global__ void contract_molecular_esp_kernel(
               static_cast<unsigned>(first[6 + 4 * ti]));
           for (unsigned tj = 0; tj < second_terms; ++tj) {
             const unsigned second_component = vibeqc::scf::generated_one_electron::component_index(
-                static_cast<unsigned>(second[4 + 4 * tj]), static_cast<unsigned>(second[5 + 4 * tj]),
+                static_cast<unsigned>(second[4 + 4 * tj]),
+                static_cast<unsigned>(second[5 + 4 * tj]),
                 static_cast<unsigned>(second[6 + 4 * tj]));
             const double factor = primitive_weight * first[7 + 4 * ti] * second[7 + 4 * tj];
-            const auto value = derivative::attraction_gradient(
-                pair, first_component, second_component, c[0], c[1], c[2]);
+            const auto value = derivative::attraction_gradient(pair, first_component,
+                                                               second_component, c[0], c[1], c[2]);
             for (unsigned axis = 0; axis < 3; ++axis) {
               const double scale = finite_or_flag(cotangent * factor, error);
               atomicAdd(nuclear_gradient + 3 * atom_first + axis, -scale * value.first[axis]);
@@ -506,9 +509,10 @@ __global__ void contract_molecular_esp_kernel(
   }
 }
 
-__global__ void contract_weight_sensitivity_kernel(
-    const double* symmetric_projection, const double* potential, std::size_t npoint,
-    std::size_t nbf, double energy_factor, double* sensitivity, int* error) {
+__global__ void contract_weight_sensitivity_kernel(const double* symmetric_projection,
+                                                   const double* potential, std::size_t npoint,
+                                                   std::size_t nbf, double energy_factor,
+                                                   double* sensitivity, int* error) {
   for (std::size_t point = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; point < npoint;
        point += std::size_t(blockDim.x) * gridDim.x) {
     double scalar = 0.0;
@@ -545,16 +549,16 @@ CudaCosxMolecularDerivativeDiagnostic cuda_cosx_molecular_derivative_diagnostic(
   const auto add_double = [&](std::size_t count) {
     extra_bytes = add(extra_bytes, mul(count, sizeof(double)));
   };
-  add_double(matrix);                       // density
-  add_double(result.esp_tile_elements);     // ESP
-  add_double(mul(tile, basis.nao));         // projected
-  add_double(mul(tile, basis.nao));         // symmetric projection
-  add_double(mul(tile, basis.nao));         // potential
-  add_double(mul(tile, basis.nao));         // left potential
-  add_double(tile);                         // weight sensitivity
-  add_double(coordinates);                  // nuclear gradient
+  add_double(matrix);                                              // density
+  add_double(result.esp_tile_elements);                            // ESP
+  add_double(mul(tile, basis.nao));                                // projected
+  add_double(mul(tile, basis.nao));                                // symmetric projection
+  add_double(mul(tile, basis.nao));                                // potential
+  add_double(mul(tile, basis.nao));                                // left potential
+  add_double(tile);                                                // weight sensitivity
+  add_double(coordinates);                                         // nuclear gradient
   extra_bytes = add(extra_bytes, mul(tile, sizeof(std::size_t)));  // owners
-  extra_bytes = add(extra_bytes, sizeof(int));                      // error flag
+  extra_bytes = add(extra_bytes, sizeof(int));                     // error flag
   result.derivative_device_bytes = extra_bytes;
   result.device_bytes = add(result.grid_device_bytes, result.derivative_device_bytes);
   result.bounded_tiling = true;
@@ -562,9 +566,10 @@ CudaCosxMolecularDerivativeDiagnostic cuda_cosx_molecular_derivative_diagnostic(
   return result;
 }
 
-std::vector<double> cuda_cosx_molecular_energy_derivative(
-    const MolecularGrid& grid, std::span<const double> host_density,
-    CosxDensityConvention convention, std::size_t requested_tile, int device) {
+std::vector<double> cuda_cosx_molecular_energy_derivative(const MolecularGrid& grid,
+                                                          std::span<const double> host_density,
+                                                          CosxDensityConvention convention,
+                                                          std::size_t requested_tile, int device) {
   if (!requested_tile || device < 0 || grid.point_count() == 0 ||
       grid.points().size() != mul(std::size_t{3}, grid.point_count()) ||
       grid.weights().size() != grid.point_count() || grid.owners().size() != grid.point_count())
@@ -585,7 +590,8 @@ std::vector<double> cuda_cosx_molecular_energy_derivative(
   if (host_density.size() != matrix)
     throw std::invalid_argument("CUDA COSX molecular density does not match the AO basis");
   for (std::size_t owner : grid.owners())
-    if (owner >= basis.natom) throw std::invalid_argument("CUDA COSX molecular owner is out of range");
+    if (owner >= basis.natom)
+      throw std::invalid_argument("CUDA COSX molecular owner is out of range");
 
   const auto diagnostic = cuda_cosx_molecular_derivative_diagnostic(grid, requested_tile);
   const std::size_t tile_points = diagnostic.tile_points;
@@ -618,7 +624,8 @@ std::vector<double> cuda_cosx_molecular_energy_derivative(
     if (device_basis.version != 1 || device_basis.natom != basis.natom ||
         device_basis.nprimitive != basis.nprimitive || device_basis.nao != basis.nao ||
         !device_basis.basis || !device_basis.stream)
-      throw std::runtime_error("CUDA COSX molecular derivative received an incompatible basis view");
+      throw std::runtime_error(
+          "CUDA COSX molecular derivative received an incompatible basis view");
     stream = device_basis.stream;
 
     density.reset(matrix, device);
@@ -641,10 +648,10 @@ std::vector<double> cuda_cosx_molecular_energy_derivative(
 
     for (std::size_t begin = 0; begin < grid.point_count(); begin += tile_points) {
       const std::size_t count = std::min(tile_points, grid.point_count() - begin);
-      checked_status(grid_cuda_run_selected_v1(
-                         grid_plan, grid.points().data() + 3 * begin, count, 0, ao_ids.data(), n,
-                         nullptr, nullptr, message, sizeof(message)),
-                     message[0] ? message : "CUDA COSX molecular AO tile failed");
+      checked_status(
+          grid_cuda_run_selected_v1(grid_plan, grid.points().data() + 3 * begin, count, 0,
+                                    ao_ids.data(), n, nullptr, nullptr, message, sizeof(message)),
+          message[0] ? message : "CUDA COSX molecular AO tile failed");
       GridTaskView view{};
       checked_status(grid_cuda_view_v1(grid_plan, &view, message, sizeof(message)),
                      message[0] ? message : "CUDA COSX molecular AO view failed");
@@ -653,8 +660,8 @@ std::vector<double> cuda_cosx_molecular_energy_derivative(
         throw std::runtime_error("CUDA COSX molecular derivative received an incompatible AO view");
       check(cudaMemcpyAsync(device_weights.get(), grid.weights().data() + begin,
                             count * sizeof(double), cudaMemcpyHostToDevice, view.stream));
-      check(cudaMemcpyAsync(owners.get(), grid.owners().data() + begin,
-                            count * sizeof(std::size_t), cudaMemcpyHostToDevice, view.stream));
+      check(cudaMemcpyAsync(owners.get(), grid.owners().data() + begin, count * sizeof(std::size_t),
+                            cudaMemcpyHostToDevice, view.stream));
       esp_value_kernel<<<blocks(count * matrix), 128, 0, view.stream>>>(
           device_basis.basis, device_basis.natom, device_basis.nprimitive, n, view.points, count,
           esp.get(), error.get());
@@ -699,7 +706,8 @@ std::vector<double> cuda_cosx_molecular_energy_derivative(
       throw std::logic_error("CUDA COSX molecular weight-response size mismatch");
     for (std::size_t coordinate = 0; coordinate < result.size(); ++coordinate)
       result[coordinate] += weight_response[coordinate];
-    if (!std::all_of(result.begin(), result.end(), [](double value) { return std::isfinite(value); }))
+    if (!std::all_of(result.begin(), result.end(),
+                     [](double value) { return std::isfinite(value); }))
       throw std::runtime_error("nonfinite complete CUDA COSX molecular derivative");
     grid_cuda_destroy_v1(grid_plan);
     return result;
