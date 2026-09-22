@@ -335,9 +335,23 @@ void ks_option_versioned_prefixes() {
   options.short_range_exchange = 0.2;
   options.long_range_exchange = 0.8;
   options.range_omega = 0.3;
+  options.fock_exchange_coefficient = -0.1;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-              VIBEQC_STATUS_NOT_IMPLEMENTED,
-          "v6 range exchange was silently ignored before its native consumer was attached");
+              VIBEQC_STATUS_SUCCESS,
+          "v6 range exchange did not attach the native two-Fock consumer");
+  vibeqc_result_descriptor result{
+      sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0, nullptr, 0, 0, 0, 0, 0,
+      VIBEQC_BACKEND_CPU_REFERENCE};
+  require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
+              std::isfinite(result.energy),
+          "v6 range exchange failed through the native two-Fock endpoint");
+  vibeqc_calculation_destroy(calculation);
+  calculation = nullptr;
+
+  options.fock_exchange_coefficient = -0.2;
+  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
+              VIBEQC_STATUS_INVALID_ARGUMENT,
+          "v6 range exchange accepted a primary K coefficient that disagrees with MethodIR");
 }
 
 void pbe0_composition_snapshot() {

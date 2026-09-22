@@ -261,9 +261,13 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   if (options.precision_mode == VIBEQC_PRECISION_AUTO && execution_plan.nonlocal_correlation)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "self-consistent nonlocal correlation currently requires strict FP64");
-  if (execution_plan.range_exchange)
+  if (execution_plan.range_exchange && backend != VIBEQC_BACKEND_CPU_REFERENCE)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "native KS range-separated exchange consumer is not attached yet");
+                      "native KS range-separated exchange currently requires CPU");
+  if (execution_plan.range_exchange && execution_plan.semilocal_family != kKsSemilocalPbe)
+    throw MethodError(
+        VIBEQC_STATUS_NOT_IMPLEMENTED,
+        "native KS range-separated exchange currently requires the PBE semilocal lowerer");
   if (backend == VIBEQC_BACKEND_CUDA && execution_plan.semilocal_family == kKsSemilocalB3lyp)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "B3LYP CPU execution only");
 
@@ -318,6 +322,17 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
         !fock.exchange.present || fock.exchange.coefficient != expected_k)
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                         "B3LYP resolved composition does not match its audited manifest");
+  }
+  if (execution_plan.range_exchange) {
+    if (!composition_seen)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "range-separated exchange requires explicit resolved KS composition v2");
+    const double spin_factor = unrestricted(execution_plan) ? -1.0 : -0.5;
+    const double expected_k = spin_factor * execution_plan.short_range_exchange;
+    if (!fock.exchange.present || fock.exchange.coefficient != expected_k)
+      throw MethodError(
+          VIBEQC_STATUS_INVALID_ARGUMENT,
+          "KS composition short-range exchange disagrees with the v6 range-exchange plan");
   }
   options.resolved_fock_build = scf::resolve_fock_build(
       fock, backend == VIBEQC_BACKEND_CUDA ? scf::FockBackend::Cuda : scf::FockBackend::Cpu,
@@ -464,6 +479,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
         basis_(system_),
         grid_(system_, grid) {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
+    if (execution_plan_.range_exchange) prepare_range_exchange(device);
 #if VIBEQC_HAS_CUDA
     if (backend_ == VIBEQC_BACKEND_CUDA)
       cuda_ = std::make_unique<dft::CudaKsPlan>(fock_, basis_, grid_, options_,
@@ -486,6 +502,8 @@ class KsPreparedCalculation final : public PreparedCalculation {
         runtime::add_capacity(fock_.cpu_observation_capacity(),
                               runtime::vector_capacities(basis_.packed, grid_.points(),
                                                          grid_.weights(), grid_.owners(), warm_));
+    if (range_correction_)
+      bytes = runtime::add_capacity(bytes, range_correction_->cpu_observation_capacity());
     if (cpu_physical_)
       for (const auto* matrices : {&cpu_physical_->density, &cpu_physical_->fock})
         for (const auto& matrix : *matrices)
@@ -679,7 +697,15 @@ class KsPreparedCalculation final : public PreparedCalculation {
     // last-good density, which coexists with its current/proposed densities.
     runtime::CpuRetainedCapacity retained_warm(runtime::vector_bytes(warm_));
     scf::ScfResult native;
-    if (execution_plan_.semilocal_family == kKsSemilocalB3lyp)
+    if (execution_plan_.range_exchange) {
+      if (!range_correction_)
+        throw std::runtime_error("KS range-exchange correction owner is missing");
+      native = unrestricted(execution_plan_)
+                   ? scf::run_pbe_rsh_uks(fock_, *range_correction_, basis_, grid_, options_, seed,
+                                          nonlocal_.get())
+                   : scf::run_pbe_rsh_rks(fock_, *range_correction_, basis_, grid_, options_, seed,
+                                          nonlocal_.get());
+    } else if (execution_plan_.semilocal_family == kKsSemilocalB3lyp)
       native = unrestricted(execution_plan_)
                    ? scf::run_b3lyp_uks(fock_, basis_, grid_, options_, seed)
                    : scf::run_b3lyp_rks(fock_, basis_, grid_, options_, seed);
@@ -751,6 +777,18 @@ class KsPreparedCalculation final : public PreparedCalculation {
   }
 
  private:
+  void prepare_range_exchange(int device) {
+    const auto spin =
+        unrestricted(execution_plan_) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
+    auto strategy = scf::resolve_fock_build(
+        scf::make_rsh_correction_fock_spec(spin, execution_plan_.short_range_exchange,
+                                           execution_plan_.long_range_exchange,
+                                           execution_plan_.range_omega),
+        scf::FockBackend::Cpu, options_.screening_tolerance);
+    range_correction_ =
+        std::make_unique<scf::PreparedFockPlan>(system_, nullptr, std::move(strategy), device);
+  }
+
   void prepare_nonlocal(int device) {
     if (grid_.point_count() > std::numeric_limits<std::uint32_t>::max())
       throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
@@ -806,6 +844,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
   scf::ScfOptions options_;
   vibeqc_backend backend_;
   scf::PreparedFockPlan fock_;
+  std::unique_ptr<scf::PreparedFockPlan> range_correction_;
   dft::AoBasis basis_;
   dft::MolecularGrid grid_;
   std::vector<double> warm_;

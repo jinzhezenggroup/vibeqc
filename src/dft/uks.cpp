@@ -420,6 +420,15 @@ ScfResult run_pbe_uks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis&
   return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_pbe_xc_uks, "PBE",
                       initial_density, &nonlocal_correlation);
 }
+
+ScfResult run_pbe_rsh_uks(const PreparedFockPlan& primary,
+                          const PreparedFockPlan& long_range_correction, const dft::AoBasis& basis,
+                          const dft::MolecularGrid& grid, const ScfOptions& options,
+                          const std::vector<double>* initial_density,
+                          dft::nlc::Vv10Plan* nonlocal_correlation) {
+  return run_uks_impl(primary, &long_range_correction, basis, grid, options, evaluate_pbe_xc_uks,
+                      "PBE-RSH", initial_density, nonlocal_correlation);
+}
 ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density) {

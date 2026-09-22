@@ -59,6 +59,16 @@ ScfResult run_pbe_rks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis&
                                const std::vector<double>* initial_density,
                                dft::nlc::Vv10Plan& nonlocal_correlation);
 
+/** MethodIR-owned PBE-family range-separated exact exchange. The primary plan
+ * carries Coulomb plus the short-range fraction as full-range K; the correction
+ * plan contributes only (long-short) long-range K. An optional VV10/rVV10
+ * provider is composed in the same self-consistent physical Fock. */
+ScfResult run_pbe_rsh_rks(const PreparedFockPlan& primary,
+                          const PreparedFockPlan& long_range_correction, const dft::AoBasis& basis,
+                          const dft::MolecularGrid& grid, const ScfOptions& options,
+                          const std::vector<double>* initial_density = nullptr,
+                          dft::nlc::Vv10Plan* nonlocal_correlation = nullptr);
+
 ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density = nullptr);
@@ -96,6 +106,12 @@ ScfResult run_pbe_uks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis&
                                const dft::MolecularGrid& grid, const ScfOptions& options,
                                const std::vector<double>* initial_density,
                                dft::nlc::Vv10Plan& nonlocal_correlation);
+
+ScfResult run_pbe_rsh_uks(const PreparedFockPlan& primary,
+                          const PreparedFockPlan& long_range_correction, const dft::AoBasis& basis,
+                          const dft::MolecularGrid& grid, const ScfOptions& options,
+                          const std::vector<double>* initial_density = nullptr,
+                          dft::nlc::Vv10Plan* nonlocal_correlation = nullptr);
 
 ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
