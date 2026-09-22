@@ -31,14 +31,19 @@ def test_xc_retirement_inventory_is_explicit_and_monotone() -> None:
     )
 
 
-def test_retired_scan_handwritten_builders_stay_deleted() -> None:
-    source = ROOT / "python/vibeqc_compiler/xc/expressions.py"
-    tree = ast.parse(source.read_text(), filename=str(source.relative_to(ROOT)))
-    function_names = {
-        node.name
-        for node in ast.walk(tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    }
+def test_retired_xc_handwritten_builders_stay_deleted() -> None:
+    sources = (
+        ROOT / "python/vibeqc_compiler/xc/expressions.py",
+        ROOT / "python/vibeqc_compiler/xc/rsh_expressions.py",
+    )
+    function_names = set()
+    for source in sources:
+        tree = ast.parse(source.read_text(), filename=str(source.relative_to(ROOT)))
+        function_names.update(
+            node.name
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        )
     retired = {
         "production_channel",
         "r2_switch",
@@ -47,6 +52,8 @@ def test_retired_scan_handwritten_builders_stay_deleted() -> None:
         "scan_correlation",
         "r2scan_exchange",
         "r2scan_correlation",
+        "pw91_exchange",
+        "pw91_correlation",
     }
     assert function_names.isdisjoint(retired)
 
