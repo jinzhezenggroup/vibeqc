@@ -264,17 +264,16 @@ struct IncrementalPbeRksState {
       Matrix replacement_density = density;
       if (diagnostic.anchor_generation == std::numeric_limits<std::uint64_t>::max())
         throw std::overflow_error("incremental XC anchor generation exhausted");
-      const IncrementalPbeRksAnchorIdentity replacement_identity{
-          model, diagnostic.anchor_generation + 1};
+      const IncrementalPbeRksAnchorIdentity replacement_identity{model,
+                                                                 diagnostic.anchor_generation + 1};
       const auto replacement_bytes = runtime::vector_bytes(replacement_density);
       diagnostic.peak_replacement_overlap_bytes =
           std::max(diagnostic.peak_replacement_overlap_bytes,
                    runtime::add_capacity(old_anchor_bytes, replacement_bytes));
       runtime::sample_cpu_capacity(runtime::add_capacity(
           external_retained_bytes,
-          runtime::add_capacity(
-              runtime::add_capacity(old_anchor_bytes, replacement_bytes),
-              full.density_diagnostic.owned_numeric_bytes)));
+          runtime::add_capacity(runtime::add_capacity(old_anchor_bytes, replacement_bytes),
+                                full.density_diagnostic.owned_numeric_bytes)));
       anchor_density.swap(replacement_density);
       anchor_identity = replacement_identity;
       diagnostic.anchor_generation = replacement_identity.source_generation;
@@ -315,7 +314,8 @@ struct IncrementalPbeRksState {
     Matrix delta(density.size());
     for (std::size_t i = 0; i < density.size(); ++i) delta[i] = density[i] - anchor_density[i];
     const auto update_bytes = runtime::vector_bytes(delta);
-    diagnostic.peak_update_buffer_bytes = std::max(diagnostic.peak_update_buffer_bytes, update_bytes);
+    diagnostic.peak_update_buffer_bytes =
+        std::max(diagnostic.peak_update_buffer_bytes, update_bytes);
     try {
       auto incremental = dft::integrate_pbe_rks_incremental_exact(
           basis, grid, anchor_density, delta, tile, exchange_scale, correlation_scale);
@@ -558,32 +558,17 @@ ScfResult run_rks(
   if (incremental_xc) {
     const auto owner = next_rks_identity();
     incremental_identity.emplace(IncrementalPbeRksModelIdentity{
-        owner,
-        geometry_fingerprint(system),
-        basis_fingerprint(basis),
-        grid.spec(),
-        grid.point_count(),
-        1U,
-        ks.scf_domain_version,
-        options.semilocal_exchange_scale,
-        options.semilocal_correlation_scale,
-        options.screening_tolerance,
-        static_cast<int32_t>(options.precision_mode.value_or(VIBEQC_PRECISION_FP64)),
-        64U,
-        options.xc_execution_schedule,
-        dft::XcDensityRoute::DensityMatrix});
+        owner, geometry_fingerprint(system), basis_fingerprint(basis), grid.spec(),
+        grid.point_count(), 1U, ks.scf_domain_version, options.semilocal_exchange_scale,
+        options.semilocal_correlation_scale, options.screening_tolerance,
+        static_cast<int32_t>(options.precision_mode.value_or(VIBEQC_PRECISION_FP64)), 64U,
+        options.xc_execution_schedule, dft::XcDensityRoute::DensityMatrix});
     ks.incremental_xc.model_identity = owner;
     incremental_state.emplace(IncrementalPbeRksState{
-        basis,
-        grid,
-        *incremental_identity,
-        options.xc_tile_points,
-        options.semilocal_exchange_scale,
-        options.semilocal_correlation_scale,
-        options.incremental_xc_max_updates,
-        options.incremental_xc_max_density_rms,
-        options.incremental_xc_noise_density_rms,
-        options.incremental_xc_stagnation_iterations,
+        basis, grid, *incremental_identity, options.xc_tile_points,
+        options.semilocal_exchange_scale, options.semilocal_correlation_scale,
+        options.incremental_xc_max_updates, options.incremental_xc_max_density_rms,
+        options.incremental_xc_noise_density_rms, options.incremental_xc_stagnation_iterations,
         ks.incremental_xc});
   }
   std::shared_ptr<const OccupiedDensityFactor> factor;
@@ -602,13 +587,12 @@ ScfResult run_rks(
         runtime::add_capacity(
             factor ? factor->numeric_capacity_bytes() : 0,
             runtime::vector_capacities(orthogonalizer, current_density, orbitals.values,
-                                       orbitals.vectors, basis.packed, grid.points(), grid.weights(),
-                                       grid.owners(), ks.history)));
+                                       orbitals.vectors, basis.packed, grid.points(),
+                                       grid.weights(), grid.owners(), ks.history)));
   };
   const auto retained_capacity = [&](const Matrix& current_density) {
-    return runtime::add_capacity(
-        retained_without_incremental(current_density),
-        incremental_state ? incremental_state->numeric_capacity() : 0);
+    return runtime::add_capacity(retained_without_incremental(current_density),
+                                 incremental_state ? incremental_state->numeric_capacity() : 0);
   };
   const auto make_current_factor = [&](const Matrix& current_density,
                                        std::size_t extra_live_bytes = 0) {
@@ -691,9 +675,9 @@ ScfResult run_rks(
     const double residual_tolerance = std::min(1.0e-9, options.density_tolerance);
     const auto run_stage = [&](Matrix stage_density, bool strict_full, unsigned iteration_offset,
                                unsigned iteration_budget) {
-      const solver::SelfConsistentPolicy stage_policy{
-          iteration_budget, options.energy_tolerance, options.density_tolerance, residual_tolerance,
-          true};
+      const solver::SelfConsistentPolicy stage_policy{iteration_budget, options.energy_tolerance,
+                                                      options.density_tolerance, residual_tolerance,
+                                                      true};
       return solver::run_self_consistent(
           std::move(stage_density), stage_policy,
           [&](const Matrix& current_density, unsigned) {

@@ -207,17 +207,18 @@ void native_scf() {
         options.incremental_xc_noise_density_rms = 0.0;
         const auto incremental = run(plan, basis, grid, options, nullptr);
         const auto& inc = incremental.dft_diagnostic.incremental_xc;
-        require(incremental.converged && inc.enabled && inc.model_identity != 0 &&
-                    inc.full_builds >= 3 && inc.incremental_updates >= 1 &&
-                    inc.strict_final_builds >= inc.strict_refinement_iterations + inc.final_audits &&
-                    inc.strict_refinement_iterations >= 2 && inc.final_audits >= 1 &&
-                    inc.audit_failures == 0 && inc.anchor_generation >= 1 &&
-                    inc.retained_anchor_bytes == 0 && inc.peak_update_buffer_bytes != 0 &&
-                    inc.peak_replacement_overlap_bytes != 0 &&
-                    std::abs(incremental.energy - d.energy) < 2e-10 &&
-                    scf::reference::density_rms(incremental.density, d.density) < 2e-8 &&
-                    incremental.physical_residual_rms < options.density_tolerance,
-                "incremental PBE SCF/rebuild/final-verification parity failed");
+        require(
+            incremental.converged && inc.enabled && inc.model_identity != 0 &&
+                inc.full_builds >= 3 && inc.incremental_updates >= 1 &&
+                inc.strict_final_builds >= inc.strict_refinement_iterations + inc.final_audits &&
+                inc.strict_refinement_iterations >= 2 && inc.final_audits >= 1 &&
+                inc.audit_failures == 0 && inc.anchor_generation >= 1 &&
+                inc.retained_anchor_bytes == 0 && inc.peak_update_buffer_bytes != 0 &&
+                inc.peak_replacement_overlap_bytes != 0 &&
+                std::abs(incremental.energy - d.energy) < 2e-10 &&
+                scf::reference::density_rms(incremental.density, d.density) < 2e-8 &&
+                incremental.physical_residual_rms < options.density_tolerance,
+            "incremental PBE SCF/rebuild/final-verification parity failed");
         if (basis.nao == 2) {
           if (previous_h2_incremental_identity != 0)
             require(previous_h2_incremental_identity != inc.model_identity,
