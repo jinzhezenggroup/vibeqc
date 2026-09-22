@@ -166,7 +166,8 @@ class FunctionalSpec:
         if bulk_only:
             if any(name not in POINTWISE_BULK_COMPONENTS for name in active_names):
                 raise UnsupportedXC(
-                    "automatic bulk components cannot mix with a separately-owned XC family"
+                    "automatic bulk components cannot mix with a separately-owned "
+                    "XC family"
                 )
             capabilities = tuple(
                 functional_capability(name).to_payload() for name in active_names
