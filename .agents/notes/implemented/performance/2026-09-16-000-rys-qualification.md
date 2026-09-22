@@ -108,4 +108,4 @@ schedule. This change does not promote a new automatic policy.
 - Issue #394; supersedes its original seven-class implementation scope for this slice.
 - Merged #399 / PR #402: `a90973d7aa43776348e0cdcb51927db01bab5cb4`.
 - [Retained endpoint/work/kernel evidence](../../../../benchmarks/results/issue394-000-rys/README.md).
-- [Current shell derivative contract](../../../../docs/df_shell_derivatives.md).
+- [Current shell derivative contract](../../../../docs/developer/df_shell_derivatives.md).

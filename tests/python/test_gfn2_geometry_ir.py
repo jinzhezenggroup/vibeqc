@@ -231,7 +231,7 @@ def test_parameter_subset_covers_complete_gfn2_element_domain() -> None:
         gfn2_element_parameters(87)
 
 
-def test_gfn2_coordination_matches_pinned_mctc_xtbloom_oracle() -> None:
+def test_gfn2_coordination_matches_pinned_mctc_vibeqc_xtb_oracle() -> None:
     compiled = _compiled(
         CN_ATOMIC_NUMBERS,
         CN_COORDINATES,

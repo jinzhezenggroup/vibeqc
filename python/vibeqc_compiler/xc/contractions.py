@@ -16,7 +16,7 @@ from vibeqc_compiler.dft.features import density_features, spin_densities
 
 from .coefficients import coefficient_program, jet_pullback_program
 from .contracts import DerivativeRequest, DiscreteEnergyContract
-from .potential import assemble_coefficients
+from .potential import assemble_coefficients, assemble_coefficients_directional
 from .program import build_program
 from .spec import UnsupportedXC
 
@@ -103,6 +103,63 @@ def _ao_bilinear(
 ) -> typing.Any:
     """Contract one pointwise AO bilinear without materializing AO-pair data."""
     return np.einsum("pi,ij,pj->p", left, density, right, optimize=True)
+
+
+def _geometry_feature_direction(
+    reference: typing.Any,
+    jets: typing.Any,
+    directional_jets: typing.Any,
+    density: typing.Any,
+    delta_density: typing.Any,
+    family: typing.Any,
+) -> typing.Any:
+    """Return one LDA/GGA feature JVP from geometry plus an optional delta-D."""
+    if family not in ("lda", "gga"):
+        raise UnsupportedXC("XC geometry JVP supports semilocal LDA/GGA only")
+    nao = np.asarray(jets).shape[2]
+    d = spin_densities(density, nao)
+    dd = spin_densities(delta_density, nao)
+    npoint = np.asarray(jets).shape[1]
+    rho = np.zeros((2, npoint))
+    gradient = np.zeros((2, npoint, 3)) if family == "gga" else None
+    p, dp = jets[0], directional_jets[0]
+    for spin in range(2):
+        ds, dds = d[spin], dd[spin]
+        rho[spin] = (
+            _ao_bilinear(dp, ds, p) + _ao_bilinear(p, ds, dp) + _ao_bilinear(p, dds, p)
+        )
+        if family == "lda":
+            continue
+        assert gradient is not None
+        for axis in range(3):
+            row = axis + 1
+            pk, dpk = jets[row], directional_jets[row]
+            gradient[spin, :, axis] = (
+                _ao_bilinear(dpk, ds, p)
+                + _ao_bilinear(pk, ds, dp)
+                + _ao_bilinear(dp, ds, pk)
+                + _ao_bilinear(p, ds, dpk)
+                + _ao_bilinear(pk, dds, p)
+                + _ao_bilinear(p, dds, pk)
+            )
+    result = {"rho": immutable(rho)}
+    if family == "gga":
+        assert gradient is not None
+        result["gradient"] = immutable(gradient)
+        base_gradient = reference["gradient"]
+        pairs = ((0, 0), (0, 1), (1, 1))
+        result["sigma"] = immutable(
+            np.stack(
+                [
+                    np.sum(
+                        gradient[a] * base_gradient[b] + base_gradient[a] * gradient[b],
+                        axis=1,
+                    )
+                    for a, b in pairs
+                ]
+            )
+        )
+    return result
 
 
 def _geometry_feature_directions(
@@ -357,6 +414,113 @@ class ContractionProgram:
         for index in self.contract.ingredients.feature_indices:
             result[index] = rows[(index,)]
         return result
+
+    def potential_geometry_directional(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        *,
+        ao_atoms: typing.Any,
+        center_motion: typing.Any,
+        point_motion: typing.Any,
+        weight_motion: typing.Any,
+        delta_density: typing.Any = None,
+    ) -> typing.Any:
+        """Differentiate the LDA/GGA XC AO potential along one geometry direction.
+
+        Geometry and quadrature motion are explicit inputs. An optional density
+        direction is accepted for validation/composition, while a stationary
+        nuclear RHS normally passes zero and lets the shared CPKS operator own
+        induced density-to-Fock physics.
+        """
+        if self.contract.request.observable != "geometry":
+            raise ValueError("potential geometry JVP requires a geometry contraction")
+        family = self.contract.ingredients.family
+        if family not in ("lda", "gga"):
+            raise UnsupportedXC("XC potential geometry JVP supports LDA/GGA only")
+        raw_jets = immutable(jets)
+        ingredient_order = self.contract.ingredients.ao_order
+        required = len(jet_indices(ingredient_order + 1))
+        if (
+            raw_jets.ndim != 3
+            or raw_jets.shape[0] not in (4, 10, 20)
+            or raw_jets.shape[0] < required
+        ):
+            raise ValueError(
+                "XC potential geometry JVP requires AO jets through order+1"
+            )
+        npoint, nao = raw_jets.shape[1:]
+        weights = immutable(weights, shape=(npoint,))
+        points = immutable(point_motion, shape=(npoint, 3))
+        dweights = immutable(weight_motion, shape=(npoint,))
+        centers = immutable(center_motion)
+        if centers.ndim != 2 or centers.shape[1:] != (3,):
+            raise ValueError(
+                "XC potential geometry JVP requires [atom,3] center motion"
+            )
+        atoms = np.asarray(ao_atoms)
+        if (
+            atoms.shape != (nao,)
+            or atoms.dtype.kind not in "iu"
+            or np.any(atoms < 0)
+            or (atoms.size and np.max(atoms) >= len(centers))
+        ):
+            raise ValueError("XC potential geometry JVP requires one valid atom per AO")
+        d = spin_densities(density, nao)
+        if self.spec.spin == "unpolarized" and not np.array_equal(d[0], d[1]):
+            raise UnsupportedXC("unpolarized contractions require equal spin matrices")
+        if delta_density is None:
+            delta_density = np.zeros_like(np.asarray(density, dtype=float))
+        dd = spin_densities(delta_density, nao)
+        if self.spec.spin == "unpolarized" and not np.array_equal(dd[0], dd[1]):
+            raise UnsupportedXC(
+                "unpolarized potential geometry JVP requires equal spin directions"
+            )
+
+        base_count = len(jet_indices(ingredient_order))
+        base_jets = raw_jets[:base_count]
+        directional_jets = directional_ao_jets(
+            raw_jets,
+            ingredient_order,
+            ao_atoms=atoms,
+            point_motion=points,
+            center_motion=centers,
+        )
+        features = self.features(base_jets, d)
+        direction = _geometry_feature_direction(
+            features, base_jets, directional_jets, d, dd, family
+        )
+
+        second = ContractionProgram(self.spec, "response")
+        rows = second.scalar_values(features)
+        v = second._gradient(rows, npoint)
+        packed = _pack(self.spec, direction)
+        dv = np.zeros_like(v)
+        indices = second.contract.ingredients.feature_indices
+        for i in indices:
+            for j in indices:
+                dv[i] += rows[(min(i, j), max(i, j))] * packed[j]
+        response_coefficients = second.response_coefficients
+        if response_coefficients is None:
+            raise RuntimeError("response coefficient program is unavailable")
+        coefficients = self.coefficients.evaluate(
+            _functional_gradient(self.spec, features), v
+        )
+        directional_coefficients = response_coefficients.evaluate(
+            _functional_gradient(self.spec, features),
+            v,
+            delta_gradient=_functional_gradient(self.spec, direction),
+            delta_v=dv,
+        )
+        return assemble_coefficients_directional(
+            base_jets,
+            directional_jets,
+            coefficients,
+            directional_coefficients,
+            weights,
+            dweights,
+        )
 
     def mixed_geometry_directional(
         self,

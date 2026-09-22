@@ -80,7 +80,7 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
 Run the opt-in tests with `VIBEQC_BASIS_CUDA_TEST=1`, selecting
 `tests/python/test_external_basis_cuda.py`, through the same finite Slurm
 allocation. Preserve Slurm's `CUDA_VISIBLE_DEVICES`. See
-[the basis contract](../../../docs/external_basis.md) for normalization,
+[the basis contract](../../../docs/user/external_basis.md) for normalization,
 provenance, capability and future higher-l/ECP integration requirements.
 
 Routine log/XML files named in this historical account are now represented in

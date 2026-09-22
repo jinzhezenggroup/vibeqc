@@ -1,5 +1,8 @@
 """Internal quadrature/AO development interface; no executable DFT method."""
 
+from importlib import import_module
+from typing import TYPE_CHECKING
+
 from .ao import NativeAO, directional_ao_jets, jet_indices
 from .density_source import DensitySource, DensityStamp
 from .features import density_features, orbital_features, spin_densities
@@ -25,7 +28,6 @@ from .nonlocal_reference import (
     nonlocal_feature_derivatives_reference,
     nonlocal_kernel_matrix_reference,
 )
-from .prepared import PreparedGrid, PreparedGridBatch
 from .xc_schedule import (
     DEVICE_FUSED,
     HOST_UNFUSED,
@@ -40,6 +42,29 @@ from .xc_schedule import (
     rank_grid_xc_candidates,
     rank_grid_xc_schedules,
 )
+
+if TYPE_CHECKING:
+    from .prepared import PreparedGrid, PreparedGridBatch
+
+
+def __getattr__(name: str) -> object:
+    """Activate prepared execution only when that public capability is requested.
+
+    Importing a grid specification executes this package initializer too. Keep
+    that metadata path independent of the prepared grid's CUDA/JIT adapters,
+    while forwarding explicit requests to the canonical class objects.
+    """
+    if name in ("PreparedGrid", "PreparedGridBatch"):
+        value = getattr(import_module(".prepared", __name__), name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    """Preserve discovery of lazily exported prepared-grid classes."""
+    return sorted(set(globals()) | set(__all__))
+
 
 __all__ = [
     "DEVICE_FUSED",

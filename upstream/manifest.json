@@ -85,13 +85,13 @@
     },
     "gfn1-parameter-header": {
       "generator": "tools/parameters/generate_gfn1.py",
-      "generator_sha256": "a09a247a6b472aecfa2515a0cad1b1c9054918ce0806655b281c6d9ac9e8301f",
+      "generator_sha256": "1199ae8a4823c40cf1ccd7d9bb5988cf5031a08837a309d93ec5010bad98ad68",
       "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
       "inputs": [
         "xtbloom-gfn1-parameters"
       ],
       "outputs": {
-        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp": "ff1391b44f390f4d8d73ffd87013476aebed9075437e17d1b55185c36c1ce2ef"
+        "src/xtb/native/data/parameters/gfn1.hpp": "d7c1ed8d154db3f732255667d472fab9c977185f6f4f3c1939d112252e56a87b"
       }
     },
     "gpu4pyscf-rys-fixed": {
@@ -111,7 +111,7 @@
     "libxc-bulk-graph-catalog": {
       "canonical_inputs": {
         "python/vibeqc_compiler/xc/libxc_bulk.py": "6af8dc2b3c21ec49cf003af2d842fedd060a34a5302c1e01f4f75c31928f1967",
-        "python/vibeqc_compiler/xc/libxc_maple.py": "b629f749fd71fbbf6b85b98a614fb26977975351c96da29ba43de16ab44fbaf9",
+        "python/vibeqc_compiler/xc/libxc_maple.py": "694999d96acf656cbf99b80da5fa4f3c4548af396d41dc0f01753c3c0b1154e8",
         "tools/libxc_bulk_metadata.py": "36bef0f71da9578c836548277a735160b1120906a0caddaa362bb2beb5377a19"
       },
       "generator": "tools/import_libxc_bulk.py",
@@ -122,26 +122,27 @@
       ],
       "outputs": {
         "docs/libxc_bulk_import.md": "7e6d090022729d18ac190e490f7cbd78195a51a7ec8c97dc082c283bf1416fdd",
-        "python/vibeqc_compiler/xc/libxc_bulk_catalog.json": "0fcce4a5372f88625882178fe7330eef2fe3b4a0d7369ebc5a73eae3eec37105"
+        "python/vibeqc_compiler/xc/libxc_bulk_catalog.json": "960d368f1117421a9471696af1db9874467b7c133437f96cf37d7f908947b568"
       }
     },
     "libxc-xc-admission": {
       "canonical_inputs": {
+        "python/vibeqc_compiler/xc/b3lyp_production_policy.py": "db1d270221b644941824968adc2e5178c457bd4fedc8a9dc13d4177c7e6ff15d",
         "python/vibeqc_compiler/xc/b88_vwn_maple.py": "12eb65668224ede9508afff5ceb6b7e9db623e6569f4ceab712e5000956a6786",
-        "python/vibeqc_compiler/xc/expressions.py": "61e27426ca68fd5a04f566ec976fdaecad50c314f194f16c542aa8f6b9e97a84",
         "python/vibeqc_compiler/xc/ityh_maple.py": "d12d432724ca5b0bb0853a0a8ccbd1cb3b7eeaee70bed0a28e96c72879fe22f7",
         "python/vibeqc_compiler/xc/p86_pz_maple.py": "4cb700ca356e337ddcce108268d0afe7f4b0c31c807a319b7b3758129d1ee652",
         "python/vibeqc_compiler/xc/pbe_maple.py": "439726631d73a0841529c72f1577dec3c8a5aca14a1ae41a7dd3cf7c46f2d5ae",
         "python/vibeqc_compiler/xc/production_policy.py": "6bd0881c34614854e16a2378e20b17b3917c669ff6e91e71411b1410fe8c22bd",
         "python/vibeqc_compiler/xc/pw91_maple.py": "282a7420b517ad30a99f318895501839a2ff0a322e8e31c72a53cdc95ad3d313",
-        "python/vibeqc_compiler/xc/rsh_expressions.py": "91993aef91bb6b5043a23577876af8e4674d5a84545850350d79a4fe3a963eda",
+        "python/vibeqc_compiler/xc/rsh_expressions.py": "640d749a6b7ec8002dbfc2e8f8a6f793eb8a2db6f219d19d1810e7446df6ed75",
         "python/vibeqc_compiler/xc/rsh_maple.py": "5afea731e52fe76a047a6ff175387930fb0a7f57e31f7d7738ac89a3ee73b609",
-        "python/vibeqc_compiler/xc/scan_maple.py": "ecf6efcdc57ec7f207a616abfb178d59442e55d0c91c93713e50ba001b456be3",
-        "python/vibeqc_compiler/xc/spec.py": "85a6e5c12dfce5b8eb571f37adf037903ff20ce6727bd19e58d6c6175fdf56a0",
+        "python/vibeqc_compiler/xc/scan_maple.py": "8d5cf605925c86cc82cbaa3b817415a561d43541cf312fcc9c3bc993a640ee93",
+        "python/vibeqc_compiler/xc/semilocal_family.py": "61e27426ca68fd5a04f566ec976fdaecad50c314f194f16c542aa8f6b9e97a84",
+        "python/vibeqc_compiler/xc/spec.py": "bba35a1eae1a38caf46e40e2cc6f3d18daa1a5fbb0ed44f1e7f17eb9a601e4b2",
         "python/vibeqc_compiler/xc/wb97mv_maple.py": "7433cd82cd04aef3d2f015e514cbc54406b05dd9e84f4934411415d90b4e9b27"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
-      "generator_sha256": "b629f749fd71fbbf6b85b98a614fb26977975351c96da29ba43de16ab44fbaf9",
+      "generator_sha256": "694999d96acf656cbf99b80da5fa4f3c4548af396d41dc0f01753c3c0b1154e8",
       "input_identity_sha256": "aa1ecae5abc04565a754de95c16772f0e73b93eed2a695103ee3a6950313887b",
       "inputs": [
         "libxc-7.0.0"
@@ -314,8 +315,8 @@
     "libxc-7.0.0": {
       "admission": {
         "importer": "python/vibeqc_compiler/xc/libxc_maple.py",
-        "importer_sha256": "b629f749fd71fbbf6b85b98a614fb26977975351c96da29ba43de16ab44fbaf9",
-        "semantics": "libxc-maple-graph/v10"
+        "importer_sha256": "694999d96acf656cbf99b80da5fa4f3c4548af396d41dc0f01753c3c0b1154e8",
+        "semantics": "libxc-maple-graph/v11"
       },
       "collections": {
         "core": [
@@ -3549,7 +3550,7 @@
     "xtbloom-gfn1-parameters": {
       "consumers": [
         "python/vibeqc_compiler/geometry/_gfn1_data.py",
-        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp",
+        "src/xtb/native/data/parameters/gfn1.hpp",
         "tools/parameters/generate_gfn1.py",
         "tools/parameters/generate_gfn1_geometry.py",
         "tools/vibeqc_d3/generate_native_data.py",
