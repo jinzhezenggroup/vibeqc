@@ -17,6 +17,7 @@ def test_canonical_upstream_directory_preserves_imported_identity(
     root = adapter._libxc_root()
     canonical = tmp_path / "upstream/libxc/7.0.0"
     shutil.copytree(root, canonical)
+
     def canonical_only(path: str) -> Path:
         if path != "upstream/libxc/7.0.0":
             raise AssertionError(f"unexpected legacy Libxc asset path: {path}")

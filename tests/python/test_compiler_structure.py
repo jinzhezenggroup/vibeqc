@@ -179,7 +179,6 @@ for item in pkgutil.walk_packages(vibeqc_compiler.__path__, vibeqc_compiler.__na
     )
 
 
-
 def test_checkout_generator_needs_no_installation_or_runtime(
     tmp_path: typing.Any,
 ) -> None:

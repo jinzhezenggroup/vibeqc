@@ -228,7 +228,6 @@ def _identity_constant(
     return constant(values, spec)
 
 
-
 def _transcendental_partial(node: Node, weight: Node) -> Node:
     """Generate weighted partials while retaining the original error boundary."""
     x = node.inputs[0]
