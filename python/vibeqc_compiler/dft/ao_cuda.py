@@ -67,11 +67,11 @@ __global__ void ao_kernel_fp32(const double* basis, I natom, I nprimitive, I nao
     const I ao = index % nao, point = index / nao % npoint, jet = index / (nao * npoint);
     const double* record = records + 16 * (ao_ids ? ao_ids[ao] : ao);
     const I atom = static_cast<I>(record[0]);
-    const float x = static_cast<float>(points[3 * point]) - static_cast<float>(basis[3 * atom]);
-    const float y =
-        static_cast<float>(points[3 * point + 1]) - static_cast<float>(basis[3 * atom + 1]);
-    const float z =
-        static_cast<float>(points[3 * point + 2]) - static_cast<float>(basis[3 * atom + 2]);
+    // Preserve local displacements before entering the FP32 arithmetic domain.
+    // Rounding absolute coordinates first makes AO values depend on translation.
+    const float x = static_cast<float>(points[3 * point] - basis[3 * atom]);
+    const float y = static_cast<float>(points[3 * point + 1] - basis[3 * atom + 1]);
+    const float z = static_cast<float>(points[3 * point + 2] - basis[3 * atom + 2]);
     const float r2 = x * x + y * y + z * z;
     const I first = static_cast<I>(record[1]), end = first + static_cast<I>(record[2]);
     float value = 0.0f;
