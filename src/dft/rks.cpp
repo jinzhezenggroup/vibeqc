@@ -350,8 +350,8 @@ struct IncrementalPbeRksState {
 
   void enter_strict_refinement() noexcept {
     strict_only = true;
-    anchor_density.clear();
-    anchor_density.shrink_to_fit();
+    Matrix empty;
+    anchor_density.swap(empty);
     anchor_identity.reset();
     updates_since_rebuild = 0;
     diagnostic.retained_anchor_bytes = 0;
