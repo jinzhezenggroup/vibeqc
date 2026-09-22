@@ -133,6 +133,7 @@ class StateIdentity:
                 type(index) is not int or index < 0
                 for index in (*occupied, *virtual, *core)
             )
+            or len(occupied) + len(virtual) != nmo
             or len(partition) != nmo
             or partition != set(range(nmo))
             or set(occupied) & set(virtual)

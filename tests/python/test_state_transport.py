@@ -391,3 +391,21 @@ def test_equal_core_index_masks_cannot_hide_core_active_rotation() -> None:
     plan = StateTransport.classify(request)
     assert plan.compatibility is TransportCompatibility.incompatible
     assert any("frozen-core state transport" in reason for reason in plan.messages)
+
+
+@pytest.mark.parametrize(
+    ("occupied", "virtual"),
+    (((0, 0), (1, 2)), ((0,), (1, 1, 2))),
+)
+def test_state_identity_rejects_duplicate_partition_indices(
+    occupied: tuple[int, ...], virtual: tuple[int, ...]
+) -> None:
+    """A partition must neither duplicate amplitude axes nor omit orbitals."""
+    snapshot = _snapshot(3, 1, np.eye(3))
+    request = _request(snapshot, snapshot, np.eye(3))
+    with pytest.raises(ValueError, match="partition"):
+        replace(
+            request.source,
+            occupied_orbitals=occupied,
+            virtual_orbitals=virtual,
+        )
