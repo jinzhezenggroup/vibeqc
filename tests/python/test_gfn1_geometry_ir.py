@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from vibeqc_compiler.geometry import (
     GFN1_CUTOFF_BOHR,
+    GFN1_HALOGEN_VERSION,
     GFN1_SHORT_RANGE_PARAMETER_IDENTITY,
     Gfn1ShortRangeProgram,
     build_gfn1_pair_topology,
@@ -361,5 +362,5 @@ def test_gfn1_primal_and_generated_vjps_lower_through_shared_cuda_tensorir() -> 
 def test_pair_slice_does_not_claim_halogen_lowering() -> None:
     coordinates = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
     compiled = _compile((35, 8), coordinates)
-    assert compiled.program.provenance["halogen_lowering"] == "requires-triplet-ir"
+    assert compiled.program.provenance["halogen_lowering"] == GFN1_HALOGEN_VERSION
     assert "halogen_energy" not in compiled.program.outputs
