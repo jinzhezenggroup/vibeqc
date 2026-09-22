@@ -51,6 +51,79 @@ def assemble_potential(
     return assemble_coefficients(jets, coefficients, weights)
 
 
+def assemble_coefficients_directional(
+    jets: typing.Any,
+    directional_jets: typing.Any,
+    coefficients: typing.Any,
+    directional_coefficients: typing.Any,
+    weights: typing.Any,
+    directional_weights: typing.Any,
+) -> typing.Any:
+    """Differentiate the compact LDA/GGA AO matrix contraction once.
+
+    Point coefficients, AO jets and quadrature measure may all move. This is
+    the matrix-valued geometry JVP required by a stationary KS nuclear RHS; it
+    deliberately excludes tau until the meta-GGA response chain is qualified.
+    """
+    jets = immutable(jets)
+    directional_jets = immutable(directional_jets)
+    weights = immutable(weights)
+    directional_weights = immutable(directional_weights)
+    if (
+        jets.ndim != 3
+        or jets.shape[0] not in (1, 4, 10, 20)
+        or directional_jets.shape != jets.shape
+        or weights.shape != (jets.shape[1],)
+        or directional_weights.shape != weights.shape
+    ):
+        raise ValueError("invalid directional AO/weight domain")
+    if set(coefficients) - {"rho", "gradient"} or set(directional_coefficients) - {
+        "rho",
+        "gradient",
+    }:
+        raise ValueError("directional compact assembly supports LDA/GGA only")
+    rho = immutable(coefficients["rho"])
+    drho = immutable(directional_coefficients["rho"], shape=rho.shape)
+    if rho.ndim != 2 or rho.shape[0] not in (1, 2) or rho.shape[1] != jets.shape[1]:
+        raise ValueError("invalid directional coefficient point/spin layout")
+    spatial = coefficients.get("gradient")
+    directional_spatial = directional_coefficients.get("gradient")
+    if (spatial is None) != (directional_spatial is None):
+        raise ValueError("directional gradient coefficients must match the base domain")
+    if spatial is not None:
+        spatial = immutable(spatial, shape=(*rho.shape, 3))
+        directional_spatial = immutable(directional_spatial, shape=(*rho.shape, 3))
+        if jets.shape[0] < 4:
+            raise ValueError("GGA directional assembly requires first AO derivatives")
+
+    phi, dphi = jets[0], directional_jets[0]
+    derivatives, directional_derivatives = jets[1:4], directional_jets[1:4]
+    matrices = []
+    for spin in range(len(rho)):
+        base_measure = weights * rho[spin]
+        moving_measure = directional_weights * rho[spin] + weights * drho[spin]
+        matrix = (
+            dphi.T @ (base_measure[:, None] * phi)
+            + phi.T @ (base_measure[:, None] * dphi)
+            + phi.T @ (moving_measure[:, None] * phi)
+        )
+        if spatial is not None:
+            panel = sum(spatial[spin, :, k, None] * derivatives[k] for k in range(3))
+            directional_panel = sum(
+                directional_spatial[spin, :, k, None] * derivatives[k]
+                + spatial[spin, :, k, None] * directional_derivatives[k]
+                for k in range(3)
+            )
+            directional_cross = (
+                dphi.T @ (weights[:, None] * panel)
+                + phi.T @ (directional_weights[:, None] * panel)
+                + phi.T @ (weights[:, None] * directional_panel)
+            )
+            matrix += directional_cross + directional_cross.T
+        matrices.append(0.5 * (matrix + matrix.T))
+    return immutable(matrices)
+
+
 def assemble_coefficients(
     jets: typing.Any, coefficients: typing.Any, weights: typing.Any
 ) -> typing.Any:
