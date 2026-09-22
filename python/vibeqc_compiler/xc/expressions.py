@@ -1,10 +1,10 @@
 # Copyright (C) 2017 M.A.L. Marques
 # Copyright (C) 2026 VibeQC contributors
 # This Source Code Form is subject to the terms of the Mozilla Public License,
-# v. 2.0. See external/libxc-7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
+# v. 2.0. See upstream/libxc/7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
 """Audited Libxc 7.0.0 expressions, translated to the existing scalar DAG.
 
-The exact upstream files/hashes are in external/libxc-7.0.0/manifest.json.
+The exact upstream files/hashes are in manifests/libxc/7.0.0/manifest.json.
 Screening branches are deliberately excluded: the separately versioned domain
 contract rejects their inputs. Energy is per volume throughout this module.
 """

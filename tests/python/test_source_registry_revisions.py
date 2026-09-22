@@ -26,7 +26,7 @@ def test_registered_floating_revision_is_rejected(
                 "repository": "https://example.invalid/sample",
                 "revision": revision,
                 "license": "MIT",
-                "local_root": "external/sample",
+                "local_root": "upstream/sample",
                 "files": {
                     "data": {
                         "url": f"https://example.invalid/sample/{revision}/data",
@@ -40,7 +40,7 @@ def test_registered_floating_revision_is_rejected(
     }
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps(payload))
-    local = tmp_path / "external/sample/data"
+    local = tmp_path / "upstream/sample/data"
     local.parent.mkdir(parents=True)
     local.write_bytes(data)
     monkeypatch.setattr(registry, "ROOT", tmp_path)
