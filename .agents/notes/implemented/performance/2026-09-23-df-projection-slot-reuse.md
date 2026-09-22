@@ -1,6 +1,6 @@
 # Decision: retain adjacent streamed DF projections in compiler traversal
 
-Status: implemented; GPU and complete endpoint qualification pending
+Status: implemented; standalone GPU qualification pending
 Date: 2026-09-23
 
 ## Problem
@@ -62,7 +62,28 @@ uses only existing bounded storage.
 - Native independent physical-integral tests cover four/five AO rows, ranks
   zero/one/two, triangular/full traversal, both coefficient layouts, truncated
   metric fallback and captured replay after changing coefficients.
-- GPU measurements and complete cold/warm/changed-geometry gates remain pending.
+- Slurm 11418: composed v12 completes independent 12-atom cold/warm/changed-
+  geometry energy-only and energy-plus-force gates. Maximum errors are
+  4.67e-12 Eh and 1.12e-11 Eh/Bohr; all original thresholds remain unchanged.
+  Slurm 11420 passes all 13 independently linked fixed-density J/K and selector
+  cases, including the added two-block fixture and exact cache/source counters.
+  The first attempt lacked the saved library's SONAME symlink; correcting that
+  local snapshot layout required no production change.
+- Slurm 11417: clean 24-atom / 192-AO / 928-auxiliary GPU energy endpoints with
+  a 256 MiB value allowance, comparing saved v11 and v12. Cold execution falls
+  from 21.515763 to 19.541194 seconds; two warm samples change from
+  4.645121/4.640905 to 4.364438/4.374767 seconds. Both use 15 cold and two warm
+  iterations. Every measured GPU4PySCF pair passes, with maximum errors
+  1.137e-12 and 6.822e-13 Eh respectively. Reference warm branches take one
+  iteration, so this is not an iteration-matched cross-engine speed claim.
+  Cold energies are not serialized by that comparator; the independent
+  all-phase numerical evidence is the 12-atom test above.
+- Slurm 11415: the same bounded 96-atom diagnostic still stops at 60 seconds.
+  The first uncached K falls from 17.359040 to 11.810260 seconds and has eight
+  completed raw generations instead of twelve. The seed iteration falls from
+  35.437733 to 29.863104 seconds; J remains about 18 seconds. The capture ends
+  in further source generation, before convergence/forces. It does not qualify
+  the original complete endpoint.
 
 The retained baseline diagnosis uses integration v11, library SHA256
 `9d0dda6deeb41dc83f9a7bac11f83b4573af7fc0a1cce2f2439b3f7765093aad`,
@@ -81,3 +102,12 @@ README publication remain paused; this pass reduction does not close #1078.
 
 This supersedes the triangular source-work count in
 [the streamed value decision](2026-09-23-streamed-df-value-exchange.md).
+
+The v12 composed measurements change only `df_exchange_schedule.py` and
+`df_occupied_exchange.cpp` relative to v11. Candidate library SHA256:
+`b7751872e207d9dc45668b56b093a4e8035abca75e3c18eb70ec9b6b517fabe7`;
+source archive SHA256:
+`4789eb19fd4031b6838b9231238ecdebc56d1689b55cac9d1ce6ee5fda1f177e`.
+Artifacts include `hf96-streamed-steps-v12*`, `hfdf24-projection-v{11,12}*`
+and `integration-source-v12.{json,patch,tar.gz}` in the preserved integration.
+These are composed measurements, not a standalone current-master library.
