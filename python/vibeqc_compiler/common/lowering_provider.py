@@ -84,7 +84,13 @@ class LoweringRequest:
     semantics: tuple[tuple[str, Scalar], ...] = ()
 
     def __post_init__(self) -> None:
-        for label in ("consumer", "operation", "backend", "dtype", "accumulation_dtype"):
+        for label in (
+            "consumer",
+            "operation",
+            "backend",
+            "dtype",
+            "accumulation_dtype",
+        ):
             _name(getattr(self, label), label)
         shape = tuple(self.shape)
         if any(type(extent) is not int or extent < 0 for extent in shape):
@@ -240,7 +246,9 @@ def lowering_diagnostics(
         "requests": [
             candidate.request.to_payload()
             for candidate in sorted(
-                {candidate.request.identity: candidate for candidate in materialized}.values(),
+                {
+                    candidate.request.identity: candidate for candidate in materialized
+                }.values(),
                 key=lambda candidate: candidate.request.identity,
             )
         ],
