@@ -427,6 +427,14 @@ vibeqc_status execute_d3_cuda(D3CudaOwner* owner, const D3ModelParameters& param
   if (scope.error() != cudaSuccess)
     return cuda_failure(scope.error(), "select D3 CUDA replay device", detail);
 
+  struct ReplayDrain {
+    cudaStream_t stream{};
+    bool drained{false};
+    ~ReplayDrain() noexcept {
+      if (!drained && stream) (void)cudaStreamSynchronize(stream);
+    }
+  } replay_drain{owner->stream};
+
   auto copy_h2d = [&](void* destination, const void* source, std::size_t bytes,
                       const char* action) -> vibeqc_status {
     const auto error =
@@ -478,6 +486,7 @@ vibeqc_status execute_d3_cuda(D3CudaOwner* owner, const D3ModelParameters& param
   }
 
   error = cudaStreamSynchronize(owner->stream);
+  replay_drain.drained = true;
   return error == cudaSuccess ? VIBEQC_STATUS_SUCCESS
                               : cuda_failure(error, "synchronize D3 CUDA replay", detail);
 }
