@@ -11,6 +11,7 @@ import pytest
 from vibeqc_compiler.common.capture import CaptureContract, _GraphMetrics
 from vibeqc_compiler.common.cuda_runtime import CudaArtifact
 from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.execution import CompiledExecutionIdentity
 from vibeqc_compiler.common.specialization import (
     GuardPredicate,
     SpecializationGuard,
@@ -66,6 +67,30 @@ def test_contract_is_pure_deterministic_and_uses_specialization_records() -> Non
     assert first.workload.kind == "tensorir"
     assert "numeric_inputs" not in dataclasses.asdict(first)
     assert ctypes.sizeof(_GraphMetrics) == 88
+
+
+def test_compiled_execution_identity_is_shared_and_pointer_free() -> None:
+    first = CompiledExecutionIdentity.from_payloads(
+        owner="tensorir-cuda",
+        request={"plan": "plan-a", "schedule": {"threads": 128}},
+        artifacts=({"key": "a" * 64, "binary_sha256": "b" * 64},),
+        runtime={"device": {"uuid": "gpu-a", "runtime": 12090}},
+    )
+    same = CompiledExecutionIdentity.from_payloads(
+        owner="tensorir-cuda",
+        request={"schedule": {"threads": 128}, "plan": "plan-a"},
+        artifacts=({"binary_sha256": "b" * 64, "key": "a" * 64},),
+        runtime={"device": {"runtime": 12090, "uuid": "gpu-a"}},
+    )
+    changed = CompiledExecutionIdentity.from_payloads(
+        owner="stationary-cuda",
+        request={"plan": "plan-a", "schedule": {"threads": 128}},
+        artifacts=({"key": "a" * 64, "binary_sha256": "b" * 64},),
+        runtime={"device": {"uuid": "gpu-a", "runtime": 12090}},
+    )
+    assert first.identity == same.identity
+    assert first.identity != changed.identity
+    assert "0x" not in first.identity
 
 
 @pytest.mark.parametrize("field", ["artifact_key", "schedule_hash", "runtime_hash"])
@@ -219,8 +244,30 @@ using namespace vibeqc::runtime;
 int main() {
  static_assert(sizeof(GraphMetrics)==88);
  GraphBinding key{"artifact-a",0,reinterpret_cast<void*>(1),reinterpret_cast<void*>(2),reinterpret_cast<void*>(3)};
+ {
+  CompiledExecutionRegion region;
+  assert(region.bind(key) && region.bound() && !region.warmed() && !region.failed());
+  region.mark_success();
+  assert(region.warmed() && region.metrics().executions==1);
+  assert(!region.bind(key) && region.metrics().bindings==1);
+  auto changed=key; changed.qualification="artifact-b";
+  assert(region.bind(changed) && region.metrics().invalidations==1 && !region.warmed());
+  region.mark_failure("injected");
+  assert(region.failed() && region.metrics().failures==1);
+  region.recover();
+  assert(!region.failed() && !region.warmed() && region.metrics().recoveries==1);
+  region.invalidate();
+  assert(!region.bound() && region.metrics().invalidations==2);
+ }
  int calls=0;
  auto op=[&] { ++calls; };
+ {
+  CudaGraphRegion graph;
+  GraphBinding unconfigured{};
+  int ordinary_calls=0;
+  graph.submit(unconfigured,false,false,[&] { ++ordinary_calls; });
+  assert(graph.metrics.mode==0 && graph.metrics.invalidations==0 && ordinary_calls==1);
+ }
  {
   CudaGraphRegion graph;
   graph.submit(key,true,false,op); assert(graph.metrics.mode==1 && calls==1);
