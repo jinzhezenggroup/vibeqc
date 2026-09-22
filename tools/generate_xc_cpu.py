@@ -250,18 +250,13 @@ def emit_wb97mv_polarized() -> str:
     short, long = ranges["short-range"], ranges["long-range"]
     if short.omega != long.omega or short.omega != semilocal.range_omega:
         raise RuntimeError("WB97M-V semilocal and exact exchange disagree on omega")
-    outputs = ((), *((i,) for i in range(len(semilocal.features))))
-    graph, roots, expression_hash = build_roots(semilocal, outputs, production=True)
-    emitter = ScalarCEmitter(graph, {name: name for name in semilocal.features})
-    emitter.emit(roots)
-    references = [emitter.reference(root) for root in roots]
-    return "\n".join(
-        [
-            "struct Wb97mvPolarizedValue {",
-            "  double energy_density;",
-            "  double feature_derivative[7];",
-            "};",
-            f'inline constexpr const char* kWb97mvSemilocalExpressionIdentity = "{expression_hash}";',
+    return emit_polarized_mgga(
+        semilocal,
+        value_type="Wb97mvPolarizedValue",
+        function_name="wb97mv_polarized",
+        identity_constant="kWb97mvSemilocalExpressionIdentity",
+        production=True,
+        declarations=(
             f'inline constexpr const char* kWb97mvMethodIdentity = "{method.identity}";',
             f"inline constexpr double kMolecularVv10DensityThreshold = {float(MOLECULAR_VV10_DENSITY_THRESHOLD).hex()};",
             f"inline constexpr double kWb97mvOmega = {float(short.omega).hex()};",
@@ -276,43 +271,80 @@ def emit_wb97mv_polarized() -> str:
             f"inline constexpr double kWb97mvTauThreshold = {WB97MV_TAU_THRESHOLD.hex()};",
             f"inline constexpr double kWb97mvSmoothLrCutoff = {WB97MV_SMOOTH_LR_CUTOFF.hex()};",
             f"inline constexpr unsigned kWb97mvSmoothLrOrder = {WB97MV_SMOOTH_LR_ORDER};",
-            "inline Wb97mvPolarizedValue wb97mv_polarized(",
+        ),
+    )
+
+
+def emit_r2scan_polarized() -> str:
+    """Emit production r2SCAN through the common rho/sigma/tau lowerer."""
+
+    return emit_polarized_mgga(
+        functional("R2SCAN", spin="polarized"),
+        value_type="R2scanPolarizedValue",
+        function_name="r2scan_polarized",
+        identity_constant="kR2scanPolarizedExpressionIdentity",
+        production=True,
+    )
+
+
+def emit_polarized_semilocal(
+    spec: Any,
+    *,
+    value_type: str,
+    function_name: str,
+    identity_constant: str,
+    production: bool = False,
+    declarations: tuple[str, ...] = (),
+) -> str:
+    """Emit polarized GGA/MGGA E/vxc from one FunctionalSpec scalar DAG."""
+
+    if spec.spin != "polarized":
+        raise ValueError("generic semilocal lowering requires polarized FunctionalSpec")
+    if spec.ingredients == ("rho", "sigma"):
+        signature = (
+            f"inline {value_type} {function_name}(",
+            "    double rho_a, double rho_b, double sigma_aa, double sigma_ab, double sigma_bb) {",
+        )
+        prelude = (
+            "  const double tau_a = 0.0;",
+            "  const double tau_b = 0.0;",
+        )
+    elif spec.ingredients == ("rho", "sigma", "tau"):
+        signature = (
+            f"inline {value_type} {function_name}(",
             "    double rho_a, double rho_b, double sigma_aa, double sigma_ab,",
             "    double sigma_bb, double tau_a, double tau_b) {",
+        )
+        prelude = ()
+    else:
+        raise ValueError(
+            "generic polarized semilocal lowering requires rho/sigma or rho/sigma/tau FunctionalSpec"
+        )
+
+    # FunctionalSpec retains canonical tau slots for GGA graphs too. The
+    # evaluator ABI and expression identity include only active ingredients.
+    feature_count = 5 if spec.ingredients == ("rho", "sigma") else 7
+    outputs = ((), *((i,) for i in range(feature_count)))
+    graph, roots, expression_hash = build_roots(spec, outputs, production=production)
+    emitter = ScalarCEmitter(graph, {name: name for name in spec.features})
+    emitter.emit(roots)
+    references = [emitter.reference(root) for root in roots]
+    return "\n".join(
+        [
+            f"struct {value_type} {{",
+            "  double energy_density;",
+            f"  double feature_derivative[{feature_count}];",
+            "};",
+            f'inline constexpr const char* {identity_constant} = "{expression_hash}";',
+            *declarations,
+            *signature,
+            *prelude,
             *emitter.lines,
             "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};",
             "}",
             "",
         ]
     )
-
-
-def emit_r2scan_polarized() -> str:
-    """Emit the production-domain first-feature ABI used by native MGGA KS."""
-
-    spec = functional("R2SCAN", spin="polarized")
-    outputs = ((), *((i,) for i in range(len(spec.features))))
-    graph, roots, expression_hash = build_roots(spec, outputs, production=True)
-    emitter = ScalarCEmitter(graph, {name: name for name in spec.features})
-    emitter.emit(roots)
-    references = [emitter.reference(root) for root in roots]
-    lines = [
-        "struct R2scanPolarizedValue {",
-        "  double energy_density;",
-        "  double feature_derivative[7];",
-        "};",
-        f'inline constexpr const char* kR2scanPolarizedExpressionIdentity = "{expression_hash}";',
-        "inline R2scanPolarizedValue r2scan_polarized(double rho_a, double rho_b,",
-        "                                                double sigma_aa, double sigma_ab,",
-        "                                                double sigma_bb, double tau_a,",
-        "                                                double tau_b) {",
-    ]
-    lines.extend(emitter.lines)
-    lines.append(
-        "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};"
-    )
-    lines.extend(["}", ""])
-    return "\n".join(lines)
 
 
 def emit_polarized_gga(
@@ -324,38 +356,56 @@ def emit_polarized_gga(
     production: bool = False,
     declarations: tuple[str, ...] = (),
 ) -> str:
-    """Emit one polarized GGA energy/feature-gradient evaluator from FunctionalSpec.
+    """Emit one polarized rho/sigma evaluator through the common semilocal lowerer."""
 
-    This is the common AOT scalar lowering boundary for GGA semilocal MethodIR
-    primitives. Scientific formulas remain owned by FunctionalSpec/XC graphs;
-    callers provide only stable ABI names and optional method-owned constants.
-    """
-    if spec.spin != "polarized" or spec.ingredients != ("rho", "sigma"):
+    if spec.ingredients != ("rho", "sigma"):
         raise ValueError(
             "generic polarized GGA lowering requires rho/sigma FunctionalSpec"
         )
-    outputs = ((), *((i,) for i in range(5)))
-    graph, roots, expression_hash = build_roots(spec, outputs, production=production)
-    emitter = ScalarCEmitter(graph, {name: name for name in spec.features})
-    emitter.emit(roots)
-    references = [emitter.reference(root) for root in roots]
-    return "\n".join(
-        [
-            f"struct {value_type} {{",
-            "  double energy_density;",
-            "  double feature_derivative[5];",
-            "};",
-            f'inline constexpr const char* {identity_constant} = "{expression_hash}";',
-            *declarations,
-            f"inline {value_type} {function_name}(",
-            "    double rho_a, double rho_b, double sigma_aa, double sigma_ab, double sigma_bb) {",
-            "  const double tau_a = 0.0;",
-            "  const double tau_b = 0.0;",
-            *emitter.lines,
-            "  return {" + references[0] + ", {" + ", ".join(references[1:]) + "}};",
-            "}",
-            "",
-        ]
+    return emit_polarized_semilocal(
+        spec,
+        value_type=value_type,
+        function_name=function_name,
+        identity_constant=identity_constant,
+        production=production,
+        declarations=declarations,
+    )
+
+
+def emit_polarized_mgga(
+    spec: Any,
+    *,
+    value_type: str,
+    function_name: str,
+    identity_constant: str,
+    production: bool = False,
+    declarations: tuple[str, ...] = (),
+) -> str:
+    """Emit one polarized rho/sigma/tau evaluator through the common semilocal lowerer."""
+
+    if spec.ingredients != ("rho", "sigma", "tau"):
+        raise ValueError(
+            "generic polarized MGGA lowering requires rho/sigma/tau FunctionalSpec"
+        )
+    return emit_polarized_semilocal(
+        spec,
+        value_type=value_type,
+        function_name=function_name,
+        identity_constant=identity_constant,
+        production=production,
+        declarations=declarations,
+    )
+
+
+def emit_scan_polarized() -> str:
+    """Emit SCAN as a second MGGA proof without promoting a runtime/public method."""
+
+    return emit_polarized_mgga(
+        functional("SCAN", spin="polarized"),
+        value_type="ScanPolarizedValue",
+        function_name="scan_polarized",
+        identity_constant="kScanPolarizedExpressionIdentity",
+        declarations=('inline constexpr const char* kScanDomain = "interior-v1";',),
     )
 
 
@@ -709,6 +759,7 @@ def main() -> None:
         + emit_cam_b3lyp_polarized()
         + emit_wb97mv_polarized()
         + emit_pw91_polarized()
+        + emit_scan_polarized()
         + emit_r2scan_polarized()
         + emit_feature_policy()
         + "}  // namespace vibeqc::dft::generated\n",
