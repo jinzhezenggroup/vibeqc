@@ -51,6 +51,8 @@ def boundary_binary(tmp_path_factory: pytest.TempPathFactory) -> Path:
         "symm_extent",
         "syrk_alpha_zero",
         "syrk_extent",
+        "syr2k_alpha_zero",
+        "syr2k_extent",
         "trsm_alpha_zero",
         "trsm_extent",
         "trmm_alpha_zero",

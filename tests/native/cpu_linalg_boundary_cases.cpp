@@ -93,6 +93,20 @@ int main(int argc, char** argv) {
     }
     return 1;
   }
+  if (mode == "syr2k_alpha_zero") {
+    double matrix[4]{nan, 9.0, nan, nan};
+    cpu_syr2k('L', 'N', 2, 1, &nan, &nan, matrix, 0.0, 0.0, plan);
+    return matrix[0] == 0.0 && matrix[1] == 9.0 && matrix[2] == 0.0 && matrix[3] == 0.0 ? 0 : 1;
+  }
+  if (mode == "syr2k_extent") {
+    try {
+      cpu_syr2k('L', 'N', std::numeric_limits<std::size_t>::max() / 2 + 1, 2, nullptr, nullptr, &c,
+                1.0, 0.0, plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
   if (mode == "trsm_alpha_zero") {
     double matrix[4]{nan, nan, nan, nan};
     cpu_trsm('L', 'L', 'N', 'N', 2, 2, &nan, matrix, 0.0, plan);
