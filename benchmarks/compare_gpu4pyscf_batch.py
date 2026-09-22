@@ -132,14 +132,15 @@ def require_tuned_native_build(
     probe = metadata.get("probe")
     device = probe.get("device") if isinstance(probe, dict) else None
     if not isinstance(device, dict):
-        raise RuntimeError("benchmark requires CUDA profile metadata")
+        raise TypeError("benchmark requires CUDA profile metadata")
     profile = device.get("official_profile")
     portable = device.get("portable")
     if (
         not isinstance(profile, str)
         or not profile
         or profile in {"generic_cuda", "portable_cuda"}
-        or portable in (True, 1)
+        or type(portable) not in (bool, int)
+        or portable != 0
     ):
         raise RuntimeError(
             "benchmark refuses an unqualified portable/generic VibeQC build; "
