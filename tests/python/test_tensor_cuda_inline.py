@@ -1,6 +1,7 @@
 """Output-demand TensorIR lowering for generated CUDA consumers."""
 
 from fractions import Fraction
+from pathlib import Path
 
 import pytest
 from vibeqc_compiler.tensor import (
@@ -37,7 +38,7 @@ def test_inline_cuda_applies_output_demand_before_consumer_lowering() -> None:
         program, output="force", bindings={"density": ("d0", "d1")}
     )
 
-    assert lowered.expression == "(d0 + d1)"
+    assert lowered.expression == "((d0) + (d1))"
     assert lowered.required_inputs == ("density",)
     assert lowered.original_logical_hash == program.logical_hash
     assert lowered.specialization_logical_hash != program.logical_hash
@@ -72,8 +73,56 @@ def test_exact_cuda_literal_and_scalar_binding_contract() -> None:
     lowered = lower_inline_cuda_output(
         program, output="value", bindings={"scalar": "x"}
     )
-    assert lowered.expression == "x"
+    assert lowered.expression == "(x)"
     with pytest.raises(ValueError, match="binding size"):
         lower_inline_cuda_output(
             program, output="value", bindings={"scalar": ("x", "y")}
         )
+
+
+@pytest.mark.parametrize(
+    ("left_binding", "right_binding", "expected"),
+    (
+        ("a + b", "c", 20.0),
+        ("a - b", "c", -4.0),
+        ("a > b ? a : b", "c + a", 18.0),
+    ),
+)
+def test_inline_cuda_preserves_bound_expression_precedence(
+    tmp_path: Path,
+    left_binding: str,
+    right_binding: str,
+    expected: float,
+) -> None:
+    """Compile the emitted scalar, independently checking arbitrary bindings."""
+    import shutil
+    import subprocess
+
+    from vibeqc_compiler.tensor import einsum
+
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("C++ compiler is unavailable")
+    index = Index("t", IndexSpace("singleton", "batch", 1))
+    spec = TensorSpec((index,), role="input")
+    left, right = input_tensor("left", spec), input_tensor("right", spec)
+    program = Program({"value": einsum("t,t->t", left, right)})
+    lowered = lower_inline_cuda_output(
+        program,
+        output="value",
+        bindings={"left": left_binding, "right": right_binding},
+    )
+    source, executable = tmp_path / "binding.cpp", tmp_path / "binding"
+    source.write_text(
+        "#include <iostream>\nint main() { const double a=2,b=3,c=4; "
+        + "std::cout << ("
+        + lowered.expression
+        + "); }\n"
+    )
+    subprocess.run(
+        [compiler, "-std=c++17", str(source), "-o", str(executable)], check=True
+    )
+    result = subprocess.run(
+        [str(executable)], text=True, capture_output=True, check=True
+    )
+    assert float(result.stdout) == expected

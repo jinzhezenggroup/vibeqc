@@ -80,7 +80,9 @@ def _binding_values(value: typing.Any, size: int) -> tuple[str, ...]:
         )
     if len(values) != size:
         raise ValueError("inline CUDA input binding size does not match TensorIR input")
-    return values
+    # Bindings are expressions, not necessarily identifiers or array accesses.
+    # Group each leaf before inserting it into a surrounding sum/product.
+    return tuple(f"({expression})" for expression in values)
 
 
 def _reduce(
