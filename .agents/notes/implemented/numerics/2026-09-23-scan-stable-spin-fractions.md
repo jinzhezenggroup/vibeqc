@@ -108,3 +108,30 @@ The native same-input diagnostic is retained as an **additional** comparison.
 The stable coordinates also restore the complete independently computed
 CPU/GPU empty-spin potential comparison, for both exchanged spins. This
 supersedes the matching-input-only interpretation in the master rounding note.
+
+## Complete molecular qualification
+
+Slurm 11402 passes both generated-backend tests against the final 50-point wide
+reference. Slurm 11414 passes the full native LDA/PBE/r²SCAN RKS/UKS E/V and
+state suite and all 12 selected public/complete CUDA r²SCAN cases (44 unrelated
+cases deselected; 190.27 seconds). These include independent analytic RKS/UKS
+gradients, reconverged directional finite differences, public forces, ordinary
+SCF and DF energy endpoints. No scientific gate was relaxed.
+
+An earlier local run had five force failures because only `vibeqc` and the native
+test target had been built. Slurm 11413 called the force helper directly after
+a successful energy solve and exposed `FileNotFoundError: missing packaged
+stationary CUDA artifact for r2scan_rks`. Building the separate
+`vibeqc_stationary_r2scan_{rks,uks}_manifest` targets resolves that local build
+omission; no mathematical or runtime change was needed. Keep these AOT targets
+in complete endpoint qualification, since the public status alone maps this
+exception to the generic numerical-failure category.
+
+Tested code: `d5d7de5f`. Native library SHA256:
+`d482db17833398c27f2c98b970055fe4d71ada203510a76fdc50ab9b1527f365`.
+RKS stationary artifact SHA256:
+`b0f2b68b40c6c51927e7fc43e9724acf4e351b9a091e2ec017fa67342ec66234`;
+UKS artifact:
+`438334f70fc114981f7d5afd2012e7314de404a096b670e40fa849480576de46`.
+The complete source-head CI also passes. This qualifies the conditioning repair,
+without claiming 96-atom SCF performance or resuming README publication.
