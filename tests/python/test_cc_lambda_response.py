@@ -9,6 +9,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from test_cc_solver import fixture_problem
+from vibeqc_compiler.common.solver_region import RegionDerivative
 from vibeqc_compiler.tensor import PackedLayout, Program, execute
 
 from tools.cc_endpoint_fixtures import load, source_arguments
@@ -56,7 +57,7 @@ def _direction(spec: typing.Any, seed: typing.Any = 152) -> typing.Any:
 
 
 def test_executed_solver_region_binds_real_implicit_vjp_plan() -> None:
-    snapshot, _, cc, bound, _, response, _ = _state()
+    snapshot, _, cc, bound, lam, response, _ = _state()
     primal = bound.primal_solver_region
     region = response.solver_region
     assert primal is not None and region is not None
@@ -77,15 +78,11 @@ def test_executed_solver_region_binds_real_implicit_vjp_plan() -> None:
     )
 
 
-    stale = BoundCCSDResponse(bound, response.bound.solve(reference_identity=snapshot.identity))
+    stale = BoundCCSDResponse(bound, lam)
+    assert stale.solver_region is not None
     stale_region = replace(
         stale.solver_region,
-        derivatives=(
-            __import__(
-                "vibeqc_compiler.common.solver_region",
-                fromlist=["RegionDerivative"],
-            ).RegionDerivative("implicit_vjp", "stale-plan"),
-        ),
+        derivatives=(RegionDerivative("implicit_vjp", "stale-plan"),),
     )
     object.__setattr__(stale, "solver_region", stale_region)
     with pytest.raises(ResponseCompatibilityError, match="registration is stale"):
