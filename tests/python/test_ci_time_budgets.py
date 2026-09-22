@@ -75,3 +75,18 @@ def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache() -> N
         "test_cc_lambda_solver.py",
     ):
         assert path_name in section
+
+def test_routine_python_ci_defers_qualification_scale_megatests() -> None:
+    path = Path(__file__).resolve().parents[2] / ".github/workflows/ci.yml"
+    section = (
+        path.read_text()
+        .split("\n  python:\n", 1)[1]
+        .split("\n  upload-coverage:\n", 1)[0]
+    )
+    for nodeid in (
+        "tests/python/test_ccsd_t_complete_gradient.py::test_complete_ccsdt_gradient_matches_pinned_pyscf[nh3]",
+        "tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[pbe-rks]",
+        "tests/python/test_ecp_spd_spherical_cpu.py::test_spd_force_analytic_and_reconverged_fd[pbe-rks]",
+    ):
+        assert nodeid in section
+
