@@ -64,5 +64,7 @@ def test_success_cannot_clear_sticky_failure(tmp_path: Path, warmed: bool) -> No
         text=True,
         timeout=30,
     )
-    result = subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
+    result = subprocess.run(
+        [str(binary)], capture_output=True, text=True, timeout=10, check=False
+    )
     assert result.returncode == 0, result.stdout + result.stderr
