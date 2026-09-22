@@ -159,8 +159,8 @@ def main() -> int:
                     aliases = ",".join(row["aliases"]) or "-"
                     batch = "yes" if row["supports_batch"] else "no"
                     print(
-                        f'{row["name"]}\t{row["family"]}\t{properties}\t'
-                        f'{batch}\t{aliases}\t{row["status"]}'
+                        f"{row['name']}\t{row['family']}\t{properties}\t"
+                        f"{batch}\t{aliases}\t{row['status']}"
                     )
             return 0
         if args.command == "resources":
