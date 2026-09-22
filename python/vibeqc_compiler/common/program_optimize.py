@@ -33,6 +33,8 @@ class ProgramCleanupResult:
     eliminated_buffers: tuple[str, ...]
     calls_before: int
     buffers_before: int
+    before_identity: str
+    effect_policy: tuple[tuple[str, str], ...]
 
     def to_payload(self) -> dict[str, typing.Any]:
         """Return diagnostics suitable for CI and benchmark evidence."""
@@ -40,6 +42,9 @@ class ProgramCleanupResult:
         return {
             "schema": "vibeqc.compiler.program-cleanup.v1",
             "pipeline_identity": self.pipeline_identity,
+            "before_identity": self.before_identity,
+            "after_identity": self.program.identity,
+            "effect_policy": dict(self.effect_policy),
             "passes": [
                 {
                     "name": record.name,
@@ -245,4 +250,6 @@ def cleanup_program_ir(
         eliminated_buffers,
         len(program.calls),
         len(program.buffers),
+        program.identity,
+        tuple(sorted((provider, effect.value) for provider, effect in normalized.items())),
     )
