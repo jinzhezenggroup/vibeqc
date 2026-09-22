@@ -61,6 +61,55 @@ int main() {
     require(std::abs(vibeqc::dft::generated::kB3lypExactExchange - 0.2) < 1e-16,
             "B3LYP generated exact-exchange fraction disagrees with MethodIR");
 
+    const auto wb_point =
+        vibeqc::dft::generated::wb97mv_polarized(0.3, 0.2, 0.015, 0.003, 0.01, 0.08, 0.05);
+    const std::array<double, 8> wb_oracle{
+        -0.20814586702136345, -0.5948515352856814,  -0.5697576268765359, -0.01082457361721382, 0.0,
+        -0.01425699937015483, -0.05540206273456351, -0.05804981432341172};
+    require(std::abs(wb_point.energy_density - wb_oracle[0]) < 3e-12,
+            "omegaB97M-V semilocal scalar differs from pinned Libxc oracle");
+    for (std::size_t i = 0; i < 7; ++i)
+      require(std::abs(wb_point.feature_derivative[i] - wb_oracle[i + 1]) < 3e-11,
+              "omegaB97M-V semilocal derivative differs from pinned Libxc oracle");
+
+    const auto wb_tail = vibeqc::dft::generated::wb97mv_polarized(5e-11, 5e-11, 2.5e-31, 2.5e-31,
+                                                                  2.5e-31, 5e-13, 5e-13);
+    require(std::isfinite(wb_tail.energy_density),
+            "omegaB97M-V large-a production energy is nonfinite");
+    for (double derivative : wb_tail.feature_derivative)
+      require(std::isfinite(derivative), "omegaB97M-V large-a production derivative is nonfinite");
+
+    require(std::abs(vibeqc::dft::generated::kWb97mvDensityThreshold - 1.0e-13) < 1e-30 &&
+                std::abs(vibeqc::dft::generated::kWb97mvTauThreshold - 1.0e-20) < 1e-37 &&
+                std::abs(vibeqc::dft::generated::kWb97mvSmoothLrCutoff - 1.35) < 1e-15 &&
+                vibeqc::dft::generated::kWb97mvSmoothLrOrder == 16,
+            "omegaB97M-V generated work_mgga/smooth-LR policy changed");
+
+    const double wb_screened_rho[2]{4.0e-14, 5.0e-14};
+    const double wb_screened_gradient[2][3]{{1.0e-20, 0.0, 0.0}, {0.0, 1.0e-20, 0.0}};
+    const double wb_screened_tau[2]{1.0e-21, 2.0e-21};
+    const auto wb_screened =
+        vibeqc::dft::evaluate_wb97mv_point(wb_screened_rho, wb_screened_gradient, wb_screened_tau);
+    require(wb_screened.energy == 0.0 && wb_screened.rho[0] == 0.0 && wb_screened.rho[1] == 0.0,
+            "omegaB97M-V work_mgga total-density screen is not exact zero");
+
+    const double wb_minority_rho[2]{0.0, 1.0e-4};
+    const double wb_minority_gradient[2][3]{};
+    const double wb_minority_tau[2]{0.0, 1.0e-5};
+    const auto wb_minority =
+        vibeqc::dft::evaluate_wb97mv_point(wb_minority_rho, wb_minority_gradient, wb_minority_tau);
+    require(std::isfinite(wb_minority.energy) && std::isfinite(wb_minority.rho[0]) &&
+                std::isfinite(wb_minority.rho[1]),
+            "omegaB97M-V work_mgga spin-feature floors are nonfinite");
+
+    const double wb_vacuum_rho[2]{};
+    const double wb_vacuum_gradient[2][3]{};
+    const double wb_vacuum_tau[2]{};
+    const auto wb_vacuum =
+        vibeqc::dft::evaluate_wb97mv_point(wb_vacuum_rho, wb_vacuum_gradient, wb_vacuum_tau);
+    require(wb_vacuum.energy == 0.0 && wb_vacuum.rho[0] == 0.0 && wb_vacuum.rho[1] == 0.0 &&
+                wb_vacuum.kinetic[0] == 0.0 && wb_vacuum.kinetic[1] == 0.0,
+            "omegaB97M-V exact vacuum is not canonical zero");
     const auto pw91_point = vibeqc::dft::generated::pw91_polarized(0.3, 0.2, 0.015, 0.003, 0.01);
     // Pinned independently with PySCF 2.14.0 / Libxc 7.0.0 PW91.
     const std::array<double, 6> pw91_oracle{-0.3282121838488419, -0.8954942661475697,
@@ -526,6 +575,34 @@ int main() {
       for (std::size_t i = 0; i < pbe.potential.size(); ++i)
         require(std::abs(pbe_uks.potential[spin][i] - pbe.potential[i]) < 2.0e-11,
                 "polarized PBE equal-spin potential differs from RKS");
+    const auto wb_rks = vibeqc::dft::integrate_wb97mv_rks(basis, grid, density, 7);
+    const auto wb_uks =
+        vibeqc::dft::integrate_wb97mv_uks(basis, grid, alpha_density, beta_density, 7);
+    require(std::isfinite(wb_rks.energy) && std::isfinite(wb_uks.energy) &&
+                std::abs(wb_uks.energy - wb_rks.energy) < 2.0e-11,
+            "omegaB97M-V equal-spin RKS/UKS semilocal energies disagree");
+    for (std::size_t spin = 0; spin < 2; ++spin)
+      for (std::size_t i = 0; i < wb_rks.potential.size(); ++i)
+        require(std::abs(wb_uks.potential[spin][i] - wb_rks.potential[i]) < 3.0e-10,
+                "omegaB97M-V equal-spin RKS/UKS semilocal potentials disagree");
+    {
+      constexpr double step = 3.0e-6;
+      auto plus = density, minus = density;
+      for (std::size_t i = 0; i < direction.size(); ++i) {
+        plus[i] += step * direction[i];
+        minus[i] -= step * direction[i];
+      }
+      const double finite_difference =
+          (vibeqc::dft::integrate_wb97mv_rks(basis, grid, plus, 7).energy -
+           vibeqc::dft::integrate_wb97mv_rks(basis, grid, minus, 7).energy) /
+          (2.0 * step);
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i)
+        trace += wb_rks.potential[i] * direction[i];
+      require(std::abs(finite_difference - trace) < 4.0e-6,
+              "omegaB97M-V semilocal potential violates delta E = Tr(V delta D)");
+    }
+
     for (std::size_t spin = 0; spin < 2; ++spin) {
       for (double step : {1.0e-5, 3.0e-6}) {
         auto plus_alpha = alpha_density, minus_alpha = alpha_density;

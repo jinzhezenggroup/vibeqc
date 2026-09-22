@@ -5,9 +5,11 @@
 #include <climits>
 #include <cmath>
 #include <cstddef>
+#include <initializer_list>
 #include <limits>
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 #include "dft/ao_grid.hpp"
@@ -47,6 +49,7 @@ enum : std::uint32_t {
   kKsSemilocalPbe = 1,
   kKsSemilocalR2scan = 2,
   kKsSemilocalB3lyp = 3,
+  kKsSemilocalWb97mv = 4,
 };
 
 struct NativeKsExecutionPlan {
@@ -57,6 +60,10 @@ struct NativeKsExecutionPlan {
   bool nonlocal_correlation{};
   dft::nlc::Vv10Parameters nonlocal_parameters{};
   std::uint64_t nonlocal_maximum_bytes{};
+  bool range_exchange{};
+  double short_range_exchange{};
+  double long_range_exchange{};
+  double range_omega{};
 };
 
 std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method method) noexcept {
@@ -89,7 +96,9 @@ std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method meth
 bool unrestricted(const NativeKsExecutionPlan& plan) noexcept { return plan.spin_channels == 2; }
 
 std::uint32_t scf_domain_version(const NativeKsExecutionPlan& plan) noexcept {
-  return plan.semilocal_family == kKsSemilocalB3lyp ? 2U : 1U;
+  return plan.semilocal_family == kKsSemilocalWb97mv
+             ? 3U
+             : (plan.semilocal_family == kKsSemilocalB3lyp ? 2U : 1U);
 }
 
 const char* semilocal_family_name(const NativeKsExecutionPlan& plan) noexcept {
@@ -100,6 +109,8 @@ const char* semilocal_family_name(const NativeKsExecutionPlan& plan) noexcept {
       return "R2SCAN";
     case kKsSemilocalB3lyp:
       return "B3LYP";
+    case kKsSemilocalWb97mv:
+      return "WB97M-V";
     default:
       return "LDA";
   }
@@ -108,6 +119,83 @@ const char* semilocal_family_name(const NativeKsExecutionPlan& plan) noexcept {
 bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offset,
                    std::size_t width) noexcept {
   return descriptor.struct_size >= offset && descriptor.struct_size - offset >= width;
+}
+
+std::optional<double> semilocal_component(const vibeqc_ks_options& input,
+                                          std::string_view component_id) {
+  std::optional<double> value;
+  for (std::uint32_t i = 0; i < input.semilocal_component_count; ++i) {
+    const auto& term = input.semilocal_components[i];
+    if (!term.component_id || !*term.component_id || !std::isfinite(term.coefficient) ||
+        term.coefficient < 0.0)
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid KS semilocal component");
+    if (std::string_view(term.component_id) == component_id) {
+      if (value)
+        throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "duplicate KS semilocal component");
+      value = term.coefficient;
+    }
+  }
+  return value;
+}
+
+bool has_only_semilocal_components(const vibeqc_ks_options& input,
+                                   std::initializer_list<std::string_view> ids) {
+  if (input.semilocal_component_count != ids.size()) return false;
+  for (const auto id : ids)
+    if (!semilocal_component(input, id)) return false;
+  return true;
+}
+
+struct SemilocalAdmission {
+  std::uint32_t family{};
+  double exchange_scale{1.0};
+  double correlation_scale{1.0};
+};
+
+SemilocalAdmission admit_semilocal(const vibeqc_ks_options& input) {
+  if (!input.semilocal_components || !input.semilocal_component_count)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                      "KS execution plan requires semilocal components");
+  if (!std::isfinite(input.semilocal_range_omega) || input.semilocal_range_omega < 0.0)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid semilocal range parameter");
+
+  if (has_only_semilocal_components(input, {"LDA_X", "LDA_C_PW"}) &&
+      *semilocal_component(input, "LDA_X") == 1.0 &&
+      *semilocal_component(input, "LDA_C_PW") == 1.0 && input.semilocal_range_omega == 0.0)
+    return {kKsSemilocalLda, 1.0, 1.0};
+
+  if (has_only_semilocal_components(input, {"GGA_X_PBE", "GGA_C_PBE"}) &&
+      input.semilocal_range_omega == 0.0)
+    return {kKsSemilocalPbe, *semilocal_component(input, "GGA_X_PBE"),
+            *semilocal_component(input, "GGA_C_PBE")};
+
+  if (has_only_semilocal_components(input, {"MGGA_X_R2SCAN", "MGGA_C_R2SCAN"}) &&
+      *semilocal_component(input, "MGGA_X_R2SCAN") == 1.0 &&
+      *semilocal_component(input, "MGGA_C_R2SCAN") == 1.0 && input.semilocal_range_omega == 0.0)
+    return {kKsSemilocalR2scan, 1.0, 1.0};
+
+  if (has_only_semilocal_components(input, {"LDA_X", "GGA_X_B88", "LDA_C_VWN_RPA", "GGA_C_LYP"}) &&
+      *semilocal_component(input, "LDA_X") == 0.08 &&
+      *semilocal_component(input, "GGA_X_B88") == 0.72 &&
+      *semilocal_component(input, "LDA_C_VWN_RPA") == 0.19 &&
+      *semilocal_component(input, "GGA_C_LYP") == 0.81 && input.semilocal_range_omega == 0.0)
+    return {kKsSemilocalB3lyp, 1.0, 1.0};
+
+  if (has_only_semilocal_components(input, {"MGGA_X_WB97M_V", "MGGA_C_WB97M_V"}) &&
+      *semilocal_component(input, "MGGA_X_WB97M_V") == 1.0 &&
+      *semilocal_component(input, "MGGA_C_WB97M_V") == 1.0 && input.semilocal_range_omega == 0.3)
+    return {kKsSemilocalWb97mv, 1.0, 1.0};
+
+  throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                    "KS semilocal primitive graph has no qualified native lowerer");
+}
+
+std::string_view expected_scf_domain(const NativeKsExecutionPlan& plan) noexcept {
+  if (plan.semilocal_family == kKsSemilocalWb97mv)
+    return "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
+  if (plan.semilocal_family == kKsSemilocalB3lyp)
+    return "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18";
+  return "semilocal-scaled-v1/pbe-spin-c2-1e-18";
 }
 
 scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_backend backend,
@@ -126,74 +214,33 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
       descriptor.screening_tolerance > 0.0 ? descriptor.screening_tolerance : 1.0e-12;
 
   const auto legacy_plan = legacy_ks_execution_plan(descriptor.method);
-  bool execution_plan_seen = false;
   const vibeqc_ks_options* ks_input = nullptr;
+  SemilocalAdmission semilocal;
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
                     sizeof(descriptor.ks_options)) &&
       descriptor.ks_options) {
     ks_input = descriptor.ks_options;
-    constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
-    constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
-    constexpr auto v3_size = offsetof(vibeqc_ks_options, execution_plan_version);
-    constexpr auto v4_size = offsetof(vibeqc_ks_options, nonlocal_correlation_version);
-    constexpr auto v5_size = sizeof(vibeqc_ks_options);
-    if (ks_input->struct_size < v1_size || ks_input->abi_version != VIBEQC_ABI_VERSION)
-      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
-    if (ks_input->struct_size != v1_size && ks_input->struct_size != v2_size &&
-        ks_input->struct_size != v3_size && ks_input->struct_size != v4_size &&
-        ks_input->struct_size < v5_size)
-      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS option suffix");
-    if (ks_input->struct_size >= v4_size) {
-      if (ks_input->execution_plan_version > 1)
-        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS execution-plan version");
-      if (ks_input->execution_plan_version == 1) {
-        if ((ks_input->spin_channels != 1 && ks_input->spin_channels != 2) ||
-            ks_input->semilocal_family > kKsSemilocalB3lyp)
-          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                            "invalid compiler-resolved KS execution plan");
-        execution_plan = {ks_input->spin_channels, ks_input->semilocal_family, true,
-                          legacy_plan && legacy_plan->d4_correction};
-        execution_plan_seen = true;
-        if (legacy_plan && (execution_plan.spin_channels != legacy_plan->spin_channels ||
-                            execution_plan.semilocal_family != legacy_plan->semilocal_family))
-          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                            "KS execution plan disagrees with the legacy selector family/spin");
-      }
-    }
-    if (ks_input->struct_size >= v5_size) {
-      if (ks_input->nonlocal_correlation_version > 1)
-        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                          "unsupported KS nonlocal-correlation plan version");
-      if (ks_input->nonlocal_correlation_version == 1) {
-        if (!execution_plan_seen)
-          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                            "nonlocal correlation requires a compiler-resolved KS execution plan");
-        dft::nlc::Vv10Variant variant;
-        if (ks_input->nonlocal_variant == VIBEQC_NONLOCAL_VV10)
-          variant = dft::nlc::Vv10Variant::vv10;
-        else if (ks_input->nonlocal_variant == VIBEQC_NONLOCAL_RVV10)
-          variant = dft::nlc::Vv10Variant::rvv10;
-        else
-          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                            "invalid KS nonlocal-correlation variant");
-        if (!std::isfinite(ks_input->nonlocal_b) || ks_input->nonlocal_b <= 0.0 ||
-            !std::isfinite(ks_input->nonlocal_c) || ks_input->nonlocal_c <= 0.0 ||
-            !std::isfinite(ks_input->nonlocal_coefficient) ||
-            ks_input->nonlocal_coefficient <= 0.0 || !ks_input->nonlocal_maximum_bytes)
-          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                            "invalid KS nonlocal-correlation parameters or budget");
-        execution_plan.nonlocal_correlation = true;
-        execution_plan.nonlocal_parameters = {variant, ks_input->nonlocal_b, ks_input->nonlocal_c,
-                                              ks_input->nonlocal_coefficient};
-        execution_plan.nonlocal_maximum_bytes = ks_input->nonlocal_maximum_bytes;
-      }
-    }
-  }
-  if (!execution_plan_seen) {
+    if (ks_input->struct_size < sizeof(vibeqc_ks_options) ||
+        ks_input->abi_version != VIBEQC_ABI_VERSION)
+      throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS execution-plan ABI mismatch");
+    if ((ks_input->spin_channels != 1 && ks_input->spin_channels != 2) ||
+        (ks_input->exchange_terms == nullptr) != (ks_input->exchange_term_count == 0))
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid compiler KS execution plan");
+    semilocal = admit_semilocal(*ks_input);
+    execution_plan = {ks_input->spin_channels, semilocal.family, true,
+                      descriptor.method == VIBEQC_METHOD_PBE_D4_RKS};
+  } else {
     if (!legacy_plan)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "DFT execution requires a compiler-resolved KS v4 plan");
+                        "DFT execution requires a compiler-resolved KS plan");
+    if (descriptor.method == VIBEQC_METHOD_PBE0_RKS ||
+        descriptor.method == VIBEQC_METHOD_PBE0_UKS ||
+        descriptor.method == VIBEQC_METHOD_B3LYP_RKS ||
+        descriptor.method == VIBEQC_METHOD_B3LYP_UKS)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "hybrid DFT requires a compiler-resolved KS plan");
     execution_plan = *legacy_plan;
+    semilocal = {execution_plan.semilocal_family, 1.0, 1.0};
   }
 
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_mode),
@@ -226,73 +273,136 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     options.precision_mode = descriptor.precision_mode;
   }
 
-  if (execution_plan.nonlocal_correlation && execution_plan.semilocal_family != kKsSemilocalPbe)
+  scf::FockBuildSpec fock;
+  fock.spin =
+      unrestricted(execution_plan) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
+  fock.derivative_order = 0;
+  fock.exchange.present = false;
+  options.semilocal_exchange_scale = semilocal.exchange_scale;
+  options.semilocal_correlation_scale = semilocal.correlation_scale;
+
+  const vibeqc_ks_exchange_term* full_range = nullptr;
+  const vibeqc_ks_exchange_term* short_range = nullptr;
+  const vibeqc_ks_exchange_term* long_range = nullptr;
+  if (ks_input) {
+    const double divisor = unrestricted(execution_plan) ? 1.0 : 2.0;
+    for (std::uint32_t i = 0; i < ks_input->exchange_term_count; ++i) {
+      const auto& term = ks_input->exchange_terms[i];
+      if (!std::isfinite(term.coefficient) || term.coefficient < 0.0 ||
+          !std::isfinite(term.omega) || term.omega < 0.0 || !std::isfinite(term.fock_coefficient) ||
+          term.fock_coefficient != -term.coefficient / divisor)
+        throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid KS exact-exchange contribution");
+      switch (term.operator_kind) {
+        case VIBEQC_KS_EXCHANGE_FULL_RANGE:
+          if (full_range || term.omega != 0.0)
+            throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid full-range exchange plan");
+          full_range = &term;
+          break;
+        case VIBEQC_KS_EXCHANGE_SHORT_RANGE:
+          if (short_range || term.omega <= 0.0)
+            throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid short-range exchange plan");
+          short_range = &term;
+          break;
+        case VIBEQC_KS_EXCHANGE_LONG_RANGE:
+          if (long_range || term.omega <= 0.0)
+            throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid long-range exchange plan");
+          long_range = &term;
+          break;
+        default:
+          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown KS exchange operator");
+      }
+    }
+    if (full_range && (short_range || long_range))
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "KS execution cannot mix full- and range-separated exchange");
+    if ((short_range == nullptr) != (long_range == nullptr))
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "range-separated exchange requires short- and long-range terms");
+    if (short_range &&
+        (ks_input->exchange_term_count != 2 || short_range->omega != long_range->omega))
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "range-separated exchange requires one shared omega");
+    if (full_range && ks_input->exchange_term_count != 1)
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "full-range exchange requires one contribution");
+    if (full_range) {
+      fock.exchange.present = full_range->coefficient != 0.0;
+      fock.exchange.coefficient = full_range->fock_coefficient;
+    } else if (short_range) {
+      execution_plan.range_exchange = true;
+      execution_plan.short_range_exchange = short_range->coefficient;
+      execution_plan.long_range_exchange = long_range->coefficient;
+      execution_plan.range_omega = short_range->omega;
+      fock.exchange.present = short_range->coefficient != 0.0;
+      fock.exchange.coefficient = short_range->fock_coefficient;
+    }
+
+    if (ks_input->has_nonlocal_correlation > 1)
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "invalid nonlocal-correlation presence flag");
+    if (ks_input->has_nonlocal_correlation) {
+      dft::nlc::Vv10Variant variant;
+      if (ks_input->nonlocal_variant == VIBEQC_NONLOCAL_VV10)
+        variant = dft::nlc::Vv10Variant::vv10;
+      else if (ks_input->nonlocal_variant == VIBEQC_NONLOCAL_RVV10)
+        variant = dft::nlc::Vv10Variant::rvv10;
+      else
+        throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                          "invalid KS nonlocal-correlation variant");
+      if (!std::isfinite(ks_input->nonlocal_b) || ks_input->nonlocal_b <= 0.0 ||
+          !std::isfinite(ks_input->nonlocal_c) || ks_input->nonlocal_c <= 0.0 ||
+          !std::isfinite(ks_input->nonlocal_coefficient) || ks_input->nonlocal_coefficient <= 0.0 ||
+          !ks_input->nonlocal_maximum_bytes)
+        throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                          "invalid KS nonlocal-correlation parameters or budget");
+      execution_plan.nonlocal_correlation = true;
+      execution_plan.nonlocal_parameters = {variant, ks_input->nonlocal_b, ks_input->nonlocal_c,
+                                            ks_input->nonlocal_coefficient};
+      execution_plan.nonlocal_maximum_bytes = ks_input->nonlocal_maximum_bytes;
+    }
+  }
+
+  const bool scaled_or_hybrid = options.semilocal_exchange_scale != 1.0 ||
+                                options.semilocal_correlation_scale != 1.0 || fock.exchange.present;
+  if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "self-consistent nonlocal correlation currently requires the PBE family");
+                      "scaled/global-hybrid KS currently requires CPU");
+  if (execution_plan.nonlocal_correlation && execution_plan.semilocal_family != kKsSemilocalPbe &&
+      execution_plan.semilocal_family != kKsSemilocalWb97mv)
+    throw MethodError(
+        VIBEQC_STATUS_NOT_IMPLEMENTED,
+        "self-consistent nonlocal correlation has no lowerer for this semilocal graph");
   if (execution_plan.nonlocal_correlation && backend != VIBEQC_BACKEND_CPU_REFERENCE)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "self-consistent nonlocal correlation currently requires CPU");
   if (options.precision_mode == VIBEQC_PRECISION_AUTO && execution_plan.nonlocal_correlation)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "self-consistent nonlocal correlation currently requires strict FP64");
+  if (execution_plan.range_exchange && backend != VIBEQC_BACKEND_CPU_REFERENCE)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                      "native KS range-separated exchange currently requires CPU");
+  if (execution_plan.range_exchange && execution_plan.semilocal_family != kKsSemilocalPbe &&
+      execution_plan.semilocal_family != kKsSemilocalWb97mv)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                      "native KS range exchange has no lowerer for this semilocal graph");
   if (backend == VIBEQC_BACKEND_CUDA && execution_plan.semilocal_family == kKsSemilocalB3lyp)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "B3LYP CPU execution only");
 
-  scf::FockBuildSpec fock;
-  fock.spin =
-      unrestricted(execution_plan) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
-  fock.derivative_order = 0;
-  fock.exchange.present = false;
-  bool composition_seen = false;
-  if (ks_input) {
-    constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
-    if (ks_input->struct_size >= v2_size) {
-      if (ks_input->composition_version > 1)
-        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS composition version");
-      if (ks_input->composition_version == 1) {
-        composition_seen = true;
-        const auto x = ks_input->semilocal_exchange_scale;
-        const auto correlation = ks_input->semilocal_correlation_scale;
-        const auto exchange = ks_input->fock_exchange_coefficient;
-        if (!std::isfinite(x) || !std::isfinite(correlation) || !std::isfinite(exchange) || x < 0 ||
-            correlation < 0 || exchange > 0)
-          throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid KS composition coefficients");
-        const bool changed = x != 1 || correlation != 1 || exchange != 0;
-        if (changed && ((execution_plan.semilocal_family != kKsSemilocalPbe &&
-                         execution_plan.semilocal_family != kKsSemilocalB3lyp) ||
-                        backend == VIBEQC_BACKEND_CUDA))
-          throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                            "scaled/global-hybrid KS requires a qualified CPU composition");
-        options.semilocal_exchange_scale = x;
-        options.semilocal_correlation_scale = correlation;
-        fock.exchange.present = exchange != 0;
-        fock.exchange.coefficient = exchange;
-      }
-    }
-  }
-  if (descriptor.method == VIBEQC_METHOD_PBE0_RKS || descriptor.method == VIBEQC_METHOD_PBE0_UKS) {
-    if (!composition_seen)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "PBE0 requires explicit resolved KS composition v2");
-    const double expected_k = unrestricted(execution_plan) ? -0.25 : -0.125;
-    if (options.semilocal_exchange_scale != 0.75 || options.semilocal_correlation_scale != 1.0 ||
-        !fock.exchange.present || fock.exchange.coefficient != expected_k)
-      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                        "PBE0 resolved composition does not match its audited manifest");
-  }
-  if (execution_plan.semilocal_family == kKsSemilocalB3lyp) {
-    if (!composition_seen)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "B3LYP requires explicit resolved KS composition v2");
-    const double expected_k = unrestricted(execution_plan) ? -0.2 : -0.1;
-    if (options.semilocal_exchange_scale != 1.0 || options.semilocal_correlation_scale != 1.0 ||
-        !fock.exchange.present || fock.exchange.coefficient != expected_k)
-      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                        "B3LYP resolved composition does not match its audited manifest");
-  }
   options.resolved_fock_build = scf::resolve_fock_build(
       fock, backend == VIBEQC_BACKEND_CUDA ? scf::FockBackend::Cuda : scf::FockBackend::Cpu,
       options.screening_tolerance);
+  if (execution_plan.semilocal_family == kKsSemilocalWb97mv) {
+    if (!execution_plan.range_exchange || !execution_plan.nonlocal_correlation)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "WB97M-V requires complete B97M + SR/LR + VV10 primitives");
+    const auto correction =
+        scf::resolve_fock_build(scf::make_rsh_correction_fock_spec(
+                                    fock.spin, execution_plan.short_range_exchange,
+                                    execution_plan.long_range_exchange, execution_plan.range_omega),
+                                scf::FockBackend::Cpu, options.screening_tolerance);
+    scf::require_wb97mv_composition(*options.resolved_fock_build, correction,
+                                    execution_plan.nonlocal_parameters);
+  }
   options.compute_forces = false;
   return options;
 }
@@ -310,30 +420,23 @@ dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor, scf::S
       !descriptor.ks_options)
     return grid;
   const auto& input = *descriptor.ks_options;
-  if (input.struct_size < offsetof(vibeqc_ks_options, composition_version) ||
-      input.abi_version != VIBEQC_ABI_VERSION)
-    throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS options ABI mismatch");
-  if (input.scf_domain_version != scf_domain_version(execution_plan))
+  if (input.struct_size < sizeof(vibeqc_ks_options) || input.abi_version != VIBEQC_ABI_VERSION)
+    throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS execution-plan ABI mismatch");
+  if (!input.scf_domain ||
+      std::string_view(input.scf_domain) != expected_scf_domain(execution_plan))
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "unsupported KS tail/spin domain policy");
   if (!input.tile_points || input.tile_points > static_cast<std::uint64_t>(INT_MAX))
     throw std::invalid_argument("invalid KS XC tile points");
   options.xc_tile_points = input.tile_points;
-  constexpr auto v1_size = offsetof(vibeqc_ks_options, composition_version);
-  constexpr auto v2_size = offsetof(vibeqc_ks_options, xc_execution_schedule);
-  constexpr auto v3_size = offsetof(vibeqc_ks_options, execution_plan_version);
-  if (input.struct_size >= v3_size) {
-    switch (input.xc_execution_schedule) {
-      case VIBEQC_XC_EXECUTION_DEVICE_FUSED:
-        options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::DeviceFused;
-        break;
-      case VIBEQC_XC_EXECUTION_HOST_UNFUSED:
-        options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::HostUnfused;
-        break;
-      default:
-        throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown KS XC execution schedule");
-    }
-  } else if (input.struct_size != v1_size && input.struct_size != v2_size) {
-    throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "truncated KS execution suffix");
+  switch (input.xc_execution_schedule) {
+    case VIBEQC_XC_EXECUTION_DEVICE_FUSED:
+      options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::DeviceFused;
+      break;
+    case VIBEQC_XC_EXECUTION_HOST_UNFUSED:
+      options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::HostUnfused;
+      break;
+    default:
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown KS XC execution schedule");
   }
   grid.version = input.grid_version;
   grid.radial_points = input.radial_points;
@@ -435,6 +538,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
         basis_(system_),
         grid_(system_, grid) {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
+    if (execution_plan_.range_exchange) prepare_range_exchange(device);
 #if VIBEQC_HAS_CUDA
     if (backend_ == VIBEQC_BACKEND_CUDA)
       cuda_ = std::make_unique<dft::CudaKsPlan>(fock_, basis_, grid_, options_,
@@ -457,6 +561,8 @@ class KsPreparedCalculation final : public PreparedCalculation {
         runtime::add_capacity(fock_.cpu_observation_capacity(),
                               runtime::vector_capacities(basis_.packed, grid_.points(),
                                                          grid_.weights(), grid_.owners(), warm_));
+    if (range_correction_)
+      bytes = runtime::add_capacity(bytes, range_correction_->cpu_observation_capacity());
     if (cpu_physical_)
       for (const auto* matrices : {&cpu_physical_->density, &cpu_physical_->fock})
         for (const auto& matrix : *matrices)
@@ -650,7 +756,23 @@ class KsPreparedCalculation final : public PreparedCalculation {
     // last-good density, which coexists with its current/proposed densities.
     runtime::CpuRetainedCapacity retained_warm(runtime::vector_bytes(warm_));
     scf::ScfResult native;
-    if (execution_plan_.semilocal_family == kKsSemilocalB3lyp)
+    if (execution_plan_.semilocal_family == kKsSemilocalWb97mv) {
+      if (!range_correction_ || !nonlocal_)
+        throw std::runtime_error("WB97M-V requires both range-exchange and nonlocal owners");
+      native = unrestricted(execution_plan_)
+                   ? scf::run_wb97mv_uks(fock_, *range_correction_, basis_, grid_, options_,
+                                         *nonlocal_, seed)
+                   : scf::run_wb97mv_rks(fock_, *range_correction_, basis_, grid_, options_,
+                                         *nonlocal_, seed);
+    } else if (execution_plan_.range_exchange) {
+      if (!range_correction_)
+        throw std::runtime_error("KS range-exchange correction owner is missing");
+      native = unrestricted(execution_plan_)
+                   ? scf::run_pbe_rsh_uks(fock_, *range_correction_, basis_, grid_, options_, seed,
+                                          nonlocal_.get())
+                   : scf::run_pbe_rsh_rks(fock_, *range_correction_, basis_, grid_, options_, seed,
+                                          nonlocal_.get());
+    } else if (execution_plan_.semilocal_family == kKsSemilocalB3lyp)
       native = unrestricted(execution_plan_)
                    ? scf::run_b3lyp_uks(fock_, basis_, grid_, options_, seed)
                    : scf::run_b3lyp_rks(fock_, basis_, grid_, options_, seed);
@@ -707,6 +829,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
                         cpu_owner_,
                         options_.semilocal_exchange_scale,
                         options_.semilocal_correlation_scale};
+      if (range_correction_) identity.model.range_correction = range_correction_->strategy();
+      if (nonlocal_) identity.model.nonlocal_correlation = nonlocal_->parameters();
+      if (execution_plan_.semilocal_family == kKsSemilocalWb97mv)
+        identity.model.nonlocal_density_domain = dft::nlc::Vv10DensityDomain::MolecularV1;
       dft::KsPhysicalState physical{identity,
                                     true,
                                     std::move(densities),
@@ -736,6 +862,18 @@ class KsPreparedCalculation final : public PreparedCalculation {
   }
 
  private:
+  void prepare_range_exchange(int device) {
+    const auto spin =
+        unrestricted(execution_plan_) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
+    auto strategy = scf::resolve_fock_build(
+        scf::make_rsh_correction_fock_spec(spin, execution_plan_.short_range_exchange,
+                                           execution_plan_.long_range_exchange,
+                                           execution_plan_.range_omega),
+        scf::FockBackend::Cpu, options_.screening_tolerance);
+    range_correction_ =
+        std::make_unique<scf::PreparedFockPlan>(system_, nullptr, std::move(strategy), device);
+  }
+
   void prepare_nonlocal(int device) {
     if (grid_.point_count() > std::numeric_limits<std::uint32_t>::max())
       throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
@@ -791,6 +929,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
   scf::ScfOptions options_;
   vibeqc_backend backend_;
   scf::PreparedFockPlan fock_;
+  std::unique_ptr<scf::PreparedFockPlan> range_correction_;
   dft::AoBasis basis_;
   dft::MolecularGrid grid_;
   std::vector<double> warm_;

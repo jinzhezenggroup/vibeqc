@@ -13,7 +13,7 @@ H2 = [(1, (0.0, 0.0, -0.7)), (1, (0.0, 0.0, 0.7))]
 def _inventory_library(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     library = SimpleNamespace(
         vibeqc_ks_resource_inventory_version_v1=lambda: 1,
-        vibeqc_ks_options_version=lambda: 3,
+        vibeqc_ks_options_version=lambda: 1,
     )
     monkeypatch.setattr(resources_ks, "_cuda_library_identity", lambda _: {})
     monkeypatch.setattr(
@@ -103,7 +103,7 @@ def test_estimate_resources_materializes_one_shot_charge_spin_inputs(
     calculator._ks_options = resolve_ks_options("pbe-rks")
     calculator._device_name = "cuda"
     calculator._precision_mode = _native.PRECISION_FP64
-    calculator._ks_options_version = 3
+    calculator._ks_options_version = 1
     calculator._resource_budget = None
     calculator._library = SimpleNamespace()
     captured: dict[str, typing.Any] = {}

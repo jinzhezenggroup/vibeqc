@@ -35,6 +35,18 @@
       "sha256": "896263dad36b75bbb9d42b5e4718d62e8d57e261fd326ebcfc0350c80d39c3d2",
       "upstream_sha256": "cec0d3dd7af51dc5d6f45eb802462df4be3f0d184100d9e1db409fd74ece2a8b",
       "normalization": "trailing-whitespace-only"
+    },
+    "functionals.c": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/functionals.c",
+      "sha256": "0e4596fb62e283ebd05ccd400ea2977b28d91d6915db90199ddd0e5297185f65"
+    },
+    "work_mgga.c": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/work_mgga.c",
+      "sha256": "d7f3756b15c00d71227a6f80aafe8e62617ad13107223b694846c212359dfad3"
+    },
+    "work_mgga_inc.c": {
+      "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/work_mgga_inc.c",
+      "sha256": "a408ffed4036e108d3794db84cf9b9b596301632261d2a78c30273f6caf0c870"
     }
   }
 }
