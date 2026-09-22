@@ -27,8 +27,8 @@ if typing.TYPE_CHECKING:
 class Execution:
     """Detached outputs/debug snapshots; caller inputs are never modified."""
 
-    outputs: dict[str, np.ndarray]
-    intermediates: dict[str, np.ndarray]
+    outputs: dict[str, typing.Any]
+    intermediates: dict[str, typing.Any]
     logical_retained_bytes: int
     backend: str = "numpy-cpu-interpreter"
 
@@ -319,14 +319,27 @@ def execute(
     *,
     debug: bool = False,
     max_bytes: int = 256 * 1024 * 1024,
+    namespace: typing.Any | None = None,
 ) -> Execution:
     """Evaluate live nodes in order, checking shapes, dtypes, and finiteness.
+
+    ``namespace`` selects a bounded Array API-style validation backend.  The
+    default (and explicit ``numpy``) path retains the independent NumPy oracle.
+    Alternate namespaces fail closed for primitives without a portable lowering.
 
     Noncontiguous/negative-stride input arrays and read-only views are legal.
     Feed dictionaries may contain unused inputs so original and optimized
     programs share a fixture. Returned arrays never alias each other, inputs,
     or interpreter views. Every output/debug entry is an independent snapshot.
     """
+    if namespace is not None and namespace is not np:
+        from .namespace_interpreter import execute_namespace
+
+        outputs, snapshots, retained, backend = execute_namespace(
+            program, feeds, namespace, debug=debug, max_bytes=max_bytes
+        )
+        return Execution(outputs, snapshots, retained, backend)
+
     values, snapshots, retained = _run(program, feeds, debug=debug, max_bytes=max_bytes)
     return Execution(
         {name: values[node].copy() for name, node in program.outputs.items()},
