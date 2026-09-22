@@ -14,6 +14,7 @@ from vibeqc_compiler.integral.expr import Expr, Graph
 
 from .b88_vwn_maple import b88_exchange as maple_b88_exchange
 from .b88_vwn_maple import vwn_correlation as maple_vwn_correlation
+from .ityh_maple import ityh_exchange as imported_ityh_exchange
 from .p86_pz_maple import p86_correlation, pz_correlation
 from .pw91_maple import pw91_correlation as imported_pw91_correlation
 from .pw91_maple import pw91_exchange as imported_pw91_exchange
