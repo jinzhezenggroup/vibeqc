@@ -305,10 +305,12 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
     # declaration identity. Discover them from the existing catalog, not a
     # second hand-maintained public-name or coefficient table.
     if identifier in CATALOG:
+        # Reject unavailable post-SCF operators before the named-selector
+        # consistency check, preserving the established capability exception.
+        semilocal = _native_semilocal(method_ir)
         if len(method_ir.primitives) != 1:
             raise RuntimeError("MethodIR composition disagrees with native KS selector")
         runtime_functional = functional(identifier, spin=spin)
-        semilocal = _native_semilocal(method_ir)
         if SemilocalXCPrimitive(semilocal).semantic_payload() != (
             SemilocalXCPrimitive(runtime_functional).semantic_payload()
         ):
