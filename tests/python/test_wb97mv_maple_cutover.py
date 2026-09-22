@@ -1,5 +1,7 @@
 """Production cutover gates for pinned Libxc omegaB97M-V semilocal XC."""
 
+import typing
+
 import numpy as np
 import pytest
 from vibeqc_compiler.method import resolve_method
@@ -8,7 +10,7 @@ from vibeqc_compiler.xc.program import build_program
 from vibeqc_compiler.xc.wb97mv_maple import wb97mv_maple_provenance
 
 
-def _spec(spin: str):
+def _spec(spin: str) -> typing.Any:
     return resolve_method("WB97M-V", spin=spin).primitives[0].functional
 
 
@@ -53,7 +55,7 @@ def test_program_dispatch_calls_wb97mv_maple_adapter(
     called = False
     original = program.wb97mv_energy_expression
 
-    def replacement(spec):
+    def replacement(spec: typing.Any) -> typing.Any:
         nonlocal called
         called = True
         return original(spec)
