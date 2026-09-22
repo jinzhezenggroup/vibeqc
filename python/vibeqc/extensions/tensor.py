@@ -138,6 +138,71 @@ def inspect(program: Program) -> dict:
     }
 
 
+def compile_capabilities(
+    program: Program,
+    *,
+    target: str = "cpu",
+    mode: str = "jit",
+    max_bytes: int = 8 * 1024 * 1024,
+    max_work: int = 100_000_000,
+    max_nodes: int = 4096,
+) -> dict[str, typing.Any]:
+    """Inspect compiler admission without probing or invoking a local toolchain.
+
+    ``compilable`` means that the public compiler can lower the requested
+    TensorIR program under the supplied resource bounds. It does not claim that
+    a suitable host compiler is installed. Arbitrary user programs are also not
+    promoted to VibeQC's independently validated or built-in production domains
+    merely because source lowering succeeds.
+    """
+    if not isinstance(program, Program):
+        raise TypeError("tensor compilation capability query requires Program")
+    report: dict[str, typing.Any] = {
+        "extension_api_version": API_VERSION,
+        "kind": "tensor-compile-capabilities",
+        "target": target,
+        "mode": mode,
+        "logical_hash": program.logical_hash,
+        "represented": True,
+        "compilable": False,
+        "lowering_validated": False,
+        "validated": False,
+        "production_promoted": False,
+        "toolchain_checked": False,
+        "resources": None,
+        "reason": None,
+    }
+    if mode != "jit":
+        report["reason"] = (
+            "public TensorIR compilation currently supports mode='jit' only"
+        )
+        return report
+    if target != "cpu":
+        report["reason"] = "public TensorIR JIT currently supports target='cpu' only"
+        return report
+
+    # This is an explicit compiler query, but it remains toolchain-free: emit_cpu
+    # performs semantic/resource lowering only and never creates an adapter,
+    # probes an executable, starts a subprocess, or creates a cache artifact.
+    from vibeqc_compiler.tensor.cpu import emit_cpu
+
+    try:
+        _, resources = emit_cpu(
+            program,
+            max_bytes=max_bytes,
+            max_work=max_work,
+            max_nodes=max_nodes,
+            symbol="vibeqc_extension_capability",
+        )
+    except (TypeError, ValueError) as error:
+        report["reason"] = str(error)
+        return report
+    report["compilable"] = True
+    report["lowering_validated"] = True
+    report["resources"] = copy.deepcopy(resources)
+    return report
+
+
 def compile(
     program: Program,
     *,
@@ -221,6 +286,7 @@ __all__ = [
     "broadcast",
     "capabilities",
     "compile",
+    "compile_capabilities",
     "constant",
     "divide",
     "dot_test",
