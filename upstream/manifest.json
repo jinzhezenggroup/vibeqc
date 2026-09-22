@@ -127,7 +127,7 @@
     "libxc-xc-admission": {
       "canonical_inputs": {
         "python/vibeqc_compiler/xc/b88_vwn_maple.py": "12eb65668224ede9508afff5ceb6b7e9db623e6569f4ceab712e5000956a6786",
-        "python/vibeqc_compiler/xc/expressions.py": "5c635a4d9e8b0bedd8020181b20fa1c7d846d2ee40b22adb918e867f81c02e40",
+        "python/vibeqc_compiler/xc/expressions.py": "6f644586f8d35fac414d9c1b04b52bb405e4c1128d4e177ed69853c4584c2491",
         "python/vibeqc_compiler/xc/ityh_maple.py": "d12d432724ca5b0bb0853a0a8ccbd1cb3b7eeaee70bed0a28e96c72879fe22f7",
         "python/vibeqc_compiler/xc/p86_pz_maple.py": "4cb700ca356e337ddcce108268d0afe7f4b0c31c807a319b7b3758129d1ee652",
         "python/vibeqc_compiler/xc/pbe_maple.py": "439726631d73a0841529c72f1577dec3c8a5aca14a1ae41a7dd3cf7c46f2d5ae",
