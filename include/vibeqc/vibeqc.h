@@ -145,7 +145,7 @@ typedef struct vibeqc_d4_batch vibeqc_d4_batch;
 typedef struct vibeqc_nonlocal_plan vibeqc_nonlocal_plan;
 
 typedef int32_t vibeqc_d3_damping;
-enum { VIBEQC_D3_DAMPING_BJ = 1 };
+enum { VIBEQC_D3_DAMPING_BJ = 1, VIBEQC_D3_DAMPING_ZERO = 2 };
 
 /** Geometry-only D3 system. Coordinates are Bohr and copied at prepare. */
 typedef struct vibeqc_d3_system_descriptor {
@@ -156,7 +156,14 @@ typedef struct vibeqc_d3_system_descriptor {
   uint32_t atom_count;
 } vibeqc_d3_system_descriptor;
 
-/** Two-body D3(BJ) model. s9 must remain zero in the production v1 slice. */
+/**
+ * Explicit molecular D3 model.
+ *
+ * The historical typedef name and prefix through maximum_bytes are preserved
+ * for ABI-0 two-body D3(BJ) callers. Zero damping and BJ+ATM require the
+ * appended fields below and are accepted only by separately qualified
+ * capability paths. Zero-damping+ATM is deliberately unsupported.
+ */
 typedef struct vibeqc_d3_bj_descriptor {
   uint32_t struct_size;
   uint32_t abi_version;
@@ -170,6 +177,13 @@ typedef struct vibeqc_d3_bj_descriptor {
   double pair_cutoff;
   double pair_switch_width;
   uint64_t maximum_bytes;
+  /** Zero-damping radius scalings; ignored for BJ. */
+  double rs6;
+  double rs8;
+  double alp;
+  /** BJ-ATM cutoff/switch in bohr; ignored when s9 == 0. */
+  double atm_cutoff;
+  double atm_switch_width;
 } vibeqc_d3_bj_descriptor;
 
 /** Optional changed geometry for one prepared D3 batch member. */
@@ -1323,9 +1337,14 @@ VIBEQC_API vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch,
 /** Canonical compact-table identities compiled into the D3 production owner. */
 VIBEQC_API const char* vibeqc_d3_table_sha256(void);
 VIBEQC_API const char* vibeqc_d3_radii_sha256(void);
+/** Stable executable-owner identities, separate from method/parameter identity. */
+VIBEQC_API const char* vibeqc_d3_provider_identity(void);
+VIBEQC_API const char* vibeqc_d3_scheduler_identity(void);
+/** Prepared capability identity: d3.bj-two-body, d3.bj-atm, or d3.zero-two-body. */
+VIBEQC_API const char* vibeqc_d3_batch_variant_identity(const vibeqc_d3_batch* batch);
 
 /**
- * Prepare a standalone two-body D3(BJ) ragged fleet.
+ * Prepare a standalone explicitly selected D3 ragged fleet.
  *
  * The owner copies atomic numbers and prepared geometries. maximum_bytes bounds
  * the plan plus worst-case execution staging and, on CUDA, device ownership.

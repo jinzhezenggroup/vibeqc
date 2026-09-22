@@ -45,7 +45,7 @@ def test_public_method_generated_metadata_is_fresh() -> None:
 
 def test_public_method_abi_ids_are_explicit_and_stable() -> None:
     payload = json.loads(
-        (ROOT / "methods/public_methods.json").read_text(encoding="utf-8")
+        (ROOT / "manifests/public_methods.json").read_text(encoding="utf-8")
     )
     actual = {entry["name"]: entry["abi_id"] for entry in payload["methods"]}
     assert actual == EXPECTED_ABI_IDS

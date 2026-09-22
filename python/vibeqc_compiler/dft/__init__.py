@@ -1,6 +1,6 @@
 """Internal quadrature/AO development interface; no executable DFT method."""
 
-from .ao import NativeAO, jet_indices
+from .ao import NativeAO, directional_ao_jets, jet_indices
 from .density_source import DensitySource, DensityStamp
 from .features import density_features, orbital_features, spin_densities
 from .grid import (
@@ -36,6 +36,7 @@ from .xc_schedule import (
     GridXcScientificIdentity,
     assess_grid_xc_schedule,
     grid_xc_schedule,
+    rank_grid_xc_schedules,
 )
 
 __all__ = [
@@ -62,6 +63,7 @@ __all__ = [
     "assemble_nonlocal_potential_reference",
     "assess_grid_xc_schedule",
     "density_features",
+    "directional_ao_jets",
     "grid_policy_provenance",
     "grid_xc_schedule",
     "jet_indices",
@@ -72,5 +74,6 @@ __all__ = [
     "nonlocal_kernel_matrix_reference",
     "orbital_features",
     "partition_weights",
+    "rank_grid_xc_schedules",
     "spin_densities",
 ]
