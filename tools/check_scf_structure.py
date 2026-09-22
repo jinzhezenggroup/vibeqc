@@ -91,6 +91,9 @@ CUDA_ALLOWED = {
         "scf/cuda/device_timer.",
         "scf/cuda/launch_geometry.",
         "scf/cuda_batch.hpp",
+        "scf/eigensolver_workspace.hpp",
+        "runtime/resource_cuda.cuh",
+        "vibeqc/vibeqc.hpp",
     ),
 }
 CUDA_ALLOWED["cuda_df_source"] = (

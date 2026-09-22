@@ -18,6 +18,7 @@
 #include "methods/dft_method.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_ledger.hpp"
+#include "scf/cuda_fock_execution.hpp"
 #include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
 
@@ -52,6 +53,23 @@ scf::ResolvedFockBuild strategy(bool restricted, scf::FockBackend backend) {
   spec.exchange.present = false;
   spec.derivative_order = 0;
   return scf::resolve_fock_build(spec, backend, 1e-12);
+}
+
+void prepared_cuda_fock_seam() {
+  const auto system = hydrogens(2, true);
+  const scf::PreparedFockPlan cpu(system, nullptr, strategy(true, scf::FockBackend::Cpu));
+  require(!scf::prepared_cuda_fock_binding(cpu),
+          "CPU Fock owner unexpectedly exposed a CUDA execution binding");
+
+  scf::FockBuildSpec spec;
+  spec.spin = scf::FockSpin::Restricted;
+  spec.derivative_order = 0;
+  const auto resolved = scf::resolve_fock_build(spec, scf::FockBackend::Cuda, 1e-12);
+  const scf::PreparedFockPlan hybrid(system, nullptr, resolved, 0);
+  const auto binding = scf::prepared_cuda_fock_binding(hybrid);
+  require(binding && binding.nbf == hybrid.one_electron().nbf && binding.stream != nullptr &&
+              binding.source_identity != nullptr,
+          "prepared full-range CUDA J/K owner lacks the method-neutral execution binding");
 }
 
 /** Independently rebuild the retained density with CPU integrals/XC. This
@@ -181,6 +199,9 @@ void run_hydroxyl(bool pbe) {
   dft::CudaKsPlan plan(gpu, basis, grid, options, pbe);
   const auto cold = plan.run(nullptr, false, false);
   require(cold.converged && !plan.failed(), "CUDA OH occupation cycle did not converge");
+  const auto reference = scf::run_uks(cpu, basis, grid, options, pbe);
+  require(reference.converged && std::abs(reference.energy - cold.energy) < 1e-10,
+          "CUDA OH endpoint disagrees with independently solved CPU UKS");
   const auto cold_execution = plan.transfers();
   require(cold_execution.iterations == cold.iterations &&
               cold_execution.iteration_chunks == cold_execution.iteration_synchronizations &&
@@ -201,6 +222,8 @@ void run_hydroxyl(bool pbe) {
             "stationary energy bypassed the subsequent density-change gate");
     require(plan.transfers().occupation_stabilized_proposals > 0,
             "CUDA stationary cycle did not apply the CPU-compatible proposal policy");
+    require(history.back().occupation_stabilized,
+            "CUDA final closure discarded the qualified stationary occupation choice");
   }
   const auto stabilized_rows = std::count_if(
       history.begin(), history.end(), [](const auto& item) { return item.occupation_stabilized; });
@@ -223,7 +246,7 @@ void run_hydroxyl(bool pbe) {
   std::cout << "KS OH pbe=" << pbe << " iterations=" << cold.iterations << '\n';
 }
 
-void run_case(unsigned atoms, bool restricted, bool functional) {
+void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
   const auto system = hydrogens(atoms, restricted);
   const dft::AoBasis basis(system);
   const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
@@ -560,6 +583,7 @@ int main() {
   int devices = 0;
   if (cudaGetDeviceCount(&devices) != cudaSuccess || devices == 0) return 77;
   try {
+    prepared_cuda_fock_seam();
     if (std::getenv("VIBEQC_CUDA_KS_CHUNK") == nullptr) {
       require(::setenv("VIBEQC_CUDA_KS_CHUNK", "2", 1) == 0,
               "could not enable CUDA RKS chunk qualification");

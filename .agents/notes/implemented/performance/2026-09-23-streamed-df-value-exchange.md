@@ -120,3 +120,26 @@ metric qualification. Batch/UHF automatic selection and resident projection
 reuse need separate resource/provenance evidence. Further J pass reduction or
 retention of all projected rows may remove more source work after this route is
 qualified; measure complete endpoints before promoting additional policies.
+
+## Independent review integration
+
+The current-master integration with the qualified KS/r2SCAN fixes passed all
+four native DF suites (density seed, final snapshot, density-fitting integrals
+and response, occupied response), including the 48 weighted finite-difference
+gates. All 44 Python selector, streamed J/K, cold/warm/changed-geometry endpoint
+and resource cases passed on RTX 5090. Source identity:
+`3b8b92318f4f07be5aeb39c6753114be463640cde70b1950588950cda037be93`;
+library SHA256:
+`926a19f26198e36813deb6618367fa48eb0ca717e63d4f232fb2f009e2365cc7`.
+This integration does not include the separate raw-mapping change in #1089.
+
+The broad native suite also exposed stale response-work expectations, reproduced
+with the preserved pre-change library. Resident RHF now uploads raw A once via
+borrowed J/K scratch; resident UHF and generated dense/packed paths read their
+whitened owner without raw traffic. A bounded streamed fitted response reads a
+full raw tensor for each ordered auxiliary-panel pair; its `value_slices` counts
+AO-pair source tiles, not auxiliary slices. The regression now protects these
+exact work counts and keeps all independent force, capacity, transfer and
+output-on-failure gates. Nonfinite host-raw rejection is checked on the RHF
+route that actually consumes that input. No response production change was
+needed, and full 96-atom completion remains unqualified.
