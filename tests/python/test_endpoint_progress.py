@@ -91,9 +91,7 @@ def test_reference_trace_checkpoints_latest_stage_and_cycle(tmp_path: Path) -> N
     cupy = SimpleNamespace(
         cuda=SimpleNamespace(
             Stream=SimpleNamespace(
-                null=SimpleNamespace(
-                    synchronize=lambda: synchronize_calls.append(None)
-                )
+                null=SimpleNamespace(synchronize=lambda: synchronize_calls.append(None))
             )
         )
     )
