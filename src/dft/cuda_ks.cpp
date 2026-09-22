@@ -596,9 +596,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
   }
   bool finish() { return device_chunk_mode ? finish_device() : finish_legacy(); }
 
-  CudaXcView stage_xc(
-      std::uint64_t next_generation,
-      CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64) {
+  CudaXcView stage_xc(std::uint64_t next_generation,
+                      CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64) {
     if (options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused) {
       if (!xc) throw std::logic_error("device-fused XC owner is unavailable");
       xc->enqueue(density, elements, next_generation, precision);
@@ -672,9 +671,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                                    j, nullptr, nullptr, jk_error, detail);
       check(jk_status, detail);
       mixed_j_executed = mixed_j_executed || pending_mixed_j;
-      const auto potential = stage_xc(
-          ++generation, pending_mixed_j ? CudaXcDensityPrecision::Fp32ComputeFp64Accumulate
-                                        : CudaXcDensityPrecision::Fp64);
+      const auto potential =
+          stage_xc(++generation, pending_mixed_j ? CudaXcDensityPrecision::Fp32ComputeFp64Accumulate
+                                                 : CudaXcDensityPrecision::Fp64);
       pending_generations[0] = generation;
       ++movement.submitted_iterations;
       pending_iterations = 1;

@@ -88,9 +88,8 @@ class CudaXcPlan {
 
   const CudaXcLayout& layout() const noexcept { return layout_; }
   const CudaXcTransfers& transfers() const noexcept { return transfers_; }
-  void enqueue(
-      const double* density, std::size_t elements, std::uint64_t generation,
-      CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64);
+  void enqueue(const double* density, std::size_t elements, std::uint64_t generation,
+               CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64);
   /** Differentiate the fixed native density on GPU, including AO/feature and
    * matrix assembly. Signed directions use the same input layout as density. */
   void enqueue_response(const double* density, const double* direction, std::size_t elements,
