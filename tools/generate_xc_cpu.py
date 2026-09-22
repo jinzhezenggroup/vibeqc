@@ -35,22 +35,15 @@ from vibeqc_compiler.method.spec import (
     SemilocalXCPrimitive,
     resolve_method,
 )
-from vibeqc_compiler.xc.expressions import (
-    energy_expression,
+from vibeqc_compiler.xc.expression_dispatch import build_energy_expression
+from vibeqc_compiler.xc.production_policy import (
     lda_xc_pw_polarized_tail_expression,
     lda_xc_pw_unpolarized_tail_expression,
     pbe_correlation_scaled_expression,
     pbe_exchange_direct_expression,
     pbe_exchange_reciprocal_expression,
 )
-from vibeqc_compiler.xc.rsh_expressions import (
-    energy_expression as rsh_energy_expression,
-)
-from vibeqc_compiler.xc.spec import (
-    SPECIAL_EXPRESSION_COMPONENTS,
-    WB97MV_COMPONENTS,
-    functional,
-)
+from vibeqc_compiler.xc.spec import functional
 from vibeqc_compiler.xc.wb97mv_maple import (
     DENSITY_THRESHOLD as WB97MV_DENSITY_THRESHOLD,
 )
@@ -66,9 +59,6 @@ from vibeqc_compiler.xc.wb97mv_maple import (
 from vibeqc_compiler.xc.wb97mv_maple import (
     TAU_THRESHOLD as WB97MV_TAU_THRESHOLD,
 )
-from vibeqc_compiler.xc.wb97mv_maple import (
-    energy_expression as wb97mv_maple_energy_expression,
-)
 
 
 def build_roots(
@@ -76,18 +66,7 @@ def build_roots(
 ) -> tuple[Any, Any, str]:
     """Build derivative roots and the exact emitted-expression identity."""
 
-    active = {name for name, coefficient in spec.components if coefficient}
-    wb97mv = bool(active.intersection(WB97MV_COMPONENTS))
-    special = bool(active.intersection(SPECIAL_EXPRESSION_COMPONENTS))
-    if wb97mv:
-        # This host generator owns the canonical production composition only.
-        # Independent/interior qualification belongs to XCProgram, not a second
-        # handwritten scientific source in the production generation path.
-        graph, energy, variables = wb97mv_maple_energy_expression(spec)
-    elif special:
-        graph, energy, variables = rsh_energy_expression(spec, production=production)
-    else:
-        graph, energy, variables = energy_expression(spec, production=production)
+    graph, energy, variables = build_energy_expression(spec, production=production)
     derivatives = {(): energy}
     for output in outputs:
         for depth in range(1, len(output) + 1):
