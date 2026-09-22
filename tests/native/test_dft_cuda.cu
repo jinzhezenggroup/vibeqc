@@ -58,12 +58,13 @@ struct Fixture {
   std::unique_ptr<CudaXcPlan> plan;
   std::uint64_t generation{};
   Fixture(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional, bool uks,
-          std::size_t tile, bool response = false)
-      : layout(cuda_xc_layout(basis, grid, functional, uks, tile)) {
+          std::size_t tile, CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64,
+          bool response = false)
+      : layout(cuda_xc_layout(basis, grid, functional, uks, tile, ao_precision)) {
     try {
       if (response)
         layout = cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
-                                      functional, uks, tile, true);
+                                      functional, uks, tile, true, ao_precision);
       check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
       check(cudaMalloc(&arena, layout.device_bytes + 64));
       check(cudaMemset(static_cast<char*>(arena) + layout.device_bytes, 0x5a, 64));
@@ -119,7 +120,7 @@ std::vector<double> density(std::size_t n, unsigned spins) {
 }
 
 void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
-             const std::vector<double>& d) {
+             const std::vector<double>& d, const std::vector<double>& empty_spin_reference = {}) {
   fixture.submit(d);
   const auto result = fixture.scalars();
   require(result.error == 0,
@@ -150,12 +151,85 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
       // The explicit PBE empty-spin extension has large finite minority
       // coefficients. Retain an FP64 relative gate as well as the absolute
       // floor; an absolute-only test would reject a few ulps at |V|~1e4.
-      for (std::size_t i = 0; i < elements; ++i)
-        close(v[s * elements + i], ref.potential[s][i], "UKS CPU/CUDA V",
-              2e-11 + 2e-12 * std::abs(ref.potential[s][i]));
+      const auto begin = d.begin() + s * elements;
+      const bool empty = std::all_of(begin, begin + elements, [](double x) { return x == 0.0; });
+      for (std::size_t i = 0; i < elements; ++i) {
+        const double expected = empty && !empty_spin_reference.empty()
+                                    ? empty_spin_reference[s * elements + i]
+                                    : ref.potential[s][i];
+        close(v[s * elements + i], expected, "UKS CPU/CUDA V", 2e-11 + 2e-12 * std::abs(expected));
+      }
     }
   }
   fixture.canary();
+}
+
+/** Libxc's empty-spin r2SCAN derivative is ill-conditioned in rounded rho:
+ * one ulp in the occupied density can change the minority coefficient by 0.1.
+ * Check AO/features independently, then integrate the host point evaluator on
+ * identical device inputs. This retains the ordinary FP64 potential gate;
+ * energy, electrons and the occupied potential still use the CPU endpoint.
+ * Independent Libxc point/one-ulp fixtures live in test_r2scan_boundary_codegen.
+ */
+std::vector<double> r2scan_empty_spin_reference(const AoBasis& basis, const MolecularGrid& grid,
+                                                const std::vector<double>& d) {
+  const auto count = grid.point_count(), n = basis.nao;
+  // A test-only full tile retains the inputs after enqueue. Production and the
+  // endpoint checked against this reference keep their bounded 257-point tile.
+  Fixture capture(basis, grid, 2U, true, count);
+  capture.submit(d);
+  require(capture.scalars().error == 0, "r2SCAN reference capture failed");
+  const auto& l = capture.layout;
+  std::vector<double> ao(l.jets * count * n), features(l.spins * l.feature_terms * count);
+  // Mirror the borrowed arena's packed basis/grid, AO, density-work, features
+  // order. No production inspection API or host transfer is introduced.
+  const auto* device = static_cast<const double*>(capture.arena) + l.packed_elements + 4 * count;
+  check(cudaMemcpy(ao.data(), device, ao.size() * sizeof(double), cudaMemcpyDeviceToHost));
+  device += (l.jets + l.spins * l.work_jets) * count * n;
+  check(cudaMemcpy(features.data(), device, features.size() * sizeof(double),
+                   cudaMemcpyDeviceToHost));
+  std::vector<double> cpu_ao(ao.size()), expected(l.spins * n * n);
+  basis.evaluate(grid.points().data(), count, 1, 0, n, cpu_ao.data(), cpu_ao.size());
+  for (std::size_t i = 0; i < ao.size(); ++i)
+    close(ao[i], cpu_ao[i], "captured r2SCAN AO", 2e-15 + 2e-13 * std::abs(cpu_ao[i]));
+  for (std::size_t p = 0; p < count; ++p) {
+    const auto phi = [&](unsigned jet, std::size_t mu) { return ao[(jet * count + p) * n + mu]; };
+    double rho[2]{}, gradient[2][3]{}, tau[2]{};
+    for (unsigned spin = 0; spin < 2; ++spin) {
+      double reference[5]{};
+      // Independent double AO-pair contraction checks the generated D*AO
+      // feature path before its rounded inputs become the XC point reference.
+      for (std::size_t mu = 0; mu < n; ++mu)
+        for (std::size_t nu = 0; nu < n; ++nu) {
+          const double value = d[(spin * n + mu) * n + nu];
+          reference[0] += phi(0, mu) * value * phi(0, nu);
+          for (unsigned k = 0; k < 3; ++k) {
+            reference[k + 1] += value * (phi(k + 1, mu) * phi(0, nu) + phi(0, mu) * phi(k + 1, nu));
+            reference[4] += 0.5 * phi(k + 1, mu) * value * phi(k + 1, nu);
+          }
+        }
+      for (unsigned k = 0; k < 5; ++k)
+        close(features[(spin * 5 + k) * count + p], reference[k], "captured r2SCAN feature",
+              2e-15 + 2e-13 * std::abs(reference[k]));
+      rho[spin] = features[spin * 5 * count + p];
+      for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[(spin * 5 + k + 1) * count + p];
+      tau[spin] = features[(spin * 5 + 4) * count + p];
+    }
+    const auto xc = evaluate_r2scan_point(rho, gradient, tau);
+    for (unsigned spin = 0; spin < 2; ++spin)
+      for (std::size_t mu = 0; mu < n; ++mu)
+        for (std::size_t nu = 0; nu < n; ++nu) {
+          double value = xc.rho[spin] * phi(0, mu) * phi(0, nu);
+          for (unsigned k = 0; k < 3; ++k) {
+            value +=
+                xc.gradient[spin][k] * (phi(k + 1, mu) * phi(0, nu) + phi(0, mu) * phi(k + 1, nu));
+            value += xc.kinetic[spin] * phi(k + 1, mu) * phi(k + 1, nu);
+          }
+          expected[(spin * n + mu) * n + nu] += grid.weights()[p] * value;
+        }
+  }
+  capture.canary();
+  return expected;
 }
 
 __global__ void halve_density(double* d, std::size_t n) {
@@ -255,7 +329,7 @@ void graph_capture(const AoBasis& basis, const MolecularGrid& grid, std::size_t 
  * Compare the complete device response to independent CPU potential differences,
  * so a premature overwrite of work cannot pass a primal-only energy test. */
 void matrix_response_case(const AoBasis& basis, const MolecularGrid& grid, unsigned functional) {
-  Fixture response(basis, grid, functional, true, 19, true);
+  Fixture response(basis, grid, functional, true, 19, CudaXcAoPrecision::Fp64, true);
   auto d = density(basis.nao, 2);
   std::vector<double> direction(d.size());
   const auto n = basis.nao, matrix = n * n;
@@ -329,6 +403,55 @@ int main(int argc, char** argv) {
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
     graph_capture(basis, grid);
+    {
+      for (bool unrestricted : {false, true})
+        for (std::uint32_t functional : {0U, 1U}) {
+          Fixture strict(basis, grid, functional, unrestricted, 9, CudaXcAoPrecision::Fp64);
+          Fixture mixed(basis, grid, functional, unrestricted, 9,
+                        CudaXcAoPrecision::Fp32ComputeFp64Storage);
+          require(strict.layout.device_bytes == mixed.layout.device_bytes,
+                  "FP32 AO compute candidate changed FP64 XC workspace");
+          const auto d = density(basis.nao, unrestricted ? 2 : 1);
+          strict.submit(d);
+          mixed.submit(d);
+          const auto strict_scalars = strict.scalars();
+          const auto mixed_scalars = mixed.scalars();
+          require(strict_scalars.error == 0 && mixed_scalars.error == 0,
+                  "mixed AO candidate failed device XC evaluation");
+          const auto energy_error = std::abs(mixed_scalars.energy - strict_scalars.energy);
+          const auto electron_error =
+              std::abs((mixed_scalars.electrons[0] + mixed_scalars.electrons[1]) -
+                       (strict_scalars.electrons[0] + strict_scalars.electrons[1]));
+          require(energy_error < 5e-8,
+                  "FP32-compute AO semilocal energy exceeded the qualification gate");
+          require(electron_error < 1e-7,
+                  "FP32-compute AO electron count exceeded the qualification gate");
+          const auto strict_v = strict.potential();
+          const auto mixed_v = mixed.potential();
+          double max_v_error = 0.0;
+          for (std::size_t i = 0; i < strict_v.size(); ++i)
+            max_v_error = std::max(max_v_error, std::abs(mixed_v[i] - strict_v[i]));
+          require(max_v_error < 1e-7,
+                  "FP32-compute AO semilocal potential exceeded the qualification gate");
+          strict.canary();
+          mixed.canary();
+        }
+      bool r2scan_rejected = false;
+      try {
+        (void)cuda_xc_layout(basis, grid, 2U, false, 9, CudaXcAoPrecision::Fp32ComputeFp64Storage);
+      } catch (const std::invalid_argument&) {
+        r2scan_rejected = true;
+      }
+      require(r2scan_rejected, "unqualified r2SCAN FP32-compute AO candidate was accepted");
+      bool response_rejected = false;
+      try {
+        (void)cuda_xc_layout_shape(basis.natom, basis.nprimitive, basis.nao, grid.point_count(), 1U,
+                                   false, 9, true, CudaXcAoPrecision::Fp32ComputeFp64Storage);
+      } catch (const std::invalid_argument&) {
+        response_rejected = true;
+      }
+      require(response_rejected, "unqualified response FP32-compute AO candidate was accepted");
+    }
     for (std::uint32_t functional : {0U, 1U, 2U}) {
       for (bool uks : {false, true}) {
         for (std::size_t tile : {1U, 7U, 64U}) {
@@ -348,7 +471,17 @@ int main(int argc, char** argv) {
       Fixture tail(basis, tail_grid, functional, true, 257);
       auto fully = density(basis.nao, 2);
       std::fill(fully.begin() + basis.nao * basis.nao, fully.end(), 0.0);
-      compare(tail, basis, tail_grid, fully);
+      const auto same_input = functional == 2U
+                                  ? r2scan_empty_spin_reference(basis, tail_grid, fully)
+                                  : std::vector<double>{};
+      compare(tail, basis, tail_grid, fully, same_input);
+      if (functional == 2U) {
+        // Exercise both minority channels; exchange the reference spin blocks.
+        std::rotate(fully.begin(), fully.begin() + basis.nao * basis.nao, fully.end());
+        auto flipped = same_input;
+        std::rotate(flipped.begin(), flipped.begin() + basis.nao * basis.nao, flipped.end());
+        compare(tail, basis, tail_grid, fully, flipped);
+      }
       compare(tail, basis, tail_grid, std::vector<double>(fully.size()));
     }
     for (bool spherical : {false, true}) {

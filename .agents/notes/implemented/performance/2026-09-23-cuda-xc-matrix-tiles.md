@@ -132,3 +132,12 @@ full 96-atom SCF claim is made. Preserved v10 binary SHA-256:
 source-overlay archive SHA-256:
 `2baf846f1a06e658f7406e86965e5a6526e9e7d99e8e37485d720c140e92b1eb`.
 The independently reproduced n=2 r2SCAN tail discrepancy is issue #1105.
+
+## Integration with updated master
+
+Merged master 41834864, preserving the new FP32-compute AO fixture option
+and the tiled response fixture's explicit layout constructor. The response
+layout forwards AO precision so the existing unsupported-mixed-response gate
+still applies. Slurm 11395 passes the dedicated matrix schedule suite on this
+combined tree. The old n=2 r²SCAN tail is independently repaired by #1108;
+full native acceptance still depends on that source-level repair.

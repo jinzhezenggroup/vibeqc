@@ -36,12 +36,18 @@ struct CudaKsTransfers {
   /** Internal execution evidence. A selected two-slot RKS chunk can submit one
    * bounded unused slot when its first physical iteration terminates. */
   std::uint64_t submitted_iterations{}, iteration_chunks{}, iteration_synchronizations{};
+  /** Shared compiled-execution lifecycle evidence for the device-control region.
+   * Ordinary host-controlled KS leaves these counters zero. */
+  std::uint64_t execution_region_bindings{}, execution_region_invalidations{};
+  std::uint64_t execution_region_executions{}, execution_region_failures{};
+  std::uint64_t execution_region_recoveries{};
   /** Explicit host-unfused XC staging, separate from ordinary setup/seed movement. */
   std::uint64_t xc_host_d2h_bytes{}, xc_host_h2d_bytes{}, xc_host_synchronizations{};
 };
 
-/** Exact state-arena size from the allocator's own typed layout. This query
- * performs no CUDA call and allocates no matrices or other numeric buffers. */
+/** State arena plus bounded ordinary-eigensolver workspace admission. The
+ * provider's actual host/device queries are checked before allocation. This
+ * shape query performs no CUDA call and allocates no numeric buffers. */
 std::size_t cuda_ks_state_bytes(std::size_t nao, unsigned spins, unsigned diis_history);
 
 /** Native ordinary-stream LDA/PBE RKS/UKS trajectory. The borrowed common
