@@ -3,63 +3,109 @@
 The bulk Libxc importer has a machine-readable qualification layer in
 `vibeqc_compiler.xc.libxc_bulk_capabilities`.
 
-It deliberately distinguishes **compiler/pointwise qualification** from
-**public method admission**.  A registration returned here has:
+It separates **representation**, **runtime qualification**, and **public
+admission**. Every imported registration starts with two intrinsic claims:
 
-- lowered through the common Maple frontend into the canonical Graph;
-- both polarized and unpolarized layouts covered by independent PySCF
-  2.14.0 / Libxc 7.0.0 reference fixtures;
-- energy, first physical-feature derivatives (`vxc`) and packed second
-  derivatives (`fxc`) checked on the declared
-  `libxc-bulk-interior/v1` domain;
-- C and CUDA source emitters available from the common Graph backend.
+- `graph-imported`: the pinned Libxc Maple owner lowers to the canonical Graph;
+- `pointwise-validated`: polarized and unpolarized energy, `vxc`, and packed
+  `fxc` agree with independent PySCF 2.14.0 / Libxc 7.0.0 fixtures on
+  `libxc-bulk-interior/v1`.
 
-It does **not** automatically claim compiled CPU/CUDA binaries, GPU runtime,
-vacuum/tail/fully-polarized production continuations, molecular SCF,
-nuclear forces, response properties, or a public Calculator method.
+C and CUDA source emitters are also available, but source emission is not
+compilation or runtime evidence.
+
+## Evidence-driven promotion
+
+Higher stages are no longer inferred from the pointwise claim. They are
+computed from identity-bound evidence envelopes and a fail-closed dependency
+DAG:
+
+```text
+graph-imported
+  -> pointwise-validated
+       |-> compiled-cpu -----------|
+       |-> compiled-cuda -> gpu-runtime
+       |-> production-domain -----|-> molecular-scf
+                                      |-> forces
+                                      |-> response
+                                      `-> public-method
+```
+
+`molecular-scf` requires `production-domain` plus either a qualified CPU
+binary or a qualified CUDA runtime. `forces` and `response` are independent
+branches. A public energy method therefore does not incorrectly require
+response support.
+
+Each non-intrinsic pass must use
+`vibeqc.libxc-bulk-stage-evidence.v1`, bind to the exact capability identity,
+name its stage, and point to a non-empty retained evidence reference. The subject
+binds parameter bindings, pinned upstream/source digests, and the compiler source
+inventory under stable logical paths. A source or binding change invalidates old
+evidence; bulk queries hash the source inventory once and do not lower all graphs. Missing,
+failed, malformed, cross-functional, or out-of-order evidence never promotes a
+stage.
 
 ## Query
 
 ```python
 from vibeqc_compiler.xc.libxc_bulk_capabilities import (
-    available_capabilities,
+    STAGE_EVIDENCE_SCHEMA,
     claimable_functionals,
     functional_capability,
 )
 
-names = claimable_functionals()  # current pointwise-validated inventory
-pbe_sol = functional_capability("GGA_X_PBE_SOL")
-print(pbe_sol.to_payload())
+base = functional_capability("GGA_X_PBE_SOL")
+compiled_cpu = {
+    "schema": STAGE_EVIDENCE_SCHEMA,
+    "subject_identity": base.identity,
+    "stage": "compiled-cpu",
+    "status": "pass",
+    "reason": None,
+    "evidence": "ci://xc/GGA_X_PBE_SOL/compiled-cpu.json",
+}
+qualified = functional_capability(
+    base.name,
+    evidence={"compiled-cpu": compiled_cpu},
+)
+
+print(qualified.qualified_stages)
+print(qualified.ready_stages)
 ```
 
-The default claim level is `pointwise-validated`.  The lower
-`graph-imported` level is also queryable.  Requests for runtime, SCF or
-public-method levels fail explicitly instead of silently promoting a
-registration.
+With no attached higher-stage evidence, the current 221-registration inventory
+remains exactly `pointwise-validated`. Queries for known higher stages return
+an empty inventory rather than manufacturing a claim; unknown stage names still
+fail explicitly.
 
-## Admission path
+`ready_stages` is the machine-readable qualification frontier. CI producers
+can use it to decide which evidence jobs are meaningful next, while the registry
+itself remains a pure, deterministic admission evaluator.
 
-This registry is the first automatic gate under #744.  Later gates should add
-evidence monotonically rather than replacing this boundary:
+## Bulk inventory queries
 
-```text
-Libxc registration
-  -> graph-imported
-  -> pointwise-validated        [this registry]
-  -> compiled CPU/CUDA
-  -> production-domain
-  -> molecular SCF
-  -> forces / response
-  -> public MethodIR/Calculator admission
+```python
+evidence = {
+    "GGA_X_PBE_SOL": {
+        "compiled-cpu": compiled_cpu,
+    }
+}
+
+assert claimable_functionals("compiled-cpu", evidence) == ("GGA_X_PBE_SOL",)
+assert claimable_functionals("compiled-cuda", evidence) == ()
 ```
 
-A composite or hybrid method must additionally prove its MethodIR composition
-and the corresponding exchange/nonlocal/correction providers.  Therefore a
-semilocal component becoming pointwise-validated never, by itself, makes a
-hybrid or range-separated method public.
+The evidence inventory is keyed by Libxc registration. Unknown or blocked
+registrations are rejected rather than silently ignored.
 
-The invariant is enforced in CI: the capability inventory must be exactly the
-bulk imported inventory, and every advertised pointwise claim must have both
-spin reference fixtures.  The existing bulk numerical test evaluates all of
-those fixtures against the generated Graph through energy, `vxc`, and
-`fxc`.
+## Scope
+
+This registry still does **not** generate or mutate the public method manifest.
+A semilocal component may be runtime-qualified without being a complete DFT
+method. Hybrid/range-separated/nonlocal/correction primitives must be qualified
+at the MethodIR/provider layer before a method-level admission producer may
+attach `public-method` evidence.
+
+The existing bulk numerical test continues to cover every intrinsic pointwise
+claim. The promotion tests additionally enforce that stages cannot jump their
+prerequisites, CPU and CUDA runtime branches are alternatives for SCF execution,
+and public admission never appears merely because source code exists.
