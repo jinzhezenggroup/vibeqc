@@ -60,7 +60,12 @@ def _fraction_value(
 
     def visit(node: ast.AST) -> Fraction:
         if isinstance(node, ast.Constant) and type(node.value) in (int, float):
-            return Fraction(str(node.value))
+            # ast.Constant.value has already rounded decimal/scientific tokens.
+            # Recover the original lexeme, including digits below binary64 range.
+            token = ast.get_source_segment(expression, node)
+            if token is None:
+                raise MethodMetadataError("missing hybrid numeric source token")
+            return Fraction(token)
         if isinstance(node, ast.Name):
             if node.id in values:
                 return values[node.id]
@@ -103,6 +108,12 @@ def _function_body(text: str, name: str) -> str:
     if len(matches) != 1:
         raise MethodMetadataError(f"missing or ambiguous hybrid owner function: {name}")
     body, _ = brace_body(text, matches[0].end() - 1)
+    # This extractor models linear metadata owners, not C control flow.
+    # Ignore quoted text, but reject branches/loops/early returns before regex
+    # extraction can mistake a conditional assignment for an unconditional one.
+    code = re.sub(r'"(?:[^"\\]|\\.)*"', '""', body)
+    if re.search(r"\b(?:if|else|for|while|do|switch|goto|return)\b|[?#]", code):
+        raise MethodMetadataError("hybrid owner requires unsupported control flow")
     return body
 
 
@@ -210,69 +221,94 @@ def _setter_state(
 
     body = _function_body(text, setter)
     env: dict[str, Fraction] = {}
-    for match in re.finditer(
-        rf"\b({_IDENTIFIER})\s*=\s*get_ext_param\s*\(\s*p\s*,\s*ext_params\s*,\s*([^)]*)\)\s*;",
-        body,
-    ):
-        index = constant_value(match[2], definitions)
-        if type(index) is not int or not 0 <= index < len(defaults):
-            raise MethodMetadataError(
-                "hybrid setter reads an invalid external parameter index"
-            )
-        env[match[1]] = defaults[index]
-
-    # Evaluate simple local arithmetic in source order. Function calls and array
-    # expressions intentionally remain outside this audited subset.
-    for match in re.finditer(rf"(?m)^\s*({_IDENTIFIER})\s*=\s*([^;]+);", body):
-        if "get_ext_param" in match[2]:
+    seen_mix: set[int] = set()
+    seen_cam: set[str] = set()
+    auxiliary_omegas: list[Fraction] = []
+    for raw in body.split(";"):
+        statement = raw.strip()
+        if not statement:
             continue
-        try:
-            env[match[1]] = _fraction_value(match[2], definitions, env)
-        except MethodMetadataError:
+        if re.fullmatch(r"assert\s*\(\s*p\s*!=\s*NULL\s*\)", statement):
             continue
-
-    mix_assignments = list(
-        re.finditer(r"p->mix_coef\s*\[\s*(\d+)\s*\]\s*=\s*([^;]+);", body)
-    )
-    if mix_assignments:
-        if mix is None:
-            raise MethodMetadataError(
-                "hybrid setter writes mix coefficients without xc_mix_init"
+        declaration = re.fullmatch(r"(?:const\s+)?double\s+(.+)", statement, re.DOTALL)
+        if declaration:
+            for name in split_fields(declaration[1]):
+                if not re.fullmatch(_IDENTIFIER, name.strip()):
+                    raise MethodMetadataError("unsupported hybrid local declaration")
+            continue
+        assignment = re.fullmatch(rf"({_IDENTIFIER})\s*=\s*(.+)", statement, re.DOTALL)
+        if assignment:
+            name, expression = assignment.groups()
+            parameter = re.fullmatch(
+                r"get_ext_param\s*\(\s*p\s*,\s*ext_params\s*,\s*([^)]*)\)",
+                expression,
             )
-        seen: set[int] = set()
-        for match in mix_assignments:
-            index = int(match[1])
-            if index >= len(mix) or index in seen:
+            if parameter:
+                index = constant_value(parameter[1], definitions)
+                if type(index) is not int or not 0 <= index < len(defaults):
+                    raise MethodMetadataError(
+                        "hybrid setter reads an invalid parameter index"
+                    )
+                env[name] = defaults[index]
+            else:
+                # Unknown reassignment must not retain a stale earlier value.
+                env[name] = _fraction_value(expression, definitions, env)
+            continue
+        assignment = re.fullmatch(
+            r"p->mix_coef\s*\[\s*(\d+)\s*\]\s*=\s*(.+)", statement, re.DOTALL
+        )
+        if assignment:
+            index = int(assignment[1])
+            if mix is None or index >= len(mix) or index in seen_mix:
                 raise MethodMetadataError("invalid or duplicate hybrid mix assignment")
-            mix[index] = _fraction_value(match[2], definitions, env)
-            seen.add(index)
-
-    for field in ("alpha", "beta", "omega"):
-        matches = list(re.finditer(rf"p->cam_{field}\s*=\s*([^;]+);", body))
-        if len(matches) > 1:
-            raise MethodMetadataError(
-                f"multiple cam_{field} assignments require control flow"
-            )
-        if matches:
-            value = _fraction_value(matches[0][1], definitions, env)
+            mix[index] = _fraction_value(assignment[2], definitions, env)
+            seen_mix.add(index)
+            continue
+        assignment = re.fullmatch(
+            r"p->cam_(alpha|beta|omega)\s*=\s*(.+)", statement, re.DOTALL
+        )
+        if assignment:
+            field = assignment[1]
+            if field in seen_cam:
+                raise MethodMetadataError("duplicate hybrid CAM assignment")
+            seen_cam.add(field)
+            value = _fraction_value(assignment[2], definitions, env)
             if field == "alpha":
                 alpha = value
             elif field == "beta":
                 beta = value
             else:
                 omega = value
-
-    if re.search(r"\bset_ext_params_cam\s*\(\s*p\s*,\s*ext_params\s*\)", body):
-        try:
-            alpha, beta, omega = (
-                by_name["_alpha"],
-                by_name["_beta"],
-                by_name["_omega"],
-            )
-        except KeyError as error:
-            raise MethodMetadataError(
-                "CAM setter lacks alpha/beta/omega parameters"
-            ) from error
+            continue
+        auxiliary = re.fullmatch(
+            r'xc_func_set_ext_params_name\s*\(\s*p->func_aux\[(\d+)\]\s*,\s*"_omega"\s*,\s*(.+)\)',
+            statement,
+            re.DOTALL,
+        )
+        if auxiliary:
+            if mix is None or int(auxiliary[1]) >= len(mix):
+                raise MethodMetadataError("invalid hybrid auxiliary parameter target")
+            auxiliary_omegas.append(_fraction_value(auxiliary[2], definitions, env))
+            continue
+        if re.fullmatch(
+            r"set_ext_params_cam\s*\(\s*p\s*,\s*ext_params\s*\)", statement
+        ):
+            try:
+                alpha, beta, omega = (
+                    by_name["_alpha"],
+                    by_name["_beta"],
+                    by_name["_omega"],
+                )
+            except KeyError as error:
+                raise MethodMetadataError(
+                    "CAM setter lacks alpha/beta/omega parameters"
+                ) from error
+            continue
+        raise MethodMetadataError(f"unsupported hybrid setter statement: {statement}")
+    if any(value != omega for value in auxiliary_omegas):
+        raise MethodMetadataError(
+            "auxiliary range parameter differs from the hybrid CAM omega"
+        )
     return mix, alpha, beta, omega
 
 

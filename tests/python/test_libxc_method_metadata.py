@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from fractions import Fraction
 from pathlib import Path
 
+import pytest
 from vibeqc_compiler.method import METHOD_CATALOG
 from vibeqc_compiler.method._generated_libxc_methods import (
     BLOCKED_LIBXC_METHODS,
@@ -99,3 +101,47 @@ def test_generated_libxc_method_module_is_fresh() -> None:
 
     generated, blocked = build_catalog()
     assert OUTPUT.read_text(encoding="utf-8") == render(generated, blocked)
+
+
+@pytest.mark.parametrize(
+    "expression", ("0.1234567890123456789012345", "1.234567890123456789e-37", "1e-400")
+)
+def test_fraction_parser_retains_decimal_source_digits(expression: str) -> None:
+    from tools.libxc_method_metadata import _fraction_value
+
+    assert _fraction_value(expression, {}) == Fraction(expression)
+
+
+@pytest.mark.parametrize(
+    "statement",
+    (
+        "if (p->nspin == 1) p->mix_coef[0] = 1.0 - a0 - ax;",
+        "for (int i=0; i<1; ++i) p->mix_coef[0] = 1.0 - a0 - ax;",
+        "return; p->mix_coef[0] = 1.0 - a0 - ax;",
+        "ax = unknown_scale(ax); p->mix_coef[0] = 1.0 - a0 - ax;",
+    ),
+)
+def test_metadata_rejects_uninterpreted_setter_semantics(statement: str) -> None:
+    text = (LIBXC / "hyb_gga_xc_b3lyp.c").read_text()
+    old = "p->mix_coef[0] = 1.0 - a0 - ax;"
+    assert old in text
+    changed = text.replace(old, statement)
+    row = next(
+        row
+        for row in extract_method_registrations(changed)
+        if row["registration"] == "HYB_GGA_XC_B3LYP"
+    )
+    assert row["status"] == "blocked"
+
+
+def test_metadata_applies_setter_assignments_in_source_order() -> None:
+    text = (LIBXC / "hyb_gga_xc_b3lyp.c").read_text()
+    old = "p->mix_coef[1] = ax;"
+    changed = text.replace(old, old + "\n  ax = 0.5;")
+    row = next(
+        row
+        for row in extract_method_registrations(changed)
+        if row["registration"] == "HYB_GGA_XC_B3LYP"
+    )
+    assert row["status"] == "generated"
+    assert row["components"][:2] == [["LDA_X", "2/25"], ["GGA_X_B88", "18/25"]]
