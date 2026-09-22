@@ -5,9 +5,11 @@ name: Python wheels
 # Linux runtime dependencies, and the installed-wheel test proves lazy provider
 # resolution through a CUDA-backed native call.
 on:
+  # Wheel construction is release/package qualification rather than a routine
+  # pull-request correctness gate. Master still builds every merged state, and
+  # any branch can be qualified explicitly with workflow_dispatch.
   push:
     branches: [master]
-  pull_request:
   workflow_dispatch:
 
 permissions:
