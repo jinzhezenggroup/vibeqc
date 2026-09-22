@@ -53,8 +53,9 @@ polarized E/vxc routines without altering their algebra, widens floating
 constants and elementary functions, and records the original source/probe
 hashes. Its adapter keeps the FP64 work-driver input floors and clipping,
 physical-density energy, and raw-work derivative convention. The fixture has
-47 points: nine zero-spin points and their neighboring majority floats, plus
-20 finite-minority points spanning 1e-16 to 1e-6. The CUDA gate also exchanges
+50 points: nine zero-spin points and their neighboring majority floats, plus
+20 finite-minority points spanning 1e-16 to 1e-6, and the three additional
+master H2 grid/adjacent-density points. The CUDA gate also exchanges
 spins. Regeneration needs only the pinned archive and GCC/libquadmath.
 
 A separate diagnostic widening the old VibeQC program agrees, but is not used
@@ -92,3 +93,18 @@ README benchmark publication remain outside this repair's qualification.
 
 This supersedes the rounded-boundary-reference assumption in
 [the earlier r²SCAN boundary decision](2026-09-22-r2scan-spin-boundary.md).
+
+## Integration with the subsequent master tail diagnostics
+
+Master #1065 adds three independent Libxc FP64 grid/one-ULP fixtures and
+a native same-device-feature diagnostic. Retain all three input points and
+their original double values in the wide-reference fixture. The initial PR
+merge CI appended their old rounded reference values to the new fixture and
+failed those six minority channels; regenerate their acceptance values from
+the same independent 113-bit original Libxc formulas. The unchanged host
+boundary gate passes all 50 points.
+
+The native same-input diagnostic is retained as an **additional** comparison.
+The stable coordinates also restore the complete independently computed
+CPU/GPU empty-spin potential comparison, for both exchanged spins. This
+supersedes the matching-input-only interpretation in the master rounding note.
