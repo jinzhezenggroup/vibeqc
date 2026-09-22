@@ -4,7 +4,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_gfn2_runtime_reuses_canonical_d4_tables() -> None:
-    runtime = ROOT / "src/xtb/gfn2_runtime"
+    runtime = ROOT / "src/xtb/native"
     d4_source = runtime / "src/model/gfn2/d4.cpp"
 
     assert not (runtime / "data/parameters/d4.hpp").exists()

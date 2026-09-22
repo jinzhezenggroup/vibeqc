@@ -22,7 +22,8 @@
 #include "scf/cuda/scf_density_kernels.hpp"
 #include "scf/cuda/scf_diis_kernels.hpp"
 #include "scf/cuda/scf_matrix_kernels.hpp"
-#include "scf/cuda_direct_jk_device.hpp"
+#include "scf/cuda_density_fitting_device.hpp"
+#include "scf/cuda_fock_execution.hpp"
 #include "scf/eigensolver_workspace.hpp"
 #include "scf/initial_guess/density.hpp"
 #include "scf/reference/mean_field.hpp"
@@ -141,7 +142,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
   const AoBasis& basis;
   const MolecularGrid& grid;
   scf::ScfOptions options;
-  scf::CudaDirectJkPlan* direct{};
+  scf::PreparedCudaFockBinding fock_binding{};
+  scf::CudaDensityFittingJkPlan* fitted{};
   cudaStream_t stream{};
   int device{};
   std::size_t n{}, matrix{}, elements{};
@@ -215,19 +217,23 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (functional > 2U) throw std::invalid_argument("unknown CUDA KS semilocal functional");
     const auto& strategy = provider.strategy();
     scf::validate_resolved_fock_build(strategy);
+    fock_binding = scf::prepared_cuda_fock_binding(provider);
+    fitted = provider.cuda_fitted_source();
     if (!owner || strategy.backend != scf::FockBackend::Cuda ||
         strategy.spec.derivative_order != 0 || !strategy.spec.coulomb.present ||
         strategy.spec.coulomb.coefficient != 1.0 ||
-        strategy.spec.coulomb.approximation != scf::FockApproximation::Exact ||
-        strategy.spec.exchange.present || !(direct = provider.cuda_direct_source()))
+        (strategy.spec.coulomb.approximation != scf::FockApproximation::Exact &&
+         strategy.spec.coulomb.approximation != scf::FockApproximation::DensityFitted) ||
+        strategy.spec.exchange.present || (!fock_binding && !fitted) || (fock_binding && fitted))
       throw std::invalid_argument(
-          "CUDA KS requires the prepared conventional Coulomb-only strategy");
+          "CUDA KS requires a prepared exact or fitted Coulomb-only strategy");
     if (options.compute_forces || options.hooks || options.export_physical_reference ||
         options.xc_density_route != XcDensityRoute::DensityMatrix ||
         (options.precision_mode && *options.precision_mode != VIBEQC_PRECISION_FP64 &&
          *options.precision_mode != VIBEQC_PRECISION_AUTO))
       throw std::invalid_argument("CUDA KS received an unsupported execution policy");
     mixed_j = options.precision_mode && *options.precision_mode == VIBEQC_PRECISION_AUTO;
+    if (mixed_j && fitted) throw std::invalid_argument("CUDA fitted KS requires strict FP64");
     if (mixed_j && functional > 1U)
       throw std::invalid_argument("r2SCAN currently requires strict FP64");
     if (!options.max_iterations || !std::isfinite(options.energy_tolerance) ||
@@ -259,8 +265,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
         !std::all_of(integrals.hcore.begin(), integrals.hcore.end(), finite))
       throw std::runtime_error("nonfinite CUDA KS one-electron or nuclear energy");
     history = std::max(1U, options.diis_history);
-    device = scf::cuda_direct_jk_device(direct);
-    stream = scf::cuda_direct_jk_stream(direct);
+    device = fitted ? scf::cuda_density_fitting_device(fitted) : fock_binding.device_id;
+    stream = fitted ? scf::cuda_density_fitting_stream(fitted) : fock_binding.stream;
     current_device();
     orthogonalizer = scf::reference::symmetric_orthogonalizer(provider.one_electron().overlap, n);
     cold_density = seed(nullptr);
@@ -390,7 +396,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     // bypassed by an opt-in two-iteration device chunk.
     device_chunk_mode =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused &&
-        !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
+        !fitted && !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
         configured_chunk_width() == kCudaKsChunkCapacity;
     try {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
@@ -434,7 +440,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
   }
 
   runtime::SolverRegionCudaBinding solver_region_binding() const {
-    return {{"cuda-ks-rks-solver-region-v1", device, stream, arena, direct},
+    return {{"cuda-ks-rks-solver-region-v1", device, stream, arena, fock_binding.source_identity},
             kCudaKsChunkCapacity,
             runtime::SolverRegionCompletionMode::Scalar,
             false};
@@ -460,8 +466,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (generation == std::numeric_limits<std::uint64_t>::max())
       throw std::overflow_error("CUDA KS density generation exhausted");
     std::string detail;
-    check(scf::enqueue_cuda_direct_jk_device(direct, provider.strategy().spec, density, nullptr,
-                                             matrix, j, nullptr, nullptr, jk_error, detail),
+    check(scf::enqueue_prepared_cuda_fock(provider, density, nullptr, matrix, j, nullptr, nullptr,
+                                          jk_error, false, detail),
           detail);
     xc->enqueue(density, elements, ++generation);
     pending_generations[slot] = generation;
@@ -665,14 +671,20 @@ struct CudaKsPlan::Impl : KsStateStorage {
     try {
       std::string detail;
       pending_mixed_j = mixed_j && !strict_refinement;
-      const auto jk_status = pending_mixed_j ? scf::enqueue_cuda_direct_jk_device_mixed_j(
-                                                   direct, provider.strategy().spec, density,
-                                                   spins == 2 ? density + matrix : nullptr, matrix,
-                                                   j, nullptr, nullptr, jk_error, detail)
-                                             : scf::enqueue_cuda_direct_jk_device(
-                                                   direct, provider.strategy().spec, density,
-                                                   spins == 2 ? density + matrix : nullptr, matrix,
-                                                   j, nullptr, nullptr, jk_error, detail);
+      // DF retains its qualified resident adapter until the prepared execution
+      // seam supports fitted providers. Both routes use their owner's stream;
+      // the exact route never exposes its concrete Direct-J/K handle here.
+      if (fitted) check(cudaMemsetAsync(jk_error, 0, sizeof(*jk_error), stream));
+      const auto jk_status =
+          fitted ? (spins == 2 ? scf::execute_cuda_density_fitting_uhf_jk_device(
+                                     fitted, density, density + matrix, j, nullptr, nullptr, detail,
+                                     {true, false}, scf::FockMatrixLayout::RowMajor)
+                               : scf::execute_cuda_density_fitting_rhf_jk_device(
+                                     fitted, density, j, nullptr, detail, {true, false},
+                                     scf::FockMatrixLayout::RowMajor))
+                 : scf::enqueue_prepared_cuda_fock(
+                       provider, density, spins == 2 ? density + matrix : nullptr, matrix, j,
+                       nullptr, nullptr, jk_error, pending_mixed_j, detail);
       check(jk_status, detail);
       mixed_j_executed = mixed_j_executed || pending_mixed_j;
       const auto potential = stage_xc(++generation);
@@ -697,9 +709,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                             residual);
       check(cudaGetLastError());
       if (final_closure) {
-        // The public derivative state is validated against the unshifted
-        // physical F[D], not the preceding DIIS/stabilized proposal. During
-        // bounded final closure, diagonalize exactly that physical operator.
+        // Discard DIIS history and rebuild the closure proposal from F[D].
+        // A stationary UKS occupation cycle still needs its virtual-space
+        // shift, as on CPU. Export separately validates the unshifted F[D].
         check(cudaMemcpyAsync(effective, fock, elements * sizeof(double), cudaMemcpyDeviceToDevice,
                               stream));
       } else {
@@ -837,13 +849,13 @@ struct CudaKsPlan::Impl : KsStateStorage {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
       check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
     } else if (strict_final_closure && converged && !final_closure) {
-      // A DIIS proposal can satisfy the ordinary SCF density-change gate while
-      // the canonical density of the unshifted physical Fock is microscopically
-      // outside the derivative-state tolerance. UKS already requires this closure;
-      // ECP RKS needs the same physical fixed point for strict derivative snapshots.
+      // A DIIS proposal can satisfy the SCF gate before a fresh F[D] proposal
+      // does. Preserve any established UKS occupation stabilization through
+      // this bounded correction, just as CPU UKS does; clearing it restarts
+      // the stationary occupation cycle. Physical energy/residual gates and
+      // the separate unshifted final-state export validator stay unchanged.
       final_closure = true;
       final_corrections = 0;
-      stabilize_occupations = false;
       output.converged = false;
       is_active = true;
     } else if (final_closure) {

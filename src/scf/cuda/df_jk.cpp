@@ -12,9 +12,18 @@
 #include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
+#include "scf/cuda_density_fitting_device.hpp"
 
 namespace vibeqc::scf {
 using namespace cuda_df;
+
+cudaStream_t cuda_density_fitting_stream(const CudaDensityFittingJkPlan* plan) {
+  if (!plan) throw std::invalid_argument("null CUDA DF stream source");
+  return plan->stream;
+}
+int cuda_density_fitting_device(const CudaDensityFittingJkPlan* plan) noexcept {
+  return plan ? plan->device_id : -1;
+}
 
 // Host/item/device adapters share the same J/K builders and term selection.
 namespace {

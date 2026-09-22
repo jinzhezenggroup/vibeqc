@@ -17,7 +17,12 @@ WATER = [("O", (0, 0, 0)), ("H", (0, -1.43, 1.11)), ("H", (0, 1.43, 1.11))]
 
 
 def reference_energy(
-    calculator: Calculator, atoms: typing.Any, charge: int, multiplicity: int
+    calculator: Calculator,
+    atoms: typing.Any,
+    charge: int,
+    multiplicity: int,
+    *,
+    xc: str,
 ) -> float:
     """Independent PySCF oracle with exact primitive input and native quadrature."""
     from pyscf import dft, gto
@@ -47,7 +52,7 @@ def reference_energy(
         owned, spec=calculator.ks_options.grid, charge=charge, multiplicity=multiplicity
     ).explicit()
     mf = dft.RKS(mol) if multiplicity == 1 else dft.UKS(mol)
-    mf.xc = "PBE"
+    mf.xc = xc
     mf.grids.coords, mf.grids.weights = np.array(grid.points), np.array(grid.weights)
     mf.small_rho_cutoff = 0
     mf.conv_tol, mf.conv_tol_grad, mf.max_cycle = 1e-12, 1e-9, 150
@@ -56,14 +61,16 @@ def reference_energy(
     return mf.e_tot
 
 
+@pytest.mark.parametrize("family", ("pbe", "r2scan"))
 @pytest.mark.parametrize("unrestricted", (False, True))
 def test_large_ks_solver_energy_replay_geometry_and_final_state(
     unrestricted: bool,
+    family: str,
 ) -> None:
     """Exercise both spin slots, explicit energy selection and a charged owner."""
     charge, multiplicity = (1, 2) if unrestricted else (0, 1)
     kwargs = {
-        "method": "pbe-uks" if unrestricted else "pbe-rks",
+        "method": f"{family}-uks" if unrestricted else f"{family}-rks",
         "basis": "def2-svp",
         "basis_representation": "spherical",
         "device": "cuda",
@@ -81,7 +88,7 @@ def test_large_ks_solver_energy_replay_geometry_and_final_state(
             host_bytes=plan.peak_bytes["host"], device_bytes=plan.peak_bytes["device"]
         ),
     )
-    expected = reference_energy(calculator, WATER, charge, multiplicity)
+    expected = reference_energy(calculator, WATER, charge, multiplicity, xc=family)
     with calculator.prepare_batch(
         [WATER], charges=[charge], multiplicities=[multiplicity]
     ) as batch:
@@ -114,5 +121,7 @@ def test_large_ks_solver_energy_replay_geometry_and_final_state(
             [np.array([xyz for _, xyz in moved])], properties=("energy",), strict=True
         ).items[0]
         assert result.energy == pytest.approx(
-            reference_energy(calculator, moved, charge, multiplicity), abs=1e-8, rel=0
+            reference_energy(calculator, moved, charge, multiplicity, xc=family),
+            abs=1e-8,
+            rel=0,
         )

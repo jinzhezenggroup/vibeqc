@@ -1,0 +1,7 @@
+{
+  "path": "src/xtb/native/src/model/gfn2/occupation_binary64_policy.hpp",
+  "reason": "Pinned transitional GFN2 source for backend-identical binary64 finite-temperature occupation, root and publication arithmetic. It is shared CPU/CUDA scientific policy even though #692 admits only the CPU GFN2 endpoint.",
+  "regions": [],
+  "role": "scientific",
+  "subsystem": "gfn2"
+}
