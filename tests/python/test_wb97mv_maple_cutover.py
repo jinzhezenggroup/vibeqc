@@ -5,7 +5,7 @@ import typing
 import numpy as np
 import pytest
 from vibeqc_compiler.method import resolve_method
-from vibeqc_compiler.xc import program
+from vibeqc_compiler.xc import expression_dispatch
 from vibeqc_compiler.xc.program import build_program
 from vibeqc_compiler.xc.wb97mv_maple import wb97mv_maple_provenance
 
@@ -53,14 +53,14 @@ def test_program_dispatch_calls_wb97mv_maple_adapter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     called = False
-    original = program.wb97mv_energy_expression
+    original = expression_dispatch.wb97mv_energy_expression
 
     def replacement(spec: typing.Any) -> typing.Any:
         nonlocal called
         called = True
         return original(spec)
 
-    monkeypatch.setattr(program, "wb97mv_energy_expression", replacement)
+    monkeypatch.setattr(expression_dispatch, "wb97mv_energy_expression", replacement)
     build_program(_spec("unpolarized"), order=0)
     assert called
 
