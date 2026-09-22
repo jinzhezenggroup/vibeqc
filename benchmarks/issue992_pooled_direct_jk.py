@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import statistics
 import time
@@ -69,8 +70,14 @@ def main() -> None:
                 replay = batch.execute(strict=True, properties=("energy",))
                 cp.cuda.Stream.null.synchronize()
                 samples.append(time.perf_counter() - started)
+                if len(replay.items) != batch_size:
+                    raise RuntimeError("replayed batch item count differs from request")
+                if any(not item.converged for item in replay.items):
+                    raise RuntimeError("replayed batch did not converge")
                 iterations.append([item.iterations for item in replay.items])
                 energies = [float(item.energy) for item in replay.items]
+                if not all(math.isfinite(energy) for energy in energies):
+                    raise RuntimeError("replayed batch energies must be finite")
                 spread = max(energies) - min(energies)
                 if spread > 2.0e-10:
                     raise RuntimeError(f"pooled batch energy spread {spread:.3e} Eh")
