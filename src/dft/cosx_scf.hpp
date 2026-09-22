@@ -8,11 +8,11 @@
 
 namespace vibeqc::dft {
 
-/** Energy-only host-controlled RHF using the prepared RI-J/COSX-K provider. */
+/** Host-controlled RHF using the prepared RI-J/COSX-K value/force provider. */
 scf::ScfResult run_cosx_rhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& options,
                             const std::vector<double>* initial_density = nullptr);
 
-/** Energy-only host-controlled UHF using independent alpha/beta COSX exchange. */
+/** Host-controlled UHF using independent alpha/beta COSX value/force exchange. */
 scf::ScfResult run_cosx_uhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& options,
                             const std::vector<double>* initial_density = nullptr);
 

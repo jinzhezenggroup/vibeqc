@@ -440,7 +440,7 @@ void verify_cosx_provider_semantics() {
       fock_provider_registration(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
   const auto& capability = registration.domain.capabilities;
   require(capability.restricted && capability.unrestricted && capability.full_range &&
-              capability.maximum_derivative_order == 0 &&
+              capability.maximum_derivative_order == 1 &&
               capability.maximum_angular_momentum == 3 && capability.cartesian &&
               capability.spherical && !capability.batching && !capability.coulomb &&
               capability.exchange && capability.independent_terms &&
@@ -453,7 +453,7 @@ void verify_cosx_provider_semantics() {
   const auto executable =
       fock_provider_capabilities(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
   require(executable.available && executable.exchange && !executable.coulomb &&
-              executable.maximum_derivative_order == 0,
+              executable.maximum_derivative_order == 1,
           "executable COSX capability query differs from its registration");
 #else
   require(!vibeqc::runtime::provider_executable(registration),
