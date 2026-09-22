@@ -227,7 +227,7 @@ def test_pbe0_named_selector_resolves_common_methodir_composition(
     assert options.method_ir.identifier == "PBE0"
     assert options.method_ir.spin == spin
     assert options.coefficients == coefficients
-    assert options.requires_composition_v2
+    assert options.has_nondefault_composition
     assert len(options.method_ir.primitives) == 2
 
 
@@ -345,122 +345,61 @@ def test_unqualified_hybrid_default_grid_fails_closed(method: str) -> None:
         resolve_ks_options(method)
 
 
-def test_ks_options_v2_suffix_preserves_v1_prefix_and_pbe0_coefficients() -> None:
-    from vibeqc import _native
-
-    pure = resolve_ks_options("pbe-rks")
-    hybrid = resolve_ks_options("pbe0-rks", KsOptions(grid=CUSTOM))
-    old = native_ks_options(pure, version=1)
-    new = native_ks_options(hybrid, version=2)
-    assert old.struct_size == _native.KsOptionsDescriptor.composition_version.offset
-    assert new.struct_size > old.struct_size
-    assert new.composition_version == 1
-    assert (
-        new.semilocal_exchange_scale,
-        new.semilocal_correlation_scale,
-        new.fock_exchange_coefficient,
-    ) == (0.75, 1.0, -0.125)
-    with pytest.raises(NotImplementedError, match="cannot serialize composition"):
-        native_ks_options(hybrid, version=1)
-
-
-def test_ks_options_v3_schedule_suffix_preserves_older_prefixes() -> None:
-    from vibeqc import _native
-
-    fused = resolve_ks_options("pbe-rks")
-    unfused = resolve_ks_options("pbe-rks", KsOptions(xc_schedule="host_unfused"))
-    v1 = native_ks_options(fused, version=1)
-    v2 = native_ks_options(fused, version=2)
-    v3 = native_ks_options(unfused, version=3)
-
-    assert v1.struct_size == _native.KsOptionsDescriptor.composition_version.offset
-    assert v2.struct_size == _native.KsOptionsDescriptor.xc_execution_schedule.offset
-    assert v3.struct_size > v2.struct_size
-    assert v3.xc_execution_schedule == _native.XC_EXECUTION_HOST_UNFUSED
-    assert fused.identity != unfused.identity
-    assert fused.to_payload()["xc_schedule"] == "device_fused"
-    assert unfused.to_payload()["xc_schedule"] == "host_unfused"
-    for version in (1, 2):
-        with pytest.raises(NotImplementedError, match="cannot serialize execution"):
-            native_ks_options(unfused, version=version)
-    with pytest.raises(ValueError, match="XC schedule"):
-        KsOptions(xc_schedule="unknown")
-
-
-def test_ks_options_v4_preserves_v1_v2_v3_prefixes_and_methodir_plan() -> None:
+def test_semantic_ks_abi_lowers_pbe0_primitives_directly() -> None:
     import ctypes
 
     from vibeqc import _native
 
-    pure = resolve_ks_options("pbe-rks")
-    hybrid = resolve_ks_options("pbe0-rks", KsOptions(grid=CUSTOM))
-    old = native_ks_options(pure, version=1)
-    legacy_composition = native_ks_options(hybrid, version=2)
-    new = native_ks_options(hybrid, version=4)
-    assert old.struct_size == _native.KsOptionsDescriptor.composition_version.offset
-    assert (
-        legacy_composition.struct_size
-        == _native.KsOptionsDescriptor.xc_execution_schedule.offset
-    )
-    legacy_schedule = native_ks_options(hybrid, version=3)
-    assert (
-        legacy_schedule.struct_size
-        == _native.KsOptionsDescriptor.execution_plan_version.offset
-    )
-    assert legacy_schedule.execution_plan_version == 0
-
-    class LegacyKsOptionsV3(ctypes.Structure):
-        _fields_ = _native.KsOptionsDescriptor._fields_[
-            : next(
-                i
-                for i, (name, _) in enumerate(_native.KsOptionsDescriptor._fields_)
-                if name == "reserved_v3_padding"
-            )
-        ]
-
-    assert ctypes.sizeof(LegacyKsOptionsV3) == legacy_schedule.struct_size
-    for name, _ in LegacyKsOptionsV3._fields_:
-        assert (
-            getattr(LegacyKsOptionsV3, name).offset
-            == getattr(_native.KsOptionsDescriptor, name).offset
+    native = native_ks_options(resolve_ks_options("pbe0-rks", KsOptions(grid=CUSTOM)))
+    assert native.struct_size == ctypes.sizeof(_native.KsOptionsDescriptor)
+    assert native.spin_channels == 1
+    assert [
+        (
+            native.semilocal_components[i].component_id.decode(),
+            native.semilocal_components[i].coefficient,
         )
-    assert (
-        new.struct_size
-        == _native.KsOptionsDescriptor.nonlocal_correlation_version.offset
+        for i in range(native.semilocal_component_count)
+    ] == [("GGA_C_PBE", 1.0), ("GGA_X_PBE", 0.75)]
+    assert native.exchange_term_count == 1
+    term = native.exchange_terms[0]
+    assert term.operator_kind == _native.KS_EXCHANGE_FULL_RANGE
+    assert (term.coefficient, term.omega, term.fock_coefficient) == pytest.approx(
+        (0.25, 0.0, -0.125)
     )
-    current = native_ks_options(hybrid, version=5)
-    assert current.struct_size == ctypes.sizeof(_native.KsOptionsDescriptor)
-    assert current.nonlocal_correlation_version == 0
-    assert new.composition_version == 1
+
+
+def test_semantic_ks_abi_carries_schedule_without_suffix_versions() -> None:
+    from vibeqc import _native
+
+    fused = resolve_ks_options("pbe-rks")
+    unfused = resolve_ks_options("pbe-rks", KsOptions(xc_schedule="host_unfused"))
     assert (
-        new.semilocal_exchange_scale,
-        new.semilocal_correlation_scale,
-        new.fock_exchange_coefficient,
-    ) == (0.75, 1.0, -0.125)
+        native_ks_options(fused).xc_execution_schedule
+        == _native.XC_EXECUTION_DEVICE_FUSED
+    )
     assert (
-        new.execution_plan_version,
-        new.spin_channels,
-        new.semilocal_family,
-    ) == (1, 1, 1)
+        native_ks_options(unfused).xc_execution_schedule
+        == _native.XC_EXECUTION_HOST_UNFUSED
+    )
+    assert fused.identity != unfused.identity
 
 
 @pytest.mark.parametrize(
-    "method, options, expected",
+    "method,options,spin",
     (
-        ("lda-rks", None, (1, 0)),
-        ("pbe-uks", None, (2, 1)),
-        ("pbe-d4-rks", None, (1, 1)),
-        ("pbe0-uks", KsOptions(grid=CUSTOM), (2, 1)),
-        ("r2scan-rks", None, (1, 2)),
+        ("lda-rks", None, 1),
+        ("pbe-uks", None, 2),
+        ("pbe-d4-rks", None, 1),
+        ("pbe0-uks", KsOptions(grid=CUSTOM), 2),
+        ("r2scan-rks", None, 1),
     ),
 )
-def test_native_v4_execution_selector_is_derived_from_methodir(
-    method: str, options: KsOptions | None, expected: tuple[int, int]
+def test_native_semantic_plan_is_derived_from_methodir(
+    method: str, options: KsOptions | None, spin: int
 ) -> None:
-    resolved = resolve_ks_options(method, options)
-    native = native_ks_options(resolved, version=4)
-    assert native.execution_plan_version == 1
-    assert (native.spin_channels, native.semilocal_family) == expected
+    native = native_ks_options(resolve_ks_options(method, options))
+    assert native.spin_channels == spin
+    assert native.semilocal_component_count > 0
 
 
 def test_custom_model_changes_plan_identity_without_materializing_grid(
@@ -575,37 +514,32 @@ def test_custom_native_grid_matches_independent_scf_and_budget(
             batch.execute(strict=True)
 
 
-def test_older_native_library_cannot_claim_pbe0_without_composition_v2(
-    monkeypatch: typing.Any,
-) -> None:
+def test_noncurrent_native_ks_schema_is_rejected(monkeypatch: typing.Any) -> None:
     from vibeqc import _native
 
     library = _native.load_library(device="cpu")
 
-    class VersionOne:
+    class OldSchema:
         argtypes = None
         restype = None
 
         def __call__(self) -> typing.Any:
-            return 1
+            return 6
 
-    monkeypatch.setattr(library, "vibeqc_ks_options_version", VersionOne())
+    monkeypatch.setattr(library, "vibeqc_ks_options_version", OldSchema())
     monkeypatch.setattr(_native, "load_library", lambda **kwargs: library)
-    with pytest.raises(NotImplementedError, match="composition options v2"):
+    with pytest.raises(NotImplementedError, match="semantic KS execution-plan ABI"):
         Calculator(method="pbe0-rks", ks_options=KsOptions(grid=CUSTOM))
 
 
-def test_older_native_library_cannot_silently_ignore_custom_options(
-    monkeypatch: typing.Any,
-) -> None:
+def test_missing_native_ks_schema_is_rejected(monkeypatch: typing.Any) -> None:
     from vibeqc import _native
 
     library = _native.load_library(device="cpu")
     monkeypatch.setattr(library, "vibeqc_ks_options_version", None)
     monkeypatch.setattr(_native, "load_library", lambda **kwargs: library)
-    with pytest.raises(NotImplementedError, match="model options"):
+    with pytest.raises(NotImplementedError, match="semantic KS execution-plan ABI"):
         Calculator(method="pbe-rks", ks_options=KsOptions(grid=CUSTOM))
-    assert Calculator(method="pbe-rks").singlepoint(H2).converged
 
 
 @pytest.mark.parametrize(
@@ -634,7 +568,7 @@ def test_resolved_ks_options_preserve_catalog_identity(method: str) -> None:
 def test_named_hybrid_resource_planning_preserves_explicit_grid(method: str) -> None:
     options = KsOptions(grid=CUSTOM, tile_points=31)
     resolved = resolve_ks_options(method, options)
-    assert resolved.requires_composition_v2
+    assert resolved.has_nondefault_composition
     assert (
         estimate_ks_resources([H2], method=method, ks_options=options).identity
         == estimate_ks_resources([H2], method=method, ks_options=resolved).identity
@@ -673,10 +607,12 @@ def test_budgeted_custom_hybrid_preserves_resolved_methodir(spin: str) -> None:
     assert budgeted.energy == pytest.approx(ordinary.energy, abs=2e-12)
 
 
-def test_native_v5_serializes_nonlocal_primitive_without_named_method_branch() -> None:
+def test_semantic_abi_serializes_nonlocal_primitive_without_named_method_branch() -> (
+    None
+):
     graph = resolve_method(
         MethodSpec(
-            "PBE+VV10-v5",
+            "PBE+VV10",
             (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
             nonlocal_correlation=original_nonlocal_correlation("vv10"),
         ),
@@ -691,13 +627,51 @@ def test_native_v5_serializes_nonlocal_primitive_without_named_method_branch() -
             nonlocal_memory_budget_bytes=1 << 20,
         ),
     )
-    assert options.requires_nonlocal_v5
-    with pytest.raises(NotImplementedError, match="nonlocal correlation v5"):
-        native_ks_options(options, version=4)
-    native = native_ks_options(options, version=5)
-    assert native.nonlocal_correlation_version == 1
-    assert native.nonlocal_variant == 1
-    assert native.nonlocal_b == pytest.approx(5.9)
-    assert native.nonlocal_c == pytest.approx(0.0093)
-    assert native.nonlocal_coefficient == pytest.approx(1.0)
-    assert native.nonlocal_maximum_bytes == 1 << 20
+    native = native_ks_options(options)
+    assert native.has_nonlocal_correlation == 1
+    assert (
+        native.nonlocal_variant,
+        native.nonlocal_b,
+        native.nonlocal_c,
+        native.nonlocal_coefficient,
+    ) == pytest.approx((1, 5.9, 0.0093, 1.0))
+
+
+def test_semantic_abi_serializes_range_exchange_without_named_method_branch() -> None:
+    from vibeqc import _native
+
+    graph = resolve_method(
+        MethodSpec(
+            "PBE-RSH",
+            (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+            short_range_exchange=Fraction(1, 5),
+            long_range_exchange=Fraction(4, 5),
+            range_omega=Fraction(3, 10),
+        ),
+        spin="unpolarized",
+    )
+    options = resolve_ks_options(
+        "pbe-rks",
+        KsOptions(
+            composition=graph,
+            grid=GridSpec(radial_points=3, angular_polar=2, angular_azimuth=4),
+            tile_points=16,
+        ),
+    )
+    native = native_ks_options(options)
+    assert native.exchange_term_count == 2
+    terms = {
+        native.exchange_terms[i].operator_kind: native.exchange_terms[i]
+        for i in range(native.exchange_term_count)
+    }
+    short = terms[_native.KS_EXCHANGE_SHORT_RANGE]
+    long = terms[_native.KS_EXCHANGE_LONG_RANGE]
+    assert (
+        short.coefficient,
+        long.coefficient,
+        short.omega,
+        long.omega,
+    ) == pytest.approx((0.2, 0.8, 0.3, 0.3))
+    assert (short.fock_coefficient, long.fock_coefficient) == pytest.approx(
+        (-0.1, -0.4)
+    )

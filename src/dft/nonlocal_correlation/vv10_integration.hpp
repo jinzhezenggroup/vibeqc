@@ -12,6 +12,10 @@ class MolecularGrid;
 namespace nlc {
 class Vv10Plan;
 
+/** StrictPositive preserves the raw fixed-grid contract. MolecularV1 removes
+ * rho < 1e-8 from BOTH pair domains; it never floors an active density. */
+enum class Vv10DensityDomain : unsigned { StrictPositive = 0, MolecularV1 = 1 };
+
 struct Vv10Integral {
   double energy{};
   std::vector<double> potential;
@@ -31,12 +35,14 @@ struct SpinVv10Integral {
  * owns total-density AO features and the weak-form vrho/vsigma contraction. */
 Vv10Integral integrate_vv10_rks(const AoBasis& basis, const MolecularGrid& grid,
                                 const std::vector<double>& density, Vv10Plan& plan,
-                                std::size_t tile_points = 256, XcDensitySource source = {});
+                                std::size_t tile_points = 256, XcDensitySource source = {},
+                                Vv10DensityDomain domain = Vv10DensityDomain::StrictPositive);
 
 SpinVv10Integral integrate_vv10_uks(const AoBasis& basis, const MolecularGrid& grid,
                                     const std::vector<double>& alpha_density,
                                     const std::vector<double>& beta_density, Vv10Plan& plan,
-                                    std::size_t tile_points = 256);
+                                    std::size_t tile_points = 256,
+                                    Vv10DensityDomain domain = Vv10DensityDomain::StrictPositive);
 
 }  // namespace nlc
 }  // namespace vibeqc::dft

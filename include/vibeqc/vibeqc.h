@@ -599,16 +599,43 @@ typedef struct vibeqc_system_descriptor {
   vibeqc_basis_representation basis_representation;
 } vibeqc_system_descriptor;
 
-/** Native KS model snapshot, copied during preparation. Suffixes supply resolved
- * composition (v2), XC execution schedule (v3), compiler-resolved spin/family
- * identity (v4), and optional nonlocal-correlation primitive parameters (v5).
- * Legacy v1/v2/v3/v4 callers retain method-selector compatibility projection;
- * v1/v2 retain device-fused CUDA XC. */
+/** One semilocal XC component from the compiler-owned KS execution plan. */
+typedef struct vibeqc_ks_semilocal_component {
+  /** Stable compiler component identifier such as GGA_X_PBE. */
+  const char* component_id;
+  /** Physical coefficient carried by MethodIR. */
+  double coefficient;
+} vibeqc_ks_semilocal_component;
+
+/** Exact-exchange operator carried by one KS execution-plan contribution. */
+typedef int32_t vibeqc_ks_exchange_operator;
+enum {
+  VIBEQC_KS_EXCHANGE_FULL_RANGE = 1,
+  VIBEQC_KS_EXCHANGE_SHORT_RANGE = 2,
+  VIBEQC_KS_EXCHANGE_LONG_RANGE = 3,
+};
+
+typedef struct vibeqc_ks_exchange_term {
+  vibeqc_ks_exchange_operator operator_kind;
+  /** Physical exact-exchange fraction. */
+  double coefficient;
+  /** Range parameter in bohr^-1; zero for full-range exchange. */
+  double omega;
+  /** Spin-convention-resolved coefficient applied to the native K build. */
+  double fock_coefficient;
+} vibeqc_ks_exchange_term;
+
+/** Current compiler-to-native KS execution plan.
+ *
+ * This is intentionally a breaking, single-layout ABI: MethodIR is lowered once
+ * into semantic primitive arrays instead of accumulating method-specific v2/v3/...
+ * suffixes. Native preparation copies every pointee before returning.
+ */
 typedef struct vibeqc_ks_options {
   uint32_t struct_size;
   uint32_t abi_version;
-  /** Version 1: semilocal-scaled-v1/pbe-spin-c2-1e-18. */
-  uint32_t scf_domain_version;
+  /** Exact compiler-owned numerical-domain identity. */
+  const char* scf_domain;
   /** Grid contract version. Version 1 is the deterministic reference
    * prescription with unit-radius fallback. Version 2 is a fully resolved
    * production prescription with sourced element radii. */
@@ -619,38 +646,20 @@ typedef struct vibeqc_ks_options {
   uint32_t partition_iterations;
   double coincident_tolerance;
   uint64_t tile_points;
-  /** Radii [0..118] in Bohr, indexed by atomic number; slot zero is unused.
-   * Version 1 accepts NULL/zero as the historical unit-radius fallback.
-   * Version 2 requires a positive finite entry for every element actually
-   * materialized; zero/missing entries fail closed. */
+  /** Radii [0..118] in Bohr, indexed by atomic number; slot zero is unused. */
   const double* element_radii;
   uint32_t element_radius_count;
-  uint32_t reserved_v1_padding;
-  /** Optional v2 suffix: 0 retains legacy defaults; 1 uses the coefficients
-   * below. Scaled composition is CPU PBE-family only. Full-range exact J has cJ=1.
-   * PBE0 is X=3/4, C=1, cK=-1/8 (RKS total D) or -1/4 (UKS spin D).
-   * Values are supplied by resolved MethodIR, never inferred from a name. */
-  uint32_t composition_version;
-  double semilocal_exchange_scale;
-  double semilocal_correlation_scale;
-  double fock_exchange_coefficient;
-  /** Optional v3 suffix. Older prefixes use DEVICE_FUSED. */
   vibeqc_xc_execution_schedule xc_execution_schedule;
-  /** Preserve the complete v3 prefix, including its trailing alignment padding. */
-  uint32_t reserved_v3_padding;
-  /** Optional v4 suffix: compiler-resolved execution identity. Version 1
-   * means the fields below are authoritative for scientific dispatch.
-   * spin_channels is 1 for RKS and 2 for UKS. semilocal_family is the
-   * primitive-family selector: 0=LDA, 1=PBE, 2=r2SCAN, 3=B3LYP (CPU only). */
-  uint32_t execution_plan_version;
+  /** 1 for RKS and 2 for UKS, copied directly from MethodIR. */
   uint32_t spin_channels;
-  uint32_t semilocal_family;
-  uint32_t reserved_v4_padding;
-  /** Optional v5 suffix: one MethodIR NonlocalCorrelation contribution.
-   * Version 0 means absent; version 1 makes the fields below authoritative.
-   * This is a scientific primitive description, not a named-method selector.
-   * maximum_bytes bounds the retained/native pair-provider workspace. */
-  uint32_t nonlocal_correlation_version;
+  const vibeqc_ks_semilocal_component* semilocal_components;
+  uint32_t semilocal_component_count;
+  /** Semilocal range parameter in bohr^-1, or zero when absent. */
+  double semilocal_range_omega;
+  const vibeqc_ks_exchange_term* exchange_terms;
+  uint32_t exchange_term_count;
+  /** 0/1 optional MethodIR NonlocalCorrelation contribution. */
+  uint32_t has_nonlocal_correlation;
   vibeqc_nonlocal_variant nonlocal_variant;
   double nonlocal_b;
   double nonlocal_c;
@@ -658,7 +667,7 @@ typedef struct vibeqc_ks_options {
   uint64_t nonlocal_maximum_bytes;
 } vibeqc_ks_options;
 
-/** Pure capability query. Version 5 accepts the v1/v2/v3/v4 prefixes and v5 suffix. */
+/** Current KS execution-plan ABI schema. No legacy prefix layouts are accepted. */
 VIBEQC_API uint32_t vibeqc_ks_options_version(void);
 
 typedef struct vibeqc_method_descriptor {
