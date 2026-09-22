@@ -633,8 +633,7 @@ def main() -> None:
         "--allow-portable-build",
         action="store_true",
         help=(
-            "explicitly allow a generic/portable VibeQC build for "
-            "baseline measurements"
+            "explicitly allow a generic/portable VibeQC build for baseline measurements"
         ),
     )
     parser.add_argument(
@@ -796,9 +795,7 @@ def main() -> None:
     # Journal before preparation/SCF: an unsupported cold route may fail before
     # a result JSON exists, but its compiled capability must remain reviewable.
     progress("native_build", **native_build)
-    require_tuned_native_build(
-        native_build, allow_portable=args.allow_portable_build
-    )
+    require_tuned_native_build(native_build, allow_portable=args.allow_portable_build)
     vibeqc_samples: list[dict[str, Any]] = []
     gpu_samples: list[dict[str, Any]] = []
     eigensolver_diagnostics: list[dict[str, object]] = []
