@@ -14,8 +14,17 @@ from vibeqc_compiler.common.gpu_profitability import GpuProfitability
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.schedule import (
     ScheduleContract,
+    ScheduleResourceLimits,
     ScheduleResources,
     ScheduleTopology,
+    rank_schedule_contracts,
+    schedule_resource_rejections,
+)
+from vibeqc_compiler.common.storage import (
+    BufferOp,
+    BufferValue,
+    MemoryEffect,
+    analyze_storage,
 )
 
 
@@ -278,6 +287,15 @@ class GridXcCandidateLimits:
         ):
             raise ValueError("grid/XC candidate limits must be positive integers")
 
+    def shared(self) -> ScheduleResourceLimits:
+        """Project DFT-owned target bounds into the shared schedule contract."""
+
+        return ScheduleResourceLimits(
+            maximum_device_bytes=self.device_bytes,
+            maximum_peak_live_values=self.live_values,
+            maximum_source_bytes=self.source_bytes,
+        )
+
 
 @dataclass(frozen=True)
 class GridXcCandidateAssessment:
@@ -301,20 +319,105 @@ class GridXcCandidateAssessment:
         }
 
 
-def _live_values(schedule: GridXcExecutionSchedule, shape: GridXcCandidateShape) -> int:
-    """Conservative per-tile live-range model, not a PTXAS register prediction."""
+def _storage_pressure(
+    schedule: GridXcExecutionSchedule,
+    shape: GridXcCandidateShape,
+) -> tuple[int, dict[str, int]]:
+    """Lower DFT stage lifetimes into the shared #831 storage analysis.
+
+    The graph describes only compiler-visible per-tile intermediates.  It is a
+    schedule-comparison model, not a replacement for the runtime resource plan or
+    a PTXAS register estimate.  The host-staged path deliberately materializes
+    the copied jets/features as distinct host owners so residency costs remain
+    visible to the shared optimizer.
+    """
 
     points = min(shape.npoint, shape.tile_points)
-    ao_jets = points * shape.max_active_ao * shape.jet_components
-    density_panel = shape.spins * points * shape.max_active_ao
-    features = shape.spins * points * (1 + 3 + 3 + 1)
-    local_vxc = shape.spins * shape.max_active_ao * shape.max_active_ao
+    scalar_bytes = 8
+    ao_bytes = scalar_bytes * points * shape.max_active_ao * shape.jet_components
+    density_bytes = scalar_bytes * shape.spins * points * shape.max_active_ao
+    feature_bytes = scalar_bytes * shape.spins * points * (1 + 3 + 3 + 1)
+    vxc_bytes = scalar_bytes * shape.spins * shape.max_active_ao * shape.max_active_ao
+    # The source is a dependency token here, not another estimate of the full
+    # density owner; PreparedXCContractions already accounts for that storage.
+    seed = BufferValue("density_source", 0, "device", compiler_owned=False)
     if schedule.name == "device_fused":
-        # AO jets, D*AO/features and local Vxc overlap on the device path.
-        return ao_jets + density_panel + features + local_vxc
-    # The staged path downloads AO/features before generated host XC/Vxc work;
-    # charge the extra host-visible copy so reuse is not treated as free.
-    return 2 * ao_jets + density_panel + 2 * features + local_vxc
+        values = (
+            seed,
+            BufferValue("ao_jets_device", ao_bytes, "device"),
+            BufferValue("density_panel_device", density_bytes, "device"),
+            BufferValue("features_device", feature_bytes, "device"),
+            BufferValue("vxc_device", vxc_bytes, "device"),
+        )
+        operations = (
+            BufferOp(
+                "collocate",
+                ("density_source",),
+                ("ao_jets_device",),
+                MemoryEffect.EXPLICIT,
+            ),
+            BufferOp(
+                "features",
+                ("density_source", "ao_jets_device"),
+                ("density_panel_device", "features_device"),
+                MemoryEffect.EXPLICIT,
+            ),
+            BufferOp(
+                "xc_vxc",
+                ("ao_jets_device", "density_panel_device", "features_device"),
+                ("vxc_device",),
+                MemoryEffect.EXPLICIT,
+            ),
+        )
+        outputs = ("vxc_device",)
+    else:
+        values = (
+            seed,
+            BufferValue("ao_jets_device", ao_bytes, "device"),
+            BufferValue("density_panel_device", density_bytes, "device"),
+            BufferValue("features_device", feature_bytes, "device"),
+            BufferValue("ao_jets_host", ao_bytes, "host"),
+            BufferValue("features_host", feature_bytes, "host"),
+            BufferValue("vxc_host", vxc_bytes, "host"),
+        )
+        operations = (
+            BufferOp(
+                "collocate",
+                ("density_source",),
+                ("ao_jets_device",),
+                MemoryEffect.EXPLICIT,
+            ),
+            BufferOp(
+                "features",
+                ("density_source", "ao_jets_device"),
+                ("density_panel_device", "features_device"),
+                MemoryEffect.EXPLICIT,
+            ),
+            BufferOp(
+                "stage",
+                ("ao_jets_device", "density_panel_device", "features_device"),
+                ("ao_jets_host", "features_host"),
+                MemoryEffect.EXPLICIT,
+            ),
+            BufferOp(
+                "host_xc_vxc",
+                ("ao_jets_host", "features_host"),
+                ("vxc_host",),
+                MemoryEffect.EXPLICIT,
+            ),
+        )
+        outputs = ("vxc_host",)
+    analysis = analyze_storage(
+        values,
+        operations,
+        inputs=("density_source",),
+        outputs=outputs,
+    )
+    peaks = analysis.peak_by_space
+    # Cross-space peaks are conservative comparison pressure, matching the former
+    # DFT-local model without pretending they are a simultaneous process high-water.
+    live_values = sum(peaks.values()) // scalar_bytes
+    return live_values, peaks
 
 
 def assess_grid_xc_schedule(
@@ -340,7 +443,7 @@ def assess_grid_xc_schedule(
             raise ValueError(
                 "scientific identity disagrees with admitted grid/XC workload"
             )
-    resolved = schedule.resolved(shape.tile_points)
+    resolved = grid_xc_schedule(schedule).resolved(shape.tile_points)
     reasons: list[str] = []
     if resolved.name == "device_fused":
         if not device_xc_available:
@@ -349,13 +452,15 @@ def assess_grid_xc_schedule(
             reasons.append("device-fused schedule only supports potential output")
         if functional not in ("LDA_XC_PW", "PBE"):
             reasons.append("device-fused schedule only supports canonical LDA/PBE")
-    live = _live_values(resolved, shape)
-    if live > limits.live_values:
-        reasons.append("estimated live-value bound exceeds target limit")
-    if shape.device_workspace_bytes > limits.device_bytes:
-        reasons.append("planned device workspace exceeds target limit")
-    if shape.generated_source_bytes > limits.source_bytes:
-        reasons.append("generated source/compile-size bound exceeds target limit")
+    live, storage_peaks = _storage_pressure(resolved, shape)
+    resources = ScheduleResources(
+        device_bytes=shape.device_workspace_bytes,
+        host_bytes=storage_peaks.get("host"),
+        workspace_bytes=shape.device_workspace_bytes,
+        peak_live_values=live,
+        source_bytes=shape.generated_source_bytes,
+    )
+    reasons.extend(schedule_resource_rejections(resources, limits.shared()))
     contract = ScheduleContract(
         consumer="dft.grid_xc",
         schedule_hash=resolved.identity,
@@ -388,18 +493,15 @@ def assess_grid_xc_schedule(
             reduction=resolved.matrix_accumulation,
             bucket="grid-points",
         ),
-        resources=ScheduleResources(
-            device_bytes=shape.device_workspace_bytes,
-            workspace_bytes=shape.device_workspace_bytes,
-            peak_live_values=live,
-            source_bytes=shape.generated_source_bytes,
-        ),
+        resources=resources,
         profitability=GpuProfitability(
             peak_live_values=live,
             source_bytes=shape.generated_source_bytes,
         ),
         provenance=(
             ("domain_schedule", resolved.name),
+            ("lifetime_analysis", "common.storage"),
+            ("resource_admission", "common.schedule"),
             ("resource_scope", "grid-xc-admission"),
         ),
     )
@@ -412,6 +514,54 @@ def assess_grid_xc_schedule(
         generated_source_bytes=shape.generated_source_bytes,
         schedule_contract=contract,
     )
+
+
+def rank_grid_xc_schedules(
+    schedules: typing.Iterable[GridXcExecutionSchedule | str],
+    shape: GridXcCandidateShape,
+    limits: GridXcCandidateLimits,
+    *,
+    device_xc_available: bool,
+    observable: str,
+    functional: str,
+    scientific: GridXcScientificIdentity | None = None,
+    maximum: int | None = None,
+) -> tuple[GridXcCandidateAssessment, ...]:
+    """Admit DFT-legal candidates, then delegate static ordering to ScheduleIR.
+
+    This is bounded compile-investigation ordering only.  It never installs a
+    profile or promotes a schedule; #459/#136 and complete endpoint evidence keep
+    ownership of that decision.
+    """
+
+    normalized = tuple(grid_xc_schedule(schedule) for schedule in schedules)
+    if not normalized:
+        raise ValueError("grid/XC schedule ranking requires at least one candidate")
+    resolved_hashes = tuple(
+        schedule.resolved(shape.tile_points).identity for schedule in normalized
+    )
+    if len(resolved_hashes) != len(set(resolved_hashes)):
+        raise ValueError("grid/XC schedule ranking requires unique candidates")
+    assessments = tuple(
+        assess_grid_xc_schedule(
+            schedule,
+            shape,
+            limits,
+            device_xc_available=device_xc_available,
+            observable=observable,
+            functional=functional,
+            scientific=scientific,
+        )
+        for schedule in normalized
+    )
+    by_contract = {
+        assessment.schedule_contract.identity: assessment for assessment in assessments
+    }
+    ranked = rank_schedule_contracts(
+        (assessment.schedule_contract for assessment in assessments),
+        maximum=maximum,
+    )
+    return tuple(by_contract[contract.identity] for contract in ranked)
 
 
 def schedule_profile_key(

@@ -36,6 +36,7 @@ from .xc_schedule import (
     GridXcScientificIdentity,
     assess_grid_xc_schedule,
     grid_xc_schedule,
+    rank_grid_xc_schedules,
 )
 
 __all__ = [
@@ -73,5 +74,6 @@ __all__ = [
     "nonlocal_kernel_matrix_reference",
     "orbital_features",
     "partition_weights",
+    "rank_grid_xc_schedules",
     "spin_densities",
 ]

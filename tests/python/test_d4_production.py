@@ -112,6 +112,64 @@ def test_public_named_pbe_d4_cpu_adds_native_correction() -> None:
         Calculator(method="pbe-d4-rks", basis="sto-3g", device="cuda", precision="auto")
 
 
+def test_public_named_pbe_d4_cpu_force_matches_reconverged_total_energy() -> None:
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    calculator = Calculator(method="pbe-d4-rks", basis="sto-3g", device="cpu")
+    result = calculator.singlepoint(atoms, properties=("energy", "forces"))
+    assert result.dispersion is not None
+
+    numbers = np.array([1, 1], dtype=np.int32)
+    positions = np.array([[0.0, 0.0, -0.7], [0.0, 0.0, 0.7]], dtype=np.float64)
+    d4 = evaluate_d4_correction("PBE-D4(BJ-EEQ-ATM)", numbers, positions, device="cpu")
+    assert result.dispersion.energy == pytest.approx(d4.energy, abs=2.0e-13)
+    np.testing.assert_allclose(
+        result.dispersion.gradient, d4.gradient, atol=2.0e-12, rtol=0.0
+    )
+
+    step = 2.0e-4
+    energies = []
+    for sign in (-1.0, 1.0):
+        displaced = positions.copy()
+        displaced[1, 2] += sign * step
+        moved = [
+            (int(z), tuple(xyz)) for z, xyz in zip(numbers, displaced, strict=True)
+        ]
+        energies.append(
+            Calculator(method="pbe-d4-rks", basis="sto-3g", device="cpu")
+            .singlepoint(moved, properties=("energy",))
+            .energy
+        )
+    finite_difference_force = -(energies[1] - energies[0]) / (2.0 * step)
+    assert result.forces is not None
+    assert result.forces[1, 2] == pytest.approx(
+        finite_difference_force, abs=3.0e-5, rel=0.0
+    )
+
+
+def test_public_named_pbe_d4_force_changed_geometry_replay() -> None:
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    moved = np.array([[0.0, 0.0, -0.72], [0.0, 0.0, 0.72]], dtype=np.float64)
+    calculator = Calculator(method="pbe-d4-rks", basis="sto-3g", device="cpu")
+    with calculator.prepare_batch([atoms], warm_start=False) as batch:
+        first = batch.execute(strict=True, properties=("energy", "forces")).items[0]
+        replay = batch.execute(
+            [moved], strict=True, properties=("energy", "forces")
+        ).items[0]
+        diagnostic = batch.dispersion_diagnostic
+        assert diagnostic is not None
+        assert diagnostic.execution_count == 2
+        assert diagnostic.changed_geometry_replays == 1
+
+    fresh_atoms = [(1, tuple(position)) for position in moved]
+    fresh = Calculator(method="pbe-d4-rks", basis="sto-3g", device="cpu").singlepoint(
+        fresh_atoms, properties=("energy", "forces")
+    )
+    assert first.dispersion is not None
+    assert replay.dispersion is not None
+    assert replay.energy == pytest.approx(fresh.energy, abs=2.0e-11)
+    np.testing.assert_allclose(replay.forces, fresh.forces, atol=2.0e-9, rtol=0.0)
+
+
 def test_public_named_pbe_d4_global_resource_plan_fails_closed() -> None:
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
     calculator = Calculator(
@@ -156,6 +214,25 @@ def test_production_cuda_matches_cpu_and_replay_accounting() -> None:
         assert diagnostic.unchanged_geometry_replays == 2
         assert diagnostic.changed_geometry_replays == 1
         assert diagnostic.coordinate_h2d_bytes == moved.size * moved.itemsize
+
+
+def test_public_named_pbe_d4_cuda_force_matches_cpu() -> None:
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    cpu = Calculator(method="pbe-d4-rks", basis="sto-3g", device="cpu").singlepoint(
+        atoms, properties=("energy", "forces")
+    )
+    try:
+        cuda = Calculator(
+            method="pbe-d4-rks", basis="sto-3g", device="cuda"
+        ).singlepoint(atoms, properties=("energy", "forces"))
+    except (RuntimeError, NotImplementedError) as error:
+        pytest.skip(f"CUDA PBE-D4 force runtime unavailable: {error}")
+
+    assert cuda.executed_backend == "cuda"
+    assert cuda.dispersion is not None
+    assert cuda.dispersion.backend == "cuda"
+    assert cuda.energy == pytest.approx(cpu.energy, abs=1.0e-10)
+    np.testing.assert_allclose(cuda.forces, cpu.forces, atol=2.0e-7, rtol=0.0)
 
 
 def test_public_named_pbe_d4_cuda_matches_cpu() -> None:
