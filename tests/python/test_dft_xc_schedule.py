@@ -12,9 +12,12 @@ from vibeqc_compiler.dft.xc_schedule import (
     HOST_UNFUSED,
     GridXcCandidateLimits,
     GridXcCandidateShape,
+    GridXcScheduleCandidate,
     GridXcScientificIdentity,
     assess_grid_xc_schedule,
     grid_xc_schedule,
+    rank_grid_xc_candidates,
+    rank_grid_xc_schedules,
 )
 
 
@@ -137,10 +140,13 @@ def test_schedule_admission_is_deterministic_and_conservative() -> None:
         "native device XC capability is unavailable",
         "device-fused schedule only supports potential output",
         "device-fused schedule only supports canonical LDA/PBE",
-        "estimated live-value bound exceeds target limit",
-        "planned device workspace exceeds target limit",
-        "generated source/compile-size bound exceeds target limit",
-    } == set(rejected.reasons)
+        "device bytes 8388608 exceeds limit 1",
+        "source bytes 180000 exceeds limit 100",
+    } <= set(rejected.reasons)
+    assert any(
+        reason.startswith("peak live values ") and reason.endswith("exceeds limit 1")
+        for reason in rejected.reasons
+    )
 
     fallback = assess_grid_xc_schedule(
         HOST_UNFUSED,
@@ -153,6 +159,139 @@ def test_schedule_admission_is_deterministic_and_conservative() -> None:
     assert fallback.legal
     assert fallback.live_values > first.live_values
     assert fallback.schedule_contract.fallback
+    assert first.schedule_contract.resources.host_bytes is None
+    assert fallback.schedule_contract.resources.host_bytes > 0
+    assert (
+        dict(first.schedule_contract.provenance)["lifetime_analysis"]
+        == "common.storage"
+    )
+    assert (
+        dict(first.schedule_contract.provenance)["resource_admission"]
+        == "common.schedule"
+    )
+
+
+def test_grid_xc_candidate_ordering_uses_shared_schedule_profitability() -> None:
+    shape = GridXcCandidateShape(
+        npoint=4096,
+        tile_points=256,
+        nao=96,
+        max_active_ao=48,
+        spins=2,
+        jet_components=4,
+        device_workspace_bytes=8 << 20,
+        generated_source_bytes=180_000,
+    )
+    limits = GridXcCandidateLimits(
+        device_bytes=32 << 20,
+        live_values=1_000_000,
+        source_bytes=300_000,
+    )
+    ranked = rank_grid_xc_schedules(
+        (HOST_UNFUSED, DEVICE_FUSED),
+        shape,
+        limits,
+        device_xc_available=True,
+        observable="potential",
+        functional="PBE",
+    )
+    assert [item.schedule_hash for item in ranked] == [
+        DEVICE_FUSED.resolved(shape.tile_points).identity,
+        HOST_UNFUSED.resolved(shape.tile_points).identity,
+    ]
+    assert ranked[0].live_values < ranked[1].live_values
+    assert (
+        rank_grid_xc_schedules(
+            (HOST_UNFUSED, DEVICE_FUSED),
+            shape,
+            limits,
+            device_xc_available=True,
+            observable="potential",
+            functional="PBE",
+            maximum=1,
+        )
+        == ranked[:1]
+    )
+
+    fallback_only = rank_grid_xc_schedules(
+        (DEVICE_FUSED, HOST_UNFUSED),
+        shape,
+        limits,
+        device_xc_available=False,
+        observable="potential",
+        functional="PBE",
+    )
+    assert len(fallback_only) == 1
+    assert fallback_only[0].schedule_contract.fallback
+
+    with pytest.raises(ValueError, match="unique candidates"):
+        rank_grid_xc_schedules(
+            (DEVICE_FUSED, DEVICE_FUSED),
+            shape,
+            limits,
+            device_xc_available=True,
+            observable="potential",
+            functional="PBE",
+        )
+
+
+def test_grid_xc_candidate_local_shapes_rank_distinct_point_tiles() -> None:
+    limits = GridXcCandidateLimits(
+        device_bytes=32 << 20,
+        live_values=2_000_000,
+        source_bytes=300_000,
+    )
+
+    def candidate(tile: int, workspace: int) -> GridXcScheduleCandidate:
+        return GridXcScheduleCandidate(
+            DEVICE_FUSED.resolved(tile),
+            GridXcCandidateShape(
+                npoint=4096,
+                tile_points=tile,
+                nao=96,
+                max_active_ao=48,
+                spins=2,
+                jet_components=4,
+                device_workspace_bytes=workspace,
+                generated_source_bytes=180_000,
+            ),
+        )
+
+    small = candidate(128, 4 << 20)
+    large = candidate(256, 8 << 20)
+    rejected = candidate(512, 40 << 20)
+    ranked = rank_grid_xc_candidates(
+        (small, rejected, large),
+        limits,
+        device_xc_available=True,
+        observable="potential",
+        functional="PBE",
+    )
+
+    assert [item.schedule_contract.topology.tiles for item in ranked] == [
+        (256,),
+        (128,),
+    ]
+    large_traffic = ranked[0].schedule_contract.profitability.semantic_traffic_bytes
+    small_traffic = ranked[1].schedule_contract.profitability.semantic_traffic_bytes
+    assert large_traffic is not None and small_traffic is not None
+    assert large_traffic < small_traffic
+    large_launches = ranked[0].schedule_contract.profitability.launch_count
+    small_launches = ranked[1].schedule_contract.profitability.launch_count
+    assert large_launches is not None and small_launches is not None
+    assert large_launches < small_launches
+    assert ranked[0].live_values > ranked[1].live_values
+
+    rejected_assessment = assess_grid_xc_schedule(
+        rejected.schedule,
+        rejected.shape,
+        limits,
+        device_xc_available=True,
+        observable="potential",
+        functional="PBE",
+    )
+    assert not rejected_assessment.legal
+    assert "device bytes 41943040 exceeds limit 33554432" in rejected_assessment.reasons
 
 
 def endpoint_sample(

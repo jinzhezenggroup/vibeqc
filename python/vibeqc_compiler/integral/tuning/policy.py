@@ -10,6 +10,7 @@ from functools import cache
 from typing import TYPE_CHECKING
 
 from ..cuda_schedule import (
+    AlgebraOrdering,
     AlgebraPlacement,
     ScheduleIR,
     ScheduleKind,
@@ -21,6 +22,8 @@ from .analysis import StaticAlgebraModel, _integral_signature, static_algebra_mo
 from .shared import _PRODUCTION_MANIFEST_PATH
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..cuda_target import CudaTargetInfo
     from ..shell_spec import ShellClassSpec
 
@@ -105,6 +108,79 @@ class ScheduleTrial:
         return static_algebra_model(self)
 
 
+def deduplicate_execution_equivalent_trials(
+    trials: tuple[ScheduleTrial, ...],
+    execution_identity: Callable[[ScheduleTrial], str],
+    *,
+    protected_keys: frozenset[str] = frozenset(),
+) -> tuple[tuple[ScheduleTrial, ...], tuple[dict[str, object], ...]]:
+    """Remove exact no-op algebra-ordering variants before compilation.
+
+    Only packed trials whose schedules differ solely in algebra ordering enter
+    the same cheap pre-group.  The emission callback is evaluated only for such
+    groups; a trial is removed only when its unsuffixed generated CUDA is then
+    byte-identical to a peer.  Protected production/resource baselines always
+    survive.  Original order is preserved.
+    """
+
+    materialized = tuple(trials)
+    if any(not isinstance(trial, ScheduleTrial) for trial in materialized):
+        raise TypeError("execution deduplication requires ScheduleTrial records")
+    if not callable(execution_identity):
+        raise TypeError("execution deduplication requires an identity callback")
+
+    families: dict[tuple[object, ...], list[int]] = {}
+    for index, trial in enumerate(materialized):
+        if trial.schedule.kind != ScheduleKind.PACKED_TASKS:
+            continue
+        normalized = replace(
+            trial.schedule, algebra_ordering=AlgebraOrdering.TOPOLOGICAL
+        )
+        key = (
+            trial.spec.name,
+            trial.consumer,
+            trial.integral_suffix,
+            trial.target,
+            normalized,
+        )
+        families.setdefault(key, []).append(index)
+
+    pruned: dict[int, dict[str, object]] = {}
+    for family in families.values():
+        if len(family) < 2:
+            continue
+        identities: dict[str, list[int]] = {}
+        for index in family:
+            identity = execution_identity(materialized[index])
+            if type(identity) is not str or not identity:
+                raise ValueError("execution identity must be a nonempty string")
+            identities.setdefault(identity, []).append(index)
+        for identity, members in identities.items():
+            if len(members) < 2:
+                continue
+            protected = [
+                index for index in members if materialized[index].key in protected_keys
+            ]
+            representative = protected[0] if protected else members[0]
+            for index in members:
+                if index == representative or materialized[index].key in protected_keys:
+                    continue
+                pruned[index] = {
+                    "trial_key": materialized[index].key,
+                    "equivalent_to": materialized[representative].key,
+                    "execution_source_sha256": identity,
+                    "reason": (
+                        "algebra-ordering peer emits byte-identical unsuffixed CUDA"
+                    ),
+                }
+
+    kept = tuple(
+        trial for index, trial in enumerate(materialized) if index not in pruned
+    )
+    records = tuple(pruned[index] for index in sorted(pruned))
+    return kept, records
+
+
 def schedule_payload(schedule: ScheduleIR) -> dict[str, object]:
     """Serialize all schedule decisions written to a v2 manifest."""
 
@@ -133,10 +209,11 @@ def _production_fock_schedule_index(
     """Read explicit Fock baseline schedules from the production manifest.
 
     Generic schedule discovery intentionally avoids subgroup mappings for very
-    large component envelopes.  A tuned manifest may still contain a
-    hand-validated value-only Fock mapping for such a class.  Reusing that row
-    keeps autotune comparisons honest without maintaining a second shell-name
-    allowlist in Python.
+    large component envelopes. A tuned manifest may still contain a
+    hand-validated value-only Fock mapping for such a class. When a row has no
+    separate ``fock_schedule``, its primary schedule is the shipped Fock mapping
+    and must still be the comparison baseline. Reusing either form avoids a
+    second shell-name allowlist in Python.
     """
 
     selections = load_production_kernel_selections(
@@ -145,10 +222,14 @@ def _production_fock_schedule_index(
         profile="auto",
     )
     return tuple(
-        (selection.spec.name, selection.fock_schedule)
+        (
+            selection.spec.name,
+            selection.fock_schedule
+            if selection.fock_schedule is not None
+            else selection.schedule,
+        )
         for selection in selections
         if KernelConsumer.FOCK in selection.consumers
-        and selection.fock_schedule is not None
     )
 
 

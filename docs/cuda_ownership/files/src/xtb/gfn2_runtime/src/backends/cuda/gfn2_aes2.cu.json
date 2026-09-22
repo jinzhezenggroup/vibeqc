@@ -1,7 +1,7 @@
 {
   "path": "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_aes2.cu",
-  "reason": "Vendored transitional GFN2 CUDA source for #560 native backend admission; counted conservatively as handwritten scientific ownership until generated/VibeQC-native replacements retire the equivalent path.",
+  "reason": "GFN2 AES2 runtime topology, validation, cache publication, ragged reductions and failure-atomic CUDA orchestration. Radius, damped pair kernels, onsite/pair energies, multipole potentials and coordinate/CN reverse response are compiler-generated TensorIR consumers.",
   "regions": [],
-  "role": "scientific",
+  "role": "runtime",
   "subsystem": "gfn2"
 }

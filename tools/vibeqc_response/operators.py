@@ -137,7 +137,10 @@ class _BaseResponseOperator:
         CPKS contributes J plus the XC feature-Hessian action. Future hybrid
         operators extend this method rather than teaching Hessian code method algebra.
         """
-        delta_ao = np.asarray(delta_density, dtype=np.float64)
+        delta_ao = np.asarray(delta_density)
+        if np.iscomplexobj(delta_ao):
+            raise ValueError("density response must be real")
+        delta_ao = np.asarray(delta_ao, dtype=np.float64)
         if delta_ao.shape != (self.nbf, self.nbf) or not np.isfinite(delta_ao).all():
             raise ValueError(
                 f"density response must be a finite ({self.nbf}, {self.nbf}) AO matrix"

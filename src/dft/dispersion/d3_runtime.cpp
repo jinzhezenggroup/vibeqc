@@ -57,15 +57,14 @@ std::unique_ptr<D3Plan> D3Plan::prepare(vibeqc_backend backend, int device_id,
                                         std::vector<std::uint32_t> offsets,
                                         std::vector<std::int32_t> atomic_numbers,
                                         std::vector<double> default_coordinates,
-                                        D3Parameters parameters, std::uint64_t maximum_bytes,
+                                        D3ModelParameters parameters, std::uint64_t maximum_bytes,
                                         std::string& detail, vibeqc_status& status) {
   status = VIBEQC_STATUS_INVALID_ARGUMENT;
   if ((backend != VIBEQC_BACKEND_CPU_REFERENCE && backend != VIBEQC_BACKEND_CUDA) ||
       maximum_bytes == 0 || offsets.size() < 2 || offsets.front() != 0 ||
       offsets.back() != atomic_numbers.size() ||
-      default_coordinates.size() != 3 * atomic_numbers.size() ||
-      !d3_detail::valid_parameters(parameters)) {
-    detail = "invalid D3(BJ) production plan descriptor";
+      default_coordinates.size() != 3 * atomic_numbers.size() || !valid_d3_model(parameters)) {
+    detail = "invalid or unsupported D3 production model descriptor";
     return nullptr;
   }
   std::size_t maximum_atoms = 0;
@@ -158,7 +157,7 @@ vibeqc_status D3Plan::execute(std::span<const double> packed_coordinates,
       const std::size_t n = offsets_[system + 1] - offsets_[system];
       double candidate_energy = 0.0;
       double* gradient = want_gradient[system] ? candidate_gradient.data() : nullptr;
-      const auto item_status = evaluate_d3_bj(
+      const auto item_status = evaluate_d3_model(
           n, atomic_numbers_.data() + begin, packed_coordinates.data() + 3 * begin, parameters_,
           tables, workspace.data(), workspace.size(), &candidate_energy, gradient);
       statuses[system] = item_status;
@@ -186,7 +185,7 @@ D3CudaOwner* create_d3_cuda_owner(int, std::span<const std::uint32_t>,
   return nullptr;
 }
 void destroy_d3_cuda_owner(D3CudaOwner*) noexcept {}
-vibeqc_status execute_d3_cuda(D3CudaOwner*, const D3Parameters&, std::span<const double>,
+vibeqc_status execute_d3_cuda(D3CudaOwner*, const D3ModelParameters&, std::span<const double>,
                               std::span<const std::uint8_t>, std::span<const std::uint8_t>,
                               std::vector<D3Status>&, std::vector<double>&, std::vector<double>&,
                               std::string& detail) {
