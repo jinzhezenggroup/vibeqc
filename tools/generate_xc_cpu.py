@@ -35,7 +35,6 @@ from vibeqc_compiler.method.spec import (
     SemilocalXCPrimitive,
     resolve_method,
 )
-from vibeqc_compiler.xc.expression_dispatch import build_energy_expression
 from vibeqc_compiler.xc.production_policy import (
     lda_xc_pw_polarized_tail_expression,
     lda_xc_pw_unpolarized_tail_expression,
@@ -274,6 +273,7 @@ def emit_polarized_semilocal(
         production=production,
         declarations=declarations,
     )
+
 
 def emit_polarized_gga(
     spec: Any,
