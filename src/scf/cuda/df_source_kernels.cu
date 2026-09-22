@@ -11,6 +11,10 @@
 
 namespace vibeqc::scf::cuda_execution {
 
+unsigned resolve_cuda_df_source_value_mapping(unsigned requested, bool transformed) noexcept {
+  return generated_df_policy::ValueSourceSchedule::resolve(requested, transformed);
+}
+
 /** Generated-policy basis traversal and bounded public-layout contractions, extracted from direct
  * HF without introducing a second scientific implementation. */
 namespace {
