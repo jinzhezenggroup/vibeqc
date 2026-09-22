@@ -65,5 +65,6 @@ def _supports_rys_component_lane_fock(
     return (
         KernelConsumer.FORCE in integral.consumers
         and supports_component_lane_rys(spec, plan.schedule)
-        and integral.recurrence in ("rys3", "rys4")
+        and integral.recurrence.startswith("rys")
+        and integral.required_rys_roots in (3, 4)
     )

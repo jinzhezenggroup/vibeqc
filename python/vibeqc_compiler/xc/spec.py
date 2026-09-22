@@ -17,6 +17,7 @@ from .pbe_maple import pbe_maple_provenance
 from .pw91_maple import pw91_maple_provenance
 from .rsh_maple import rsh_maple_provenance
 from .scan_maple import scan_maple_provenance
+from .wb97mv_maple import wb97mv_maple_provenance
 
 VERSION = "libxc-7.0.0/interior-v1"
 POLARIZED = ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b")
@@ -158,7 +159,7 @@ class FunctionalSpec:
         )
         if wb97mv:
             manifest = "wb97mv-manifest.json"
-            expression_source = "wb97mv_expressions.py"
+            expression_source = "wb97mv_maple.py"
         else:
             manifest = "rsh-manifest.json" if special else "manifest.json"
             expression_source = "rsh_expressions.py" if special else "expressions.py"
@@ -172,6 +173,7 @@ class FunctionalSpec:
                 b88_vwn_maple_provenance(self.components),
                 rsh_maple_provenance(self.components),
                 scan_maple_provenance(self.components),
+                wb97mv_maple_provenance(self.components, self.range_omega),
             )
             if record is not None
         )

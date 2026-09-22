@@ -11,6 +11,10 @@ import typing
 from dataclasses import asdict, dataclass, replace
 
 from vibeqc_compiler.common.gpu_profitability import GpuProfitability
+from vibeqc_compiler.common.precision import (
+    ExecutionPrecisionSchedule,
+    uniform_precision_schedule,
+)
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.schedule import (
     ScheduleContract,
@@ -473,6 +477,7 @@ def assess_grid_xc_schedule(
     observable: str,
     functional: str,
     scientific: GridXcScientificIdentity | None = None,
+    precision_schedule: ExecutionPrecisionSchedule | None = None,
 ) -> GridXcCandidateAssessment:
     """Reject impossible/incompatible candidates before any timing comparison."""
 
@@ -488,7 +493,19 @@ def assess_grid_xc_schedule(
                 "scientific identity disagrees with admitted grid/XC workload"
             )
     resolved = grid_xc_schedule(schedule).resolved(shape.tile_points)
+    if precision_schedule is None:
+        precision_schedule = uniform_precision_schedule("dft.grid_xc")
+    if not isinstance(precision_schedule, ExecutionPrecisionSchedule):
+        raise TypeError(
+            "grid/XC precision schedule requires ExecutionPrecisionSchedule"
+        )
     reasons: list[str] = []
+    if not precision_schedule.is_strict_fp64:
+        reasons.append(
+            "grid/XC lowering currently supports only strict FP64 execution precision"
+        )
+    if precision_schedule.strict_audit_dtype != "float64":
+        reasons.append("grid/XC strict audit must remain FP64")
     if resolved.name == "device_fused":
         if not device_xc_available:
             reasons.append("native device XC capability is unavailable")
@@ -519,11 +536,7 @@ def assess_grid_xc_schedule(
             if scientific is not None
             else None
         ),
-        precision_schedule_hash=(
-            canonical_hash({"kind": "fixed", "precision": scientific.precision})
-            if scientific is not None
-            else None
-        ),
+        precision_schedule_hash=precision_schedule.identity,
         fallback=resolved.name == "host_unfused",
         legal=not reasons,
         reasons=tuple(reasons),
@@ -545,9 +558,18 @@ def assess_grid_xc_schedule(
             peak_live_values=live,
             launch_count=launch_count,
             source_bytes=shape.generated_source_bytes,
+            precision_cast_read_bytes=0 if precision_schedule.is_strict_fp64 else None,
+            precision_cast_write_bytes=0 if precision_schedule.is_strict_fp64 else None,
+            precision_cast_simultaneous_bytes=(
+                0 if precision_schedule.is_strict_fp64 else None
+            ),
+            precision_widened_accumulation_terms=(
+                0 if precision_schedule.is_strict_fp64 else None
+            ),
         ),
         provenance=(
             ("domain_schedule", resolved.name),
+            ("precision_contract", "common.precision"),
             ("lifetime_analysis", "common.storage"),
             ("resource_admission", "common.schedule"),
             ("resource_scope", "grid-xc-admission"),
@@ -572,6 +594,7 @@ def rank_grid_xc_candidates(
     observable: str,
     functional: str,
     scientific: GridXcScientificIdentity | None = None,
+    precision_schedule: ExecutionPrecisionSchedule | None = None,
     maximum: int | None = None,
 ) -> tuple[GridXcCandidateAssessment, ...]:
     """Rank DFT schedules with candidate-local shapes through shared ScheduleIR.
@@ -603,6 +626,7 @@ def rank_grid_xc_candidates(
             observable=observable,
             functional=functional,
             scientific=scientific,
+            precision_schedule=precision_schedule,
         )
         for candidate in materialized
     )
@@ -625,6 +649,7 @@ def rank_grid_xc_schedules(
     observable: str,
     functional: str,
     scientific: GridXcScientificIdentity | None = None,
+    precision_schedule: ExecutionPrecisionSchedule | None = None,
     maximum: int | None = None,
 ) -> tuple[GridXcCandidateAssessment, ...]:
     """Backward-compatible same-shape wrapper around candidate-local ranking."""
@@ -639,6 +664,7 @@ def rank_grid_xc_schedules(
         observable=observable,
         functional=functional,
         scientific=scientific,
+        precision_schedule=precision_schedule,
         maximum=maximum,
     )
 

@@ -42,6 +42,7 @@ from .emission import (
     emit_schedule_oracle_translation_unit,
     emit_schedule_resource_translation_unit,
     emit_schedule_translation_unit,
+    schedule_execution_source_identity,
 )
 from .inputs import (
     _requested_schedule_kinds,
@@ -52,6 +53,7 @@ from .manifest import write_tuned_manifest
 from .policy import (
     ScheduleTrial,
     _production_fock_schedule_index,
+    deduplicate_execution_equivalent_trials,
     schedule_payload,
     supported_schedule_trials,
 )
@@ -286,6 +288,25 @@ def _run_autotune(
                     chosen.append(candidate)
             bounded.extend(chosen)
         trials = tuple(bounded)
+
+    bounded_trial_count = len(trials)
+    execution_deduplicated: tuple[dict[str, object], ...] = ()
+    if not getattr(arguments, "no_execution_dedup", False):
+        resource_baseline_keys = frozenset(
+            key
+            for trial in trials
+            if (key := _algebra_resource_baseline_key(trial)) is not None
+        )
+        protected_keys = resource_baseline_keys | frozenset(
+            trial.key
+            for trial in trials
+            if production_baselines.get(trial.spec.name) == trial.schedule
+        )
+        trials, execution_deduplicated = deduplicate_execution_equivalent_trials(
+            trials,
+            schedule_execution_source_identity,
+            protected_keys=protected_keys,
+        )
     if not trials:
         requested = ", ".join(spec.name for spec in specifications)
         selected = ", ".join(kind.value for kind in selected_schedule_kinds)
@@ -871,6 +892,12 @@ def _run_autotune(
             },
             "search": {
                 "schedule_kinds": [kind.value for kind in selected_schedule_kinds],
+                "bounded_trial_count": bounded_trial_count,
+                "execution_dedup_enabled": not getattr(
+                    arguments, "no_execution_dedup", False
+                ),
+                "execution_deduplicated_count": len(execution_deduplicated),
+                "execution_deduplicated": list(execution_deduplicated),
                 "candidate_limit_per_class": limit,
                 "candidate_limit_strategy": (
                     "geometry-round-robin" if limit is not None else None

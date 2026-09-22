@@ -64,9 +64,9 @@ __device__ inline __noinline__ void contract_bounded_direct_force_subtile(
         batch, queue_count, task, screening_tolerance, schwarz_bounds, density, active, forces, \
         0U, subtile, lane);                                                                     \
     break
+  // Total order 0/1 is consumed by the generated ssss/psss exact-shell
+  // tasks before generic bounded dispatch. Do not reinstantiate retired math.
   switch (angular_order) {
-    VIBEQC_BOUNDED_FORCE_CASE(0);
-    VIBEQC_BOUNDED_FORCE_CASE(1);
     VIBEQC_BOUNDED_FORCE_CASE(2);
     VIBEQC_BOUNDED_FORCE_CASE(3);
     VIBEQC_BOUNDED_FORCE_CASE(4);

@@ -30,6 +30,7 @@ def test_gfn2_cuda_source_manifest_is_current_and_gfn2_only() -> None:
 
     assert adapted == [
         "src/backends/cuda/gfn2_aes2.cu",
+        "src/backends/cuda/gfn2_es2.cu",
         "src/backends/cuda/gfn2_es3.cu",
         "src/backends/cuda/gfn2_geometry.cu",
         "src/backends/cuda/gfn2_hamiltonian.cu",
