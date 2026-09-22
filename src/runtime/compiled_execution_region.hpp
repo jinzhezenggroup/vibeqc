@@ -63,6 +63,8 @@ class CompiledExecutionRegion {
 
   void mark_success() {
     require_bound();
+    if (failed_)
+      throw std::logic_error("failed compiled execution region must recover before success");
     warmed_ = true;
     failed_ = false;
     ++metrics_.executions;
