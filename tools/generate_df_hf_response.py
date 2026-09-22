@@ -2,23 +2,11 @@
 
 import argparse
 import sys
-import types
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "python"))
 sys.path.insert(0, str(ROOT))
-
-# Build-time generation needs only immutable TensorIR/type/lowering modules.
-# Avoid importing the NumPy-backed public TensorIR facade in bare CMake Python.
-import vibeqc_compiler
-
-_tensor_path = ROOT / "python" / "vibeqc_compiler" / "tensor"
-_tensor_package = types.ModuleType("vibeqc_compiler.tensor")
-_tensor_package.__path__ = [str(_tensor_path)]
-_tensor_package.__package__ = "vibeqc_compiler.tensor"
-sys.modules["vibeqc_compiler.tensor"] = _tensor_package
-vibeqc_compiler.tensor = _tensor_package
 
 from vibeqc_compiler.method.df_hf_response_cuda import (
     emit_df_hf_response_contract,
