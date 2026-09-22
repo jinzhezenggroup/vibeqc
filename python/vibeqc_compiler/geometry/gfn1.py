@@ -528,6 +528,8 @@ class Gfn1HalogenGeometryProgram:
     version: str = GFN1_HALOGEN_VERSION
 
     def __post_init__(self) -> None:
+        if self.parameter_identity != GFN1_HALOGEN_PARAMETER_IDENTITY:
+            raise ValueError("canonical GFN1 halogen parameter identity required")
         if self.geometry.parameter_identity != GFN1_SHORT_RANGE_PARAMETER_IDENTITY:
             raise ValueError("GFN1 halogen geometry parameter identity mismatch")
         _require_gfn1_halogen_topology(self.geometry, self.topology)
