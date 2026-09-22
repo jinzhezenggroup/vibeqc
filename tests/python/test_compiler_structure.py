@@ -88,6 +88,9 @@ def test_method_composition_is_above_xc_and_dft(tmp_path: typing.Any) -> None:
     (method / "ok.py").write_text(
         "from vibeqc_compiler.xc.spec import FunctionalSpec\n"
     )
+    (method / "geometry_ok.py").write_text(
+        "from vibeqc_compiler.geometry.ir import GeometryIR\n"
+    )
     assert audit_structure(tmp_path)["errors"] == []
 
     dft = tmp_path / "dft"

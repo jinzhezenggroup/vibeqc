@@ -11,7 +11,7 @@ from .paths import PACKAGE
 # and IntegralIR stay independent; the bounded Array API frontend may depend on
 # TensorIR but TensorIR never depends on that frontend. XC reuses scalar algebra
 # and DFT ingredients. Method composition sits above XC/TensorIR; custom
-# derivative rules emit tensor graphs.
+# derivative rules emit tensor graphs and may compose geometry lowerings.
 ALLOWED = {
     "common": {"common"},
     "integral": {"integral", "common"},
@@ -20,7 +20,7 @@ ALLOWED = {
     "geometry": {"geometry", "tensor", "common"},
     "dft": {"dft", "common"},
     "xc": {"xc", "integral", "dft", "common"},
-    "method": {"method", "xc", "tensor", "common"},
+    "method": {"method", "geometry", "xc", "tensor", "common"},
 }
 
 # These existing adapters consume the public molecular/native ABI only when
@@ -69,7 +69,7 @@ def audit_structure(package: Path = PACKAGE) -> dict:
             continue
         name = ".".join(parts)
         parent = "vibeqc_compiler." + ".".join(parts if is_package else parts[:-1])
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         tree = ast.parse(text, filename=str(path))
         modules.append(
             {

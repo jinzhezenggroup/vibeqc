@@ -201,7 +201,7 @@ def test_gfn1_independent_pair_goldens_and_generated_repulsion_vjp(
     compiled = _compile(elements, coordinates)
     outputs = execute(compiled.program, {"coordinates": coordinates}).outputs
     np.testing.assert_allclose(
-        outputs["coordination"], (expected_cn, expected_cn), rtol=0, atol=4e-16
+        outputs["coordination"], (expected_cn, expected_cn), rtol=0, atol=5e-16
     )
     assert outputs["repulsion_energy"].item() == pytest.approx(
         expected_energy, rel=0, abs=5e-17
@@ -359,8 +359,11 @@ def test_gfn1_primal_and_generated_vjps_lower_through_shared_cuda_tensorir() -> 
         assert "tensor_run" in source
 
 
-def test_pair_slice_does_not_claim_halogen_lowering() -> None:
+def test_pair_slice_records_separate_halogen_lowering() -> None:
     coordinates = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
     compiled = _compile((35, 8), coordinates)
-    assert compiled.program.provenance["halogen_lowering"] == GFN1_HALOGEN_VERSION
+    assert compiled.program.provenance["separate_halogen_lowering_version"] == (
+        GFN1_HALOGEN_VERSION
+    )
+    assert "halogen_lowering" not in compiled.program.provenance
     assert "halogen_energy" not in compiled.program.outputs

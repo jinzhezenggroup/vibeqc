@@ -3,6 +3,7 @@
 import os
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -10,14 +11,16 @@ from vibeqc_compiler.geometry import (
     GFN1_HALOGEN_CUTOFF_BOHR,
     GFN1_HALOGEN_PARAMETER_IDENTITY,
     GFN1_HALOGEN_VERSION,
-    build_gfn1_halogen_program,
     build_gfn1_halogen_topology,
-    compile_gfn1_halogen,
     gfn1_element_parameters,
     gfn1_geometry,
 )
 from vibeqc_compiler.geometry.triplet import TripletTopology
-from vibeqc_compiler.method import resolve_xtb_method
+from vibeqc_compiler.method import (
+    build_gfn1_halogen_program,
+    compile_gfn1_halogen,
+    resolve_xtb_method,
+)
 from vibeqc_compiler.tensor import execute
 
 TBLITE_CASES = (
@@ -322,6 +325,32 @@ def test_method_topology_and_parameter_identities_are_bound() -> None:
 
     with pytest.raises(ValueError, match="primitive identity mismatch"):
         replace(energy_program, primitive_identity="0" * 64)
+
+
+def test_method_binding_rejects_structural_impostors_and_unrequested_vjp() -> None:
+    _name, elements, coordinates, _expected, _count = TBLITE_CASES[2]
+    energy_method = resolve_xtb_method("GFN1-xTB", requested_products=("energy",))
+    geometry = gfn1_geometry(elements)
+    topology = build_gfn1_halogen_topology(geometry, coordinates)
+    fake = SimpleNamespace(
+        kind=energy_method.kind,
+        model_flavor=energy_method.model_flavor,
+        parameter_set=energy_method.parameter_set,
+        primitives=energy_method.primitives,
+        requested_products=energy_method.requested_products,
+        identity=energy_method.identity,
+    )
+    with pytest.raises(TypeError, match="XtbMethodIR"):
+        build_gfn1_halogen_program(fake, geometry, topology)
+
+    energy_only = build_gfn1_halogen_program(energy_method, geometry, topology)
+    with pytest.raises(ValueError, match="nuclear-gradient compiler product"):
+        energy_only.coordinate_jvp()
+    with pytest.raises(ValueError, match="nuclear-gradient compiler product"):
+        energy_only.coordinate_vjp()
+
+    # The method-neutral geometry graph still exposes AD for compiler qualification.
+    assert energy_only.geometry_program.coordinate_vjp().program is not None
 
 
 def test_primal_and_generated_vjp_lower_through_shared_cuda_tensorir() -> None:

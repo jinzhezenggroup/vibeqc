@@ -20,6 +20,10 @@ comparison, and therefore retain the lowest atom index on exact ties. Express
 the angular and radial energy in TensorIR and obtain the Cartesian VJP from the
 same graph. Bind the resulting program to the canonical GFN1 XtbMethodIR
 `halogen_correction` primitive without changing public runtime capability.
+The pure equation/topology stays under `geometry`; the MethodIR-bound wrapper
+lives under `method` and accepts the actual `XtbMethodIR` type. The compiler
+dependency guard explicitly permits method composition to consume geometry,
+while geometry remains independent of method policy.
 
 When the selected neighbor is the acceptor, the pinned angular factor and its
 first derivative are identically zero. Omit that entry because generic
@@ -34,6 +38,8 @@ their distance.
   implementation and would not qualify compiler AD.
 - Allowing repeated indices in generic TripletIR would weaken the Stage-A
   three-distinct-role invariant for a term that is provably zero.
+- Duck-typing or copying the GFN1 parameter-set hash into geometry would allow
+  structural impostors to claim canonical MethodIR provenance.
 - Smoothing the cutoff or nearest-neighbor selection would change the pinned
   GFN1 model rather than merely lower it.
 
@@ -48,6 +54,9 @@ their distance.
   `fa8a4416e8fe093d0075bc10ac875494c2a449a9` and halogen source SHA-256
   `ed3469a1e07d95d75bb09b1a4615616a9416aff425c9cc46ae057dca450ad449`.
 - Method-bound identity also binds the exact GFN1 MethodIR primitive.
+- Method-bound JVP/VJP access requires the `nuclear-gradient` compiler product;
+  the lower method-neutral geometry program remains differentiable for
+  qualification.
 
 ## Evidence
 

@@ -7,7 +7,6 @@ generic role-ordered TripletIR graph; no handwritten derivative lives here.
 
 from __future__ import annotations
 
-import typing
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -74,10 +73,6 @@ GFN1_TBLITE_REVISION = "fa8a4416e8fe093d0075bc10ac875494c2a449a9"
 GFN1_TBLITE_HALOGEN_SHA256 = (
     "ed3469a1e07d95d75bb09b1a4615616a9416aff425c9cc46ae057dca450ad449"
 )
-GFN1_XTB_PARAMETER_SET_IDENTITY = (
-    "0eb9717e0114887181efe24c86c64cb3468017c7b3cf7e20bbbeb649fbc40406"
-)
-GFN1_HALOGEN_METHOD_VERSION = "gfn1-halogen-method-ir-v1"
 
 
 @dataclass(frozen=True)
@@ -391,7 +386,7 @@ def build_gfn1_short_range_program(
             "parameter_identity": GFN1_SHORT_RANGE_PARAMETER_IDENTITY,
             "xtbloom_revision": GFN1_XTBLOOM_REVISION,
             "topology": topology.to_payload(),
-            "halogen_lowering": GFN1_HALOGEN_VERSION,
+            "separate_halogen_lowering_version": GFN1_HALOGEN_VERSION,
         },
     )
     return Gfn1ShortRangeProgram(geometry, topology, program)
@@ -598,127 +593,3 @@ def build_gfn1_halogen_geometry_program(
         triplet_kind="gfn1-halogen-neighbor-donor-acceptor",
     )
     return Gfn1HalogenGeometryProgram(geometry, topology, triplet_program)
-
-
-def _gfn1_halogen_primitive(method: typing.Any) -> typing.Any:
-    if (
-        getattr(method, "kind", None) != "xtb_method"
-        or getattr(method, "model_flavor", None) != "gfn1"
-    ):
-        raise ValueError(
-            "GFN1 halogen lowering requires the canonical GFN1 XtbMethodIR"
-        )
-    parameter_set = getattr(method, "parameter_set", None)
-    if getattr(parameter_set, "identity", None) != GFN1_XTB_PARAMETER_SET_IDENTITY:
-        raise ValueError(
-            "GFN1 halogen lowering requires the canonical GFN1 XtbMethodIR"
-        )
-    primitive = next(
-        (
-            primitive
-            for primitive in getattr(method, "primitives", ())
-            if getattr(primitive, "kind", None) == "halogen_correction"
-        ),
-        None,
-    )
-    if primitive is None:
-        raise ValueError("GFN1 XtbMethodIR is missing the halogen correction primitive")
-    if (
-        getattr(primitive, "model", None) != "gfn1-halogen-correction"
-        or getattr(primitive, "parameter_domains", None) != ("correction",)
-        or getattr(primitive, "derivative_capabilities", None)
-        != ("energy", "nuclear-gradient")
-        or getattr(primitive, "self_consistent", None) is not False
-    ):
-        raise ValueError("GFN1 halogen primitive semantics are not canonical")
-    return primitive
-
-
-@dataclass(frozen=True)
-class Gfn1HalogenProgram:
-    """Method-bound GFN1 halogen energy with a generated Cartesian VJP."""
-
-    method: typing.Any
-    geometry_program: Gfn1HalogenGeometryProgram
-    primitive_identity: str
-    version: str = GFN1_HALOGEN_METHOD_VERSION
-
-    def __post_init__(self) -> None:
-        primitive = _gfn1_halogen_primitive(self.method)
-        expected = canonical_hash(primitive.semantic_payload())
-        if self.primitive_identity != expected:
-            raise ValueError("GFN1 halogen primitive identity mismatch")
-        if not isinstance(self.geometry_program, Gfn1HalogenGeometryProgram):
-            raise TypeError("GFN1 halogen composition requires a geometry program")
-        if self.version != GFN1_HALOGEN_METHOD_VERSION:
-            raise ValueError("unsupported GFN1 halogen MethodIR composition version")
-
-    @property
-    def geometry(self) -> GeometryIR:
-        return self.geometry_program.geometry
-
-    @property
-    def topology(self) -> TripletTopology:
-        return self.geometry_program.topology
-
-    @property
-    def program(self) -> Program:
-        return self.geometry_program.program
-
-    @property
-    def parameter_identity(self) -> str:
-        return GFN1_HALOGEN_PARAMETER_IDENTITY
-
-    @property
-    def identity(self) -> str:
-        return canonical_hash(
-            {
-                "version": self.version,
-                "method_identity": self.method.identity,
-                "primitive_identity": self.primitive_identity,
-                "geometry_program_identity": self.geometry_program.identity,
-            }
-        )
-
-    def validate_execution_identity(self, identity: str) -> None:
-        if identity != self.identity:
-            raise ValueError("stale GFN1 halogen MethodIR execution state")
-
-    def validate_coordinates(self, coordinates: ArrayLike) -> None:
-        self.geometry_program.validate_coordinates(coordinates)
-
-    def coordinate_jvp(self) -> object:
-        return self.geometry_program.coordinate_jvp()
-
-    def coordinate_vjp(self) -> object:
-        return self.geometry_program.coordinate_vjp()
-
-
-def build_gfn1_halogen_program(
-    method: typing.Any,
-    geometry: GeometryIR,
-    topology: TripletTopology,
-) -> Gfn1HalogenProgram:
-    """Bind a resolved canonical GFN1 MethodIR to one fixed triplet topology."""
-
-    primitive = _gfn1_halogen_primitive(method)
-    geometry_program = build_gfn1_halogen_geometry_program(geometry, topology)
-    return Gfn1HalogenProgram(
-        method,
-        geometry_program,
-        canonical_hash(primitive.semantic_payload()),
-    )
-
-
-def compile_gfn1_halogen(
-    method: typing.Any,
-    elements: Iterable[int],
-    coordinates: ArrayLike,
-    *,
-    coordinate_name: str = "coordinates",
-) -> Gfn1HalogenProgram:
-    """Build topology and compile the canonical GFN1 halogen correction."""
-
-    geometry = gfn1_geometry(elements, coordinate_name=coordinate_name)
-    topology = build_gfn1_halogen_topology(geometry, coordinates)
-    return build_gfn1_halogen_program(method, geometry, topology)
