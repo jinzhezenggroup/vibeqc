@@ -70,4 +70,4 @@ bottleneck, or a larger/angular domain warrants a different bounded schedule.
 
 - Issue #171; prior CPU d-force PR #658.
 - [Prior schedule](2026-09-20-spd-cpu-derivative-schedule.md).
-- [Current contract](../../../../docs/ecp.md).
+- [Current contract](../../../../docs/user/ecp.md).

@@ -590,3 +590,38 @@ def test_native_hf_cc_lambda_weights_vs_resolved_determinant(
                 )
         with pytest.raises(ResponseCompatibilityError, match="provider closed"):
             response.weight("foo", reference_identity=s.identity)
+
+
+def test_native_weight_stream_prewarms_one_additional_bundle(
+    tmp_path: typing.Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    snapshot, provider, _, _ = fixture_problem("h2")
+    cc = solve(snapshot, provider, options=_STRICT)
+    assert cc.converged
+    monkeypatch.setenv("VIBEQC_TENSOR_CACHE", str(tmp_path))
+
+    native = BoundCCSDLambda(snapshot, cc, backend="native-cpu")
+    lam = native.solve(reference_identity=snapshot.identity)
+    executor = native.tensor_executor
+    assert executor is not None
+    assert executor.artifact_count == 1
+    before = executor.compiled_program_count
+
+    response = BoundCCSDResponse(native, lam)
+    weights = tuple(
+        response.iter_weights(("foo", "fvv"), reference_identity=snapshot.identity)
+    )
+    assert len(weights) == 2
+    assert executor.artifact_count == 2
+    assert executor.compiled_program_count > before
+
+    reference_bound = BoundCCSDLambda(snapshot, cc)
+    reference_lam = reference_bound.solve(reference_identity=snapshot.identity)
+    reference_response = BoundCCSDResponse(reference_bound, reference_lam)
+    for actual in weights:
+        expected = reference_response.weight(
+            actual.parameter, reference_identity=snapshot.identity
+        )
+        np.testing.assert_allclose(
+            actual.values, expected.values, atol=1e-12, rtol=1e-10
+        )

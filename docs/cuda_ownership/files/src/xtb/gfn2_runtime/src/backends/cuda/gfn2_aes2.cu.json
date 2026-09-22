@@ -1,7 +1,0 @@
-{
-  "path": "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_aes2.cu",
-  "reason": "GFN2 AES2 runtime topology, validation, cache publication, ragged reductions and failure-atomic CUDA orchestration. Radius, damped pair kernels, onsite/pair energies, multipole potentials and coordinate/CN reverse response are compiler-generated TensorIR consumers.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "gfn2"
-}

@@ -68,7 +68,7 @@ retains actual Nsight kernel/API/copy summaries and clock intersections.
 `summary.json` pins selected files and the locally retained full profiler
 artifacts. Logs, binaries and databases remain in ignored `.artifacts/`.
 
-Reproduce with the commands in [the timeline guide](../../../docs/df_response_timeline.md)
+Reproduce with the commands in [the timeline guide](../../../docs/developer/df_response_timeline.md)
 and `benchmarks/issue308_response_timeline.py`. Select `drain` or `packed` with
 `VIBEQC_DF_RESPONSE_UPLOAD_PROBE`; select the sink control with
 `VIBEQC_DF_RESPONSE_SCATTER_PROBE=sharded`. The original progress control has a

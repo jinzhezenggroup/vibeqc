@@ -88,4 +88,4 @@ error/identity boundaries in either case.
 ## References
 
 - Issues #408 and #311.
-- [Current contract](../../../../docs/fock_build.md#cuda-df-final-state-validation).
+- [Current contract](../../../../docs/developer/fock_build.md#cuda-df-final-state-validation).

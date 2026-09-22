@@ -164,3 +164,20 @@ def test_public_native_rccsdt_homogeneous_batch_repeats_and_moves_geometry() -> 
             atol=2e-10,
             rtol=0,
         )
+
+
+def test_public_force_admits_reported_endpoint_budget() -> None:
+    """The reported total includes preparation and retained response lifetimes."""
+    atoms, _, _ = _reference_case("h2o")
+    reference = _calculator().singlepoint(atoms, properties=("energy", "forces"))
+    peak = reference.correlation.planned_endpoint_peak_bytes
+    assert peak > 0
+    exact = _calculator(correlation_memory_budget_bytes=peak).singlepoint(
+        atoms, properties=("energy", "forces")
+    )
+    assert exact.correlation.numeric_capacity_bytes <= peak
+    np.testing.assert_allclose(exact.forces, reference.forces, rtol=0, atol=1e-12)
+    with pytest.raises(RuntimeError, match="error 7|host budget|memory budget"):
+        _calculator(correlation_memory_budget_bytes=peak - 1).singlepoint(
+            atoms, properties=("energy", "forces")
+        )

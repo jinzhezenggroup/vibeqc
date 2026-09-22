@@ -219,8 +219,9 @@ ResponseWeights hamiltonian_pullback(const ParameterWeights& bar, double referen
                                      std::size_t max_bytes) {
   const auto n = checked_add(o, v);
   const auto arena_elements = generated::hamiltonian_weights_arena_elements(o, v);
-  if (checked_add(bytes(arena_elements), bytes(checked_add(fourth(n), checked_mul(4, square(n))))) >
-      max_bytes)
+  if (checked_add(bytes(arena_elements),
+                  bytes(checked_add(checked_add(fourth(n), checked_mul(4, square(n))),
+                                    checked_mul(o, v)))) > max_bytes)
     throw std::length_error("RCCSD(T) Hamiltonian response exceeds host budget");
   std::vector<double> arena(arena_elements);
   generated::HamiltonianWeightInputs inputs{};
@@ -250,7 +251,9 @@ ResponseWeights fock_pullback(std::span<const double> bar_fock, const RawHamilto
   if (bar_fock.size() != square(n))
     throw std::invalid_argument("RCCSD(T) Fock response shape mismatch");
   const auto arena_elements = generated::fock_weights_arena_elements(o, v);
-  if (bytes(arena_elements) > max_bytes)
+  if (bytes(
+          checked_add(arena_elements, checked_add(checked_add(fourth(n), checked_mul(4, square(n))),
+                                                  checked_mul(o, v)))) > max_bytes)
     throw std::length_error("RCCSD(T) Fock response exceeds host budget");
   std::vector<double> arena(arena_elements);
   generated::FockWeightInputs inputs{};
@@ -335,6 +338,121 @@ double minimum_symmetric_eigenvalue(std::vector<double> matrix, std::size_t n) {
 
 }  // namespace
 
+RccsdtForcePlan plan_rccsdt_force_cpu(const core::System& system,
+                                      const scf::PhysicalReference& reference, const Problem& p,
+                                      const SolverResult& cc, std::size_t max_bytes) {
+  const auto o = p.nocc, v = p.nvir, n = checked_add(o, v);
+  if (!o || !v || n > 12 || reference.nbf != n || reference.nocc != o ||
+      molecule::ao_count(system) != n || !max_bytes)
+    throw std::invalid_argument("invalid RCCSD(T) force resource dimensions");
+  const auto n2 = square(n), n4 = fourth(n), ov = checked_mul(o, v),
+             amplitudes = checked_add(ov, square(ov));
+  auto sum = [](std::initializer_list<std::size_t> values) {
+    std::size_t result = 0;
+    for (const auto value : values) result = checked_add(result, value);
+    return result;
+  };
+  std::size_t reference_bytes = 0;
+  for (const auto* values :
+       {&reference.overlap, &reference.hcore, &reference.fock, &reference.coefficients,
+        &reference.orbital_energies, &reference.density, &reference.weighted_density})
+    reference_bytes = checked_add(reference_bytes, bytes(values->capacity()));
+  RccsdtForcePlan plan;
+  // Lambda's existing bound includes this borrowed subset. Subtract it only
+  // when composing that stage, so the actual reference is charged once.
+  const auto lambda_borrowed = sum({p.reference_retained_bytes, problem_host_bytes(p),
+                                    bytes(cc.t1.capacity()), bytes(cc.t2.capacity())});
+  plan.retained_input_bytes =
+      sum({std::max(reference_bytes, p.reference_retained_bytes), problem_host_bytes(p),
+           bytes(cc.t1.capacity()), bytes(cc.t2.capacity()), bytes(n),
+           posthf::source_capacity(system)});
+  const auto triples_retained =
+      bytes(sum({checked_mul(o, checked_mul(v, square(v))), checked_mul(ov, square(o)),
+                 checked_mul(2, square(ov)), checked_mul(2, ov), n}));
+  const auto pages = std::min<std::size_t>(TriplesResponseOptions{}.batch_capacity,
+                                           checked_mul(v, checked_mul(v + 1, v + 2)) / 6);
+  plan.triples_phase_bytes =
+      sum({plan.retained_input_bytes, bytes(n), triples_retained,
+           bytes(generated::triples_response_arena_elements(o, v, pages)),
+           checked_mul(pages, 3 * sizeof(std::int64_t) + 2 * sizeof(double))});
+  LambdaOptions lambda_options;
+  lambda_options.max_bytes = max_bytes;
+  lambda_options.gmres.max_workspace_bytes = max_bytes;
+  const auto lambda_capacity = lambda_cpu_numeric_capacity(p, cc, lambda_options, true);
+  if (lambda_capacity < lambda_borrowed) throw std::logic_error("Lambda capacity underflow");
+  plan.lambda_phase_bytes =
+      sum({plan.retained_input_bytes, triples_retained, lambda_capacity - lambda_borrowed});
+  const auto parameter_retained = bytes(parameter_elements(o, v));
+  const auto parameter_arena = bytes(std::max({generated::parameter_foo_arena_elements(o, v),
+                                               generated::parameter_fov_arena_elements(o, v),
+                                               generated::parameter_fvv_arena_elements(o, v),
+                                               generated::parameter_ovov_arena_elements(o, v),
+                                               generated::parameter_ovvo_arena_elements(o, v),
+                                               generated::parameter_oovv_arena_elements(o, v),
+                                               generated::parameter_ovvv_arena_elements(o, v),
+                                               generated::parameter_ovoo_arena_elements(o, v),
+                                               generated::parameter_oooo_arena_elements(o, v),
+                                               generated::parameter_vvvv_arena_elements(o, v)}));
+  const auto before_raw =
+      sum({plan.retained_input_bytes, triples_retained, bytes(amplitudes), parameter_retained});
+  plan.parameter_phase_bytes = checked_add(before_raw, parameter_arena);
+  std::size_t shell = 0;
+  for (const auto& basis_shell : system.shells) {
+    const auto l = static_cast<std::size_t>(basis_shell.angular_momentum);
+    shell = std::max(shell, system.basis_representation == VIBEQC_BASIS_SPHERICAL
+                                ? 2 * l + 1
+                                : (l + 1) * (l + 2) / 2);
+  }
+  const auto tile = std::min<std::size_t>(2, shell);
+  // The generated MO provider plan supplies its source/recurrence, coefficient,
+  // full output and cyclic transform bounds. Its borrowed reference is already
+  // in retained_input_bytes, so request only its additional buffers here.
+  const auto provider = posthf::numeric_block_plan(n, 0, posthf::source_capacity(system),
+                                                   {n, n, n, n}, {tile, tile, tile, tile}, false);
+  plan.raw_phase_bytes = sum({before_raw, bytes(checked_mul(3, n2)), provider.host_bytes,
+                              checked_mul(checked_mul(13, n), sizeof(std::size_t))});
+  const auto raw_retained = bytes(sum({n4, checked_mul(3, n2)}));
+  const auto response_retained = bytes(sum({n4, checked_mul(4, n2), ov}));
+  const auto hamiltonian_arena = bytes(generated::hamiltonian_weights_arena_elements(o, v));
+  const auto fock_arena = bytes(generated::fock_weights_arena_elements(o, v));
+  const auto core = checked_add(before_raw, raw_retained);
+  // Correlation, denominator and canonicalization outputs remain live. The
+  // generated orbital action owns its arena throughout the remaining phases.
+  const auto response_base = sum(
+      {core, checked_mul(3, response_retained), bytes(generated::orbital_jvp_arena_elements(o, v)),
+       bytes(sum({checked_mul(2, n2), square(ov), checked_mul(2, ov)}))});
+  response::GmresOptions z_options;
+  z_options.restart = 30;
+  z_options.max_workspace_bytes = max_bytes;
+  const auto gmres = response::prepare_gmres(ov, z_options);
+  plan.response_phase_bytes =
+      std::max({sum({core, response_retained, hamiltonian_arena}),
+                sum({core, checked_mul(3, response_retained), bytes(n2), fock_arena}),
+                checked_add(response_base, bytes(square(ov))),  // eigenvalue-check matrix copy
+                checked_add(response_base, gmres.workspace_bytes),
+                sum({response_base, bytes(checked_mul(2, ov)), checked_mul(2, parameter_retained),
+                     checked_mul(2, response_retained), hamiltonian_arena})});
+  // After the final pullback, only the temporary zero-parameter pack dies.
+  // Moving total weights into the derivative consumer does not free their data.
+  const auto derivative_live = sum({response_base, bytes(checked_mul(2, ov)), parameter_retained,
+                                    checked_mul(2, response_retained)});
+  const auto coordinates = checked_mul(3, system.atoms.size());
+  const auto derivative_staging =
+      bytes(sum({checked_mul(2, n2), checked_mul(shell, checked_mul(n, n2)),
+                 checked_mul(square(shell), n2), checked_mul(checked_mul(shell, square(shell)), n),
+                 fourth(shell), checked_mul(2, coordinates)}));
+  plan.derivative_phase_bytes =
+      sum({derivative_live, derivative_staging,
+           checked_mul(system.shells.size() + 1, sizeof(std::size_t)),
+           posthf::source_capacity(system), posthf::source_scratch_bytes});
+  plan.peak_bytes =
+      std::max({plan.triples_phase_bytes, plan.lambda_phase_bytes, plan.parameter_phase_bytes,
+                plan.raw_phase_bytes, plan.response_phase_bytes, plan.derivative_phase_bytes});
+  if (plan.peak_bytes > max_bytes)
+    throw std::length_error("RCCSD(T) complete force exceeds simultaneous host budget");
+  return plan;
+}
+
 RccsdtForceResult rccsdt_force_cpu(const core::System& system,
                                    const scf::PhysicalReference& reference, const Problem& problem,
                                    const SolverResult& cc_result, std::span<const double> eps_o,
@@ -351,6 +469,7 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   const auto o = problem.nocc, v = problem.nvir, n = reference.nbf;
   if (reference.orbital_energies.size() != n || !finite(reference.orbital_energies))
     throw std::invalid_argument("RCCSD(T) force requires finite canonical orbital energies");
+  const auto resources = plan_rccsdt_force_cpu(system, reference, problem, cc_result, max_bytes);
 
   TriplesResponseOptions triples_options;
   triples_options.denominator_threshold = denominator_threshold;
@@ -461,7 +580,7 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   z_options.max_iterations = 200;
   z_options.max_workspace_bytes = max_bytes;
   const auto z_plan = response::prepare_gmres(dimension, z_options);
-  const auto z = response::solve_gmres(z_plan, apply, correlation.orbital_rhs);
+  auto z = response::solve_gmres(z_plan, apply, correlation.orbital_rhs);
   if (!z.converged())
     throw std::runtime_error("RCCSD(T) physical orbital response did not converge");
   std::vector<double> independent(dimension, 0.0);
@@ -499,14 +618,13 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   RccsdtForceResult result;
   result.forces = std::move(gradient);
   result.lambda = corrected.diagnostic;
-  result.orbital_response = z;
+  result.orbital_response = std::move(z);
   result.independent_orbital_residual = independent_residual;
   result.orbital_stationarity = stationarity;
   result.minimum_orbital_curvature = minimum_curvature;
   result.minimum_same_space_gap = minimum_same_space_gap;
   result.triples_response_pages = triples.pages;
-  result.numeric_capacity_bytes = std::max({corrected.diagnostic.numeric_capacity_bytes,
-                                            triples.numeric_capacity_bytes, z.workspace_bytes});
+  result.numeric_capacity_bytes = resources.peak_bytes;
   result.response_operator_hash = generated::orbital_jvp_program_hash;
   return result;
 }

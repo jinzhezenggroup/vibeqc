@@ -73,9 +73,9 @@ vibeqc_status item_exception_status() {
 
 class RccsdtPrepared final : public PreparedCalculation {
  public:
-  RccsdtPrepared(Capabilities capabilities, core::ContextState& context, core::System system,
-                 const vibeqc_method_descriptor& descriptor)
-      : capabilities_(capabilities), context_(&context), system_(std::move(system)) {
+  RccsdtPrepared(Capabilities capabilities, runtime::ExecutionContext execution,
+                 core::System system, const vibeqc_method_descriptor& descriptor)
+      : capabilities_(capabilities), execution_(std::move(execution)), system_(std::move(system)) {
     const auto bytes = std::min<std::size_t>(descriptor.struct_size, sizeof(descriptor_));
     std::memcpy(&descriptor_, &descriptor, bytes);
     descriptor_.density_fitting_auxiliary_basis = nullptr;
@@ -84,6 +84,11 @@ class RccsdtPrepared final : public PreparedCalculation {
 
   std::size_t atom_count() const noexcept override { return system_.atoms.size(); }
   const Capabilities& capabilities() const noexcept override { return capabilities_; }
+  runtime::ExecutionResourceSnapshot execution_resources() const noexcept override {
+    // Publish a coherent snapshot while another caller may execute the owner.
+    std::lock_guard<std::mutex> lock(mutex_);
+    return execution_.resources();
+  }
 
   std::optional<vibeqc_correlation_diagnostic> correlation_diagnostic() const override {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -102,14 +107,15 @@ class RccsdtPrepared final : public PreparedCalculation {
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "native RCCSD(T) forces are qualified only through 12 AOs");
 
-    auto state = run_rccsd_native_state(*context_, system_, descriptor_);
+    auto state = run_rccsd_native_state(execution_, system_, descriptor_);
     last_ = state.diagnostic;
     if (state.solved.status == cc::SolveStatus::NumericalFailure)
       throw MethodError(VIBEQC_STATUS_NUMERICAL_FAILURE, state.solved.reason);
     if (!state.solved.converged()) return state.result;
 
     try {
-      auto retained = cc::problem_host_bytes(state.problem);
+      auto retained = checked_add(state.problem.reference_retained_bytes,
+                                  cc::problem_host_bytes(state.problem));
       retained = checked_add(
           retained, checked_mul(state.eps_o.capacity() + state.eps_v.capacity(), sizeof(double)));
       retained = checked_add(
@@ -134,6 +140,8 @@ class RccsdtPrepared final : public PreparedCalculation {
       diagnostic.ccsd_t_triples_energy = triples.energy;
       diagnostic.ccsd_t_virtual_triples = triples.virtual_triples;
       diagnostic.ccsd_t_workspace_bytes = triples.workspace_bytes;
+      execution_.observe_workspace_peak(runtime::ExecutionMemorySpace::Host,
+                                        triples.workspace_bytes);
       std::copy_n(cc::triples::generated::inventory_hash,
                   std::min<std::size_t>(64, std::strlen(cc::triples::generated::inventory_hash)),
                   diagnostic.ccsd_t_equation_hash);
@@ -141,12 +149,12 @@ class RccsdtPrepared final : public PreparedCalculation {
       if (compute_forces) {
         if (!state.reference)
           throw std::runtime_error("RCCSD(T) force owner lost the converged RHF reference");
-        const auto force = cc::rccsdt_force_cpu(
-            system_, *state.reference, state.problem, state.solved, state.eps_o, state.eps_v,
-            state.budget - retained,
-            descriptor_.ccsd_denominator_threshold ? descriptor_.ccsd_denominator_threshold
-                                                   : 1e-10);
-        state.result.forces = force.forces;
+        auto force = cc::rccsdt_force_cpu(system_, *state.reference, state.problem, state.solved,
+                                          state.eps_o, state.eps_v, state.budget,
+                                          descriptor_.ccsd_denominator_threshold
+                                              ? descriptor_.ccsd_denominator_threshold
+                                              : 1e-10);
+        state.result.forces = std::move(force.forces);
         diagnostic.response_iterations = force.orbital_response.iterations;
         diagnostic.response_restarts = force.orbital_response.restarts;
         diagnostic.response_absolute_residual =
@@ -157,11 +165,15 @@ class RccsdtPrepared final : public PreparedCalculation {
             force.orbital_response.measured_workspace_peak_bytes;
         diagnostic.response_workspace_allocation_count =
             force.orbital_response.workspace_allocation_count;
-        diagnostic.planned_endpoint_peak_bytes =
-            checked_add(retained, force.numeric_capacity_bytes);
+        diagnostic.planned_endpoint_peak_bytes = std::max<std::uint64_t>(
+            diagnostic.numeric_capacity_bytes, force.numeric_capacity_bytes);
         diagnostic.force_provenance_flags = 0x7;
         diagnostic.numeric_capacity_bytes = std::max<std::uint64_t>(
-            diagnostic.numeric_capacity_bytes, checked_add(retained, force.numeric_capacity_bytes));
+            diagnostic.numeric_capacity_bytes, force.numeric_capacity_bytes);
+        execution_.observe_numeric_peak(runtime::ExecutionMemorySpace::Host,
+                                        force.numeric_capacity_bytes);
+        execution_.observe_workspace_peak(runtime::ExecutionMemorySpace::Host,
+                                          force.orbital_response.workspace_bytes);
         std::copy_n(force.response_operator_hash.c_str(),
                     std::min<std::size_t>(64, force.response_operator_hash.size()),
                     diagnostic.response_operator_hash);
@@ -178,7 +190,7 @@ class RccsdtPrepared final : public PreparedCalculation {
 
  private:
   Capabilities capabilities_;
-  core::ContextState* context_{};
+  runtime::ExecutionContext execution_;
   core::System system_;
   vibeqc_method_descriptor descriptor_{};
   std::optional<vibeqc_correlation_diagnostic> last_;
@@ -189,7 +201,10 @@ class RccsdtPreparedBatch final : public PreparedBatch {
  public:
   RccsdtPreparedBatch(Capabilities capabilities, core::ContextState& context,
                       std::vector<core::System> systems, const vibeqc_method_descriptor& descriptor)
-      : capabilities_(capabilities), context_(&context), systems_(std::move(systems)) {
+      : capabilities_(capabilities),
+        execution_(context),
+        context_(&context),
+        systems_(std::move(systems)) {
     const auto bytes = std::min<std::size_t>(descriptor.struct_size, sizeof(descriptor_));
     std::memcpy(&descriptor_, &descriptor, bytes);
     descriptor_.density_fitting_auxiliary_basis = nullptr;
@@ -219,7 +234,7 @@ class RccsdtPreparedBatch final : public PreparedBatch {
       auto& result = results[index];
       result.bucket_id = 0;
       result.calculation.energy = std::numeric_limits<double>::quiet_NaN();
-      result.calculation.executed_backend = context_->requested_backend;
+      result.calculation.executed_backend = execution_.backend();
       try {
         auto target = systems_[index];
         auto target_coordinates = positions(target);
@@ -259,6 +274,11 @@ class RccsdtPreparedBatch final : public PreparedBatch {
   }
   void restore_warm_states(std::vector<std::optional<scf::HfWarmState>>) override {}
   void set_warm_start_updates(bool) override {}
+  runtime::ExecutionResourceSnapshot execution_resources(
+      std::size_t index) const noexcept override {
+    if (index >= owners_.size() || !owners_[index]) return {};
+    return owners_[index]->execution_resources();
+  }
   std::optional<std::vector<DirectShellClassProfileEntry>> last_direct_shell_class_profile()
       const override {
     return std::nullopt;
@@ -277,6 +297,7 @@ class RccsdtPreparedBatch final : public PreparedBatch {
 
  private:
   Capabilities capabilities_;
+  runtime::ExecutionContext execution_;
   core::ContextState* context_{};
   std::vector<core::System> systems_;
   vibeqc_method_descriptor descriptor_{};
@@ -294,10 +315,11 @@ vibeqc_status validate_rccsdt_system(vibeqc_method method, const core::System& s
 std::unique_ptr<PreparedCalculation> prepare_rccsdt_calculation(
     const Capabilities& capabilities, core::ContextState& context, const core::System& system,
     const vibeqc_method_descriptor& descriptor) {
-  if (context.requested_backend != VIBEQC_BACKEND_CPU_REFERENCE)
+  runtime::ExecutionContext execution(context);
+  if (execution.backend() != VIBEQC_BACKEND_CPU_REFERENCE)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "native RCCSD(T) CUDA owner is not promoted yet; use the CPU backend");
-  return std::make_unique<RccsdtPrepared>(capabilities, context, system, descriptor);
+  return std::make_unique<RccsdtPrepared>(capabilities, std::move(execution), system, descriptor);
 }
 
 std::unique_ptr<PreparedBatch> prepare_rccsdt_batch(const Capabilities& capabilities,

@@ -132,20 +132,10 @@ void validate_lambda_options(const LambdaOptions& options) {
   (void)response::prepare_gmres(1, options.gmres);
 }
 
-static LambdaResult solve_lambda_cpu_impl(const Problem& p, const SolverResult& cc,
-                                          std::span<const double> t1_source,
-                                          std::span<const double> t2_source,
-                                          const LambdaOptions& options) {
-  validate_problem(p);
+std::size_t lambda_cpu_numeric_capacity(const Problem& p, const SolverResult& cc,
+                                        const LambdaOptions& options, bool with_energy_source) {
   validate_lambda_options(options);
-  if (!cc.converged()) throw std::invalid_argument("RCCSD Lambda requires a converged CC result");
   AmplitudeLayout layout(p.nocc, p.nvir);
-  if (cc.t1.size() != layout.n1 || cc.t2.size() != layout.n2)
-    throw std::invalid_argument("RCCSD Lambda CC result shape mismatch");
-  if (!std::isfinite(cc.correlation_energy))
-    throw std::invalid_argument("nonfinite RCCSD Lambda primal energy");
-
-  const auto in = inputs(p, cc);
   const auto replay_elements = generated::replay_arena_elements(p.nocc, p.nvir);
   const auto shared_rhs_elements = generated::lambda_rhs_arena_elements(p.nocc, p.nvir);
   const auto shared_jt_elements = generated::lambda_transpose_arena_elements(p.nocc, p.nvir);
@@ -166,8 +156,41 @@ static LambdaResult solve_lambda_cpu_impl(const Problem& p, const SolverResult& 
   capacity = checked_add(capacity, bytes(checked_mul(3, layout.dimension())));
   capacity = checked_add(capacity, layout.storage_bytes());
   capacity = checked_add(capacity, gmres_plan.workspace_bytes);
+  if (with_energy_source) capacity = checked_add(capacity, bytes(layout.dimension()));
+  return capacity;
+}
+
+static LambdaResult solve_lambda_cpu_impl(const Problem& p, const SolverResult& cc,
+                                          std::span<const double> t1_source,
+                                          std::span<const double> t2_source,
+                                          const LambdaOptions& options) {
+  validate_problem(p);
+  validate_lambda_options(options);
+  if (!cc.converged()) throw std::invalid_argument("RCCSD Lambda requires a converged CC result");
+  AmplitudeLayout layout(p.nocc, p.nvir);
+  if (cc.t1.size() != layout.n1 || cc.t2.size() != layout.n2)
+    throw std::invalid_argument("RCCSD Lambda CC result shape mismatch");
+  if (!std::isfinite(cc.correlation_energy))
+    throw std::invalid_argument("nonfinite RCCSD Lambda primal energy");
+  const bool with_source = !t1_source.empty() || !t2_source.empty();
+  if (with_source && (t1_source.size() != layout.n1 || t2_source.size() != layout.n2))
+    throw std::invalid_argument("RCCSD Lambda energy-source shape mismatch");
+  for (const auto source : {t1_source, t2_source})
+    for (const double value : source)
+      if (!std::isfinite(value))
+        throw std::invalid_argument("nonfinite RCCSD Lambda energy source");
+  const auto capacity = lambda_cpu_numeric_capacity(p, cc, options, with_source);
   if (capacity > options.max_bytes)
     throw std::length_error("RCCSD Lambda exceeds simultaneous host budget");
+
+  const auto arena_elements =
+      std::max({generated::replay_arena_elements(p.nocc, p.nvir),
+                generated::lambda_rhs_arena_elements(p.nocc, p.nvir),
+                generated::lambda_transpose_arena_elements(p.nocc, p.nvir),
+                generated::lambda_independent_rhs_arena_elements(p.nocc, p.nvir),
+                generated::lambda_independent_transpose_arena_elements(p.nocc, p.nvir)});
+  const auto gmres_plan = response::prepare_gmres(layout.dimension(), options.gmres);
+  const auto in = inputs(p, cc);
 
   layout.initialize();
   layout.validate_dense(cc.t1, cc.t2);
@@ -187,21 +210,20 @@ static LambdaResult solve_lambda_cpu_impl(const Problem& p, const SolverResult& 
   layout.pack_weighted({rhs_outputs.t1, layout.n1}, {rhs_outputs.t2, layout.n2}, rhs);
 
   std::vector<double> packed_source;
-  if (!t1_source.empty() || !t2_source.empty()) {
-    if (t1_source.size() != layout.n1 || t2_source.size() != layout.n2)
-      throw std::invalid_argument("RCCSD Lambda energy-source shape mismatch");
-    std::vector<double> source_one(t1_source.begin(), t1_source.end());
-    std::vector<double> source_two(t2_source.begin(), t2_source.end());
+  if (with_source) {
+    // Project directly into the one retained packed vector. Separate dense
+    // source copies are unnecessary and would add another simultaneous owner.
+    packed_source.resize(layout.dimension());
+    std::copy(t1_source.begin(), t1_source.end(), packed_source.begin());
     for (std::size_t k = 0; k < layout.representatives.size(); ++k) {
       const auto first = layout.representatives[k];
       const auto second = layout.partners[k];
       const double projected =
-          first == second ? source_two[first] : 0.5 * (source_two[first] + source_two[second]);
-      source_two[first] = projected;
-      source_two[second] = projected;
+          first == second ? t2_source[first] : 0.5 * (t2_source[first] + t2_source[second]);
+      packed_source[layout.n1 + k] = layout.sqrt_weights[layout.n1 + k] * projected;
+      if (!std::isfinite(packed_source[layout.n1 + k]))
+        throw std::invalid_argument("nonfinite projected RCCSD Lambda energy source");
     }
-    packed_source.resize(layout.dimension());
-    layout.pack_weighted(source_one, source_two, packed_source);
     for (std::size_t index = 0; index < rhs.size(); ++index) rhs[index] -= packed_source[index];
   }
 

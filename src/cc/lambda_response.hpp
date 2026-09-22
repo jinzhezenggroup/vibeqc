@@ -45,6 +45,13 @@ struct LambdaResult {
 };
 
 void validate_lambda_options(const LambdaOptions& options);
+/** Allocation-free total numeric bound, including borrowed CC/reference data.
+ * Additional energy sources retain one packed projected RHS through the
+ * independent residual check. Callers composing stages add their other live
+ * owners separately rather than giving each stage the full endpoint budget.
+ */
+std::size_t lambda_cpu_numeric_capacity(const Problem& problem, const SolverResult& cc_result,
+                                        const LambdaOptions& options, bool with_energy_source);
 LambdaResult solve_lambda_cpu(const Problem& problem, const SolverResult& cc_result,
                               const LambdaOptions& options = {});
 LambdaResult solve_lambda_cpu_with_energy_source(const Problem& problem,

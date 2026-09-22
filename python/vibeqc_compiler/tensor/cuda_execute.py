@@ -39,6 +39,7 @@ from vibeqc_compiler.common.cuda_runtime import (
     CudaArtifact,
     _Metrics,
 )
+from vibeqc_compiler.common.execution import CompiledExecutionIdentity
 from vibeqc_compiler.common.paths import LAYOUT_VERSION, asset_path, source_hashes
 from vibeqc_compiler.common.provenance import (
     atomic_json,
@@ -106,6 +107,7 @@ def tensor_source_identity() -> str:
                     "src/runtime/resource_ledger.hpp",
                     "src/tensor/cuda_graph_context.cuh",
                     "src/runtime/cuda_graph_region.cuh",
+                    "src/runtime/compiled_execution_region.hpp",
                     "src/tensor/cuda_error.hpp",
                     "src/tensor/metrics.hpp",
                     "src/runtime/allocation_measurement.hpp",
@@ -451,6 +453,22 @@ class PreparedCuda:
                 "numpy": np.__version__,
             }
         )
+        self.compiled_execution_identity = CompiledExecutionIdentity.from_payloads(
+            owner="tensorir-cuda",
+            request={
+                "plan": plan.identity,
+                "precision": plan.precision,
+                "host_layout": "C staging; arbitrary caller strides",
+            },
+            artifacts=(
+                {
+                    "key": artifact.metadata["key"],
+                    "binary_sha256": artifact.metadata["binary_sha256"],
+                },
+            ),
+            runtime={"device": self.device},
+        )
+        self.execution_identity = self.compiled_execution_identity.identity
         self.capture_contract = tensor_capture_contract(
             plan, artifact, self.device, resource_plan=resource_plan
         )
@@ -716,6 +734,7 @@ class PreparedCuda:
             traffic = self.plan.semantic_traffic
             metrics.update(
                 endpoint_ms=(time.perf_counter() - started) * 1000,
+                execution_identity=self.execution_identity,
                 predicted_peak_bytes=self.plan.peak_bytes,
                 host_buffer_bytes=self.plan.host_bytes,
                 observed_semantic_traffic_bytes=traffic["total_bytes"],

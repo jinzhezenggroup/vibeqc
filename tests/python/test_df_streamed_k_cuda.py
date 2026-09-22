@@ -55,6 +55,7 @@ def fixed_density_probe(tmp_path_factory: typing.Any) -> typing.Any:
     [
         (8192, 96, 2, 96, False),
         (3552, 13, 20, 24, False),
+        (5760, 13, 12, 32, False),
         (9216, 5, 0, 0, True),
         (9216, 1, 0, 0, True),
     ],
@@ -106,9 +107,8 @@ def test_streamed_raw_reuse_matches_independent_jk(
         assert record["streamed"] != retained
         source_elements = 96**3 * passes
         if not retained and record["operation"] == "ri_k_occupied":
-            # All-Q occupied projections need one block (96 rows) or four
-            # 24-row blocks. Full K rereads each row four times; triangular
-            # K needs 24*(4+3+2+1) generated rows, including diagonal reuse.
+            # Count all row/column visits and diagonal reuse. The 32-row
+            # fixture would fit 39 rows, but balanced blocks read fewer values.
             blocks = 96 // occupied_rows
             generated_rows = (
                 occupied_rows * blocks * (blocks + 1) // 2

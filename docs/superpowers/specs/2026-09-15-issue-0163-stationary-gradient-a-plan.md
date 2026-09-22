@@ -5,7 +5,7 @@ Design: `docs/superpowers/specs/2026-09-15-issue-0163-stationary-gradient-a-desi
 Implementation status: this plan does not establish completion of #163-A.
 The native handoff and fixed-density diagnostics are implemented; generated
 stationary XC binding still requires a matching native energy/derivative domain.
-See [current method behavior](../../methods.md).
+See [current method behavior](../../user/methods.md).
 
 ## Outcome
 

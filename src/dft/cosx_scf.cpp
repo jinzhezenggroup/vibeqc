@@ -8,6 +8,7 @@
 #include <tuple>
 #include <utility>
 
+#include "scf/gradient/hf_gradient.hpp"
 #include "scf/initial_guess/density.hpp"
 #include "scf/reference/linalg.hpp"
 #include "scf/reference/mean_field.hpp"
@@ -23,6 +24,7 @@ using scf::reference::density_from_orbitals;
 using scf::reference::density_rms;
 using scf::reference::EigenResult;
 using scf::reference::electronic_energy;
+using scf::reference::energy_weighted_density;
 using scf::reference::generalized_eigen;
 using scf::reference::Matrix;
 using scf::reference::residual_rms;
@@ -40,11 +42,11 @@ void validate_options(const PreparedCosxFockPlan& plan, const scf::ScfOptions& o
   scf::validate_resolved_fock_build(strategy);
   require(strategy.backend == scf::FockBackend::Cuda &&
               strategy.schedule == scf::FockSchedule::CudaIndependent &&
-              strategy.spec.spin == spin && strategy.spec.derivative_order == 0 &&
+              strategy.spec.spin == spin &&
+              strategy.spec.derivative_order == (options.compute_forces ? 1U : 0U) &&
               strategy.spec.exchange.present &&
               strategy.spec.exchange.approximation == scf::FockApproximation::SeminumericalCosx,
-          "COSX SCF requires a matching energy-only prepared CUDA exchange strategy");
-  require(!options.compute_forces, "COSX analytic forces are not implemented");
+          "COSX SCF requires a matching value/force prepared CUDA exchange strategy");
   require(options.hooks == nullptr, "COSX SCF proposal hooks are not implemented");
   if (options.resolved_fock_build)
     require(*options.resolved_fock_build == strategy,
@@ -85,6 +87,11 @@ void finalize_rhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& options, st
   result.physical_residual_rms = residual_rms(residual);
   result.energy_change = std::abs(final_energy - result.energy);
   result.energy = final_energy;
+  if (options.compute_forces) {
+    const Matrix weighted = energy_weighted_density(orbitals.vectors, orbitals.values, n, occupied);
+    result.forces =
+        scf::gradient::analytic_forces(ints, density, weighted, plan.energy_derivative(density));
+  }
   result.converged = result.energy_change < options.energy_tolerance &&
                      result.density_rms < options.density_tolerance &&
                      result.physical_residual_rms < residual_gate(options);
@@ -112,6 +119,14 @@ void finalize_uhf(PreparedCosxFockPlan& plan, const scf::ScfOptions& options,
   result.physical_residual_rms = std::hypot(residual_rms(ra), residual_rms(rb)) / std::sqrt(2.0);
   result.energy_change = std::abs(final_energy - result.energy);
   result.energy = final_energy;
+  if (options.compute_forces) {
+    const Matrix alpha_weighted =
+        energy_weighted_density(ca.vectors, ca.values, n, alpha_occupied, 1.0);
+    const Matrix beta_weighted =
+        energy_weighted_density(cb.vectors, cb.values, n, beta_occupied, 1.0);
+    result.forces = scf::gradient::analytic_uhf_forces(
+        ints, alpha, beta, alpha_weighted, beta_weighted, plan.energy_derivative(alpha, beta));
+  }
   result.converged = result.energy_change < options.energy_tolerance &&
                      result.density_rms < options.density_tolerance &&
                      std::max(residual_rms(ra), residual_rms(rb)) < residual_gate(options);
