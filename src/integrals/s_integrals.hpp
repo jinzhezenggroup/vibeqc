@@ -168,6 +168,22 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
 std::vector<double> contract_weighted_density_fitting_derivative(
     const core::System& orbital_system, const core::System& auxiliary_system,
     std::span<const double> metric_weights, std::span<const double> three_center_weights);
+
+/** Directly contract raw density-fitting A/M weights with nuclear derivatives.
+ *
+ * The returned vector is the positive energy derivative in atom/xyz order.
+ * Public spherical weights are pulled back to Cartesian integral components,
+ * but no coordinate-major three-center or metric derivative tensor is formed.
+ * maximum_bytes bounds the explicit Cartesian weight staging plus the O(3N)
+ * result; integral-recurrence scalar scratch follows the normal host contract.
+ * Only generated s/p/d/f coverage is admitted; the unbudgeted high-l full-tensor
+ * fallback is deliberately unavailable through this bounded entry.
+ */
+std::vector<double> contract_weighted_density_fitting_derivative(
+    const core::System& orbital_system, const core::System& auxiliary_system,
+    std::span<const double> three_center_weights, std::span<const double> metric_weights,
+    std::size_t maximum_bytes);
+
 /**
  * Transform Cartesian density-fitting tensors into the public AO
  * representations selected by the two systems.

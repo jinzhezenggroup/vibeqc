@@ -12,6 +12,7 @@
 #include <string_view>
 #include <utility>
 
+#include "api/handles.hpp"
 #include "dft/ao_grid.hpp"
 #include "dft/dispersion/d4_runtime.hpp"
 #include "dft/grid.hpp"
@@ -249,14 +250,27 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     if (mode != VIBEQC_DENSITY_FITTING_NONE && mode != VIBEQC_DENSITY_FITTING_CPU_REFERENCE &&
         mode != VIBEQC_DENSITY_FITTING_CUDA && mode != VIBEQC_DENSITY_FITTING_AUTO)
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown density-fitting execution mode");
-    if (mode != VIBEQC_DENSITY_FITTING_NONE)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT supports conventional Coulomb only");
+    options.density_fitting_mode = mode;
+    if ((mode == VIBEQC_DENSITY_FITTING_CPU_REFERENCE && backend != VIBEQC_BACKEND_CPU_REFERENCE) ||
+        (mode == VIBEQC_DENSITY_FITTING_CUDA && backend != VIBEQC_BACKEND_CUDA))
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "DFT density-fitting backend must match the calculation backend");
   }
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis),
                     sizeof(descriptor.density_fitting_auxiliary_basis)) &&
-      descriptor.density_fitting_auxiliary_basis != nullptr)
+      descriptor.density_fitting_auxiliary_basis != nullptr &&
+      options.density_fitting_mode == VIBEQC_DENSITY_FITTING_NONE)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                      "DFT does not accept an unused auxiliary basis");
+                      "DFT auxiliary basis requires density fitting");
+  if (field_present(descriptor,
+                    offsetof(vibeqc_method_descriptor, density_fitting_relative_threshold),
+                    sizeof(descriptor.density_fitting_relative_threshold)) &&
+      descriptor.density_fitting_relative_threshold != 0.0)
+    options.density_fitting_relative_threshold = descriptor.density_fitting_relative_threshold;
+  if (field_present(descriptor,
+                    offsetof(vibeqc_method_descriptor, density_fitting_memory_budget_bytes),
+                    sizeof(descriptor.density_fitting_memory_budget_bytes)))
+    options.density_fitting_memory_budget_bytes = descriptor.density_fitting_memory_budget_bytes;
   if (field_present(descriptor, offsetof(vibeqc_method_descriptor, precision_mode),
                     sizeof(descriptor.precision_mode))) {
     if (descriptor.precision_mode != VIBEQC_PRECISION_FP64 &&
@@ -388,9 +402,18 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   if (backend == VIBEQC_BACKEND_CUDA && execution_plan.semilocal_family == kKsSemilocalB3lyp)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "B3LYP CPU execution only");
 
+  if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE) {
+    if (options.precision_mode == VIBEQC_PRECISION_AUTO || execution_plan.range_exchange ||
+        execution_plan.nonlocal_correlation)
+      throw MethodError(
+          VIBEQC_STATUS_NOT_IMPLEMENTED,
+          "DFT density fitting requires FP64 full-range local/semilocal or global-hybrid KS");
+    fock.coulomb.approximation = scf::FockApproximation::DensityFitted;
+    if (fock.exchange.present) fock.exchange.approximation = scf::FockApproximation::DensityFitted;
+  }
   options.resolved_fock_build = scf::resolve_fock_build(
       fock, backend == VIBEQC_BACKEND_CUDA ? scf::FockBackend::Cuda : scf::FockBackend::Cpu,
-      options.screening_tolerance);
+      options.screening_tolerance, options.density_fitting_relative_threshold);
   if (execution_plan.semilocal_family == kKsSemilocalWb97mv) {
     if (!execution_plan.range_exchange || !execution_plan.nonlocal_correlation)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
@@ -523,20 +546,75 @@ void add_transfers(dft::CudaKsTransfers& target, const dft::CudaKsTransfers& val
 }
 #endif
 
+/** Own auxiliary shells and rebind centers when a batch item moves. The source
+ * owner copies the result, so descriptor/temporary system lifetimes never leak
+ * into a prepared calculation. An omitted auxiliary basis means the orbital basis. */
+std::optional<core::System> ks_auxiliary_template(const vibeqc_method_descriptor& descriptor) {
+  if (!field_present(descriptor,
+                     offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis),
+                     sizeof(descriptor.density_fitting_auxiliary_basis)) ||
+      !descriptor.density_fitting_auxiliary_basis)
+    return std::nullopt;
+  return descriptor.density_fitting_auxiliary_basis->data;
+}
+
+void validate_ks_auxiliary_geometry(const core::System& system,
+                                    const std::optional<core::System>& auxiliary) {
+  if (!auxiliary) return;
+  if (auxiliary->atoms.size() != system.atoms.size())
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "DFT auxiliary basis atom count differs");
+  for (std::size_t i = 0; i < system.atoms.size(); ++i)
+    if (auxiliary->atoms[i].atomic_number != system.atoms[i].atomic_number ||
+        auxiliary->atoms[i].position != system.atoms[i].position)
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "DFT auxiliary basis must share the initial system geometry");
+}
+
+std::optional<core::System> ks_auxiliary_for_system(const core::System& system,
+                                                    std::optional<core::System> auxiliary) {
+  if (!auxiliary) return auxiliary;
+  if (auxiliary->atoms.size() != system.atoms.size())
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "DFT auxiliary basis atom count differs");
+  for (std::size_t i = 0; i < system.atoms.size(); ++i) {
+    if (auxiliary->atoms[i].atomic_number != system.atoms[i].atomic_number)
+      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                        "DFT auxiliary basis atom ordering differs");
+    auxiliary->atoms[i].position = system.atoms[i].position;
+  }
+  return auxiliary;
+}
+
+/** Backend selection must precede materialization: constructing the reference
+ * grid and then uploading it hides cubic host work in CUDA preparation. */
+dft::MolecularGrid ks_molecular_grid(const core::System& system, dft::GridSpec spec,
+                                     vibeqc_backend backend, int device) {
+  if (backend == VIBEQC_BACKEND_CUDA) {
+#if VIBEQC_HAS_CUDA
+    return dft::MolecularGrid::from_cuda(system, spec, device);
+#else
+    throw std::runtime_error("CUDA quadrature is unavailable in this build");
+#endif
+  }
+  return dft::MolecularGrid(system, spec);
+}
+
 class KsPreparedCalculation final : public PreparedCalculation {
  public:
   KsPreparedCalculation(Capabilities capabilities, core::System system,
                         NativeKsExecutionPlan execution_plan, scf::ScfOptions options,
-                        dft::GridSpec grid, vibeqc_backend backend, int device)
+                        dft::GridSpec grid, vibeqc_backend backend, int device,
+                        const std::optional<core::System>& auxiliary)
       : capabilities_(capabilities),
         system_(std::move(system)),
         execution_plan_(execution_plan),
         options_(std::move(options)),
         backend_(backend),
-        fock_(system_, nullptr, *options_.resolved_fock_build, device,
-              ks_provider_bytes(system_, backend)),
+        fock_(system_, auxiliary ? &*auxiliary : nullptr, *options_.resolved_fock_build, device,
+              options_.density_fitting_mode == VIBEQC_DENSITY_FITTING_NONE
+                  ? ks_provider_bytes(system_, backend)
+                  : options_.density_fitting_memory_budget_bytes),
         basis_(system_),
-        grid_(system_, grid) {
+        grid_(ks_molecular_grid(system_, grid, backend_, device)) {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
     if (execution_plan_.range_exchange) prepare_range_exchange(device);
 #if VIBEQC_HAS_CUDA
@@ -553,6 +631,9 @@ class KsPreparedCalculation final : public PreparedCalculation {
   std::size_t atom_count() const noexcept override { return system_.atoms.size(); }
   const Capabilities& capabilities() const noexcept override { return capabilities_; }
   const core::System& system() const noexcept { return system_; }
+  const std::vector<scf::CudaDensityFittingMetricDiagnostic>& fitted_diagnostics() const noexcept {
+    return fock_.diagnostic().fitted;
+  }
 
   /** Explicit retained vectors; object metadata and transient setup are not
    * inferred from this lower-bound observation. Grid/basis buffers are owned. */
@@ -672,6 +753,10 @@ class KsPreparedCalculation final : public PreparedCalculation {
   vibeqc_status read_derivative_state(const dft::CudaKsFinalStateToken& expected,
                                       KsDerivativeSnapshot& output, std::string& detail) {
     output = {};
+    if (options_.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE) {
+      detail = "DFT density-fitted derivative snapshots require auxiliary and metric response";
+      return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    }
     dft::VerifiedKsFinalState state;
 #if VIBEQC_HAS_CUDA
     const auto before = cuda_ ? cuda_->transfers() : dft::CudaKsTransfers{};
@@ -987,7 +1072,8 @@ class KsPreparedBatch final : public PreparedBatch {
  public:
   KsPreparedBatch(Capabilities capabilities, std::vector<core::System> systems,
                   NativeKsExecutionPlan execution_plan, scf::ScfOptions options, dft::GridSpec grid,
-                  vibeqc_backend backend, int device, bool warm_enabled)
+                  vibeqc_backend backend, int device, bool warm_enabled,
+                  std::optional<core::System> auxiliary)
       : capabilities_(capabilities),
         systems_(std::move(systems)),
         execution_plan_(execution_plan),
@@ -996,6 +1082,7 @@ class KsPreparedBatch final : public PreparedBatch {
         backend_(backend),
         device_(device),
         warm_enabled_(warm_enabled),
+        auxiliary_(std::move(auxiliary)),
         items_(systems_.size()) {
     for (std::size_t i = 0; i < size(); ++i) {
       runtime::CpuRetainedCapacity neighbors(host_numeric_capacity());
@@ -1251,7 +1338,16 @@ class KsPreparedBatch final : public PreparedBatch {
   std::vector<EigensolverDiagnostic> last_eigensolver_diagnostics() const override { return {}; }
   std::vector<scf::CudaDensityFittingMetricDiagnostic> last_density_fitting_metric_diagnostics()
       const override {
-    return {};
+    std::vector<scf::CudaDensityFittingMetricDiagnostic> result;
+    for (std::size_t index = 0; index < items_.size(); ++index)
+      if (items_[index].plan)
+        for (auto diagnostic : items_[index].plan->fitted_diagnostics()) {
+          // KS assigns one provider/bucket per input slot, including equal shapes.
+          diagnostic.bucket_id = index;
+          diagnostic.system_index = index;
+          result.push_back(diagnostic);
+        }
+    return result;
   }
   std::vector<InactiveEigensolverProfileEntry> last_inactive_eigensolver_profile() const override {
     return {};
@@ -1285,7 +1381,8 @@ class KsPreparedBatch final : public PreparedBatch {
   };
   std::unique_ptr<KsPreparedCalculation> make_plan(const core::System& system) const {
     return std::make_unique<KsPreparedCalculation>(capabilities_, system, execution_plan_, options_,
-                                                   grid_spec_, backend_, device_);
+                                                   grid_spec_, backend_, device_,
+                                                   ks_auxiliary_for_system(system, auxiliary_));
   }
   void materialize_warm(std::size_t i) const {
     const auto& item = items_.at(i);
@@ -1301,6 +1398,7 @@ class KsPreparedBatch final : public PreparedBatch {
   vibeqc_backend backend_;
   int device_;
   bool warm_enabled_, warm_updates_{true};
+  std::optional<core::System> auxiliary_;
   std::vector<Item> items_;
 };
 
@@ -1396,10 +1494,17 @@ std::unique_ptr<PreparedCalculation> prepare_dft_calculation(
   NativeKsExecutionPlan execution_plan;
   auto options = dft_options(descriptor, context.requested_backend, execution_plan);
   validate_ks_spin_state(execution_plan, system);
+  if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE &&
+      (!system.ecp_terms.empty() ||
+       std::any_of(system.atoms.begin(), system.atoms.end(),
+                   [](const auto& atom) { return atom.ecp_core != 0; })))
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT ECP density fitting is not qualified");
+  validate_ks_auxiliary_geometry(system, ks_auxiliary_template(descriptor));
   auto grid = ks_grid_options(descriptor, options, execution_plan);
-  return std::make_unique<KsPreparedCalculation>(capabilities, system, execution_plan,
-                                                 std::move(options), std::move(grid),
-                                                 context.requested_backend, context.device_id);
+  return std::make_unique<KsPreparedCalculation>(
+      capabilities, system, execution_plan, std::move(options), std::move(grid),
+      context.requested_backend, context.device_id,
+      ks_auxiliary_for_system(system, ks_auxiliary_template(descriptor)));
 }
 
 std::unique_ptr<PreparedBatch> prepare_dft_batch(const Capabilities& capabilities,
@@ -1416,11 +1521,21 @@ std::unique_ptr<PreparedBatch> prepare_dft_batch(const Capabilities& capabilitie
 #endif
   NativeKsExecutionPlan execution_plan;
   auto options = dft_options(descriptor, context.requested_backend, execution_plan);
-  for (const auto& system : systems) validate_ks_spin_state(execution_plan, system);
+  for (const auto& system : systems) {
+    validate_ks_spin_state(execution_plan, system);
+    if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE &&
+        (!system.ecp_terms.empty() ||
+         std::any_of(system.atoms.begin(), system.atoms.end(),
+                     [](const auto& atom) { return atom.ecp_core != 0; })))
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "DFT ECP density fitting is not qualified");
+  }
+  if (!systems.empty())
+    validate_ks_auxiliary_geometry(systems.front(), ks_auxiliary_template(descriptor));
   auto grid = ks_grid_options(descriptor, options, execution_plan);
   return std::make_unique<KsPreparedBatch>(
       capabilities, std::move(systems), execution_plan, std::move(options), std::move(grid),
-      context.requested_backend, context.device_id, (flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0);
+      context.requested_backend, context.device_id, (flags & VIBEQC_BATCH_ENABLE_WARM_STARTS) != 0,
+      ks_auxiliary_template(descriptor));
 }
 
 }  // namespace vibeqc::methods::detail

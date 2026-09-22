@@ -1,7 +1,12 @@
 #include "scf/cuda/eigensolver.hpp"
 
+#include <stdexcept>
+
+#include "runtime/resource_cuda.cuh"
 #include "scf/cuda/eigensolver_kernels.hpp"
 #include "scf/cuda/launch_geometry.hpp"
+#include "scf/eigensolver_workspace.hpp"
+#include "vibeqc/vibeqc.hpp"
 
 namespace vibeqc::scf::cuda_execution {
 
@@ -25,6 +30,80 @@ vibeqc_status solver_status(cusolverStatus_t status) {
 bool provider_eigensolver(CudaEigensolverFamily family) {
   return family == CudaEigensolverFamily::jacobi_batched ||
          family == CudaEigensolverFamily::xsyev_batched || family == CudaEigensolverFamily::xsyevd;
+}
+
+OrdinaryStreamEigensolver::OrdinaryStreamEigensolver(cudaStream_t stream, int n,
+                                                     const double* matrix,
+                                                     const double* eigenvalues)
+    : n_(n) {
+  if (n <= 0 || !stream || !matrix || !eigenvalues)
+    throw std::invalid_argument("invalid ordinary eigensolver owner");
+  const auto checked = [](vibeqc_status status) {
+    if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+    if (status != VIBEQC_STATUS_SUCCESS)
+      throw vibeqc::Error(status, "ordinary CUDA eigensolver preparation failed");
+  };
+  checked(cuda_status(cudaGetDevice(&device_)));
+  resources_.stream_ = stream;
+  if (n <= kSmallEigensolverLimit) return;
+  try {
+    cudaStreamCaptureStatus capture{};
+    checked(cuda_status(cudaStreamIsCapturing(stream, &capture)));
+    if (capture != cudaStreamCaptureStatusNone)
+      throw std::invalid_argument("ordinary eigensolver preparation cannot capture");
+    checked(solver_status(cusolverDnCreate(&resources_.solver_)));
+    checked(solver_status(cusolverDnSetStream(resources_.solver_, stream)));
+    checked(solver_status(cusolverDnCreateParams(&resources_.solver_parameters_)));
+    checked(solver_status(cusolverDnXsyevd_bufferSize(
+        resources_.solver_, resources_.solver_parameters_, CUSOLVER_EIG_MODE_VECTOR,
+        CUBLAS_FILL_MODE_LOWER, n, CUDA_R_64F, matrix, n, CUDA_R_64F, eigenvalues, CUDA_R_64F,
+        &resources_.solver_workspace_bytes_, &resources_.solver_host_workspace_bytes_)));
+    const auto allowance = ordinary_eigensolver_workspace_allowance(n);
+    if (resources_.solver_workspace_bytes_ > allowance ||
+        resources_.solver_host_workspace_bytes_ > allowance)
+      throw std::bad_alloc();
+    if (resources_.solver_workspace_bytes_)
+      checked(cuda_status(runtime::resource_cuda_malloc(&resources_.solver_workspace_,
+                                                        resources_.solver_workspace_bytes_)));
+    host_workspace_.resize(resources_.solver_host_workspace_bytes_);
+    resources_.solver_host_workspace_ = host_workspace_.data();
+  } catch (...) {
+    cleanup();
+    throw;
+  }
+}
+
+void OrdinaryStreamEigensolver::cleanup() noexcept {
+  int previous = device_;
+  (void)cudaGetDevice(&previous);
+  (void)cudaSetDevice(device_);
+  if (resources_.stream_) (void)cudaStreamSynchronize(resources_.stream_);
+  if (resources_.solver_workspace_) (void)runtime::resource_cuda_free(resources_.solver_workspace_);
+  if (resources_.solver_parameters_) (void)cusolverDnDestroyParams(resources_.solver_parameters_);
+  if (resources_.solver_) (void)cusolverDnDestroy(resources_.solver_);
+  resources_ = {};
+  (void)cudaSetDevice(previous);
+}
+
+OrdinaryStreamEigensolver::~OrdinaryStreamEigensolver() { cleanup(); }
+
+vibeqc_status OrdinaryStreamEigensolver::launch(int batch, double* matrices,
+                                                double* native_workspace, double* eigenvalues,
+                                                int* info, const std::uint8_t* active) const {
+  if (batch <= 0 || !matrices || !native_workspace || !eigenvalues || !info || !active)
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  int device = -1;
+  auto error = cudaGetDevice(&device);
+  if (error != cudaSuccess) return cuda_status(error);
+  if (device != device_) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  cudaStreamCaptureStatus capture{};
+  error = cudaStreamIsCapturing(resources_.stream_, &capture);
+  if (error != cudaSuccess) return cuda_status(error);
+  if (capture != cudaStreamCaptureStatusNone) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  const auto family = n_ <= kSmallEigensolverLimit ? CudaEigensolverFamily::small_native
+                                                   : CudaEigensolverFamily::xsyevd;
+  return launch_solver(resources_, family, n_, batch, matrices, native_workspace, eigenvalues, 0,
+                       info, active);
 }
 
 vibeqc_status launch_solver(const EigensolverResources& resources, CudaEigensolverFamily family,

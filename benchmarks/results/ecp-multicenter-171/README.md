@@ -98,7 +98,7 @@ tolerances were unchanged. These script failures are excluded from acceptance.
 ## Reproduction
 
 Use Release CPU/CUDA libraries and the pinned reference extra described in
-[the ECP contract](../../../docs/ecp.md). Set `PYTHONPATH=python`, the explicit
+[the ECP contract](../../../docs/user/ecp.md). Set `PYTHONPATH=python`, the explicit
 `VIBEQC_LIBRARY`, and one OpenMP/OpenBLAS/MKL thread. The reporter imports the
 committed multicenter fixture and the existing heavy-element reference helper.
 

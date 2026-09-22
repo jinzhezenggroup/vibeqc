@@ -14,6 +14,7 @@ import ctypes as ct
 import threading
 import typing
 from contextlib import ExitStack, contextmanager, nullcontext
+from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
 from time import perf_counter
@@ -24,6 +25,7 @@ from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_runtime import CudaArtifact
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
+from vibeqc_compiler.common.execution import CompiledExecutionIdentity
 from vibeqc_compiler.common.prepared_execution import (
     PreparedArtifactBinding,
     PreparedExecutionLease,
@@ -856,6 +858,44 @@ class PreparedStationaryCudaExecution:
         self.artifacts = artifacts
         self._bound_basis_identity = basis.identity
         self.preparation_seconds = perf_counter() - started
+        self.compiled_execution_identity = CompiledExecutionIdentity.from_payloads(
+            owner="stationary-cuda",
+            request={
+                "plan": plan.identity,
+                "method": state.identity.method,
+                "contract": {
+                    "family": contract.family,
+                    "spin": contract.spin,
+                    "ecp": ecp,
+                },
+                "basis_topology": _basis_topology_identity(basis),
+                "source_backend": state._source.backend,
+                "functional": state.identity.functional_identity,
+                "regularization": state.identity.regularization_identity,
+                "grid": asdict(spec),
+                "schedule": {
+                    "tile_points": tile_points,
+                    "primitive_tile": primitive_tile,
+                    "integral_terms": integral_terms,
+                    "work_budget": work_budget,
+                    "grid_allocation_bytes": grid_plan.allocation_bytes,
+                },
+                "tensor_plans": tuple(
+                    (name, tensor_plans[name].identity) for name in sorted(tensor_plans)
+                ),
+            },
+            artifacts=tuple(
+                {
+                    "key": artifact.metadata["key"],
+                    "binary_sha256": artifact.metadata["binary_sha256"],
+                }
+                for artifact in self.artifacts
+            ),
+            runtime={
+                "device": device,
+                "target": target.to_payload(),
+            },
+        )
 
     def close(self) -> None:
         with self._lock:

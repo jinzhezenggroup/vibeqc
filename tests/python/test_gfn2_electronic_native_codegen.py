@@ -136,10 +136,10 @@ def test_runtime_bound_sdq_vjp_is_generated_from_same_program() -> None:
 
 def test_native_runtime_consumers_do_not_restore_handwritten_505_formulas() -> None:
     targets = (
-        ROOT / "src/xtb/gfn2_runtime/src/model/gfn2/mulliken.cpp",
-        ROOT / "src/xtb/gfn2_runtime/src/model/gfn2/mulliken_kernels_impl.hpp",
-        ROOT / "src/xtb/gfn2_runtime/src/model/gfn2/force.cpp",
-        ROOT / "src/xtb/gfn2_runtime/src/model/gfn2/scc_driver.cpp",
+        ROOT / "src/xtb/native/src/model/gfn2/mulliken.cpp",
+        ROOT / "src/xtb/native/src/model/gfn2/mulliken_kernels_impl.hpp",
+        ROOT / "src/xtb/native/src/model/gfn2/force.cpp",
+        ROOT / "src/xtb/native/src/model/gfn2/scc_driver.cpp",
     )
     sources = [path.read_text() for path in targets]
     assert all("generated_gfn2_electronic_native.hpp" in source for source in sources)
@@ -281,10 +281,10 @@ def test_generated_cuda_header_and_consumers_own_the_pair_science(
     assert "evaluate_gfn2_electronic_overlap_vjp" in source
 
     hamiltonian = (
-        root / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_hamiltonian.cu"
+        root / "src/xtb/native/src/backends/cuda/gfn2_hamiltonian.cu"
     ).read_text()
     force = (
-        root / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_hamiltonian_force.cu"
+        root / "src/xtb/native/src/backends/cuda/gfn2_hamiltonian_force.cu"
     ).read_text()
     assert "evaluate_gfn2_electronic_pair(" in hamiltonian
     assert "-0.5 * input.dipole_integrals" not in hamiltonian

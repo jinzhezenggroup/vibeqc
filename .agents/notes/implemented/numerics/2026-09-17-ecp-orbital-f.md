@@ -79,7 +79,7 @@ resource gates, including any increase to fixed AO expansion storage.
 ## References
 
 - Issue #171; builds on PR #425.
-- [Current ECP contract](../../../../docs/ecp.md).
+- [Current ECP contract](../../../../docs/user/ecp.md).
 - [Prior host-grid decision](../architecture/2026-09-17-ecp-host-grid.md), whose
   original s/p/d orbital boundary is superseded by this bounded extension.
 

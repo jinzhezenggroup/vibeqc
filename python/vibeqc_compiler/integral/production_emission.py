@@ -885,7 +885,9 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
                 topology, bra_pair, ket_pair, screening_tolerance,
                 &contribution_bound);
         stream_state = keep ? {retained_state} : 0U;
-        if (past_schwarz_tail) stream_state = 2U;
+        // This cursor flattens all bra/ket products and then all systems.
+        // A screened ket tail is local to this bra; later bras/systems can
+        // still survive. Only domain exhaustion may retire this worker.
         if (keep) {{
           {record_precision("stream_state")}
           {prefix}_stream_populate_task(

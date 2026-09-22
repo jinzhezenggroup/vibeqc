@@ -1,0 +1,7 @@
+{
+  "path": "src/xtb/native/src/backends/cuda/gfn2_scc_iteration_test.cuh",
+  "reason": "Vendored transitional GFN2 CUDA source for #560 native backend admission; counted conservatively as handwritten scientific ownership until generated/VibeQC-native replacements retire the equivalent path.",
+  "regions": [],
+  "role": "scientific",
+  "subsystem": "gfn2"
+}

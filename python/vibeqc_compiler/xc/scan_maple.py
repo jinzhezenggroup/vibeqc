@@ -7,13 +7,14 @@ from __future__ import annotations
 
 import math
 import typing
+from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import file_hash
 
-from . import libxc_maple
+from . import libxc_bulk, libxc_maple
 from .libxc_maple import IMPORTER_SEMANTICS, MapleModule, import_maple_file
 
 _SCAN_BINDINGS = {
@@ -56,6 +57,87 @@ _CORRELATION_SPECS = {
 SCAN_COMPONENTS = tuple(_EXCHANGE_SPECS) + tuple(_CORRELATION_SPECS)
 
 
+@dataclass(frozen=True, slots=True)
+class ScanRuntimePolicy:
+    # Pinned Libxc work_mgga continuation for one SCAN component.
+    component: str
+    density_threshold: float
+    sigma_threshold: float
+    tau_threshold: float = 1.0e-20
+
+    def to_payload(self) -> dict[str, typing.Any]:
+        return {
+            "component": self.component,
+            "density_threshold": self.density_threshold,
+            "sigma_threshold": self.sigma_threshold,
+            "tau_threshold": self.tau_threshold,
+            "semantics": "libxc-7.0/work-mgga-v1",
+        }
+
+
+@cache
+def _validate_runtime_policy_sources() -> tuple[Path, Path]:
+    # Audit the pinned generic MGGA work-driver semantics used by codegen.
+    root = _libxc_root()
+    initialization = root / "functionals.c"
+    work = root / "work_mgga_inc.c"
+    required = {
+        initialization: (
+            "func->sigma_threshold = pow(func->info->dens_threshold, 4.0/3.0);",
+            "func->tau_threshold   = 1e-20;",
+        ),
+        work: (
+            "if(dens < p->dens_threshold)",
+            "my_rho[0] = m_max(p->dens_threshold, VAR(rho, ip, 0));",
+            "my_sigma[0] = m_max(p->sigma_threshold * p->sigma_threshold, VAR(sigma, ip, 0));",
+            "my_tau[0] = m_max(p->tau_threshold, VAR(tau, ip, 0));",
+            "my_rho[1] = m_max(p->dens_threshold, VAR(rho, ip, 1));",
+            "my_sigma[1] = (my_sigma[1] >= -s_ave ? my_sigma[1] : -s_ave);",
+            "my_sigma[1] = (my_sigma[1] <= +s_ave ? my_sigma[1] : +s_ave);",
+        ),
+    }
+    for path, snippets in required.items():
+        text = path.read_text()
+        if any(snippet not in text for snippet in snippets):
+            raise ValueError(f"Libxc MGGA runtime policy source changed: {path.name}")
+    return initialization, work
+
+
+@cache
+def _component_catalog_record(component: str) -> dict[str, typing.Any]:
+    if component not in SCAN_COMPONENTS:
+        raise ValueError(f"unsupported SCAN-family component {component!r}")
+    records = {
+        record["name"]: record for record in libxc_bulk.read_catalog()["registrations"]
+    }
+    record = records.get(component)
+    if record is None:
+        raise ValueError(f"SCAN catalog metadata is unavailable for {component}")
+    return record
+
+
+@cache
+def scan_runtime_policy(component: str) -> ScanRuntimePolicy:
+    # Derive one component production boundary policy from the pinned catalog.
+    _validate_runtime_policy_sources()
+    record = _component_catalog_record(component)
+    if (
+        record is None
+        or record.get("family") != "mgga"
+        or "XC_FLAGS_NEEDS_TAU" not in record.get("flags", "")
+        or record.get("graph_status") != "imported"
+    ):
+        raise ValueError(f"SCAN runtime policy metadata is unavailable for {component}")
+    threshold = float(record["bindings"]["p_a_dens_threshold"])
+    if not math.isfinite(threshold) or threshold <= 0.0:
+        raise ValueError(f"invalid Libxc density threshold for {component}")
+    return ScanRuntimePolicy(
+        component=component,
+        density_threshold=threshold,
+        sigma_threshold=threshold ** (4.0 / 3.0),
+    )
+
+
 def _libxc_root() -> typing.Any:
     """Resolve packaged/repository Libxc assets lazily."""
 
@@ -65,10 +147,15 @@ def _libxc_root() -> typing.Any:
 @cache
 def _exchange_module(name: str) -> MapleModule:
     entry, parameter_source, bindings, allow_duplicates, _ = _EXCHANGE_SPECS[name]
+    record = _component_catalog_record(name)
+    runtime_bindings = {
+        key: record["bindings"][key]
+        for key in ("p_a_dens_threshold", "p_a_zeta_threshold")
+    }
     return import_maple_file(
         _libxc_root(),
         entry,
-        bindings=bindings,
+        bindings={**bindings, **runtime_bindings},
         support_files=("util.mpl", parameter_source),
         allow_duplicate_includes=allow_duplicates,
     )
@@ -77,10 +164,15 @@ def _exchange_module(name: str) -> MapleModule:
 @cache
 def _correlation_module(name: str) -> MapleModule:
     entry, parameter_source, bindings, allow_duplicates, _ = _CORRELATION_SPECS[name]
+    record = _component_catalog_record(name)
+    runtime_bindings = {
+        key: record["bindings"][key]
+        for key in ("p_a_dens_threshold", "p_a_zeta_threshold")
+    }
     return import_maple_file(
         _libxc_root(),
         entry,
-        bindings=bindings,
+        bindings={**bindings, **runtime_bindings},
         support_files=("util.mpl", parameter_source),
         allow_duplicate_includes=allow_duplicates,
     )
@@ -115,6 +207,8 @@ def scan_exchange(
     rho_a, rho_b, sigma_aa, _, sigma_bb, tau_a, tau_b = _spin_layout(spec, variables)
     module = _exchange_module(component)
     function_name = _EXCHANGE_SPECS[component][4]
+    policy = scan_runtime_policy(component)
+    threshold = graph.approximate_constant(policy.density_threshold)
     cx = graph.approximate_constant(
         3.0 / 8.0 * (3.0 / math.pi) ** (1.0 / 3.0) * 4.0 ** (2.0 / 3.0)
     )
@@ -126,9 +220,10 @@ def scan_exchange(
     ):
         xs = sigma.pow(0.5) * density.pow(-4.0 / 3.0)
         ts = tau * density.pow(-5.0 / 3.0)
-        terms.append(
+        active = (
             -cx * density.pow(4.0 / 3.0) * module.call(graph, function_name, xs, 0, ts)
         )
+        terms.append(graph.select_le(density, threshold, 0, active))
     return graph.sum(terms)
 
 
@@ -157,6 +252,16 @@ def scan_correlation(
     module = _correlation_module(component)
     function_name = _CORRELATION_SPECS[component][4]
     epsilon = module.call(graph, function_name, rs, zeta, xt, 0, 0, ts_a, ts_b)
+    if spec.spin == "polarized":
+        # Form minority fractions directly. Subtracting a rounded zeta from
+        # one discards the work-density floor and makes v_rho change under a
+        # one-ulp majority-density perturbation. The identities hold for the
+        # admitted nonnegative spin densities with positive total density.
+        # Apply before AD so both backends differentiate the stable coordinates.
+        (epsilon,) = graph.replace_subexpressions(
+            (epsilon,),
+            {1 + zeta: 2 * rho_a / density, 1 - zeta: 2 * rho_b / density},
+        )
     return density * epsilon
 
 
@@ -195,13 +300,19 @@ def scan_maple_provenance(
             "entry": entry,
             "source_sha256": module.source_sha256,
             "transitive_sha256": module.transitive_sha256,
+            "runtime_policy": scan_runtime_policy(name).to_payload(),
         }
     if not selected:
         return None
     return {
         "kind": "libxc-maple",
         "importer_semantics": IMPORTER_SEMANTICS,
+        "spin_coordinate_semantics": "direct-spin-fractions/v1",
         "adapter_sha256": file_hash(Path(__file__)),
         "importer_sha256": file_hash(Path(libxc_maple.__file__)),
+        "runtime_policy_sha256": {
+            path.name: file_hash(path) for path in _validate_runtime_policy_sources()
+        },
+        "catalog_sha256": file_hash(libxc_bulk.CATALOG_PATH),
         "components": selected,
     }
