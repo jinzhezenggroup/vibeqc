@@ -127,6 +127,52 @@ def test_lowering_contract_is_canonical_and_keeps_negative_evidence() -> None:
         )
 
 
+def test_lowering_diagnostics_canonicalizes_candidate_order() -> None:
+    request = LoweringRequest(
+        consumer="tensor.cuda",
+        operation="reduce",
+        backend="cuda",
+        dtype="float64",
+        accumulation_dtype="float64",
+        shape=(17, 129),
+    )
+    generated = ProviderDescriptor(
+        name="vibeqc.generated_cuda",
+        kind="generated",
+        implementation="tensor-cuda-emitter",
+    )
+    cub = ProviderDescriptor(
+        name="nvidia.cccl.cub",
+        kind="library",
+        implementation="cub-block-reduce",
+    )
+    candidates = (
+        LoweringCandidate(
+            request=request,
+            implementation="tensor-reduce-generated-cooperative",
+            providers=(generated,),
+            status="ready",
+            numerical_mode="float64->float64",
+        ),
+        LoweringCandidate(
+            request=request,
+            implementation="tensor-reduce-cub-block-reduce",
+            providers=(cub, generated),
+            status="ready",
+            numerical_mode="float64->float64",
+        ),
+    )
+
+    forward = lowering_diagnostics(candidates)
+    reverse = lowering_diagnostics(reversed(candidates))
+
+    assert forward == reverse
+    assert [row["implementation"] for row in forward["candidates"]] == [
+        candidate.implementation
+        for candidate in sorted(candidates, key=lambda candidate: candidate.identity)
+    ]
+
+
 class _RejectingProvider:
     def __init__(self, descriptor: ProviderDescriptor) -> None:
         self.descriptor = descriptor
