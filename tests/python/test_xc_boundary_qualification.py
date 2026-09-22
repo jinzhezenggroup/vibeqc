@@ -135,7 +135,9 @@ def test_r2scan_zero_minority_boundary_status_is_machine_readable(
     )
     assert acceptance["schema"] == "vibeqc.r2scan-tail-reference/v1"
     oracle = acceptance["oracle"]
-    assert oracle["source"] == "Libxc 7.0.0 original Maple 2022 generated polarized E/vxc"
+    assert (
+        oracle["source"] == "Libxc 7.0.0 original Maple 2022 generated polarized E/vxc"
+    )
     assert oracle["arithmetic"] == "GCC __float128/libquadmath, 113 significand bits"
     assert oracle["tolerance"] == {"rtol": 5e-12, "atol": 1e-12}
     assert len(acceptance["points"]) >= 50
