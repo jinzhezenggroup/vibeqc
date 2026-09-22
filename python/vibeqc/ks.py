@@ -17,6 +17,10 @@ from vibeqc_compiler.dft.grid import (
     checked_int,
     grid_policy_provenance,
 )
+from vibeqc_compiler.dft.nonlocal_policy import (
+    MOLECULAR_VV10_DENSITY_POLICY,
+    MOLECULAR_VV10_DENSITY_THRESHOLD,
+)
 from vibeqc_compiler.method import (
     D4Spec,
     DispersionCorrectionPrimitive,
@@ -29,7 +33,8 @@ from vibeqc_compiler.xc.spec import FunctionalSpec, functional
 
 SCF_DOMAIN = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
 B3LYP_SCF_DOMAIN = "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18"
-_NATIVE_SCF_DOMAINS = frozenset((SCF_DOMAIN, B3LYP_SCF_DOMAIN))
+WB97MV_SCF_DOMAIN = "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16"
+_NATIVE_SCF_DOMAINS = frozenset((SCF_DOMAIN, B3LYP_SCF_DOMAIN, WB97MV_SCF_DOMAIN))
 
 _NATIVE_KS_METHODS = {
     "lda-rks": ("LDA_XC_PW", "unpolarized"),
@@ -163,6 +168,12 @@ class KsOptions:
                 payload["nonlocal_memory_budget_bytes"] = (
                     self.nonlocal_memory_budget_bytes
                 )
+        if self.scf_domain == WB97MV_SCF_DOMAIN:
+            payload["nonlocal_density_policy"] = {
+                "version": MOLECULAR_VV10_DENSITY_POLICY,
+                "threshold": str(MOLECULAR_VV10_DENSITY_THRESHOLD),
+                "active_comparison": ">=",
+            }
         return payload
 
     @property
@@ -277,6 +288,21 @@ def _native_semilocal_family(method_ir: typing.Any) -> int:
         ).components
     ):
         return 3
+    if components == {"MGGA_X_WB97M_V": Fraction(1), "MGGA_C_WB97M_V": Fraction(1)}:
+        canonical = compile_ks_execution_plan(
+            resolve_method("WB97M-V", spin=method_ir.spin)
+        )
+        # The current native evaluator is generated for this exact composition.
+        # Names are not selectors, and changed omega/NLC terms must not alias it.
+        if (
+            plan.semilocal.semantic_payload() != canonical.semilocal.semantic_payload()
+            or plan.exchange != canonical.exchange
+            or plan.nonlocal_correlation != canonical.nonlocal_correlation
+        ):
+            raise NotImplementedError(
+                "native B97M lowerer requires canonical WB97M-V composition"
+            )
+        return 4
     raise NotImplementedError("native KS semilocal family has no qualified lowerer")
 
 
@@ -504,7 +530,11 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
             )
         else:
             grid = GridPolicy(options.grid_accuracy).resolve(method, derivative_order=0)
-    domain = scf_domain_for_method(method)
+    domain = (
+        WB97MV_SCF_DOMAIN
+        if _native_semilocal_family(method_ir) == 4
+        else scf_domain_for_method(method)
+    )
     if options.scf_domain not in (SCF_DOMAIN, domain):
         raise NotImplementedError(
             "KS tail/spin domain does not match the selected method"
@@ -682,7 +712,9 @@ def native_ks_options(options: typing.Any, *, version: int = 6) -> typing.Any:
     return _native.KsOptionsDescriptor(
         size,
         _native.ABI_VERSION,
-        2 if options.scf_domain == B3LYP_SCF_DOMAIN else 1,
+        3
+        if options.scf_domain == WB97MV_SCF_DOMAIN
+        else (2 if options.scf_domain == B3LYP_SCF_DOMAIN else 1),
         grid.version,
         grid.radial_points,
         grid.angular_polar,

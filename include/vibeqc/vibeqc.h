@@ -607,7 +607,8 @@ typedef struct vibeqc_system_descriptor {
 typedef struct vibeqc_ks_options {
   uint32_t struct_size;
   uint32_t abi_version;
-  /** Version 1: semilocal-scaled-v1/pbe-spin-c2-1e-18. */
+  /** Version 1: semilocal-scaled-v1/pbe-spin-c2-1e-18.
+   * Version 2: B3LYP production tail. Version 3: WB97M-V Libxc work-MGGA domain. */
   uint32_t scf_domain_version;
   /** Grid contract version. Version 1 is the deterministic reference
    * prescription with unit-radius fallback. Version 2 is a fully resolved
@@ -641,7 +642,8 @@ typedef struct vibeqc_ks_options {
   /** Optional v4 suffix: compiler-resolved execution identity. Version 1
    * means the fields below are authoritative for scientific dispatch.
    * spin_channels is 1 for RKS and 2 for UKS. semilocal_family is the
-   * primitive-family selector: 0=LDA, 1=PBE, 2=r2SCAN, 3=B3LYP (CPU only). */
+   * primitive-family selector: 0=LDA, 1=PBE, 2=r2SCAN, 3=B3LYP (CPU only),
+   * 4=WB97M-V (internal CPU composition; public selector remains reserved). */
   uint32_t execution_plan_version;
   uint32_t spin_channels;
   uint32_t semilocal_family;

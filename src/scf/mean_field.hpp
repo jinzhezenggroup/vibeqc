@@ -30,7 +30,8 @@ class AoBasis;
 class MolecularGrid;
 namespace nlc {
 class Vv10Plan;
-}
+struct Vv10Parameters;
+}  // namespace nlc
 }  // namespace vibeqc::dft
 
 namespace vibeqc::scf {
@@ -82,6 +83,19 @@ FockBuildSpec make_rsh_correction_fock_spec(FockSpin spin, double short_range_ex
 ScfResult run_b3lyp_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                         const dft::MolecularGrid& grid, const ScfOptions& options,
                         const std::vector<double>* initial_density = nullptr);
+
+/** Canonical generated B97M/RSH/VV10 contract. No independent SCF loop. */
+void require_wb97mv_composition(const ResolvedFockBuild& primary,
+                                const ResolvedFockBuild& correction,
+                                const dft::nlc::Vv10Parameters& nonlocal);
+ScfResult run_wb97mv_rks(const PreparedFockPlan& primary, const PreparedFockPlan& correction,
+                         const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                         const ScfOptions& options, dft::nlc::Vv10Plan& nonlocal,
+                         const std::vector<double>* initial_density = nullptr);
+ScfResult run_wb97mv_uks(const PreparedFockPlan& primary, const PreparedFockPlan& correction,
+                         const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                         const ScfOptions& options, dft::nlc::Vv10Plan& nonlocal,
+                         const std::vector<double>* initial_density = nullptr);
 
 ScfResult run_cam_b3lyp_rks(const PreparedFockPlan& primary,
                             const PreparedFockPlan& long_range_correction,

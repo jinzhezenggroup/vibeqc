@@ -25,10 +25,12 @@ from pathlib import Path
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.dft.feature_policy import emit_feature_policy
+from vibeqc_compiler.dft.nonlocal_policy import MOLECULAR_VV10_DENSITY_THRESHOLD
 from vibeqc_compiler.integral.expr import AlgebraForm
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.method.spec import (
     ExactExchangePrimitive,
+    NonlocalCorrelationPrimitive,
     RangeSeparatedExchangePrimitive,
     SemilocalXCPrimitive,
     resolve_method,
@@ -259,6 +261,19 @@ def emit_wb97mv_polarized() -> str:
         for primitive in method.primitives
         if isinstance(primitive, SemilocalXCPrimitive)
     )
+    ranges = {
+        primitive.operator: primitive
+        for primitive in method.primitives
+        if isinstance(primitive, RangeSeparatedExchangePrimitive)
+    }
+    nonlocal_term = next(
+        primitive
+        for primitive in method.primitives
+        if isinstance(primitive, NonlocalCorrelationPrimitive)
+    )
+    short, long = ranges["short-range"], ranges["long-range"]
+    if short.omega != long.omega or short.omega != semilocal.range_omega:
+        raise RuntimeError("WB97M-V semilocal and exact exchange disagree on omega")
     outputs = ((), *((i,) for i in range(len(semilocal.features))))
     graph, roots, expression_hash = build_roots(semilocal, outputs, production=True)
     emitter = ScalarCEmitter(graph, {name: name for name in semilocal.features})
@@ -272,6 +287,13 @@ def emit_wb97mv_polarized() -> str:
             "};",
             f'inline constexpr const char* kWb97mvSemilocalExpressionIdentity = "{expression_hash}";',
             f'inline constexpr const char* kWb97mvMethodIdentity = "{method.identity}";',
+            f"inline constexpr double kMolecularVv10DensityThreshold = {float(MOLECULAR_VV10_DENSITY_THRESHOLD).hex()};",
+            f"inline constexpr double kWb97mvOmega = {float(short.omega).hex()};",
+            f"inline constexpr double kWb97mvShortExchange = {float(short.coefficient).hex()};",
+            f"inline constexpr double kWb97mvLongExchange = {float(long.coefficient).hex()};",
+            f"inline constexpr double kWb97mvNonlocalB = {float(nonlocal_term.spec.b).hex()};",
+            f"inline constexpr double kWb97mvNonlocalC = {float(nonlocal_term.spec.c).hex()};",
+            f"inline constexpr double kWb97mvNonlocalCoefficient = {float(nonlocal_term.coefficient).hex()};",
             'inline constexpr const char* kWb97mvProductionPolicy = "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";',
             f"inline constexpr double kWb97mvDensityThreshold = {WB97MV_DENSITY_THRESHOLD.hex()};",
             f"inline constexpr double kWb97mvSigmaThreshold = {WB97MV_SIGMA_THRESHOLD.hex()};",

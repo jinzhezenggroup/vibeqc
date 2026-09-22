@@ -113,3 +113,94 @@ def test_existing_native_full_range_hybrid_uses_compiled_plan_coefficients() -> 
     plan = compile_ks_execution_plan(pbe0_rks)
     assert plan.exchange[0].fock_coefficient == Fraction(-1, 8)
     assert plan.required_lowerers == ("semilocal-xc", "full-range-exchange")
+
+
+@pytest.mark.parametrize(
+    "spin,selector", (("unpolarized", "r2scan-rks"), ("polarized", "r2scan-uks"))
+)
+def test_wb97mv_internal_projection_preserves_all_primitives_and_domain(
+    spin: str, selector: str
+) -> None:
+    from dataclasses import replace
+
+    from vibeqc.ks import (
+        WB97MV_SCF_DOMAIN,
+        KsOptions,
+        _native_semilocal_family,
+        native_ks_options,
+        resolve_ks_method,
+        resolve_ks_options,
+    )
+    from vibeqc_compiler.dft.grid import GridSpec
+
+    graph = resolve_method("WB97M-V", spin=spin)
+    renamed = replace(graph, identifier="not-a-method-dispatch-key")
+    assert _native_semilocal_family(renamed) == 4
+    options = resolve_ks_options(
+        selector, KsOptions(composition=renamed, grid=GridSpec())
+    )
+    assert options.scf_domain == WB97MV_SCF_DOMAIN
+    assert options.to_payload()["nonlocal_density_policy"] == {
+        "version": "vv10-molecular-rho-ge-1e-8-v1",
+        "threshold": "1/100000000",
+        "active_comparison": ">=",
+    }
+    native = native_ks_options(options, version=6)
+    assert native.semilocal_family == 4
+    assert native.scf_domain_version == 3
+    assert native.spin_channels == (1 if spin == "unpolarized" else 2)
+    assert native.range_omega == pytest.approx(0.3)
+    assert native.short_range_exchange == pytest.approx(0.15)
+    assert native.long_range_exchange == pytest.approx(1.0)
+    assert native.nonlocal_variant == 1
+    assert native.nonlocal_b == pytest.approx(6.0)
+    assert native.nonlocal_c == pytest.approx(0.01)
+    for version in (4, 5):
+        with pytest.raises(NotImplementedError):
+            native_ks_options(options, version=version)
+    # Internal transport is not permission to activate a public method selector.
+    with pytest.raises(ValueError, match="supported native"):
+        resolve_ks_method("wb97m-v")
+
+
+def test_wb97mv_internal_projection_rejects_missing_or_changed_contributions() -> None:
+    from dataclasses import replace
+
+    from vibeqc.ks import _native_semilocal_family
+    from vibeqc_compiler.method import (
+        NonlocalCorrelationPrimitive,
+        RangeSeparatedExchangePrimitive,
+        SemilocalXCPrimitive,
+    )
+
+    graph = resolve_method("WB97M-V")
+    for drop in range(1, 4):
+        missing = replace(
+            graph, primitives=graph.primitives[:drop] + graph.primitives[drop + 1 :]
+        )
+        with pytest.raises(NotImplementedError):
+            _native_semilocal_family(missing)
+    changed = []
+    for primitive in graph.primitives:
+        if isinstance(primitive, SemilocalXCPrimitive):
+            changed.append(
+                replace(
+                    primitive,
+                    functional=replace(
+                        primitive.functional, range_omega=Fraction(2, 5)
+                    ),
+                )
+            )
+        elif isinstance(primitive, RangeSeparatedExchangePrimitive):
+            changed.append(replace(primitive, omega=Fraction(2, 5)))
+        else:
+            changed.append(primitive)
+    with pytest.raises(NotImplementedError, match="canonical"):
+        _native_semilocal_family(replace(graph, primitives=tuple(changed)))
+    nonlocal_term = graph.primitives[-1]
+    assert isinstance(nonlocal_term, NonlocalCorrelationPrimitive)
+    wrong = replace(nonlocal_term, spec=replace(nonlocal_term.spec, b=Fraction(59, 10)))
+    with pytest.raises(NotImplementedError, match="canonical"):
+        _native_semilocal_family(
+            replace(graph, primitives=(*graph.primitives[:-1], wrong))
+        )
