@@ -130,3 +130,21 @@ energy-diagnostic/resource checks (one expected skip). The diagnostics select
 energy explicitly; implicit default forces exercise a separate consumer and
 are not claimed here. This head does not contain the composed setup or XC fixes.
 All PR CI jobs pass, including NVIDIA compilation and CuMetal GPU tests.
+
+## Integrated review qualification
+
+After integrating reviewed DF scheduling and master `41834864`, Slurm 11400
+passes the independent native quadrature suite, full native LDA/PBE/r2SCAN
+RKS/UKS E/V and state suite, and full native KS suite. An additional 25 ordinary
+solver/resource cases and eight public complete-force/replay/changed-geometry
+cases pass without skips. These retain independent PySCF energy/gradient
+references and the existing exact-budget, failure isolation and cleanup gates.
+The 39 host quadrature/response/native-contraction cases and six watchdog tests
+also pass, as do the full pre-commit and compiler ownership checks.
+
+The tested library embeds source identity
+`334dd4cf28a8c0727c1a9e101732c1ca56e88e918f9e62a7f785ccdfcebb6c04`
+and has SHA-256
+`3039622e137d0fbbc0e44d2b99f3ae9ecc91678f32f7c828e5ccda4e6bb4a10c`.
+This extends integration correctness and resource evidence. It does not add a
+large-system timing claim or change the earlier composed-benchmark limitations.
