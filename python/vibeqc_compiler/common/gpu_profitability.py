@@ -12,6 +12,51 @@ import math
 from dataclasses import asdict, dataclass, field
 
 ENDPOINT_NOISE_FRACTION = 0.01
+PATHOLOGICAL_REDUCTION_MIN_WARPS = 4
+
+
+def scalar_reduction_promotion_rejection(
+    *,
+    output_elements: int,
+    reduction_elements: int,
+    parallel_width: int,
+    alternative: str | None,
+) -> str | None:
+    """Reject promotion of a serial reduction when a legal parallel lowering exists.
+
+    This is a performance-promotion diagnostic, not scientific legality. Small
+    reductions stay eligible because launch/library overhead can dominate them.
+    A plan is called pathological only when fewer than one hardware subgroup of
+    independent outputs each serializes at least four subgroup-widths of work.
+    The caller must supply a concrete legal alternative; otherwise the generic
+    scalar implementation remains an admissible fallback.
+    """
+
+    for value, name in (
+        (output_elements, "output_elements"),
+        (reduction_elements, "reduction_elements"),
+        (parallel_width, "parallel_width"),
+    ):
+        if type(value) is not int or value < 0:
+            raise ValueError(f"{name} must be a non-negative integer")
+    if parallel_width == 0:
+        raise ValueError("parallel_width must be positive")
+    if alternative is not None and (
+        type(alternative) is not str or not alternative.strip()
+    ):
+        raise ValueError("alternative must be a nonempty string or None")
+    if (
+        alternative is None
+        or output_elements == 0
+        or reduction_elements == 0
+        or output_elements >= parallel_width
+        or reduction_elements < PATHOLOGICAL_REDUCTION_MIN_WARPS * parallel_width
+    ):
+        return None
+    return (
+        f"scalar reduction exposes {output_elements} independent output element(s) "
+        f"for reduction extent {reduction_elements}; legal {alternative} lowering exists"
+    )
 
 
 def _optional_count(value: int | None, name: str) -> None:

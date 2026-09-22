@@ -63,6 +63,12 @@ def reduction_program() -> typing.Any:
     return Program({"result": reduce_sum(x, (1,))})
 
 
+def scalar_reduction_program(size: int = 4096) -> typing.Any:
+    i = Index("i", IndexSpace("reduction", "batch", size))
+    x = input_tensor("x", TensorSpec((i,), role="input"))
+    return Program({"result": reduce_sum(x, (0,))})
+
+
 def test_structured_search_is_bounded_reproducible_and_covers_each_axis() -> None:
     space = TensorScheduleSpace()
     schedules = space.generate()
@@ -320,6 +326,38 @@ def test_pruning_has_legality_source_register_and_occupancy_reasons() -> None:
         TensorSearchLimits(minimum_resident_blocks=3),
     )
     assert "resident-block" in occupancy.reason
+
+
+def test_search_rejects_pathological_scalar_reduce_from_promotion() -> None:
+    program = scalar_reduction_program()
+    baseline = plan_cuda(
+        program,
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+    scalar = TensorSchedule(threads=64)
+    (candidate,) = plan_schedule_search(baseline, [scalar])
+
+    assert candidate.status == "pruned"
+    assert candidate.stage == "static-resource"
+    assert "cooperative-reduction" in candidate.reason
+    assert candidate.estimates["static_promotion_rejections"] == [candidate.reason]
+    # Direct execution remains legal as the explicit correctness/oracle fallback.
+    assert (
+        plan_cuda(program, TARGET, schedule=scalar).program.logical_hash
+        == program.logical_hash
+    )
+
+
+def test_small_scalar_reduction_is_not_rejected_by_profitability_guard() -> None:
+    program = scalar_reduction_program(127)
+    baseline = plan_cuda(
+        program, TARGET, schedule=TensorSchedule(stream_reductions=True)
+    )
+    (candidate,) = plan_schedule_search(baseline, [TensorSchedule(threads=64)])
+
+    assert candidate.status == "ready"
+    assert candidate.estimates["static_promotion_rejections"] == []
 
 
 def test_static_accounting_reuses_combined_numeric_budget_and_labels_unknowns() -> None:
