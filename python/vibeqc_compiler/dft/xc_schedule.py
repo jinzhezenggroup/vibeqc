@@ -510,6 +510,14 @@ def assess_grid_xc_schedule(
         profitability=GpuProfitability(
             peak_live_values=live,
             source_bytes=shape.generated_source_bytes,
+            precision_cast_read_bytes=0 if precision_schedule.is_strict_fp64 else None,
+            precision_cast_write_bytes=0 if precision_schedule.is_strict_fp64 else None,
+            precision_cast_simultaneous_bytes=(
+                0 if precision_schedule.is_strict_fp64 else None
+            ),
+            precision_widened_accumulation_terms=(
+                0 if precision_schedule.is_strict_fp64 else None
+            ),
         ),
         provenance=(
             ("domain_schedule", resolved.name),

@@ -275,12 +275,17 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     traffic = plan.semantic_traffic
     occupancy = resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
     launches = estimated_cuda_launches(plan)
+    widened_accumulation_terms = _fp64_accumulation_terms(plan)
     profitability = GpuProfitability(
         semantic_traffic_bytes=traffic["total_bytes"],
         estimated_registers_per_thread=registers,
         estimated_occupancy_upper_bound=occupancy,
         launch_count=launches,
         source_bytes=source_bytes,
+        precision_cast_read_bytes=traffic["precision_cast_read_bytes"],
+        precision_cast_write_bytes=traffic["precision_cast_write_bytes"],
+        precision_cast_simultaneous_bytes=traffic["precision_cast_simultaneous_bytes"],
+        precision_widened_accumulation_terms=widened_accumulation_terms,
     )
     batch = plan.batch_schedule
     contract = ScheduleContract(
@@ -343,7 +348,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "estimated_endpoint_semantic_traffic_bytes": traffic["total_bytes"],
         "traffic_scope": traffic["scope"],
         "estimated_flops": plan.estimated_flops,
-        "estimated_fp64_accumulation_terms": _fp64_accumulation_terms(plan),
+        "estimated_fp64_accumulation_terms": widened_accumulation_terms,
         "estimated_registers_per_thread": registers,
         "estimated_shared_bytes": shared_bytes,
         "estimated_local_bytes": None,

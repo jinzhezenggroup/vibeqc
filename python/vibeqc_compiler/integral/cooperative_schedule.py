@@ -139,7 +139,16 @@ def cooperative_schedule_contract(
             bucket="lane-groups",
         ),
         resources=ScheduleResources(),
-        profitability=GpuProfitability(),
+        profitability=GpuProfitability(
+            precision_cast_read_bytes=0 if precision_schedule.is_strict_fp64 else None,
+            precision_cast_write_bytes=0 if precision_schedule.is_strict_fp64 else None,
+            precision_cast_simultaneous_bytes=(
+                0 if precision_schedule.is_strict_fp64 else None
+            ),
+            precision_widened_accumulation_terms=(
+                0 if precision_schedule.is_strict_fp64 else None
+            ),
+        ),
         provenance=provenance
         + (
             ("precision_contract", "common.precision"),
