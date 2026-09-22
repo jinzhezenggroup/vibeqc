@@ -230,6 +230,8 @@ class ProgramStoragePlan:
             except (TypeError, ValueError) as exc:
                 raise ValueError("invalid effect binding kind") from exc
             effects.append(CallEffectBinding(row["call"], effect))
+        if not isinstance(payload.get("donations", []), list):
+            raise TypeError("storage plan donations must be a list")
         donations = []
         for row in payload.get("donations", []):
             if not isinstance(row, dict) or set(row) != {
