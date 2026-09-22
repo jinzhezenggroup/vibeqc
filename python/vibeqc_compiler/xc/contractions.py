@@ -152,6 +152,9 @@ def _geometry_feature_directions(
         )
         if family == "lda":
             continue
+        assert left_gradient is not None
+        assert right_gradient is not None
+        assert mixed_gradient is not None
         for axis in range(3):
             row = axis + 1
             pk = jets[row]
@@ -191,6 +194,9 @@ def _geometry_feature_directions(
     right = {"rho": immutable(right_rho)}
     mixed = {"rho": immutable(mixed_rho)}
     if family == "gga":
+        assert left_gradient is not None
+        assert right_gradient is not None
+        assert mixed_gradient is not None
         base_gradient = reference["gradient"]
         left["gradient"] = immutable(left_gradient)
         right["gradient"] = immutable(right_gradient)
