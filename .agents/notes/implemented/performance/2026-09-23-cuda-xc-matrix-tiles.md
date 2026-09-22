@@ -141,3 +141,30 @@ layout forwards AO precision so the existing unsupported-mixed-response gate
 still applies. Slurm 11395 passes the dedicated matrix schedule suite on this
 combined tree. The old n=2 r²SCAN tail is independently repaired by #1108;
 full native acceptance still depends on that source-level repair.
+
+## Bounded 96-atom diagnosis
+
+Retained v10 binary/source identity above; PBE direct water96, 768 AOs,
+2,654,208 points, exactly two unconverged SCF iterations under a 90-second
+process watchdog. Slurm 11397: preparation 4.087543346 s, execute
+25.085390903 s under Nsight. There are 20,736 density/potential/feature/point
+launches, i.e. 10,368 tiles per iteration, at the default 256 points/tile.
+Kernel sums: density product 4.222539 s, potential 5.708742 s, density features
+3.876547 s, AO 3.276044 s, point evaluation 2.198471 s.
+
+Slurm 11399: an exploratory 1,024-point tile reduces those launch counts to 5,184, with
+preparation 4.069099479 s and execute 19.915653880 s. Density/potential kernel
+sums remain 3.947714/5.642222 s; feature and point sums fall to
+0.995671/0.565833 s. This separates small-grid launch/occupancy costs from
+large dense matrix contraction work. It neither changes the default nor
+qualifies a converged endpoint, accuracy gate, or new resource policy. Keep
+full96 benchmark publication paused. Local nsys/sqlite/csv and script artifacts
+are `ks96-{two-steps,tile1024}-v10*` under the retained integration workspace.
+
+## Stable spin-coordinate stack
+
+Stacked on #1108 at d5d7de5f. Slurm 11403 passes the **entire** native
+LDA/PBE/r²SCAN RKS/UKS E/V and state suite, including matrix tiles, signed
+responses, FP32 AO qualification, same-input diagnostics, and the restored
+complete independent-CPU minority-potential comparison. No tail case is
+skipped and no potential tolerance is loosened.

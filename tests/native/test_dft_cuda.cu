@@ -154,22 +154,27 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
       const auto begin = d.begin() + s * elements;
       const bool empty = std::all_of(begin, begin + elements, [](double x) { return x == 0.0; });
       for (std::size_t i = 0; i < elements; ++i) {
-        const double expected = empty && !empty_spin_reference.empty()
-                                    ? empty_spin_reference[s * elements + i]
-                                    : ref.potential[s][i];
+        // Stable compiler coordinates restore the full endpoint gate even
+        // when independently evaluated AO features differ by a few ulps.
+        const double expected = ref.potential[s][i];
         close(v[s * elements + i], expected, "UKS CPU/CUDA V", 2e-11 + 2e-12 * std::abs(expected));
+        if (empty && !empty_spin_reference.empty()) {
+          const double same_input = empty_spin_reference[s * elements + i];
+          close(v[s * elements + i], same_input, "UKS same-input minority V",
+                2e-11 + 2e-12 * std::abs(same_input));
+        }
       }
     }
   }
   fixture.canary();
 }
 
-/** Libxc's empty-spin r2SCAN derivative is ill-conditioned in rounded rho:
- * one ulp in the occupied density can change the minority coefficient by 0.1.
- * Check AO/features independently, then integrate the host point evaluator on
- * identical device inputs. This retains the ordinary FP64 potential gate;
- * energy, electrons and the occupied potential still use the CPU endpoint.
- * Independent Libxc point/one-ulp fixtures live in test_r2scan_boundary_codegen.
+/** Independently check AO/features and integrate the host point evaluator on
+ * identical device inputs, in addition to the complete CPU endpoint gate.
+ * This diagnostic separated feature-rounding sensitivity from point emission
+ * before the stable spin-coordinate repair. Keep both checks so neither
+ * same-input agreement nor endpoint agreement can conceal a separate defect.
+ * Independent wide Libxc/one-ulp fixtures live in test_r2scan_boundary_codegen.
  */
 std::vector<double> r2scan_empty_spin_reference(const AoBasis& basis, const MolecularGrid& grid,
                                                 const std::vector<double>& d) {

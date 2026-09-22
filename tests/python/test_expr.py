@@ -26,6 +26,36 @@ from vibeqc_compiler.integral.cuda import CudaEmitter, format_constant
 from vibeqc_compiler.integral.expr import Graph, ScalarDomain
 
 
+def test_subexpression_replacement_is_simultaneous_and_preserves_branches() -> None:
+    """Inserted nodes are verbatim; conditional selection and later AD survive."""
+    graph = Graph()
+    x, y = (graph.variable(name) for name in ("x", "y"))
+    shared = x + y
+    root = graph.select_le(x, 0, shared.pow(2), shared.pow(3))
+    (replaced,) = graph.replace_subexpressions((root,), {shared: x - y, x: y})
+    # The condition's x is replaced, but the inserted x-y remains untouched.
+    for values, expected in (({"x": 2, "y": -1}, 9), ({"x": 2, "y": 1}, 1)):
+        assert graph.evaluate(replaced, values) == expected
+    derivative = graph.differentiate(replaced, x)
+    assert graph.evaluate(derivative, {"x": 2, "y": -1}) == 6
+    assert graph.evaluate(derivative, {"x": 2, "y": 1}) == 3
+    assert graph.replace_subexpressions((root,), {})[0].identifier == root.identifier
+
+
+def test_subexpression_replacement_rejects_foreign_graphs() -> None:
+    """A coincident node identifier from another graph is not a substitution."""
+    graph = Graph()
+    x = graph.variable("x")
+    foreign = Graph().variable("x")
+    for roots, replacements in (
+        ((x,), {foreign: x}),
+        ((x,), {x: foreign}),
+        ((foreign,), {}),
+    ):
+        with pytest.raises(ValueError):
+            graph.replace_subexpressions(roots, replacements)
+
+
 def test_deep_associative_regions_preserve_multiplicity_and_canonical_order() -> None:
     """Large shell contractions must not depend on Python's call-stack limit."""
     graph = Graph()
