@@ -77,6 +77,21 @@ def test_executed_solver_region_binds_real_implicit_vjp_plan() -> None:
     )
 
 
+    stale = BoundCCSDResponse(bound, response.bound.solve(reference_identity=snapshot.identity))
+    stale_region = replace(
+        stale.solver_region,
+        derivatives=(
+            __import__(
+                "vibeqc_compiler.common.solver_region",
+                fromlist=["RegionDerivative"],
+            ).RegionDerivative("implicit_vjp", "stale-plan"),
+        ),
+    )
+    object.__setattr__(stale, "solver_region", stale_region)
+    with pytest.raises(ResponseCompatibilityError, match="registration is stale"):
+        stale.weight("foo", reference_identity=snapshot.identity)
+
+
 def _resolved_correlation(
     snapshot: typing.Any, provider: typing.Any, cc: typing.Any, changes: typing.Any
 ) -> typing.Any:
