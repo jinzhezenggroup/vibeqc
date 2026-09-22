@@ -48,6 +48,8 @@ def test_program_gvn_eliminates_proven_pure_internal_duplicate() -> None:
     assert payload["calls_after"] == 2
     assert payload["buffers_before"] == 4
     assert payload["buffers_after"] == 3
+    assert payload["before_identity"] != payload["after_identity"]
+    assert payload["effect_policy"] == {"provider.calc": "pure"}
 
 
 def test_program_gvn_fails_closed_for_opaque_provider() -> None:
