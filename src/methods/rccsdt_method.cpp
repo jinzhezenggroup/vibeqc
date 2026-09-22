@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "cc/rccsdt_force.hpp"
 #include "generated_rccsdt_cpu.hpp"
 #include "methods/rccsd_method.hpp"
 #include "molecule/basis.hpp"
@@ -102,9 +103,9 @@ class RccsdtPrepared final : public PreparedCalculation {
   Result execute(bool compute_forces) override {
     std::lock_guard<std::mutex> lock(mutex_);
     last_.reset();
-    if (compute_forces)
+    if (compute_forces && molecule::ao_count(system_) > 12)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "native RCCSD(T) analytic forces are not promoted in this owner yet");
+                        "native RCCSD(T) forces are qualified only through 12 AOs");
 
     auto state = run_rccsd_native_state(execution_, system_, descriptor_);
     last_ = state.diagnostic;
@@ -113,7 +114,8 @@ class RccsdtPrepared final : public PreparedCalculation {
     if (!state.solved.converged()) return state.result;
 
     try {
-      auto retained = cc::problem_host_bytes(state.problem);
+      auto retained = checked_add(state.problem.reference_retained_bytes,
+                                  cc::problem_host_bytes(state.problem));
       retained = checked_add(
           retained, checked_mul(state.eps_o.capacity() + state.eps_v.capacity(), sizeof(double)));
       retained = checked_add(
@@ -143,9 +145,40 @@ class RccsdtPrepared final : public PreparedCalculation {
       std::copy_n(cc::triples::generated::inventory_hash,
                   std::min<std::size_t>(64, std::strlen(cc::triples::generated::inventory_hash)),
                   diagnostic.ccsd_t_equation_hash);
-      last_ = diagnostic;
-
       state.result.energy = state.solved.total_energy + triples.energy;
+      if (compute_forces) {
+        if (!state.reference)
+          throw std::runtime_error("RCCSD(T) force owner lost the converged RHF reference");
+        auto force = cc::rccsdt_force_cpu(system_, *state.reference, state.problem, state.solved,
+                                          state.eps_o, state.eps_v, state.budget,
+                                          descriptor_.ccsd_denominator_threshold
+                                              ? descriptor_.ccsd_denominator_threshold
+                                              : 1e-10);
+        state.result.forces = std::move(force.forces);
+        diagnostic.response_iterations = force.orbital_response.iterations;
+        diagnostic.response_restarts = force.orbital_response.restarts;
+        diagnostic.response_absolute_residual =
+            std::max(force.orbital_response.residual_norm, force.independent_orbital_residual);
+        diagnostic.response_relative_residual = force.orbital_response.relative_residual;
+        diagnostic.response_workspace_bytes = force.orbital_response.workspace_bytes;
+        diagnostic.measured_response_workspace_peak_bytes =
+            force.orbital_response.measured_workspace_peak_bytes;
+        diagnostic.response_workspace_allocation_count =
+            force.orbital_response.workspace_allocation_count;
+        diagnostic.planned_endpoint_peak_bytes = std::max<std::uint64_t>(
+            diagnostic.numeric_capacity_bytes, force.numeric_capacity_bytes);
+        diagnostic.force_provenance_flags = 0x7;
+        diagnostic.numeric_capacity_bytes = std::max<std::uint64_t>(
+            diagnostic.numeric_capacity_bytes, force.numeric_capacity_bytes);
+        execution_.observe_numeric_peak(runtime::ExecutionMemorySpace::Host,
+                                        force.numeric_capacity_bytes);
+        execution_.observe_workspace_peak(runtime::ExecutionMemorySpace::Host,
+                                          force.orbital_response.workspace_bytes);
+        std::copy_n(force.response_operator_hash.c_str(),
+                    std::min<std::size_t>(64, force.response_operator_hash.size()),
+                    diagnostic.response_operator_hash);
+      }
+      last_ = diagnostic;
       return state.result;
     } catch (const std::length_error& error) {
       throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY, error.what());
@@ -193,9 +226,6 @@ class RccsdtPreparedBatch final : public PreparedBatch {
   std::vector<BatchItemResult> execute(const Coordinates& coordinates,
                                        bool compute_forces) override {
     invalidate_result();
-    if (compute_forces)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "native RCCSD(T) prepared batch exposes energy only in this owner");
     if (!coordinates.empty() && coordinates.size() != size())
       throw std::invalid_argument("RCCSD(T) batch coordinates do not match system count");
 
@@ -219,7 +249,7 @@ class RccsdtPreparedBatch final : public PreparedBatch {
               prepare_rccsdt_calculation(capabilities_, *context_, target, descriptor_);
           owner_coordinates_[index] = std::move(target_coordinates);
         }
-        result.calculation = owners_[index]->execute(false);
+        result.calculation = owners_[index]->execute(compute_forces);
         result.status = result.calculation.convergence.converged ? VIBEQC_STATUS_SUCCESS
                                                                  : VIBEQC_STATUS_NOT_CONVERGED;
       } catch (...) {

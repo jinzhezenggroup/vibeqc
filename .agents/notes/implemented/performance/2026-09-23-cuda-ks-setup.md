@@ -107,3 +107,23 @@ code head 6de0d62c passes Slurm 11401: native analytic setup gates and 30 Python
 CUDA endpoint/resource/diagnostic/DF checks, with two expected skips, in
 131.26 s. Preparation still calls the GPU initial-state constructor, and
 master's compiled execution region remains active for compatible replay.
+
+
+## Independent review with current master and quadrature
+
+Review integration includes #1100 and master 3a64fe25, retaining both native
+setup and quadrature regression targets. Slurm 11409 passes native analytic
+projector/spectrum/occupation gates, independent eigensolver spectrum/residual/
+replay/capture gates, and complete native LDA/PBE/r2SCAN KS suites with ordinary
+and two-slot submission. The allocated matrix-function test passes, followed by
+42 solver/resource/diagnostic cases and eight public analytic-force, execution
+replay and changed-geometry cases. One CPU parameter branch intentionally skips
+a CUDA-only transport ledger assertion. Host compiler/matrix-function coverage
+passes 67 cases; its allocated CUDA case is covered by the Slurm run.
+
+The independently reviewed Release library source identity is
+`48f7e449b33e22f2f47e471a85053c665c547656e86970c657b66a07a326dcad`,
+SHA-256 `fa87e65296eb7c93c0e98b0ab47196ca22dcbda46568ee08ce01d52ed0a538b4`.
+This qualification adds correctness/resource coverage, not a new large-system
+SCF timing claim. Earlier composed preparation measurements retain their stated
+scope and are not evidence of this final head's complete SCF performance.
