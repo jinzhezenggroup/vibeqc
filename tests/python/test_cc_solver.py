@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from vibeqc_compiler.common.solver_region import SolverRegion
 
 from tools.cc_endpoint_fixtures import load, snapshot_from_fixture, source_arguments
 from tools.vibeqc_cc import PreparedCCSD, SolverOptions, solve
@@ -208,6 +209,10 @@ def test_prepared_ccsd_exposes_bounded_region_without_changing_policy() -> None:
     result = solve(s, p, options=options)
     assert result.provenance["solver_region_identity"] == region.identity
     assert result.provenance["solver_region_max_steps"] == 8
+    replayed_region = SolverRegion.from_payload(
+        result.provenance["solver_region_payload"]
+    )
+    assert replayed_region.identity == region.identity
 
 
 def test_prepared_ccsd_rejects_ks_reference() -> None:

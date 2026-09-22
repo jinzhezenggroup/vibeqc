@@ -15,6 +15,7 @@ from typing import Self
 import numpy as np
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.method import (
+    D3Spec,
     D4Spec,
     DispersionCorrectionPrimitive,
     GeometricCounterpoisePrimitive,
@@ -40,6 +41,10 @@ class D3CorrectionResult:
     gradient: np.ndarray | None
     backend: str
     message: str
+    correction_identity: str
+    variant_identity: str
+    provider_identity: str
+    scheduler_identity: str
 
     @property
     def ok(self) -> bool:
@@ -64,6 +69,9 @@ class D3RuntimeDiagnostic:
     correction_identity: str
     table_sha256: str
     radii_sha256: str
+    variant_identity: str
+    provider_identity: str
+    scheduler_identity: str
 
 
 def _backend_name(value: int) -> str:
@@ -148,6 +156,8 @@ class D3CorrectionBatch:
         graph = _method_ir(method)
         correction = _correction(graph)
         spec = correction.specification
+        if not isinstance(spec, D3Spec):
+            raise TypeError("D3 correction execution requires a D3Spec")
         normalized = tuple(_normalize_system(system) for system in systems)
         if not normalized:
             raise ValueError("D3 correction batch requires at least one system")
@@ -171,6 +181,12 @@ class D3CorrectionBatch:
             )
         self.table_sha256 = table_sha256
         self.radii_sha256 = radii_sha256
+        self.provider_identity = self._library.vibeqc_d3_provider_identity().decode(
+            "ascii"
+        )
+        self.scheduler_identity = self._library.vibeqc_d3_scheduler_identity().decode(
+            "ascii"
+        )
 
         backend = (
             _native.BACKEND_CUDA if device == "cuda" else _native.BACKEND_CPU_REFERENCE
@@ -211,7 +227,9 @@ class D3CorrectionBatch:
             model = _native.D3BjDescriptor(
                 ctypes.sizeof(_native.D3BjDescriptor),
                 _native.ABI_VERSION,
-                _native.D3_DAMPING_BJ,
+                _native.D3_DAMPING_ZERO
+                if spec.damping == "zero"
+                else _native.D3_DAMPING_BJ,
                 spec.s6,
                 spec.s8,
                 spec.a1,
@@ -221,6 +239,11 @@ class D3CorrectionBatch:
                 0.0 if spec.pair_cutoff is None else spec.pair_cutoff,
                 spec.pair_switch_width,
                 maximum_bytes,
+                spec.rs6,
+                spec.rs8,
+                spec.alp,
+                0.0 if spec.atm_cutoff is None else spec.atm_cutoff,
+                spec.atm_switch_width,
             )
             _native.check(
                 self._library,
@@ -233,6 +256,22 @@ class D3CorrectionBatch:
                 ),
                 context=self._context,
             )
+            raw_variant = self._library.vibeqc_d3_batch_variant_identity(self._batch)
+            if not raw_variant:
+                raise RuntimeError(
+                    "production D3 did not publish a prepared variant identity"
+                )
+            self.variant_identity = raw_variant.decode("ascii")
+            expected_variant = (
+                "d3.zero-two-body"
+                if spec.damping == "zero"
+                else ("d3.bj-atm" if spec.s9 else "d3.bj-two-body")
+            )
+            if self.variant_identity != expected_variant:
+                raise NotImplementedError(
+                    f"prepared D3 variant {self.variant_identity!r} does not match "
+                    f"MethodIR request {expected_variant!r}"
+                )
         except Exception:
             self.close()
             raise
@@ -283,6 +322,9 @@ class D3CorrectionBatch:
             correction_identity=self.correction_identity,
             table_sha256=self.table_sha256,
             radii_sha256=self.radii_sha256,
+            variant_identity=self.variant_identity,
+            provider_identity=self.provider_identity,
+            scheduler_identity=self.scheduler_identity,
         )
 
     def execute(
@@ -384,6 +426,10 @@ class D3CorrectionBatch:
                     ),
                     backend=_backend_name(native.executed_backend),
                     message=message,
+                    correction_identity=self.correction_identity,
+                    variant_identity=self.variant_identity,
+                    provider_identity=self.provider_identity,
+                    scheduler_identity=self.scheduler_identity,
                 )
             )
         return tuple(results)

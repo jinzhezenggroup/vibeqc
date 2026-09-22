@@ -46,6 +46,27 @@ struct SpinXcIntegral {
   std::size_t points{};
 };
 
+/** Fixed-model exact incremental PBE prototype for #237.
+ *
+ * anchor_density is the accepted reference state and delta_density is a signed
+ * AO-matrix increment. Linear grid features are contracted independently from
+ * D0 and delta-D, then added before any nonlinear invariant/functional
+ * evaluation. potential_difference is Vxc[D0+delta-D] - Vxc[D0], assembled
+ * from exact coefficient differences; no fxc linearization or local skipping
+ * is used.
+ */
+struct ExactIncrementalXcIntegral {
+  XcIntegral total;
+  double anchor_energy{};
+  double energy_difference{};
+  std::vector<double> potential_difference;
+};
+
+ExactIncrementalXcIntegral integrate_pbe_rks_incremental_exact(
+    const AoBasis& basis, const MolecularGrid& grid, const std::vector<double>& anchor_density,
+    const std::vector<double>& delta_density, std::size_t tile_points = 256,
+    double exchange_scale = 1.0, double correlation_scale = 1.0);
+
 /** Integrate unpolarized PBE for an RHF total AO density. */
 XcIntegral integrate_pbe_rks(const AoBasis& basis, const MolecularGrid& grid,
                              const std::vector<double>& density, std::size_t tile_points = 256,
@@ -90,16 +111,19 @@ SpinXcIntegral integrate_pbe_uks_scaled(const AoBasis& basis, const MolecularGri
  */
 inline constexpr const char* kB3lypProductionTailPolicy =
     "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18";
-struct B3GgaPointValue {
+struct GgaPointValue {
   double energy{};
   double rho[2]{};
   double gradient[2][3]{};
 };
-using B3lypPointValue = B3GgaPointValue;
-using CamB3lypPointValue = B3GgaPointValue;
+using B3GgaPointValue = GgaPointValue;
+using B3lypPointValue = GgaPointValue;
+using CamB3lypPointValue = GgaPointValue;
+using Pw91PointValue = GgaPointValue;
 
 B3lypPointValue evaluate_b3lyp_point(const double rho[2], const double (&gradient)[2][3]);
 CamB3lypPointValue evaluate_cam_b3lyp_point(const double rho[2], const double (&gradient)[2][3]);
+Pw91PointValue evaluate_pw91_point(const double rho[2], const double (&gradient)[2][3]);
 
 XcIntegral integrate_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
                                const std::vector<double>& density, std::size_t tile_points = 256,
@@ -116,6 +140,17 @@ SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid
                                        const std::vector<double>& alpha_density,
                                        const std::vector<double>& beta_density,
                                        std::size_t tile_points = 256);
+
+/** Interior-v1 PW91 native fixed-density qualification path.
+ * This is a generic-GGA lowerer proof and does not register a public KS method.
+ */
+XcIntegral integrate_pw91_rks(const AoBasis& basis, const MolecularGrid& grid,
+                              const std::vector<double>& density, std::size_t tile_points = 256,
+                              XcDensitySource source = {});
+SpinXcIntegral integrate_pw91_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                  const std::vector<double>& alpha_density,
+                                  const std::vector<double>& beta_density,
+                                  std::size_t tile_points = 256);
 
 struct R2scanPointValue {
   double energy{};

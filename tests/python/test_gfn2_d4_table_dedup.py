@@ -13,6 +13,8 @@ def test_gfn2_runtime_reuses_canonical_d4_tables() -> None:
 
     source = d4_source.read_text(encoding="utf-8")
     assert '#include "dft/dispersion/d4_data.hpp"' in source
+    assert '#include "dft/dispersion/d4_reference.hpp"' in source
+    assert "shared::evaluate_d4_fixed_charge" in source
     assert "d4_data::kElements" in source
     assert "d4_data::kReferences" in source
     assert "d4_data::kReferenceC6" in source

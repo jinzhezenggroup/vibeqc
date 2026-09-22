@@ -43,7 +43,7 @@ from .precision import PrecisionSchedule, ValuePrecision, describe_precision
 from .program import Program, _hash
 from .types import checked_size
 
-PLAN_SCHEMA = 4
+PLAN_SCHEMA = 5
 ALIGNMENT = 256
 INT_MAX = 2**31 - 1
 MIN_PROVIDER_BYTES = 96 * 1024**2
@@ -99,6 +99,8 @@ class TensorSchedule:
     fuse: bool = False
     recompute: bool = False
     stream_reductions: bool = field(default=False, kw_only=True)
+    reduction_provider: str = field(default="generated", kw_only=True)
+    inplace_donation: bool = field(default=False, kw_only=True)
     direct_gemm: bool = True
     layouts: bool = False
     elements_per_thread: int = 1
@@ -120,11 +122,14 @@ class TensorSchedule:
             "fuse",
             "recompute",
             "stream_reductions",
+            "inplace_donation",
             "direct_gemm",
             "layouts",
         ):
             if type(getattr(self, name)) is not bool:
                 raise TypeError(f"{name} must be boolean")
+        if self.reduction_provider not in ("generated", "cub"):
+            raise ValueError("reduction_provider must be 'generated' or 'cub'")
 
 
 @dataclass(frozen=True)
@@ -163,6 +168,7 @@ class Step:
     last_use: int
     gemm: str  # none, packed, direct-NN, direct-NT, direct-TN, direct-TT
     layout: DenseLayout | None
+    donated_from: int | None = None
 
 
 @dataclass(frozen=True)
@@ -412,6 +418,11 @@ class TensorPlan:
                     reads,
                     (index,),
                     MemoryEffect.EXPLICIT,
+                    donations=(
+                        ()
+                        if step.donated_from is None
+                        else ((step.donated_from, index),)
+                    ),
                 )
             )
 
@@ -469,6 +480,7 @@ class TensorPlan:
                     "strides": None if s.virtual else s.layout.element_strides,
                     "layout": None if s.virtual else s.layout.to_payload(),
                     "view_map": s.node.attrs if s.virtual else None,
+                    "donated_from": s.donated_from,
                 }
                 for s in self.steps
             ],
@@ -699,6 +711,10 @@ def plan_cuda(
     TargetScheduleShape(schedule.threads, target.warp_size).validate_for(
         target.target_info
     )
+    if schedule.reduction_provider == "cub" and not schedule.stream_reductions:
+        raise ValueError(
+            "CUB reduction provider requires stream_reductions for the pilot"
+        )
     nodes, inputs, outputs = _occurrences(program, schedule.recompute)
     mixed_accumulation_steps: frozenset[int] = frozenset()
     if program.provenance.get("precision_execution") is not None:
@@ -718,6 +734,10 @@ def plan_cuda(
         for n, _ in nodes
     ):
         raise ValueError("producer layout optimization is qualified only for float64")
+    if schedule.inplace_donation and schedule.layouts:
+        raise ValueError(
+            "in-place donation is not yet qualified with producer layout optimization"
+        )
     if any(n.op in TRANSCENDENTALS for n, _ in nodes) and len(nodes) > INT_MAX // 2:
         raise ValueError("too many steps for transcendental domain diagnostics")
     for node, _ in nodes:
@@ -816,23 +836,47 @@ def plan_cuda(
             else:
                 merged.append((offset, size))
         free = merged
+        donated_from = None
         if virtual[i]:
             offsets[i] = -1
         else:
             size = aligned(node.spec.size * node.spec.itemsize)
-            fitting = [
-                (length, start, j)
-                for j, (start, length) in enumerate(free)
-                if length >= size
-            ]
-            if fitting and size:
-                length, start, j = min(fitting)
-                free.pop(j)
-                if length > size:
-                    free.append((start + size, length - size))
+            if (
+                schedule.inplace_donation
+                and size
+                and node.op in ELEMENTWISE
+                and all(not virtual[child] for child in operands)
+            ):
+                for child in operands:
+                    child_node = nodes[child][0]
+                    if (
+                        child in active
+                        and child not in pinned
+                        and last[child] == i
+                        and child_node.spec.shape == node.spec.shape
+                        and child_node.spec.dtype == node.spec.dtype
+                        and active[child][1] == size
+                    ):
+                        donated_from = child
+                        break
+            if donated_from is not None:
+                start, donated_size = active.pop(donated_from)
+                if donated_size != size:  # pragma: no cover - guarded above
+                    raise AssertionError("in-place donation capacity mismatch")
             else:
-                start = capacity
-                capacity = checked_size(capacity + size, "tensor arena bytes")
+                fitting = [
+                    (length, start, j)
+                    for j, (start, length) in enumerate(free)
+                    if length >= size
+                ]
+                if fitting and size:
+                    length, start, j = min(fitting)
+                    free.pop(j)
+                    if length > size:
+                        free.append((start + size, length - size))
+                else:
+                    start = capacity
+                    capacity = checked_size(capacity + size, "tensor arena bytes")
             offsets[i] = start
             if size:
                 active[i] = (start, size)
@@ -873,6 +917,7 @@ def plan_cuda(
                 None
                 if virtual[i]
                 else DenseLayout(node.spec.shape, alignment=ALIGNMENT),
+                donated_from,
             )
         )
     static_host_bytes = checked_size(

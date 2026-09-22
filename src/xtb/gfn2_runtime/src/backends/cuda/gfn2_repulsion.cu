@@ -7,6 +7,7 @@
 #include "backends/cuda/cuda_atomics.cuh"
 #include "backends/cuda/gfn2_parameters.cuh"
 #include "backends/cuda/gfn2_repulsion.cuh"
+#include "generated_gfn2_pair_native.hpp"
 
 namespace xtbloom::detail::cuda {
 namespace {
@@ -107,18 +108,18 @@ __global__ void gfn2_repulsion_kernel(Gfn2RepulsionDeviceBatch batch, double* en
           g_gfn2_elements[second_atomic_number - 1];
       const double distance = sqrt(distance_squared);
       const bool light_pair = first_atomic_number <= 2 && second_atomic_number <= 2;
-      const double exponent =
-          light_pair ? g_gfn2_global.repulsion_klight : g_gfn2_global.repulsion_kexp;
-      /* Keep this branch identical to the CPU reference's arithmetic. */
-      const double distance_power = light_pair ? distance : distance * sqrt(distance);
       const double pair_alpha = first_sqrt_alpha * sqrt(second_element.arep);
       const double pair_charge = first_element.zeff * second_element.zeff;
-      const double pair_energy = pair_charge * exp(-pair_alpha * distance_power) / distance;
-      local_energy += pair_energy;
+      vibeqc::xtb::generated::Gfn2RepulsionPairResult pair{};
+      if (!vibeqc::xtb::generated::evaluate_gfn2_repulsion_pair(
+              distance, pair_alpha, pair_charge, light_pair, pair)) {
+        record_error(device_error, Gfn2RepulsionDeviceError::kNonfinitePairArithmetic);
+        continue;
+      }
+      local_energy += pair.energy;
 
       if (forces != nullptr) {
-        const double force_scale =
-            (pair_alpha * exponent * distance_power + 1.0) * pair_energy / distance_squared;
+        const double force_scale = -pair.distance_derivative / distance;
         const double fx = force_scale * dx;
         const double fy = force_scale * dy;
         const double fz = force_scale * dz;

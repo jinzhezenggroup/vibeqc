@@ -61,6 +61,17 @@ int main() {
     require(std::abs(vibeqc::dft::generated::kB3lypExactExchange - 0.2) < 1e-16,
             "B3LYP generated exact-exchange fraction disagrees with MethodIR");
 
+    const auto pw91_point = vibeqc::dft::generated::pw91_polarized(0.3, 0.2, 0.015, 0.003, 0.01);
+    // Pinned independently with PySCF 2.14.0 / Libxc 7.0.0 PW91.
+    const std::array<double, 6> pw91_oracle{-0.3282121838488419, -0.8954942661475697,
+                                            -0.8067117696168564, -0.007339659490082176,
+                                            0.02173376863067051, -0.02517931481430781};
+    require(std::abs(pw91_point.energy_density - pw91_oracle[0]) < 2e-13,
+            "PW91 generic-GGA scalar differs from pinned Libxc oracle");
+    for (std::size_t i = 0; i < 5; ++i)
+      require(std::abs(pw91_point.feature_derivative[i] - pw91_oracle[i + 1]) < 2e-13,
+              "PW91 generic-GGA derivative differs from pinned Libxc oracle");
+
     std::ifstream xc_fixture(VIBEQC_SOURCE_DIR "/tests/data/xc/scf_domain.tsv");
     require(static_cast<bool>(xc_fixture), "missing independent XC SCF-domain fixture");
     std::string xc_line;
@@ -241,6 +252,41 @@ int main() {
             "PBE fixed-density integral is invalid");
     for (double value : pbe.potential)
       require(std::isfinite(value), "PBE fixed-density potential is nonfinite");
+    // #237 Slice A: delta-D may be signed/indefinite. Contract its
+    // *linear* rho/grad-rho features separately, then recompute nonlinear PBE
+    // from the reconstructed total features. The exact incremental result must
+    // match a full target-density build, including exact Vxc differences.
+    const std::vector<double> incremental_delta{3.0e-3, -4.0e-3, -4.0e-3, -2.0e-3};
+    std::vector<double> incremental_target = density;
+    for (std::size_t i = 0; i < density.size(); ++i) incremental_target[i] += incremental_delta[i];
+    const auto incremental = vibeqc::dft::integrate_pbe_rks_incremental_exact(basis, grid, density,
+                                                                              incremental_delta, 5);
+    const auto incremental_full =
+        vibeqc::dft::integrate_pbe_rks_with_tail(basis, grid, incremental_target, 5);
+    const auto incremental_anchor =
+        vibeqc::dft::integrate_pbe_rks_with_tail(basis, grid, density, 5);
+    require(std::abs(incremental.total.energy - incremental_full.energy) < 2.0e-14 &&
+                std::abs(incremental.total.electrons - incremental_full.electrons) < 2.0e-14,
+            "exact incremental PBE total differs from a full target build");
+    require(std::abs(incremental.energy_difference -
+                     (incremental_full.energy - incremental_anchor.energy)) < 2.0e-14,
+            "exact incremental PBE energy difference is not anchor-relative");
+    for (std::size_t i = 0; i < incremental_full.potential.size(); ++i) {
+      require(std::abs(incremental.total.potential[i] - incremental_full.potential[i]) < 2.0e-14,
+              "exact incremental PBE potential differs from a full target build");
+      require(std::abs(incremental.potential_difference[i] -
+                       (incremental_full.potential[i] - incremental_anchor.potential[i])) < 2.0e-14,
+              "exact incremental PBE potential difference is not anchor-relative");
+    }
+    const std::vector<double> zero_delta(density.size(), 0.0);
+    const auto unchanged =
+        vibeqc::dft::integrate_pbe_rks_incremental_exact(basis, grid, density, zero_delta, 3);
+    require(std::abs(unchanged.energy_difference) < 2.0e-14 &&
+                std::all_of(unchanged.potential_difference.begin(),
+                            unchanged.potential_difference.end(),
+                            [](double value) { return std::abs(value) < 2.0e-14; }),
+            "zero delta-D did not cancel exactly in incremental PBE");
+
     const auto pbe_interior_tail =
         vibeqc::dft::integrate_pbe_rks_with_tail(basis, grid, density, 5);
     require(std::abs(pbe_interior_tail.energy - pbe.energy) < 2.0e-14 &&
@@ -271,6 +317,62 @@ int main() {
       for (std::size_t i = 0; i < direction.size(); ++i) trace += b3.potential[i] * direction[i];
       require(std::abs(finite_difference - trace) < 3.0e-6,
               "B3LYP semilocal potential violates delta E = Tr(V delta D)");
+    }
+
+    const auto pw91 =
+        vibeqc::dft::integrate_pw91_rks(basis, cam_interior_grid, reference_density, 7);
+    require(std::isfinite(pw91.energy) && pw91.potential.size() == reference_density.size(),
+            "PW91 generic-GGA native integration is invalid on the audited interior grid");
+    for (double step : {1.0e-5, 3.0e-6}) {
+      std::vector<double> plus = reference_density, minus = reference_density;
+      for (std::size_t i = 0; i < reference_density.size(); ++i) {
+        plus[i] += step * direction[i];
+        minus[i] -= step * direction[i];
+      }
+      const double finite_difference =
+          (vibeqc::dft::integrate_pw91_rks(basis, cam_interior_grid, plus, 7).energy -
+           vibeqc::dft::integrate_pw91_rks(basis, cam_interior_grid, minus, 7).energy) /
+          (2.0 * step);
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i) trace += pw91.potential[i] * direction[i];
+      require(std::abs(finite_difference - trace) < 3.0e-6,
+              "PW91 generic-GGA potential violates delta E = Tr(V delta D)");
+    }
+    std::vector<double> pw91_alpha(reference_density.size()), pw91_beta(reference_density.size());
+    for (std::size_t i = 0; i < reference_density.size(); ++i)
+      pw91_alpha[i] = pw91_beta[i] = 0.5 * reference_density[i];
+    const auto pw91_uks =
+        vibeqc::dft::integrate_pw91_uks(basis, cam_interior_grid, pw91_alpha, pw91_beta, 7);
+    require(std::abs(pw91_uks.energy - pw91.energy) < 2.0e-12,
+            "PW91 generic-GGA equal-spin UKS energy differs from RKS");
+    for (std::size_t spin = 0; spin < 2; ++spin)
+      for (std::size_t i = 0; i < pw91.potential.size(); ++i)
+        require(std::abs(pw91_uks.potential[spin][i] - pw91.potential[i]) < 2.0e-11,
+                "PW91 generic-GGA equal-spin UKS potential differs from RKS");
+
+    // A genuine unequal-spin perturbation must use both independent Vxc blocks.
+    for (std::size_t i = 0; i < reference_density.size(); ++i) {
+      pw91_alpha[i] = 0.7 * reference_density[i];
+      pw91_beta[i] = 0.3 * reference_density[i];
+    }
+    const auto open_pw91 =
+        vibeqc::dft::integrate_pw91_uks(basis, cam_interior_grid, pw91_alpha, pw91_beta, 3);
+    for (double step : {1.0e-5, 3.0e-6}) {
+      auto ap = pw91_alpha, am = pw91_alpha, bp = pw91_beta, bm = pw91_beta;
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i) {
+        ap[i] += step * direction[i];
+        am[i] -= step * direction[i];
+        bp[i] -= 0.4 * step * direction[i];
+        bm[i] += 0.4 * step * direction[i];
+        trace += (open_pw91.potential[0][i] - 0.4 * open_pw91.potential[1][i]) * direction[i];
+      }
+      const double difference =
+          (vibeqc::dft::integrate_pw91_uks(basis, cam_interior_grid, ap, bp, 3).energy -
+           vibeqc::dft::integrate_pw91_uks(basis, cam_interior_grid, am, bm, 3).energy) /
+          (2.0 * step);
+      require(std::isfinite(difference) && std::abs(difference - trace) < 3.0e-6,
+              "PW91 unequal-spin potential violates delta E = Tr(Va dDa + Vb dDb)");
     }
 
     const auto cam =

@@ -1,7 +1,13 @@
 """Shared ScheduleIR contract adapters and cross-consumer diagnostics."""
 
 from vibeqc_compiler.common.cuda_target import cuda_target_info
-from vibeqc_compiler.common.schedule import ScheduleContract, schedule_diagnostics
+from vibeqc_compiler.common.schedule import (
+    ScheduleContract,
+    ScheduleResourceLimits,
+    ScheduleResources,
+    schedule_diagnostics,
+    schedule_resource_rejections,
+)
 from vibeqc_compiler.dft.xc_schedule import (
     DEVICE_FUSED,
     GridXcCandidateLimits,
@@ -9,6 +15,9 @@ from vibeqc_compiler.dft.xc_schedule import (
     GridXcScientificIdentity,
     assess_grid_xc_schedule,
     schedule_profile_key,
+)
+from vibeqc_compiler.integral.one_electron_derivative_policy_cuda import (
+    one_electron_derivative_schedule_contract,
 )
 from vibeqc_compiler.tensor import (
     Index,
@@ -74,28 +83,116 @@ def _dft_contract() -> ScheduleContract:
     return assessment.schedule_contract
 
 
-def test_tensor_and_dft_use_one_schedule_contract_and_diagnostic_vocabulary() -> None:
+def test_tensor_dft_and_integral_use_one_schedule_contract_vocabulary() -> None:
     tensor = _tensor_contract()
     dft = _dft_contract()
-    report = schedule_diagnostics((tensor, dft))
+    integral = one_electron_derivative_schedule_contract(
+        cuda_target_info("sm_120").target_info
+    )
+    report = schedule_diagnostics((tensor, dft, integral))
 
     assert tensor.consumer == "tensor.cuda"
     assert dft.consumer == "dft.grid_xc"
+    assert integral.consumer == "integral.one_electron_derivative"
     assert tensor.topology.workgroup_threads == 128
     assert dft.topology.tiles == (256,)
     assert tensor.workload_hash is not None and dft.workload_hash is not None
     assert tensor.precision_schedule_hash is not None
     assert dft.precision_schedule_hash is not None
-    assert set(report["consumers"]) == {"tensor.cuda", "dft.grid_xc"}
-    assert set(report["static_order"]) == {tensor.identity, dft.identity}
+    assert integral.profile_key is not None
+    assert integral.topology.cooperative
+    assert set(report["consumers"]) == {
+        "tensor.cuda",
+        "dft.grid_xc",
+        "integral.one_electron_derivative",
+    }
+    assert set(report["static_order"]) == {
+        tensor.identity,
+        dft.identity,
+        integral.identity,
+    }
     assert set(report["contracts"][0]["resources"]) == set(
         report["contracts"][1]["resources"]
     )
 
 
 def test_shared_contract_roundtrip_preserves_owner_schedule_identity() -> None:
-    for contract in (_tensor_contract(), _dft_contract()):
+    for contract in (
+        _tensor_contract(),
+        _dft_contract(),
+        one_electron_derivative_schedule_contract(
+            cuda_target_info("sm_120").target_info
+        ),
+    ):
         replay = ScheduleContract.from_payload(contract.to_payload())
         assert replay == contract
         assert replay.identity == contract.identity
         assert replay.schedule_hash == contract.schedule_hash
+
+
+def test_legacy_profitability_v1_payload_without_precision_costs_still_loads() -> None:
+    payload = _tensor_contract().to_payload()
+    static = payload["profitability"]["static"]
+    for name in (
+        "precision_cast_read_bytes",
+        "precision_cast_write_bytes",
+        "precision_cast_simultaneous_bytes",
+        "precision_widened_accumulation_terms",
+    ):
+        static.pop(name)
+
+    replay = ScheduleContract.from_payload(payload)
+
+    assert replay.profitability.precision_cast_read_bytes is None
+    assert replay.profitability.precision_cast_write_bytes is None
+    assert replay.profitability.precision_cast_simultaneous_bytes is None
+    assert replay.profitability.precision_widened_accumulation_terms is None
+
+
+def test_shared_resource_admission_is_fail_closed_and_consumer_neutral() -> None:
+    resources = ScheduleResources(
+        device_bytes=4096,
+        host_bytes=2048,
+        workspace_bytes=1024,
+        peak_live_values=512,
+        registers_per_thread=48,
+        shared_bytes=256,
+        resident_workgroups=2,
+        source_bytes=8192,
+    )
+    assert (
+        schedule_resource_rejections(
+            resources,
+            ScheduleResourceLimits(
+                maximum_device_bytes=4096,
+                maximum_host_bytes=2048,
+                maximum_workspace_bytes=1024,
+                maximum_peak_live_values=512,
+                maximum_registers_per_thread=48,
+                maximum_shared_bytes=256,
+                minimum_resident_workgroups=2,
+                maximum_source_bytes=8192,
+            ),
+        )
+        == ()
+    )
+
+    failures = schedule_resource_rejections(
+        resources,
+        ScheduleResourceLimits(
+            maximum_device_bytes=4095,
+            maximum_peak_live_values=511,
+            minimum_resident_workgroups=3,
+        ),
+    )
+    assert failures == (
+        "device bytes 4096 exceeds limit 4095",
+        "peak live values 512 exceeds limit 511",
+        "resident workgroups 2 below minimum 3",
+    )
+
+    unknown = ScheduleResources(device_bytes=1)
+    assert schedule_resource_rejections(
+        unknown,
+        ScheduleResourceLimits(maximum_source_bytes=1),
+    ) == ("source bytes unavailable for required limit 1",)

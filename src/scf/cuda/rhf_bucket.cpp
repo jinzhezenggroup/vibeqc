@@ -222,6 +222,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     (*plan)->cublas_enabled = false;
     outputs = execute_hf_cuda_bucket_driver(**plan, candidate, options, device_id, unrestricted,
                                             shell_class_profiling, inactive_eigensolver_profiling);
+    for (auto& output : outputs) ++output.scf.precision.execution_retries;
     if (!(*plan)->initialized) {
       delete *plan;
       *plan = nullptr;

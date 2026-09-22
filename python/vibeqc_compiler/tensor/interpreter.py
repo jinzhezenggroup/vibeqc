@@ -157,6 +157,25 @@ def _evaluate(
             )
             result[domain_coordinate] = value[source]
         return result
+    if op == "runtime_indexed_scatter_add":
+        value, maps = operands[0], operands[1:]
+        axes = tuple(a["axes"])
+        result = np.zeros(node.spec.shape, dtype=node.spec.dtype)
+        for mapping, axis in zip(maps, axes, strict=True):
+            if np.any(mapping < 0) or np.any(mapping >= result.shape[axis]):
+                raise ValueError(
+                    "runtime_indexed_scatter_add coordinate is outside its target axis"
+                )
+        selected = dict(zip(axes, maps, strict=True))
+        for domain_coordinate in range(value.shape[0]):
+            target = tuple(
+                int(selected[axis][domain_coordinate])
+                if axis in selected
+                else slice(None)
+                for axis in range(result.ndim)
+            )
+            result[target] += value[domain_coordinate]
+        return result
     value = operands[0]
     if op == "transpose":
         return value.transpose(a["axes"])

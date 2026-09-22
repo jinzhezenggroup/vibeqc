@@ -5,6 +5,7 @@ mathematical and schedule identities selected by policy."""
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,7 @@ from ..benchmark import (
     emit_shell_class_oracle_cuda,
     emit_shell_class_resource_cuda,
 )
+from ..cuda_emitter import emit_shell_class_fused_cuda
 from ..cuda_schedule import (
     PairOrientation,
     PairStorage,
@@ -56,6 +58,33 @@ def _isolate_schedule_symbols(
     selected_prefix = symbol_prefix or trial.symbol_prefix
     source = source.replace(f"generated_{trial.spec.name}", selected_prefix)
     return source.replace(f"Generated{class_name}", f"Generated{class_name}{suffix}")
+
+
+def schedule_execution_source_identity(trial: ScheduleTrial) -> str:
+    """Hash the exact unsuffixed CUDA emitted for one schedule.
+
+    Schedule-specific benchmark symbol isolation and JSON labels are excluded,
+    so two different schedule IDs collide here only when the generated CUDA
+    implementation itself is byte-identical.  The hash is used solely to avoid
+    redundant compilation; it is not a promotion or artifact identity.
+    """
+
+    integral = trial.integral or build_integral_ir(
+        trial.spec,
+        consumers=(
+            (KernelConsumer.FOCK, KernelConsumer.FORCE)
+            if trial.consumer == KernelConsumer.FOCK
+            else (KernelConsumer.FORCE,)
+        ),
+    )
+    plan = build_fused_shell_plan(
+        trial.spec,
+        integral=integral,
+        schedule=trial.schedule,
+        target=trial.target,
+    )
+    source = emit_shell_class_fused_cuda(trial.spec, plan)
+    return hashlib.sha256(source.encode("utf-8")).hexdigest()
 
 
 def emit_schedule_translation_unit(

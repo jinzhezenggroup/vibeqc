@@ -377,17 +377,23 @@ def test_unrequested_division_adjoint_is_never_constructed() -> None:
     np.testing.assert_array_equal(actual.outputs["bar_x"], np.asarray(0.5))
 
 
-def test_reverse_generation_fails_closed_for_incidence_budgets() -> None:
+def test_slice_reverse_uses_structural_scatter_without_incidence_budget() -> None:
     i = _axis("i", 4)
     x = _parameter("x", (i,))
-    sliced = slice_tensor(x, ((0, 4),))
-    with pytest.raises(ValueError, match="element budget"):
-        transpose_program(
-            Program({"sliced": sliced}),
-            ["sliced"],
-            inputs=["x"],
-            max_elements=0,
-        )
+    sliced = slice_tensor(x, ((1, 3),))
+    generated = transpose_program(
+        Program({"sliced": sliced}),
+        ["sliced"],
+        inputs=["x"],
+        max_elements=0,
+    )
+    assert any(node.op == "scatter_add" for node in generated.program.nodes)
+    assert all(node.op != "constant" for node in generated.program.nodes)
+    actual = execute(
+        generated.program,
+        {"bar_sliced": np.asarray([2.0, 3.0])},
+    ).outputs["bar_x"]
+    np.testing.assert_array_equal(actual, np.asarray([0.0, 2.0, 3.0, 0.0]))
 
 
 @pytest.mark.parametrize("duplicate_input", [False, True])

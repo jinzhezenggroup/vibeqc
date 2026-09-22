@@ -140,6 +140,10 @@ PRIMITIVES["runtime_indexed_select"] = PrimitiveContract(
     "all real operands (source only); int64 runtime index maps are non-differentiable",
     "pure indexed read; VJP accumulates repeated runtime coordinates by scatter-add",
 )
+PRIMITIVES["runtime_indexed_scatter_add"] = PrimitiveContract(
+    "all real operands (source only); int64 runtime index maps are non-differentiable",
+    "runtime indexed accumulation; VJP gathers the selected target coordinates",
+)
 
 
 def _common(inputs: tuple[Node, ...]) -> TensorSpec:
@@ -262,6 +266,59 @@ def _infer(
         ):
             raise ValueError(
                 "runtime_indexed_select must preserve unselected source axes"
+            )
+        return TensorSpec(
+            declared.indices,
+            dtype=source.spec.dtype,
+            representation=source.spec.representation,
+            role="intermediate",
+            differentiable=source.spec.differentiable,
+        )
+    if op == "runtime_indexed_scatter_add":
+        if len(inputs) < 2:
+            raise ValueError(
+                "runtime_indexed_scatter_add requires a source and index maps"
+            )
+        source, maps = inputs[0], inputs[1:]
+        if source.spec.dtype not in ("float32", "float64"):
+            raise ValueError(
+                "runtime_indexed_scatter_add source must be floating point"
+            )
+        axes = tuple(a["axes"])
+        if (
+            len(axes) != len(maps)
+            or tuple(sorted(axes)) != axes
+            or len(set(axes)) != len(axes)
+            or any(
+                type(axis) is not int or not 0 <= axis < len(declared.indices)
+                for axis in axes
+            )
+        ):
+            raise ValueError(
+                "runtime_indexed_scatter_add axes must be unique, sorted target axes"
+            )
+        if len(source.spec.indices) != 1 + len(declared.indices) - len(axes):
+            raise ValueError(
+                "runtime_indexed_scatter_add source rank is inconsistent with target axes"
+            )
+        domain = source.spec.indices[0]
+        if any(
+            mapping.spec.dtype != "int64"
+            or len(mapping.spec.indices) != 1
+            or mapping.spec.indices[0].domain != domain.domain
+            for mapping in maps
+        ):
+            raise ValueError(
+                "runtime_indexed_scatter_add maps must be rank-one int64 controls on the source domain"
+            )
+        remaining = tuple(
+            index for axis, index in enumerate(declared.indices) if axis not in axes
+        )
+        if tuple(index.domain for index in source.spec.indices[1:]) != tuple(
+            index.domain for index in remaining
+        ):
+            raise ValueError(
+                "runtime_indexed_scatter_add must preserve unselected target axes"
             )
         return TensorSpec(
             declared.indices,
@@ -441,6 +498,7 @@ _ATTRS = {
     "scatter_add": {"axis", "positions"},
     "segment_sum": {"axis", "offsets"},
     "runtime_indexed_select": {"axes"},
+    "runtime_indexed_scatter_add": {"axes"},
     "reduce": {"axes"},
     "broadcast": {"axes"},
     "cast": {"dtype"},
@@ -703,6 +761,42 @@ def runtime_indexed_select(
     )
     return Node(
         "runtime_indexed_select",
+        (value, *maps),
+        spec,
+        (("axes", axes),),
+    )
+
+
+def runtime_indexed_scatter_add(
+    value: Node,
+    selections: typing.Iterable[tuple[int, Node]],
+    indices: tuple[Index, ...],
+) -> Node:
+    """Accumulate one runtime-domain source into selected target coordinates.
+
+    This is the exact transpose of :func:`runtime_indexed_select`: the leading
+    source axis is the runtime domain, selected target axes are supplied by
+    rank-one int64 maps, and repeated coordinates accumulate rather than
+    overwrite.
+    """
+
+    selections = tuple(selections)
+    if not selections:
+        raise ValueError(
+            "runtime_indexed_scatter_add requires at least one selected axis"
+        )
+    axes = tuple(axis for axis, _ in selections)
+    maps = tuple(mapping for _, mapping in selections)
+    indices = tuple(indices)
+    declared = value.spec.result(indices=indices, symmetries=())
+    spec = _infer(
+        "runtime_indexed_scatter_add",
+        (value, *maps),
+        {"axes": axes},
+        declared,
+    )
+    return Node(
+        "runtime_indexed_scatter_add",
         (value, *maps),
         spec,
         (("axes", axes),),

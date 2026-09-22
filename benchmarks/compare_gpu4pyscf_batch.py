@@ -122,6 +122,32 @@ def native_build_metadata(calculator: Any) -> dict[str, Any]:
     }
 
 
+def require_tuned_native_build(
+    metadata: dict[str, Any], *, allow_portable: bool = False
+) -> None:
+    """Reject whole-build generic fallback unless the benchmark opts into it."""
+
+    if allow_portable:
+        return
+    probe = metadata.get("probe")
+    device = probe.get("device") if isinstance(probe, dict) else None
+    if not isinstance(device, dict):
+        raise TypeError("benchmark requires CUDA profile metadata")
+    profile = device.get("official_profile")
+    portable = device.get("portable")
+    if (
+        not isinstance(profile, str)
+        or not profile
+        or profile in {"generic_cuda", "portable_cuda"}
+        or type(portable) not in (bool, int)
+        or portable != 0
+    ):
+        raise RuntimeError(
+            "benchmark refuses an unqualified portable/generic VibeQC build; "
+            "use --allow-portable-build only for an intentional generic baseline"
+        )
+
+
 def fixed_warm_start_policy() -> dict[str, str]:
     """Describe the engine-local fixed post-cold replay contract."""
 
@@ -605,6 +631,13 @@ def main() -> None:
     parser.add_argument("--maximum-energy-error", type=float)
     parser.add_argument("--maximum-force-error", type=float)
     parser.add_argument(
+        "--allow-portable-build",
+        action="store_true",
+        help=(
+            "explicitly allow a generic/portable VibeQC build for baseline measurements"
+        ),
+    )
+    parser.add_argument(
         "--capture-warm-range",
         action="store_true",
         help=(
@@ -763,6 +796,7 @@ def main() -> None:
     # Journal before preparation/SCF: an unsupported cold route may fail before
     # a result JSON exists, but its compiled capability must remain reviewable.
     progress("native_build", **native_build)
+    require_tuned_native_build(native_build, allow_portable=args.allow_portable_build)
     vibeqc_samples: list[dict[str, Any]] = []
     gpu_samples: list[dict[str, Any]] = []
     eigensolver_diagnostics: list[dict[str, object]] = []

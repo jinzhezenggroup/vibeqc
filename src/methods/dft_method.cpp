@@ -715,6 +715,20 @@ class KsPreparedCalculation final : public PreparedCalculation {
                                     native.energy,
                                     native.dft_diagnostic.physical_residual};
       cpu_physical_ = std::move(physical);
+      if (seed && spins == 2) {
+        // A warm UKS proposal may pass the SCF step gate while its latest
+        // physical F[D] frame still fails the stricter derivative export.
+        // Certify that frame before publishing success or replacing the last
+        // good seed. Rejection uses the existing single cold retry in the
+        // batch owner, never a hidden solve during snapshot/force export.
+        dft::VerifiedKsFinalState verified;
+        std::string detail;
+        const dft::CudaKsFinalStateToken token{1, cpu_physical_->identity};
+        if (read_final_state(token, false, verified, detail) != VIBEQC_STATUS_SUCCESS) {
+          native.converged = false;
+          native.ks_physical_fock.clear();
+        }
+      }
     }
     if (native.converged && update_warm) warm_ = std::move(native.density);
     runtime::sample_cpu_capacity(host_numeric_capacity());
