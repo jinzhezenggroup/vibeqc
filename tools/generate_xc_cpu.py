@@ -356,7 +356,9 @@ def emit_polarized_gga(
     """Emit one polarized rho/sigma evaluator through the common semilocal lowerer."""
 
     if spec.ingredients != ("rho", "sigma"):
-        raise ValueError("generic polarized GGA lowering requires rho/sigma FunctionalSpec")
+        raise ValueError(
+            "generic polarized GGA lowering requires rho/sigma FunctionalSpec"
+        )
     return emit_polarized_semilocal(
         spec,
         value_type=value_type,

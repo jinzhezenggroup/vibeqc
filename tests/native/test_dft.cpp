@@ -125,9 +125,8 @@ int main() {
         vibeqc::dft::generated::scan_polarized(0.55, 0.25, 0.025, 0.006, 0.018, 0.3, 0.16);
     // Sum of pinned independent Libxc 7.0.0 MGGA_X_SCAN + MGGA_C_SCAN bulk fixtures.
     const std::array<double, 8> scan_oracle{
-        -0.6716431723099776,   -1.2121359952027473, -0.975507137482233,
-        -0.00557843033514503,  0.0063013418044912395, -0.029931891669623255,
-        0.02202134320410421,   0.04542853626023215};
+        -0.6716431723099776,   -1.2121359952027473,   -0.975507137482233,  -0.00557843033514503,
+        0.0063013418044912395, -0.029931891669623255, 0.02202134320410421, 0.04542853626023215};
     require(std::abs(scan_point.energy_density - scan_oracle[0]) < 2e-13,
             "SCAN generic-MGGA scalar differs from pinned Libxc oracle");
     for (std::size_t i = 0; i < 7; ++i)
