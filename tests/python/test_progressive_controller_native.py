@@ -1,5 +1,6 @@
 """Native HF endpoint coverage for the typed #192 deterministic controller."""
 
+import pytest
 from vibeqc import Calculator
 from vibeqc.accuracy import ObservableTarget, TargetAccuracy
 from vibeqc.progressive_controller import (
@@ -18,15 +19,23 @@ ACCURACY = TargetAccuracy(
 )
 
 
-def calculators(*, source_iterations: int = 20) -> tuple[Calculator, Calculator]:
+def calculators(
+    *,
+    source_iterations: int = 20,
+    method: str = "rhf",
+    fitted: bool = False,
+) -> tuple[Calculator, Calculator]:
     source = Calculator(
         basis="sto-3g",
+        method=method,
         max_iterations=source_iterations,
         energy_tolerance=1.0e-7,
         density_tolerance=1.0e-6,
     )
     target = Calculator(
         basis="def2-svp",
+        method=method,
+        density_fitting="cpu" if fitted else "none",
         max_iterations=100,
         energy_tolerance=1.0e-12,
         density_tolerance=1.0e-10,
@@ -36,14 +45,22 @@ def calculators(*, source_iterations: int = 20) -> tuple[Calculator, Calculator]
     return source, target
 
 
-def test_typed_plan_reaches_exact_target_without_fabricating_accuracy() -> None:
-    source, target = calculators()
-    problem = TargetProblem.from_calculator(target, ATOMS)
+@pytest.mark.parametrize("fitted", [False, True])
+@pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 0, 1), ("uhf", 1, 2)])
+def test_typed_plan_reaches_exact_target_without_fabricating_accuracy(
+    fitted: bool, method: str, charge: int, multiplicity: int
+) -> None:
+    source, target = calculators(method=method, fitted=fitted)
+    problem = TargetProblem.from_calculator(
+        target, ATOMS, charge=charge, multiplicity=multiplicity
+    )
     plan = make_deterministic_hf_plan(
         problem,
         source,
         target,
         ATOMS,
+        charge=charge,
+        multiplicity=multiplicity,
         budget=ProgressiveBudget(
             maximum_source_iterations=20,
             maximum_total_iterations=120,
@@ -52,7 +69,14 @@ def test_typed_plan_reaches_exact_target_without_fabricating_accuracy() -> None:
         source_estimated_cost_units=1.0,
         target_estimated_cost_units=4.0,
     )
-    run = run_progressive_hf(plan, source, target, ATOMS)
+    run = run_progressive_hf(
+        plan,
+        source,
+        target,
+        ATOMS,
+        charge=charge,
+        multiplicity=multiplicity,
+    )
     assert run.target.converged and run.target.restart_origin == "basis_projection"
     assert run.verification.target_established
     assert run.verification.status == "unverified"
