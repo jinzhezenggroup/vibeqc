@@ -106,6 +106,11 @@ def test_dft_uses_common_precision_identity_and_fails_closed_on_mixed() -> None:
     accepted = _dft_assessment(strict)
     assert accepted.legal
     assert accepted.schedule_contract.precision_schedule_hash == strict.identity
+    assert accepted.schedule_contract.profitability.precision_cast_bytes == 0
+    assert (
+        accepted.schedule_contract.profitability.precision_widened_accumulation_terms
+        == 0
+    )
 
     mixed = uniform_precision_schedule(
         "dft.grid_xc",
@@ -131,6 +136,8 @@ def test_integral_schedule_contract_uses_common_precision_identity() -> None:
         contract.precision_schedule_hash
         == uniform_precision_schedule("integral.one_electron_derivative").identity
     )
+    assert contract.profitability.precision_cast_bytes == 0
+    assert contract.profitability.precision_widened_accumulation_terms == 0
 
 
 def test_generated_fock_mixed_schedule_records_fp32_eri_fp64_accumulation() -> None:
