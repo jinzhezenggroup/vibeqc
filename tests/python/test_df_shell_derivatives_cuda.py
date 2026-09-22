@@ -106,6 +106,9 @@ def test_shell_execution_and_return_to_generic(
             assert (counters.get("response_charge_blas_dots", 0) > 0) == (
                 algebra == "blas"
             )
+            assert (counters.get("response_charge_scalar_dots", 0) > 0) == (
+                algebra == "scalar"
+            )
             if not record["source_backed"]:
                 assert (counters.get("raw_panel_pinned_host_bytes", 0) > 0) == (
                     staging == "pinned-panels"

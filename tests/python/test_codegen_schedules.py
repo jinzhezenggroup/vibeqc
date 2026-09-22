@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -164,6 +165,76 @@ def test_small_shell_schedule_space_includes_packed_and_cooperative_variants() -
     assert candidates[3].tasks_per_block == 32
 
 
+def test_scalar_rys2_schedule_is_compiler_owned_for_untuned_class() -> None:
+    """Let a compatible class inherit scalar Rys2 without a class table."""
+
+    integral = build_integral_ir(
+        PSSS_SPEC,
+        consumers=(KernelConsumer.FORCE,),
+        recurrence="rys2",
+    )
+    candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
+    scalar = [item for item in candidates if item.kind == ScheduleKind.THREAD_TASKS]
+    assert len(scalar) == 1
+    assert scalar[0].block_threads == TEST_CUDA_TARGET.warp_size == 32
+    assert scalar[0].tasks_per_warp == TEST_CUDA_TARGET.warp_size
+    assert scalar[0].minimum_blocks_per_sm == 8
+    assert not scalar[0].shared_coulomb
+
+    constrained_target = replace(TEST_CUDA_TARGET, maximum_blocks_per_sm=4)
+    constrained = next(
+        item
+        for item in schedule_candidates(integral, target=constrained_target)
+        if item.kind == ScheduleKind.THREAD_TASKS
+    )
+    assert constrained.minimum_blocks_per_sm == 4
+
+    fock_integral = build_integral_ir(PSSS_SPEC, consumers=(KernelConsumer.FOCK,))
+    fock_plan = build_fused_shell_plan(
+        PSSS_SPEC, integral=fock_integral, target=TEST_CUDA_TARGET
+    )
+    assert fock_plan.schedule.kind == ScheduleKind.PACKED_TASKS
+    assert fock_plan.schedule.block_threads == 32
+    assert fock_plan.schedule.tasks_per_warp == 32
+    assert not fock_plan.schedule.shared_coulomb
+
+    plan = build_fused_shell_plan(PSSS_SPEC, integral=integral, target=TEST_CUDA_TARGET)
+    assert plan.schedule == scalar[0]
+
+    trials = supported_schedule_trials(
+        PSSS_SPEC, target=TEST_CUDA_TARGET, integral=integral
+    )
+    assert any(trial.schedule == scalar[0] for trial in trials)
+
+
+@pytest.mark.parametrize(
+    "sm_threads,block_limit,expected",
+    [(32, 16, 1), (64, 16, 2), (128, 16, 4), (1536, 4, 4), (1536, 24, 8)],
+)
+def test_scalar_rys2_launch_bounds_fit_resident_threads(
+    sm_threads: int, block_limit: int, expected: int
+) -> None:
+    """Runtime-enriched targets must fit both resident blocks and threads."""
+    target = replace(
+        TEST_CUDA_TARGET,
+        maximum_threads_per_block=min(
+            TEST_CUDA_TARGET.maximum_threads_per_block, sm_threads
+        ),
+        maximum_threads_per_sm=sm_threads,
+        maximum_blocks_per_sm=block_limit,
+    )
+    integral = build_integral_ir(
+        PSSS_SPEC, consumers=(KernelConsumer.FORCE,), recurrence="rys2"
+    )
+    scalar = next(
+        candidate
+        for candidate in schedule_candidates(integral, target)
+        if candidate.kind == ScheduleKind.THREAD_TASKS
+    )
+    assert scalar.minimum_blocks_per_sm == expected
+    assert scalar.minimum_blocks_per_sm * scalar.block_threads <= sm_threads
+
+
 def test_subgroup_schedule_advances_independent_ppps_tasks_per_block() -> None:
     """Keep task-local barriers and reductions inside each lane subgroup."""
 
@@ -289,20 +360,29 @@ def test_ppps_scalar_thread_schedule_emits_component_scoped_dag() -> None:
 def test_packed_schedule_models_low_order_fock_workers(spec: typing.Any) -> None:
     """Keep the accepted Fock topology while force moves to scalar Rys2."""
 
+    manifest = (
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
+    )
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    rows = payload["architectures"]["sm_120"]["kernels"]
+    row = next(item for item in rows if item["shell_class"] == spec.name)
+    assert "schedule" not in row
+    assert "fock_schedule" not in row
+
     selection = next(
         selection
-        for selection in load_production_kernel_selections(
-            REPOSITORY_ROOT
-            / "python"
-            / "vibeqc_compiler"
-            / "integral"
-            / "production_shell_classes.json"
-        )
+        for selection in load_production_kernel_selections(manifest)
         if selection.spec == spec
     )
     schedule = selection.fock_schedule
     assert selection.recurrence == "rys2"
     assert selection.schedule.kind == ScheduleKind.THREAD_TASKS
+    assert selection.schedule.block_threads == 32
+    assert selection.schedule.minimum_blocks_per_sm == 8
     assert schedule is not None
     assert schedule.kind == ScheduleKind.PACKED_TASKS
     assert schedule.block_threads == 32

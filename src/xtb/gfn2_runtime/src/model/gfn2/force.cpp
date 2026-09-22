@@ -671,8 +671,9 @@ xtbloom_status_t evaluate_restricted_gfn2_energy_forces_cpu(
         workspace.energy_scratch[system] = sum;
       }
     } else {
-      status = evaluate_d4_atm_cpu(*d4, *d4_cache, workspace.component_energy_scratch,
-                                   workspace.d4_workspace, error);
+      status =
+          evaluate_d4_atm_cpu(*d4, *d4_cache, input.positions, input.atomic_charges,
+                              workspace.component_energy_scratch, workspace.d4_workspace, error);
       if (status != XTBLOOM_STATUS_SUCCESS) {
         return status;
       }
@@ -906,7 +907,7 @@ xtbloom_status_t evaluate_restricted_gfn2_energy_forces_cpu(
           error);
     } else {
       status =
-          add_d4_two_body_gradient_cpu(*d4, *d4_cache, input.atomic_charges,
+          add_d4_two_body_gradient_cpu(*d4, *d4_cache, input.positions, input.atomic_charges,
                                        workspace.component_gradient, workspace.d4_workspace, error);
     }
     if (status != XTBLOOM_STATUS_SUCCESS) {
@@ -925,8 +926,8 @@ xtbloom_status_t evaluate_restricted_gfn2_energy_forces_cpu(
           workspace.periodic_strain_scratch, workspace.d4_workspace, *periodic.topology_workspace,
           error);
     } else {
-      status = add_d4_atm_gradient_cpu(*d4, *d4_cache, workspace.component_gradient,
-                                       workspace.d4_workspace, error);
+      status = add_d4_atm_gradient_cpu(*d4, *d4_cache, input.positions, input.atomic_charges,
+                                       workspace.component_gradient, workspace.d4_workspace, error);
     }
     if (status != XTBLOOM_STATUS_SUCCESS) {
       return status;

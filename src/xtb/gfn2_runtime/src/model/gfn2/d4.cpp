@@ -15,6 +15,7 @@
 
 #include "data/parameters/gfn2.hpp"
 #include "dft/dispersion/d4_data.hpp"
+#include "dft/dispersion/d4_reference.hpp"
 #include "model/gfn2/periodic_topology.hpp"
 
 namespace xtbloom::detail::gfn2 {
@@ -26,6 +27,7 @@ struct D4PlanData {
   std::vector<std::int64_t> atom_offsets;
   std::vector<std::int64_t> pair_offsets;
   std::vector<std::uint8_t> element_indices;
+  std::vector<std::int32_t> atomic_numbers;
   std::vector<double> pair_coordination_radii;
   std::vector<double> pair_en_factors;
   std::vector<double> pair_rrij;
@@ -40,6 +42,8 @@ struct D4PlanData {
   std::size_t coordination_adjoint_offset = 0u;
   std::size_t batch_scratch_offset = 0u;
   std::size_t gradient_scratch_offset = 0u;
+  std::size_t shared_scratch_offset = 0u;
+  std::size_t shared_scratch_elements = 0u;
 };
 
 namespace {
@@ -517,42 +521,124 @@ PairCoefficient pair_coefficient(const D4PlanData& data, std::int64_t first, std
   return result;
 }
 
-void add_coordination_vjp(const D4PlanData& data, const D4GeometryCache& cache,
-                          const double* adjoints, double* gradients) {
-  constexpr double inverse_sqrt_pi = 0.5641895835477562869480794515607726;
-  for (std::int64_t batch = 0; batch < data.batch_size; ++batch) {
-    const std::int64_t begin = data.atom_offsets[static_cast<std::size_t>(batch)];
-    const std::int64_t end = data.atom_offsets[static_cast<std::size_t>(batch + 1)];
-    std::size_t packed_pair =
-        static_cast<std::size_t>(data.pair_offsets[static_cast<std::size_t>(batch)]);
-    for (std::int64_t second = begin + 1; second < end; ++second) {
-      for (std::int64_t first = begin; first < second; ++first, ++packed_pair) {
-        const double* pair = cache.pair_data + packed_pair * kD4PairDataElements;
-        const double distance_squared = pair[0] * pair[0] + pair[1] * pair[1] + pair[2] * pair[2];
-        if (distance_squared > kCoordinationCutoff * kCoordinationCutoff) {
-          continue;
-        }
-        const double distance = std::sqrt(distance_squared);
-        const double radius = data.pair_coordination_radii[packed_pair];
-        const double exponent = kCoordinationSteepness * (distance - radius) / radius;
-        const double derivative = -data.pair_en_factors[packed_pair] * kCoordinationSteepness *
-                                  std::exp(-exponent * exponent) * inverse_sqrt_pi / radius;
-        const double scale = derivative * (adjoints[first] + adjoints[second]) / distance;
-        for (std::size_t axis = 0; axis < 3; ++axis) {
-          const double value = scale * pair[axis];
-          gradients[static_cast<std::size_t>(first) * 3u + axis] += value;
-          gradients[static_cast<std::size_t>(second) * 3u + axis] -= value;
-        }
+xtbloom_status_t evaluate_shared_molecular_d4_component(
+    const D4Plan& plan, const D4GeometryCache& cache, const double* positions,
+    const double* atomic_charges, bool include_two_body, bool include_atm, double* energies,
+    double* gradients, const D4Workspace& workspace, std::string& error) {
+  xtbloom_status_t status = validate_plan(plan, error);
+  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  status = validate_workspace(plan, workspace, error);
+  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  status = validate_cache(plan, cache, error);
+  if (status != XTBLOOM_STATUS_SUCCESS) return status;
+  if (positions == nullptr || atomic_charges == nullptr || (!include_two_body && !include_atm) ||
+      (energies == nullptr && gradients == nullptr)) {
+    error = "shared molecular D4 adapter received incomplete inputs";
+    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+  }
+
+  namespace shared = ::vibeqc::dft::dispersion;
+  const D4PlanData& data = *plan.identity();
+  const std::size_t atoms = static_cast<std::size_t>(data.total_atoms);
+  const std::size_t systems = static_cast<std::size_t>(data.batch_size);
+  const std::size_t coordinates = 3u * atoms;
+  if (!aligned(positions, alignof(double)) || !aligned(atomic_charges, alignof(double)) ||
+      (energies && !aligned(energies, alignof(double))) ||
+      (gradients && !aligned(gradients, alignof(double)))) {
+    error = "shared molecular D4 requires aligned inputs and finite gradient outputs";
+    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+  }
+  std::array<AddressRange, 6> numerical{};
+  std::array<AddressRange, 4> controls{};
+  if (!make_range(positions, coordinates * sizeof(double), numerical[0]) ||
+      !make_range(atomic_charges, atoms * sizeof(double), numerical[1]) ||
+      !make_range(cache.pair_data, static_cast<std::size_t>(cache.pair_data_elements) * sizeof(double), numerical[2]) ||
+      !make_range(cache.coordination_numbers, atoms * sizeof(double), numerical[3]) ||
+      !make_range(energies, energies ? systems * sizeof(double) : 0u, numerical[4]) ||
+      !make_range(gradients, gradients ? coordinates * sizeof(double) : 0u, numerical[5]) ||
+      !make_range(&plan, sizeof(plan), controls[0]) ||
+      !make_range(&cache, sizeof(cache), controls[1]) ||
+      !make_range(&workspace, sizeof(workspace), controls[2]) ||
+      !make_range(&error, sizeof(error), controls[3]) ||
+      !valid_call_storage(plan, workspace, numerical, controls)) {
+    error = "shared molecular D4 buffers overlap numerical, plan, workspace, or descriptors";
+    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+  }
+  if (gradients && !finite_values(gradients, coordinates)) {
+    error = "shared molecular D4 requires finite gradient outputs";
+    return XTBLOOM_STATUS_INVALID_ARGUMENT;
+  }
+  auto parameters = shared::gfn2_d4_parameters();
+  if (!include_two_body) {
+    parameters.s6 = 0.0;
+    parameters.s8 = 0.0;
+  }
+  if (!include_atm) parameters.s9 = 0.0;
+  const auto tables = shared::gfn2_d4_host_tables();
+
+  std::array<double, 2> candidate_energy{};
+
+  for (std::int64_t system = 0; system < data.batch_size; ++system) {
+    const std::int64_t begin = data.atom_offsets[static_cast<std::size_t>(system)];
+    const std::int64_t end = data.atom_offsets[static_cast<std::size_t>(system + 1)];
+    const std::int64_t count64 = end - begin;
+    if (count64 <= 0 || count64 > std::numeric_limits<int>::max()) {
+      error = "shared molecular D4 adapter does not support this system size";
+      return XTBLOOM_STATUS_NOT_SUPPORTED;
+    }
+    const int count = static_cast<int>(count64);
+    const std::size_t required_workspace = shared::d4_unbounded_workspace_elements(count);
+    if (required_workspace == 0u) {
+      error = "shared molecular D4 adapter workspace size overflowed";
+      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    }
+
+    double* shared_workspace = offset_pointer<double>(
+        workspace.workspace_base, data.shared_scratch_offset);
+    const std::size_t shared_workspace_elements = data.shared_scratch_elements;
+    double* candidate_gradient = workspace.gradient_scratch + 3 * begin;
+    double* candidate_dq = workspace.coordination_adjoints + begin;
+
+    const auto shared_status = shared::evaluate_d4_fixed_charge_unbounded_cpu(
+        count, data.atomic_numbers.data() + begin, positions + 3 * begin, atomic_charges + begin,
+        parameters, tables, shared_workspace, shared_workspace_elements, candidate_energy.data(),
+        candidate_gradient, candidate_dq);
+    if (shared_status != shared::D4Status::success) {
+      switch (shared_status) {
+        case shared::D4Status::invalid_argument:
+          error = "shared molecular D4 adapter rejected its numerical inputs";
+          return XTBLOOM_STATUS_INVALID_ARGUMENT;
+        case shared::D4Status::unsupported:
+          error = "shared molecular D4 adapter does not support the requested GFN2 case";
+          return XTBLOOM_STATUS_NOT_SUPPORTED;
+        case shared::D4Status::numerical_failure:
+          error = "shared molecular D4 adapter encountered a numerical failure";
+          return XTBLOOM_STATUS_INTERNAL_ERROR;
+        case shared::D4Status::success:
+          break;
+      }
+    }
+    workspace.batch_scratch[system] =
+        (include_two_body ? candidate_energy[0] : 0.0) +
+        (include_atm ? candidate_energy[1] : 0.0);
+  }
+  // Validate every final accumulation before publishing any batch member.
+  if (gradients != nullptr) {
+    for (std::int64_t coordinate = 0; coordinate < 3 * data.total_atoms; ++coordinate) {
+      if (!std::isfinite(gradients[coordinate] + workspace.gradient_scratch[coordinate])) {
+        error = "shared molecular D4 gradient accumulation overflowed";
+        return XTBLOOM_STATUS_INTERNAL_ERROR;
       }
     }
   }
-}
+  if (energies != nullptr)
+    std::copy_n(workspace.batch_scratch, data.batch_size, energies);
+  if (gradients != nullptr)
+    for (std::int64_t coordinate = 0; coordinate < 3 * data.total_atoms; ++coordinate)
+      gradients[coordinate] += workspace.gradient_scratch[coordinate];
 
-xtbloom_status_t prepare_zero_charge_weights(const D4PlanData& data, const D4GeometryCache& cache,
-                                             const D4Workspace& workspace, std::string& error) {
-  std::fill_n(workspace.atom_scratch, static_cast<std::size_t>(data.total_atoms), 0.0);
-  return prepare_weights(data, cache.coordination_numbers, workspace.atom_scratch, true, workspace,
-                         error);
+  error.clear();
+  return XTBLOOM_STATUS_SUCCESS;
 }
 
 }  // namespace
@@ -582,8 +668,7 @@ bool D4Plan::matches_atomic_numbers(const std::int32_t* atomic_numbers) const no
     return false;
   }
   for (std::int64_t atom = 0; atom < data_->total_atoms; ++atom) {
-    if (atomic_numbers[atom] !=
-        static_cast<std::int32_t>(data_->element_indices[static_cast<std::size_t>(atom)]) + 1) {
+    if (atomic_numbers[atom] != data_->atomic_numbers[static_cast<std::size_t>(atom)]) {
       return false;
     }
   }
@@ -608,6 +693,7 @@ bool D4Plan::overlaps_storage(const void* data, std::size_t size_bytes) const no
   return overlaps_vector(active, data_->atom_offsets) ||
          overlaps_vector(active, data_->pair_offsets) ||
          overlaps_vector(active, data_->element_indices) ||
+         overlaps_vector(active, data_->atomic_numbers) ||
          overlaps_vector(active, data_->pair_coordination_radii) ||
          overlaps_vector(active, data_->pair_en_factors) ||
          overlaps_vector(active, data_->pair_rrij) ||
@@ -625,6 +711,7 @@ std::size_t D4Plan::resident_bytes() const noexcept {
   return sizeof(*data_) + data_->atom_offsets.capacity() * sizeof(std::int64_t) +
          data_->pair_offsets.capacity() * sizeof(std::int64_t) +
          data_->element_indices.capacity() * sizeof(std::uint8_t) +
+         data_->atomic_numbers.capacity() * sizeof(std::int32_t) +
          data_->pair_coordination_radii.capacity() * sizeof(double) +
          data_->pair_en_factors.capacity() * sizeof(double) +
          data_->pair_rrij.capacity() * sizeof(double) +
@@ -649,6 +736,7 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
     created->atom_offsets.assign(atom_offsets, atom_offsets + batch_size + 1);
     created->pair_offsets.resize(static_cast<std::size_t>(batch_size + 1), 0);
     created->element_indices.resize(static_cast<std::size_t>(total_atoms));
+    created->atomic_numbers.assign(atomic_numbers, atomic_numbers + total_atoms);
     for (std::int64_t batch = 0; batch < batch_size; ++batch) {
       const std::int64_t begin = atom_offsets[batch];
       const std::int64_t end = atom_offsets[batch + 1];
@@ -722,6 +810,15 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
       error = "D4 workspace element count overflows";
       return XTBLOOM_STATUS_INVALID_ARGUMENT;
     }
+    std::size_t maximum_atoms = 0u;
+    for (std::size_t system = 0; system < batch_count; ++system) {
+      maximum_atoms = std::max(maximum_atoms, static_cast<std::size_t>(
+          created->atom_offsets[system + 1] - created->atom_offsets[system]));
+    }
+    if (!checked_multiply_size(maximum_atoms, 27u, created->shared_scratch_elements)) {
+      error = "shared D4 scratch extent overflows";
+      return XTBLOOM_STATUS_INVALID_ARGUMENT;
+    }
     std::size_t cursor = 0u;
     std::size_t bytes = 0u;
     auto append_doubles = [&](std::size_t elements, std::size_t& offset) {
@@ -736,6 +833,7 @@ xtbloom_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_atoms,
         !append_doubles(atom_count, created->coordination_adjoint_offset) ||
         !append_doubles(batch_count, created->batch_scratch_offset) ||
         !append_doubles(gradient_elements, created->gradient_scratch_offset) ||
+        !append_doubles(created->shared_scratch_elements, created->shared_scratch_offset) ||
         !align_up(cursor, kD4WorkspaceAlignment, created->workspace_size_bytes)) {
       error = "D4 workspace byte count overflows";
       return XTBLOOM_STATUS_INVALID_ARGUMENT;
@@ -1127,333 +1225,27 @@ xtbloom_status_t evaluate_d4_two_body_system_cpu(const D4Plan& plan, const D4Geo
 }
 
 xtbloom_status_t add_d4_two_body_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
-                                              const double* atomic_charges, double* gradients,
-                                              const D4Workspace& workspace, std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  status = validate_workspace(plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  const D4PlanData& data = *plan.identity();
-  const std::size_t gradient_count = static_cast<std::size_t>(data.total_atoms) * 3u;
-  if (!aligned(atomic_charges, alignof(double)) || !aligned(gradients, alignof(double)) ||
-      !finite_values(gradients, gradient_count)) {
-    error = "D4 gradient output must contain finite values";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
-  }
-  const std::size_t pair_count = static_cast<std::size_t>(cache.pair_data_elements);
-  const std::size_t atom_count = static_cast<std::size_t>(data.total_atoms);
-  std::size_t pair_bytes = 0u;
-  std::size_t atom_bytes = 0u;
-  std::size_t gradient_bytes = 0u;
-  std::array<AddressRange, 4> numerical{};
-  std::array<AddressRange, 4> controls{};
-  if (!checked_multiply_size(pair_count, sizeof(double), pair_bytes) ||
-      !checked_multiply_size(atom_count, sizeof(double), atom_bytes) ||
-      !checked_multiply_size(gradient_count, sizeof(double), gradient_bytes) ||
-      !make_range(cache.pair_data, pair_bytes, numerical[0]) ||
-      !make_range(cache.coordination_numbers, atom_bytes, numerical[1]) ||
-      !make_range(atomic_charges, atom_bytes, numerical[2]) ||
-      !make_range(gradients, gradient_bytes, numerical[3]) ||
-      !make_range(&plan, sizeof(plan), controls[0]) ||
-      !make_range(&cache, sizeof(cache), controls[1]) ||
-      !make_range(&workspace, sizeof(workspace), controls[2]) ||
-      !make_range(&error, sizeof(error), controls[3]) ||
-      !valid_call_storage(plan, workspace, numerical, controls)) {
-    error = "D4 gradient buffers overlap numerical, plan, workspace, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
-  }
-  status =
-      prepare_weights(data, cache.coordination_numbers, atomic_charges, true, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  std::fill_n(workspace.gradient_scratch, gradient_count, 0.0);
-  std::fill_n(workspace.coordination_adjoints, static_cast<std::size_t>(data.total_atoms), 0.0);
-  for (std::int64_t batch = 0; batch < data.batch_size; ++batch) {
-    const std::int64_t begin = data.atom_offsets[static_cast<std::size_t>(batch)];
-    const std::int64_t end = data.atom_offsets[static_cast<std::size_t>(batch + 1)];
-    std::size_t packed_pair =
-        static_cast<std::size_t>(data.pair_offsets[static_cast<std::size_t>(batch)]);
-    for (std::int64_t second = begin + 1; second < end; ++second) {
-      for (std::int64_t first = begin; first < second; ++first, ++packed_pair) {
-        const double* pair = cache.pair_data + packed_pair * kD4PairDataElements;
-        if (pair[3] == 0.0) {
-          continue;
-        }
-        const PairCoefficient coefficient = pair_coefficient(data, first, second, workspace, true);
-        const double radial_scale = -coefficient.c6 * pair[4];
-        for (std::size_t axis = 0; axis < 3; ++axis) {
-          const double value = radial_scale * pair[axis];
-          workspace.gradient_scratch[static_cast<std::size_t>(first) * 3u + axis] += value;
-          workspace.gradient_scratch[static_cast<std::size_t>(second) * 3u + axis] -= value;
-        }
-        workspace.coordination_adjoints[first] -= coefficient.first_cn * pair[3];
-        workspace.coordination_adjoints[second] -= coefficient.second_cn * pair[3];
-      }
-    }
-  }
-  add_coordination_vjp(data, cache, workspace.coordination_adjoints, workspace.gradient_scratch);
-  if (!finite_values(workspace.gradient_scratch, gradient_count)) {
-    error = "D4 two-body gradient overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
-  }
-  for (std::size_t coordinate = 0; coordinate < gradient_count; ++coordinate) {
-    gradients[coordinate] += workspace.gradient_scratch[coordinate];
-  }
-  error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+                                              const double* positions, const double* atomic_charges,
+                                              double* gradients, const D4Workspace& workspace,
+                                              std::string& error) {
+  return evaluate_shared_molecular_d4_component(plan, cache, positions, atomic_charges, true, false,
+                                                nullptr, gradients, workspace, error);
 }
 
 xtbloom_status_t evaluate_d4_atm_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+                                     const double* positions, const double* atomic_charges,
                                      double* energies, const D4Workspace& workspace,
                                      std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  status = validate_workspace(plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  if (!aligned(energies, alignof(double))) {
-    error = "D4 ATM energy output must not be NULL";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
-  }
-  const D4PlanData& data = *plan.identity();
-  const std::size_t pair_count = static_cast<std::size_t>(cache.pair_data_elements);
-  const std::size_t atom_count = static_cast<std::size_t>(data.total_atoms);
-  const std::size_t batch_count = static_cast<std::size_t>(data.batch_size);
-  std::size_t pair_bytes = 0u;
-  std::size_t atom_bytes = 0u;
-  std::size_t batch_bytes = 0u;
-  std::array<AddressRange, 3> numerical{};
-  std::array<AddressRange, 4> controls{};
-  if (!checked_multiply_size(pair_count, sizeof(double), pair_bytes) ||
-      !checked_multiply_size(atom_count, sizeof(double), atom_bytes) ||
-      !checked_multiply_size(batch_count, sizeof(double), batch_bytes) ||
-      !make_range(cache.pair_data, pair_bytes, numerical[0]) ||
-      !make_range(cache.coordination_numbers, atom_bytes, numerical[1]) ||
-      !make_range(energies, batch_bytes, numerical[2]) ||
-      !make_range(&plan, sizeof(plan), controls[0]) ||
-      !make_range(&cache, sizeof(cache), controls[1]) ||
-      !make_range(&workspace, sizeof(workspace), controls[2]) ||
-      !make_range(&error, sizeof(error), controls[3]) ||
-      !valid_call_storage(plan, workspace, numerical, controls)) {
-    error = "D4 ATM energy buffers overlap numerical, plan, workspace, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
-  }
-  status = prepare_zero_charge_weights(data, cache, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  std::fill_n(workspace.batch_scratch, static_cast<std::size_t>(data.batch_size), 0.0);
-  constexpr double cutoff_squared = kAtmCutoff * kAtmCutoff;
-  constexpr double exponent_third = kAtmExponent / 3.0;
-  for (std::int64_t batch = 0; batch < data.batch_size; ++batch) {
-    const std::int64_t begin = data.atom_offsets[static_cast<std::size_t>(batch)];
-    const std::int64_t end = data.atom_offsets[static_cast<std::size_t>(batch + 1)];
-    for (std::int64_t i = begin + 2; i < end; ++i) {
-      for (std::int64_t j = begin + 1; j < i; ++j) {
-        const double* vij = cache.pair_data + pair_index(data, batch, j, i) * kD4PairDataElements;
-        const double r2ij = vij[0] * vij[0] + vij[1] * vij[1] + vij[2] * vij[2];
-        if (r2ij > cutoff_squared) {
-          continue;
-        }
-        const PairCoefficient c6ij = pair_coefficient(data, i, j, workspace, false);
-        for (std::int64_t k = begin; k < j; ++k) {
-          const double* vik = cache.pair_data + pair_index(data, batch, k, i) * kD4PairDataElements;
-          const double* vjk = cache.pair_data + pair_index(data, batch, k, j) * kD4PairDataElements;
-          const double r2ik = vik[0] * vik[0] + vik[1] * vik[1] + vik[2] * vik[2];
-          const double r2jk = vjk[0] * vjk[0] + vjk[1] * vjk[1] + vjk[2] * vjk[2];
-          if (r2ik > cutoff_squared || r2jk > cutoff_squared) {
-            continue;
-          }
-          const PairCoefficient c6ik = pair_coefficient(data, i, k, workspace, false);
-          const PairCoefficient c6jk = pair_coefficient(data, j, k, workspace, false);
-          const double r0ij = data.pair_damping_radii[pair_index(data, batch, j, i)];
-          const double r0ik = data.pair_damping_radii[pair_index(data, batch, k, i)];
-          const double r0jk = data.pair_damping_radii[pair_index(data, batch, k, j)];
-          const double r2_product = r2ij * r2ik * r2jk;
-          const double r1_product = std::sqrt(r2_product);
-          const double r3_product = r2_product * r1_product;
-          const double r5_product = r3_product * r2_product;
-          const double damping =
-              1.0 / (1.0 + 6.0 * std::pow((r0ij * r0ik * r0jk) / r1_product, exponent_third));
-          const double angle = 0.375 * (r2ij + r2jk - r2ik) * (r2ij - r2jk + r2ik) *
-                                   (-r2ij + r2jk + r2ik) / r5_product +
-                               1.0 / r3_product;
-          const double c9 = -parameters::gfn2::kGlobal.dispersion_s9 *
-                            std::sqrt(std::abs(c6ij.c6 * c6ik.c6 * c6jk.c6));
-          workspace.batch_scratch[batch] -= angle * damping * c9;
-        }
-      }
-    }
-  }
-  if (!finite_values(workspace.batch_scratch, static_cast<std::size_t>(data.batch_size))) {
-    error = "D4 ATM energy overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
-  }
-  std::memcpy(energies, workspace.batch_scratch,
-              static_cast<std::size_t>(data.batch_size) * sizeof(double));
-  error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return evaluate_shared_molecular_d4_component(plan, cache, positions, atomic_charges, false, true,
+                                                energies, nullptr, workspace, error);
 }
 
 xtbloom_status_t add_d4_atm_gradient_cpu(const D4Plan& plan, const D4GeometryCache& cache,
+                                         const double* positions, const double* atomic_charges,
                                          double* gradients, const D4Workspace& workspace,
                                          std::string& error) {
-  xtbloom_status_t status = validate_plan(plan, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  status = validate_workspace(plan, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  status = validate_cache(plan, cache, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  const D4PlanData& data = *plan.identity();
-  const std::size_t gradient_count = static_cast<std::size_t>(data.total_atoms) * 3u;
-  if (!aligned(gradients, alignof(double)) || !finite_values(gradients, gradient_count)) {
-    error = "D4 ATM gradient output must contain finite values";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
-  }
-  const std::size_t pair_count = static_cast<std::size_t>(cache.pair_data_elements);
-  const std::size_t atom_count = static_cast<std::size_t>(data.total_atoms);
-  std::size_t pair_bytes = 0u;
-  std::size_t atom_bytes = 0u;
-  std::size_t gradient_bytes = 0u;
-  std::array<AddressRange, 3> numerical{};
-  std::array<AddressRange, 4> controls{};
-  if (!checked_multiply_size(pair_count, sizeof(double), pair_bytes) ||
-      !checked_multiply_size(atom_count, sizeof(double), atom_bytes) ||
-      !checked_multiply_size(gradient_count, sizeof(double), gradient_bytes) ||
-      !make_range(cache.pair_data, pair_bytes, numerical[0]) ||
-      !make_range(cache.coordination_numbers, atom_bytes, numerical[1]) ||
-      !make_range(gradients, gradient_bytes, numerical[2]) ||
-      !make_range(&plan, sizeof(plan), controls[0]) ||
-      !make_range(&cache, sizeof(cache), controls[1]) ||
-      !make_range(&workspace, sizeof(workspace), controls[2]) ||
-      !make_range(&error, sizeof(error), controls[3]) ||
-      !valid_call_storage(plan, workspace, numerical, controls)) {
-    error = "D4 ATM gradient buffers overlap numerical, plan, workspace, or descriptor storage";
-    return XTBLOOM_STATUS_INVALID_ARGUMENT;
-  }
-  status = prepare_zero_charge_weights(data, cache, workspace, error);
-  if (status != XTBLOOM_STATUS_SUCCESS) {
-    return status;
-  }
-  std::fill_n(workspace.gradient_scratch, gradient_count, 0.0);
-  std::fill_n(workspace.coordination_adjoints, static_cast<std::size_t>(data.total_atoms), 0.0);
-  constexpr double cutoff_squared = kAtmCutoff * kAtmCutoff;
-  constexpr double exponent_third = kAtmExponent / 3.0;
-  for (std::int64_t batch = 0; batch < data.batch_size; ++batch) {
-    const std::int64_t begin = data.atom_offsets[static_cast<std::size_t>(batch)];
-    const std::int64_t end = data.atom_offsets[static_cast<std::size_t>(batch + 1)];
-    for (std::int64_t i = begin + 2; i < end; ++i) {
-      for (std::int64_t j = begin + 1; j < i; ++j) {
-        const double* vij = cache.pair_data + pair_index(data, batch, j, i) * kD4PairDataElements;
-        const double r2ij = vij[0] * vij[0] + vij[1] * vij[1] + vij[2] * vij[2];
-        if (r2ij > cutoff_squared) {
-          continue;
-        }
-        const PairCoefficient c6ij = pair_coefficient(data, i, j, workspace, true);
-        for (std::int64_t k = begin; k < j; ++k) {
-          const double* vik = cache.pair_data + pair_index(data, batch, k, i) * kD4PairDataElements;
-          const double* vjk = cache.pair_data + pair_index(data, batch, k, j) * kD4PairDataElements;
-          const double r2ik = vik[0] * vik[0] + vik[1] * vik[1] + vik[2] * vik[2];
-          const double r2jk = vjk[0] * vjk[0] + vjk[1] * vjk[1] + vjk[2] * vjk[2];
-          if (r2ik > cutoff_squared || r2jk > cutoff_squared) {
-            continue;
-          }
-          const PairCoefficient c6ik = pair_coefficient(data, i, k, workspace, true);
-          const PairCoefficient c6jk = pair_coefficient(data, j, k, workspace, true);
-          if (!(c6ij.c6 > 0.0) || !(c6ik.c6 > 0.0) || !(c6jk.c6 > 0.0)) {
-            error = "D4 ATM encountered a nonpositive C6 coefficient";
-            return XTBLOOM_STATUS_INTERNAL_ERROR;
-          }
-          const double r0ij = data.pair_damping_radii[pair_index(data, batch, j, i)];
-          const double r0ik = data.pair_damping_radii[pair_index(data, batch, k, i)];
-          const double r0jk = data.pair_damping_radii[pair_index(data, batch, k, j)];
-          const double r2_product = r2ij * r2ik * r2jk;
-          const double r1_product = std::sqrt(r2_product);
-          const double r3_product = r2_product * r1_product;
-          const double r5_product = r3_product * r2_product;
-          const double ratio = (r0ij * r0ik * r0jk) / r1_product;
-          const double ratio_power = std::pow(ratio, exponent_third);
-          const double damping = 1.0 / (1.0 + 6.0 * ratio_power);
-          const double angle = 0.375 * (r2ij + r2jk - r2ik) * (r2ij - r2jk + r2ik) *
-                                   (-r2ij + r2jk + r2ik) / r5_product +
-                               1.0 / r3_product;
-          const double c9 =
-              -parameters::gfn2::kGlobal.dispersion_s9 * std::sqrt(c6ij.c6 * c6ik.c6 * c6jk.c6);
-          const double rr = angle * damping;
-          const double damping_derivative = -2.0 * kAtmExponent * ratio_power * damping * damping;
-          const auto distance_gradient = [&](double target, double other_first, double other_second,
-                                             const double* vector, double* output) {
-            const double angle_derivative =
-                -0.375 *
-                (target * target * target + target * target * (other_first + other_second) +
-                 target * (3.0 * other_first * other_first + 2.0 * other_first * other_second +
-                           3.0 * other_second * other_second) -
-                 5.0 * (other_first - other_second) * (other_first - other_second) *
-                     (other_first + other_second)) /
-                r5_product;
-            const double scale =
-                c9 * (-angle_derivative * damping + angle * damping_derivative) / target;
-            for (std::size_t axis = 0; axis < 3; ++axis) {
-              output[axis] = scale * vector[axis];
-            }
-          };
-          double dgij[3]{};
-          double dgik[3]{};
-          double dgjk[3]{};
-          distance_gradient(r2ij, r2jk, r2ik, vij, dgij);
-          distance_gradient(r2ik, r2jk, r2ij, vik, dgik);
-          distance_gradient(r2jk, r2ik, r2ij, vjk, dgjk);
-          for (std::size_t axis = 0; axis < 3; ++axis) {
-            workspace.gradient_scratch[static_cast<std::size_t>(i) * 3u + axis] -=
-                dgij[axis] + dgik[axis];
-            workspace.gradient_scratch[static_cast<std::size_t>(j) * 3u + axis] +=
-                dgij[axis] - dgjk[axis];
-            workspace.gradient_scratch[static_cast<std::size_t>(k) * 3u + axis] +=
-                dgik[axis] + dgjk[axis];
-          }
-          const double d_e = rr * c9;
-          workspace.coordination_adjoints[i] -=
-              0.5 * d_e * (c6ij.first_cn / c6ij.c6 + c6ik.first_cn / c6ik.c6);
-          workspace.coordination_adjoints[j] -=
-              0.5 * d_e * (c6ij.second_cn / c6ij.c6 + c6jk.first_cn / c6jk.c6);
-          workspace.coordination_adjoints[k] -=
-              0.5 * d_e * (c6ik.second_cn / c6ik.c6 + c6jk.second_cn / c6jk.c6);
-        }
-      }
-    }
-  }
-  add_coordination_vjp(data, cache, workspace.coordination_adjoints, workspace.gradient_scratch);
-  if (!finite_values(workspace.gradient_scratch, gradient_count)) {
-    error = "D4 ATM gradient overflowed";
-    return XTBLOOM_STATUS_INTERNAL_ERROR;
-  }
-  for (std::size_t coordinate = 0; coordinate < gradient_count; ++coordinate) {
-    gradients[coordinate] += workspace.gradient_scratch[coordinate];
-  }
-  error.clear();
-  return XTBLOOM_STATUS_SUCCESS;
+  return evaluate_shared_molecular_d4_component(plan, cache, positions, atomic_charges, false, true,
+                                                nullptr, gradients, workspace, error);
 }
 
 namespace {

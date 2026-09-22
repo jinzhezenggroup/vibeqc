@@ -1,7 +1,12 @@
 {
   "adaptations": {
+    "src/backends/cuda/gfn2_geometry.cu": "Consume compiler-generated TensorIR/AD coordination pair science; retain CUDA geometry/topology ownership.",
+    "src/backends/cuda/gfn2_hamiltonian.cu": "Consume compiler-generated fixed-state TensorIR S/D/Q pair Hamiltonian for both spin layouts.",
+    "src/backends/cuda/gfn2_hamiltonian_force.cu": "Consume the matching compiler-generated S/D/Q reverse-mode pair adjoints, including spin overlap.",
     "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references.",
     "src/backends/cuda/gfn2_preprocessing.cu": "Backport xTBloom #487: pass committed pair-list CUDA kernel descriptors by value for GPUs without pageable host-memory access.",
+    "src/backends/cuda/gfn2_repulsion.cu": "Consume compiler-generated TensorIR/AD repulsion pair science; retain CUDA reduction and error ownership.",
+    "src/backends/cuda/gfn2_repulsion.cuh": "Add explicit generated-pair nonfinite arithmetic status.",
     "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored."
   },
   "backports": {
@@ -205,9 +210,9 @@
       "vendored_sha256": "c143fbf951d3248535dcbd7fec9d57b4b59585ae8f953577603c38caedb4c3e8"
     },
     "src/backends/cuda/gfn2_geometry.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "dab404d81963162181cb357b9bc8288b6a2ee5e6169918363a42f6f9a8bd5003",
-      "vendored_sha256": "dab404d81963162181cb357b9bc8288b6a2ee5e6169918363a42f6f9a8bd5003"
+      "vendored_sha256": "2974a9f4db3bb557f1d341c41d5042f0c1520e2b31fa4b43617a4a88e120cb66"
     },
     "src/backends/cuda/gfn2_geometry.cuh": {
       "adapted": false,
@@ -225,9 +230,9 @@
       "vendored_sha256": "2bb34759478f6cc26f98df496d4c826358505c92d66774ef7ab2b4c9043530c6"
     },
     "src/backends/cuda/gfn2_hamiltonian.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "3c3be624100613cef64a01b2d3bc78756f59f0847e832472678b9018bc11729b",
-      "vendored_sha256": "3c3be624100613cef64a01b2d3bc78756f59f0847e832472678b9018bc11729b"
+      "vendored_sha256": "89e8124105963898a294dd8f7abb1968d3ab73181a19498c787b9c7a7bced7d3"
     },
     "src/backends/cuda/gfn2_hamiltonian.cuh": {
       "adapted": false,
@@ -235,9 +240,9 @@
       "vendored_sha256": "2a937211fd28bff5b89979d292787032061016bac4d688ea9fd332032e099fa1"
     },
     "src/backends/cuda/gfn2_hamiltonian_force.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "ea38771fa21ca9f1671c2d7b6ac0ac82c9f3b6bdce27c31ad5e9a14f2f976198",
-      "vendored_sha256": "ea38771fa21ca9f1671c2d7b6ac0ac82c9f3b6bdce27c31ad5e9a14f2f976198"
+      "vendored_sha256": "7bab5af32caeaa1d596dd7ecb26d3f59017f711f289abbc40da2d93db06276cb"
     },
     "src/backends/cuda/gfn2_hamiltonian_force.cuh": {
       "adapted": false,
@@ -360,14 +365,14 @@
       "vendored_sha256": "d76e4debf164898d776b027e664c297fceb57437e5d252cdd11bd6e4e3ce7403"
     },
     "src/backends/cuda/gfn2_repulsion.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "6a6a587f05ae54ecfa6df1c9fc7b3fadb799cae5c891366d2db5d56ad96d42b1",
-      "vendored_sha256": "6a6a587f05ae54ecfa6df1c9fc7b3fadb799cae5c891366d2db5d56ad96d42b1"
+      "vendored_sha256": "34a2325a38615a3a94727e4f8c5bc64c412627262c2330aac39ce3cffd866e37"
     },
     "src/backends/cuda/gfn2_repulsion.cuh": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "c6d600a8ad626d4e42b921d2c9c96e24b252c4d67045e3105502fb66243c955b",
-      "vendored_sha256": "c6d600a8ad626d4e42b921d2c9c96e24b252c4d67045e3105502fb66243c955b"
+      "vendored_sha256": "de5f293dec3a45ebc023bdb533e979be678e29cce79f545f1b7e6147d5076da2"
     },
     "src/backends/cuda/gfn2_scc.cu": {
       "adapted": false,

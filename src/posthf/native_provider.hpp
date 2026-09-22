@@ -3,8 +3,8 @@
 #include <array>
 #include <vector>
 
+#include "integrals/electron_interaction_source.hpp"
 #include "posthf/block_capacity_generated.hpp"
-#include "posthf/raw_source.hpp"
 #include "scf/types.hpp"
 #include "tensor/metrics.hpp"
 
@@ -19,12 +19,19 @@ struct ProviderWork {
   std::size_t mo_blocks{};
 };
 
-/** Native consumer adapter of CG10's cyclic staged transformation. A private
- * all-zero coefficient column marks an energy tail, never a frozen orbital. */
+/** Native consumer adapter of CG10's cyclic staged transformation.
+ *
+ * The block provider depends only on the method-neutral AO interaction source
+ * contract. RawSource remains a compatibility implementation, while future
+ * exact/generated/DF sources can supply the same AO contract without changing
+ * MP2/CC block consumers. A private all-zero coefficient column marks an energy
+ * tail, never a frozen orbital.
+ */
 class NativeBlockProvider {
  public:
-  NativeBlockProvider(const RawSource& source, const scf::PhysicalReference& reference,
-                      std::size_t budget, unsigned axis_tile = 2);
+  NativeBlockProvider(const integrals::ElectronInteractionSource& source,
+                      const scf::PhysicalReference& reference, std::size_t budget,
+                      unsigned axis_tile = 2);
   NumericBlockPlan plan(const std::array<std::size_t, 4>& shape, bool cuda = false) const;
   std::size_t batch_bytes(const std::array<std::size_t, 4>& shape, std::size_t requests,
                           bool cuda = false) const;
@@ -40,11 +47,11 @@ class NativeBlockProvider {
   std::size_t reference_bytes() const { return reference_bytes_; }
   const std::array<std::size_t, 4>& tile_shape() const { return tile_; }
   const scf::PhysicalReference& reference() const { return ref_; }
-  const RawSource& source() const { return source_; }
+  const integrals::ElectronInteractionSource& source() const { return source_; }
 
  private:
   std::size_t common_host_bytes() const;
-  const RawSource& source_;
+  const integrals::ElectronInteractionSource& source_;
   const scf::PhysicalReference& ref_;
   std::size_t budget_, source_bytes_, reference_bytes_;
   std::array<std::size_t, 4> tile_;

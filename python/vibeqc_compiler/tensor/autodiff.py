@@ -463,6 +463,25 @@ def _jvp_runtime_indexed_select(
     return result
 
 
+def _jvp_runtime_indexed_scatter_add(
+    node: Node,
+    values: typing.Sequence[np.ndarray],
+    tangents: typing.Sequence[np.ndarray],
+) -> np.ndarray:
+    result = _zeros(node.spec)
+    maps = values[1:]
+    axes = tuple(node.attrs["axes"])
+    selected = dict(zip(axes, maps, strict=True))
+    source = tangents[0]
+    for domain_coordinate in range(source.shape[0]):
+        target = tuple(
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
+            for axis in range(result.ndim)
+        )
+        result[target] += source[domain_coordinate]
+    return result
+
+
 def _jvp_reduce(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     return np.sum(tangents[0], axis=node.attrs["axes"], dtype=node.spec.dtype)
 
@@ -524,6 +543,7 @@ _JVP_RULES = {
     "scatter_add": _jvp_scatter_add,
     "segment_sum": _jvp_segment_sum,
     "runtime_indexed_select": _jvp_runtime_indexed_select,
+    "runtime_indexed_scatter_add": _jvp_runtime_indexed_scatter_add,
     "reduce": _jvp_reduce,
     "broadcast": _jvp_broadcast,
 }
@@ -695,6 +715,24 @@ def _vjp_runtime_indexed_select(
     return [source, *(_zeros(mapping.spec) for mapping in node.inputs[1:])]
 
 
+def _vjp_runtime_indexed_scatter_add(
+    node: Node,
+    values: typing.Sequence[np.ndarray],
+    bar: np.ndarray,
+) -> list[np.ndarray]:
+    maps = values[1:]
+    axes = tuple(node.attrs["axes"])
+    selected = dict(zip(axes, maps, strict=True))
+    source = np.empty(node.inputs[0].spec.shape, dtype=node.inputs[0].spec.dtype)
+    for domain_coordinate in range(source.shape[0]):
+        target = tuple(
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
+            for axis in range(bar.ndim)
+        )
+        source[domain_coordinate] = bar[target]
+    return [source, *(_zeros(mapping.spec) for mapping in node.inputs[1:])]
+
+
 def _vjp_reduce(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     input_shape = node.inputs[0].spec.shape
     reduced = set(node.attrs["axes"])
@@ -727,6 +765,7 @@ _VJP_RULES = {
     "scatter_add": _vjp_scatter_add,
     "segment_sum": _vjp_segment_sum,
     "runtime_indexed_select": _vjp_runtime_indexed_select,
+    "runtime_indexed_scatter_add": _vjp_runtime_indexed_scatter_add,
     "reduce": _vjp_reduce,
     "broadcast": _vjp_broadcast,
 }

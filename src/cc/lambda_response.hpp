@@ -1,0 +1,50 @@
+#pragma once
+
+#include <cstddef>
+#include <string>
+#include <vector>
+
+#include "cc/solver.hpp"
+#include "response/native_gmres.hpp"
+
+namespace vibeqc::cc {
+
+struct LambdaOptions {
+  double cc_tolerance{1e-9};
+  double lambda_tolerance{1e-9};
+  std::size_t max_bytes{256ULL << 20};
+  response::GmresOptions gmres = [] {
+    response::GmresOptions options;
+    options.relative_tolerance = 0.0;
+    options.absolute_tolerance = 1e-11;
+    return options;
+  }();
+};
+
+struct LambdaDiagnostic {
+  double cc_r1_max{};
+  double cc_r2_max{};
+  double lambda_residual_norm{};
+  double independent_residual_norm{};
+  double independent_residual_max{};
+  std::size_t iterations{};
+  std::size_t operator_actions{};
+  std::size_t numeric_capacity_bytes{};
+  const char* shared_program_hash{};
+  const char* independent_program_hash{};
+};
+
+struct LambdaResult {
+  std::vector<double> lambda1;
+  std::vector<double> lambda2;
+  LambdaDiagnostic diagnostic;
+  std::string reason;
+
+  [[nodiscard]] bool converged() const noexcept { return !lambda1.empty() && !lambda2.empty(); }
+};
+
+void validate_lambda_options(const LambdaOptions& options);
+LambdaResult solve_lambda_cpu(const Problem& problem, const SolverResult& cc_result,
+                              const LambdaOptions& options = {});
+
+}  // namespace vibeqc::cc

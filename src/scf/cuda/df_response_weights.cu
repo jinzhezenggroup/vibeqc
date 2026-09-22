@@ -302,10 +302,20 @@ static cudaError_t contract_full_rank_panels(
     const double* fitted = all_fitted ? all_fitted + begin * matrix : fitted_panel;
     error = cudaMemsetAsync(weights, 0, count * matrix * sizeof(double), stream);
     if (error != cudaSuccess) return error;
-    for (std::size_t p = 0; p < count; ++p)
-      charge_kernel<<<blocks(terms.size()), threads, 0, stream>>>(
-          matrix, a, begin + p, terms.size(), densities, fitted + p * matrix, potentials);
-    runtime::cuda_trace::trace_counter("response_charge_scalar_dots", terms.size() * count);
+    if (blas_products) {
+      // fitted is column-major [ij,P] while densities is [ij,t]. Contract the
+      // whole auxiliary panel at once into the existing [P,t] view of
+      // potentials. Using ldc=a preserves potentials[t*a + P] without a copy.
+      checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(count),
+                          static_cast<int>(terms.size()), mi, &one, fitted, mi, densities, mi,
+                          &zero, potentials + begin, ai));
+      runtime::cuda_trace::trace_counter("response_charge_blas_dots", terms.size() * count);
+    } else {
+      for (std::size_t p = 0; p < count; ++p)
+        charge_kernel<<<blocks(terms.size()), threads, 0, stream>>>(
+            matrix, a, begin + p, terms.size(), densities, fitted + p * matrix, potentials);
+      runtime::cuda_trace::trace_counter("response_charge_scalar_dots", terms.size() * count);
+    }
     runtime::cuda_trace::trace_counter("response_charge_dot_elements",
                                        terms.size() * count * matrix);
     for (std::size_t t = 0; t < terms.size(); ++t) {

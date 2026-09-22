@@ -70,6 +70,8 @@ endfunction()
 function(vibeqc_add_posthf_cc_sources target)
   target_sources(${target} PRIVATE
     src/cc/solver.cpp
+    src/cc/lambda_response.cpp
+    src/cc/triples_response.cpp
     src/methods/mp2_method.cpp
     src/methods/rccsd_method.cpp
     src/methods/rccsdt_method.cpp

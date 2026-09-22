@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "scf/solver/self_consistent.hpp"
+#include "solver/diis.hpp"
 
 namespace {
 
@@ -127,6 +128,47 @@ void verify_accept_owns_update_policy() {
   require(outcome.state == 1.5, "driver bypassed method-owned acceptance policy");
 }
 
+void verify_diis_shape_rejection_preserves_history() {
+  vibeqc::solver::Diis diis(3, 2);
+  diis.update({0.0, 0.0}, {1.0, 0.0});
+  for (const auto& sizes :
+       {std::pair{1U, 2U}, std::pair{3U, 2U}, std::pair{2U, 1U}, std::pair{2U, 3U}}) {
+    bool rejected = false;
+    try {
+      diis.update(std::vector<double>(sizes.first, 1.0), std::vector<double>(sizes.second, 1.0));
+    } catch (const std::invalid_argument&) {
+      rejected = true;
+    }
+    require(rejected, "shared DIIS accepted inconsistent vector/error dimensions");
+  }
+  const auto next = diis.update({2.0, 4.0}, {0.0, 1.0});
+  require(next.size() == 2 && std::abs(next[0] - 1.0) < 1e-14 && std::abs(next[1] - 2.0) < 1e-14 &&
+              diis.restarts() == 0,
+          "invalid DIIS update poisoned the retained history");
+}
+
+void verify_method_neutral_diis() {
+  vibeqc::solver::Diis disabled(0, 2);
+  const std::vector<double> original{2.0, 4.0};
+  require(disabled.update(original, {1.0, 0.0}) == original,
+          "disabled shared DIIS changed the input state");
+  require(disabled.restarts() == 0, "disabled shared DIIS reported a restart");
+
+  vibeqc::solver::Diis diis(2, 2);
+  require(diis.update({0.0, 0.0}, {1.0, 0.0}) == std::vector<double>({0.0, 0.0}),
+          "first shared DIIS state changed");
+  const auto extrapolated = diis.update({2.0, 4.0}, {0.0, 1.0});
+  require(std::abs(extrapolated[0] - 1.0) < 1.0e-14 && std::abs(extrapolated[1] - 2.0) < 1.0e-14,
+          "shared DIIS Pulay extrapolation changed");
+
+  vibeqc::solver::Diis dependent(2, 2);
+  dependent.update({0.0, 0.0}, {1.0, 1.0});
+  const auto retained = dependent.update({3.0, 5.0}, {1.0, 1.0});
+  require(retained == std::vector<double>({3.0, 5.0}),
+          "shared DIIS did not retain the latest state after a singular history");
+  require(dependent.restarts() == 1, "shared DIIS did not count dependent-history retirement");
+}
+
 void verify_terminal_accept_can_keep_current_state() {
   const SelfConsistentPolicy policy{4, 1.0e-12, 1.0e-12, 1.0e-12, false};
   const auto outcome = run_self_consistent(
@@ -152,6 +194,8 @@ int main() {
     verify_nonconverged_state_retention();
     verify_accept_owns_update_policy();
     verify_terminal_accept_can_keep_current_state();
+    verify_method_neutral_diis();
+    verify_diis_shape_rejection_preserves_history();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return EXIT_FAILURE;

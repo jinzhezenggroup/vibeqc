@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from vibeqc_compiler.common.backend import TargetInfo, TargetScheduleShape
+from vibeqc_compiler.common.gpu_profitability import GpuProfitability
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.schedule import (
+    ScheduleContract,
+    ScheduleResources,
+    ScheduleTopology,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,3 +81,56 @@ class CooperativeLaneSchedule:
             "subgroup_size": self.subgroup_size,
             "workgroup_threads": self.workgroup_threads,
         }
+
+
+def cooperative_schedule_contract(
+    schedule: CooperativeLaneSchedule,
+    *,
+    consumer: str,
+    target: TargetInfo,
+    workload_hash: str | None = None,
+    profile_key: str | None = None,
+    fallback: bool = False,
+    provenance: tuple[tuple[str, str], ...] = (),
+) -> ScheduleContract:
+    """Project lane-group ownership into the shared #833/#874 schedule contract.
+
+    Domain consumers still own task meaning and scientific legality. This adapter
+    only exposes portable topology, target identity, and profile/provenance hooks
+    so integral schedules participate in the same compiler diagnostics/tuning
+    vocabulary as TensorIR and DFT. Unknown resource/profitability facts remain
+    explicit None rather than being guessed from target limits.
+    """
+
+    if not isinstance(schedule, CooperativeLaneSchedule):
+        raise TypeError("cooperative contract requires CooperativeLaneSchedule")
+    if not isinstance(target, TargetInfo):
+        raise TypeError("cooperative contract requires TargetInfo")
+    schedule.validate_for(target)
+    return ScheduleContract(
+        consumer=consumer,
+        schedule_hash=schedule.identity,
+        workload_hash=workload_hash,
+        profile_key=profile_key,
+        target_hash=canonical_hash(asdict(target)),
+        fallback=fallback,
+        topology=ScheduleTopology(
+            workgroup_threads=schedule.workgroup_threads,
+            subgroup_size=schedule.subgroup_size,
+            fusion="domain-owned",
+            materialization="shared-state"
+            if schedule.shared_state
+            else "private-state",
+            residency="device",
+            reduction="lane-group" if schedule.group_reduction else "none",
+            cooperative=True,
+            bucket="lane-groups",
+        ),
+        resources=ScheduleResources(),
+        profitability=GpuProfitability(),
+        provenance=provenance
+        + (
+            ("groups_per_workgroup", str(schedule.groups_per_workgroup)),
+            ("lanes_per_group", str(schedule.lanes_per_group)),
+        ),
+    )

@@ -173,6 +173,9 @@ def emit_low_order_weighted_header(*, inline_single_use: typing.Any = False) -> 
     """Generate native low-order helpers with force-only Direct-HF specializations."""
     ssss = build_weighted_eri_kernel(build_weighted_eri_ir((0, 0, 0, 0)))
     psss = build_weighted_eri_kernel(build_weighted_eri_ir((1, 0, 0, 0)))
+    psps = build_weighted_eri_kernel(build_weighted_eri_ir((1, 0, 1, 0)))
+    ppss = build_weighted_eri_kernel(build_weighted_eri_ir((1, 1, 0, 0)))
+    dsss = build_weighted_eri_kernel(build_weighted_eri_ir((2, 0, 0, 0)))
     full = emit_weighted_eri_header(
         ((psss, "psss"),),
         inline_single_use=inline_single_use,
@@ -201,4 +204,27 @@ def emit_low_order_weighted_header(*, inline_single_use: typing.Any = False) -> 
         gradient_centers=(0, 1, 2),
         result_type="IndependentGradient",
     )
-    return full[: -len(marker)] + specialized_result + psss_force + ssss_force + marker
+    order2_force = "".join(
+        emit_weighted_eri_function(
+            kernel,
+            name,
+            inline_single_use=inline_single_use,
+            include_value=False,
+            gradient_centers=(0, 1, 2),
+            result_type="IndependentGradient",
+            ordering=AlgebraOrdering.PRESSURE_AWARE,
+        )
+        for kernel, name in (
+            (psps, "psps_force"),
+            (ppss, "ppss_force"),
+            (dsss, "dsss_force"),
+        )
+    )
+    return (
+        full[: -len(marker)]
+        + specialized_result
+        + psss_force
+        + ssss_force
+        + order2_force
+        + marker
+    )

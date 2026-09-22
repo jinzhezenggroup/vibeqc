@@ -3,10 +3,10 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
-#include <numeric>
 #include <stdexcept>
 
 #include "generated_rccsd_cpu.hpp"
+#include "solver/diis.hpp"
 #include "solver/iteration_control.hpp"
 
 namespace vibeqc::cc {
@@ -45,78 +45,6 @@ double max_abs(const double* p, std::size_t n) {
   }
   return result;
 }
-
-bool solve_linear(std::vector<double> matrix, std::vector<double> rhs, std::vector<double>& x) {
-  const auto n = rhs.size();
-  for (std::size_t col = 0; col < n; ++col) {
-    auto pivot = col;
-    for (std::size_t row = col + 1; row < n; ++row)
-      if (std::abs(matrix[row * n + col]) > std::abs(matrix[pivot * n + col])) pivot = row;
-    const double divisor = matrix[pivot * n + col];
-    if (!std::isfinite(divisor) || std::abs(divisor) < 1e-14) return false;
-    if (pivot != col) {
-      for (std::size_t j = 0; j < n; ++j) std::swap(matrix[col * n + j], matrix[pivot * n + j]);
-      std::swap(rhs[col], rhs[pivot]);
-    }
-    for (std::size_t j = col; j < n; ++j) matrix[col * n + j] /= divisor;
-    rhs[col] /= divisor;
-    for (std::size_t row = 0; row < n; ++row) {
-      if (row == col) continue;
-      const double factor = matrix[row * n + col];
-      for (std::size_t j = col; j < n; ++j) matrix[row * n + j] -= factor * matrix[col * n + j];
-      rhs[row] -= factor * rhs[col];
-    }
-  }
-  x = std::move(rhs);
-  return std::all_of(x.begin(), x.end(), [](double y) { return std::isfinite(y); });
-}
-
-struct Diis {
-  unsigned capacity{}, restarts{};
-  std::size_t elements{};
-  std::vector<std::vector<double>> vectors, errors;
-
-  std::vector<double> update(std::vector<double> vector, std::vector<double> error) {
-    if (!capacity) return vector;
-    vectors.push_back(vector);
-    errors.push_back(std::move(error));
-    if (vectors.size() > capacity) {
-      vectors.erase(vectors.begin());
-      errors.erase(errors.begin());
-    }
-    while (vectors.size() > 1) {
-      const auto n = vectors.size();
-      std::vector<double> gram(n * n);
-      double scale = 0.0;
-      for (std::size_t i = 0; i < n; ++i)
-        for (std::size_t j = 0; j < n; ++j) {
-          gram[i * n + j] =
-              std::inner_product(errors[i].begin(), errors[i].end(), errors[j].begin(), 0.0);
-          scale = std::max(scale, std::abs(gram[i * n + j]));
-        }
-      if (scale == 0.0) return vector;
-      std::vector<double> system((n + 1) * (n + 1)), rhs(n + 1), solution;
-      for (std::size_t i = 0; i < n; ++i)
-        for (std::size_t j = 0; j < n; ++j) system[i * (n + 1) + j] = gram[i * n + j] / scale;
-      for (std::size_t i = 0; i < n; ++i) system[i * (n + 1) + n] = system[n * (n + 1) + i] = -1.0;
-      rhs[n] = -1.0;
-      if (solve_linear(system, rhs, solution)) {
-        solution.resize(n);
-        if (std::all_of(solution.begin(), solution.end(),
-                        [](double c) { return std::isfinite(c) && std::abs(c) <= 1e6; })) {
-          std::vector<double> result(elements);
-          for (std::size_t row = 0; row < n; ++row)
-            for (std::size_t i = 0; i < elements; ++i) result[i] += solution[row] * vectors[row][i];
-          return result;
-        }
-      }
-      vectors.erase(vectors.begin());
-      errors.erase(errors.begin());
-      ++restarts;
-    }
-    return vector;
-  }
-};
 
 }  // namespace
 
@@ -199,7 +127,7 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
   current.reserve(elements);
   current.insert(current.end(), p.initial_t1.begin(), p.initial_t1.end());
   current.insert(current.end(), p.initial_t2.begin(), p.initial_t2.end());
-  Diis diis{options.diis_size, 0, elements, {}, {}};
+  vibeqc::solver::Diis diis(options.diis_size, elements);
   double previous = std::numeric_limits<double>::quiet_NaN();
   SolverResult result;
   result.diagnostic.numeric_capacity_bytes = std::max(p.provider_peak_bytes, capacity);
@@ -260,7 +188,7 @@ SolverResult solve_cpu(const Problem& p, const SolverOptions& options) {
       return false;
     }
   });
-  result.diagnostic.diis_restarts = diis.restarts;
+  result.diagnostic.diis_restarts = diis.restarts();
   result.t1.assign(current.begin(), current.begin() + static_cast<std::ptrdiff_t>(n1));
   result.t2.assign(current.begin() + static_cast<std::ptrdiff_t>(n1), current.end());
   return result;

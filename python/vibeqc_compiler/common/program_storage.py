@@ -233,6 +233,7 @@ class ProgramStoragePlan:
             "interference": list(analysis.interference),
             "peak_live_bytes": list(analysis.peak_live_bytes),
             "blocked_spaces": list(analysis.blocked_spaces),
+            "donations": list(analysis.donations),
             "elided_alias_allocations": [
                 item.buffer for item in self.aliases if item.alias is AliasKind.VIEW
             ],

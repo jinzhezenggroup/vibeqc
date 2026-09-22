@@ -241,6 +241,41 @@ int main() {
             "PBE fixed-density integral is invalid");
     for (double value : pbe.potential)
       require(std::isfinite(value), "PBE fixed-density potential is nonfinite");
+    // #237 Slice A: delta-D may be signed/indefinite. Contract its
+    // *linear* rho/grad-rho features separately, then recompute nonlinear PBE
+    // from the reconstructed total features. The exact incremental result must
+    // match a full target-density build, including exact Vxc differences.
+    const std::vector<double> incremental_delta{3.0e-3, -4.0e-3, -4.0e-3, -2.0e-3};
+    std::vector<double> incremental_target = density;
+    for (std::size_t i = 0; i < density.size(); ++i) incremental_target[i] += incremental_delta[i];
+    const auto incremental = vibeqc::dft::integrate_pbe_rks_incremental_exact(basis, grid, density,
+                                                                              incremental_delta, 5);
+    const auto incremental_full =
+        vibeqc::dft::integrate_pbe_rks_with_tail(basis, grid, incremental_target, 5);
+    const auto incremental_anchor =
+        vibeqc::dft::integrate_pbe_rks_with_tail(basis, grid, density, 5);
+    require(std::abs(incremental.total.energy - incremental_full.energy) < 2.0e-14 &&
+                std::abs(incremental.total.electrons - incremental_full.electrons) < 2.0e-14,
+            "exact incremental PBE total differs from a full target build");
+    require(std::abs(incremental.energy_difference -
+                     (incremental_full.energy - incremental_anchor.energy)) < 2.0e-14,
+            "exact incremental PBE energy difference is not anchor-relative");
+    for (std::size_t i = 0; i < incremental_full.potential.size(); ++i) {
+      require(std::abs(incremental.total.potential[i] - incremental_full.potential[i]) < 2.0e-14,
+              "exact incremental PBE potential differs from a full target build");
+      require(std::abs(incremental.potential_difference[i] -
+                       (incremental_full.potential[i] - incremental_anchor.potential[i])) < 2.0e-14,
+              "exact incremental PBE potential difference is not anchor-relative");
+    }
+    const std::vector<double> zero_delta(density.size(), 0.0);
+    const auto unchanged =
+        vibeqc::dft::integrate_pbe_rks_incremental_exact(basis, grid, density, zero_delta, 3);
+    require(std::abs(unchanged.energy_difference) < 2.0e-14 &&
+                std::all_of(unchanged.potential_difference.begin(),
+                            unchanged.potential_difference.end(),
+                            [](double value) { return std::abs(value) < 2.0e-14; }),
+            "zero delta-D did not cancel exactly in incremental PBE");
+
     const auto pbe_interior_tail =
         vibeqc::dft::integrate_pbe_rks_with_tail(basis, grid, density, 5);
     require(std::abs(pbe_interior_tail.energy - pbe.energy) < 2.0e-14 &&

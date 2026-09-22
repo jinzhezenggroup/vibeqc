@@ -324,7 +324,6 @@ CUDA_ALLOWED["cuda_direct_pair_cache"] = (
 CUDA_MODULES["cuda_direct_numerics"] = (
     "direct_native_cartesian",
     "direct_native_contraction",
-    "direct_native_dsss_gradient",
     "direct_native_eri_order2",
     "direct_native_eri_order3",
     "direct_native_eri_order4",
@@ -339,8 +338,6 @@ CUDA_MODULES["cuda_direct_numerics"] = (
     "direct_native_pair_order2_gradient",
     "direct_native_pair_order3",
     "direct_native_pair_order3_gradient",
-    "direct_native_ppss_gradient",
-    "direct_native_psps_gradient",
     "direct_native_psss",
     "direct_native_shell_class",
     "direct_native_shell_pair_hermite",

@@ -5,6 +5,7 @@
 #include <optional>
 #include <vector>
 
+#include "core/electronic_reference.hpp"
 #include "dft/density_source.hpp"
 #include "dft/scf_diagnostic.hpp"
 #include "scf/fock_build.hpp"
@@ -29,6 +30,24 @@ struct PrecisionProvenance {
   double mixed_precision_reserved_error{0.0};
   /** FP64 target-precision iterations run after the mixed iterative stage. */
   uint32_t refinement_iterations{0};
+  /** Complete mixed-stage Fock/operator applications for this item. */
+  uint64_t mixed_stage_fock_builds{0};
+  /** Complete strict-FP64 SCF-stage Fock/operator applications for this item. */
+  uint64_t strict_stage_fock_builds{0};
+  /** Additional strict physical-Fock builds performed after SCF convergence. */
+  uint64_t post_scf_fock_builds{0};
+  /** Whole-execution provider retries before this successful/returned attempt. */
+  uint64_t execution_retries{0};
+  /** Certified per-item mixed-capable census used by the admission budget. */
+  uint64_t mixed_admission_census{0};
+  /** Exact final physical-residual audits executed for this item. */
+  uint64_t final_residual_audits{0};
+  /** Final-Fock operator applications skipped by retained-state reuse. */
+  uint64_t skipped_final_fock_builds{0};
+  /** Nonzero only when the operator-work counters above are fully instrumented.
+   * Numerical failures can leave partially executed stages uncounted; their
+   * counters are not certified by this flag. */
+  uint32_t operator_work_counters_valid{0};
 };
 
 /** Numerical controls shared by the implemented mean-field solvers. */
@@ -95,6 +114,18 @@ struct PhysicalReference {
   double canonical_density_drift{};
   double eigen_residual{};
   std::size_t numeric_capacity_bytes{};
+
+  /** Borrow this owned RHF state through the method-neutral core contract. */
+  [[nodiscard]] core::ElectronicReferenceView electronic_reference() const noexcept {
+    core::ElectronicReferenceView view;
+    view.basis_functions = nbf;
+    view.spin_channels = 1;
+    view.overlap = overlap;
+    view.hcore = hcore;
+    view.energy = energy;
+    view.channels[0] = {nocc, coefficients, orbital_energies, density, fock, weighted_density};
+    return view;
+  }
 };
 
 struct ScfResult {

@@ -127,15 +127,37 @@ class _BaseResponseOperator:
         c = self.problem.reference.coefficients
         return x, c @ delta_mo @ c.T
 
+    def induced_fock(
+        self, delta_density: typing.Any, *, transpose: typing.Any = False
+    ) -> typing.Any:
+        """Apply the method-specific first-order Fock map to an AO density direction.
+
+        This is the common closed-shell response boundary used by orbital-response
+        and nuclear-perturbation consumers. RHF contributes J-1/2 K; semilocal
+        CPKS contributes J plus the XC feature-Hessian action. Future hybrid
+        operators extend this method rather than teaching Hessian code method algebra.
+        """
+        delta_ao = np.asarray(delta_density, dtype=np.float64)
+        if delta_ao.shape != (self.nbf, self.nbf) or not np.isfinite(delta_ao).all():
+            raise ValueError(
+                f"density response must be a finite ({self.nbf}, {self.nbf}) AO matrix"
+            )
+        if not np.allclose(delta_ao, delta_ao.T, atol=2e-10, rtol=2e-12):
+            raise ValueError("density response must be symmetric")
+        coulomb, exchange = self.backend.coulomb_exchange(delta_ao)
+        xc = self._xc_response(delta_ao, transpose=transpose)
+        response = coulomb - self.exchange_fraction * exchange + xc
+        if not np.isfinite(response).all():
+            raise FloatingPointError("nonfinite induced Fock response")
+        return response
+
     def _base_action(
         self, vector: typing.Any, *, transpose: typing.Any = False
     ) -> typing.Any:
         started = time.perf_counter()
         x, delta_ao = self._delta_density_ao(vector)
         backend_started = time.perf_counter()
-        coulomb, exchange = self.backend.coulomb_exchange(delta_ao)
-        xc = self._xc_response(delta_ao, transpose=transpose)
-        response_ao = coulomb - self.exchange_fraction * exchange + xc
+        response_ao = self.induced_fock(delta_ao, transpose=transpose)
         response_mo = (
             self.problem.reference.coefficients.T
             @ response_ao

@@ -3431,11 +3431,19 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // it to count every tested determinant, including final-state rejections.
     cuda_error =
         cudaMemsetAsync(final_fock_rebuild_count, 0, sizeof(std::uint32_t), resources.stream_);
+    // Device warm_mask is dead after initial-state admission. Reuse those
+    // per-item bytes as exact audit participation flags without growing the
+    // arena solely for diagnostics.
+    if (cuda_error == cudaSuccess) {
+      cuda_error =
+          cudaMemsetAsync(warm_mask, 0, batch_size * sizeof(std::uint8_t), resources.stream_);
+    }
     if (cuda_error == cudaSuccess) {
       launch_validate_force_residual_kernel(
           resources.stream_, static_cast<std::int32_t>(batch_size),
           static_cast<std::int32_t>(spin_count), static_cast<std::int32_t>(nbf),
-          options.density_tolerance, residual, active, converged, final_fock_rebuild_count);
+          options.density_tolerance, residual, active, converged, final_fock_rebuild_count,
+          warm_mask);
       cuda_error = cudaGetLastError();
     }
     if (cuda_error != cudaSuccess) {
@@ -4391,6 +4399,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   std::vector<std::uint8_t> host_converged(batch_size);
   std::vector<std::uint8_t> host_failed(batch_size);
   std::vector<std::uint32_t> host_iterations(batch_size);
+  std::vector<std::uint8_t> host_final_fock_reuse_mask(batch_size, 0U);
+  std::vector<std::uint8_t> host_final_audit_mask(batch_size, 0U);
   std::uint32_t host_inactive_eigensolver_profile_count = 0U;
   std::vector<DeviceInactiveEigensolverProfileEntry> host_inactive_eigensolver_profile(
       inactive_eigensolver_profiling ? options.max_iterations : 0U);
@@ -4415,6 +4425,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       {host_converged.data(), converged, batch_size * sizeof(std::uint8_t)},
       {host_failed.data(), failed, batch_size * sizeof(std::uint8_t)},
       {host_iterations.data(), iterations, batch_size * sizeof(std::uint32_t)},
+      {host_final_fock_reuse_mask.data(), final_fock_reuse_mask,
+       reuse_converged_fock && !scf_force_ready_state ? batch_size * sizeof(std::uint8_t) : 0U},
+      {host_final_audit_mask.data(), warm_mask,
+       force_finalization_fallback ? batch_size * sizeof(std::uint8_t) : 0U},
   };
   for (const Download& download : downloads) {
     cuda_error = cudaMemcpyAsync(download.host, download.device, download.bytes,
@@ -4612,6 +4626,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     result.converged = host_converged[system] != 0 && host_failed[system] == 0;
     result.initial_density_used = host.warm_mask[system] != 0;
     result.precision.requested_mode = requested_precision_mode;
+    // A numerical failure can occur after an operator application but before
+    // the iteration/final-audit counters advance. Do not certify that partial
+    // history as complete. Ordinary exhaustion/audit rejection remains counted.
+    result.precision.operator_work_counters_valid = host_failed[system] == 0 ? 1U : 0U;
     result.precision.effective_bits = precision_item_mixed ? 32U : 64U;
     result.precision.mixed_precision_fock_threshold =
         precision_item_mixed ? host_mixed_item_threshold[system] : 0.0;
@@ -4619,6 +4637,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     result.precision.mixed_precision_reserved_error =
         precision_item_mixed ? requested_precision_policy.item_budget_error : 0.0;
     result.precision.refinement_iterations = precision_item_mixed ? host_iterations[system] : 0U;
+    result.precision.mixed_stage_fock_builds =
+        precision_item_mixed ? host_mixed_iterations[system] : 0U;
+    result.precision.strict_stage_fock_builds = host_iterations[system];
+    const bool audited_item = host_final_audit_mask[system] != 0U;
+    const bool completed_item = host_converged[system] != 0 && host_failed[system] == 0;
+    const bool entered_finalization = completed_item || audited_item;
+    if (!scf_force_ready_state && entered_finalization) {
+      result.precision.post_scf_fock_builds =
+          reuse_converged_fock ? (host_final_fock_reuse_mask[system] == 0U ? 1U : 0U) : 1U;
+    }
+    if (audited_item) ++result.precision.post_scf_fock_builds;
+    result.precision.mixed_admission_census =
+        precision_item_mixed ? host_mixed_item_census[system] : 0U;
+    result.precision.final_residual_audits = audited_item ? 1U : 0U;
+    if (entered_finalization &&
+        (scf_force_ready_state ||
+         (reuse_converged_fock && host_final_fock_reuse_mask[system] != 0U))) {
+      result.precision.skipped_final_fock_builds = 1U;
+    }
     const std::size_t density_stride = spin_count * matrix_size;
     result.density.assign(host_density.begin() + system * density_stride,
                           host_density.begin() + (system + 1) * density_stride);
