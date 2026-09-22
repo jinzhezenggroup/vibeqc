@@ -91,26 +91,26 @@ def test_order3_gate_preserves_runtime_failures(
     class BrokenReplay:
         calls = 0
 
-        def __enter__(self):
+        def __enter__(self) -> "BrokenReplay":
             return self
 
-        def __exit__(self, *_args):
+        def __exit__(self, *_args: object) -> bool:
             return False
 
-        def execute(self, *_args, **_kwargs):
+        def execute(self, *_args: object, **_kwargs: object) -> SimpleNamespace:
             self.calls += 1
             if failure == "cold" or self.calls == 2:
                 raise RuntimeError("injected order-three execution failure")
             return SimpleNamespace(items=[object()])
 
     class FakeCalculator:
-        def __init__(self, **_kwargs):
+        def __init__(self, **_kwargs: object) -> None:
             pass
 
-        def singlepoint(self, *_args, **_kwargs):
+        def singlepoint(self, *_args: object, **_kwargs: object) -> object:
             return object()
 
-        def prepare_batch(self, *_args, **_kwargs):
+        def prepare_batch(self, *_args: object, **_kwargs: object) -> BrokenReplay:
             if failure == "prepare":
                 raise RuntimeError("injected order-three execution failure")
             return BrokenReplay()
