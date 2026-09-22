@@ -451,14 +451,15 @@ Jet production_nuclear_attraction_cartesian(double alpha, const Vec3& a,
     const double charge = static_cast<double>(system.atoms[atom].ionic_charge());
     const double value = generated_one_electron_cpu::attraction(
         pair, first, second, center[0].value, center[1].value, center[2].value);
-    result.value -= charge * value;
+    // The generated unit-charge V and its derivatives already include -1/r.
+    result.value += charge * value;
     if (ncoord == 0) continue;
 
     const auto gradient = generated_one_electron_cpu::attraction_gradient(
         pair, first, second, center[0].value, center[1].value, center[2].value);
     for (std::size_t axis = 0; axis < 3; ++axis) {
-      const double da = -charge * gradient.first[axis];
-      const double db = -charge * gradient.second[axis];
+      const double da = charge * gradient.first[axis];
+      const double db = charge * gradient.second[axis];
       result.derivative[3 * atom_a + axis] += da;
       result.derivative[3 * atom_b + axis] += db;
       result.derivative[3 * atom + axis] -= da + db;
