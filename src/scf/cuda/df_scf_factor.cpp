@@ -14,6 +14,7 @@
 #include "scf/cuda/df_scf_kernels.hpp"
 #include "scf/cuda/df_scf_library.hpp"
 #include "scf/df_exchange_policy.hpp"
+#include "scf/df_projected_exchange_schedule.hpp"
 
 namespace vibeqc::scf::cuda_df {
 
@@ -37,6 +38,20 @@ bool qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& plan,
   return packed_resident || dense_resident;
 }
 
+bool qualified_value_rhf_exchange(const CudaDensityFittingJkPlan& plan, std::size_t rank) noexcept {
+  if (qualified_resident_rhf_exchange(plan, rank)) return true;
+  // Streamed projections are private eigendirection factors: they cannot grant
+  // the symmetric-C final-state/force-response lease of the resident gate.
+  return df_occupied_exchange_preferred(plan.nbf, plan.naux, plan.batch_size, rank) &&
+         plan.occupied_scf_reserved && plan.resident_exchange_enabled && plan.streamed &&
+         plan.integral_source && plan.metric_full_rank.size() == 1 && plan.metric_full_rank[0] &&
+         plan.auxiliary_tile_values && plan.exchange_intermediate && plan.exchange_contributions &&
+         plan.exchange_tile_output &&
+         df_projected_exchange_schedule(plan.nbf, plan.naux, rank, plan.panel_capacity,
+                                        plan.triangular_exchange)
+                 .rows != 0;
+}
+
 vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
                                           const double* density, bool& accepted, std::size_t& rank,
                                           std::string& detail) {
@@ -46,14 +61,18 @@ vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, Persis
       {plan.batch_size, plan.nbf, plan.naux, plan.integral_source != nullptr, plan.streamed});
   accepted = false;
   rank = 0;
-  // This first qualification uses existing singleton resident RHF workspace.
-  // Unsupported plans retain dense exchange without allocating another solver.
+  // Reuse the existing singleton RHF solver/scratch. Streamed value factors
+  // need a profitable full-rank source schedule, but never a resident lease.
   const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower &&
                       plan.integral_source && plan.packed_raw;
   const bool source_dense_resident = plan.integral_source && !packed && plan.resident_raw_valid;
-  if (state.unrestricted || plan.batch_size != 1 || !state.occupied_exchange || plan.streamed ||
-      (plan.integral_source && !packed && !source_dense_resident) || plan.row_tile != plan.nbf ||
-      (!packed && plan.auxiliary_tile != plan.naux) || plan.nbf < 2) {
+  const bool resident = !plan.streamed &&
+                        (!plan.integral_source || packed || source_dense_resident) &&
+                        plan.row_tile == plan.nbf && (packed || plan.auxiliary_tile == plan.naux);
+  const bool streamed =
+      plan.streamed && qualified_value_rhf_exchange(plan, state.alpha_factor_rank);
+  if (state.unrestricted || plan.batch_size != 1 || !state.occupied_exchange ||
+      (!resident && !streamed) || plan.nbf < 2) {
     trace_counter("unsupported", 1);
     return VIBEQC_STATUS_SUCCESS;
   }
@@ -159,7 +178,7 @@ vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& en
   }
   if (df_occupied_exchange_auto_requested()) {
     enabled = alpha.size() == 1 && beta.empty() && alpha[0] > 0 &&
-              qualified_resident_rhf_exchange(plan, static_cast<std::size_t>(alpha[0]));
+              qualified_value_rhf_exchange(plan, static_cast<std::size_t>(alpha[0]));
   }
   if (enabled && !plan.occupied_scf_reserved) {
     detail = "CUDA DF plan did not reserve occupied SCF storage; recreate the plan";
@@ -247,7 +266,7 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
       // full reconstruction below still decide whether its factor is exact.
       selected = state.factor_alpha_ranks.size() == 1 && state.factor_beta_ranks.empty() &&
                  state.factor_alpha_ranks[0] > 0 &&
-                 qualified_resident_rhf_exchange(plan, state.factor_alpha_ranks[0]);
+                 qualified_value_rhf_exchange(plan, state.factor_alpha_ranks[0]);
     }
     if (selected) {
       const auto status = factor_density_for_exchange(plan, state, alpha, seed, seed_rank, detail);
