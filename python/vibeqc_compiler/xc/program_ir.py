@@ -9,6 +9,7 @@ from vibeqc_compiler.common.resources import byte_product, checked_bytes
 from vibeqc_compiler.dft.ao import jet_indices
 from vibeqc_compiler.dft.features import DENSITY_FEATURE_SCALAR_ROWS
 
+from .coefficients import coefficient_program
 from .contracts import DiscreteEnergyContract
 
 
@@ -83,6 +84,12 @@ def fixed_density_tile_program(
         buffers.append(
             _dense("xc_rows", (1 + len(contract.functional.features), tile_points))
         )
+        coefficient_rows = len(
+            coefficient_program(
+                contract.functional.spin, contract.ingredients.family
+            ).roots
+        )
+        buffers.append(_dense("coefficients", (coefficient_rows, tile_points)))
         calls.append(
             PlanCall(
                 "features",
@@ -117,7 +124,7 @@ def fixed_density_tile_program(
                 "xc.NativeContractionProgram.potential_from_rows",
                 native_identity,
                 tuple(vxc_reads),
-                ("contribution",),
+                ("coefficients", "contribution"),
             )
         )
     else:
