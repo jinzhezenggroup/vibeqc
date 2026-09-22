@@ -181,7 +181,7 @@ macro(vibeqc_add_native_tests)
     target_sources(vibeqc_d3_cuda_replay_failure_tests PRIVATE src/dft/dispersion/d3_cuda.cu)
     add_dependencies(vibeqc_d3_cuda_replay_failure_tests vibeqc_d3_codegen)
     target_include_directories(vibeqc_d3_cuda_replay_failure_tests PRIVATE
-      "${CMAKE_CURRENT_BINARY_DIR}/generated")
+      "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/generated")
     set_target_properties(vibeqc_d3_cuda_replay_failure_tests PROPERTIES CUDA_STANDARD 20)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
       target_compile_definitions(vibeqc_d3_cuda_replay_failure_tests
