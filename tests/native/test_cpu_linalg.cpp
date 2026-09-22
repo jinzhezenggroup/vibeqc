@@ -233,6 +233,62 @@ bool check_trsm(CpuLinalgProvider provider,
   return true;
 }
 
+bool check_trmm(CpuLinalgProvider provider,
+                CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
+                int threads = 1) {
+  const CpuLinalgPlan plan{provider, ownership, threads};
+  constexpr std::size_t m = 2, n = 3;
+  constexpr double alpha = -1.5;
+  const double poison = std::numeric_limits<double>::quiet_NaN();
+
+  for (char side : {'L', 'R'}) {
+    const std::size_t order = side == 'L' ? m : n;
+    for (char uplo : {'L', 'U'})
+      for (char trans : {'N', 'T'})
+        for (char diag : {'N', 'U'}) {
+          std::vector<double> a(order * order, poison);
+          for (std::size_t i = 0; i < order; ++i)
+            for (std::size_t j = 0; j < order; ++j) {
+              const bool stored = uplo == 'U' ? j >= i : j <= i;
+              if (!stored) continue;
+              if (i == j)
+                a[i * order + j] = diag == 'U' ? poison : 2.0 + static_cast<double>(i);
+              else
+                a[i * order + j] = 0.25 * static_cast<double>(1 + i + j);
+            }
+
+          const auto op_a = [&](std::size_t row, std::size_t column) {
+            if (row == column && diag == 'U') return 1.0;
+            const std::size_t stored_row = trans == 'T' ? column : row;
+            const std::size_t stored_column = trans == 'T' ? row : column;
+            const bool stored =
+                uplo == 'U' ? stored_column >= stored_row : stored_column <= stored_row;
+            return stored ? a[stored_row * order + stored_column] : 0.0;
+          };
+
+          const std::array<double, m * n> input{1.0, -2.0, 3.0, 4.0, 0.5, -1.5};
+          std::array<double, m * n> expected{}, result = input;
+          if (side == 'L') {
+            for (std::size_t i = 0; i < m; ++i)
+              for (std::size_t j = 0; j < n; ++j)
+                for (std::size_t k = 0; k < m; ++k)
+                  expected[i * n + j] += alpha * op_a(i, k) * input[k * n + j];
+          } else {
+            for (std::size_t i = 0; i < m; ++i)
+              for (std::size_t j = 0; j < n; ++j)
+                for (std::size_t k = 0; k < n; ++k)
+                  expected[i * n + j] += alpha * input[i * n + k] * op_a(k, j);
+          }
+
+          vibeqc::tensor::cpu_trmm(side, uplo, trans, diag, m, n, a.data(), result.data(), alpha,
+                                   plan);
+          for (std::size_t i = 0; i < result.size(); ++i)
+            if (!std::isfinite(result[i]) || !close(result[i], expected[i], 2.0e-12)) return false;
+        }
+  }
+  return true;
+}
+
 bool check_cholesky(CpuLinalgProvider provider,
                     CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
                     int threads = 1) {
@@ -272,7 +328,8 @@ int main() {
   if (!check_gemm(CpuLinalgProvider::scalar) || !check_gemv(CpuLinalgProvider::scalar) ||
       !check_ger(CpuLinalgProvider::scalar) || !check_symm(CpuLinalgProvider::scalar) ||
       !check_syrk(CpuLinalgProvider::scalar) || !check_trsm(CpuLinalgProvider::scalar) ||
-      !check_cholesky(CpuLinalgProvider::scalar) || !check_eigen(CpuLinalgProvider::scalar)) {
+      !check_trmm(CpuLinalgProvider::scalar) || !check_cholesky(CpuLinalgProvider::scalar) ||
+      !check_eigen(CpuLinalgProvider::scalar)) {
     std::cerr << "scalar CPU linear algebra failed\n";
     return 1;
   }
@@ -304,7 +361,8 @@ int main() {
                               !check_ger(CpuLinalgProvider::openblas, ownership) ||
                               !check_symm(CpuLinalgProvider::openblas, ownership) ||
                               !check_syrk(CpuLinalgProvider::openblas, ownership) ||
-                              !check_trsm(CpuLinalgProvider::openblas, ownership))) {
+                              !check_trsm(CpuLinalgProvider::openblas, ownership) ||
+                              !check_trmm(CpuLinalgProvider::openblas, ownership))) {
       std::cerr << "OpenBLAS BLAS provider failed\n";
       return 4;
     }
