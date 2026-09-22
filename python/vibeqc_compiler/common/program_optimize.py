@@ -251,5 +251,7 @@ def cleanup_program_ir(
         len(program.calls),
         len(program.buffers),
         program.identity,
-        tuple(sorted((provider, effect.value) for provider, effect in normalized.items())),
+        tuple(
+            sorted((provider, effect.value) for provider, effect in normalized.items())
+        ),
     )
