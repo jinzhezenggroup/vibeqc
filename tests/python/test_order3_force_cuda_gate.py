@@ -3,6 +3,7 @@
 import ctypes
 import os
 from types import SimpleNamespace
+from typing import Self
 
 import numpy as np
 import pytest
@@ -91,7 +92,7 @@ def test_order3_gate_preserves_runtime_failures(
     class BrokenReplay:
         calls = 0
 
-        def __enter__(self) -> "BrokenReplay":
+        def __enter__(self) -> Self:
             return self
 
         def __exit__(self, *_args: object) -> bool:
