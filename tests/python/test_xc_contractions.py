@@ -328,6 +328,76 @@ def test_explicit_geometry_sources_against_moved_native_collocation(
 
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
 @pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
+def test_xc_potential_geometry_jvp_matches_displaced_potential(
+    name: str, spin: str
+) -> None:
+    meta, data, grid = fixture("h2")
+    args = basis_arguments(meta)
+    density = data["density_spin" if spin == "polarized" else "density_total"]
+    geometry = program(name, spin, "geometry")
+    potential = program(name, spin, "potential")
+    rng = np.random.default_rng(180179 if spin == "polarized" else 180180)
+    delta_density = rng.normal(size=density.shape) * 0.0015
+    delta_density = 0.5 * (delta_density + np.swapaxes(delta_density, -1, -2))
+    center_motion = rng.normal(size=(len(args["atoms"]), 3)) * 0.025
+    point_motion = rng.normal(size=grid.points.shape) * 0.018
+    weight_motion = rng.normal(size=grid.weights.shape) * 1.5e-4
+
+    with NativeAO(**args) as basis:
+        counts = [
+            2 * shell.angular_momentum + 1
+            if basis.representation == "real_spherical"
+            else (shell.angular_momentum + 1) * (shell.angular_momentum + 2) // 2
+            for shell in basis.shells
+        ]
+        ao_atoms = np.repeat([shell.atom_index for shell in basis.shells], counts)
+        full_jets = basis.evaluate(
+            grid.points, geometry.contract.ingredients.ao_order + 1
+        )
+        actual = geometry.potential_geometry_directional(
+            full_jets,
+            density,
+            grid.weights,
+            ao_atoms=ao_atoms,
+            center_motion=center_motion,
+            point_motion=point_motion,
+            weight_motion=weight_motion,
+            delta_density=delta_density,
+        )
+
+    errors = []
+    for step in (2e-4, 7e-5, 2e-5):
+        values = []
+        for sign in (1, -1):
+            moved_atoms = [
+                (
+                    atom,
+                    np.asarray(position) + sign * step * delta,
+                )
+                for (atom, position), delta in zip(
+                    args["atoms"], center_motion, strict=True
+                )
+            ]
+            with NativeAO(**{**args, "atoms": moved_atoms}) as basis:
+                moved_jets = basis.evaluate(
+                    grid.points + sign * step * point_motion,
+                    potential.contract.ao_order,
+                )
+                values.append(
+                    potential.evaluate(
+                        moved_jets,
+                        density + sign * step * delta_density,
+                        grid.weights + sign * step * weight_motion,
+                    )["potential"]
+                )
+        fd = (values[0] - values[1]) / (2 * step)
+        errors.append(float(np.max(np.abs(fd - actual))))
+    assert max(errors) < 2e-9, errors
+    np.testing.assert_allclose(actual, actual.swapaxes(-1, -2), atol=2e-13, rtol=0)
+
+
+@pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
+@pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
 def test_mixed_xc_geometry_matches_directional_derivative_of_analytic_gradient(
     name: str, spin: str
 ) -> None:
