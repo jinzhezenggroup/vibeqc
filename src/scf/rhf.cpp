@@ -188,6 +188,24 @@ DfBudgetWorkload df_budget_workload(const core::System& orbital, const core::Sys
           forces};
 }
 
+std::size_t preferred_automatic_resident_df_value_peak(const DfBudgetWorkload& workload,
+                                                       std::size_t occupied, bool unrestricted) {
+  if (unrestricted || workload.batch != 1U || occupied == 0U ||
+      requested_df_pair_storage() != DfPairStorage::Dense)
+    return 0U;
+  const auto diis_bytes =
+      density_fitting_scf_diis_device_bytes(workload.batch, workload.nbf, workload.diis_history);
+  if (diis_bytes == std::numeric_limits<std::size_t>::max()) return 0U;
+  try {
+    const auto plan = plan_density_fitting_tiles(workload.batch, workload.nbf, workload.naux,
+                                                 occupied, std::numeric_limits<std::size_t>::max(),
+                                                 diis_bytes, false, occupied);
+    return plan.stores_full_three_center ? plan.peak_workspace_bytes : 0U;
+  } catch (const DensityFittingBudgetError&) {
+    return 0U;
+  }
+}
+
 DfResolvedBudget resolve_df_budget_for_workload(DfBudgetWorkload workload, int device_id,
                                                 std::size_t requested) {
   auto result = resolve_df_budget(workload, df_resource_envelope(device_id), requested);
@@ -218,8 +236,14 @@ DfResolvedBudget resolve_df_budget_for_system(const core::System& orbital,
                                               const core::System& auxiliary, int device_id,
                                               std::size_t requested, bool forces,
                                               std::size_t batch = 1U, unsigned diis_history = 0U) {
-  return resolve_df_budget_for_workload(
-      df_budget_workload(orbital, auxiliary, batch, diis_history, forces), device_id, requested);
+  auto workload = df_budget_workload(orbital, auxiliary, batch, diis_history, forces);
+  if (!requested && batch == 1U && orbital.electron_count > 0 && orbital.electron_count % 2 == 0 &&
+      orbital.multiplicity == 1) {
+    const auto occupied = static_cast<std::size_t>(orbital.electron_count / 2);
+    workload.preferred_value_peak_bytes =
+        preferred_automatic_resident_df_value_peak(workload, occupied, false);
+  }
+  return resolve_df_budget_for_workload(workload, device_id, requested);
 }
 
 void trace_df_resolved_budget(const DfResolvedBudget& budget) {
@@ -1600,14 +1624,6 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
     workload.naux = std::max(workload.naux, molecule::ao_count(auxiliary_for_size));
     workload.atoms = std::max(workload.atoms, system.atoms.size());
   }
-  DfResolvedBudget resolved;
-  try {
-    resolved = resolve_df_budget_for_workload(workload, device_id, output_budget_bytes);
-  } catch (const std::bad_alloc&) {
-    statuses.assign(count, VIBEQC_STATUS_OUT_OF_MEMORY);
-    return prepared;
-  }
-  trace_df_resolved_budget(resolved);
   std::size_t resident_occupied = 0U;
   if (!unrestricted) {
     for (const auto& system : systems) {
@@ -1620,6 +1636,17 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
           std::max(resident_occupied, static_cast<std::size_t>(system.electron_count / 2));
     }
   }
+  if (!output_budget_bytes)
+    workload.preferred_value_peak_bytes =
+        preferred_automatic_resident_df_value_peak(workload, resident_occupied, unrestricted);
+  DfResolvedBudget resolved;
+  try {
+    resolved = resolve_df_budget_for_workload(workload, device_id, output_budget_bytes);
+  } catch (const std::bad_alloc&) {
+    statuses.assign(count, VIBEQC_STATUS_OUT_OF_MEMORY);
+    return prepared;
+  }
+  trace_df_resolved_budget(resolved);
   const auto resident_values = automatic_dense_resident_df_owner(
       resolved, count, workload.nbf, workload.naux, resident_occupied, unrestricted, diis_history);
   const bool source_values = !resident_values && (resolved.value_bytes != 0U ||

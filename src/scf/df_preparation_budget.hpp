@@ -60,6 +60,11 @@ inline DfPreparationStorage df_preparation_storage(DfPreparationShape shape) noe
 struct DfBudgetWorkload {
   std::size_t nbf{}, naux{}, atoms{}, batch{1}, diis_history{};
   bool forces{};
+  // Optional provider-derived peak for the preferred automatic value/SCF
+  // owner. The generic dimensional estimate remains the bounded fallback
+  // target; a known faster candidate may raise the automatic envelope, never
+  // an explicit user budget.
+  std::size_t preferred_value_peak_bytes{};
 };
 
 /** Optional live device envelope. A false live flag is the deterministic
@@ -73,7 +78,7 @@ struct DfResourceEnvelope {
  * for the prepared execution owner even though they are not scientific identity.
  * A positive requested_bytes is always a hard upper bound on total_bytes. */
 struct DfResolvedBudget {
-  static constexpr std::uint32_t policy_version = 2;
+  static constexpr std::uint32_t policy_version = 3;
   std::size_t requested_bytes{};
   std::size_t total_bytes{};
   std::size_t value_bytes{};
@@ -120,7 +125,8 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
       16.0L * mib + sizeof(double) * (4.0L * n * n * a + batch * (8.0L + 2.0L * diis) * n * n);
   const long double response_demand =
       workload.forces ? 8.0L * mib + sizeof(double) * 3.0L * atoms * (n * n + a * a + n * a) : 0.0L;
-  const auto workload_target = std::max(df_budget_bytes(value_demand + response_demand), min_auto);
+  const auto workload_target = std::max({df_budget_bytes(value_demand + response_demand),
+                                         workload.preferred_value_peak_bytes, min_auto});
 
   DfResolvedBudget result;
   result.requested_bytes = requested_bytes;
